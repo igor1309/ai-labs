@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"time"
 )
@@ -32,6 +33,7 @@ const (
 	RunCompleted   RunStatus = "completed"
 	RunFailed      RunStatus = "failed"
 	RunInterrupted RunStatus = "interrupted"
+	RunLost        RunStatus = "lost"
 )
 
 // Class is why a run that did not complete ended so.
@@ -39,14 +41,23 @@ type Class string
 
 // Result is a run's result (ADR-001, invariant 3): its status and class,
 // "" for none; its output; its timing; its cost, nil where it is unknown;
-// and its warnings.
+// its usage; its sessions, each step's name to the session its call
+// reported; its reason, "" for none; and its warnings.
 type Result struct {
 	Status   RunStatus
 	Class    Class
 	Output   map[string]any
 	Timing   Timing
 	Cost     *float64
+	Usage    Usage
+	Sessions map[string]string
+	Reason   string
 	Warnings []string
+}
+
+// Usage is the tokens a run used, each nil where it is unknown.
+type Usage struct {
+	Input, Output, CacheRead, CacheWrite, Reasoning *int64
 }
 
 // Timing is when a run started and ended, and how long it took.
@@ -55,15 +66,26 @@ type Timing struct {
 	Duration       time.Duration
 }
 
-// printed is a result as it is printed: a class, and a cost, that are none
-// as null, never "" or 0.
+// printed is a result as it is printed: a class, a cost, a count of usage
+// and a reason that are none as null, never "" or 0.
 type printed struct {
-	Status   RunStatus      `json:"status"`
-	Class    *Class         `json:"class"`
-	Output   map[string]any `json:"output"`
-	Timing   printedTiming  `json:"timing"`
-	Cost     *float64       `json:"cost"`
-	Warnings []string       `json:"warnings"`
+	Status   RunStatus         `json:"status"`
+	Class    *Class            `json:"class"`
+	Output   map[string]any    `json:"output"`
+	Timing   printedTiming     `json:"timing"`
+	Cost     *float64          `json:"cost"`
+	Usage    printedUsage      `json:"usage"`
+	Sessions map[string]string `json:"sessions"`
+	Reason   *string           `json:"reason"`
+	Warnings []string          `json:"warnings"`
+}
+
+type printedUsage struct {
+	Input      *int64 `json:"input_tokens"`
+	Output     *int64 `json:"output_tokens"`
+	CacheRead  *int64 `json:"cache_read_tokens"`
+	CacheWrite *int64 `json:"cache_write_tokens"`
+	Reasoning  *int64 `json:"reasoning_tokens"`
 }
 
 type printedTiming struct {
@@ -84,10 +106,16 @@ func (c *CLI) runRequest(out io.Writer, launch string, request Request) (int, er
 		Output:   result.Output,
 		Timing:   printedTiming{Started: result.Timing.Started, Ended: result.Timing.Ended, DurationMS: result.Timing.Duration.Milliseconds()},
 		Cost:     result.Cost,
+		Usage:    printedUsage(result.Usage),
+		Sessions: map[string]string{},
 		Warnings: append([]string{}, result.Warnings...),
 	}
+	maps.Copy(p.Sessions, result.Sessions)
 	if result.Class != "" {
 		p.Class = &result.Class
+	}
+	if result.Reason != "" {
+		p.Reason = &result.Reason
 	}
 	// A script's output is printed as it is: "<", ">" and "&" are not
 	// HTML here.

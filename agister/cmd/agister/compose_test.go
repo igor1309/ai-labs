@@ -61,11 +61,12 @@ func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 }
 
 // builtIn runs "agister <args>" in dir as asBuilt does, over links, which
-// git sees through as well, and a supervisor that runs no program.
+// git sees through as well, and spies of the runtime wrappers that run no
+// turn.
 func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, programsSpy{t}, idleHost(t), &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,6 +244,47 @@ func TestTheCommandRunsOverEveryRuntimeWrapperAndTheUsersHome(t *testing.T) {
 	}
 }
 
+// compose.feature, "AGISTER_HOME names home's folder". Home's folder holds
+// a runtime of each wrapper's contract, and no other folder holds any:
+// each resolves only where home is read at the folder AGISTER_HOME names,
+// or at the user's ".agister" where it names none.
+func TestAgisterHomeNamesHomesFolder(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		environ []string
+		home    string
+	}{
+		{"set", []string{"HOME=/u", "AGISTER_HOME=/h"}, "/h"},
+		{"set twice, the last kept", []string{"AGISTER_HOME=/x", "AGISTER_HOME=/h"}, "/h"},
+		{"unset", []string{"HOME=/u"}, "/u/.agister"},
+		{"empty", []string{"AGISTER_HOME=/x", "AGISTER_HOME="}, "/u/.agister"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := map[string]string{}
+			for _, contract := range []string{"claude-code/3", "codex/2", "pi/1", "bash/1"} {
+				adapter, _, _ := strings.Cut(contract, "/")
+				settings[c.home+"/runtimes/"+adapter+".yaml"] = fmt.Sprintf(
+					"schema: agister.runtime/v1alpha1\nadapter: %s\ncontract: %s\n", adapter, contract)
+			}
+			machine := idleHost(t)
+			machine.environ = c.environ
+			var stdout, stderr strings.Builder
+			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, machine, &stdout, &stderr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			code := commandLine.Run([]string{"check"}, "/r")
+			got := ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
+			if want := (ran{stdout: "4 resolve, 0 refused\n"}); got != want {
+				t.Errorf("ran %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
 // compose.feature, "A launch through a link reads the settings where it
 // leads". "/o/x" leads to "/r/a", below the worktree root "/r", which git
 // gives of either: walked up from "/o/x", "/o/.agister" would be the
@@ -287,7 +329,27 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
 		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
 	}
-	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, programsSpy{t}, idleHost(t), io.Discard, io.Discard); err == nil {
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
 		t.Error("command line built with no links, want an error")
+	}
+}
+
+// A command line is built with every runtime wrapper.
+func TestACommandLineIsBuiltWithEveryRuntimeWrapper(t *testing.T) {
+	t.Parallel()
+	for name, without := range map[string]func(*runtimes){
+		"bash":        func(r *runtimes) { r.bash = nil },
+		"claude-code": func(r *runtimes) { r.claude = nil },
+		"codex":       func(r *runtimes) { r.codex = nil },
+		"pi":          func(r *runtimes) { r.pi = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			wrappers := newRuntimesSpy(t).runtimes()
+			without(&wrappers)
+			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
+				t.Errorf("command line built with no %s wrapper, want an error", name)
+			}
+		})
 	}
 }

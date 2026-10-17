@@ -15,10 +15,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
@@ -48,7 +51,9 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
 	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, &supervisorSpy{answer: echoes}, machine, &strings.Builder{}, &strings.Builder{})
+	wrappers := newRuntimesSpy(t)
+	wrappers.bash.answer = echoes
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,10 +65,11 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	}
 }
 
-// sayCall is the call of the process "say" of runSettings, its script
-// prompt, its time limit a minute and its plan's one warning "w".
+// sayCall is the call of the process "say" of runSettings, on bash/1, its
+// script prompt, its time limit a minute and its plan's one warning "w".
 func sayCall(prompt string) plannedCall {
 	return plannedCall{
+		contract: "bash/1",
 		declared: inputs.Declared{
 			Params: []inputs.Param{{Name: "what"}},
 			Inputs: []inputs.Input{{Name: "what", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}}},
@@ -85,11 +91,11 @@ func (s *turnSpy) Call(_ context.Context, step call.Step) call.Result {
 }
 
 // A step's call is given its process's environment and inputs, resolved
-// over the params its bindings give, and its plan's time limit, and gives
-// core/call's result in
-// core/workflow's words; one whose inputs cannot be resolved is refused,
-// failed, class "refused", with its plan's warnings, and no turn is
-// taken.
+// over the params its bindings give, the inputs in the order its process
+// declares them, and its plan's time limit, and gives core/call's result
+// in core/workflow's words, a call with no usage every count of it
+// unknown; one whose inputs cannot be resolved is refused, failed, class
+// "refused", with its plan's warnings, and no turn is taken.
 func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	t.Parallel()
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
@@ -102,9 +108,10 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		Timing: call.Timing{Started: runStart, Ended: runStart.Add(time.Second), Duration: time.Second}, Cost: &cost, Warnings: []string{"w"}}}
 	planned := sayCall(`echo "$what"`)
 	planned.declared.Environment = []inputs.Variable{{Name: "MODE", Value: inputs.Value{Text: "quiet"}}}
+	planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: "a", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}})
 	unplugged := sayCall("x")
 	unplugged.declared.Inputs[0].Source = "git.revision"
-	steps, err := newStepCalls(resolver, spy, clock, map[string]plannedCall{"a": planned, "b": unplugged})
+	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +122,8 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("a gave %+v, want %+v", got, want)
 	}
-	wantStep := call.Step{Prompt: `echo "$what"`, Environment: map[string]string{"MODE": "quiet"}, Inputs: map[string]string{"what": "hi"},
+	wantStep := call.Step{Prompt: `echo "$what"`, Environment: map[string]string{"MODE": "quiet"},
+		Inputs:    []call.Named{{Name: "what", Text: "hi"}, {Name: "a", Text: "hi"}},
 		TimeLimit: time.Minute, Warnings: []string{"w"}}
 	if len(spy.steps) != 1 || !reflect.DeepEqual(spy.steps[0], wantStep) {
 		t.Errorf("called %+v, want %+v", spy.steps, wantStep)
@@ -128,6 +136,29 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	}
 	if len(spy.steps) != 1 {
 		t.Errorf("called %+v, want b's turn not taken", spy.steps)
+	}
+}
+
+// A step's call gives its reply's usage, session and reason in
+// core/workflow's words, and a lost call ends lost.
+func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
+	t.Parallel()
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := func(n int64) *int64 { return &n }
+	spy := &turnSpy{result: call.Result{Status: call.Lost, Class: call.NoResult, Session: "s1", Reason: "exited 0",
+		Usage: &call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}}
+	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"})
+	want := workflow.Result{Status: "lost", Class: "no_result", Session: "s1", Reason: "exited 0",
+		Usage: workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("a gave %+v, want %+v", got, want)
 	}
 }
 
@@ -203,7 +234,7 @@ steps:
 	if len(faults) > 0 {
 		t.Fatalf("faults %+v", faults)
 	}
-	built, unrun, err := planOf("greet", resolved, read.documents, "bash/1")
+	built, unrun, err := planOf("greet", resolved, read.documents, map[string]call.Inputs{"bash/1": call.InEnvironment})
 	if err != nil || len(unrun) > 0 {
 		t.Fatalf("not run %q, error %v", unrun, err)
 	}
@@ -262,13 +293,13 @@ outputs:
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			f := newRunFixture(runSettings(t, c.files), echoes)
+			f := newRunFixture(t, runSettings(t, c.files), echoes)
 			got := f.run(t, "/r", c.args...)
 			if got.stderr != "" || got.code != 0 {
 				t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 			}
-			if want := []supervisor.Program{bashProgram(`echo "$what"`, "what="+c.what)}; !reflect.DeepEqual(f.supervisor.ran(), want) {
-				t.Errorf("ran %+v, want %+v", f.supervisor.ran(), want)
+			if want := []bash.Turn{bashTurn(`echo "$what"`, "what="+c.what)}; !reflect.DeepEqual(f.runtimes.bash.ran(), want) {
+				t.Errorf("ran %+v, want %+v", f.runtimes.bash.ran(), want)
 			}
 		})
 	}
@@ -369,7 +400,142 @@ func TestBashsProgramRunsOnTheSupervisor(t *testing.T) {
 	}
 }
 
-// The runs take each of their collaborators, and fail without one.
+// A program claude-code asks for runs on the supervisor as it is asked, in
+// its context, its stdin and its line function included, and gives how it
+// ended, each stream as the supervisor kept it; a program that could not
+// start is claude-code's ErrNotStarted, and any other error passes as it
+// is.
+func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	cases := []struct {
+		name       string
+		result     supervisor.Result
+		err        error
+		want       claudecode.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "an exit", result: supervisor.Result{Code: 3,
+			Stdout: supervisor.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"},
+			Stderr: supervisor.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}},
+			want: claudecode.Ended{Code: 3, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: claudecode.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}}},
+		{name: "a signal", result: supervisor.Result{Signal: "killed"}, want: claudecode.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("claude: %w", supervisor.ErrNotStarted), notStarted: true, wantErr: supervisor.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			var ran []supervisor.Program
+			var ended []error
+			spy := &supervisorSpy{answer: func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
+				program.Line("a")
+				program.Line = nil
+				ran = append(ran, program)
+				ended = append(ended, ctx.Err())
+				return c.result, c.err
+			}}
+			programs, err := newClaudeCodeSupervised(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var lines []string
+			got, err := programs.Run(endedContext(), claudecode.Program{Name: "claude", Args: []string{"-p"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
+				Line: func(line string) { lines = append(lines, line) }})
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, claudecode.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			if want := []supervisor.Program{{Name: "claude", Args: []string{"-p"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m"}}; !reflect.DeepEqual(ran, want) {
+				t.Errorf("ran %+v, want %+v", ran, want)
+			}
+			if want := []string{"a"}; !slices.Equal(lines, want) {
+				t.Errorf("lines %q, want %q", lines, want)
+			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(ended, want) {
+				t.Errorf("the supervisor's contexts ended by %v, want %v", ended, want)
+			}
+		})
+	}
+}
+
+// The claude-code wrapper's supervisor is built with the supervisor.
+func TestNewClaudeCodeSupervisedFailsWithoutPrograms(t *testing.T) {
+	t.Parallel()
+	if _, err := newClaudeCodeSupervised(nil); err == nil {
+		t.Error("built with no programs, want an error")
+	}
+}
+
+// A program codex asks for runs on the supervisor as it is asked, in its
+// context, its stdin and its line function included, and gives how it
+// ended, each stream as the supervisor kept it; a program that could not
+// start is codex's ErrNotStarted, and any other error passes as it is.
+func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	cases := []struct {
+		name       string
+		result     supervisor.Result
+		err        error
+		want       codex.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "an exit", result: supervisor.Result{Code: 3,
+			Stdout: supervisor.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"},
+			Stderr: supervisor.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}},
+			want: codex.Ended{Code: 3, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: codex.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}}},
+		{name: "a signal", result: supervisor.Result{Signal: "killed"}, want: codex.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("codex: %w", supervisor.ErrNotStarted), notStarted: true, wantErr: supervisor.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			var ran []supervisor.Program
+			var ended []error
+			spy := &supervisorSpy{answer: func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
+				program.Line("a")
+				program.Line = nil
+				ran = append(ran, program)
+				ended = append(ended, ctx.Err())
+				return c.result, c.err
+			}}
+			programs, err := newCodexSupervised(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var lines []string
+			got, err := programs.Run(endedContext(), codex.Program{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
+				Line: func(line string) { lines = append(lines, line) }})
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, codex.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			if want := []supervisor.Program{{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m"}}; !reflect.DeepEqual(ran, want) {
+				t.Errorf("ran %+v, want %+v", ran, want)
+			}
+			if want := []string{"a"}; !slices.Equal(lines, want) {
+				t.Errorf("lines %q, want %q", lines, want)
+			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(ended, want) {
+				t.Errorf("the supervisor's contexts ended by %v, want %v", ended, want)
+			}
+		})
+	}
+}
+
+// The codex wrapper's supervisor is built with the supervisor.
+func TestNewCodexSupervisedFailsWithoutPrograms(t *testing.T) {
+	t.Parallel()
+	if _, err := newCodexSupervised(nil); err == nil {
+		t.Error("built with no programs, want an error")
+	}
+}
+
+// The runs take each of their collaborators, and fail without one, or with
+// a turn of no contract, no runtime, no inputs or a contract another turn
+// has.
 func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(runStart)
@@ -377,47 +543,62 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, turn, host) {
+	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, []turn, host) {
 		return "/u/.agister", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappersSpy{},
-			turn{contract: "bash/1", runtime: turns},
+			[]turn{{contract: "bash/1", inputs: call.InEnvironment, runtime: turns}},
 			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
-	if _, err := newRuns(home, l, fs, roots, wrappers, tu, machine); err != nil {
+	if _, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, machine); err != nil {
 		t.Fatalf("runs with every collaborator: %v", err)
 	}
 	cases := map[string]func() error{
-		"home":  func() error { _, err := newRuns("", l, fs, roots, wrappers, tu, machine); return err },
-		"links": func() error { _, err := newRuns(home, nil, fs, roots, wrappers, tu, machine); return err },
+		"home": func() error {
+			_, err := newRuns("", l, fs, roots, wrappers, tu, schemaValidator{}, machine)
+			return err
+		},
+		"links": func() error {
+			_, err := newRuns(home, nil, fs, roots, wrappers, tu, schemaValidator{}, machine)
+			return err
+		},
 		"turn": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, turn{contract: "bash/1"}, machine)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, machine)
+			if err == nil || err.Error() != "runs: no turn" {
+				return err
+			}
+			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, machine)
+			return err
+		},
+		"turn's inputs": func() error {
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, machine)
 			return err
 		},
 		"context": func() error {
 			m := machine
 			m.ctx = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
 			return err
 		},
 		"clock": func() error {
 			m := machine
 			m.clock = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
 			return err
 		},
 		"timer": func() error {
 			m := machine
 			m.timer = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
 			return err
 		},
 		"signals": func() error {
 			m := machine
 			m.signals = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
 			return err
 		},
-		"wrappers": func() error { _, err := newRuns(home, l, fs, roots, nil, tu, machine); return err },
+		"wrappers":  func() error { _, err := newRuns(home, l, fs, roots, nil, tu, schemaValidator{}, machine); return err },
+		"validator": func() error { _, err := newRuns(home, l, fs, roots, wrappers, tu, nil, machine); return err },
 	}
 	for name, build := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -426,6 +607,10 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 				t.Errorf("runs without %s: %v, want runs: no %s", name, err, name)
 			}
 		})
+	}
+	twice := append(slices.Clone(tu), turn{contract: "bash/1", inputs: call.InMessage, runtime: turns})
+	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, machine); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
+		t.Errorf("runs with two turns of a contract: %v, want the error that says so", err)
 	}
 }
 
@@ -456,16 +641,15 @@ environment:
   what: process
 `,
 			})
-			f := newRunFixture(settings, echoes)
+			f := newRunFixture(t, settings, echoes)
 			hostEnv := append(slices.Clone(environ), "MODE=host", "what=host")
 			got := f.runWatching(t, f.signals.watch, hostEnv, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
 			if got.code != 0 || got.stderr != "" {
 				t.Fatalf("exit %d, stderr %q", got.code, got.stderr)
 			}
-			want := supervisor.Program{Name: "bash", Args: []string{"-c", `echo "$what"`}, Dir: "/r",
-				Env: append(slices.Clone(environ), "MODE="+c.want, "what=input-value")}
-			if programs := f.supervisor.ran(); !reflect.DeepEqual(programs, []supervisor.Program{want}) {
-				t.Errorf("ran %+v, want %+v", programs, want)
+			want := bashTurn(`echo "$what"`, "MODE="+c.want, "what=input-value")
+			if turns := f.runtimes.bash.ran(); !reflect.DeepEqual(turns, []bash.Turn{want}) {
+				t.Errorf("ran %+v, want %+v", turns, want)
 			}
 		})
 	}
@@ -510,8 +694,8 @@ func (s *groupProcessSpy) Signal(signal syscall.Signal) error {
 func (s *groupProcessSpy) Exited() error    { return s.exited }
 func (s *groupProcessSpy) Wait() group.Exit { return s.exit }
 
-// The supervisor's program is started as gokit's command, its stderr the
-// supervisor's file; what the check, the start and the process answer
+// The supervisor's program is started as gokit's command, its stdin and
+// stderr the supervisor's files; what the check, the start and the process answer
 // passes as gokit gives it, and an exit's code or signal in the
 // supervisor's words.
 func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
@@ -528,7 +712,7 @@ func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			stderr := new(os.File)
+			stdin, stderr := new(os.File), new(os.File)
 			stdout := io.NopCloser(strings.NewReader("out"))
 			signaled, exited := errors.New("no such group"), errors.New("cannot observe")
 			process := &groupProcessSpy{stdout: stdout, signaled: signaled, exited: exited, exit: c.exit}
@@ -537,11 +721,11 @@ func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			started, err := starter.Start(supervisor.Program{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}}, stderr)
+			started, err := starter.Start(supervisor.Program{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}}, stdin, stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := []group.Command{{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}, Stderr: stderr}}
+			want := []group.Command{{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}, Stdin: stdin, Stderr: stderr}}
 			if !reflect.DeepEqual(groups.commands, want) {
 				t.Errorf("started %+v, want %+v", groups.commands, want)
 			}
@@ -576,7 +760,7 @@ func TestGokitsFailuresReachTheSupervisorAsTheyAre(t *testing.T) {
 	if err := starter.CheckExitObservation(); err != unsupported {
 		t.Errorf("check: %v, want %v", err, unsupported)
 	}
-	if process, err := starter.Start(supervisor.Program{Name: "bash"}, nil); process != nil || err != broken {
+	if process, err := starter.Start(supervisor.Program{Name: "bash"}, nil, nil); process != nil || err != broken {
 		t.Errorf("start: %v, %v; want no process, %v", process, err, broken)
 	}
 }
@@ -586,5 +770,49 @@ func TestNewGroupStarterFailsWithoutProcessGroups(t *testing.T) {
 	t.Parallel()
 	if _, err := newGroupStarter(nil); err == nil || err.Error() != "group starter: no process groups" {
 		t.Errorf("group starter without process groups: %v", err)
+	}
+}
+
+// Core takes a call's inputs on bash as its wrapper's facts say, and the
+// bash wrapper's say its environment.
+func TestCoreTakesTheInputsOnBashAsItsFactsSay(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		facts bash.Inputs
+		want  call.Inputs
+	}{
+		{bash.InEnvironment, call.InEnvironment},
+		{bash.InMessage, call.InMessage},
+		{0, 0},
+	}
+	for _, c := range cases {
+		if got := bashInputs(c.facts); got != c.want {
+			t.Errorf("bash's %d taken as %d, want %d", c.facts, got, c.want)
+		}
+	}
+	supervising, err := newSupervised(&supervisorSpy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := bash.New(supervising)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bashInputs(b.Facts().Inputs); got != call.InEnvironment {
+		t.Errorf("bash's inputs taken as %d, want in the environment", got)
+	}
+}
+
+// A run's result reaches cli with its usage, sessions and reason as core
+// gave them, and a lost run lost.
+func TestARunsResultReachesCliWithItsUsageSessionsAndReason(t *testing.T) {
+	t.Parallel()
+	count := func(n int64) *int64 { return &n }
+	got := cliResult(workflow.Result{Status: "lost", Class: "no_result", Reason: "exited 0", Sessions: map[string]string{"ask": "s1"},
+		Usage: workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}})
+	want := cli.Result{Status: cli.RunLost, Class: "no_result", Reason: "exited 0", Sessions: map[string]string{"ask": "s1"},
+		Usage: cli.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("result %+v, want %+v", got, want)
 	}
 }

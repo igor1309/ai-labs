@@ -228,9 +228,9 @@ func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 	}
 }
 
-// run.feature, "A step that does not complete ends the run": a failed or
-// interrupted step, first, between or last, ends the run in its status
-// and class.
+// run.feature, "A step that does not complete ends the run": a failed,
+// interrupted or lost step, first, between or last, ends the run in its
+// status and class.
 func TestAStepThatDoesNotCompleteEndsTheRun(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -244,6 +244,7 @@ func TestAStepThatDoesNotCompleteEndsTheRun(t *testing.T) {
 		{"a", "interrupted", "timeout", trail{"resolve", "a"}},
 		{"b", "interrupted", "cancelled", trail{"resolve", "a", "b"}},
 		{"c", "failed", "killed", trail{"resolve", "a", "b", "c"}},
+		{"b", "lost", "no_result", trail{"resolve", "a", "b"}},
 	}
 	for _, c := range cases {
 		t.Run(c.step+" "+string(c.status)+" "+string(c.class), func(t *testing.T) {
@@ -426,5 +427,75 @@ func TestWhatCannotBeResolvedRefusesTheRun(t *testing.T) {
 				t.Errorf("asked %q, want %q", f.trail, c.called)
 			}
 		})
+	}
+}
+
+// run.feature, "The run's usage sums what its calls reported, and its
+// reason is its last call's": each of the five counts sums its own, a
+// count none reported is unknown, one a call did not report sums the
+// others', and 0 reported is 0.
+func TestTheRunsUsageSumsWhatItsCallsReported(t *testing.T) {
+	t.Parallel()
+	count := func(n int64) *int64 { return &n }
+	cases := []struct {
+		name       string
+		a, b, want workflow.Usage
+	}{
+		{"input and output", workflow.Usage{Input: count(10), Output: count(3)}, workflow.Usage{Input: count(5)},
+			workflow.Usage{Input: count(15), Output: count(3)}},
+		{"every count", workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)},
+			workflow.Usage{Input: count(10), Output: count(20), CacheRead: count(30), CacheWrite: count(40), Reasoning: count(50)},
+			workflow.Usage{Input: count(11), Output: count(22), CacheRead: count(33), CacheWrite: count(44), Reasoning: count(55)}},
+		{"each by one call", workflow.Usage{CacheRead: count(3), Reasoning: count(5)}, workflow.Usage{CacheWrite: count(4)},
+			workflow.Usage{CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}},
+		{"every count 0", workflow.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)},
+			workflow.Usage{},
+			workflow.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)}},
+		{"none reported", workflow.Usage{}, workflow.Usage{}, workflow.Usage{}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+				"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Usage: c.a} },
+				"b": func() workflow.Result {
+					return workflow.Result{Status: workflow.Failed, Class: "auth", Usage: c.b, Reason: "r"}
+				},
+			})
+			got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b"}}}, nil)
+			if !reflect.DeepEqual(got.Usage, c.want) {
+				t.Errorf("usage %+v, want %+v", got.Usage, c.want)
+			}
+			if got.Reason != "r" {
+				t.Errorf("reason %q, want r", got.Reason)
+			}
+		})
+	}
+}
+
+// The run's reason is its last call's: none where that call completed,
+// whatever one before it gave.
+func TestTheRunsReasonIsItsLastCalls(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Reason: "earlier"} },
+		"b": completes(0),
+	})
+	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b"}}}, nil)
+	if got.Status != workflow.Completed || got.Reason != "" {
+		t.Errorf("ended %q, reason %q; want completed, none", got.Status, got.Reason)
+	}
+}
+
+// run.feature, "A run carries each step's session by its name".
+func TestARunCarriesEachStepsSessionByItsName(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Session: "s1"} },
+		"b": completes(0),
+	})
+	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b"}}}, nil)
+	if want := map[string]string{"a": "s1"}; !reflect.DeepEqual(got.Sessions, want) {
+		t.Errorf("sessions %v, want %v", got.Sessions, want)
 	}
 }

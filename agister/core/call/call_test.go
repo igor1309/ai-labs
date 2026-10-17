@@ -37,37 +37,54 @@ func untilEnded(ctx context.Context) (call.Ended, error) {
 	return call.Ended{Code: 0}, nil
 }
 
+// validatorSpy answers the validator by its test's error, and keeps each
+// schema and output it is given.
+type validatorSpy struct {
+	err   error
+	given [][2]string
+}
+
+func (s *validatorSpy) Validate(schema, output []byte) error {
+	s.given = append(s.given, [2]string{string(schema), string(output)})
+	return s.err
+}
+
 var start = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
-// caller is a caller over spy in dir, over env, its timing and time limits
-// on clock.
+// caller is a caller over spy, which takes the inputs in its environment,
+// in dir, over env, its timing and time limits on clock.
 func caller(t *testing.T, spy *runtimeSpy, clock *clocktest.Clock, dir string, env ...string) *call.Caller {
 	t.Helper()
-	c, err := call.New(spy, clock, clock.Timer, dir, env)
+	c, err := call.New(spy, call.InEnvironment, &validatorSpy{}, clock, clock.Timer, dir, env)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return c
 }
 
-// A caller takes each of its collaborators, and fails without one.
+// A caller takes each of its collaborators, and how its runtime takes the
+// inputs, and fails without one.
 func TestNewFailsWithoutACollaborator(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(start)
 	cases := []struct {
-		name    string
-		runtime call.Runtime
-		clock   call.Clock
-		timer   call.Timer
+		name      string
+		runtime   call.Runtime
+		inputs    call.Inputs
+		validator call.Validator
+		clock     call.Clock
+		timer     call.Timer
 	}{
-		{"runtime", nil, clock, clock.Timer},
-		{"clock", &runtimeSpy{}, nil, clock.Timer},
-		{"timer", &runtimeSpy{}, clock, nil},
+		{"runtime", nil, call.InMessage, &validatorSpy{}, clock, clock.Timer},
+		{"inputs", &runtimeSpy{}, 0, &validatorSpy{}, clock, clock.Timer},
+		{"validator", &runtimeSpy{}, call.InMessage, nil, clock, clock.Timer},
+		{"clock", &runtimeSpy{}, call.InMessage, &validatorSpy{}, nil, clock.Timer},
+		{"timer", &runtimeSpy{}, call.InMessage, &validatorSpy{}, clock, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := call.New(c.runtime, c.clock, c.timer, "/r", nil); err == nil || err.Error() != "call: no "+c.name {
+			if _, err := call.New(c.runtime, c.inputs, c.validator, c.clock, c.timer, "/r", nil); err == nil || err.Error() != "call: no "+c.name {
 				t.Errorf("New without a %s: %v, want call: no %s", c.name, err, c.name)
 			}
 		})
@@ -83,7 +100,7 @@ func TestTheTurnIsGivenTheScriptTheDirectoryAndTheEnvironment(t *testing.T) {
 	c.Call(context.Background(), call.Step{
 		Prompt:      "s",
 		Environment: map[string]string{"A": "1", "B": "2"},
-		Inputs:      map[string]string{"B": "3"},
+		Inputs:      []call.Named{{Name: "B", Text: "3"}},
 	})
 	want := []call.Turn{{Prompt: "s", Dir: "/r", Env: []string{"PATH=/bin", "A=1", "B=3"}}}
 	if !reflect.DeepEqual(spy.given, want) {
@@ -92,7 +109,8 @@ func TestTheTurnIsGivenTheScriptTheDirectoryAndTheEnvironment(t *testing.T) {
 }
 
 // call.feature, "How the turn ended decides the status and class", the
-// step's warnings given whatever its status.
+// step's warnings given whatever its status, and the runtime's error the
+// reason of a call it failed.
 func TestHowTheTurnEndedDecidesTheStatusAndClass(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -102,30 +120,31 @@ func TestHowTheTurnEndedDecidesTheStatusAndClass(t *testing.T) {
 		turn   func(cancel context.CancelFunc) func(context.Context) (call.Ended, error)
 		status call.Status
 		class  call.Class
+		reason string
 	}{
 		{"exits with code 0", func(context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return exits(call.Ended{Code: 0})
-		}, call.Completed, ""},
+		}, call.Completed, "", ""},
 		{"exits with code 4", func(context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return exits(call.Ended{Code: 4})
-		}, call.Completed, ""},
+		}, call.Completed, "", ""},
 		{"cannot start its program", func(context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return func(context.Context) (call.Ended, error) {
 				return call.Ended{}, fmt.Errorf("bash: %w", call.ErrNotStarted)
 			}
-		}, call.Failed, call.RuntimeUnavailable},
+		}, call.Failed, call.RuntimeUnavailable, "bash: the program could not start"},
 		{"gives another error", func(context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return func(context.Context) (call.Ended, error) { return call.Ended{}, errors.New("broken pipe") }
-		}, call.Failed, call.RuntimeError},
+		}, call.Failed, call.RuntimeError, "broken pipe"},
 		{"is cancelled by the caller, then exits 0", func(cancel context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return func(ctx context.Context) (call.Ended, error) {
 				cancel()
 				return untilEnded(ctx)
 			}
-		}, call.Interrupted, call.Cancelled},
+		}, call.Interrupted, call.Cancelled, ""},
 		{"is ended by a signal Agister did not send", func(context.CancelFunc) func(context.Context) (call.Ended, error) {
 			return exits(call.Ended{Signal: "terminated"})
-		}, call.Failed, call.Killed},
+		}, call.Failed, call.Killed, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -134,8 +153,8 @@ func TestHowTheTurnEndedDecidesTheStatusAndClass(t *testing.T) {
 			t.Cleanup(cancel)
 			spy := &runtimeSpy{turn: c.turn(cancel)}
 			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(ctx, call.Step{Prompt: "s", Warnings: []string{"w"}})
-			if got.Status != c.status || got.Class != c.class {
-				t.Errorf("ended %q, class %q; want %q, class %q", got.Status, got.Class, c.status, c.class)
+			if got.Status != c.status || got.Class != c.class || got.Reason != c.reason {
+				t.Errorf("ended %q, class %q, reason %q; want %q, class %q, reason %q", got.Status, got.Class, got.Reason, c.status, c.class, c.reason)
 			}
 			if c.status != call.Completed && got.Output != nil {
 				t.Errorf("output of a call ended %q: %v, want none", got.Status, got.Output)

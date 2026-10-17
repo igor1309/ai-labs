@@ -52,3 +52,9 @@ Feature: The composition checks and inspects settings
       "stray"
     When "agister inspect processes" runs in "/o/x"
     Then it lists home's processes, and not "stray"
+
+  Scenario: AGISTER_HOME names home's folder
+    Given the program is built as main builds it, the user's home "/u",
+      and AGISTER_HOME "/h"
+    When "agister check" runs
+    Then the port reads home at "/h"

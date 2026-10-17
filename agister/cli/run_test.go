@@ -38,8 +38,9 @@ func TestARequestNamesAWorkflowOrAStepWithItsParams(t *testing.T) {
 }
 
 // run.feature, "The result is printed as JSON, and the exit code says
-// whether the run completed". A cost the run reports is printed as it is,
-// and a run with no output or no warnings prints them as none.
+// whether the run completed". A cost, each count of usage, 0 included, a
+// session and a reason the run reports are printed as they are, and a run
+// with no output, no sessions or no warnings prints them as none.
 func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *testing.T) {
 	t.Parallel()
 	started := time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
@@ -50,7 +51,20 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
     "duration_ms": 1500
   },
 `
+	const unknown = `  "cost": null,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "reasoning_tokens": null
+  },
+  "sessions": {},
+  "reason": null,
+`
 	cost := 0.25
+	input, output := int64(10), int64(3)
+	count := func(n int64) *int64 { return &n }
 	cases := []struct {
 		name   string
 		result cli.Result
@@ -70,8 +84,7 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
       "size": 11
     }
   },
-` + printedTiming + `  "cost": null,
-  "warnings": [
+` + printedTiming + unknown + `  "warnings": [
     "its plan grants \"network\""
   ]
 }
@@ -80,26 +93,96 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   "status": "failed",
   "class": "killed",
   "output": null,
-` + printedTiming + `  "cost": null,
-  "warnings": []
+` + printedTiming + unknown + `  "warnings": []
 }
 `, 1},
 		{"interrupted, timeout", cli.Result{Status: cli.RunInterrupted, Class: "timeout", Output: map[string]any{}, Timing: timing}, `{
   "status": "interrupted",
   "class": "timeout",
   "output": {},
-` + printedTiming + `  "cost": null,
-  "warnings": []
+` + printedTiming + unknown + `  "warnings": []
 }
 `, 1},
-		{"completed, a cost reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing, Cost: &cost}, `{
+		{"lost, no_result", cli.Result{Status: cli.RunLost, Class: "no_result", Timing: timing}, `{
+  "status": "lost",
+  "class": "no_result",
+  "output": null,
+` + printedTiming + unknown + `  "warnings": []
+}
+`, 1},
+		{"completed, a cost, usage and a session reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing, Cost: &cost,
+			Usage: cli.Usage{Input: &input, Output: &output}, Sessions: map[string]string{"ask": "s1"}}, `{
   "status": "completed",
   "class": null,
   "output": {},
 ` + printedTiming + `  "cost": 0.25,
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 3,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "reasoning_tokens": null
+  },
+  "sessions": {
+    "ask": "s1"
+  },
+  "reason": null,
   "warnings": []
 }
 `, 0},
+		{"completed, every count of usage reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+			Usage: cli.Usage{Input: count(10), Output: count(3), CacheRead: count(7), CacheWrite: count(5), Reasoning: count(2)}}, `{
+  "status": "completed",
+  "class": null,
+  "output": {},
+` + printedTiming + `  "cost": null,
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 3,
+    "cache_read_tokens": 7,
+    "cache_write_tokens": 5,
+    "reasoning_tokens": 2
+  },
+  "sessions": {},
+  "reason": null,
+  "warnings": []
+}
+`, 0},
+		{"completed, every count of usage 0", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+			Usage: cli.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)}}, `{
+  "status": "completed",
+  "class": null,
+  "output": {},
+` + printedTiming + `  "cost": null,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "reasoning_tokens": 0
+  },
+  "sessions": {},
+  "reason": null,
+  "warnings": []
+}
+`, 0},
+		{"failed, a reason reported", cli.Result{Status: cli.RunFailed, Class: "auth", Timing: timing, Reason: "not logged in"}, `{
+  "status": "failed",
+  "class": "auth",
+  "output": null,
+` + printedTiming + `  "cost": null,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "reasoning_tokens": null
+  },
+  "sessions": {},
+  "reason": "not logged in",
+  "warnings": []
+}
+`, 1},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

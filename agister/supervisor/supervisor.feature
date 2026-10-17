@@ -1,6 +1,7 @@
-# supervisor, a wrapper (docs/run-implementation.md, "The first run";
-# ADR-012, rule 6): starts a program and its group, keeps the ends of its
-# output, and ends all it started. Contract tests against real programs
+# supervisor, a wrapper (docs/run-implementation.md, "The first run" and
+# "A step on a model runtime"; ADR-012, rule 6): starts a program and its
+# group, gives it its stdin, streams its stdout's lines, keeps the ends of
+# its output, and ends all it started. Contract tests against real programs
 # (ADR-009, rule 3); a timer spy keeps the grace (rule 5).
 
 Feature: The supervisor runs a program and ends all it started
@@ -61,3 +62,20 @@ Feature: The supervisor runs a program and ends all it started
     Given a program that kills itself with SIGKILL
     When the supervisor runs it
     Then it gives that the program was ended by the signal "killed"
+
+  Scenario: The text given is the program's stdin, written as stdout is
+    read
+    When the supervisor runs "cat" given 1 MiB of text
+    Then stdout's size is 1 MiB, its digest that of the text, and the
+      program exited with code 0
+
+  Scenario: Each line of stdout is given as it is read
+    Given a program that prints "a", then waits until "a" is given, then
+      prints "b" and a last line with no newline "c"
+    When the supervisor runs it with a line function
+    Then the function is given "a", then "b", then "c", and the program
+      exited with code 0
+
+  Scenario: Stdin a program does not read does not hold the supervisor
+    When the supervisor runs "sh -c 'exit 2'" given 1 MiB of text
+    Then the program exited with code 2, and no error is given

@@ -102,14 +102,47 @@ type Clock interface {
 
 // Result is the result shape, a call's or a run's: the status and class;
 // the output of a completed one; its timing; its cost, nil when unknown;
-// and its warnings.
+// its usage; a call's session, empty where none was reported, and a run's
+// sessions, each step's name to its call's session; the reason of one that
+// did not complete, empty where there is none; and its warnings.
 type Result struct {
 	Status   Status
 	Class    Class
 	Output   map[string]any
 	Timing   Timing
 	Cost     *float64
+	Usage    Usage
+	Session  string
+	Sessions map[string]string
+	Reason   string
 	Warnings []string
+}
+
+// Usage is the tokens a call or a run used, each nil where not reported.
+type Usage struct {
+	Input, Output, CacheRead, CacheWrite, Reasoning *int64
+}
+
+// add is usage with called's counts added, a count nil only where neither
+// reported it.
+func (u Usage) add(called Usage) Usage {
+	sum := func(a, b *int64) *int64 {
+		switch {
+		case a == nil:
+			return b
+		case b == nil:
+			return a
+		}
+		total := *a + *b
+		return &total
+	}
+	return Usage{
+		Input:      sum(u.Input, called.Input),
+		Output:     sum(u.Output, called.Output),
+		CacheRead:  sum(u.CacheRead, called.CacheRead),
+		CacheWrite: sum(u.CacheWrite, called.CacheWrite),
+		Reasoning:  sum(u.Reasoning, called.Reasoning),
+	}
 }
 
 // Timing is when a call or a run started and ended, and how long it took.
@@ -140,13 +173,15 @@ func New(resolver Resolver, caller Caller, clock Clock) (*Runner, error) {
 }
 
 // Run runs w over the params given: its inputs resolved once, then each
-// step in order, until one does not complete. The run's status and class
-// are its last call's, its output its output mapping once every step has
-// completed, its timing the whole run's, its cost unknown where a call's
-// is, and its warnings every call's, in order.
+// step in order, until one does not complete. The run's status, class and
+// reason are its last call's, its output its output mapping once every
+// step has completed, its timing the whole run's, its cost unknown where a
+// call's is, its usage the sum of what its calls reported, its sessions
+// each step's whose call reported one, and its warnings every call's, in
+// order.
 func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) Result {
 	started := r.clock.Now()
-	result := Result{Status: Completed, Cost: new(float64)}
+	result := Result{Status: Completed, Cost: new(float64), Sessions: map[string]string{}}
 	finish := func() Result {
 		ended := r.clock.Now()
 		result.Timing = Timing{Started: started, Ended: ended, Duration: ended.Sub(started)}
@@ -168,8 +203,12 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 			return refuse()
 		}
 		called := r.caller.Call(ctx, step.Name, params)
-		result.Status, result.Class = called.Status, called.Class
+		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
 		result.Warnings = append(result.Warnings, called.Warnings...)
+		result.Usage = result.Usage.add(called.Usage)
+		if called.Session != "" {
+			result.Sessions[step.Name] = called.Session
+		}
 		if result.Cost != nil && called.Cost != nil {
 			*result.Cost += *called.Cost
 		} else {

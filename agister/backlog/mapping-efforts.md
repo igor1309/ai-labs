@@ -25,3 +25,9 @@ owner settles the field.
 
 `settings/documents`: `runtime.go` and `runtime.feature`;
 `settings/resolve`, if the mapping's list is checked.
+
+## Seen
+
+- 2026-10-16: no codex model on the owner's login accepts `minimal`,
+  which `home/runtimes/codex.yaml` and the codex wrapper's facts list;
+  `gpt-6.1-sol` rejects it. The end-to-end check uses `low`.

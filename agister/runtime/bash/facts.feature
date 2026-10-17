@@ -10,3 +10,4 @@ Feature: The bash wrapper gives its facts
     And it cannot check output against a schema, resume a session, take
       skills, take a model, or report tool calls and tool commands
     And it accepts no effort
+    And it takes a call's inputs in its program's environment

@@ -18,6 +18,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
@@ -46,29 +48,46 @@ type host struct {
 	signals signals
 }
 
-// turn is the one runtime this slice takes a turn on: the contract of its
-// wrapper, and its turns.
+// turn is a runtime a step takes its turn on: the contract of its wrapper,
+// how it takes a call's inputs, and its turns.
 type turn struct {
 	contract string
+	inputs   call.Inputs
 	runtime  call.Runtime
 }
 
 // runs answers cli's run from resolve and core (docs/run-implementation.md,
-// "The first run"): a request resolves over the settings of home's folder
-// and its launch directory, read once; what this slice does not run is
-// refused before anything runs; and the workflow runs in the root of the
-// git worktree that holds the launch directory, a signal cancelling it.
+// "The first run" and "A step on a model runtime"): a request resolves over
+// the settings of home's folder and its launch directory, read once; what
+// this slice does not run is refused before anything runs; and the
+// workflow runs in the root of the git worktree that holds the launch
+// directory, a signal cancelling it, each step on the turn of the contract
+// its agent's runtime names. A call's output is checked against its schema
+// by the validator.
 type runs struct {
-	home     string
-	links    links
-	fs       layout.FileSystem
-	roots    layout.WorktreeRoot
-	wrappers resolve.Wrappers
-	turn     turn
-	host     host
+	home      string
+	links     links
+	fs        layout.FileSystem
+	roots     layout.WorktreeRoot
+	wrappers  resolve.Wrappers
+	turns     []turn
+	validator call.Validator
+	host      host
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turn turn, host host) (*runs, error) {
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, host host) (*runs, error) {
+	contracts := map[string]bool{}
+	for _, t := range turns {
+		switch {
+		case t.contract == "" || t.runtime == nil:
+			return nil, errors.New("runs: no turn")
+		case t.inputs == 0:
+			return nil, errors.New("runs: no turn's inputs")
+		case contracts[t.contract]:
+			return nil, fmt.Errorf("runs: two turns of the contract %q", t.contract)
+		}
+		contracts[t.contract] = true
+	}
 	switch {
 	case home == "":
 		return nil, errors.New("runs: no home")
@@ -80,8 +99,10 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 		return nil, errors.New("runs: no worktree root")
 	case wrappers == nil:
 		return nil, errors.New("runs: no wrappers")
-	case turn.contract == "" || turn.runtime == nil:
+	case len(turns) == 0:
 		return nil, errors.New("runs: no turn")
+	case validator == nil:
+		return nil, errors.New("runs: no validator")
 	case host.ctx == nil:
 		return nil, errors.New("runs: no context")
 	case host.clock == nil:
@@ -91,7 +112,16 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 	case host.signals == nil:
 		return nil, errors.New("runs: no signals")
 	}
-	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turn: turn, host: host}, nil
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, host: host}, nil
+}
+
+// takes is how each turn takes a call's inputs, by its contract.
+func (r *runs) takes() map[string]call.Inputs {
+	takes := map[string]call.Inputs{}
+	for _, t := range r.turns {
+		takes[t.contract] = t.inputs
+	}
+	return takes
 }
 
 func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
@@ -117,7 +147,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if root == "" {
 		return cli.Result{}, refused([]string{fmt.Sprintf("the launch directory %q is in no git worktree", launch)})
 	}
-	built, unrun, err := planOf(request.Workflow, resolved, read.documents, r.turn.contract)
+	built, unrun, err := planOf(request.Workflow, resolved, read.documents, r.takes())
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -134,17 +164,21 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 }
 
 // runner is core's runner of built, its calls' turns taken in dir over
-// Agister's environment.
+// Agister's environment, each by the caller of its turn's contract.
 func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
-	caller, err := call.New(r.turn.runtime, r.host.clock, r.host.timer, dir, r.host.environ)
-	if err != nil {
-		return nil, err
+	callers := map[string]turnCaller{}
+	for _, t := range r.turns {
+		caller, err := call.New(t.runtime, t.inputs, r.validator, r.host.clock, r.host.timer, dir, r.host.environ)
+		if err != nil {
+			return nil, err
+		}
+		callers[t.contract] = caller
 	}
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
 	if err != nil {
 		return nil, err
 	}
-	steps, err := newStepCalls(resolver, caller, r.host.clock, built.calls)
+	steps, err := newStepCalls(resolver, callers, r.host.clock, built.calls)
 	if err != nil {
 		return nil, err
 	}
@@ -264,10 +298,12 @@ type plan struct {
 	calls    map[string]plannedCall
 }
 
-// plannedCall is a step's call: what its process declares, which
-// core/inputs resolves before the call starts, and the call core/call
-// makes, but its environment and inputs, which that gives.
+// plannedCall is a step's call: the contract of the turn it is taken on;
+// what its process declares, which core/inputs resolves before the call
+// starts; and the call core/call makes, but its environment and inputs,
+// which that gives.
 type plannedCall struct {
+	contract string
 	declared inputs.Declared
 	step     call.Step
 }
@@ -276,14 +312,14 @@ type plannedCall struct {
 // step; or what this slice does not run, each named in the order the
 // request's documents give it. It reads what resolve does not hold from
 // docs, the documents of the snapshot resolve checked, which have composed
-// the layers already (ADR-002). A turn is taken only on the runtime of the
-// contract bash.
-func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash string) (plan, []string, error) {
+// the layers already (ADR-002). A turn is taken only on a runtime whose
+// contract takes names, which says how its turn takes a call's inputs.
+func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) (plan, []string, error) {
 	if resolved.Workflow == nil {
 		return plan{}, nil, errors.New("the request resolves to no workflow")
 	}
 	w := *resolved.Workflow
-	unrun, err := notRunOf(name, w, resolved, docs, bash)
+	unrun, err := notRunOf(name, w, resolved, docs, takes)
 	if err != nil || len(unrun) > 0 {
 		return plan{}, unrun, err
 	}
@@ -326,7 +362,7 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
 	}
 	for _, item := range w.Steps {
-		planned, err := plannedCallOf(item, resolved, docs)
+		planned, err := plannedCallOf(name, item, resolved, docs, takes)
 		if err != nil {
 			return plan{}, nil, err
 		}
@@ -356,9 +392,12 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 // notRunOf is what this slice does not run of w, the workflow name, ""
 // for one made of a step, in the order its documents give it: the
 // workflow's inputs and each of its items that is not a step; then, for
-// each step, a runtime with no turn, and what its process declares that
-// is not run, its instruction and its guidance where the step is on bash.
-func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, bash string) ([]string, error) {
+// each step, a runtime with no turn, its session, and what its process
+// declares that is not run, among them its instruction and its guidance on
+// a runtime that takes no message, as bash does, and an input named as a
+// document of its message, which two sections of one name would leave
+// ambiguous.
+func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]string, error) {
 	var unrun notRun
 	if name != "" {
 		definition, problems := docs.Workflow(name)
@@ -380,23 +419,32 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 			continue
 		}
 		runtime := resolved.Agents[item.Agent.Value].Runtime.Value
-		onBash := resolved.Runtimes[runtime].Contract.Value == bash
-		if !onBash {
-			unrun.add(fmt.Sprintf("the step %q", item.Name), fmt.Sprintf("the runtime %q's turn", runtime))
+		inputsTaken, turned := takes[resolved.Runtimes[runtime].Contract.Value]
+		step := fmt.Sprintf("the step %q", item.Name)
+		if !turned {
+			unrun.add(step, fmt.Sprintf("the runtime %q's turn", runtime))
+		}
+		if item.Session != nil {
+			unrun.add(step, "the session")
 		}
 		definition, problems := docs.Process(item.Process.Value)
 		if len(problems) > 0 {
 			return nil, documentProblems(problems)
 		}
 		owner := fmt.Sprintf("the process %q", item.Process.Value)
-		if onBash && definition.Instruction.Given {
-			unrun.add(owner, "the instruction on bash")
+		inEnvironment := turned && inputsTaken == call.InEnvironment
+		if inEnvironment && definition.Instruction.Given {
+			unrun.add(owner, fmt.Sprintf("the instruction on %s", runtime))
 		}
-		if onBash && len(definition.Guidance.Value) > 0 {
-			unrun.add(owner, "the guidance on bash")
+		if inEnvironment && len(definition.Guidance.Value) > 0 {
+			unrun.add(owner, fmt.Sprintf("the guidance on %s", runtime))
 		}
+		documentNames := documentNamesOf(definition)
 		for _, input := range definition.Inputs.Value {
 			unrun.input(owner, input.Value)
+			if turned && inputsTaken == call.InMessage && slices.Contains(documentNames, input.Value.Name) {
+				unrun.add(owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
+			}
 		}
 		workspace := definition.Workspace.Value
 		if workspace.Access.Value == "read-write" {
@@ -408,19 +456,45 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		if workspace.Clean.Given && workspace.Clean.Value {
 			unrun.add(owner, "the workspace's clean")
 		}
+		if definition.Limits.Value.Cost.Given {
+			unrun.add(owner, "the cost limit")
+		}
 		if definition.Limits.Value.Stale.Given {
 			unrun.add(owner, "the staleness limit")
+		}
+		if definition.Recovery.Given {
+			unrun.add(owner, "the recovery")
 		}
 	}
 	return unrun.lines, nil
 }
 
-// plannedCallOf is the call of the step item: its process's params, their
-// defaults, inputs, their sources, and environment; its script, the text
-// of its process's prompt; its process's time limit; and its plan's
-// warnings, those resolve gives at the step.
-func plannedCallOf(item resolve.Item, resolved resolve.Resolved, docs runDocuments) (plannedCall, error) {
+// documentNamesOf is the name of each document a model's message gives of
+// definition, in order: "prompt" where it names a prompt, then each
+// guidance by its name.
+func documentNamesOf(definition documents.ProcessDefinition) []string {
+	var names []string
+	if definition.Prompt.Value != "" {
+		names = append(names, "prompt")
+	}
+	for _, guidance := range definition.Guidance.Value {
+		names = append(names, guidance.Value)
+	}
+	return names
+}
+
+// plannedCallOf is the call of the step item of the workflow name: the
+// contract of its runtime; its process's params, their defaults, inputs,
+// their sources, and environment; on a runtime that takes its inputs in its
+// environment, its script, the text of its process's prompt; on one that
+// takes them in its message, its documents, the prompt as "prompt" where
+// its process names one, then each guidance by its name, its process's
+// instruction, its agent's model and effort, its plan's options and the
+// bytes of its process's output schema; its process's time limit; and its
+// plan's warnings, those resolve gives at the step.
+func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) (plannedCall, error) {
 	process := resolved.Processes[item.Process.Value]
+	agent := resolved.Agents[item.Agent.Value]
 	definition, problems := docs.Process(item.Process.Value)
 	if len(problems) > 0 {
 		return plannedCall{}, documentProblems(problems)
@@ -429,7 +503,7 @@ func plannedCallOf(item resolve.Item, resolved resolve.Resolved, docs runDocumen
 	for _, input := range definition.Inputs.Value {
 		sources[input.Value.Name] = input.Value.Source.Value
 	}
-	var planned plannedCall
+	planned := plannedCall{contract: resolved.Runtimes[agent.Runtime.Value].Contract.Value}
 	defaults := declaredParams(definition.Params.Value)
 	for _, param := range process.Params {
 		planned.declared.Params = append(planned.declared.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
@@ -448,12 +522,48 @@ func plannedCallOf(item resolve.Item, resolved resolve.Resolved, docs runDocumen
 		}
 		planned.declared.Environment = append(planned.declared.Environment, inputs.Variable{Name: variable.Name, Value: value})
 	}
-	if prompt := process.Prompt.Value; prompt != "" {
-		blob, problems := docs.Blob(documents.Prompt, prompt)
+	blob := func(kind documents.Kind, name string) ([]byte, error) {
+		b, problems := docs.Blob(kind, name)
 		if len(problems) > 0 {
-			return plannedCall{}, documentProblems(problems)
+			return nil, documentProblems(problems)
 		}
-		planned.step.Prompt = string(blob.Bytes)
+		return b.Bytes, nil
+	}
+	if takes[planned.contract] == call.InMessage {
+		if prompt := process.Prompt.Value; prompt != "" {
+			text, err := blob(documents.Prompt, prompt)
+			if err != nil {
+				return plannedCall{}, err
+			}
+			planned.step.Documents = append(planned.step.Documents, call.Named{Name: "prompt", Text: string(text)})
+		}
+		for _, guidance := range process.Guidance {
+			text, err := blob(documents.Prompt, guidance.Value)
+			if err != nil {
+				return plannedCall{}, err
+			}
+			planned.step.Documents = append(planned.step.Documents, call.Named{Name: guidance.Value, Text: string(text)})
+		}
+		planned.step.Instruction = definition.Instruction.Value
+		planned.step.Model, planned.step.Effort = agent.Model.Value, agent.Effort.Value
+		for _, p := range resolved.Plans {
+			if p.Workflow == name && p.Place == item.Origin.Place {
+				planned.step.Options = slices.Clone(p.Options)
+			}
+		}
+		if schema := process.Schema.Value; schema != "" {
+			bytes, err := blob(documents.Schema, schema)
+			if err != nil {
+				return plannedCall{}, err
+			}
+			planned.step.Schema = bytes
+		}
+	} else if prompt := process.Prompt.Value; prompt != "" {
+		text, err := blob(documents.Prompt, prompt)
+		if err != nil {
+			return plannedCall{}, err
+		}
+		planned.step.Prompt = string(text)
 	}
 	planned.step.TimeLimit = definition.Limits.Value.Time.Value
 	for _, warning := range resolved.Warnings {
@@ -644,25 +754,31 @@ type turnCaller interface {
 
 // stepCalls answers core/workflow's caller from core/inputs and core/call:
 // a step's process's inputs and environment are resolved over the params
-// its bindings give before its call starts, and one that cannot be
-// resolved refuses the call, its turn not taken.
+// its bindings give before its call starts, the inputs given in the order
+// its process declares them, and one that cannot be resolved refuses the
+// call, its turn not taken. Each call is made by the caller of its turn's
+// contract. A call with no usage, as on bash, has every count of it
+// unknown.
 type stepCalls struct {
-	inputs declaredResolver
-	caller turnCaller
-	clock  clock
-	calls  map[string]plannedCall
+	inputs  declaredResolver
+	callers map[string]turnCaller
+	clock   clock
+	calls   map[string]plannedCall
 }
 
-func newStepCalls(inputs declaredResolver, caller turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
+func newStepCalls(inputs declaredResolver, callers map[string]turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
 	switch {
 	case inputs == nil:
 		return nil, errors.New("step calls: no inputs")
-	case caller == nil:
-		return nil, errors.New("step calls: no caller")
 	case clock == nil:
 		return nil, errors.New("step calls: no clock")
 	}
-	return &stepCalls{inputs: inputs, caller: caller, clock: clock, calls: calls}, nil
+	for _, name := range slices.Sorted(maps.Keys(calls)) {
+		if callers[calls[name].contract] == nil {
+			return nil, fmt.Errorf("step calls: no caller for the step %q, of the contract %q", name, calls[name].contract)
+		}
+	}
+	return &stepCalls{inputs: inputs, callers: maps.Clone(callers), clock: clock, calls: calls}, nil
 }
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string) workflow.Result {
@@ -675,14 +791,24 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 		return s.refused(planned.step.Warnings)
 	}
 	step := planned.step
-	step.Environment, step.Inputs = resolved.Environment, values(resolved.Inputs)
-	called := s.caller.Call(ctx, step)
+	step.Environment = resolved.Environment
+	for _, input := range planned.declared.Inputs {
+		step.Inputs = append(step.Inputs, call.Named{Name: input.Name, Text: resolved.Inputs[input.Name].Value})
+	}
+	called := s.callers[planned.contract].Call(ctx, step)
+	var usage workflow.Usage
+	if u := called.Usage; u != nil {
+		usage = workflow.Usage(*u)
+	}
 	return workflow.Result{
 		Status:   workflow.Status(called.Status),
 		Class:    workflow.Class(called.Class),
 		Output:   called.Output,
 		Timing:   workflow.Timing{Started: called.Timing.Started, Ended: called.Timing.Ended, Duration: called.Timing.Duration},
 		Cost:     called.Cost,
+		Usage:    usage,
+		Session:  called.Session,
+		Reason:   called.Reason,
 		Warnings: called.Warnings,
 	}
 }
@@ -702,6 +828,9 @@ func cliResult(result workflow.Result) cli.Result {
 		Output:   result.Output,
 		Timing:   cli.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, Duration: result.Timing.Duration},
 		Cost:     result.Cost,
+		Usage:    cli.Usage(result.Usage),
+		Sessions: result.Sessions,
+		Reason:   result.Reason,
 		Warnings: result.Warnings,
 	}
 }
@@ -709,6 +838,18 @@ func cliResult(result workflow.Result) cli.Result {
 // bashRuns is what a turn on bash asks of the bash wrapper.
 type bashRuns interface {
 	Run(ctx context.Context, turn bash.Turn) (bash.Ended, error)
+}
+
+// bashInputs is how core/call takes a call's inputs on bash, as its
+// wrapper's facts say.
+func bashInputs(inputs bash.Inputs) call.Inputs {
+	switch inputs {
+	case bash.InEnvironment:
+		return call.InEnvironment
+	case bash.InMessage:
+		return call.InMessage
+	}
+	return 0
 }
 
 // bashTurns answers core/call's runtime from the bash wrapper: the turn's
@@ -738,6 +879,112 @@ func (b *bashTurns) Turn(ctx context.Context, turn call.Turn) (call.Ended, error
 		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
 	}
 	return call.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// claudeCodeRuns is what a turn on claude-code asks of the claude-code
+// wrapper.
+type claudeCodeRuns interface {
+	Run(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error)
+}
+
+// claudeCodeInputs is how core/call takes a call's inputs on claude-code,
+// as its wrapper's facts say.
+func claudeCodeInputs(inputs claudecode.Inputs) call.Inputs {
+	switch inputs {
+	case claudecode.InEnvironment:
+		return call.InEnvironment
+	case claudecode.InMessage:
+		return call.InMessage
+	}
+	return 0
+}
+
+// claudeCodeTurns answers core/call's runtime from the claude-code wrapper:
+// the turn's prompt is its message, and its reply core's, its failure class
+// by its name. A program that could not start is core's ErrNotStarted.
+type claudeCodeTurns struct {
+	claude claudeCodeRuns
+}
+
+func newClaudeCodeTurns(claude claudeCodeRuns) (*claudeCodeTurns, error) {
+	if claude == nil {
+		return nil, errors.New("claude-code turns: no claude-code")
+	}
+	return &claudeCodeTurns{claude: claude}, nil
+}
+
+func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn) (call.Ended, error) {
+	result, err := c.claude.Run(ctx, claudecode.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
+		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema})
+	if errors.Is(err, claudecode.ErrNotStarted) {
+		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
+	}
+	if err != nil {
+		return call.Ended{}, err
+	}
+	stream := func(s claudecode.Stream) call.Stream {
+		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
+	}
+	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr)}
+	if r := result.Reply; r != nil {
+		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost,
+			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, CacheWrite: r.Usage.CacheWrite},
+			Failure: call.Class(r.Failure), Reason: r.Reason}
+	}
+	return ended, nil
+}
+
+// codexRuns is what a turn on codex asks of the codex wrapper.
+type codexRuns interface {
+	Run(ctx context.Context, turn codex.Turn) (codex.Result, error)
+}
+
+// codexInputs is how core/call takes a call's inputs on codex, as its
+// wrapper's facts say.
+func codexInputs(inputs codex.Inputs) call.Inputs {
+	switch inputs {
+	case codex.InEnvironment:
+		return call.InEnvironment
+	case codex.InMessage:
+		return call.InMessage
+	}
+	return 0
+}
+
+// codexTurns answers core/call's runtime from the codex wrapper: the turn's
+// prompt is its message, and its reply core's, its failure class by its
+// name, its cost unknown, codex reporting none. A program that could not
+// start is core's ErrNotStarted.
+type codexTurns struct {
+	codex codexRuns
+}
+
+func newCodexTurns(codex codexRuns) (*codexTurns, error) {
+	if codex == nil {
+		return nil, errors.New("codex turns: no codex")
+	}
+	return &codexTurns{codex: codex}, nil
+}
+
+func (c *codexTurns) Turn(ctx context.Context, turn call.Turn) (call.Ended, error) {
+	result, err := c.codex.Run(ctx, codex.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
+		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema})
+	if errors.Is(err, codex.ErrNotStarted) {
+		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
+	}
+	if err != nil {
+		return call.Ended{}, err
+	}
+	stream := func(s codex.Stream) call.Stream {
+		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
+	}
+	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr)}
+	if r := result.Reply; r != nil {
+		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session,
+			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, Reasoning: r.Usage.Reasoning},
+			Failure: call.Class(r.Failure), Reason: r.Reason}
+	}
+	return ended, nil
 }
 
 // programs is what the bash wrapper's supervisor asks of the supervisor.
@@ -772,6 +1019,78 @@ func (s *supervised) Run(ctx context.Context, program bash.Program) (bash.Ended,
 	return bash.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
 }
 
+// claudeCodePrograms is what the claude-code wrapper's supervisor asks of
+// the supervisor.
+type claudeCodePrograms interface {
+	Run(ctx context.Context, program supervisor.Program) (supervisor.Result, error)
+}
+
+// claudeCodeSupervised answers the claude-code wrapper's supervisor from
+// the supervisor: the program's stdin and its line function pass as they
+// are. A program that could not start is claude-code's ErrNotStarted.
+type claudeCodeSupervised struct {
+	programs claudeCodePrograms
+}
+
+func newClaudeCodeSupervised(programs claudeCodePrograms) (*claudeCodeSupervised, error) {
+	if programs == nil {
+		return nil, errors.New("claude-code supervised: no programs")
+	}
+	return &claudeCodeSupervised{programs: programs}, nil
+}
+
+func (s *claudeCodeSupervised) Run(ctx context.Context, program claudecode.Program) (claudecode.Ended, error) {
+	result, err := s.programs.Run(ctx, supervisor.Program{
+		Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: program.Stdin, Line: program.Line,
+	})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return claudecode.Ended{}, fmt.Errorf("%w: %w", claudecode.ErrNotStarted, err)
+	}
+	if err != nil {
+		return claudecode.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) claudecode.Stream {
+		return claudecode.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
+	}
+	return claudecode.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// codexPrograms is what the codex wrapper's supervisor asks of the
+// supervisor.
+type codexPrograms interface {
+	Run(ctx context.Context, program supervisor.Program) (supervisor.Result, error)
+}
+
+// codexSupervised answers the codex wrapper's supervisor from the
+// supervisor: the program's stdin and its line function pass as they are.
+// A program that could not start is codex's ErrNotStarted.
+type codexSupervised struct {
+	programs codexPrograms
+}
+
+func newCodexSupervised(programs codexPrograms) (*codexSupervised, error) {
+	if programs == nil {
+		return nil, errors.New("codex supervised: no programs")
+	}
+	return &codexSupervised{programs: programs}, nil
+}
+
+func (s *codexSupervised) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
+	result, err := s.programs.Run(ctx, supervisor.Program{
+		Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: program.Stdin, Line: program.Line,
+	})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return codex.Ended{}, fmt.Errorf("%w: %w", codex.ErrNotStarted, err)
+	}
+	if err != nil {
+		return codex.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) codex.Stream {
+		return codex.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
+	}
+	return codex.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
 // processGroups is what the supervisor's starter asks of gokit's process
 // groups.
 type processGroups interface {
@@ -780,8 +1099,8 @@ type processGroups interface {
 }
 
 // groupStarter answers the supervisor's starter from gokit's process
-// groups: a program is started as gokit's command, its stderr the file the
-// supervisor gives.
+// groups: a program is started as gokit's command, its stdin and stderr
+// the files the supervisor gives.
 type groupStarter struct {
 	groups processGroups
 }
@@ -795,8 +1114,8 @@ func newGroupStarter(groups processGroups) (*groupStarter, error) {
 
 func (g *groupStarter) CheckExitObservation() error { return g.groups.CheckExitObservation() }
 
-func (g *groupStarter) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
-	process, err := g.groups.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stderr: stderr})
+func (g *groupStarter) Start(program supervisor.Program, stdin, stderr *os.File) (supervisor.Process, error) {
+	process, err := g.groups.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: stdin, Stderr: stderr})
 	if err != nil {
 		return nil, err
 	}
