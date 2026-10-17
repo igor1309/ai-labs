@@ -33,6 +33,18 @@ export type Texts = {
   bestScore: string;
   best: string;
   playAgain: string;
+  // The catalogue of every dinosaur: its title, also on its home tile.
+  catalogue: string;
+  diets: { meat: string; plants: string; both: string };
+  tall: string;
+  heavy: string;
+  // A dinosaur's place in the catalogue, such as "1 / 30".
+  position: string;
+  previousDinosaur: string;
+  nextDinosaur: string;
+  // The note under a dinosaur's facts is for parents, so it is in normal
+  // case: it names the sources the facts were checked with.
+  sourceNote: string;
 };
 
 // A celebration's label, read out, and its text, shown.

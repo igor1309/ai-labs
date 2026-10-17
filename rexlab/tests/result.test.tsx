@@ -6,6 +6,7 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { largerOf, type Question } from "../src/quiz/round.ts";
 import {
   PALETTE,
+  SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   englishDevice,
   fakeBodyPicture,
@@ -56,6 +57,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
   render(
     <App
       dinosaurs={SHIPPED_DINOSAURS}
+      catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(seed)}
       orientation={manualOrientation("landscape")}

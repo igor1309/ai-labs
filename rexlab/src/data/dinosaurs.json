@@ -9,11 +9,15 @@
       "heightMeters": 3.7,
       "massKg": 8000
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS.",
+      "ru": "ОГРОМНЫЙ ОХОТНИК С БОЛЬШОЙ ГОЛОВОЙ И КРОШЕЧНЫМИ ЛАПКАМИ. ЕГО ЗУБЫ БЫЛИ ДЛИНОЙ С БАНАН."
     }
   },
   {
@@ -26,11 +30,15 @@
       "heightMeters": 3,
       "massKg": 7000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": true,
       "feathers": false
+    },
+    "description": {
+      "en": "THREE HORNS AND A BIG BONY FRILL. IT LIVED AT THE SAME TIME AS TYRANNOSAURUS.",
+      "ru": "ТРИ РОГА И БОЛЬШОЙ КОСТЯНОЙ ВОРОТНИК. ЖИЛ В ОДНО ВРЕМЯ С ТИРАННОЗАВРОМ."
     }
   },
   {
@@ -43,11 +51,15 @@
       "heightMeters": 0.5,
       "massKg": 15
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": true
+    },
+    "description": {
+      "en": "A FEATHERED HUNTER THE SIZE OF A TURKEY, WITH A BIG CURVED CLAW ON EACH FOOT.",
+      "ru": "ПЕРНАТЫЙ ОХОТНИК РАЗМЕРОМ С ИНДЮКА, С БОЛЬШИМ КРИВЫМ КОГТЕМ НА КАЖДОЙ НОГЕ."
     }
   },
   {
@@ -60,11 +72,15 @@
       "heightMeters": 12.5,
       "massKg": 40000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "ITS FRONT LEGS WERE LONGER THAN ITS BACK LEGS, SO IT COULD REACH THE TOPS OF TREES.",
+      "ru": "ПЕРЕДНИЕ НОГИ ДЛИННЕЕ ЗАДНИХ, ПОЭТОМУ ОН ДОСТАВАЛ ДО ВЕРХУШЕК ДЕРЕВЬЕВ."
     }
   },
   {
@@ -77,11 +93,15 @@
       "heightMeters": 4,
       "massKg": 5000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "BIG PLATES ALONG ITS BACK AND FOUR SPIKES ON ITS TAIL. ITS BRAIN WAS VERY SMALL.",
+      "ru": "БОЛЬШИЕ ПЛАСТИНЫ НА СПИНЕ И ЧЕТЫРЕ ШИПА НА ХВОСТЕ. МОЗГ У НЕГО БЫЛ ОЧЕНЬ МАЛЕНЬКИЙ."
     }
   },
   {
@@ -94,11 +114,15 @@
       "heightMeters": 1.7,
       "massKg": 6000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": null,
       "feathers": false
+    },
+    "description": {
+      "en": "COVERED IN BONY ARMOUR, WITH A HEAVY CLUB AT THE END OF ITS TAIL.",
+      "ru": "ПОКРЫТ КОСТЯНЫМ ПАНЦИРЕМ, А НА КОНЦЕ ХВОСТА У НЕГО ТЯЖЁЛАЯ БУЛАВА."
     }
   },
   {
@@ -111,11 +135,15 @@
       "heightMeters": 4.2,
       "massKg": 7400
     },
+    "diet": "meat",
     "traits": {
       "legs": null,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A BIG SAIL ON ITS BACK. IT CAUGHT FISH IN RIVERS WITH ITS LONG JAWS.",
+      "ru": "БОЛЬШОЙ ПАРУС НА СПИНЕ. ЛОВИЛ РЫБУ В РЕКАХ ДЛИННЫМИ ЧЕЛЮСТЯМИ."
     }
   },
   {
@@ -128,11 +156,15 @@
       "heightMeters": 5,
       "massKg": 15000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "ONE OF THE LONGEST DINOSAURS, WITH A VERY LONG NECK AND A TAIL LIKE A WHIP.",
+      "ru": "ОДИН ИЗ САМЫХ ДЛИННЫХ ДИНОЗАВРОВ: ОЧЕНЬ ДЛИННАЯ ШЕЯ И ХВОСТ, КАК КНУТ."
     }
   },
   {
@@ -145,11 +177,15 @@
       "heightMeters": 2.8,
       "massKg": 2500
     },
+    "diet": "plants",
     "traits": {
       "legs": null,
-      "diet": "plants",
       "horns": null,
       "feathers": false
+    },
+    "description": {
+      "en": "A LONG HOLLOW CREST ON ITS HEAD. IT MAY HAVE USED IT TO MAKE LOUD CALLS.",
+      "ru": "ДЛИННЫЙ ПОЛЫЙ ГРЕБЕНЬ НА ГОЛОВЕ. ВОЗМОЖНО, С ЕГО ПОМОЩЬЮ ОН ГРОМКО ТРУБИЛ."
     }
   },
   {
@@ -162,11 +198,15 @@
       "heightMeters": 1.5,
       "massKg": 450
     },
+    "diet": "plants",
     "traits": {
       "legs": 2,
-      "diet": "plants",
       "horns": null,
       "feathers": false
+    },
+    "description": {
+      "en": "A VERY THICK, DOME-SHAPED SKULL WITH LITTLE BUMPS AROUND IT.",
+      "ru": "ОЧЕНЬ ТОЛСТЫЙ ЧЕРЕП В ФОРМЕ КУПОЛА, С МАЛЕНЬКИМИ ШИШКАМИ ВОКРУГ."
     }
   },
   {
@@ -179,11 +219,15 @@
       "heightMeters": 2.7,
       "massKg": 3500
     },
+    "diet": "plants",
     "traits": {
       "legs": null,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "A SPIKE INSTEAD OF A THUMB ON EACH HAND. ONE OF THE FIRST DINOSAURS EVER FOUND.",
+      "ru": "ШИП ВМЕСТО БОЛЬШОГО ПАЛЬЦА НА КАЖДОЙ ЛАПЕ. ОДИН ИЗ ПЕРВЫХ НАЙДЕННЫХ ДИНОЗАВРОВ."
     }
   },
   {
@@ -196,11 +240,15 @@
       "heightMeters": 0.25,
       "massKg": 3
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A TINY HUNTER THE SIZE OF A CHICKEN. IT CAUGHT LIZARDS.",
+      "ru": "КРОШЕЧНЫЙ ОХОТНИК РАЗМЕРОМ С КУРИЦУ. ЛОВИЛ ЯЩЕРИЦ."
     }
   },
   {
@@ -213,11 +261,15 @@
       "heightMeters": 1.9,
       "massKg": 440
     },
+    "diet": "both",
     "traits": {
       "legs": 2,
-      "diet": null,
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A FAST RUNNER WITH LONG LEGS AND A BEAK, LIKE A BIG OSTRICH.",
+      "ru": "БЫСТРЫЙ БЕГУН С ДЛИННЫМИ НОГАМИ И КЛЮВОМ, ПОХОЖ НА БОЛЬШОГО СТРАУСА."
     }
   },
   {
@@ -230,11 +282,15 @@
       "heightMeters": 2.9,
       "massKg": 2300
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": null,
       "feathers": false
+    },
+    "description": {
+      "en": "A BIG HUNTER THAT LIVED LONG BEFORE TYRANNOSAURUS, WITH SMALL HORNS ABOVE ITS EYES.",
+      "ru": "КРУПНЫЙ ОХОТНИК, ЖИЛ ЗАДОЛГО ДО ТИРАННОЗАВРА. НАД ГЛАЗАМИ У НЕГО МАЛЕНЬКИЕ РОЖКИ."
     }
   },
   {
@@ -247,11 +303,15 @@
       "heightMeters": 7,
       "massKg": 70000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "ONE OF THE BIGGEST ANIMALS THAT EVER WALKED ON LAND.",
+      "ru": "ОДНО ИЗ САМЫХ БОЛЬШИХ ЖИВОТНЫХ, КОГДА-ЛИБО ХОДИВШИХ ПО ЗЕМЛЕ."
     }
   },
   {
@@ -264,11 +324,15 @@
       "heightMeters": 0.3,
       "massKg": 1
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": true
+    },
+    "description": {
+      "en": "A TINY DINOSAUR WITH FEATHERED WINGS ON ITS ARMS AND LEGS. IT COULD GLIDE.",
+      "ru": "КРОШЕЧНЫЙ ДИНОЗАВР С ПЕРНАТЫМИ КРЫЛЬЯМИ НА ПЕРЕДНИХ И ЗАДНИХ ЛАПАХ. УМЕЛ ПЛАНИРОВАТЬ."
     }
   },
   {
@@ -281,11 +345,15 @@
       "heightMeters": 0.7,
       "massKg": 85
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "A SMALL COUSIN OF TRICERATOPS, WITH A FRILL BUT NO BIG HORNS.",
+      "ru": "МАЛЕНЬКИЙ РОДСТВЕННИК ТРИЦЕРАТОПСА: ВОРОТНИК ЕСТЬ, А БОЛЬШИХ РОГОВ НЕТ."
     }
   },
   {
@@ -298,11 +366,15 @@
       "heightMeters": 1.5,
       "massKg": 400
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": null,
       "feathers": null
+    },
+    "description": {
+      "en": "TWO THIN CRESTS ON ITS HEAD. A HUNTER FROM THE EARLY DAYS OF THE DINOSAURS.",
+      "ru": "ДВА ТОНКИХ ГРЕБНЯ НА ГОЛОВЕ. ОХОТНИК ИЗ РАННЕЙ ЭПОХИ ДИНОЗАВРОВ."
     }
   },
   {
@@ -315,11 +387,15 @@
       "heightMeters": 2.5,
       "massKg": 1500
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": true,
       "feathers": false
+    },
+    "description": {
+      "en": "TWO HORNS ABOVE ITS EYES, LIKE A BULL, AND EVEN TINIER ARMS THAN TYRANNOSAURUS.",
+      "ru": "ДВА РОГА НАД ГЛАЗАМИ, КАК У БЫКА, И ЛАПКИ ЕЩЁ МЕНЬШЕ, ЧЕМ У ТИРАННОЗАВРА."
     }
   },
   {
@@ -332,11 +408,15 @@
       "heightMeters": 3.6,
       "massKg": 7000
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "ONE OF THE BIGGEST HUNTERS EVER, AS LONG AS A BUS.",
+      "ru": "ОДИН ИЗ САМЫХ КРУПНЫХ ХИЩНИКОВ, ДЛИНОЙ С АВТОБУС."
     }
   },
   {
@@ -349,11 +429,15 @@
       "heightMeters": 5,
       "massKg": 5000
     },
+    "diet": "plants",
     "traits": {
       "legs": 2,
-      "diet": "plants",
       "horns": false,
       "feathers": true
+    },
+    "description": {
+      "en": "HUGE CLAWS AS LONG AS A CHILD'S ARM, BUT IT ATE PLANTS.",
+      "ru": "ОГРОМНЫЕ КОГТИ ДЛИНОЙ С РУКУ РЕБЁНКА, А ЕЛ ОН РАСТЕНИЯ."
     }
   },
   {
@@ -366,11 +450,15 @@
       "heightMeters": 3,
       "massKg": 4000
     },
+    "diet": "plants",
     "traits": {
       "legs": null,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "A DUCK-BILLED DINOSAUR WITH HUNDREDS OF TEETH FOR CHEWING PLANTS.",
+      "ru": "УТКОНОСЫЙ ДИНОЗАВР С СОТНЯМИ ЗУБОВ, ЧТОБЫ ПЕРЕЖЁВЫВАТЬ РАСТЕНИЯ."
     }
   },
   {
@@ -383,11 +471,15 @@
       "heightMeters": 0.9,
       "massKg": 75
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": true
+    },
+    "description": {
+      "en": "A FEATHERED HUNTER WITH A BIG CLAW LIKE A SICKLE, BIGGER THAN VELOCIRAPTOR.",
+      "ru": "ПЕРНАТЫЙ ОХОТНИК С БОЛЬШИМ КОГТЕМ-СЕРПОМ, КРУПНЕЕ ВЕЛОЦИРАПТОРА."
     }
   },
   {
@@ -400,11 +492,15 @@
       "heightMeters": 0.8,
       "massKg": 35
     },
+    "diet": "both",
     "traits": {
       "legs": 2,
-      "diet": null,
       "horns": null,
       "feathers": true
+    },
+    "description": {
+      "en": "A FEATHERED DINOSAUR WITH A BEAK. THE FIRST ONE WAS FOUND ON A NEST OF EGGS.",
+      "ru": "ПЕРНАТЫЙ ДИНОЗАВР С КЛЮВОМ. ПЕРВОГО ИЗ НИХ НАШЛИ НА ГНЕЗДЕ С ЯЙЦАМИ."
     }
   },
   {
@@ -417,11 +513,15 @@
       "heightMeters": 0.6,
       "massKg": 20
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A SLIM, FAST HUNTER FROM THE TIME OF THE FIRST DINOSAURS.",
+      "ru": "СТРОЙНЫЙ БЫСТРЫЙ ОХОТНИК ИЗ ВРЕМЁН ПЕРВЫХ ДИНОЗАВРОВ."
     }
   },
   {
@@ -434,11 +534,15 @@
       "heightMeters": 0.5,
       "massKg": 20
     },
+    "diet": "plants",
     "traits": {
       "legs": null,
-      "diet": "plants",
       "horns": null,
       "feathers": null
+    },
+    "description": {
+      "en": "ITS NAME MEANS PARROT LIZARD: IT HAD A BEAK LIKE A PARROT.",
+      "ru": "ЕГО ИМЯ ЗНАЧИТ «ЯЩЕР-ПОПУГАЙ»: У НЕГО БЫЛ КЛЮВ, КАК У ПОПУГАЯ."
     }
   },
   {
@@ -451,11 +555,15 @@
       "heightMeters": 1.8,
       "massKg": 2700
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": true,
       "feathers": false
+    },
+    "description": {
+      "en": "A LONG HORN ON ITS NOSE AND BIG SPIKES ALL AROUND ITS FRILL.",
+      "ru": "ДЛИННЫЙ РОГ НА НОСУ И БОЛЬШИЕ ШИПЫ ПО КРАЮ ВОРОТНИКА."
     }
   },
   {
@@ -468,11 +576,15 @@
       "heightMeters": 1.5,
       "massKg": 1000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": null,
       "feathers": false
+    },
+    "description": {
+      "en": "A SMALLER COUSIN OF STEGOSAURUS, WITH SHARP SPIKES ALONG ITS BACK AND TAIL.",
+      "ru": "МЕНЬШИЙ РОДСТВЕННИК СТЕГОЗАВРА, С ОСТРЫМИ ШИПАМИ НА СПИНЕ И ХВОСТЕ."
     }
   },
   {
@@ -485,11 +597,15 @@
       "heightMeters": 2.5,
       "massKg": 1700
     },
+    "diet": "meat",
     "traits": {
       "legs": 2,
-      "diet": "meat",
       "horns": false,
       "feathers": null
+    },
+    "description": {
+      "en": "A BIG CLAW ON EACH HAND AND LONG JAWS FOR CATCHING FISH.",
+      "ru": "БОЛЬШОЙ КОГОТЬ НА КАЖДОЙ ЛАПЕ И ДЛИННЫЕ ЧЕЛЮСТИ, ЧТОБЫ ЛОВИТЬ РЫБУ."
     }
   },
   {
@@ -502,11 +618,15 @@
       "heightMeters": 4.5,
       "massKg": 23000
     },
+    "diet": "plants",
     "traits": {
       "legs": 4,
-      "diet": "plants",
       "horns": false,
       "feathers": false
+    },
+    "description": {
+      "en": "A HUGE LONG-NECKED DINOSAUR WITH A VERY THICK, STRONG NECK.",
+      "ru": "ОГРОМНЫЙ ДЛИННОШЕЕЙ ДИНОЗАВР С ОЧЕНЬ ТОЛСТОЙ И КРЕПКОЙ ШЕЕЙ."
     }
   }
 ]

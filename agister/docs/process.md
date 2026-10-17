@@ -9,8 +9,9 @@
 - **Spec writer** (Claude): writes the feature files and the
   implementation notes; triages every review, deciding each finding with
   its reason; shows every input and output in full.
-- **Implementer** (agister, an `implement_*` workflow): codes and tests
-  the reviewed spec.
+- **Implementer** (agister's `implement`, by
+  `scripts/loop/implement.sh <brief>`): codes and tests the reviewed
+  spec.
 - **Reviewers**: a subagent and Codex on a spec; agister's `code_review`
   on a branch. One job per agent.
 
@@ -72,7 +73,9 @@ goes to `backlog/`; nothing is dropped silently.
 ## Mechanics
 
 - The scripts are `agister/scripts/loop/`, run from the branch's
-  worktree. A branch has its directory, `/tmp/<branch>/` (or
+  worktree. They run this Agister as `agister-next`, its settings
+  `~/.agister-next`, both put there by `install.sh` from trunk's
+  checkout after each merge. A branch has its directory, `/tmp/<branch>/` (or
   `$LOOP_DIR`): its `config.sh`, and every prompt, review and triage,
   numbered by round. What is in a file is not repeated in a turn.
   `config.sh` sets:
