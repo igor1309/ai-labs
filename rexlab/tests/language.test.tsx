@@ -14,7 +14,7 @@ import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
-import { basketButton, openBoard, trayCard } from "./sorting.tsx";
+import { basketButton, finishBoard, openBoard, openSortingGame, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -387,6 +387,24 @@ describe("the sorting board", () => {
       expect(texts.filter((text) => !names.includes(text) && text !== text.toLocaleUpperCase(language))).toEqual([]);
     }
   );
+});
+
+// The result is reached through the sorting game, its screens' props and
+// its progress store.
+describe("the sorting result", () => {
+  it("reads in Russian, every text for children in capitals", async () => {
+    const { user, nextBoard } = openSortingGame({ language: "ru" });
+
+    await finishBoard(user, nextBoard(), 4, "ru");
+
+    expect(screen.getByLabelText("СЧЁТ").textContent).toBe("4/6");
+    expect(screen.getByRole("img", { name: "4 ИЗ 6 ЗВЁЗД" })).toBeDefined();
+    expect(words(screen.getByRole("status"))).toBe("ПЕРВЫЙ РЕКОРД!");
+    expect(words(screen.getByRole("heading"))).toBe("МОЛОДЕЦ!");
+    const best = screen.getByLabelText("РЕКОРД");
+    expect([best.firstChild?.textContent, best.querySelector(".best-score-value")?.textContent]).toEqual(["РЕКОРД", "4"]);
+    expect([BUTTONS.ru.playAgain, BUTTONS.ru.home].map((name) => words(screen.getByRole("button", { name })))).toEqual(["ЕЩЁ РАЗ", "ДОМОЙ"]);
+  });
 });
 
 describe("revealed values", () => {

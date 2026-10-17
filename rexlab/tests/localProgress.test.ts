@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { NO_PROGRESS } from "../src/quiz/progress.ts";
+import { NO_SORTING } from "../src/sorting/index.ts";
 import { memoryStorage } from "./support.ts";
 
 const game = (entry: unknown) => JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": entry } });
@@ -179,5 +180,78 @@ describe("localCareProgress", () => {
 
     expect(progress.load()).toBeUndefined();
     expect(() => progress.save({ bestScore: 4, visitsFinished: 1, friends: [] })).not.toThrow();
+  });
+});
+
+const sorting = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "sort-dinosaurs": entry } });
+
+describe("localSortingProgress", () => {
+  it("reads no sorting progress from empty storage", () => {
+    const storage = memoryStorage();
+
+    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
+  });
+
+  it.each([
+    [{ bestScore: 5, roundsPlayed: 3 }, { bestScore: 5, roundsPlayed: 3 }],
+    [{ bestScore: null, roundsPlayed: 0, achievements: ["first-round"] }, { bestScore: null, roundsPlayed: 0 }]
+  ])("reads the sorting game's best score and finished rounds from %j", (entry, progress) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting(entry) });
+
+    expect(localSortingProgress(() => storage).load()).toEqual(progress);
+  });
+
+  it.each([
+    ["a best score in text", { bestScore: "5", roundsPlayed: 3 }],
+    ["a fractional best score", { bestScore: 4.5, roundsPlayed: 3 }],
+    ["no finished rounds count", { bestScore: 5 }],
+    ["a negative finished rounds count", { bestScore: 5, roundsPlayed: -1 }],
+    ["an entry that is not a record", 5]
+  ])("reads %s as no sorting progress, and keeps the quiz's and care's", (_, entry) => {
+    const others = { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 6, visitsFinished: 2, friends: [] } };
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting(entry, others) });
+
+    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
+    expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
+    expect(localCareProgress(() => storage).load()).toEqual({ bestScore: 6, visitsFinished: 2, friends: [] });
+  });
+
+  it("keeps the sorting game beside the quiz and care in one record, each saved without touching the others", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
+
+    localSortingProgress(() => storage).save({ bestScore: 4, roundsPlayed: 1 });
+    localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: ["triceratops"] });
+    localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 9, roundsPlayed: 4 },
+        "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: ["triceratops"] },
+        "sort-dinosaurs": { bestScore: 4, roundsPlayed: 1 }
+      }
+    });
+    expect(localSortingProgress(() => storage).load()).toEqual({ bestScore: 4, roundsPlayed: 1 });
+  });
+
+  it("replaces an unusable sorting entry on save, and keeps a quiz entry it cannot read", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ bestScore: "4" }, { "compare-dinosaurs": { bestScore: "x" } }) });
+
+    localSortingProgress(() => storage).save({ bestScore: 3, roundsPlayed: 1 });
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: "x" }, "sort-dinosaurs": { bestScore: 3, roundsPlayed: 1 } }
+    });
+  });
+
+  it.each([
+    ["the storage cannot be reached", blocked],
+    ["the storage cannot be read", () => memoryStorage({ [PROGRESS_KEY]: sorting({ bestScore: 4, roundsPlayed: 2 }) }, { read: false })]
+  ])("loads nothing and saves nothing when %s", (_, storage) => {
+    const progress = localSortingProgress(storage);
+
+    expect(progress.load()).toBeUndefined();
+    expect(() => progress.save({ bestScore: 3, roundsPlayed: 1 })).not.toThrow();
   });
 });

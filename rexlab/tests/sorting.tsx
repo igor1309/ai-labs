@@ -1,13 +1,15 @@
-import { render, screen, within } from "@testing-library/react";
-import type { UserEvent } from "@testing-library/user-event";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { useCallback, useState } from "react";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { PROGRESS_KEY, localSortingProgress } from "../src/localProgress.ts";
 import { OrientationGate, type Orientation } from "../src/OrientationGate.tsx";
 import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
-import { boardState, drop, type CardState, type Sorting } from "../src/sorting/index.ts";
-import { fakeBodyPicture, manualOrientation } from "./support.ts";
+import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
+import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
 
 // The board as the app will hold it: the sorting in state above the
 // orientation gate, each drop played through the sorting game.
@@ -126,4 +128,85 @@ export async function dragTo(user: UserEvent, card: HTMLElement, to: { clientX: 
     { pointerName: finger, coords: to },
     { keys: `[/${finger}]`, coords: to }
   ]);
+}
+
+// The sorting game as the app will hold it: above the orientation gate,
+// started by its owner, who is told when the child goes home.
+function Game({
+  props,
+  language,
+  orientation,
+  owner,
+  onHome
+}: {
+  props: SortingGameProps;
+  language: Language;
+  orientation: Orientation;
+  owner: { start?: () => void };
+  onHome: () => void;
+}) {
+  const game = useSortingGame(props, onHome);
+  owner.start = game.start;
+  return (
+    <OrientationGate orientation={orientation} language={language}>
+      {game.content(language)}
+    </OrientationGate>
+  );
+}
+
+export type OpenGame = {
+  user: UserEvent;
+  storage: MemoryStorage;
+  homes: number[];
+  // The next board the game starts, as its random source picks it: the
+  // first call gives the board it opens on.
+  nextBoard: () => Sorting;
+  unmount: () => void;
+};
+
+// The sorting game on its first board, its progress kept in `storage`
+// and its boards picked by a random source of `seed`.
+export function openSortingGame({ storage = memoryStorage(), seed = 1, language = "en" }: { storage?: MemoryStorage; seed?: number; language?: Language } = {}): OpenGame {
+  const homes: number[] = [];
+  const owner: { start?: () => void } = {};
+  const props = { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage), bodyPicture: fakeBodyPicture, random: seededRandom(seed) };
+  const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />);
+  act(() => owner.start?.());
+  const random = seededRandom(seed);
+  let last: Sorting | undefined;
+  const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, random, last));
+  return { user: userEvent.setup(), storage, homes, nextBoard, unmount };
+}
+
+// Sorts the first `count` cards of `sorting` by taps, a card then a
+// basket: the first `right` of them on their first drop, each other one
+// on the wrong basket first.
+export async function sortCards(user: UserEvent, sorting: Sorting, right: number, { count = boardState(sorting).cards.length, language = "en" as Language } = {}) {
+  for (const [at, card] of boardState(sorting).cards.slice(0, count).entries()) {
+    const basket = card.basket as Basket;
+    if (at >= right) {
+      await user.click(trayCard(card, language));
+      await user.click(basketButton(otherBasket(sorting, basket), language));
+    }
+    await user.click(trayCard(card, language));
+    await user.click(basketButton(basket, language));
+  }
+}
+
+// Sorts the whole board, `right` cards on their first drop, and sees its
+// result.
+export async function finishBoard(user: UserEvent, sorting: Sorting, right: number, language: Language = "en") {
+  await sortCards(user, sorting, right, { language });
+  await user.click(screen.getByRole("button", { name: TEXTS[language].seeResult }));
+}
+
+// A stored record with the sorting game's entry, and the other games'
+// entries given.
+export const sortingRecord = (entry: SortingProgress | unknown, games: Record<string, unknown> = {}) =>
+  JSON.stringify({ schemaVersion: 1, games: { ...games, "sort-dinosaurs": entry } });
+
+// The stored record now, undefined while none is.
+export function storedRecord(storage: MemoryStorage): { schemaVersion: unknown; games: Record<string, unknown> } | undefined {
+  const raw = storage.items.get(PROGRESS_KEY);
+  return raw === undefined ? undefined : JSON.parse(raw);
 }

@@ -12,7 +12,7 @@ import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
-import { basketButton, centreOf, dragTo, layOutBaskets, openBoard, otherBasket, trayCard } from "./sorting.tsx";
+import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -534,6 +534,25 @@ describe("the sorting board", () => {
       }
       expect(sameColour(getComputedStyle(check).backgroundColor, PALETTE[theme].good ?? "")).toBe(true);
       unmount();
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
+// The result is reached through the sorting game, its screens' props and
+// its progress store, in the theme the app sets on the page.
+describe("the sorting result", () => {
+  it.each(["light", "dark"] as const)("is in the %s theme with its celebration, and without one", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const right of [4, 0]) {
+        const { user, nextBoard, unmount } = openSortingGame();
+        await finishBoard(user, nextBoard(), right);
+        expect(screen.queryAllByRole("status")).toHaveLength(right > 0 ? 1 : 0);
+        expectScreenIn(theme);
+        unmount();
+      }
     } finally {
       delete document.documentElement.dataset.theme;
     }

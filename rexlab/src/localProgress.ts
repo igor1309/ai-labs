@@ -1,5 +1,6 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
+import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
 
@@ -11,9 +12,7 @@ type Entry = Record<string, unknown>;
 
 // The quiz's progress, under its game in the shared record.
 export function localProgress(storage: () => KeyValueStorage) {
-  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, ({ bestScore, roundsPlayed }) =>
-    (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined
-  );
+  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, readRounds);
 }
 
 // Dinosaur care's progress, beside the quiz's in the same record.
@@ -23,6 +22,16 @@ export function localCareProgress(storage: () => KeyValueStorage) {
       ? { bestScore, visitsFinished, friends: [...friends] }
       : undefined
   );
+}
+
+// The sorting game's progress, beside the others' in the same record.
+export function localSortingProgress(storage: () => KeyValueStorage) {
+  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, readRounds);
+}
+
+// The best score and finished rounds of a game that keeps only those.
+function readRounds({ bestScore, roundsPlayed }: Entry) {
+  return (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined;
 }
 
 // One game's progress kept in browser storage, in the versioned record of

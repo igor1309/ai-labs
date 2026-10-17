@@ -9,7 +9,7 @@ import type { Language } from "./language/language.ts";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
-import type { Basket as SortBasket, BoardState, CardState } from "./sorting/index.ts";
+import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
@@ -53,15 +53,14 @@ export function presentQuestion(question: QuestionState, language: Language, bod
 
 export type ResultView = Pick<ResultScreenProps, "score" | "total" | "best" | "beaten" | "celebration">;
 
+// What every game's result shows of a finished round's score.
+function presentScore(score: number, total: number, best: number | undefined, previousBest: number | undefined, celebration: ShownCelebration | null): ResultView {
+  // Only a new best shows the best it beat: a first best beat none.
+  return { score, total, best, beaten: celebration === "new-best" ? previousBest : undefined, celebration };
+}
+
 export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
-  return {
-    score,
-    total,
-    best: progress?.bestScore,
-    // Only a new best shows the best it beat: a first best beat none.
-    beaten: celebration === "new-best" ? previousBest : undefined,
-    celebration: celebration === null ? null : CELEBRATIONS[celebration]
-  };
+  return presentScore(score, total, progress?.bestScore, previousBest, celebration && CELEBRATIONS[celebration]);
 }
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
@@ -117,12 +116,7 @@ export function presentCareResult(result: CareResult, language: Language, bodyPi
   const { visitor, score, total, best, previousBest, celebration, newFriend } = result;
   return {
     visitor: { name: visitor.name[language], picture: bodyPicture(visitor.id) },
-    score,
-    total,
-    best,
-    // Only a new best shows the best it beat: a first best beat none.
-    beaten: celebration === "new-best" ? previousBest : undefined,
-    celebration: celebration === null ? null : CARE_CELEBRATIONS[celebration],
+    ...presentScore(score, total, best, previousBest, celebration && CARE_CELEBRATIONS[celebration]),
     newFriend
   };
 }
@@ -170,4 +164,11 @@ export function presentBoard(board: BoardState, language: Language, bodyPicture:
     total: cards.length,
     glow: lastMiss && { basket: BASKETS[lastMiss.basket], count: lastMiss.misses }
   };
+}
+
+const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
+
+// A finished board shows on the quiz's result screen, a star for each card.
+export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
+  return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
 }

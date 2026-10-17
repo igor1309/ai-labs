@@ -1,11 +1,13 @@
 // The sorting game's API: its use cases and the types the app speaks with
 // it. Everything else under sorting/ is reached only through this file.
 import { BASKETS, generateBoard, type Basket, type Dinosaur, type Property, type Random } from "./board.ts";
-import { isFinished, startSorting, type Sorting } from "./play.ts";
+import { isFinished, score, startSorting, type Sorting } from "./play.ts";
+import { finishRound, type Celebration, type SortingProgress } from "./progress.ts";
 
 export type { Basket, Diet, Dinosaur, Property, Random } from "./board.ts";
-export type { Sorting };
+export type { Celebration, Sorting, SortingProgress };
 export { drop, score } from "./play.ts";
+export { NO_SORTING } from "./progress.ts";
 
 // One card of the board, where it is now.
 export type CardState = {
@@ -31,6 +33,18 @@ export type BoardState = {
   finished: boolean;
 };
 
+export type SortingResult = {
+  score: number;
+  total: number;
+  // Undefined when stored progress cannot be read: there is no best to
+  // compare with, so the board is neither celebrated nor saved over it.
+  progress: { bestScore: number; roundsPlayed: number } | undefined;
+  // The best score before this board, undefined when there was none or it
+  // cannot be read.
+  previousBest: number | undefined;
+  celebration: Celebration | null;
+};
+
 // A new board sorting by any property but that of `previous`, so two
 // boards in a row never sort by the same one.
 export function startBoard(dinosaurs: readonly Dinosaur[], random: Random, previous?: Sorting): Sorting {
@@ -54,5 +68,18 @@ export function boardState(sorting: Sorting): BoardState {
     landed: landed.flatMap((id) => cardOf(id) ?? []),
     lastMiss: missed && { basket: missed.basket, misses: misses.length },
     finished: isFinished(sorting)
+  };
+}
+
+// The finished board's score, set against the progress kept so far.
+export function finishBoard(sorting: Sorting, stored: SortingProgress | undefined): SortingResult {
+  const right = score(sorting);
+  const outcome = stored === undefined ? undefined : finishRound(stored, right);
+  return {
+    score: right,
+    total: sorting.board.cards.length,
+    progress: outcome?.progress,
+    previousBest: stored?.bestScore ?? undefined,
+    celebration: outcome?.celebration ?? null
   };
 }

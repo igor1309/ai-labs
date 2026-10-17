@@ -126,6 +126,17 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+// The quiz and the sorting game end on the same result.
+describe("the result's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("counts the score up, pops the celebration in, and pops the won stars in one after the other", () => {
+    expect([".result-score-value", ".celebration", ".star-won"].map((selector) => animations.get(selector))).toEqual(["count-up", "pop-in", "pop-in"]);
+    expect(declarationsOf(bodyOf(".star-won"))).toContainEqual({ property: "animation-delay", value: "calc(var(--star) * var(--motion-stagger) * 1.5)" });
+  });
+});
+
 describe("the catalogue's motion", () => {
   const animations = animationsOf(PLAIN);
 
