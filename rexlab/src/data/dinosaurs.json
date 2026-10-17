@@ -196,5 +196,137 @@
       "heightMeters": 1.5,
       "massKg": 400
     }
+  },
+  {
+    "id": "carnotaurus",
+    "name": {
+      "en": "Carnotaurus",
+      "ru": "Карнотавр"
+    },
+    "attributes": {
+      "heightMeters": 2.5,
+      "massKg": 1500
+    }
+  },
+  {
+    "id": "giganotosaurus",
+    "name": {
+      "en": "Giganotosaurus",
+      "ru": "Гиганотозавр"
+    },
+    "attributes": {
+      "heightMeters": 3.6,
+      "massKg": 7000
+    }
+  },
+  {
+    "id": "therizinosaurus",
+    "name": {
+      "en": "Therizinosaurus",
+      "ru": "Теризинозавр"
+    },
+    "attributes": {
+      "heightMeters": 5,
+      "massKg": 5000
+    }
+  },
+  {
+    "id": "edmontosaurus",
+    "name": {
+      "en": "Edmontosaurus",
+      "ru": "Эдмонтозавр"
+    },
+    "attributes": {
+      "heightMeters": 3,
+      "massKg": 4000
+    }
+  },
+  {
+    "id": "deinonychus",
+    "name": {
+      "en": "Deinonychus",
+      "ru": "Дейноних"
+    },
+    "attributes": {
+      "heightMeters": 0.9,
+      "massKg": 75
+    }
+  },
+  {
+    "id": "oviraptor",
+    "name": {
+      "en": "Oviraptor",
+      "ru": "Овираптор"
+    },
+    "attributes": {
+      "heightMeters": 0.8,
+      "massKg": 35
+    }
+  },
+  {
+    "id": "coelophysis",
+    "name": {
+      "en": "Coelophysis",
+      "ru": "Целофизис"
+    },
+    "attributes": {
+      "heightMeters": 0.6,
+      "massKg": 20
+    }
+  },
+  {
+    "id": "psittacosaurus",
+    "name": {
+      "en": "Psittacosaurus",
+      "ru": "Пситтакозавр"
+    },
+    "attributes": {
+      "heightMeters": 0.5,
+      "massKg": 20
+    }
+  },
+  {
+    "id": "styracosaurus",
+    "name": {
+      "en": "Styracosaurus",
+      "ru": "Стиракозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.8,
+      "massKg": 2700
+    }
+  },
+  {
+    "id": "kentrosaurus",
+    "name": {
+      "en": "Kentrosaurus",
+      "ru": "Кентрозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 1000
+    }
+  },
+  {
+    "id": "baryonyx",
+    "name": {
+      "en": "Baryonyx",
+      "ru": "Барионикс"
+    },
+    "attributes": {
+      "heightMeters": 2.5,
+      "massKg": 1700
+    }
+  },
+  {
+    "id": "apatosaurus",
+    "name": {
+      "en": "Apatosaurus",
+      "ru": "Апатозавр"
+    },
+    "attributes": {
+      "heightMeters": 4.5,
+      "massKg": 23000
+    }
   }
 ]
