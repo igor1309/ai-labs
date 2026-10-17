@@ -12,6 +12,7 @@ import {
   emptyCare,
   emptyPairs,
   englishDevice,
+  emptySkeletons,
   fakeBodyPicture,
   lightDevice,
   loadedPictures,
@@ -48,6 +49,7 @@ function openApp({
       {...lightDevice()}
       {...emptyCare()}
       {...emptyPairs()}
+      {...emptySkeletons()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       {...pictures}

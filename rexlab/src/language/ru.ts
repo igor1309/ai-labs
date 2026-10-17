@@ -79,5 +79,11 @@ export const ru: Texts = {
   card: (place) => `КАРТОЧКА ${place}`,
   newLevel: (level) => `НОВЫЙ УРОВЕНЬ ${level}`,
   newlyFound: "НОВЫЙ",
-  found: "НАЙДЕНО"
+  found: "НАЙДЕНО",
+  skeletonTitle: "СОБЕРИ СКЕЛЕТ",
+  museum: "МУЗЕЙ",
+  skeleton: "СКЕЛЕТ",
+  bones: "КОСТИ",
+  pieces: { skull: "ЧЕРЕП", spine: "ПОЗВОНОЧНИК", legs: "НОГИ", tail: "ХВОСТ" },
+  fitted: "КОСТИ НА МЕСТЕ"
 };

@@ -1,8 +1,9 @@
 import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
+import skeletonPlaces from "./data/skeletons.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
-import { bodyPictures } from "./dinosaurPictures.ts";
-import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors } from "./dinosaurs.ts";
+import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
+import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localLanguage } from "./localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "./localProgress.ts";
@@ -10,6 +11,7 @@ import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
+import { PIECES } from "./skeletons/index.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
 // hash. Never inlined, so a picture is cached as a file of its own.
@@ -17,6 +19,10 @@ const BODY_PICTURES = import.meta.glob<string>("./assets/dinos/*/body.webp", { e
 
 // Every care picture, loaded the same way.
 const CARE_PICTURES = import.meta.glob<string>("./assets/care/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// Every skeleton picture, the whole skeleton and each of its pieces,
+// loaded the same way.
+const SKELETON_PICTURES = import.meta.glob<string>("./assets/skeletons/*/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
 
 // The pictures care shows: each item, and the empty bowl of hunger.
 const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
@@ -39,6 +45,7 @@ export function appProps(browser: Browser): AppProps {
   const media = mediaOrientation((query) => browser.matchMedia(query));
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
   const dinosaurs = readDinosaurs(records);
+  const skeletons = readSkeletons(records, skeletonPlaces);
   return {
     dinosaurs,
     catalogue: readCatalogue(records),
@@ -57,6 +64,12 @@ export function appProps(browser: Browser): AppProps {
     pals: readPals(records),
     pairsProgress: localPairsProgress(storage),
     itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),
+    skeletons,
+    skeletonPicture: skeletonPictures(
+      SKELETON_PICTURES,
+      skeletons.map(({ id }) => id),
+      ["skeleton", ...PIECES]
+    ),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
     loadPicture: decodedPictures(() => new browser.Image()),
     startTimer: (ms, fire) => {

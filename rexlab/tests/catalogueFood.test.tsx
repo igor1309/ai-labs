@@ -17,6 +17,7 @@ import {
   SHIPPED_PALS,
   emptyCare,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   loadedPictures,
@@ -47,6 +48,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       {...emptySorting()}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
+      {...emptySkeletons()}
     />
   );
   return userEvent.setup();

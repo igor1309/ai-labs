@@ -12,15 +12,18 @@ import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps 
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
+import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import { PIECES, type Piece, type Puzzle, type Skeleton } from "./skeletons/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
-// How the app shows the quiz, the catalogue, dinosaur care, find the pair
-// and the sorting game: the composition root's translation from their
-// APIs to what each screen renders. A new attribute, celebration, food
-// type, need, item or basket fails the typecheck here until it is given a
-// presentation.
+// How the app shows the quiz, the catalogue, dinosaur care, find the pair,
+// the sorting game and the skeleton game: the composition root's
+// translation from their APIs to what each screen renders. A new
+// attribute, celebration, food type, need, item, basket or bone piece
+// fails the typecheck here until it is given a presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -227,5 +230,41 @@ export function presentPairsResult(result: PairsResult, language: Language, body
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
     levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+  };
+}
+
+// Each dinosaur to build is shown by its body picture, which its skeleton
+// is traced from.
+export function presentSkeletonChoices(skeletons: readonly Skeleton[], language: Language, bodyPicture: (dinosaurId: string) => string): SkeletonChoiceView[] {
+  return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id) }));
+}
+
+const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots">;
+
+// The pictures of a skeleton: the whole of it, or one of its pieces.
+export type SkeletonPicture = (dinosaurId: string, part: "skeleton" | Piece) => string;
+
+// Each slot is placed as a fraction of the frame, so the outline and its
+// pieces scale together to any board.
+export function presentPuzzle({ skeleton, fitted }: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
+  const { id, name, frame, places } = skeleton;
+  return {
+    name: name[language],
+    outline: skeletonPicture(id, "skeleton"),
+    frame,
+    slots: PIECES.map((piece) => {
+      const { x, y, width, height } = places[piece];
+      return {
+        piece: SHOWN_PIECES[piece],
+        picture: skeletonPicture(id, piece),
+        left: x / frame.width,
+        top: y / frame.height,
+        width: width / frame.width,
+        height: height / frame.height,
+        fitted: fitted.includes(piece)
+      };
+    })
   };
 }

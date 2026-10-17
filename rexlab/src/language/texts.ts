@@ -106,6 +106,16 @@ export type Texts = {
   // The dinosaurs found in find the pair, read out on the catalogue's
   // count and stamps.
   found: string;
+  // The skeleton game: the title over its dinosaurs to build, and its
+  // museum.
+  skeletonTitle: string;
+  museum: string;
+  // The skeleton being built, its tray of bones and each bone by its name.
+  skeleton: string;
+  bones: string;
+  pieces: { skull: string; spine: string; legs: string; tail: string };
+  // The bones fitted so far, read out on their chip.
+  fitted: string;
 };
 
 // A celebration's label, read out, and its text, shown.

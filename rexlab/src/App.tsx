@@ -26,6 +26,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import { useSkeletonGame, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
@@ -55,10 +56,16 @@ export type Appearance = {
 
 export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
+export type { SkeletonPicture } from "./skeletonGame.tsx";
+
+// The screen the app opens on: the home page, or the skeleton game's
+// choice of dinosaurs, which no home tile leads to yet.
+export type Opening = "home" | "skeletons";
 
 export type AppProps = CareGameProps &
   PairsGameProps &
-  Pick<SortingGameProps, "sortables" | "sortingProgress"> & {
+  Pick<SortingGameProps, "sortables" | "sortingProgress"> &
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -74,6 +81,8 @@ export type AppProps = CareGameProps &
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
+    // The home page unless given.
+    opening?: Opening;
   };
 
 // The two dinosaurs facing off on the home page's quiz card.
@@ -114,7 +123,9 @@ type Screen =
   // The sorting game, which keeps its own screens.
   | { kind: "sorting" }
   // Find the pair, which keeps its own screens too.
-  | { kind: "pairs" };
+  | { kind: "pairs" }
+  // And the skeleton game.
+  | { kind: "skeletons" };
 
 export function App({
   dinosaurs,
@@ -133,9 +144,12 @@ export function App({
   sortingProgress,
   pals,
   pairsProgress,
+  skeletons,
+  skeletonPicture,
+  opening = "home",
   ...careProps
 }: AppProps) {
-  const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  const [screen, setScreen] = useState<Screen>({ kind: opening });
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
@@ -229,6 +243,8 @@ export function App({
       setScreen({ kind: "pairs" });
     });
   };
+
+  const skeletonGame = useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer }, home);
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -357,6 +373,8 @@ export function App({
         return sorting.content(language);
       case "pairs":
         return pairs.content(language);
+      case "skeletons":
+        return skeletonGame.content(language);
       case "home":
         return (
           <HomePage

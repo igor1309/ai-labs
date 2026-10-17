@@ -14,6 +14,7 @@ import {
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   englishDevice,
   fakeBodyPicture,
@@ -28,7 +29,7 @@ import {
 } from "./support.ts";
 
 function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), care = emptyCare(), sorting = emptySorting()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...emptyPairs()} {...pictures} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...emptyPairs()} {...emptySkeletons()} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 

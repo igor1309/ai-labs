@@ -2,6 +2,7 @@ import type { Visitor } from "./care/index.ts";
 import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
+import type { Place, Skeleton } from "./skeletons/index.ts";
 import type { Dinosaur as Sortable } from "./sorting/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
@@ -98,3 +99,47 @@ export function readPals(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "nam
     return { id, name: { en: name.en, ru: name.ru }, lookAlike };
   });
 }
+
+// The skeletons' file, `skeletons.json`, in its own format: the frame the
+// outlines are drawn in, and each dinosaur's pieces by name, read as any
+// values, as the JSON gives them.
+export type SkeletonsFile = {
+  frame: { width: number; height: number };
+  dinosaurs: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+};
+
+// The skeleton game needs each skeleton's dinosaur, named as in the
+// list, and where its pieces go, in the file's order. A skeleton of no
+// dinosaur in the list, or with a piece missing or outside its frame,
+// fails here, when the app is put together, rather than as a puzzle no
+// child can finish.
+export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, file: SkeletonsFile): Skeleton[] {
+  const { width, height } = file.frame;
+  return Object.entries(file.dinosaurs).map(([id, pieces]) => {
+    const record = records.find((each) => each.id === id);
+    if (!record) throw new Error(`The skeleton ${id} is of no dinosaur in the list`);
+    const placeOf = (piece: string): Place => {
+      const place = pieces[piece];
+      if (!isPlace(place) || place.x + place.width > width || place.y + place.height > height) {
+        throw new Error(`${id} has no ${piece} in its ${width}×${height} frame: ${JSON.stringify(place)}`);
+      }
+      return { x: place.x, y: place.y, width: place.width, height: place.height };
+    };
+    return {
+      id,
+      name: { en: record.name.en, ru: record.name.ru },
+      frame: { width, height },
+      places: { skull: placeOf("skull"), spine: placeOf("spine"), legs: placeOf("legs"), tail: placeOf("tail") }
+    };
+  });
+}
+
+const isPlace = (value: unknown): value is Place => {
+  const place = value as Partial<Record<keyof Place, unknown>> | null;
+  return (
+    typeof place === "object" &&
+    place !== null &&
+    [place.x, place.y].every((at) => typeof at === "number" && at >= 0) &&
+    [place.width, place.height].every((size) => typeof size === "number" && size > 0)
+  );
+};

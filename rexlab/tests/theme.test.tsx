@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App } from "../src/App.tsx";
+import { App, type Opening } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -24,6 +24,7 @@ import {
   contrast,
   emptyCare,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   manualAppearance,
@@ -74,7 +75,8 @@ function openApp({
   language = "en-GB",
   timers = manualTimers(),
   sorting = emptySorting(),
-  pairs = memoryStorage()
+  pairs = memoryStorage(),
+  opening = "home"
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
@@ -84,6 +86,7 @@ function openApp({
   sorting?: ReturnType<typeof emptySorting>;
   // Where find the pair's progress is kept.
   pairs?: MemoryStorage;
+  opening?: Opening;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -102,7 +105,9 @@ function openApp({
       {...sorting}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
+      {...emptySkeletons()}
       {...timers}
+      opening={opening}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -300,10 +305,25 @@ async function pairsFound({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
+async function skeletonChoice({ theme }: Walk) {
+  expectScreenIn(theme);
+}
+
+// A dinosaur's puzzle as it starts: its faint outline and its pieces in
+// the tray.
+const skeletonPuzzle =
+  (name: string) =>
+  async ({ theme, user }: Walk) => {
+    await user.click(screen.getByRole("button", { name }));
+    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+    expectScreenIn(theme);
+  };
+
 // Every screen in every state, by group, each part of a group walked from
-// a newly opened app: one walk over them all outlasts a test's time limit
-// on CI.
-const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>]>]> = [
+// a newly opened app, on the home page unless the group opens it on
+// another screen: one walk over them all outlasts a test's time limit on
+// CI.
+const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>]>, Opening?]> = [
   [
     "the home page and its menus",
     [
@@ -344,16 +364,26 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
+  ],
+  [
+    "the skeleton game",
+    [
+      ["the choice of dinosaurs", skeletonChoice],
+      ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
+      ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
+      ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")]
+    ],
+    "skeletons"
   ]
 ];
 
 describe("the System theme", () => {
   describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
-    describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
+    describe.each(SCREEN_GROUPS)("on %s:", (_, parts, opening) => {
       it.each(parts)("%s", async (_, walk) => {
         const orientation = manualOrientation("landscape");
         const timers = manualTimers();
-        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
+        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers, opening: opening ?? "home" });
 
         await walk({ theme: appearance, user, orientation, timers });
       });

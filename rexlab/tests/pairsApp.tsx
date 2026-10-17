@@ -11,6 +11,7 @@ import {
   SHIPPED_PALS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptySkeletons,
   fakeBodyPicture,
   fakeItemPicture,
   manualAppearance,
@@ -66,6 +67,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       itemPicture={fakeItemPicture}
       pals={pals}
       pairsProgress={localPairsProgress(() => storage)}
+      {...emptySkeletons()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       reducedMotion={() => reducedMotion}

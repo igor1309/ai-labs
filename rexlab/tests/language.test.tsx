@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App } from "../src/App.tsx";
+import { App, type Opening } from "../src/App.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -20,9 +20,11 @@ import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_SKELETONS,
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   lightDevice,
@@ -64,13 +66,15 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   progress = emptyProgress(),
-  timers = loadedPictures()
+  timers = loadedPictures(),
+  opening = "home"
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
+  opening?: Opening;
 }) {
   const view = render(
     <App
@@ -86,7 +90,9 @@ function openApp({
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
+      {...emptySkeletons()}
       {...timers}
+      opening={opening}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -448,7 +454,8 @@ type Seen = {
 };
 
 // A walk over screens in `language`, on an app opened on the home page of
-// a device in it: `look` records what the screen shows now in `seen`.
+// a device in it, or on the screen it is opened on: `look` records what
+// the screen shows now in `seen`.
 type Play = {
   language: Language;
   user: UserEvent;
@@ -461,14 +468,15 @@ type Play = {
 // A compare-dinosaurs record of a best score of 5 from one round.
 const BEST_OF_5 = JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 5, roundsPlayed: 1 } } });
 
-function openPlay(language: Language, progressStorage = memoryStorage()): Play {
+function openPlay(language: Language, progressStorage = memoryStorage(), opening: Opening = "home"): Play {
   const orientation = manualOrientation("landscape");
   const timers = manualTimers();
   const { user } = openApp({
     device: language === "ru" ? "ru-RU" : "en-GB",
     orientation,
     progress: localProgress(() => progressStorage),
-    timers
+    timers,
+    opening
   });
   const seen: Seen = { texts: [], names: [], parentTexts: [], parentLabels: [] };
   const isName = (label: string) => SHIPPED_DINOSAURS.some((dinosaur) => dinosaur.name[language] === label);
@@ -699,6 +707,22 @@ async function findThePair(language: Language): Promise<Seen> {
   return play.seen;
 }
 
+// The skeleton game: its choice of dinosaurs, a puzzle as it starts, and
+// the home page again.
+async function skeletons(language: Language): Promise<Seen> {
+  const play = openPlay(language, memoryStorage(), "skeletons");
+  const { user, look } = play;
+  const text = TEXTS[language];
+  const triceratops = SHIPPED_SKELETONS.find(({ id }) => id === "triceratops")?.name[language] ?? "";
+  look();
+  await user.click(screen.getByRole("button", { name: triceratops.toLocaleUpperCase(language) }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+  return play.seen;
+}
+
 // What a part shows for parents: its words, the language menu's codes
 // aside, and the labels read out.
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
@@ -714,7 +738,8 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // care: its welcome, its friends with none yet, a visit with each need
 // refused once and one without, both results and the friends made,
 // the sorting game: a board with wrong drops, its result and the next
-// board, and find the pair from its welcome to the dinosaurs found.
+// board, find the pair from its welcome to the dinosaurs found, and the
+// skeleton game's choice and a puzzle.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -736,7 +761,8 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     "find the pair, its result, and the dinosaurs found in the catalogue",
     findThePair,
     (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
-  ]
+  ],
+  ["the skeleton game's choice of dinosaurs, a puzzle as it starts and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

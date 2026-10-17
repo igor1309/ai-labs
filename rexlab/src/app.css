@@ -3748,6 +3748,213 @@ body:has(.result) footer[aria-label="Version"] {
   animation: stamp-in var(--motion-standard) var(--ease-overshoot) both;
 }
 
+/* The skeleton game's screens fill the screen under a bar like find the
+   pair's: HOME, the title beside a bone, MUSEUM and, while building, the
+   bones fitted. */
+.skeleton-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.skeleton-screen .stratum-1 {
+  height: 40px;
+}
+
+.skeleton-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.skeleton-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-mark {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.museum-button {
+  padding: 0 22px 0 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.skeleton-chip {
+  flex-shrink: 0;
+  height: 44px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Every card and button keeps a touch target of at least 48 by 48 CSS
+   pixels, whatever its words. */
+.skeleton-bar .home-button,
+.skeleton-choice {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* The three dinosaurs side by side, each a big card of its picture over
+   its name, rising in one after the other. */
+.skeleton-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: none;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.skeleton-choice-art {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+
+.skeleton-choice-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name is large, and its size is the card's width over the longest
+   name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-choice-name {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: min(30px, (100cqi - 8px) / 9.4);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A puzzle: the board, in the outline's frame, beside the tray of bones.
+   The outline is drawn faint; each slot is its piece's place on it. */
+.skeleton-puzzle {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-board {
+  position: relative;
+  flex: 920 1 0;
+  min-width: 0;
+  align-self: center;
+  max-height: 100%;
+  aspect-ratio: var(--frame-width) / var(--frame-height);
+  overflow: hidden;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.skeleton-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.28;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-slot {
+  position: absolute;
+  display: flex;
+}
+
+.skeleton-fitted,
+.skeleton-piece {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skeleton-piece {
+  object-fit: contain;
+}
+
+/* The tray keeps a spot for every piece, each piece large in its own,
+   rising in one after the other after the outline. */
+.skeleton-tray {
+  flex: 380 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-radius: 28px;
+  background: #e6e2d9;
+}
+
+.skeleton-tray-spot {
+  flex: 1 1 0;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  border-radius: 22px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * (var(--piece) + 2)) both;
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -4265,4 +4472,25 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .pair-silhouette {
   filter: brightness(0) invert(1);
+}
+
+/* The skeleton game takes the dark values in the same shapes. */
+[data-theme="dark"] .skeleton-mark {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-chip,
+[data-theme="dark"] .skeleton-tray {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-choice,
+[data-theme="dark"] .skeleton-board,
+[data-theme="dark"] .skeleton-tray-spot {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-choice {
+  box-shadow: 0 8px 24px #00000066;
 }
