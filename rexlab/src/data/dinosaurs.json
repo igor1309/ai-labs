@@ -8,6 +8,12 @@
     "attributes": {
       "heightMeters": 3.7,
       "massKg": 8000
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -19,6 +25,12 @@
     "attributes": {
       "heightMeters": 3,
       "massKg": 7000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": true,
+      "feathers": false
     }
   },
   {
@@ -30,6 +42,12 @@
     "attributes": {
       "heightMeters": 0.5,
       "massKg": 15
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": true
     }
   },
   {
@@ -41,6 +59,12 @@
     "attributes": {
       "heightMeters": 12.5,
       "massKg": 40000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -52,6 +76,12 @@
     "attributes": {
       "heightMeters": 4,
       "massKg": 5000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -63,6 +93,12 @@
     "attributes": {
       "heightMeters": 1.7,
       "massKg": 6000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": null,
+      "feathers": false
     }
   },
   {
@@ -74,6 +110,12 @@
     "attributes": {
       "heightMeters": 4.2,
       "massKg": 7400
+    },
+    "traits": {
+      "legs": null,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -85,6 +127,12 @@
     "attributes": {
       "heightMeters": 5,
       "massKg": 15000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -96,6 +144,12 @@
     "attributes": {
       "heightMeters": 2.8,
       "massKg": 2500
+    },
+    "traits": {
+      "legs": null,
+      "diet": "plants",
+      "horns": null,
+      "feathers": false
     }
   },
   {
@@ -107,6 +161,12 @@
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 450
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "plants",
+      "horns": null,
+      "feathers": false
     }
   },
   {
@@ -118,6 +178,12 @@
     "attributes": {
       "heightMeters": 2.7,
       "massKg": 3500
+    },
+    "traits": {
+      "legs": null,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -129,6 +195,12 @@
     "attributes": {
       "heightMeters": 0.25,
       "massKg": 3
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -140,6 +212,12 @@
     "attributes": {
       "heightMeters": 1.9,
       "massKg": 440
+    },
+    "traits": {
+      "legs": 2,
+      "diet": null,
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -151,6 +229,12 @@
     "attributes": {
       "heightMeters": 2.9,
       "massKg": 2300
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": null,
+      "feathers": false
     }
   },
   {
@@ -162,6 +246,12 @@
     "attributes": {
       "heightMeters": 7,
       "massKg": 70000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -173,6 +263,12 @@
     "attributes": {
       "heightMeters": 0.3,
       "massKg": 1
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": true
     }
   },
   {
@@ -184,6 +280,12 @@
     "attributes": {
       "heightMeters": 0.7,
       "massKg": 85
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -195,6 +297,12 @@
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 400
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": null,
+      "feathers": null
     }
   },
   {
@@ -206,6 +314,12 @@
     "attributes": {
       "heightMeters": 2.5,
       "massKg": 1500
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": true,
+      "feathers": false
     }
   },
   {
@@ -217,6 +331,12 @@
     "attributes": {
       "heightMeters": 3.6,
       "massKg": 7000
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -228,6 +348,12 @@
     "attributes": {
       "heightMeters": 5,
       "massKg": 5000
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "plants",
+      "horns": false,
+      "feathers": true
     }
   },
   {
@@ -239,6 +365,12 @@
     "attributes": {
       "heightMeters": 3,
       "massKg": 4000
+    },
+    "traits": {
+      "legs": null,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   },
   {
@@ -250,6 +382,12 @@
     "attributes": {
       "heightMeters": 0.9,
       "massKg": 75
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": true
     }
   },
   {
@@ -261,6 +399,12 @@
     "attributes": {
       "heightMeters": 0.8,
       "massKg": 35
+    },
+    "traits": {
+      "legs": 2,
+      "diet": null,
+      "horns": null,
+      "feathers": true
     }
   },
   {
@@ -272,6 +416,12 @@
     "attributes": {
       "heightMeters": 0.6,
       "massKg": 20
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -283,6 +433,12 @@
     "attributes": {
       "heightMeters": 0.5,
       "massKg": 20
+    },
+    "traits": {
+      "legs": null,
+      "diet": "plants",
+      "horns": null,
+      "feathers": null
     }
   },
   {
@@ -294,6 +450,12 @@
     "attributes": {
       "heightMeters": 1.8,
       "massKg": 2700
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": true,
+      "feathers": false
     }
   },
   {
@@ -305,6 +467,12 @@
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 1000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": null,
+      "feathers": false
     }
   },
   {
@@ -316,6 +484,12 @@
     "attributes": {
       "heightMeters": 2.5,
       "massKg": 1700
+    },
+    "traits": {
+      "legs": 2,
+      "diet": "meat",
+      "horns": false,
+      "feathers": null
     }
   },
   {
@@ -327,6 +501,12 @@
     "attributes": {
       "heightMeters": 4.5,
       "massKg": 23000
+    },
+    "traits": {
+      "legs": 4,
+      "diet": "plants",
+      "horns": false,
+      "feathers": false
     }
   }
 ]

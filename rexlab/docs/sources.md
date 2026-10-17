@@ -1,7 +1,8 @@
 # Trusted science sources
 
-Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass and, when
-they exist, descriptions) are checked against these sources only.
+Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass, the
+sorting game's traits and, when they exist, descriptions) are checked
+against these sources only.
 
 1. Natural History Museum, London: Dino Directory,
    https://www.nhm.ac.uk/discover/dino-directory.html
@@ -21,3 +22,12 @@ they exist, descriptions) are checked against these sources only.
   support, and note the disagreement in the change.
 - Russian names follow the spelling used in Russian scientific and
   popular-science writing.
+- Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `diet`
+  (`plants` or `meat`), `horns` and `feathers` (true or false). A trait is
+  `null`, and the dinosaur is left out of that sort, when the sources
+  leave it unclear (Iguanodon and Parasaurolophus walked on two legs or
+  four; Gallimimus and Oviraptor were omnivores; feathers are unknown for
+  Tyrannosaurus and most large theropods) or when the dinosaur's picture
+  could mislead a child (Allosaurus's brow bumps, Pachycephalosaurus's
+  knobs and Kentrosaurus's shoulder spikes are not horns). Feathered
+  means feathered in the picture too, as `art/style.md` lists.
