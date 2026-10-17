@@ -263,6 +263,7 @@ describe("the home page", () => {
     expect(tile.querySelector("button, a, [role=button]")).toBeNull();
     expect(tile.classList.contains("card")).toBe(false);
     expect(tile.textContent).toBe("MORE COMING");
+    expect(TEXTS.ru.moreComing).toBe("СКОРО ЕЩЁ");
     expect(symbolsOf(tile)).toEqual(["lock"]);
     const picture = tile.querySelector("img");
     expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
