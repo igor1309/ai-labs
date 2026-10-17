@@ -17,6 +17,7 @@ import {
   SHIPPED_PALS,
   emptyCare,
   emptyProgress,
+  emptySorting,
   fakeBodyPicture,
   loadedPictures,
   manualAppearance,
@@ -43,6 +44,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       themeStore={localTheme(() => memoryStorage())}
       {...loadedPictures()}
       {...emptyCare()}
+      {...emptySorting()}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
     />

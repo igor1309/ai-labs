@@ -4,14 +4,17 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localPairsProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
+import type { Basket } from "../src/SortScreen.tsx";
+import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
+import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -21,6 +24,7 @@ import {
   contrast,
   emptyCare,
   emptyProgress,
+  emptySorting,
   fakeBodyPicture,
   manualAppearance,
   manualOrientation,
@@ -29,6 +33,7 @@ import {
   sameColour,
   seededRandom,
   seenOn,
+  sortingBy,
   surfaceOf,
   surfacesIn,
   symbolOf,
@@ -68,6 +73,7 @@ function openApp({
   orientation = manualOrientation("landscape"),
   language = "en-GB",
   timers = manualTimers(),
+  sorting = emptySorting(),
   pairs = memoryStorage()
 }: {
   device?: ManualAppearance;
@@ -75,6 +81,7 @@ function openApp({
   orientation?: ManualOrientation;
   language?: string;
   timers?: ManualTimers;
+  sorting?: ReturnType<typeof emptySorting>;
   // Where find the pair's progress is kept.
   pairs?: MemoryStorage;
 } = {}) {
@@ -92,6 +99,7 @@ function openApp({
       appearance={device}
       themeStore={localTheme(() => storage)}
       {...emptyCare()}
+      {...sorting}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
       {...timers}
@@ -522,6 +530,99 @@ describe("the theme menu", () => {
   });
 });
 
+// The board is shown through the sorting game and the screen's props, in
+// the theme the app sets on the page.
+describe("the sorting board", () => {
+  const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
+
+  it.each(["light", "dark"] as const)("is in the %s theme in every state, with every basket's symbol", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const property of PROPERTIES) {
+        const user = userEvent.setup();
+        const sorting = sortingBy(property);
+        const { unmount } = openBoard(sorting);
+        layOutBaskets(sorting);
+        const [missed, ...rest] = boardState(sorting).cards;
+        if (!missed) throw new Error("The board has no cards");
+        const right = missed.basket as Basket;
+        expectScreenIn(theme);
+
+        await user.click(trayCard(missed));
+        expectScreenIn(theme);
+        await user.click(trayCard(missed));
+        await user.pointer([
+          { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
+          { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
+        ]);
+        expectScreenIn(theme);
+        await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
+        // The hint on the card and the right basket's glow.
+        expect(document.querySelector(".sort-hint")).not.toBeNull();
+        expect(document.querySelector(".basket-glow")).not.toBeNull();
+        expectScreenIn(theme);
+
+        await dragTo(user, trayCard(missed), centreOf(sorting, right));
+        for (const card of rest) {
+          await user.click(trayCard(card));
+          await user.click(basketButton(card.basket as Basket));
+        }
+        expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
+        expectScreenIn(theme);
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
+  it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      const user = userEvent.setup();
+      const sorting = sortingBy("diet");
+      const { unmount } = openBoard(sorting);
+      const [first, second] = boardState(sorting).cards;
+      if (!first || !second) throw new Error("The board has no cards");
+      await user.click(trayCard(first));
+      await user.click(basketButton(first.basket as Basket));
+      await user.click(trayCard(second));
+      await user.click(basketButton(otherBasket(sorting, second.basket as Basket)));
+
+      const check = screen.getByRole("img", { name: "RIGHT" });
+      const hint = within(trayCard(second)).getByRole("img", { name: (second.basket as string).toUpperCase() });
+      for (const mark of [check, hint]) {
+        const colour = getComputedStyle(mark).backgroundColor;
+        expect(contrast(colour, surfaceOf(mark.parentElement ?? mark))).toBeGreaterThanOrEqual(3);
+        expect(contrast(getComputedStyle(mark).color, colour)).toBeGreaterThanOrEqual(3);
+      }
+      expect(sameColour(getComputedStyle(check).backgroundColor, PALETTE[theme].good ?? "")).toBe(true);
+      unmount();
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
+// The result is reached through the sorting game, its screens' props and
+// its progress store, in the theme the app sets on the page.
+describe("the sorting result", () => {
+  it.each(["light", "dark"] as const)("is in the %s theme with its celebration, and without one", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const right of [4, 0]) {
+        const { user, nextBoard, unmount } = openSortingGame();
+        await finishBoard(user, nextBoard(), right);
+        expect(screen.queryAllByRole("status")).toHaveLength(right > 0 ? 1 : 0);
+        expectScreenIn(theme);
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
 describe("marks", () => {
   it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
@@ -542,6 +643,32 @@ describe("marks", () => {
     for (const { colour, card } of marks) {
       expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("the SORT card", () => {
+  it.each(["light", "dark"] as const)("is on the %s theme's paper, its shapes on terracotta and its words and best score at text contrast", (theme) => {
+    const sortingStorage = memoryStorage({
+      [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, roundsPlayed: 2 } } })
+    });
+    openApp({ device: manualAppearance(theme), sorting: { ...emptySorting(), sortingProgress: localSortingProgress(() => sortingStorage) } });
+
+    expectScreenIn(theme);
+    const card = screen.getByRole("button", { name: "SORT" });
+    const symbol = card.querySelector(".sort-tile-symbol") ?? card;
+    const title = card.querySelector(".sort-tile-title") ?? card;
+    const best = card.querySelector(".sort-tile-best") ?? card;
+    const colours = PALETTE[theme];
+    const parts = {
+      card: [getComputedStyle(card).backgroundColor, colours.surface],
+      symbol: [getComputedStyle(symbol).backgroundColor, colours.terra],
+      words: [getComputedStyle(title).color, colours.ink],
+      best: [getComputedStyle(best).backgroundColor, colours["surface-2"]],
+      trophy: [getComputedStyle(best.querySelector("svg") ?? best).color, colours.amber]
+    };
+    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
+    expect([title.textContent, best.textContent]).toEqual(["SORT", "4"]);
+    expect([title, best].map((text) => textContrast(text) >= TEXT_CONTRAST)).toEqual([true, true]);
   });
 });
 

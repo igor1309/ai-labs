@@ -10,6 +10,12 @@
       "massKg": 8000
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS.",
@@ -27,6 +33,12 @@
       "massKg": 7000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": true,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "horned-face",
     "description": {
       "en": "THREE HORNS AND A BIG BONY FRILL. IT LIVED AT THE SAME TIME AS TYRANNOSAURUS.",
@@ -44,6 +56,12 @@
       "massKg": 15
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "raptor",
     "description": {
       "en": "A FEATHERED HUNTER THE SIZE OF A TURKEY, WITH A BIG CURVED CLAW ON EACH FOOT.",
@@ -61,6 +79,12 @@
       "massKg": 40000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "ITS FRONT LEGS WERE LONGER THAN ITS BACK LEGS, SO IT COULD REACH THE TOPS OF TREES.",
@@ -78,6 +102,12 @@
       "massKg": 5000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": null,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "plated-back",
     "description": {
       "en": "BIG PLATES ALONG ITS BACK AND FOUR SPIKES ON ITS TAIL. ITS BRAIN WAS VERY SMALL.",
@@ -95,6 +125,12 @@
       "massKg": 6000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": null,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "armoured",
     "description": {
       "en": "COVERED IN BONY ARMOUR, WITH A HEAVY CLUB AT THE END OF ITS TAIL.",
@@ -112,6 +148,12 @@
       "massKg": 7400
     },
     "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
     "lookAlike": "sail-back",
     "description": {
       "en": "A BIG SAIL ON ITS BACK. IT CAUGHT FISH IN RIVERS WITH ITS LONG JAWS.",
@@ -129,6 +171,12 @@
       "massKg": 15000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "ONE OF THE LONGEST DINOSAURS, WITH A VERY LONG NECK AND A TAIL LIKE A WHIP.",
@@ -146,6 +194,12 @@
       "massKg": 2500
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": null,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "duck-bill",
     "description": {
       "en": "A LONG HOLLOW CREST ON ITS HEAD. IT MAY HAVE USED IT TO MAKE LOUD CALLS.",
@@ -163,6 +217,12 @@
       "massKg": 450
     },
     "diet": "plants",
+    "traits": {
+      "legs": 2,
+      "horns": null,
+      "feathers": false,
+      "size": "small"
+    },
     "lookAlike": "dome-head",
     "description": {
       "en": "A VERY THICK, DOME-SHAPED SKULL WITH LITTLE BUMPS AROUND IT.",
@@ -180,6 +240,12 @@
       "massKg": 3500
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "duck-bill",
     "description": {
       "en": "A SPIKE INSTEAD OF A THUMB ON EACH HAND. ONE OF THE FIRST DINOSAURS EVER FOUND.",
@@ -197,6 +263,12 @@
       "massKg": 3
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "small-runner",
     "description": {
       "en": "A TINY HUNTER THE SIZE OF A CHICKEN. IT CAUGHT LIZARDS.",
@@ -214,6 +286,12 @@
       "massKg": 440
     },
     "diet": "both",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "beaked-runner",
     "description": {
       "en": "A FAST RUNNER WITH LONG LEGS AND A BEAK, LIKE A BIG OSTRICH.",
@@ -231,6 +309,12 @@
       "massKg": 2300
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": null,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "A BIG HUNTER THAT LIVED LONG BEFORE TYRANNOSAURUS, WITH SMALL HORNS ABOVE ITS EYES.",
@@ -248,6 +332,12 @@
       "massKg": 70000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "ONE OF THE BIGGEST ANIMALS THAT EVER WALKED ON LAND.",
@@ -265,6 +355,12 @@
       "massKg": 1
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "winged",
     "description": {
       "en": "A TINY DINOSAUR WITH FEATHERED WINGS ON ITS ARMS AND LEGS. IT COULD GLIDE.",
@@ -282,6 +378,12 @@
       "massKg": 85
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "small"
+    },
     "lookAlike": "horned-face",
     "description": {
       "en": "A SMALL COUSIN OF TRICERATOPS, WITH A FRILL BUT NO BIG HORNS.",
@@ -299,6 +401,12 @@
       "massKg": 400
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": null,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "TWO THIN CRESTS ON ITS HEAD. A HUNTER FROM THE EARLY DAYS OF THE DINOSAURS.",
@@ -316,6 +424,12 @@
       "massKg": 1500
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": true,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "TWO HORNS ABOVE ITS EYES, LIKE A BULL, AND EVEN TINIER ARMS THAN TYRANNOSAURUS.",
@@ -333,6 +447,12 @@
       "massKg": 7000
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "ONE OF THE BIGGEST HUNTERS EVER, AS LONG AS A BUS.",
@@ -350,6 +470,12 @@
       "massKg": 5000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": null
+    },
     "lookAlike": "long-claws",
     "description": {
       "en": "HUGE CLAWS AS LONG AS A CHILD'S ARM, BUT IT ATE PLANTS.",
@@ -367,6 +493,12 @@
       "massKg": 4000
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "duck-bill",
     "description": {
       "en": "A DUCK-BILLED DINOSAUR WITH HUNDREDS OF TEETH FOR CHEWING PLANTS.",
@@ -384,6 +516,12 @@
       "massKg": 75
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "raptor",
     "description": {
       "en": "A FEATHERED HUNTER WITH A BIG CLAW LIKE A SICKLE, BIGGER THAN VELOCIRAPTOR.",
@@ -401,6 +539,12 @@
       "massKg": 35
     },
     "diet": "both",
+    "traits": {
+      "legs": 2,
+      "horns": null,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "beaked-runner",
     "description": {
       "en": "A FEATHERED DINOSAUR WITH A BEAK. THE FIRST ONE WAS FOUND ON A NEST OF EGGS.",
@@ -418,6 +562,12 @@
       "massKg": 20
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "small-runner",
     "description": {
       "en": "A SLIM, FAST HUNTER FROM THE TIME OF THE FIRST DINOSAURS.",
@@ -435,6 +585,12 @@
       "massKg": 20
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": null,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "horned-face",
     "description": {
       "en": "ITS NAME MEANS PARROT LIZARD: IT HAD A BEAK LIKE A PARROT.",
@@ -452,6 +608,12 @@
       "massKg": 2700
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": true,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "horned-face",
     "description": {
       "en": "A LONG HORN ON ITS NOSE AND BIG SPIKES ALL AROUND ITS FRILL.",
@@ -469,6 +631,12 @@
       "massKg": 1000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": null,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "plated-back",
     "description": {
       "en": "A SMALLER COUSIN OF STEGOSAURUS, WITH SHARP SPIKES ALONG ITS BACK AND TAIL.",
@@ -486,6 +654,12 @@
       "massKg": 1700
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": null
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "A BIG CLAW ON EACH HAND AND LONG JAWS FOR CATCHING FISH.",
@@ -503,6 +677,12 @@
       "massKg": 23000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "A HUGE LONG-NECKED DINOSAUR WITH A VERY THICK, STRONG NECK.",
@@ -520,6 +700,12 @@
       "massKg": 1000
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": true,
+      "feathers": null,
+      "size": null
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "A HUNTER WITH A HORN ON ITS NOSE AND A ROW OF BONY BUMPS DOWN ITS BACK.",
@@ -537,6 +723,12 @@
       "massKg": 350
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "raptor",
     "description": {
       "en": "THE BIGGEST RAPTOR, AS HEAVY AS A BEAR, WITH FEATHERS AND A HUGE CLAW ON EACH FOOT.",
@@ -554,6 +746,12 @@
       "massKg": 1400
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": null
+    },
     "lookAlike": "big-hunter",
     "description": {
       "en": "A BIG COUSIN OF TYRANNOSAURUS, COVERED IN LONG FLUFFY FEATHERS TO KEEP WARM.",
@@ -571,6 +769,12 @@
       "massKg": 1
     },
     "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "winged",
     "description": {
       "en": "A DINOSAUR THE SIZE OF A CROW, WITH FEATHERED WINGS, TEETH AND CLAWS ON ITS WINGS.",
@@ -588,6 +792,12 @@
       "massKg": 50
     },
     "diet": "both",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
     "lookAlike": "raptor",
     "description": {
       "en": "A FEATHERED DINOSAUR WITH VERY BIG EYES. IT MAY HAVE HUNTED AT NIGHT.",
@@ -605,6 +815,12 @@
       "massKg": 2
     },
     "diet": "plants",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
     "lookAlike": "small-runner",
     "description": {
       "en": "A TINY PLANT EATER THE SIZE OF A CAT, WITH A BEAK AND TWO LITTLE TUSKS.",
@@ -622,6 +838,12 @@
       "massKg": 12000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "ITS NECK WAS HALF AS LONG AS ITS WHOLE BODY, LONGER THAN A BUS.",
@@ -639,6 +861,12 @@
       "massKg": 9000
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": null,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "A LONG-NECKED DINOSAUR WITH TWO ROWS OF TALL SPINES ALONG ITS NECK AND BACK.",
@@ -656,6 +884,12 @@
       "massKg": 4000
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "long-neck",
     "description": {
       "en": "ONE OF THE FIRST BIG PLANT EATERS. IT STOOD ON ITS BACK LEGS TO REACH HIGH LEAVES.",
@@ -673,6 +907,12 @@
       "massKg": 3000
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "duck-bill",
     "description": {
       "en": "ITS NAME MEANS GOOD MOTHER LIZARD: IT LOOKED AFTER ITS BABIES IN THE NEST.",
@@ -690,6 +930,12 @@
       "massKg": 4000
     },
     "diet": "plants",
+    "traits": {
+      "legs": null,
+      "horns": null,
+      "feathers": false,
+      "size": "big"
+    },
     "lookAlike": "duck-bill",
     "description": {
       "en": "A DUCK-BILLED DINOSAUR WITH A ROUND CREST ON ITS HEAD, LIKE A HELMET.",
@@ -707,6 +953,12 @@
       "massKg": 2500
     },
     "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": true,
+      "feathers": false,
+      "size": null
+    },
     "lookAlike": "horned-face",
     "description": {
       "en": "A COUSIN OF TRICERATOPS WITH A VERY LONG, WIDE FRILL. IT MAY HAVE SHOWN IT OFF IN BRIGHT COLOURS.",

@@ -70,6 +70,23 @@ export type Texts = {
   // The friend a visit made, or met again, read out on its chip.
   friend: string;
   noFriends: string;
+  // The sorting game: its card on the home page.
+  sort: string;
+  // The sorting game's prompt over its board.
+  sortPrompt: string;
+  // The sorting game's baskets, each named by what its dinosaurs share.
+  baskets: {
+    "two-legs": string;
+    "four-legs": string;
+    plants: string;
+    meat: string;
+    big: string;
+    small: string;
+    horns: string;
+    "no-horns": string;
+    feathers: string;
+    "no-feathers": string;
+  };
   // Find the pair: its title, also on its home tile.
   pairs: string;
   play: string;

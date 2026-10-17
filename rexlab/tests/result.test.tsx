@@ -9,6 +9,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptySorting,
   emptyPairs,
   englishDevice,
   fakeBodyPicture,
@@ -66,7 +67,9 @@ function openApp(storage: MemoryStorage, seed = 21) {
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()}
-      {...emptyCare()} {...emptyPairs()}
+      {...emptyCare()}
+      {...emptySorting()}
+      {...emptyPairs()}
       {...loadedPictures()}
     />
   );

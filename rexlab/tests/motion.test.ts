@@ -126,6 +126,17 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+// The quiz and the sorting game end on the same result.
+describe("the result's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("counts the score up, pops the celebration in, and pops the won stars in one after the other", () => {
+    expect([".result-score-value", ".celebration", ".star-won"].map((selector) => animations.get(selector))).toEqual(["count-up", "pop-in", "pop-in"]);
+    expect(declarationsOf(bodyOf(".star-won"))).toContainEqual({ property: "animation-delay", value: "calc(var(--star) * var(--motion-stagger) * 1.5)" });
+  });
+});
+
 describe("the catalogue's motion", () => {
   const animations = animationsOf(PLAIN);
 
@@ -247,5 +258,53 @@ describe("find the pair's motion", () => {
       "rise-in",
       "stamp-in"
     ]);
+  });
+
+  it("brightens and presses the SORT card in as every card does, with motion or without: none of its own rules moves it otherwise", () => {
+    const rules = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.includes("sort-tile"));
+    const moving = rules.flatMap(({ prelude, body }) =>
+      declarationsOf(body)
+        .filter(({ property }) => /^(animation|transition)(-|$)|^(filter|transform|translate|scale)$/.test(property))
+        .map(({ property }) => `${prelude} ${property}`)
+    );
+
+    expect(rules.length).toBeGreaterThan(0);
+    expect(moving).toEqual([]);
+  });
+});
+
+describe("the sorting board's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string, rules = PLAIN) => rules.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("rises the cards in one after the other, then the baskets", () => {
+    expect([".sort-card", ".basket"].map((selector) => animations.get(selector))).toEqual(["rise-in", "rise-in"]);
+    expect(bodyOf(".sort-card")).toMatch(/rise-in var\(--motion-standard\) var\(--ease-out\) calc\(var\(--slot\) \* var\(--motion-stagger\)\)/);
+    expect(bodyOf(".basket")).toMatch(/calc\(\(var\(--basket\) \+ 6\) \* var\(--motion-stagger\)\)/);
+  });
+
+  it("lifts a picked card by the motion amount, follows the finger at once while dragging, and slides a card let go back to its slot", () => {
+    expect(declarationsOf(bodyOf(".sort-card[data-picked]"))).toEqual([
+      { property: "translate", value: "0 calc(-12px * var(--motion-amount))" },
+      { property: "rotate", value: "calc(3deg * var(--motion-amount))" }
+    ]);
+    expect(declarationsOf(bodyOf(".sort-card[data-dragging]"))).toContainEqual({ property: "transition", value: "none" });
+    expect(animations.get(".sort-card[data-returning]")).toBe("slide-back");
+    const back = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes slide-back")?.body ?? "";
+    expect(back).toMatch(/translate: calc\(var\(--from-x\) \* var\(--motion-amount\)\) calc\(var\(--from-y\) \* var\(--motion-amount\)\)/);
+  });
+
+  it("pops a sorted card into its basket and stamps its tick in after it", () => {
+    expect([".sorted-card", ".sorted-check", ".sort-hint"].map((selector) => animations.get(selector))).toEqual(["pop-in", "stamp-in", "pop-in"]);
+    expect(bodyOf(".sorted-check")).toMatch(/var\(--motion-stagger\) both/);
+  });
+
+  it("glows the right basket of a wrong drop for a moment, in and out again", () => {
+    expect(animations.get(".basket-glow")).toBe("glow");
+    expect(declarationsOf(bodyOf(".basket-glow"))).toContainEqual({ property: "opacity", value: "0" });
+  });
+
+  it("only fades and lights a card with reduced motion: it does not travel", () => {
+    expect(declarationsOf(bodyOf(".sort-card", REDUCED))).toEqual([{ property: "transition-property", value: "filter, opacity, box-shadow, outline" }]);
   });
 });

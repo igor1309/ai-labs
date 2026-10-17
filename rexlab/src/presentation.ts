@@ -12,13 +12,15 @@ import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps 
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
+import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
+import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
-// How the app shows the quiz, the catalogue, dinosaur care and find the
-// pair: the
-// composition root's translation from their APIs to what each screen
-// renders. A new attribute, celebration, food type, need or item fails the
-// typecheck here until it is given a presentation.
+// How the app shows the quiz, the catalogue, dinosaur care, find the pair
+// and the sorting game: the composition root's translation from their
+// APIs to what each screen renders. A new attribute, celebration, food
+// type, need, item or basket fails the typecheck here until it is given a
+// presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -55,15 +57,14 @@ export function presentQuestion(question: QuestionState, language: Language, bod
 
 export type ResultView = Pick<ResultScreenProps, "score" | "total" | "best" | "beaten" | "celebration">;
 
+// What every game's result shows of a finished round's score.
+function presentScore(score: number, total: number, best: number | undefined, previousBest: number | undefined, celebration: ShownCelebration | null): ResultView {
+  // Only a new best shows the best it beat: a first best beat none.
+  return { score, total, best, beaten: celebration === "new-best" ? previousBest : undefined, celebration };
+}
+
 export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
-  return {
-    score,
-    total,
-    best: progress?.bestScore,
-    // Only a new best shows the best it beat: a first best beat none.
-    beaten: celebration === "new-best" ? previousBest : undefined,
-    celebration: celebration === null ? null : CELEBRATIONS[celebration]
-  };
+  return presentScore(score, total, progress?.bestScore, previousBest, celebration && CELEBRATIONS[celebration]);
 }
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
@@ -131,18 +132,61 @@ export function presentCareResult(result: CareResult, language: Language, bodyPi
   const { visitor, score, total, best, previousBest, celebration, newFriend } = result;
   return {
     visitor: { name: visitor.name[language], picture: bodyPicture(visitor.id) },
-    score,
-    total,
-    best,
-    // Only a new best shows the best it beat: a first best beat none.
-    beaten: celebration === "new-best" ? previousBest : undefined,
-    celebration: celebration === null ? null : CARE_CELEBRATIONS[celebration],
+    ...presentScore(score, total, best, previousBest, celebration && CARE_CELEBRATIONS[celebration]),
     newFriend
   };
 }
 
 export function presentFriend(visitor: Visitor, language: Language, bodyPicture: (dinosaurId: string) => string) {
   return { id: visitor.id, name: visitor.name[language], picture: bodyPicture(visitor.id) };
+}
+
+const BASKETS: Record<SortBasket, ShownBasket> = {
+  "two-legs": "two-legs",
+  "four-legs": "four-legs",
+  plants: "plants",
+  meat: "meat",
+  big: "big",
+  small: "small",
+  horns: "horns",
+  "no-horns": "no-horns",
+  feathers: "feathers",
+  "no-feathers": "no-feathers"
+};
+
+const DROPPED = Object.fromEntries(Object.entries(BASKETS).map(([basket, shown]) => [shown, basket])) as Record<ShownBasket, SortBasket>;
+
+// The sorting game's basket a card was dropped on, from the board's.
+export function droppedOn(basket: ShownBasket): SortBasket {
+  return DROPPED[basket];
+}
+
+export type BoardView = Pick<SortScreenProps, "tray" | "baskets" | "sorted" | "total" | "glow">;
+
+// The board as the child sees it: a card on the tray carries its right
+// basket's symbol from its first miss until it lands.
+export function presentBoard(board: BoardState, language: Language, bodyPicture: (dinosaurId: string) => string): BoardView {
+  const { cards, landed, lastMiss } = board;
+  const card = ({ dinosaur }: CardState) => ({ id: dinosaur.id, name: dinosaur.name[language], picture: bodyPicture(dinosaur.id) });
+  const [first, second] = board.baskets.map((basket) => ({
+    basket: BASKETS[basket],
+    cards: landed.filter((each) => each.basket === basket).map(card)
+  }));
+  if (!first || !second) throw new Error("A board has two baskets");
+  return {
+    tray: cards.map((each) => (each.landed ? null : { ...card(each), hint: each.missed ? BASKETS[each.basket] : undefined })),
+    baskets: [first, second],
+    sorted: landed.length,
+    total: cards.length,
+    glow: lastMiss && { basket: BASKETS[lastMiss.basket], count: lastMiss.misses }
+  };
+}
+
+const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
+
+// A finished board shows on the quiz's result screen, a star for each card.
+export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
+  return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
 }
 
 const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };
