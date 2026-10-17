@@ -1,16 +1,17 @@
 // Package workflow runs a workflow (ADR-001, "Core"; ADR-011): its
-// inputs resolved once at its boundary, then its steps in order, each
-// called through the one port it declares (ADR-012, rule 1) with its
-// process's params bound from the workflow's params and inputs and the
-// outputs of the steps before it, what each is doing told to its events;
-// and its result, in the result shape (ADR-001, invariant 3), read through
-// its output mapping.
+// inputs resolved once at its boundary, then its items in order, a step or
+// a parallel of steps called at once, each step called through the one
+// port it declares (ADR-012, rule 1) with its process's params bound from
+// the workflow's params and inputs and the outputs of the items before it,
+// what each is doing told to its events; and its result, in the result
+// shape (ADR-001, invariant 3), read through its output mapping.
 package workflow
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -23,28 +24,38 @@ const (
 	// Failed is a run refused; a run that ended otherwise ends in its last
 	// call's status.
 	Failed Status = "failed"
+	// Interrupted is a call or a run ended before it finished, a run
+	// cancelled among them.
+	Interrupted Status = "interrupted"
 )
 
 // Class is why a call or a run that did not complete ended so.
 type Class string
 
-// Refused is a run whose inputs, a step's bindings or its output mapping
-// could not be resolved: no later step starts.
-const Refused Class = "refused"
+const (
+	// Refused is a run whose inputs, a step's bindings or its output
+	// mapping could not be resolved: no later step starts.
+	Refused Class = "refused"
+	// Cancelled is a run whose context ended: no later item starts.
+	Cancelled Class = "cancelled"
+)
 
-// Workflow is what a run executes: its steps, in sequence, and its output
+// Workflow is what a run executes: its items, in sequence, and its output
 // mapping.
 type Workflow struct {
 	Steps   []Step
 	Outputs []Binding
 }
 
-// Step is a step of the workflow, by its name, unique in the workflow; the
-// agent it runs on; and its bindings, which give its process's params.
+// Step is an item of the workflow, by its name, unique in the workflow: a
+// step, the agent it runs on and its bindings, which give its process's
+// params; or, where Parallel is not nil, a parallel of the steps it holds,
+// called at once (ADR-011, rule 2).
 type Step struct {
 	Name     string
 	Agent    string
 	Bindings []Binding
+	Parallel []Step
 }
 
 // Binding is a value given by name.
@@ -93,7 +104,8 @@ type Resolver interface {
 }
 
 // Caller calls the step named step, its process's params given by name,
-// and gives each tool call its turn reports to report.
+// and gives each tool call its turn reports to report. It is called from
+// many goroutines at once, one for each step of a parallel.
 type Caller interface {
 	Call(ctx context.Context, step string, params map[string]string, report func(Tool)) Result
 }
@@ -106,7 +118,8 @@ type Tool struct {
 
 // Events is told what each step of a run is doing, by the step's name: that
 // it started, on its agent; each tool call its turn reports; and how it
-// ended.
+// ended. It is told from many goroutines at once, one for each step of a
+// parallel.
 type Events interface {
 	Started(step, agent string)
 	Tool(step string, tool Tool)
@@ -203,13 +216,16 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 }
 
 // Run runs w over the params given: its inputs resolved once, then each
-// step in order, until one does not complete, each step's start on its
-// agent, tool calls and end told to the events as they come. The run's
-// status, class and reason are its last call's, its output its output
-// mapping once every step has completed, its timing the whole run's, its
-// cost unknown where a call's is, its usage the sum of what its calls
-// reported, its sessions each step's whose call reported one, and its
-// warnings every call's, in order.
+// item in order, until a step in sequence does not complete or the run is
+// cancelled, each step's start on its agent, tool calls and end told to
+// the events as they come. A parallel calls its steps at once and ends once
+// all have ended: completed, its outputs each step's end, in declaration
+// order, whatever each ended as; a run cancelled meanwhile ends with it,
+// interrupted, cancelled. The run's status, class and reason are its last
+// item's, its output its output mapping once every item has completed, its
+// timing the whole run's, its cost unknown where a call's is, its usage the
+// sum of what its calls reported, its sessions each step's whose call
+// reported one, and its warnings every call's, in declaration order.
 func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) Result {
 	started := r.clock.Now()
 	result := Result{Status: Completed, Cost: new(float64), Sessions: map[string]string{}}
@@ -222,36 +238,61 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Status, result.Class, result.Output = Failed, Refused, nil
 		return finish()
 	}
-
-	boundary, err := r.resolver.Resolve(ctx, given)
-	if err != nil {
-		result.Reason = err.Error()
-		return refuse()
+	cancelled := func() Result {
+		result.Status, result.Class, result.Reason = Interrupted, Cancelled, ""
+		return finish()
 	}
-	read := reader{boundary: boundary, outputs: map[string]map[string]any{}}
-	for _, step := range w.Steps {
-		params, ok := read.params(step.Bindings)
-		if !ok {
-			return refuse()
-		}
-		r.events.Started(step.Name, step.Agent)
-		called := r.caller.Call(ctx, step.Name, params, func(tool Tool) { r.events.Tool(step.Name, tool) })
-		r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
-		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
+	count := func(step string, called Result) {
 		result.Warnings = append(result.Warnings, called.Warnings...)
 		result.Usage = result.Usage.add(called.Usage)
 		if called.Session != "" {
-			result.Sessions[step.Name] = called.Session
+			result.Sessions[step] = called.Session
 		}
 		if result.Cost != nil && called.Cost != nil {
 			*result.Cost += *called.Cost
 		} else {
 			result.Cost = nil
 		}
+	}
+
+	boundary, err := r.resolver.Resolve(ctx, given)
+	if err != nil {
+		result.Reason = err.Error()
+		return refuse()
+	}
+	read := reader{boundary: boundary, outputs: map[string]any{}}
+	for _, item := range w.Steps {
+		if ctx.Err() != nil {
+			return cancelled()
+		}
+		if item.Parallel != nil {
+			calls, ok := r.parallel(ctx, item.Parallel, read)
+			if !ok {
+				return refuse()
+			}
+			ends := make([]any, len(item.Parallel))
+			for i, step := range item.Parallel {
+				count(step.Name, calls[i])
+				ends[i] = endOf(calls[i])
+			}
+			if ctx.Err() != nil {
+				return cancelled()
+			}
+			result.Status, result.Class, result.Reason = Completed, "", ""
+			read.outputs[item.Name] = ends
+			continue
+		}
+		params, ok := read.params(item.Bindings)
+		if !ok {
+			return refuse()
+		}
+		called := r.call(ctx, item, params)
+		count(item.Name, called)
+		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
 		if called.Status != Completed {
 			return finish()
 		}
-		read.outputs[step.Name] = called.Output
+		read.outputs[item.Name] = called.Output
 	}
 	result.Output = map[string]any{}
 	for _, output := range w.Outputs {
@@ -264,11 +305,60 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 	return finish()
 }
 
+// parallel calls each of steps at once, its params bound by read, and
+// gives each call's result, in declaration order, once all have ended. It
+// is false, nothing called, when a binding reads what is not there.
+func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Result, bool) {
+	params := make([]map[string]string, len(steps))
+	for i, step := range steps {
+		bound, ok := read.params(step.Bindings)
+		if !ok {
+			return nil, false
+		}
+		params[i] = bound
+	}
+	calls := make([]Result, len(steps))
+	var all sync.WaitGroup
+	for i, step := range steps {
+		all.Add(1)
+		go func() {
+			defer all.Done()
+			calls[i] = r.call(ctx, step, params[i])
+		}()
+	}
+	all.Wait()
+	return calls, true
+}
+
+// call calls step with params, its start, tool calls and end told to the
+// events by its name.
+func (r *Runner) call(ctx context.Context, step Step, params map[string]string) Result {
+	r.events.Started(step.Name, step.Agent)
+	called := r.caller.Call(ctx, step.Name, params, func(tool Tool) { r.events.Tool(step.Name, tool) })
+	r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
+	return called
+}
+
+// endOf is how a step of a parallel ended, as its outputs give it to what
+// reads them: its status, its class, null where none, and its output, null
+// where it did not complete.
+func endOf(called Result) map[string]any {
+	end := map[string]any{"status": string(called.Status), "class": nil, "output": nil}
+	if called.Class != "" {
+		end["class"] = string(called.Class)
+	}
+	if called.Status == Completed {
+		end["output"] = called.Output
+	}
+	return end
+}
+
 // reader reads values from the workflow's boundary and the outputs of its
-// completed steps.
+// completed items: a step's its fields, a parallel's the list of its steps'
+// ends.
 type reader struct {
 	boundary Boundary
-	outputs  map[string]map[string]any
+	outputs  map[string]any
 }
 
 // params is each binding's value, given as text: a value that is not text
@@ -311,7 +401,11 @@ func (r reader) value(value Value) (any, bool) {
 		if !ok || ref.Field == "" {
 			return output, ok
 		}
-		field, ok := output[ref.Field]
+		fields, ok := output.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		field, ok := fields[ref.Field]
 		for _, name := range ref.Path {
 			if !ok {
 				break
