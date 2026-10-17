@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
@@ -260,6 +261,32 @@ describe("every shipped skeleton", () => {
     );
   });
 
+  // The places are checked against the pictures themselves, not the file
+  // the app reads them from: a piece a pixel off in x or y already strays
+  // past the tolerance.
+  it("is rebuilt by its four pieces drawn at their places, each a pixel off showing", async () => {
+    const SHIFTS = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1]
+    ] as const;
+    const measured = await Promise.all(
+      skeletons.map(async ({ id, places }) => {
+        const whole = await alphaOf(fileOf(skeletonPicture(id, "skeleton")));
+        const pieces = await Promise.all(PIECES.map(async (piece) => ({ ...places[piece], ...(await alphaOf(fileOf(skeletonPicture(id, piece)))) })));
+        return {
+          id,
+          rebuilt: unmatched(whole, pieces) <= TOLERANCE,
+          inPlace: pieces.map((piece) => stray(whole, piece) <= TOLERANCE),
+          offByAPixel: pieces.map((piece) => SHIFTS.every(([dx, dy]) => stray(whole, { ...piece, x: piece.x + dx, y: piece.y + dy }) > TOLERANCE))
+        };
+      })
+    );
+
+    expect(measured).toEqual(skeletons.map(({ id }) => ({ id, rebuilt: true, inPlace: PIECES.map(() => true), offByAPixel: PIECES.map(() => true) })));
+  });
+
   it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {
     const { bodyPicture } = shippedApp();
     const sizes = skeletons.map(({ id }) => {
@@ -270,3 +297,58 @@ describe("every shipped skeleton", () => {
     expect(sizes).toEqual(skeletons.map(({ frame }) => frame));
   });
 });
+
+// How much of a picture's alpha may differ from where it belongs, as a
+// share of it, for the edges of pictures cut and encoded apart.
+const TOLERANCE = 0.005;
+
+type Alpha = { alpha: Uint8Array; width: number; height: number };
+
+// A picture's alpha channel, row by row, from 0 to 255.
+async function alphaOf(file: string): Promise<Alpha> {
+  const { data, info } = await sharp(file).extractChannel("alpha").raw().toBuffer({ resolveWithObject: true });
+  return { alpha: data, width: info.width, height: info.height };
+}
+
+// The alpha of `whole` at a point, none outside it.
+const alphaAt = ({ alpha, width, height }: Alpha, x: number, y: number) => (x < 0 || y < 0 || x >= width || y >= height ? 0 : (alpha[y * width + x] ?? 0));
+
+// The share of a piece's alpha, drawn at x and y, that falls where the
+// whole skeleton has none.
+function stray(whole: Alpha, piece: Alpha & { x: number; y: number }) {
+  let outside = 0;
+  let total = 0;
+  for (let row = 0; row < piece.height; row++) {
+    for (let column = 0; column < piece.width; column++) {
+      const own = piece.alpha[row * piece.width + column] ?? 0;
+      total += own;
+      outside += Math.max(0, own - alphaAt(whole, piece.x + column, piece.y + row));
+    }
+  }
+  return outside / total;
+}
+
+// The share of the whole skeleton's alpha that the pieces, each drawn
+// over the others at its place, do not reproduce.
+function unmatched(whole: Alpha, pieces: (Alpha & { x: number; y: number })[]) {
+  const drawn = new Float64Array(whole.width * whole.height);
+  for (const piece of pieces) {
+    for (let row = 0; row < piece.height; row++) {
+      for (let column = 0; column < piece.width; column++) {
+        const [x, y] = [piece.x + column, piece.y + row];
+        if (x < 0 || y < 0 || x >= whole.width || y >= whole.height) continue;
+        const own = (piece.alpha[row * piece.width + column] ?? 0) / 255;
+        const at = y * whole.width + x;
+        drawn[at] = (drawn[at] ?? 0) + own * (1 - (drawn[at] ?? 0));
+      }
+    }
+  }
+  let differing = 0;
+  let total = 0;
+  for (let at = 0; at < drawn.length; at++) {
+    const expected = (whole.alpha[at] ?? 0) / 255;
+    differing += Math.abs((drawn[at] ?? 0) - expected);
+    total += expected;
+  }
+  return differing / total;
+}

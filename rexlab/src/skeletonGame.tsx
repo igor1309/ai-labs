@@ -223,10 +223,13 @@ export function useSkeletonGame(
     });
   }, [puzzle, away, startTimer]);
 
-  // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
+  // BUILD ANOTHER goes back to the choice of dinosaurs, leaving a rebuild
+  // still loading unstarted and its skeleton on its stand; a second tap
   // meanwhile changes nothing more.
-  const buildAnother = () =>
+  const buildAnother = () => {
+    leave();
     changeScreen(SCREEN_CHANGE, () => setScreen((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current)));
+  };
 
   // MUSEUM leaves whatever the child was doing: an unfinished puzzle is
   // dropped, earning nothing, and a puzzle still loading never starts.

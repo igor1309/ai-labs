@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import {
@@ -9,12 +9,16 @@ import {
   fittedPieces,
   hints,
   homeOf,
+  keptSkeletons,
   layOutPuzzle,
   lifted,
   moveTo,
   openPuzzle,
   press,
   release,
+  reveal,
+  revealNow,
+  savedSkeletons,
   skeletonOf,
   slotOf,
   spotOf,
@@ -148,8 +152,8 @@ describe("help after waiting", () => {
     expect(pictures.timers()).toEqual([]);
   });
 
-  it("completes the skeleton after help, many missed drops and help again, with no time, count or failure shown", async () => {
-    const { pictures } = await openPuzzle("TYRANNOSAURUS");
+  it("completes the skeleton after help, many missed drops and help again, with no time, count or failure shown, and rewards it in full", async () => {
+    const { pictures, storage, user } = await openPuzzle("TYRANNOSAURUS", { storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
     const before = document.body.textContent;
     spend(pictures, 10);
     for (let tries = 0; tries < 20; tries++) dragTo("skull", homeOf(TYRANNOSAURUS, "tail"));
@@ -166,5 +170,21 @@ describe("help after waiting", () => {
     // counts no more time.
     expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
     expect(document.body.textContent).toBe(before?.replace("0/4", "4/4"));
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
+
+    revealNow(pictures, "tyrannosaurus");
+
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
+    expect(screen.getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(true);
+    expect([screen.getByLabelText("STARS").textContent, screen.queryByLabelText("BEST SCORE")?.textContent, screen.queryByRole("status")?.getAttribute("aria-label")]).toEqual([
+      "2/3",
+      "BEST12/3",
+      "NEW BEST SCORE"
+    ]);
+
+    await user.click(within(reveal() ?? document.body).getByRole("button", { name: "MUSEUM" }));
+
+    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty"]);
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
   });
 });

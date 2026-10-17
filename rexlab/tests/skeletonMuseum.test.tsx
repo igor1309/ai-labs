@@ -347,6 +347,22 @@ describe("rebuilding", () => {
     expect(stands()[2]).toEqual(REBUILDING("stegosaurus", "STEGOSAURUS"));
     expect([starsChip().textContent, bestScore()]).toEqual(["1/3", undefined]);
   });
+
+  it("starts no rebuild still loading as BUILD ANOTHER goes back to the choice, the skeleton left standing", async () => {
+    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
+    const { user, pictures } = await openMuseum({ storage });
+    await user.click(within(stand("TRICERATOPS")).getByRole("button", { name: "REBUILD" }));
+
+    await user.click(button("BUILD ANOTHER"));
+    act(() => finishLoading(pictures));
+
+    expect(choices().map((choice) => choice.getAttribute("aria-label"))).toEqual(NAMES);
+    expect(screen.queryByRole("group", { name: "BONES" })).toBeNull();
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
+
+    await user.click(button("MUSEUM"));
+    expect(stands()).toEqual([EMPTY("tyrannosaurus", "TYRANNOSAURUS"), BUILT("triceratops", "TRICERATOPS"), EMPTY("stegosaurus", "STEGOSAURUS")]);
+  });
 });
 
 // Where the board, the tray's spots and their pictures are on the iPad's

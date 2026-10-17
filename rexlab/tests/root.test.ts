@@ -84,6 +84,31 @@ describe("the app in a browser", () => {
     expect(appProps(given).sortingProgress.load()).toEqual({ bestScore: 5, roundsPlayed: 2 });
   });
 
+  it("keeps the skeleton game's stars, best and stands awaiting rebuild beside the other games' progress in local storage", () => {
+    const care = { bestScore: 7, visitsFinished: 3, friends: ["triceratops"] };
+    const given = browser({
+      local: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "dinosaur-care": care } }) })
+    });
+    const props = appProps(given);
+
+    props.skeletonProgress.save({ bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] });
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 },
+        "dinosaur-care": care,
+        "skeleton-assembly": { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] }
+      }
+    });
+    const reopened = appProps(given);
+    expect([reopened.skeletonProgress.load(), reopened.progress.load(), reopened.careProgress.load()]).toEqual([
+      { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] },
+      { bestScore: 6, roundsPlayed: 3 },
+      care
+    ]);
+  });
+
   it("lets every dinosaur of the shipped list visit, with its food type", () => {
     const { visitors, dinosaurs } = appProps(browser());
 
