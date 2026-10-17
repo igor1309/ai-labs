@@ -10,6 +10,8 @@
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and
   `scripts/finish-merged-pr.sh` to complete local cleanup.
 - Use a merge commit only; do not squash or rebase-merge.
+- Do not add a `Co-Authored-By` trailer or any other AI attribution to
+  commit messages.
 - Never merge a red or incomplete PR. Stop and report the failure if required
   CI fails.
 - Stop if cleanup reports a dirty worktree, a non-fast-forward update, or any
