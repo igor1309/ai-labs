@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { DIETS } from "../src/catalogue.ts";
 import { LEVELS, TOP_LEVEL } from "../src/pairs/index.ts";
-import { readCatalogue, readDinosaurs, readPals, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
-import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_VISITORS } from "./support.ts";
+import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
+import type { Dinosaur as Sortable, Property } from "../src/sorting/index.ts";
+import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SORTABLES, SHIPPED_VISITORS } from "./support.ts";
 
 const STEGOSAURUS: DinosaurRecord = {
   id: "stegosaurus",
   name: { en: "Stegosaurus", ru: "Стегозавр" },
   attributes: { massKg: 5000, heightMeters: 4 },
   diet: "plants",
+  traits: { legs: 4, size: null, horns: null, feathers: false },
   description: { en: "PLATES ON ITS BACK.", ru: "ПЛАСТИНЫ НА СПИНЕ." },
   lookAlike: "plated-back"
 };
@@ -72,6 +74,48 @@ describe("readCatalogue", () => {
   });
 });
 
+describe("readSortables", () => {
+  const STEGOSAURUS_SORTABLE: Sortable = {
+    id: "stegosaurus",
+    name: { en: "Stegosaurus", ru: "Стегозавр" },
+    legs: 4,
+    diet: "plants",
+    size: null,
+    horns: null,
+    feathers: false
+  };
+
+  it("reads each record's id, names, food type and the facts the sorting game sorts by", () => {
+    expect(readSortables([STEGOSAURUS])).toEqual([STEGOSAURUS_SORTABLE]);
+  });
+
+  // Every value each fact may take, null where the sources give no clear
+  // answer, and each food type, "both" among them.
+  it.each([
+    ...(["meat", "plants", "both"] as const).map((diet) => ["diet", { diet }, { diet }] as const),
+    ...([2, 4, null] as const).map((legs) => ["legs", { traits: { ...STEGOSAURUS.traits, legs } }, { legs }] as const),
+    ...(["big", "small", null] as const).map((size) => ["size", { traits: { ...STEGOSAURUS.traits, size } }, { size }] as const),
+    ...([true, false, null] as const).map((horns) => ["horns", { traits: { ...STEGOSAURUS.traits, horns } }, { horns }] as const),
+    ...([true, false, null] as const).map((feathers) => ["feathers", { traits: { ...STEGOSAURUS.traits, feathers } }, { feathers }] as const)
+  ])("reads %s as the record gives it: %j", (_, change, read) => {
+    expect(readSortables([{ ...STEGOSAURUS, ...change }])).toEqual([{ ...STEGOSAURUS_SORTABLE, ...read }]);
+  });
+
+  it.each([
+    ["food type", { diet: "fish" }, "fish"],
+    ["number of legs", { traits: { ...STEGOSAURUS.traits, legs: 3 } }, 3],
+    ["number of legs", { traits: { ...STEGOSAURUS.traits, legs: undefined } }, undefined],
+    ["size", { traits: { ...STEGOSAURUS.traits, size: "huge" } }, "huge"],
+    ["horns", { traits: { ...STEGOSAURUS.traits, horns: "yes" } }, "yes"],
+    ["feathers", { traits: { ...STEGOSAURUS.traits, feathers: 0 } }, 0],
+    ["number of legs", { traits: undefined }, undefined]
+  ])("fails on a record with no known %s: %j", (fact, change, value) => {
+    const record = { ...STEGOSAURUS, ...change } as DinosaurRecord;
+
+    expect(() => readSortables([record])).toThrow(`stegosaurus has no known ${fact}: ${JSON.stringify(value)}`);
+  });
+});
+
 describe("readPals", () => {
   it("reads each record's id, names and look-alike group", () => {
     expect(readPals([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, lookAlike: "plated-back" }]);
@@ -85,6 +129,39 @@ describe("readPals", () => {
 });
 
 describe("the shipped dinosaur list", () => {
+  // Each property the sorting game sorts by, with each basket's dinosaurs
+  // by their facts.
+  const BASKETS: Record<Property, [Sortable[], Sortable[]]> = {
+    legs: [SHIPPED_SORTABLES.filter(({ legs }) => legs === 2), SHIPPED_SORTABLES.filter(({ legs }) => legs === 4)],
+    diet: [SHIPPED_SORTABLES.filter(({ diet }) => diet === "plants"), SHIPPED_SORTABLES.filter(({ diet }) => diet === "meat")],
+    size: [SHIPPED_SORTABLES.filter(({ size }) => size === "big"), SHIPPED_SORTABLES.filter(({ size }) => size === "small")],
+    horns: [SHIPPED_SORTABLES.filter(({ horns }) => horns === true), SHIPPED_SORTABLES.filter(({ horns }) => horns === false)],
+    feathers: [SHIPPED_SORTABLES.filter(({ feathers }) => feathers === true), SHIPPED_SORTABLES.filter(({ feathers }) => feathers === false)]
+  };
+
+  it.each(Object.entries(BASKETS))("fills a board sorting by %s: six dinosaurs with a clear value, at least two for each basket", (_, [first, second]) => {
+    expect(first.length + second.length).toBeGreaterThanOrEqual(6);
+    expect(first.length).toBeGreaterThanOrEqual(2);
+    expect(second.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // A child who sees a dinosaur's mass in the catalogue sorts by it, so a
+  // BIG one is heavy and a SMALL one light, with no close calls between.
+  it("calls BIG only a dinosaur of 3000 kg or more, and SMALL only one of 500 kg or less", () => {
+    const mass = (id: string) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)?.measures.mass;
+    const [big, small] = BASKETS.size;
+
+    expect(big.filter(({ id }) => !((mass(id) ?? 0) >= 3000)).map(({ id }) => [id, mass(id)])).toEqual([]);
+    expect(small.filter(({ id }) => !((mass(id) ?? Infinity) <= 500)).map(({ id }) => [id, mass(id)])).toEqual([]);
+  });
+
+  // The sorting game sorts each dinosaur by its own record's facts.
+  it("gives every sortable the food type and traits of its own record", () => {
+    expect(SHIPPED_SORTABLES).toEqual(
+      records.map(({ id, name, diet, traits }) => ({ id, name, diet, legs: traits.legs, size: traits.size, horns: traits.horns, feathers: traits.feathers }))
+    );
+  });
+
   it("gives every dinosaur a food type of meat, plants or both", () => {
     expect(records.filter(({ diet }) => !DIETS.includes(diet as never)).map(({ id }) => id)).toEqual([]);
     expect(SHIPPED_CATALOGUE.map(({ id }) => id)).toEqual(SHIPPED_DINOSAURS.map(({ id }) => id));

@@ -3,12 +3,13 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import { dealBoard, type Board, type Level, type Pal, type PairsProgress, type Random } from "../src/pairs/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   SHIPPED_PALS,
+  SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
   fakeBodyPicture,
   fakeItemPicture,
@@ -65,6 +66,8 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       itemPicture={fakeItemPicture}
       pals={pals}
       pairsProgress={localPairsProgress(() => storage)}
+      sortables={SHIPPED_SORTABLES}
+      sortingProgress={localSortingProgress(() => storage)}
       reducedMotion={() => reducedMotion}
       {...clock}
     />

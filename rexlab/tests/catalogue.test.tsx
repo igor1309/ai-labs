@@ -17,6 +17,7 @@ import {
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySorting,
   fakeBodyPicture,
   loadedPictures,
   manualAppearance,
@@ -50,7 +51,9 @@ function openApp({
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
-      {...emptyCare()} {...emptyPairs()}
+      {...emptyCare()}
+      {...emptySorting()}
+      {...emptyPairs()}
     />
   );
   return userEvent.setup();

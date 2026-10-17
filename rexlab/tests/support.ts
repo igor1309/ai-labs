@@ -1,8 +1,8 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readPals, readVisitors } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -10,11 +10,13 @@ import { presentQuestion } from "../src/presentation.ts";
 import { choose, questionState, type Random } from "../src/quiz/index.ts";
 import { startPlay } from "../src/quiz/play.ts";
 import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
+export const SHIPPED_SORTABLES = readSortables(records);
 export const SHIPPED_PALS = readPals(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
@@ -138,6 +140,30 @@ export function seededRandom(seed: number): Random {
   };
 }
 
+// A best-score rule that answers `beaten` whatever it is asked, and keeps
+// what it was asked, so a game's scoring is proved apart from the rule.
+export function scoringSpy<Beaten>(beaten: Beaten) {
+  const asked: Array<[previous: number | null, score: number]> = [];
+  return {
+    beatBest: (previous: number | null, score: number) => {
+      asked.push([previous, score]);
+      return beaten;
+    },
+    asked
+  };
+}
+
+// A new board sorting by `property`. A board sorts by any property, so
+// boards are started until one does.
+export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1): Sorting {
+  const random = seededRandom(seed);
+  for (let tries = 0; tries < 100; tries++) {
+    const sorting = startBoard(dinosaurs, random);
+    if (boardState(sorting).property === property) return sorting;
+  }
+  throw new Error(`No board sorted by ${property}`);
+}
+
 export type ManualOrientation = Orientation & { turn(to: "portrait" | "landscape"): void };
 
 // The iPad's orientation, turned only when the test turns it.
@@ -211,6 +237,13 @@ export function emptyProgress() {
 export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemPicture" | "reducedMotion"> {
   const storage = memoryStorage();
   return { visitors: SHIPPED_VISITORS, careProgress: localCareProgress(() => storage), itemPicture: fakeItemPicture, reducedMotion: () => false };
+}
+
+// The sorting game for tests that are not about it: every shipped
+// dinosaur may be sorted, no sorting progress kept yet, and saving works.
+export function emptySorting(): Pick<AppProps, "sortables" | "sortingProgress"> {
+  const storage = memoryStorage();
+  return { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage) };
 }
 
 // Find the pair for tests that are not about it: every shipped dinosaur

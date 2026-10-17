@@ -1,7 +1,8 @@
 # Trusted science sources
 
-Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass and, when
-they exist, descriptions) are checked against these sources only.
+Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass, diet,
+the sorting game's traits and, when they exist, descriptions) are checked
+against these sources only.
 
 1. Natural History Museum, London: Dino Directory,
    https://www.nhm.ac.uk/discover/dino-directory.html
@@ -21,6 +22,34 @@ they exist, descriptions) are checked against these sources only.
   support, and note the disagreement in the change.
 - Russian names follow the spelling used in Russian scientific and
   popular-science writing.
+- Diet is the one the Dino Directory's fact box lists, as the catalogue
+  shows it; every diet is inferred from teeth and jaws, so a hedge in
+  the text does not make it unclear. A dinosaur listed as an omnivore is
+  `both` (Gallimimus and Oviraptor), and the sorting game leaves it out
+  of diet boards.
+- Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `horns`
+  and `feathers` (true or false) and `size` (`big` or `small`). A trait
+  is `null`, and the dinosaur is left out of that sort, when the sources
+  leave it unclear (Iguanodon, Plateosaurus and the duck-billed
+  dinosaurs walked on two legs or four; feathers are unknown for
+  Tyrannosaurus and most large theropods) or when the dinosaur's picture
+  could mislead a child (Allosaurus's small brow horns are hard to see
+  in its picture; Pachycephalosaurus's knobs, Kentrosaurus's shoulder
+  spikes, the tail spikes of both stegosaurs and Amargasaurus's neck
+  spines are not horns, nor are the crests of Parasaurolophus,
+  Corythosaurus and Dilophosaurus). Feathered means feathered in the
+  picture too, as `art/style.md` lists. Feathers are `false` for the
+  plant-eaters drawn without them, Psittacosaurus, with its tail
+  bristles, and Heterodontosaurus, whose close relatives had bristles,
+  aside, and for the meat-eaters whose skin impressions show scales
+  (Allosaurus and Carnotaurus); for the other meat-eaters and the
+  omnivores drawn without feathers they are `null`.
+- Size is `big` only for a dinosaur of 3000 kg or more and `small` only
+  for one of 500 kg or less, and only when no source's estimate crosses
+  that line; it is `null` in between and when the estimates cross a line
+  or are guesswork (Stegosaurus, at 2720 kg by AMNH; Maiasaura, at 2500
+  kg by NHM and 3–4 short tons by UCMP; Therizinosaurus, known only from
+  a few bones).
 - Where no source gives a height, it is worked out from the length a
   source gives, in the proportions of a relative already in the list, and
   the reference says so.

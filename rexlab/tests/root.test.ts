@@ -61,6 +61,19 @@ describe("the app in a browser", () => {
     expect(appProps(given).careProgress.load()).toEqual({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
   });
 
+  it("keeps the sorting game's progress beside the quiz's in local storage", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const props = appProps(given);
+
+    props.sortingProgress.save({ bestScore: 5, roundsPlayed: 2 });
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 } }
+    });
+    expect(appProps(given).sortingProgress.load()).toEqual({ bestScore: 5, roundsPlayed: 2 });
+  });
+
   it("lets every dinosaur of the shipped list visit, with its food type", () => {
     const { visitors, dinosaurs } = appProps(browser());
 

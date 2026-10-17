@@ -10,8 +10,8 @@ Feature: Find the pair: starting a board
   Scenario: The home page offers the game
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
-    And it takes the place of the "MORE COMING" card in the third column
-    And its title sits under its symbol, on two lines at most
+    And it is in the third column, under the "SORT" card and as tall
+    And its title sits beside its symbol, on two lines at most
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen

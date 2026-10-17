@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
@@ -25,6 +26,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
@@ -55,7 +57,8 @@ export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 
 export type AppProps = CareGameProps &
-  PairsGameProps & {
+  PairsGameProps &
+  Pick<SortingGameProps, "sortables" | "sortingProgress"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -82,6 +85,9 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on dinosaur care's tile.
 const CARE_TILE = "parasaurolophus";
 
+// The dinosaur on the sorting game's card.
+const SORT_TILE = "triceratops";
+
 // The dinosaur on find the pair's tile.
 const PAIRS_TILE = "stegosaurus";
 
@@ -105,6 +111,8 @@ type Screen =
   | { kind: "dinosaur"; index: number }
   // Dinosaur care, which keeps its own screens.
   | { kind: "care" }
+  // The sorting game, which keeps its own screens.
+  | { kind: "sorting" }
   // Find the pair, which keeps its own screens too.
   | { kind: "pairs" };
 
@@ -121,6 +129,8 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  sortables,
+  sortingProgress,
   pals,
   pairsProgress,
   ...careProps
@@ -173,6 +183,7 @@ export function App({
   const starting = useRef(false);
 
   const playNewRound = () => {
+    leaveHome();
     if (starting.current) return;
     starting.current = true;
     const started = startRound(dinosaurs, random, lastPlay);
@@ -192,19 +203,32 @@ export function App({
 
   const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
 
-  const openCare = () =>
+  const openCare = () => {
+    leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       care.open();
       setScreen({ kind: "care" });
     });
+  };
+
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
+
+  const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
+
+  // A board SORT started, still waiting for its pictures, is dropped as
+  // the child goes anywhere else, so it never opens over the screen they
+  // chose.
+  const leaveHome = () => sorting.cancel();
 
   const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
 
-  const openPairs = () =>
+  const openPairs = () => {
+    leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       pairs.open();
       setScreen({ kind: "pairs" });
     });
+  };
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -219,14 +243,17 @@ export function App({
   // A round is recorded only here, when its result is shown, so a round
   // left early changes nothing.
   const seeResult = (finished: Play) => {
-    const result = finishPlay(finished, progress.load());
+    const result = finishPlay(finished, progress.load(), beatBest);
     if (result.progress) {
       progress.save(result.progress);
     }
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
-  const openCatalogue = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  const openCatalogue = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  };
 
   const pictureOf = (index: number) => bodyPicture(catalogue[index]?.id ?? "");
 
@@ -309,6 +336,8 @@ export function App({
       }
       case "care":
         return care.content(language);
+      case "sorting":
+        return sorting.content(language);
       case "pairs":
         return pairs.content(language);
       case "home":
@@ -323,9 +352,11 @@ export function App({
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}
+            onSort={openSorting}
             onPairs={openPairs}
           />
         );

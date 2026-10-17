@@ -2,10 +2,10 @@ import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { bodyPictures } from "./dinosaurPictures.ts";
-import { readCatalogue, readDinosaurs, readPals, readVisitors } from "./dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors } from "./dinosaurs.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress } from "./localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -52,6 +52,8 @@ export function appProps(browser: Browser): AppProps {
     themeStore: localTheme(storage),
     visitors: readVisitors(records),
     careProgress: localCareProgress(storage),
+    sortables: readSortables(records),
+    sortingProgress: localSortingProgress(storage),
     pals: readPals(records),
     pairsProgress: localPairsProgress(storage),
     itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),

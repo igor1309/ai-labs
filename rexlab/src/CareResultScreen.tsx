@@ -1,12 +1,10 @@
-import { ArrowRight, Footprints, Heart, HeartHandshake, House, Star, Trophy, type LucideIcon } from "lucide-react";
-import type { CSSProperties } from "react";
+import { Footprints, Heart, HeartHandshake, House } from "lucide-react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
-import { TEXTS, type Texts } from "./language/texts.ts";
+import { TEXTS } from "./language/texts.ts";
+import { BestScore, CelebrationChip, motion, ScoreCount, type Celebration } from "./ResultParts.tsx";
 
-export type CareCelebration = keyof Texts["celebrations"];
-
-const CELEBRATION_SYMBOLS: Record<CareCelebration, LucideIcon> = { "first-best": Star, "new-best": Trophy };
+export type CareCelebration = Celebration;
 
 export type CareResultScreenProps = {
   language: Language;
@@ -27,31 +25,16 @@ export type CareResultScreenProps = {
   onHome: () => void;
 };
 
-// Custom properties the stylesheet animates by: the score the count-up
-// ends on, and the place of a heart in its stagger.
-const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
-
 export function CareResultScreen({ language, visitor, score, total, best, beaten, celebration, newFriend, onNewVisitor, onFriends, onHome }: CareResultScreenProps) {
   const text = TEXTS[language];
-  const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
   return (
     <main className="result care-result">
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
       <img className="result-hero care-result-hero" src={visitor.picture} alt="" draggable={false} />
       <div className="result-content">
-        {celebration && CelebrationSymbol && (
-          <p className="celebration" role="status" aria-label={text.celebrations[celebration].label}>
-            <CelebrationSymbol size={30} aria-hidden="true" />
-            <span className="celebration-text">{text.celebrations[celebration].text}</span>
-          </p>
-        )}
-        <p className="result-score" aria-label={text.score}>
-          <span className="result-score-value" style={motion({ "--score": score })}>
-            <span className="result-score-digits">{score}</span>
-          </span>
-          <span className="result-score-total">/{total}</span>
-        </p>
+        {celebration && <CelebrationChip language={language} celebration={celebration} />}
+        <ScoreCount language={language} score={score} total={total} />
         {/* A child who cannot read the numbers yet counts the hearts. */}
         <p className="result-hearts" role="img" aria-label={text.heartsOf(score, total)}>
           {Array.from({ length: total }, (_, index) => (
@@ -66,20 +49,7 @@ export function CareResultScreen({ language, visitor, score, total, best, beaten
             <Heart size={22} fill="currentColor" aria-hidden="true" />
             {visitor.name.toLocaleUpperCase(language)}
           </p>
-          {best !== undefined && (
-            <p className="best-score" aria-label={text.bestScore}>
-              {text.best}
-              {beaten !== undefined && (
-                <>
-                  <span className="best-score-beaten">{beaten}</span>
-                  <ArrowRight size={20} aria-hidden="true" />
-                </>
-              )}
-              <span className="best-score-value">
-                {best}/{total}
-              </span>
-            </p>
-          )}
+          {best !== undefined && <BestScore language={language} best={best} beaten={beaten} total={total} />}
         </div>
         <nav className="result-actions">
           <button type="button" className="play-again-button" onClick={onNewVisitor}>

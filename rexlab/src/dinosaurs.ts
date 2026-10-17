@@ -2,6 +2,7 @@ import type { Visitor } from "./care/index.ts";
 import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
+import type { Dinosaur as Sortable } from "./sorting/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
 export type DinosaurRecord = {
@@ -10,6 +11,9 @@ export type DinosaurRecord = {
   attributes: { massKg: number; heightMeters: number };
   // "meat", "plants" or "both"; read as any string, as the JSON gives it.
   diet: string;
+  // Each null where the sources give no clear answer; read as the JSON
+  // gives them.
+  traits: { legs: number | null; size: string | null; horns: boolean | null; feathers: boolean | null };
   description: { en: string; ru: string };
   // The group of dinosaurs whose silhouettes look alike, such as
   // "duck-bill"; read as any value, as the JSON gives it.
@@ -59,6 +63,29 @@ export function readCatalogue(records: readonly DinosaurRecord[]): CatalogueEntr
     };
   });
 }
+
+const LEGS = [2, 4, null] as const;
+const SIZES = ["big", "small", null] as const;
+
+// The sorting game needs the facts it sorts by. A record whose fact is
+// none the game knows fails here, when the app is put together, rather
+// than as a card no basket takes.
+export function readSortables(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "diet" | "traits">>): Sortable[] {
+  return records.map(({ id, name, diet, traits }) => {
+    const fail = (fact: string, value: unknown) => new Error(`${id} has no known ${fact}: ${JSON.stringify(value)}`);
+    if (!isDiet(diet)) throw fail("food type", diet);
+    const { legs, size, horns, feathers } = traits ?? {};
+    const knownLegs = LEGS.find((each) => each === legs);
+    if (knownLegs === undefined) throw fail("number of legs", legs);
+    const knownSize = SIZES.find((each) => each === size);
+    if (knownSize === undefined) throw fail("size", size);
+    if (!isFact(horns)) throw fail("horns", horns);
+    if (!isFact(feathers)) throw fail("feathers", feathers);
+    return { id, name: { en: name.en, ru: name.ru }, legs: knownLegs, diet, size: knownSize, horns, feathers };
+  });
+}
+
+const isFact = (value: unknown): value is boolean | null => value === null || typeof value === "boolean";
 
 // Find the pair needs who is dealt and whose silhouettes look alike. A
 // record with no look-alike group fails here, when the app is put
