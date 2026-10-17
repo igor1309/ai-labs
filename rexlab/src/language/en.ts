@@ -82,5 +82,7 @@ export const en: Texts = {
   skeleton: "SKELETON",
   bones: "BONES",
   pieces: { skull: "SKULL", spine: "SPINE", legs: "LEGS", tail: "TAIL" },
-  fitted: "BONES IN PLACE"
+  fitted: "BONES IN PLACE",
+  star: "STAR",
+  buildAnother: "BUILD ANOTHER"
 };

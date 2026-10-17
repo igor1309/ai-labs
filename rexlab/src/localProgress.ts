@@ -1,6 +1,7 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
+import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
@@ -47,6 +48,16 @@ export function localPairsProgress(storage: () => KeyValueStorage) {
     Array.isArray(found) &&
     found.every((id) => typeof id === "string")
       ? { stars, level, boardsOnLevel, best: { ...best }, found: [...found] }
+      : undefined
+  );
+}
+
+// The skeleton game's progress, beside the others in the same record: the
+// best collection score and the dinosaurs whose skeleton earned a star.
+export function localSkeletonProgress(storage: () => KeyValueStorage) {
+  return gameProgress<SkeletonProgress>(storage, "skeleton-assembly", NO_SKELETONS, ({ bestScore, earned }) =>
+    (bestScore === null || isCount(bestScore)) && Array.isArray(earned) && earned.every((id) => typeof id === "string")
+      ? { bestScore, earned: [...earned] }
       : undefined
   );
 }

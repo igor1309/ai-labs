@@ -12,9 +12,20 @@ import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps 
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
+import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
 import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
-import { help, isComplete, PIECES, type Piece, type Puzzle, type Skeleton } from "./skeletons/index.ts";
+import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
+import {
+  help,
+  isComplete,
+  PIECES,
+  type Celebration as SkeletonCelebration,
+  type Piece,
+  type Puzzle,
+  type Skeleton,
+  type SkeletonResult
+} from "./skeletons/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
@@ -234,9 +245,15 @@ export function presentPairsResult(result: PairsResult, language: Language, body
 }
 
 // Each dinosaur to build is shown by its body picture, which its skeleton
-// is traced from.
-export function presentSkeletonChoices(skeletons: readonly Skeleton[], language: Language, bodyPicture: (dinosaurId: string) => string): SkeletonChoiceView[] {
-  return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id) }));
+// is traced from, with its star once its skeleton is finished. `earned` is
+// the ids of the dinosaurs with a star.
+export function presentSkeletonChoices(
+  skeletons: readonly Skeleton[],
+  language: Language,
+  bodyPicture: (dinosaurId: string) => string,
+  earned: readonly string[]
+): SkeletonChoiceView[] {
+  return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
 const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
@@ -277,5 +294,37 @@ export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPictur
     }),
     hint: helped && SHOWN_PIECES[helped],
     complete: isComplete(puzzle)
+  };
+}
+
+const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebration> = { "first-best": "first-best", "new-best": "new-best" };
+
+export type SkeletonResultView = Pick<
+  SkeletonResultScreenProps,
+  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar"
+>;
+
+// A finished skeleton is revealed as its dinosaur, its body picture over
+// the whole skeleton in the frame they share.
+export function presentSkeletonResult(
+  { skeleton, score, total, best, previousBest, celebration, newStar }: SkeletonResult,
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  bodyPicture: (dinosaurId: string) => string
+): SkeletonResultView {
+  const { id, name, fact, frame } = skeleton;
+  return {
+    name: name[language],
+    fact: fact[language],
+    skeleton: skeletonPicture(id, "skeleton"),
+    body: bodyPicture(id),
+    frame,
+    score,
+    total,
+    best,
+    // Only a new best shows the best it beat: a first best beat none.
+    beaten: celebration === "new-best" ? previousBest : undefined,
+    celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
+    newStar
   };
 }

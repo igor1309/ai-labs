@@ -4,8 +4,8 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
 // The bar over every skeleton screen: HOME, the screen's title beside a
-// bone, and MUSEUM, with anything else the screen shows in the bar after
-// them.
+// bone, and MUSEUM where the screen has no MUSEUM of its own, with
+// anything else the screen shows in the bar after them.
 export function SkeletonBar({
   language,
   title,
@@ -15,7 +15,7 @@ export function SkeletonBar({
 }: {
   language: Language;
   title: string;
-  onMuseum: () => void;
+  onMuseum?: () => void;
   onHome: () => void;
   children?: ReactNode;
 }) {
@@ -32,10 +32,12 @@ export function SkeletonBar({
         </span>
         {title}
       </h1>
-      <button type="button" className="home-button museum-button" onClick={onMuseum}>
-        <Landmark size={24} aria-hidden="true" />
-        {text.museum}
-      </button>
+      {onMuseum && (
+        <button type="button" className="home-button museum-button" onClick={onMuseum}>
+          <Landmark size={24} aria-hidden="true" />
+          {text.museum}
+        </button>
+      )}
       {children}
     </header>
   );

@@ -8,6 +8,7 @@ const place = (x: number, y: number, width: number, height: number) => ({ x, y, 
 const SKELETON: Skeleton = {
   id: "triceratops",
   name: { en: "Triceratops", ru: "Трицератопс" },
+  fact: { en: "TRICERATOPS HAD THREE HORNS.", ru: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА." },
   frame: { width: 400, height: 400 },
   places: { skull: place(0, 0, 100, 80), spine: place(80, 10, 300, 200), legs: place(90, 150, 300, 250), tail: place(380, 120, 20, 60) }
 };

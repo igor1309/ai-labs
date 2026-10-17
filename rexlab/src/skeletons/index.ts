@@ -3,3 +3,5 @@
 // file.
 export type { Piece, Place, Point, Puzzle, Skeleton } from "./puzzle.ts";
 export { awaitsHelp, drop, help, HELP_AFTER, isComplete, PIECES, startPuzzle, wait } from "./puzzle.ts";
+export type { BeatBest, Celebration, KeptSkeletons, SkeletonProgress, SkeletonResult } from "./collection.ts";
+export { finishSkeleton, NO_SKELETONS } from "./collection.ts";

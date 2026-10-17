@@ -93,7 +93,7 @@ Store progress under versioned browser-local keys, for example (`achievements` a
 }
 ```
 
-Each game keeps its own entry under `games`, and saving one leaves the others as they are: the compare quiz `compare-dinosaurs`, the sorting game `sort-dinosaurs`, both with `bestScore` and `roundsPlayed`, and dinosaur care `dinosaur-care`, with `bestScore`, `visitsFinished` and `friends`. Every game scores a finished round by the one rule below (`src/bestScore.ts`).
+Each game keeps its own entry under `games`, and saving one leaves the others as they are: the compare quiz `compare-dinosaurs`, the sorting game `sort-dinosaurs`, both with `bestScore` and `roundsPlayed`, dinosaur care `dinosaur-care`, with `bestScore`, `visitsFinished` and `friends`, and the skeleton game `skeleton-assembly`, with `bestScore` and `earned`, the ids of the dinosaurs whose skeleton has earned its star. Every game scores a finished round by the one rule below (`src/bestScore.ts`).
 
 `bestScore` is `null` until a round is finished. On round completion:
 

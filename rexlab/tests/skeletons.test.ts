@@ -5,9 +5,9 @@ import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import { skeletonPictures } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
-import { presentPuzzle, presentSkeletonChoices } from "../src/presentation.ts";
+import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
-import { HELP_AFTER, PIECES, startPuzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { HELP_AFTER, PIECES, startPuzzle, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
 import { SHIPPED_SKELETONS, browserDocument, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -21,15 +21,22 @@ const place = (x: number, y: number, width: number, height: number) => ({ x, y, 
 
 const PLACES = { skull: place(0, 0, 100, 80), spine: place(80, 10, 300, 200), legs: place(90, 150, 300, 250), tail: place(380, 120, 20, 60) };
 
+const FACT = { en: "TRICERATOPS HAD THREE HORNS.", ru: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА." };
+
+const ENTRY = { fact: FACT, ...PLACES };
+
 const file = (dinosaurs: SkeletonsFile["dinosaurs"]): SkeletonsFile => ({ frame: { width: 400, height: 400 }, dinosaurs });
 
 describe("readSkeletons", () => {
-  it("names each skeleton as its dinosaur is named, in the file's order, with its frame and pieces' places", () => {
-    expect(readSkeletons(NAMES, file({ triceratops: PLACES, tyrannosaurus: { ...PLACES, tail: place(0, 300, 400, 100) } }))).toEqual([
-      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, frame: { width: 400, height: 400 }, places: PLACES },
+  it("names each skeleton as its dinosaur is named, in the file's order, with its fact, frame and pieces' places", () => {
+    const tyrannosaurus = { en: "T. REX HAD TINY ARMS.", ru: "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ." };
+
+    expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { ...ENTRY, fact: tyrannosaurus, tail: place(0, 300, 400, 100) } }))).toEqual([
+      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, frame: { width: 400, height: 400 }, places: PLACES },
       {
         id: "tyrannosaurus",
         name: { en: "Tyrannosaurus", ru: "Тираннозавр" },
+        fact: tyrannosaurus,
         frame: { width: 400, height: 400 },
         places: { ...PLACES, tail: place(0, 300, 400, 100) }
       }
@@ -37,7 +44,17 @@ describe("readSkeletons", () => {
   });
 
   it("fails when it is made on a skeleton of no dinosaur in the list", () => {
-    expect(() => readSkeletons(NAMES, file({ stegosaurus: PLACES }))).toThrow("The skeleton stegosaurus is of no dinosaur in the list");
+    expect(() => readSkeletons(NAMES, file({ stegosaurus: ENTRY }))).toThrow("The skeleton stegosaurus is of no dinosaur in the list");
+  });
+
+  it.each<[string, unknown]>([
+    ["missing", undefined],
+    ["in one language only", { en: FACT.en }],
+    ["empty in a language", { ...FACT, ru: " " }],
+    ["not words in a language", { ...FACT, en: 3 }],
+    ["not a fact in each language", FACT.en]
+  ])("fails when it is made on a fact %s", (_, fact) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: { ...ENTRY, fact } }))).toThrow(`triceratops has no fact in every language: ${JSON.stringify(fact)}`);
   });
 
   it.each<[string, unknown, string]>([
@@ -49,7 +66,7 @@ describe("readSkeletons", () => {
     ["past its bottom edge", place(10, 351, 50, 50), "triceratops has no legs in its 400×400 frame"],
     ["of a size in words", { x: 0, y: 0, width: "wide", height: 50 }, "triceratops has no legs in its 400×400 frame"]
   ])("fails when it is made on a piece %s", (_, legs, message) => {
-    expect(() => readSkeletons(NAMES, file({ triceratops: { ...PLACES, legs } }))).toThrow(message);
+    expect(() => readSkeletons(NAMES, file({ triceratops: { ...ENTRY, legs } }))).toThrow(message);
   });
 
   it("reads every shipped skeleton, Tyrannosaurus, Triceratops and Stegosaurus, each with all four pieces in its frame", () => {
@@ -61,6 +78,18 @@ describe("readSkeletons", () => {
       ["stegosaurus", "Stegosaurus"]
     ]);
     expect(shipped.map(({ frame, places }) => [frame, Object.keys(places)])).toEqual(shipped.map(() => [{ width: 800, height: 600 }, [...PIECES]]));
+  });
+
+  // skeleton-assembly-fact.feature
+  it("gives each shipped skeleton its one short fact, in capitals in both languages", () => {
+    const shipped = readSkeletons(records, skeletonPlaces);
+
+    expect(shipped.map(({ fact }) => fact.en)).toEqual([
+      "T. REX HAD TINY ARMS BUT HUGE LEGS.",
+      "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
+      "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK."
+    ]);
+    expect(shipped.flatMap(({ fact }) => [fact.en, fact.ru]).filter((each) => each !== each.toLocaleUpperCase() || !each.endsWith("."))).toEqual([]);
   });
 });
 
@@ -101,12 +130,49 @@ const skeletonOf = (id: string): Skeleton => {
 };
 
 describe("presenting the skeleton game", () => {
-  it("shows each dinosaur to build by its body picture and name in the language, in the given order", () => {
-    expect(presentSkeletonChoices(SHIPPED_SKELETONS, "ru", fakeBodyPicture)).toEqual([
-      { id: "tyrannosaurus", name: "Тираннозавр", picture: fakeBodyPicture("tyrannosaurus") },
-      { id: "triceratops", name: "Трицератопс", picture: fakeBodyPicture("triceratops") },
-      { id: "stegosaurus", name: "Стегозавр", picture: fakeBodyPicture("stegosaurus") }
+  it("shows each dinosaur to build by its body picture and name in the language, in the given order, starred once earned", () => {
+    expect(presentSkeletonChoices(SHIPPED_SKELETONS, "ru", fakeBodyPicture, ["allosaurus", "stegosaurus"])).toEqual([
+      { id: "tyrannosaurus", name: "Тираннозавр", picture: fakeBodyPicture("tyrannosaurus"), earned: false },
+      { id: "triceratops", name: "Трицератопс", picture: fakeBodyPicture("triceratops"), earned: false },
+      { id: "stegosaurus", name: "Стегозавр", picture: fakeBodyPicture("stegosaurus"), earned: true }
     ]);
+  });
+
+  const result = (overrides: Partial<SkeletonResult> = {}): SkeletonResult => ({
+    skeleton: skeletonOf("triceratops"),
+    score: 2,
+    total: 3,
+    best: 2,
+    previousBest: 1,
+    celebration: "new-best",
+    newStar: true,
+    ...overrides
+  });
+
+  it("reveals a finished skeleton as its dinosaur's body over the whole skeleton in their frame, with its name, fact and collection", () => {
+    expect(presentSkeletonResult(result(), "ru", fakeSkeletonPicture, fakeBodyPicture)).toEqual({
+      name: "Трицератопс",
+      fact: skeletonOf("triceratops").fact.ru,
+      skeleton: fakeSkeletonPicture("triceratops", "skeleton"),
+      body: fakeBodyPicture("triceratops"),
+      frame: { width: 800, height: 600 },
+      score: 2,
+      total: 3,
+      best: 2,
+      beaten: 1,
+      celebration: "new-best",
+      newStar: true
+    });
+  });
+
+  it.each<[string, Partial<SkeletonResult>, unknown]>([
+    ["a first best, which beat none", { score: 1, best: 1, previousBest: undefined, celebration: "first-best" }, { best: 1, beaten: undefined, celebration: "first-best" }],
+    ["a rebuild, which beats nothing", { previousBest: 2, celebration: null, newStar: false }, { best: 2, beaten: undefined, celebration: null }],
+    ["progress that cannot be read", { best: undefined, previousBest: undefined, celebration: null }, { best: undefined, beaten: undefined, celebration: null }]
+  ])("shows the best it beat only for a new best: %s", (_, overrides, shown) => {
+    const { best, beaten, celebration } = presentSkeletonResult(result(overrides), "en", fakeSkeletonPicture, fakeBodyPicture);
+
+    expect({ best, beaten, celebration }).toEqual(shown);
   });
 
   it("shows a new puzzle as its outline and four empty slots, each placed as a fraction of the frame", () => {
@@ -192,5 +258,15 @@ describe("every shipped skeleton", () => {
         ...PIECES.map((piece) => ({ width: places[piece].width, height: places[piece].height, alpha: true }))
       ])
     );
+  });
+
+  it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {
+    const { bodyPicture } = shippedApp();
+    const sizes = skeletons.map(({ id }) => {
+      const { width, height } = readWebp(readFileSync(fileOf(bodyPicture(id))));
+      return { width, height };
+    });
+
+    expect(sizes).toEqual(skeletons.map(({ frame }) => frame));
   });
 });

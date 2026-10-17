@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
 import { NO_PAIRS } from "../src/pairs/index.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { NO_PROGRESS } from "../src/quiz/progress.ts";
+import { NO_SKELETONS } from "../src/skeletons/index.ts";
 import { NO_SORTING } from "../src/sorting/index.ts";
 import { memoryStorage } from "./support.ts";
 
@@ -340,5 +341,71 @@ describe("localPairsProgress", () => {
 
     expect(progress.load()).toBeUndefined();
     expect(() => progress.save(PAIRS)).not.toThrow();
+  });
+});
+
+const skeletons = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "skeleton-assembly": entry } });
+
+const SKELETONS = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2 };
+
+describe("localSkeletonProgress", () => {
+  it("reads no skeleton progress from empty storage", () => {
+    const storage = memoryStorage();
+
+    expect(localSkeletonProgress(() => storage).load()).toEqual(NO_SKELETONS);
+  });
+
+  it.each([
+    [SKELETONS, SKELETONS],
+    [{ earned: [], bestScore: null }, NO_SKELETONS],
+    [{ ...SKELETONS, achievements: ["first-skeleton"] }, SKELETONS]
+  ])("reads the best collection score and the dinosaurs with a star from %j", (entry, progress) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: skeletons(entry) });
+
+    expect(localSkeletonProgress(() => storage).load()).toEqual(progress);
+  });
+
+  it("saves its progress and reads it back after a reload", () => {
+    const storage = memoryStorage();
+
+    localSkeletonProgress(() => storage).save(SKELETONS);
+
+    expect(localSkeletonProgress(() => storage).load()).toEqual(SKELETONS);
+  });
+
+  it.each([
+    ["a best in text", { ...SKELETONS, bestScore: "2" }],
+    ["a negative best", { ...SKELETONS, bestScore: -1 }],
+    ["no best", { earned: SKELETONS.earned }],
+    ["stars that are not a list", { ...SKELETONS, earned: "tyrannosaurus" }],
+    ["a star that is not an id", { ...SKELETONS, earned: [1] }],
+    ["an entry that is not a record", 2]
+  ])("reads %s as no skeleton progress, and keeps the other games'", (_, entry) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: skeletons(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 } }) });
+
+    expect(localSkeletonProgress(() => storage).load()).toEqual(NO_SKELETONS);
+    expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
+  });
+
+  it("keeps the other games in one record, each saved without touching the others", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
+
+    localSkeletonProgress(() => storage).save(SKELETONS);
+    localPairsProgress(() => storage).save(NO_PAIRS);
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": NO_PAIRS }
+    });
+  });
+
+  it.each([
+    ["the storage cannot be reached", blocked],
+    ["the storage cannot be read", () => memoryStorage({ [PROGRESS_KEY]: skeletons(SKELETONS) }, { read: false })]
+  ])("loads nothing and saves nothing when %s", (_, storage) => {
+    const progress = localSkeletonProgress(storage);
+
+    expect(progress.load()).toBeUndefined();
+    expect(() => progress.save(SKELETONS)).not.toThrow();
   });
 });

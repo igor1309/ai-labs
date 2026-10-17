@@ -118,6 +118,10 @@ export type Texts = {
   pieces: { skull: string; spine: string; legs: string; tail: string };
   // The bones fitted so far, read out on their chip.
   fitted: string;
+  // The star a finished skeleton earns, read out on its badge, and the
+  // way back to the choice of dinosaurs.
+  star: string;
+  buildAnother: string;
 };
 
 // A celebration's label, read out, and its text, shown.

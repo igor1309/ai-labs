@@ -63,7 +63,7 @@ export type PageVisibility = {
 
 export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
-export type { SkeletonPicture } from "./skeletonGame.tsx";
+export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
 // The screen the app opens on: the home page, or the skeleton game's
 // choice of dinosaurs, which no home tile leads to yet.
@@ -72,7 +72,7 @@ export type Opening = "home" | "skeletons";
 export type AppProps = CareGameProps &
   PairsGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
-  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture"> & {
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -159,6 +159,7 @@ export function App({
   pairsProgress,
   skeletons,
   skeletonPicture,
+  skeletonProgress,
   opening = "home",
   ...careProps
 }: AppProps) {
@@ -274,7 +275,10 @@ export function App({
     [orientation, pageVisibility]
   );
 
-  const skeletonGame = useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer, presence }, home);
+  const skeletonGame = useSkeletonGame(
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
+    home
+  );
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or

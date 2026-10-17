@@ -1,5 +1,6 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { REVEAL } from "../src/skeletonGame.tsx";
 import {
   AWAY,
   board,
@@ -22,6 +23,8 @@ import {
 import { words, type ManualPictures } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
+// The longest the reveal waits for the body picture.
+const PICTURE_WAIT = 1000;
 
 // `seconds` seconds at the puzzle: the game counts its time towards help
 // by a timer of a second, started anew each time it fires.
@@ -159,7 +162,9 @@ describe("help after waiting", () => {
     expect(board().hasAttribute("data-complete")).toBe(true);
     expect(fittedPieces()).toEqual(["skull", "spine", "legs", "tail"]);
     expect(hints()).toEqual([]);
-    expect(pictures.timers()).toEqual([]);
+    // Only the reveal's pause and its wait for the body picture: help
+    // counts no more time.
+    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
     expect(document.body.textContent).toBe(before?.replace("0/4", "4/4"));
   });
 });

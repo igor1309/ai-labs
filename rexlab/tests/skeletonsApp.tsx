@@ -1,8 +1,10 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
+import { isLanguage } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
@@ -24,7 +26,7 @@ import {
   type ManualVisibility,
   type MemoryStorage
 } from "./support.ts";
-import type { Piece, Skeleton } from "../src/skeletons/index.ts";
+import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
 
 export type SkeletonsAppOptions = {
   // Where progress, the language and the theme are kept: one storage, as
@@ -34,6 +36,8 @@ export type SkeletonsAppOptions = {
   orientation?: ManualOrientation;
   visibility?: ManualVisibility;
   deviceLanguage?: string;
+  // Whether the device asks for reduced motion.
+  reducedMotion?: boolean;
 };
 
 // The app opened on the skeleton game's choice of dinosaurs, its pictures
@@ -43,7 +47,8 @@ export function openSkeletonsApp({
   pictures = manualPictures(),
   orientation = manualOrientation("landscape"),
   visibility = manualVisibility("visible"),
-  deviceLanguage = "en-GB"
+  deviceLanguage = "en-GB",
+  reducedMotion = false
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS,
@@ -66,7 +71,8 @@ export function openSkeletonsApp({
     sortingProgress: localSortingProgress(() => storage),
     skeletons: SHIPPED_SKELETONS,
     skeletonPicture: fakeSkeletonPicture,
-    reducedMotion: () => false,
+    skeletonProgress: localSkeletonProgress(() => storage),
+    reducedMotion: () => reducedMotion,
     opening: "skeletons",
     ...pictures
   };
@@ -83,11 +89,17 @@ export function finishLoading(pictures: ManualPictures) {
   for (const url of new Set(pictures.loading())) pictures.finish(url);
 }
 
-export const choices = (name = "DINOSAURS") => within(screen.getByRole("group", { name })).getAllByRole("button");
+// The texts of the language the app is in, as it sets on the document.
+const shownTexts = () => {
+  const { lang } = document.documentElement;
+  return TEXTS[isLanguage(lang) ? lang : "en"];
+};
 
-export const board = (name = "SKELETON") => screen.getByRole("group", { name });
+export const choices = (name = shownTexts().dinosaurs) => within(screen.getByRole("group", { name })).getAllByRole("button");
 
-export const tray = (name = "BONES") => screen.getByRole("group", { name });
+export const board = (name = shownTexts().skeleton) => screen.getByRole("group", { name });
+
+export const tray = (name = shownTexts().bones) => screen.getByRole("group", { name });
 
 // Each slot on the outline, by its piece, and whether it is fitted.
 export const slots = () => [...board().querySelectorAll(".skeleton-slot")].map((slot) => [slot.getAttribute("data-piece"), slot.getAttribute("data-state")]);
@@ -191,3 +203,12 @@ export function dragTo(piece: Piece, at: At, pointerId = 1) {
 
 // Fits a piece in its home, dropped right on it.
 export const fit = (skeleton: Skeleton, piece: Piece) => dragTo(piece, homeOf(skeleton, piece));
+
+// Fits every piece of a skeleton, `last` the last of them.
+export function fitAll(skeleton: Skeleton, last: Piece = "tail") {
+  for (const piece of PIECES.filter((each) => each !== last)) fit(skeleton, piece);
+  fit(skeleton, last);
+}
+
+// The reveal of a finished skeleton, or null while it is not shown.
+export const reveal = () => document.querySelector<HTMLElement>(".skeleton-result");

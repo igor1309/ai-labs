@@ -5,6 +5,10 @@
   },
   "dinosaurs": {
     "tyrannosaurus": {
+      "fact": {
+        "en": "T. REX HAD TINY ARMS BUT HUGE LEGS.",
+        "ru": "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ И ОГРОМНЫЕ НОГИ."
+      },
       "skull": {
         "x": 6,
         "y": 44,
@@ -31,6 +35,10 @@
       }
     },
     "triceratops": {
+      "fact": {
+        "en": "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
+        "ru": "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА И КОСТЯНОЙ ВОРОТНИК."
+      },
       "skull": {
         "x": 8,
         "y": 34,
@@ -57,6 +65,10 @@
       }
     },
     "stegosaurus": {
+      "fact": {
+        "en": "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.",
+        "ru": "У СТЕГОЗАВРА ВДОЛЬ СПИНЫ БЫЛИ БОЛЬШИЕ ПЛАСТИНЫ."
+      },
       "skull": {
         "x": 4,
         "y": 220,

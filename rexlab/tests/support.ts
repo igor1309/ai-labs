@@ -3,7 +3,7 @@ import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -293,9 +293,16 @@ export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
 }
 
 // The skeleton game for tests that are not about it: every shipped
-// skeleton may be built, and the app is never hidden.
-export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture" | "pageVisibility"> {
-  return { skeletons: SHIPPED_SKELETONS, skeletonPicture: fakeSkeletonPicture, pageVisibility: manualVisibility("visible") };
+// skeleton may be built, no skeleton progress kept yet, saving works, and
+// the app is never hidden.
+export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture" | "skeletonProgress" | "pageVisibility"> {
+  const storage = memoryStorage();
+  return {
+    skeletons: SHIPPED_SKELETONS,
+    skeletonPicture: fakeSkeletonPicture,
+    skeletonProgress: localSkeletonProgress(() => storage),
+    pageVisibility: manualVisibility("visible")
+  };
 }
 
 // The language for tests that are not about it: an English device, and no

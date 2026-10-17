@@ -47,6 +47,7 @@ const SCREENS = [
   "ResultScreen.tsx",
   "SkeletonChoiceScreen.tsx",
   "SkeletonPuzzleScreen.tsx",
+  "SkeletonResultScreen.tsx",
   "SortScreen.tsx",
   "VisitScreen.tsx"
 ];
@@ -153,7 +154,7 @@ describe("the import graph", () => {
   // composition root names the one rule, which is free of the rest of the
   // app.
   it("leaves the one best-score rule to the composition root, which gives it to each game", () => {
-    expect(["App.tsx", "careGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
+    expect(["App.tsx", "careGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
     expect(edges((file) => !COMPOSITION.includes(file), (target) => target === BEST_SCORE)).toEqual([]);
     expect(edges((file) => file === BEST_SCORE, () => true)).toEqual([]);
   });

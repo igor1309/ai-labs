@@ -10,17 +10,18 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, playBoard, showMiss, turnCard } from "./pairsApp.tsx";
+import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
 import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
-  SHIPPED_SKELETONS,
   emptyCare,
   emptyPairs,
   emptyProgress,
@@ -707,16 +708,25 @@ async function findThePair(language: Language): Promise<Seen> {
   return play.seen;
 }
 
-// The skeleton game: its choice of dinosaurs, a puzzle as it starts, and
-// the home page again.
+// The skeleton game: its choice of dinosaurs, a puzzle as it starts, its
+// reveal with a first best, the choice again with the star earned, and the
+// home page again.
 async function skeletons(language: Language): Promise<Seen> {
   const play = openPlay(language, memoryStorage(), "skeletons");
-  const { user, look } = play;
+  const { user, timers, look } = play;
   const text = TEXTS[language];
-  const triceratops = SHIPPED_SKELETONS.find(({ id }) => id === "triceratops")?.name[language] ?? "";
+  const triceratops = skeletonOf("triceratops");
   look();
-  await user.click(screen.getByRole("button", { name: triceratops.toLocaleUpperCase(language) }));
+  await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
   expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.buildAnother }));
+  expect(screen.getAllByRole("img", { name: text.star })).toHaveLength(1);
   look();
   await user.click(screen.getByRole("button", { name: text.home }));
   look();
@@ -739,7 +749,7 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // refused once and one without, both results and the friends made,
 // the sorting game: a board with wrong drops, its result and the next
 // board, find the pair from its welcome to the dinosaurs found, and the
-// skeleton game's choice and a puzzle.
+// skeleton game's choice, a puzzle and its reveal.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -762,7 +772,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     findThePair,
     (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
   ],
-  ["the skeleton game's choice of dinosaurs, a puzzle as it starts and the home page again", skeletons, HOME_PAGE]
+  ["the skeleton game's choice of dinosaurs, a puzzle, its reveal, the choice again and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

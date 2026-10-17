@@ -4069,6 +4069,185 @@ body:has(.result) footer[aria-label="Version"] {
   border-radius: 22px;
 }
 
+/* A dinosaur built: its star sits on its card in the choice. */
+.skeleton-choice-art {
+  position: relative;
+}
+
+.skeleton-choice-star,
+.skeleton-star {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+}
+
+.skeleton-choice-star {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 52px;
+  height: 52px;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
+}
+
+/* The reveal: the whole skeleton on its board, then the dinosaur's body
+   fading in over it in the frame they share while the bones fade back,
+   beside the reward, the name, the fact and the ways on. A skeleton whose
+   body cannot be shown stays whole. */
+.skeleton-reveal {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-reveal-bones,
+.skeleton-reveal-body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-reveal-bones {
+  opacity: 0.25;
+  animation: fade-back calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reveal-bones[data-alone] {
+  opacity: 1;
+  animation: none;
+}
+
+.skeleton-reveal-body {
+  animation: fade-in calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes fade-back {
+  from {
+    opacity: 1;
+  }
+}
+
+/* The panel is as wide as its words need at the least, and the name is
+   large, its size the panel's width over the longest name's, in ems:
+   TYRANNOSAURUS's 9.4. */
+.skeleton-reward {
+  flex: 380 1 0;
+  min-width: 320px;
+  box-sizing: border-box;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reward-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.skeleton-star {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 6px 16px #e39b2d66;
+}
+
+/* A star newly earned pops in as the body fades in. */
+.skeleton-star[data-new] {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-screen) * 2) both;
+}
+
+.skeleton-reward .celebration {
+  height: 52px;
+  padding: 0 22px 0 16px;
+  font-size: 22px;
+}
+
+.skeleton-reveal-name {
+  margin: 0;
+  font-size: min(34px, 100cqi / 9.4);
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-fact {
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  border-radius: 20px;
+  background: #e6e2d9;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.skeleton-fact svg {
+  flex-shrink: 0;
+  color: #5c647a;
+}
+
+.skeleton-best {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.skeleton-best-beaten {
+  color: #5c647a;
+}
+
+.skeleton-best-value {
+  font-weight: 700;
+}
+
+.skeleton-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeleton-build-another,
+.skeleton-actions .home-button {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: none;
+  border-radius: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-build-another {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-actions .home-button {
+  outline-width: 2px;
+  outline-offset: -1px;
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -4620,6 +4799,33 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .skeleton-glow {
   outline-color: #f2b24b;
   box-shadow: 0 0 24px #f2b24b80;
+}
+
+[data-theme="dark"] .skeleton-reward {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-fact {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-fact svg,
+[data-theme="dark"] .skeleton-best-beaten {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-choice-star,
+[data-theme="dark"] .skeleton-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-star {
+  box-shadow: 0 6px 16px #00000066;
+}
+
+[data-theme="dark"] .skeleton-build-another {
+  background: #2c3b66;
 }
 
 [data-theme="dark"] .more-coming {

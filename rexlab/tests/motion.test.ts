@@ -328,3 +328,34 @@ describe("the skeleton puzzle's motion", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
   });
 });
+
+describe("the skeleton reveal's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("holds the whole skeleton through the screen change, then fades the body in over it as the bones fade back", () => {
+    expect([".skeleton-reveal-bones", ".skeleton-reveal-body"].map((selector) => animations.get(selector))).toEqual(["fade-back", "fade-in"]);
+    for (const selector of [".skeleton-reveal-bones", ".skeleton-reveal-body"]) {
+      expect(bodyOf(selector)).toMatch(/calc\(var\(--motion-screen\) \* 2\) var\(--ease-out\) var\(--motion-screen\) both/);
+    }
+    const back = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-back")?.body ?? "";
+    expect(rulesOf(back).flatMap(({ body }) => declarationsOf(body))).toEqual([{ property: "opacity", value: "1" }]);
+    expect(declarationsOf(bodyOf(".skeleton-reveal-bones"))).toContainEqual({ property: "opacity", value: "0.25" });
+  });
+
+  it("keeps a skeleton whose body cannot be shown whole and still", () => {
+    expect(declarationsOf(bodyOf(".skeleton-reveal-bones[data-alone]"))).toEqual([
+      { property: "opacity", value: "1" },
+      { property: "animation", value: "none" }
+    ]);
+  });
+
+  it("rises the reward in, pops a new star in once the body has faded in, and pops a built dinosaur's star onto its card", () => {
+    expect([".skeleton-reward", ".skeleton-star[data-new]", ".skeleton-choice-star"].map((selector) => animations.get(selector))).toEqual([
+      "rise-in",
+      "pop-in",
+      "pop-in"
+    ]);
+    expect(bodyOf(".skeleton-star[data-new]")).toMatch(/calc\(var\(--motion-screen\) \* 2\) both/);
+  });
+});

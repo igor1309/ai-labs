@@ -7,7 +7,7 @@ import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "./localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -74,6 +74,7 @@ export function appProps(browser: Browser): AppProps {
       skeletons.map(({ id }) => id),
       ["skeleton", ...PIECES]
     ),
+    skeletonProgress: localSkeletonProgress(storage),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
     loadPicture: decodedPictures(() => new browser.Image()),
     startTimer: (ms, fire) => {

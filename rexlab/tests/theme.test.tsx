@@ -7,6 +7,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
@@ -14,6 +15,7 @@ import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
+import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -319,6 +321,26 @@ const skeletonPuzzle =
     expectScreenIn(theme);
   };
 
+// A skeleton's reveal with a first best, the choice with its star, and a
+// second skeleton's reveal with the best it beat.
+async function skeletonReveals({ theme, user, timers }: Walk) {
+  for (const [id, celebration] of [
+    ["triceratops", "FIRST BEST SCORE"],
+    ["stegosaurus", "NEW BEST SCORE"]
+  ] as const) {
+    const skeleton = skeletonOf(id);
+    await user.click(screen.getByRole("button", { name: skeleton.name.en.toUpperCase() }));
+    layOutPuzzle();
+    fitAll(skeleton);
+    act(() => timers.fire(REVEAL.motion));
+    expect(screen.getByRole("status").getAttribute("aria-label")).toBe(celebration);
+    expectScreenIn(theme);
+    await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
+    expect(screen.getAllByRole("img", { name: "STAR" })).not.toHaveLength(0);
+    expectScreenIn(theme);
+  }
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app, on the home page unless the group opens it on
 // another screen: one walk over them all outlasts a test's time limit on
@@ -371,7 +393,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the choice of dinosaurs", skeletonChoice],
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
-      ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")]
+      ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
+      ["two finished skeletons' reveals, a first best and a new one, and the choice with their stars", skeletonReveals]
     ],
     "skeletons"
   ]

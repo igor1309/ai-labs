@@ -86,5 +86,7 @@ export const ru: Texts = {
   skeleton: "СКЕЛЕТ",
   bones: "КОСТИ",
   pieces: { skull: "ЧЕРЕП", spine: "ПОЗВОНОЧНИК", legs: "НОГИ", tail: "ХВОСТ" },
-  fitted: "КОСТИ НА МЕСТЕ"
+  fitted: "КОСТИ НА МЕСТЕ",
+  star: "ЗВЕЗДА",
+  buildAnother: "СОБРАТЬ ЕЩЁ"
 };
