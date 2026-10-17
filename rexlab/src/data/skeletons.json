@@ -1,0 +1,86 @@
+{
+  "frame": {
+    "width": 800,
+    "height": 600
+  },
+  "dinosaurs": {
+    "tyrannosaurus": {
+      "skull": {
+        "x": 6,
+        "y": 44,
+        "width": 231,
+        "height": 195
+      },
+      "spine": {
+        "x": 170,
+        "y": 68,
+        "width": 361,
+        "height": 314
+      },
+      "legs": {
+        "x": 149,
+        "y": 240,
+        "width": 490,
+        "height": 329
+      },
+      "tail": {
+        "x": 565,
+        "y": 266,
+        "width": 225,
+        "height": 89
+      }
+    },
+    "triceratops": {
+      "skull": {
+        "x": 8,
+        "y": 34,
+        "width": 398,
+        "height": 309
+      },
+      "spine": {
+        "x": 253,
+        "y": 178,
+        "width": 387,
+        "height": 220
+      },
+      "legs": {
+        "x": 117,
+        "y": 235,
+        "width": 542,
+        "height": 332
+      },
+      "tail": {
+        "x": 640,
+        "y": 329,
+        "width": 155,
+        "height": 89
+      }
+    },
+    "stegosaurus": {
+      "skull": {
+        "x": 4,
+        "y": 220,
+        "width": 143,
+        "height": 133
+      },
+      "spine": {
+        "x": 111,
+        "y": 10,
+        "width": 481,
+        "height": 372
+      },
+      "legs": {
+        "x": 56,
+        "y": 262,
+        "width": 570,
+        "height": 325
+      },
+      "tail": {
+        "x": 555,
+        "y": 218,
+        "width": 244,
+        "height": 213
+      }
+    }
+  }
+}
