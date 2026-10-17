@@ -14,3 +14,11 @@ Feature: The composition prints a run's progress to stderr
     Then stderr has, in order, a line each: "ask" started on
       "claude-opus"; "Bash"; "Read"; "ask" ended failed "rate_limited"
     And stdout holds only the result
+
+  Scenario: A line is not printed; a long tool call is cut where printed
+    Given claude-code reports a line, then the tool call "Write" with 500
+      bytes, then replies
+    When "agister run --process ask --agent claude-opus --param q=why"
+      runs in "/r"
+    Then stderr has no line for the line, and the "Write" line is cut
+      short

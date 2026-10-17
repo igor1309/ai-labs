@@ -1,6 +1,7 @@
 // Package git is a wrapper over git, in its own types (ADR-001): the root
-// of the git worktree that holds a directory, a revision's commit, and the
-// files changed between two revisions.
+// of the git worktree that holds a directory, a revision's commit, the
+// files changed between two revisions, and a worktree's HEAD and whether
+// its content is HEAD's.
 package git
 
 import (
@@ -77,6 +78,24 @@ func (g *Git) Changed(ctx context.Context, dir, base, head string) ([]string, er
 		return nil, fmt.Errorf("git diff --name-only %s...%s in %s: %w: %s", base, head, dir, err, strings.TrimSpace(stderr))
 	}
 	return strings.FieldsFunc(stdout, func(r rune) bool { return r == 0 }), nil
+}
+
+// Head gives the full id of the commit dir's HEAD is, or an error, with
+// git's words, where it is none, as in a repository with no commit yet.
+func (g *Git) Head(ctx context.Context, dir string) (string, error) {
+	return g.Commit(ctx, dir, "HEAD")
+}
+
+// Clean tells whether dir's worktree has no change from its HEAD: none
+// staged, unstaged or untracked, as git status --porcelain lists them; an
+// ignored file is no change. Git takes no optional lock for it, so that it
+// contends with no git the caller runs in the worktree meanwhile.
+func (g *Git) Clean(ctx context.Context, dir string) (bool, error) {
+	stdout, stderr, err := g.run(ctx, dir, "--no-optional-locks", "status", "--porcelain")
+	if err != nil {
+		return false, fmt.Errorf("git status --porcelain in %s: %w: %s", dir, err, strings.TrimSpace(stderr))
+	}
+	return stdout == "", nil
 }
 
 // run runs git with args in dir, and gives its stdout and stderr. Git's

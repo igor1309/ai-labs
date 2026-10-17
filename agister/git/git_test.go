@@ -281,3 +281,83 @@ func TestChangedFromARevisionThatNamesNoCommitIsAnError(t *testing.T) {
 		t.Errorf("changed %q, %v; want an error naming nope...HEAD", got, err)
 	}
 }
+
+// worktree.feature, "HEAD is its commit".
+//
+// Contract test: git.
+func TestHeadIsItsCommit(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	commitFiles(t, r, "c0", "a.txt")
+	commitFiles(t, r, "c1", "b.txt")
+	got, err := newGit(t).Head(context.Background(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := head(t, r); got != want || len(got) < 40 {
+		t.Errorf("HEAD is %q, want the full id %q", got, want)
+	}
+}
+
+// A repository with no commit has a HEAD that is no commit: an error.
+//
+// Contract test: git.
+func TestTheHeadOfARepositoryWithNoCommitIsAnError(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	if got, err := newGit(t).Head(context.Background(), r); err == nil {
+		t.Errorf("HEAD is %q and no error, want an error", got)
+	}
+}
+
+// worktree.feature, "A worktree is clean where nothing differs from HEAD".
+// An ignored file is no change.
+//
+// Contract test: git.
+func TestAWorktreeIsCleanWhereNothingDiffersFromHead(t *testing.T) {
+	t.Parallel()
+	write := func(t *testing.T, r, name, text string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(r, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		change string
+		make   func(t *testing.T, r string)
+		clean  bool
+	}{
+		{"nothing changed", func(*testing.T, string) {}, true},
+		{"a file ignored", func(t *testing.T, r string) { write(t, r, "x.log", "x") }, true},
+		{"a file staged", func(t *testing.T, r string) { write(t, r, "n.txt", "n"); run(t, r, "add", "n.txt") }, false},
+		{"a tracked file changed", func(t *testing.T, r string) { write(t, r, "a.txt", "changed") }, false},
+		{"an untracked file", func(t *testing.T, r string) { write(t, r, "u.txt", "u") }, false},
+	}
+	for _, c := range cases {
+		t.Run(c.change, func(t *testing.T) {
+			t.Parallel()
+			r := repository(t, t.TempDir(), "r", "")
+			write(t, r, ".gitignore", "*.log\n")
+			commitFiles(t, r, "c1", "a.txt")
+			c.make(t, r)
+			got, err := newGit(t).Clean(context.Background(), r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.clean {
+				t.Errorf("clean %v, want %v", got, c.clean)
+			}
+		})
+	}
+}
+
+// A directory git cannot run in is Clean's error, naming it.
+//
+// Contract test: git.
+func TestCleanOutsideAnyWorktreeIsAnError(t *testing.T) {
+	t.Parallel()
+	o := t.TempDir()
+	if got, err := newGit(t).Clean(context.Background(), o); err == nil || !strings.Contains(err.Error(), o) {
+		t.Errorf("clean %v, %v; want an error naming %s", got, err, o)
+	}
+}

@@ -98,8 +98,8 @@ type Caller interface {
 	Call(ctx context.Context, step string, params map[string]string, report func(Tool)) Result
 }
 
-// Tool is a tool call a step's turn reports: the tool's name and a short
-// text of what it was given.
+// Tool is a tool call a step's turn reports: the tool's name and what it
+// was given.
 type Tool struct {
 	Name, Input string
 }

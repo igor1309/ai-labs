@@ -64,10 +64,14 @@ func (s sourcing) sources(launch, root string) map[string]inputs.Source {
 	return map[string]inputs.Source{
 		"param":             inputs.ParamSource{},
 		"file":              fileSource{texts: s.texts, launch: launch},
-		"git.revision":      revisionSource{commits: s.commits, root: root},
+		revisionSourceName:  revisionSource{commits: s.commits, root: root},
 		"git.changed_files": changedFilesSource{changes: s.changes, root: root},
 	}
 }
+
+// revisionSourceName is the name of the source "git.revision", whose value
+// is a commit: the one source a call's workspace may pin its revision to.
+const revisionSourceName = "git.revision"
 
 // pluggedIn is whether a run plugs in the source of name.
 func pluggedIn(name string) bool {

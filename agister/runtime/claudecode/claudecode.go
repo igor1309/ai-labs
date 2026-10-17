@@ -93,8 +93,14 @@ type Turn struct {
 	Schema      []byte
 }
 
-// Tool is a tool call a turn reports: the tool's name and a short text of
-// what it was given.
+// Report is a line a turn read: the tool call it made, where Tool is not
+// nil; else another line.
+type Report struct {
+	Tool *Tool
+}
+
+// Tool is a tool call a turn reports: the tool's name and all it was
+// given, as JSON on one line.
 type Tool struct {
 	Name, Input string
 }
@@ -171,11 +177,12 @@ func (*Wrapper) Facts() Facts {
 
 // Run runs the turn as claude -p in its directory with its environment,
 // the message on stdin, through the supervisor, and gives how the program
-// ended and the reply its stream-json gives; each tool call is given to
-// report as its line is read. A turn given no report is an error before
+// ended and the reply its stream-json gives; each line is given to report
+// as it is read: each tool_use block of it, or the line where it has none.
+// A turn given no report is an error before
 // anything starts. A supervisor's error is the turn's, its error that the
 // program could not start included.
-func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Tool)) (Result, error) {
+func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Result, error) {
 	if report == nil {
 		return Result{}, errors.New("claude-code: no report")
 	}

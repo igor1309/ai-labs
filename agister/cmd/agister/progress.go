@@ -38,9 +38,26 @@ func (p *progress) Started(step, agent string) {
 func (p *progress) Tool(step string, tool workflow.Tool) {
 	what := inLine(tool.Name)
 	if tool.Input != "" {
-		what += " " + inLine(tool.Input)
+		what += " " + inLine(short(tool.Input))
 	}
 	p.line(step, what)
+}
+
+// inputLimit is the most of a tool call's input a line prints, in bytes,
+// as the archive printed it.
+const inputLimit = 300
+
+// short is text cut to inputLimit, at the start of a character, and marked
+// "…" where it was cut.
+func short(text string) string {
+	if len(text) <= inputLimit {
+		return text
+	}
+	end := inputLimit
+	for end > 0 && !utf8.RuneStart(text[end]) {
+		end--
+	}
+	return text[:end] + "…"
 }
 
 func (p *progress) Ended(step string, ended workflow.Ended) {

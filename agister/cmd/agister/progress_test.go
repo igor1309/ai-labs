@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/inputs"
@@ -41,7 +42,8 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 func TestAStepsStartToolCallsAndEndEachALine(t *testing.T) {
 	t.Parallel()
 	f := newRunFixture(t, modelSettings(t, nil), nil)
-	f.runtimes.claude.tools = []claudecode.Tool{{Name: "Bash", Input: `{"command":"ls"}`}, {Name: "Read", Input: `{"file_path":"a.go"}`}}
+	f.runtimes.claude.reports = []claudecode.Report{
+		{Tool: &claudecode.Tool{Name: "Bash", Input: `{"command":"ls"}`}}, {Tool: &claudecode.Tool{Name: "Read", Input: `{"file_path":"a.go"}`}}}
 	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Session: "s1", Failure: claudecode.RateLimited, Reason: "429"})
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
 	if got.stderr != "" || got.code != 1 {
@@ -61,16 +63,39 @@ func TestAStepsStartToolCallsAndEndEachALine(t *testing.T) {
 	}
 }
 
+// progress.feature, "A line is not printed; a long tool call is cut where
+// printed".
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestALineIsNotPrintedALongToolCallIsCutWherePrinted(t *testing.T) {
+	t.Parallel()
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	input := `{"content":"` + strings.Repeat("x", 486) + `"}`
+	f.runtimes.claude.reports = []claudecode.Report{{}, {Tool: &claudecode.Tool{Name: "Write", Input: input}}}
+	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Session: "s1"})
+	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want nothing but progress, 0", got.stderr, got.code)
+	}
+	want := "· ask: started on claude-opus\n" +
+		"· ask: Write " + input[:300] + "…\n" +
+		"· ask: ended completed in 0s\n"
+	if len(input) != 500 || got.progress != want {
+		t.Errorf("progress\n%s\nwant\n%s", got.progress, want)
+	}
+}
+
 // A step's call gives each tool call its turn reports on to core/workflow's
-// report, in core/workflow's words, in order.
+// report, in core/workflow's words, in order, and no other line.
 func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	t.Parallel()
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	spy := &turnSpy{result: call.Result{Status: call.Completed}, tools: []call.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}}
-	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
+	spy := &turnSpy{result: call.Result{Status: call.Completed}, reports: []call.Report{
+		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}}}
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,6 +172,40 @@ func TestEventsToldAtOnceArePrintedWhole(t *testing.T) {
 		if !strings.HasPrefix(line, "· ") || !strings.HasSuffix(line, ": Bash ls") {
 			t.Errorf("printed the line %q, want a whole one", line)
 		}
+	}
+}
+
+// A tool call's input is printed short: at most 300 bytes of it, cut at
+// the start of a character and marked where it was cut; one that fits is
+// whole.
+func TestAToolCallsInputIsPrintedShort(t *testing.T) {
+	t.Parallel()
+	for _, n := range []int{10, 150, 151, 400} {
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			t.Parallel()
+			input := strings.Repeat("é", n)
+			var out strings.Builder
+			p, err := newProgress(&out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p.Tool("a", workflow.Tool{Name: "Write", Input: input})
+			printed, ok := strings.CutPrefix(out.String(), "· a: Write ")
+			printed, ended := strings.CutSuffix(printed, "\n")
+			if !ok || !ended {
+				t.Fatalf("printed %q, want one line of the call", out.String())
+			}
+			if len(input) <= 300 {
+				if printed != input {
+					t.Errorf("printed %q, want it whole", printed)
+				}
+				return
+			}
+			cut, marked := strings.CutSuffix(printed, "…")
+			if !marked || !strings.HasPrefix(input, cut) || len(cut) > 300 || len(cut) < 299 || !utf8.ValidString(cut) {
+				t.Errorf("printed %q, want at most 300 bytes of the input, whole characters, then …", printed)
+			}
+		})
 	}
 }
 
