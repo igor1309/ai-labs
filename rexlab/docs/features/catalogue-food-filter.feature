@@ -69,13 +69,13 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
 
   Scenario Outline: The chips are in the chosen language
     Given the app is in <language>
-    When I open "<title>"
-    Then I see the chips "<all>", "<meat>", "<plants>" and "<both>"
+    When I open "<tile>"
+    Then I see the title "<title>" and the chips "<all>", "<meat>", "<plants>" and "<both>"
 
     Examples:
-      | language | title         | all | meat | plants   | both |
-      | English  | ALL DINOSAURS | ALL | MEAT | PLANTS   | BOTH |
-      | Russian  | ВСЕ ДИНОЗАВРЫ | ВСЕ | МЯСО | РАСТЕНИЯ | ВСЁ  |
+      | language | tile          | title         | all | meat | plants   | both |
+      | English  | ALL DINOSAURS | ALL DINOSAURS | ALL | MEAT | PLANTS   | BOTH |
+      | Russian  | ВСЕ           | ВСЕ ДИНОЗАВРЫ | ВСЕ | МЯСО | РАСТЕНИЯ | ВСЁ  |
 
   Scenario: The chips read well in both themes
     Given the app is in the dark theme

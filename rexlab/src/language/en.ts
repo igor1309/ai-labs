@@ -28,6 +28,7 @@ export const en: Texts = {
   best: "BEST",
   playAgain: "PLAY AGAIN",
   catalogue: "ALL DINOSAURS",
+  catalogueTile: "ALL DINOSAURS",
   diets: { meat: "MEAT", plants: "PLANTS", both: "BOTH" },
   foodChoice: "FOOD",
   everyFood: "ALL",

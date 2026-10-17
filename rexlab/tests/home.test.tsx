@@ -51,7 +51,7 @@ const TITLE_EMS: Record<string, number> = {
   COMPARE: 5.1,
   СРАВНИ: 4.1,
   "ALL DINOSAURS": 8.6,
-  "ВСЕ ДИНОЗАВРЫ": 8.8,
+  ВСЕ: 2.1,
   CARE: 2.8,
   ПОЗАБОТЬСЯ: 6.9,
   // FIND THE PAIR's title may wrap, so each line it may take is here.
@@ -67,9 +67,9 @@ const TITLE_EMS: Record<string, number> = {
 };
 
 // The words each title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogue" | "care"> = {
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care"> = {
   "quiz-card-title": "quizCard",
-  "catalogue-tile-title": "catalogue",
+  "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care"
 };
 

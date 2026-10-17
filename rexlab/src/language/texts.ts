@@ -33,8 +33,10 @@ export type Texts = {
   bestScore: string;
   best: string;
   playAgain: string;
-  // The catalogue of every dinosaur: its title, also on its home tile.
+  // The catalogue of every dinosaur: its title, and its home tile's,
+  // short enough for a tile among many.
   catalogue: string;
+  catalogueTile: string;
   diets: { meat: string; plants: string; both: string };
   // The catalogue's chips that choose the dinosaurs shown by their food,
   // and the chip that shows them all.

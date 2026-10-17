@@ -126,13 +126,13 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
           )}
         </button>
         <div className="side-games">
-          <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
+          <button type="button" className="card catalogue-tile" aria-label={text.catalogueTile} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
             <span className="catalogue-tile-row">
               <span className="catalogue-tile-symbol" aria-hidden="true">
                 <BookOpen size={20} />
               </span>
-              <span className="catalogue-tile-title">{text.catalogue}</span>
+              <span className="catalogue-tile-title">{text.catalogueTile}</span>
             </span>
             {/* The counts sit in the tiles' corners, over the pictures: the
                 rows keep their width for the titles. */}

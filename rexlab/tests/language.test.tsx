@@ -497,7 +497,7 @@ async function catalogue(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, look } = play;
   const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.catalogue }));
+  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
   look();
   await user.click(within(screen.getByRole("group", { name: text.catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
   look();
@@ -579,7 +579,7 @@ async function findThePair(language: Language): Promise<Seen> {
   expect(screen.getAllByRole("status")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: text.home }));
   look();
-  await user.click(screen.getByRole("button", { name: text.catalogue }));
+  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
   look();
   const stamped = screen.getAllByRole("img", { name: text.found })[0]?.closest("button");
   if (!stamped) throw new Error("No dinosaur found in the catalogue");
