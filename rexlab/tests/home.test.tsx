@@ -339,7 +339,7 @@ describe("the home page", () => {
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
         { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) },
-        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3 }))
+        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
       );
 
       const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
@@ -429,7 +429,7 @@ describe("the home page", () => {
   });
 
   it("shows the best collection score in the SKELETONS tile's picture's corner, beside a trophy", () => {
-    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(keptSkeletons({ earned: ["triceratops", "stegosaurus"], bestScore: 2 })));
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(keptSkeletons({ earned: ["triceratops", "stegosaurus"], bestScore: 2, rebuilding: [] })));
 
     const tile = skeletonsTile();
     const best = tile.querySelector(".skeletons-tile-best");
@@ -441,8 +441,8 @@ describe("the home page", () => {
   });
 
   it.each([
-    ["no skeleton built", keptSkeletons({ earned: [], bestScore: null })],
-    ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "skeleton-assembly": { earned: ["triceratops"], bestScore: 1 } } }) }, { read: false })],
+    ["no skeleton built", keptSkeletons({ earned: [], bestScore: null, rebuilding: [] })],
+    ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "skeleton-assembly": { earned: ["triceratops"], bestScore: 1, rebuilding: [] } } }) }, { read: false })],
     ["only the quiz's best kept", memoryStorage({ [PROGRESS_KEY]: record(7) })]
   ])("shows no best score on the SKELETONS tile with %s", (_, storage) => {
     openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(storage));

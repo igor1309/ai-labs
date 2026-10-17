@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: the dinosaur's fact
   Each reveal (skeleton-assembly-result.feature) presents one short
   anatomy fact in the chosen language, and speaks it once read-aloud

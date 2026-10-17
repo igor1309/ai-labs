@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: placing bones
   Each bone piece has exactly one matching slot. A generous snap area
   accepts an imprecise drop; any other drop invites another try.

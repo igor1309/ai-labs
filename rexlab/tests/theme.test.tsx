@@ -8,6 +8,7 @@ import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/l
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
+import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
@@ -15,7 +16,7 @@ import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
-import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
+import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -320,6 +321,26 @@ const skeletonPuzzle =
     expectScreenIn(theme);
   };
 
+// A puzzle at work: a bone fitted, another lifted from the tray, and,
+// once the child has waited, help glowing on a slot and its bone.
+async function skeletonAtWork({ theme, user, timers }: Walk) {
+  const stegosaurus = skeletonOf("stegosaurus");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
+  layOutPuzzle();
+  fit(stegosaurus, "spine");
+  const spot = spotOf("tail");
+  const { left, top } = spot.getBoundingClientRect();
+  press(spot, { clientX: left + 40, clientY: top + 40 });
+  moveTo(AWAY);
+  expect([fittedPieces(), lifted()]).toEqual([["spine"], expect.anything()]);
+  expectScreenIn(theme);
+  release(AWAY);
+  for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
+  expect(hints()).toEqual(["slot skull", "spot skull"]);
+  expectScreenIn(theme);
+}
+
 // A skeleton's reveal with a first best, the choice with its star, a
 // second skeleton's reveal with the best it beat, and the home page with
 // the best on the SKELETONS tile.
@@ -420,6 +441,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
+      ["a puzzle with a bone fitted, one lifted and help glowing", skeletonAtWork],
       ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]

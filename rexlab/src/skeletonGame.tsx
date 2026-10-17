@@ -13,7 +13,7 @@ import {
   isComplete,
   knockDown,
   museumOf,
-  NO_SKELETONS,
+  openCollection,
   PIECES,
   startPuzzle,
   wait,
@@ -91,10 +91,7 @@ export function useSkeletonGame(
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but stars earned meanwhile are still kept
   // while the app is open, and so is progress that cannot be saved.
-  const [kept, setKept] = useState<KeptSkeletons>(() => {
-    const stored = skeletonProgress.load();
-    return { progress: stored ?? NO_SKELETONS, readable: stored !== undefined, rebuilding: [] };
-  });
+  const [kept, setKept] = useState<KeptSkeletons>(() => openCollection(skeletonProgress.load(), skeletons.map(({ id }) => id)));
   const keptNow = useRef(kept);
   // The puzzle in play, ahead of the screen: a drop, or a tick, acts on the
   // puzzle as it is, not as last rendered. Null once the child leaves it.
@@ -120,15 +117,20 @@ export function useSkeletonGame(
     starting.current = false;
   };
 
+  // Each change is saved as it is made; unreadable progress is not saved
+  // over.
   const keep = (next: KeptSkeletons) => {
+    if (next === keptNow.current) return;
     keptNow.current = next;
     setKept(next);
+    if (next.readable) skeletonProgress.save(next.progress);
   };
 
   // A puzzle shows once its outline and pieces are ready, or the wait
   // runs out, so no bone pops in, and only if the child is still here. A
   // skeleton rebuilt is knocked down from its stand only as its puzzle
-  // starts, its bones scattering from the outline.
+  // starts, its bones scattering from the outline, and its stand awaits
+  // it from then on, however the rebuild is left.
   const start = (id: string, rebuild: boolean) => {
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined || starting.current) return;
@@ -172,11 +174,10 @@ export function useSkeletonGame(
 
   // A skeleton is recorded the moment its last piece fits, before the
   // reveal: leaving, or reloading, during the reveal cannot lose its star
-  // or record it twice. Unreadable progress is not saved over.
+  // or record it twice.
   const record = (finished: Puzzle): SkeletonResult => {
     const { result, kept: next } = finishSkeleton(keptNow.current, finished, order, beatBest);
     keep(next);
-    if (next.readable) skeletonProgress.save(next.progress);
     return result;
   };
 

@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: the museum and rebuilding
   The museum has one permanent stand for each MVP dinosaur. An earned
   skeleton can be knocked down and rebuilt for fun without losing its

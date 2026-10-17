@@ -98,7 +98,7 @@ async function openMuseum(options: SkeletonsAppOptions = {}) {
 // puzzle of `name` started from its REBUILD, its pictures loaded and its
 // board laid out.
 async function rebuild(name: string, earned: string[]) {
-  const storage = keptSkeletons({ earned, bestScore: earned.length });
+  const storage = keptSkeletons({ earned, bestScore: earned.length, rebuilding: [] });
   const opened = await openMuseum({ storage });
   await opened.user.click(within(stand(name)).getByRole("button"));
   act(() => finishLoading(opened.pictures));
@@ -117,7 +117,7 @@ describe("opening the museum", () => {
   });
 
   it("stands a finished skeleton on its stand, with its name, its star and REBUILD, the others still silhouettes", async () => {
-    await openMuseum({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1 }) });
+    await openMuseum({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
 
     expect(stands()).toEqual([EMPTY("tyrannosaurus", "TYRANNOSAURUS"), BUILT("triceratops", "TRICERATOPS"), EMPTY("stegosaurus", "STEGOSAURUS")]);
     expect([starsChip().textContent, bestScore()]).toEqual(["1/3", "1/3"]);
@@ -125,7 +125,7 @@ describe("opening the museum", () => {
 
   it("opens from a puzzle, dropping it unfinished without a star", async () => {
     const tyrannosaurus = skeletonOf("tyrannosaurus");
-    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1 });
+    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
     const { user } = await openPuzzle("TYRANNOSAURUS", { storage });
     fit(tyrannosaurus, "skull");
     fit(tyrannosaurus, "tail");
@@ -133,7 +133,7 @@ describe("opening the museum", () => {
     await user.click(button("MUSEUM"));
 
     expect(stands().map(({ state }) => state)).toEqual(["empty", "built", "empty"]);
-    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
   });
 
   it("opens from the reveal, the skeleton just built on its stand", async () => {
@@ -182,7 +182,7 @@ describe("opening the museum", () => {
 
   it.each(LANGUAGES)("reads in %s, its names in capitals", async (language) => {
     const text = TEXTS[language];
-    const { user } = openSkeletonsApp({ deviceLanguage: language === "ru" ? "ru-RU" : "en-GB", storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1 }) });
+    const { user } = openSkeletonsApp({ deviceLanguage: language === "ru" ? "ru-RU" : "en-GB", storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] }) });
     await user.click(button(text.museum));
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(text.museum);
@@ -199,7 +199,7 @@ describe("opening the museum", () => {
 
 describe("an empty stand", () => {
   it("starts a fresh puzzle of its dinosaur once on a double tap, its four pieces in the tray, the stars and other stands as they were", async () => {
-    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1 });
+    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
     const { user, pictures } = await openMuseum({ storage });
 
     await user.dblClick(within(stand("STEGOSAURUS")).getByRole("button", { name: "BUILD" }));
@@ -210,7 +210,7 @@ describe("an empty stand", () => {
     expect(slots().map(([, state]) => state)).toEqual(["empty", "empty", "empty", "empty"]);
     expect(within(tray()).getAllByRole("img")).toHaveLength(4);
     expect(scattering()).toEqual([]);
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
 
     await user.click(button("MUSEUM"));
     expect(stands().map(({ state }) => state)).toEqual(["built", "empty", "empty"]);
@@ -220,7 +220,7 @@ describe("an empty stand", () => {
 describe("rebuilding", () => {
   it("scatters the bones of a skeleton knocked down into a fresh puzzle, dropping the unfinished one, with nothing lost and nothing asked", async () => {
     const tyrannosaurus = skeletonOf("tyrannosaurus");
-    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1 });
+    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
     const { user, pictures } = await openPuzzle("TYRANNOSAURUS", { storage });
     fit(tyrannosaurus, "skull");
     fit(tyrannosaurus, "legs");
@@ -238,7 +238,7 @@ describe("rebuilding", () => {
     expect(screen.queryAllByRole("dialog")).toEqual([]);
     expect(screen.queryAllByRole("alertdialog")).toEqual([]);
     expect(screen.queryAllByRole("status")).toEqual([]);
-    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: ["triceratops"] });
 
     cleanup();
     openSkeletonsApp({ storage });
@@ -252,7 +252,7 @@ describe("rebuilding", () => {
   it("starts each bone whole in its home on the outline, at its size there, and flies it to its spot in the tray", async () => {
     const triceratops = skeletonOf("triceratops");
     const pictureAt = layOutScatter();
-    const { user, pictures } = await openMuseum({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1 }) });
+    const { user, pictures } = await openMuseum({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
     await user.click(within(stand("TRICERATOPS")).getByRole("button"));
 
     act(() => finishLoading(pictures));
@@ -275,7 +275,7 @@ describe("rebuilding", () => {
   });
 
   it("rebuilds once on a quick double tap, its star and stand earned exactly once", async () => {
-    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1 });
+    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
     const { user, pictures } = await openMuseum({ storage });
 
     await user.dblClick(within(stand("TYRANNOSAURUS")).getByRole("button", { name: "REBUILD" }));
@@ -288,7 +288,7 @@ describe("rebuilding", () => {
     await user.click(button("MUSEUM"));
     expect(stands()[0]).toEqual(REBUILDING("tyrannosaurus", "TYRANNOSAURUS"));
     expect([starsChip().textContent, bestScore()]).toEqual(["1/3", "1/3"]);
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: ["tyrannosaurus"] });
   });
 
   it("keeps a stand awaiting its skeleton earned, its silhouette with its star and CONTINUE, unlike one never earned, the rest as they were", async () => {
@@ -325,7 +325,7 @@ describe("rebuilding", () => {
     expect(reveal()?.querySelectorAll(".skeleton-fact")).toHaveLength(1);
     expect(screen.getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(false);
     expect([starsChip().textContent, bestScore(), screen.queryByRole("status")]).toEqual(["2/3", "BEST2/3", null]);
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
 
     await user.click(within(reveal() ?? document.body).getByRole("button", { name: "MUSEUM" }));
 

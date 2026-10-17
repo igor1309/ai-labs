@@ -346,7 +346,7 @@ describe("localPairsProgress", () => {
 
 const skeletons = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "skeleton-assembly": entry } });
 
-const SKELETONS = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2 };
+const SKELETONS = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: ["triceratops"] };
 
 describe("localSkeletonProgress", () => {
   it("reads no skeleton progress from empty storage", () => {
@@ -357,9 +357,9 @@ describe("localSkeletonProgress", () => {
 
   it.each([
     [SKELETONS, SKELETONS],
-    [{ earned: [], bestScore: null }, NO_SKELETONS],
+    [{ earned: [], bestScore: null, rebuilding: [] }, NO_SKELETONS],
     [{ ...SKELETONS, achievements: ["first-skeleton"] }, SKELETONS]
-  ])("reads the best collection score and the dinosaurs with a star from %j", (entry, progress) => {
+  ])("reads the best collection score, the dinosaurs with a star and the stands awaiting a rebuild from %j", (entry, progress) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: skeletons(entry) });
 
     expect(localSkeletonProgress(() => storage).load()).toEqual(progress);
@@ -376,9 +376,12 @@ describe("localSkeletonProgress", () => {
   it.each([
     ["a best in text", { ...SKELETONS, bestScore: "2" }],
     ["a negative best", { ...SKELETONS, bestScore: -1 }],
-    ["no best", { earned: SKELETONS.earned }],
+    ["no best", { earned: SKELETONS.earned, rebuilding: SKELETONS.rebuilding }],
     ["stars that are not a list", { ...SKELETONS, earned: "tyrannosaurus" }],
     ["a star that is not an id", { ...SKELETONS, earned: [1] }],
+    ["no stands awaiting a rebuild", { earned: SKELETONS.earned, bestScore: SKELETONS.bestScore }],
+    ["stands awaiting a rebuild that are not a list", { ...SKELETONS, rebuilding: "triceratops" }],
+    ["a stand awaiting a rebuild that is not an id", { ...SKELETONS, rebuilding: [null] }],
     ["an entry that is not a record", 2]
   ])("reads %s as no skeleton progress, and keeps the other games'", (_, entry) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: skeletons(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 } }) });

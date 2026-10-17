@@ -4,4 +4,4 @@
 export type { Piece, Place, Point, Puzzle, Skeleton } from "./puzzle.ts";
 export { awaitsHelp, drop, help, HELP_AFTER, isComplete, PIECES, startPuzzle, wait } from "./puzzle.ts";
 export type { BeatBest, Celebration, KeptSkeletons, Museum, SkeletonProgress, SkeletonResult, Stand, StandState } from "./collection.ts";
-export { finishSkeleton, knockDown, museumOf, NO_SKELETONS } from "./collection.ts";
+export { finishSkeleton, knockDown, museumOf, NO_SKELETONS, openCollection } from "./collection.ts";

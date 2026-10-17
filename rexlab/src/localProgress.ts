@@ -53,11 +53,12 @@ export function localPairsProgress(storage: () => KeyValueStorage) {
 }
 
 // The skeleton game's progress, beside the others in the same record: the
-// best collection score and the dinosaurs whose skeleton earned a star.
+// best collection score, the dinosaurs whose skeleton earned a star and
+// those whose stand awaits its skeleton rebuilt.
 export function localSkeletonProgress(storage: () => KeyValueStorage) {
-  return gameProgress<SkeletonProgress>(storage, "skeleton-assembly", NO_SKELETONS, ({ bestScore, earned }) =>
-    (bestScore === null || isCount(bestScore)) && Array.isArray(earned) && earned.every((id) => typeof id === "string")
-      ? { bestScore, earned: [...earned] }
+  return gameProgress<SkeletonProgress>(storage, "skeleton-assembly", NO_SKELETONS, ({ bestScore, earned, rebuilding }) =>
+    (bestScore === null || isCount(bestScore)) && isIds(earned) && isIds(rebuilding)
+      ? { bestScore, earned: [...earned], rebuilding: [...rebuilding] }
       : undefined
   );
 }
@@ -124,6 +125,10 @@ function parse(raw: string | null): Entry | undefined {
 
 function isObject(value: unknown): value is Entry {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((id) => typeof id === "string");
 }
 
 function isLevel(value: unknown): value is Level {

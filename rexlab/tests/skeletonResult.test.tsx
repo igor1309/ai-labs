@@ -121,27 +121,27 @@ describe("earning a star", () => {
   it("earns a first star, a collection and best score of 1/3 and a first best celebration, and starts the stand", async () => {
     const { pictures, storage } = await finish("tyrannosaurus");
 
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
 
     revealNow(pictures, "tyrannosaurus");
     expect([starsChip(), bestScore(), celebration()]).toEqual(["1/3", "BEST1/3", "FIRST BEST SCORE"]);
   });
 
   it("raises the collection and its best with a different dinosaur, celebrating a new best", async () => {
-    const { pictures, storage } = await finish("triceratops", { storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1 }) });
+    const { pictures, storage } = await finish("triceratops", { storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] }) });
 
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
 
     revealNow(pictures, "triceratops");
     expect([starsChip(), bestScore(), celebration()]).toEqual(["2/3", "BEST12/3", "NEW BEST SCORE"]);
   });
 
   it("fills the collection with the third dinosaur, and keeps the other games' progress", async () => {
-    const { pictures, storage } = await finish("stegosaurus", { storage: keptSkeletons({ earned: ["triceratops", "tyrannosaurus"], bestScore: 2 }) });
+    const { pictures, storage } = await finish("stegosaurus", { storage: keptSkeletons({ earned: ["triceratops", "tyrannosaurus"], bestScore: 2, rebuilding: [] }) });
 
     revealNow(pictures, "stegosaurus");
 
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] });
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: 7, roundsPlayed: 3 });
     expect([starsChip(), bestScore()]).toEqual(["3/3", "BEST23/3"]);
   });
@@ -159,7 +159,7 @@ describe("earning a star", () => {
     release(homeOf(tyrannosaurus, "tail"));
     release(homeOf(tyrannosaurus, "tail"));
 
-    expect(writes).toEqual([{ earned: ["tyrannosaurus"], bestScore: 1 }]);
+    expect(writes).toEqual([{ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] }]);
 
     revealNow(pictures, "tyrannosaurus");
     expect(writes).toHaveLength(1);
@@ -173,7 +173,7 @@ describe("earning a star", () => {
 
     expect(reveal()).toBeNull();
     expect(button("COMPARE")).toBeDefined();
-    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1 });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
   });
 
   it("keeps the star when the app is reloaded during the reveal", async () => {

@@ -3956,6 +3956,13 @@ body:has(.result) footer[aria-label="Version"] {
   min-height: 48px;
 }
 
+/* A button in the bar keeps its words on one line, at its full width;
+   the title takes the room the buttons and chips leave. */
+.skeleton-bar .home-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* The three dinosaurs side by side, each a big card of its picture over
    its name, rising in one after the other. */
 .skeleton-choices {
@@ -4232,12 +4239,12 @@ body:has(.result) footer[aria-label="Version"] {
   }
 }
 
-/* The panel is as wide as its words need at the least, and the name is
-   large, its size the panel's width over the longest name's, in ems:
-   TYRANNOSAURUS's 9.4. */
+/* The panel is at least as wide as its longest button needs on one line,
+   СОБРАТЬ ДРУГОЙ beside its symbol, and the name is large, its size the
+   panel's width over the longest name's, in ems: TYRANNOSAURUS's 9.4. */
 .skeleton-reward {
   flex: 380 1 0;
-  min-width: 320px;
+  min-width: 360px;
   box-sizing: border-box;
   padding: 32px;
   display: flex;
@@ -4327,6 +4334,7 @@ body:has(.result) footer[aria-label="Version"] {
 .skeleton-build-another,
 .skeleton-actions .home-button {
   height: 72px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4433,31 +4441,32 @@ body:has(.result) footer[aria-label="Version"] {
 .skeleton-plinth {
   align-self: stretch;
   box-sizing: border-box;
-  padding: 18px 20px 24px;
+  padding: 18px 14px 24px;
   border-radius: 20px 20px 0 0;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #fffdf8;
 }
 
-/* A button's words shrink with the room the plinth leaves beside its
-   symbol, over 8 ems, so the longest, ПЕРЕСОБРАТЬ, keeps to one line on
-   the narrowest iPad. */
+/* A button's words shrink with the room the plinth and the button's sides
+   leave beside its symbol, over the longest words', in ems: СОБРАТЬ
+   ЗАНОВО's 9.8. Unspaced, unlike the other buttons' words, they stay at
+   least as large as the bar's on the narrowest iPad. */
 .skeleton-stand-button {
   width: 100%;
   height: 64px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   border: none;
   border-radius: 18px;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #e6e2d9;
-  font-size: min(22px, (100cqi - 78px) / 8);
+  font-size: min(22px, (100cqi - 82px) / 9.8);
   font-weight: 700;
-  letter-spacing: 1px;
   white-space: nowrap;
 }
 
