@@ -1176,6 +1176,111 @@ body:has(.result) footer[aria-label="Version"] {
   font-weight: 700;
 }
 
+/* The chips choosing the dinosaurs shown by their food look like the
+   food tags: each in its tag's colour, with its symbols, its word and how
+   many it shows. A chip not chosen is a card with its symbols in colour;
+   the chosen one is filled with the colour and lifted by a shadow, so it
+   stands out by more than its colour. Its count sits on a shade, darker
+   under white words and lighter under ink, to keep text contrast. */
+.food-chips {
+  display: flex;
+  gap: 12px;
+}
+
+.food-chip {
+  height: 56px;
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -2px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-standard) var(--ease-out),
+    color var(--motion-standard) var(--ease-out),
+    outline-color var(--motion-standard) var(--ease-out),
+    box-shadow var(--motion-standard) var(--ease-out);
+}
+
+.food-chip-face {
+  box-sizing: border-box;
+  padding: 0 10px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.food-chip-symbols {
+  display: flex;
+  gap: 2px;
+}
+
+.food-chip[data-food="meat"] .food-chip-symbols {
+  color: #c9583d;
+}
+
+.food-chip[data-food="plants"] .food-chip-symbols {
+  color: #2e7d4f;
+}
+
+.food-chip-count {
+  min-width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #e6e2d9;
+  font-size: 17px;
+}
+
+.food-chip[aria-pressed="true"] {
+  outline-color: transparent;
+  box-shadow: 0 6px 16px #1d274233;
+  color: #ffffff;
+}
+
+.food-chip[aria-pressed="true"] .food-chip-symbols {
+  color: inherit;
+}
+
+.food-chip[aria-pressed="true"] .food-chip-count {
+  background: #00000026;
+}
+
+.food-chip[data-food="all"][aria-pressed="true"] {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.food-chip[data-food="meat"][aria-pressed="true"] {
+  background: #c9583d;
+}
+
+.food-chip[data-food="meat"][aria-pressed="true"] .food-chip-face {
+  background: #00000026;
+}
+
+.food-chip[data-food="plants"][aria-pressed="true"] {
+  background: #2e7d4f;
+}
+
+.food-chip[data-food="both"][aria-pressed="true"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.food-chip[data-food="both"][aria-pressed="true"] .food-chip-count {
+  background: #ffffff33;
+}
+
 .catalogue-grid {
   flex: 1 1 0;
   min-height: 0;
@@ -3765,6 +3870,66 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .catalogue-chip {
   background: #222a3d;
   color: #ece8de;
+}
+
+/* The dark theme's chips are its cards, their symbols in its lighter
+   terracotta and green; chosen, the lighter colours take the page's ink,
+   as the tags do, and need no shade under it. */
+[data-theme="dark"] .food-chip {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .food-chip-count {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"] .food-chip-symbols {
+  color: #e57a5d;
+}
+
+[data-theme="dark"] .food-chip[data-food="plants"] .food-chip-symbols {
+  color: #63c98c;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] {
+  outline-color: transparent;
+  box-shadow: 0 6px 16px #00000066;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] .food-chip-symbols {
+  color: inherit;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] .food-chip-count {
+  background: #ffffff33;
+}
+
+[data-theme="dark"] .food-chip[data-food="all"][aria-pressed="true"] {
+  background: #2c3b66;
+  color: #f6f2e9;
+}
+
+[data-theme="dark"] .food-chip[data-food="all"][aria-pressed="true"] .food-chip-count {
+  background: #00000026;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"][aria-pressed="true"] {
+  background: #e57a5d;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"][aria-pressed="true"] .food-chip-face {
+  background: none;
+}
+
+[data-theme="dark"] .food-chip[data-food="plants"][aria-pressed="true"] {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .food-chip[data-food="both"][aria-pressed="true"] {
+  background: #f2b24b;
 }
 
 /* White words would fade on the dark theme's lighter terracotta and

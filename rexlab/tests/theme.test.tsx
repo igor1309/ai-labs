@@ -201,6 +201,10 @@ async function quizResult({ theme, user }: Walk) {
 async function catalogueList({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
   expectScreenIn(theme);
+  for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
+    await user.click(within(screen.getByRole("group", { name: "FOOD" })).getByRole("button", { name: food }));
+    expectScreenIn(theme);
+  }
 }
 
 async function cataloguePages({ theme, user }: Walk) {
@@ -320,7 +324,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
   [
     "the catalogue",
     [
-      ["the list with a card of each food type", catalogueList],
+      ["the list with a card of each food type, each food chosen", catalogueList],
       ["a page of each food type", cataloguePages]
     ]
   ],

@@ -31057,6 +31057,4337 @@
     },
     {
       "type": "frame",
+      "id": "L9chg",
+      "x": 1664,
+      "y": 17000,
+      "name": "Field Guide Midnight · Catalogue — Light · MEAT chosen · 2 of 16 found",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        0,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "e820Xn",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "sfQIq",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "muiD2",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "aBQE0",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WZHwE",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HIrCA",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "RqaoW",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kmHE9",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "ALL DINOSAURS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jmMVN",
+              "name": "Count",
+              "height": 56,
+              "fill": "$fm-base",
+              "cornerRadius": 28,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "x7WM8",
+                  "name": "Count Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "copy",
+                  "library": "lucide",
+                  "fill": "$fm-amber"
+                },
+                {
+                  "type": "text",
+                  "id": "DRQ1U",
+                  "name": "Count Text",
+                  "fill": "#FFFFFF",
+                  "content": "2 / 16",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "znSRn",
+          "name": "Food Chips",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "UaON9",
+              "name": "Chip ALL",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jS3MN",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "znRrw",
+                      "name": "Symbol book-open",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Kxjkq",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "ALL",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "qmBl3",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "EtAvo",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "42",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f5i6dp",
+              "name": "Chip MEAT · chosen",
+              "height": 56,
+              "fill": "$fm-terra",
+              "cornerRadius": 28,
+              "stroke": "$fm-terra",
+              "strokeWidth": 2,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 12
+              },
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fzez6",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "GnbZ5",
+                      "name": "Symbol beef",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "tb4Sx",
+                  "name": "Word",
+                  "fill": "#FFFFFF",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "J2hDrE",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "#FFFFFF33",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "u3EjTm",
+                      "name": "Count Text",
+                      "fill": "#FFFFFF",
+                      "content": "16",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lVrpi",
+              "name": "Chip PLANTS",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oNUlu",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "mCFo9",
+                      "name": "Symbol leaf",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "$fm-good"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "GBGd4",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "pRVbs",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NWFeo",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "23",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "W7aWXw",
+              "name": "Chip BOTH",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nC49t",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "m82i22",
+                      "name": "Symbol beef",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "Cv9kD",
+                      "name": "Symbol leaf",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "bTHrM",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "BOTH",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "okfEQ",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NYM84",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "3",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "IYapm",
+          "name": "Grid",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Lwj66",
+              "name": "Row 1",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "C7Cy5",
+                  "name": "Card TYRANNOSAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pXSfR",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "iAQcs",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/tyrannosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lGFS7",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "v9M7g",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "TYRANNOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "MkWeV",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "BedQA",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "fkLAs",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "s52yE",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "3.7 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "EbcV9",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "pTjEw",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "GgRJC",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "8 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "J7oNbX",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Hy8AX",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "x5bkz",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HXP92",
+                      "layoutPosition": "absolute",
+                      "x": 14,
+                      "y": 14,
+                      "name": "Found Stamp",
+                      "width": 52,
+                      "height": 52,
+                      "fill": "$fm-base",
+                      "cornerRadius": 26,
+                      "stroke": "$fm-surface",
+                      "strokeWidth": 3,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$fm-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 8
+                      },
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "loBwh",
+                          "name": "Found Icon",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "copy",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lvyBU",
+                  "name": "Card VELOCIRAPTOR",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "hipH9",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "I6xqdK",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/velociraptor.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vZ8eu",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "WFdmJ",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "VELOCIRAPTOR",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cmjkj",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "V7LVZr",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "xtYZf",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "N8rGWB",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.5 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "mU0Ic",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "IPZjt",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "R1uBP",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "15 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "m7PvzG",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "qOHfM",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "y3AyH",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kOapw",
+                      "layoutPosition": "absolute",
+                      "x": 14,
+                      "y": 14,
+                      "name": "Found Stamp",
+                      "width": 52,
+                      "height": 52,
+                      "fill": "$fm-base",
+                      "cornerRadius": 26,
+                      "stroke": "$fm-surface",
+                      "strokeWidth": 3,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$fm-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 8
+                      },
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "s4Y2e",
+                          "name": "Found Icon",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "copy",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XaJcA",
+                  "name": "Card SPINOSAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "piGYq",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "C387c",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/spinosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "j3OQB6",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "X4fa5p",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "SPINOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "b2XTQq",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "FGQnt",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "dWCdp",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "TOiJe",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "4.2 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "rEgGG",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "g8M6lg",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "c3ks01",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "7.4 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Gntfz",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "xWXfv",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yv0aZ",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "w2ocJ",
+                  "name": "Card COMPSOGNATHUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mcLeV",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "YHG6B",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/compsognathus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "s6ytN",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ptzvw",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "COMPSOGNATHUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jIf1E",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "uMf9n",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "mIHmT",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "P6MBg",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.25 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "HcMIO",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "h3yAm",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "YWsTE",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "3 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "mvaqp",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "D85zq",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "VQQgp",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "azfQM",
+              "name": "Row 2",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tmHi2",
+                  "name": "Card ALLOSAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "O9ApM",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "DQyp2",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/allosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U6CCG1",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "x4KfY",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "ALLOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Xk2oM",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Wv60s",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "G5ELXE",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "shWYG",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "2.9 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "H7UMw",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "QnOHX",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "g5WYU",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "2.3 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "f7YWl",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "CqHpH",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "zorvd",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "S61Hn",
+                  "name": "Card MICRORAPTOR",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Z7Fog",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "w6XZ7z",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/microraptor.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lpTUB",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tV3jL",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "MICRORAPTOR",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Aiv54",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "LCvpk",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "wBXS4",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "v1TNyK",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.3 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "HYaqZ",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "DkLdM",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "n9itWt",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "1 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b2lTX",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "W9pD05",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AK0K1",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uyjuk",
+                  "name": "Card DILOPHOSAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zWnNN",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "a8cpV",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dilophosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zpfJz",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LvWDW",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "DILOPHOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "glCsx",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "EKo70",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "EIXW7",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "J61Od",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "1.5 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b0rEc",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "u8lCH",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "p4TfnY",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "400 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YzUy4",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "zPs9L",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "krYoS",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SCV28",
+                  "name": "Card CARNOTAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "XxY4e",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "r5Fmr",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/carnotaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Cwv02",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "OV7ll",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "CARNOTAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "b9mMu",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "nrlYM",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "BR085",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "fB4uQ",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "2.5 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "lmx0N",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "MTTqb",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "y4qjw",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "1.5 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "BaExv",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Pis56",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "szE8I",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wRpRx",
+              "name": "Row 3",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KaEVM",
+                  "name": "Card GIGANOTOSAURUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "H0tzf5",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sp47i",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/giganotosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LVOoB",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "qamEu",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "GIGANOTOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ixIr3",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Ug2J0",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "oI0wQ",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "BIXBl",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "3.6 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "uRT9s",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Qbzek",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "N0SdLo",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "7 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "l2j9s",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "jyiqW",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "snZ8b",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YoXLw",
+                  "name": "Card DEINONYCHUS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "E7doO",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "m4sP8",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/deinonychus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mCMcp",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s7OE4S",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "DEINONYCHUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jgM1w",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "G6JKbi",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "QS4Hj",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "LCvAH",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.9 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MdEO3",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "l4OJG",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "XoQR0",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "75 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "li9qJ",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "GYIDx",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "lYeWn",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "G8f4s",
+                  "name": "Card COELOPHYSIS",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "TPXFj",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "EczPK",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/coelophysis.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "D9W9y",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CPW64",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "COELOPHYSIS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jLrGZ",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "W7Q9i",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "y5afZt",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "hthxv",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.6 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "okx3S",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "Kas4n",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AYMyy",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "20 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "AOjrV",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "LNjUX",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "LENFA",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PUEds",
+                  "name": "Card BARYONYX",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "p5wllY",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "J6JDEH",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/baryonyx.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "L6QIM9",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Zg53O",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "BARYONYX",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sk7mb",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "r1iyeY",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "vMqrD",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Ou42O",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "2.5 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "BMVCy",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "PFHrQ",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "g32Cee",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "1.7 T",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bojOk",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "GlR06",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "z0bGlJ",
+                                  "name": "Diet Text",
+                                  "fill": "#FFFFFF",
+                                  "content": "MEAT",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "B00aD4",
+      "x": 3224,
+      "y": 17000,
+      "name": "Field Guide Midnight · Catalogue — Dark · BOTH chosen · none found",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        0,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "KCO5F",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "gSvKt",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "VSTCZ",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "eixej",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RnIok",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hBoVX",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "p5DdP",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xWC3n",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "ALL DINOSAURS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vnpPB",
+              "name": "Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "kK5sT",
+                  "name": "Count Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "footprints",
+                  "library": "lucide",
+                  "fill": "$fm-ink-soft"
+                },
+                {
+                  "type": "text",
+                  "id": "nB2oE",
+                  "name": "Count Text",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Mhx7l",
+          "name": "Food Chips",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "J15XZ9",
+              "name": "Chip ALL",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "E0Dbwt",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "daKAZ",
+                      "name": "Symbol book-open",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "QVan3",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "ALL",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "NSWVr",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "m21YPe",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "42",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UbrFG",
+              "name": "Chip MEAT",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JE5xk",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "h5EzXM",
+                      "name": "Symbol beef",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "$fm-terra"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EEI7A",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "eIs6f",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f5mw0",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "16",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CKDNH",
+              "name": "Chip PLANTS",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "I0fS8D",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "zdSEo",
+                      "name": "Symbol leaf",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "$fm-good"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "UaDhW",
+                  "name": "Word",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "C1rjtw",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LyQed",
+                      "name": "Count Text",
+                      "fill": "$fm-ink",
+                      "content": "23",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u7vD4",
+              "name": "Chip BOTH · chosen",
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 28,
+              "stroke": "$fm-amber",
+              "strokeWidth": 2,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 12
+              },
+              "gap": 10,
+              "padding": [
+                0,
+                10,
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "N6mrp",
+                  "name": "Symbols",
+                  "gap": 2,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "p7cFX",
+                      "name": "Symbol beef",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "WL9Cc",
+                      "name": "Symbol leaf",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "IQzm3",
+                  "name": "Word",
+                  "fill": "#1D2742",
+                  "content": "BOTH",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "JJ3bV",
+                  "name": "Count",
+                  "height": 36,
+                  "fill": "#00000026",
+                  "cornerRadius": 18,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AgbfL",
+                      "name": "Count Text",
+                      "fill": "#1D2742",
+                      "content": "3",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "e4jwJ7",
+          "name": "Grid",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "t0dhPr",
+              "name": "Row 1",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "UTkd9",
+                  "name": "Card GALLIMIMUS",
+                  "clip": true,
+                  "width": 317,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "qGTfd",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "D0Vmj",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/gallimimus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "cxi7J",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BVjH8",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "GALLIMIMUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jRXsZ",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "zKRez",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "s72YE",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "R6eke",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "1.9 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Rd6I4",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "nX9uM",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "GGH07",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "440 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I2pn4",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-amber",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "PcyD3",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "icon",
+                                  "id": "Y8I94M",
+                                  "name": "Diet Icon 2",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "leaf",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "W1QT5f",
+                                  "name": "Diet Text",
+                                  "fill": "#1D2742",
+                                  "content": "BOTH",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e3jJnE",
+                  "name": "Card OVIRAPTOR",
+                  "clip": true,
+                  "width": 317,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "InsoW",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Dqu4a",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/oviraptor.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mqaPC",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "a0lHs",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "OVIRAPTOR",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jP2HS",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "KsWrV",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "myB16",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "G2pzj",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.8 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "z706qn",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "m7lho",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "F6BQt1",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "35 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "nA6jW",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-amber",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "l4wSe",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "icon",
+                                  "id": "m6c0p",
+                                  "name": "Diet Icon 2",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "leaf",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "eWNAX",
+                                  "name": "Diet Text",
+                                  "fill": "#1D2742",
+                                  "content": "BOTH",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IdNbB",
+                  "name": "Card TROODON",
+                  "clip": true,
+                  "width": 317,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W8X3XK",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": 200,
+                      "fill": "$fm-surface-2",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qlEbG",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/troodon.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "v5k3z8",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": [
+                        14,
+                        16,
+                        18,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VViDD",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "TROODON",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eiYZy",
+                          "name": "Chips",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "B9W3KC",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "rcend",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "ruler",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Ru1YJ",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "0.9 M",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "cJ4Un",
+                              "name": "Chip",
+                              "height": 32,
+                              "fill": "$fm-surface-2",
+                              "cornerRadius": 10,
+                              "gap": 6,
+                              "padding": [
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "hKpai",
+                                  "name": "Chip Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "weight",
+                                  "library": "lucide",
+                                  "fill": "$fm-ink-soft"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "IDXau",
+                                  "name": "Chip Text",
+                                  "fill": "$fm-ink",
+                                  "content": "50 KG",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bh2a6",
+                              "name": "Diet Chip",
+                              "height": 32,
+                              "fill": "$fm-amber",
+                              "cornerRadius": 10,
+                              "gap": 5,
+                              "padding": [
+                                0,
+                                10,
+                                0,
+                                8
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "TEE8A",
+                                  "name": "Diet Icon",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "beef",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "icon",
+                                  "id": "ttaIZ",
+                                  "name": "Diet Icon 2",
+                                  "width": 16,
+                                  "height": 16,
+                                  "icon": "leaf",
+                                  "library": "lucide",
+                                  "fill": "#1D2742"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "jsBQ4",
+                                  "name": "Diet Text",
+                                  "fill": "#1D2742",
+                                  "content": "BOTH",
+                                  "fontFamily": "Lexend",
+                                  "fontSize": 15,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "E7V8qz",
+      "x": 4784,
+      "y": 17000,
+      "name": "Field Guide Midnight · Dinosaur page — Light · MEAT chosen · 1 of 16, ← goes to Archaeopteryx",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "yflVv",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "g0fL1",
+              "name": "Back Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Yy2n6",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "CZgTr",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "ALL DINOSAURS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "yEdvD",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "f3t0in",
+              "name": "Position",
+              "fill": "$fm-ink-soft",
+              "content": "1 / 16",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "u52Ji",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 40,
+          "children": [
+            {
+              "type": "frame",
+              "id": "NvZby",
+              "name": "Stage",
+              "clip": true,
+              "width": 760,
+              "height": "fill_container",
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "layout": "vertical",
+              "padding": 28,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "zDRbK",
+                  "layoutPosition": "absolute",
+                  "x": 130,
+                  "y": 40,
+                  "name": "Stage Glow",
+                  "opacity": 0.12,
+                  "fill": "$fm-sky",
+                  "width": 500,
+                  "height": 500
+                },
+                {
+                  "type": "frame",
+                  "id": "s5Qh56",
+                  "name": "Picture",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/tyrannosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "GMejl",
+                  "name": "Nav",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mm4IP",
+                      "name": "Previous Button",
+                      "width": 72,
+                      "height": 72,
+                      "fill": "#FFFFFF1A",
+                      "cornerRadius": 36,
+                      "stroke": "#FFFFFF40",
+                      "strokeWidth": 1,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "FvzXc",
+                          "name": "Previous Icon",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "arrow-left",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dGAHh",
+                      "name": "Next Button",
+                      "width": 72,
+                      "height": 72,
+                      "fill": "#FFFFFF1A",
+                      "cornerRadius": 36,
+                      "stroke": "#FFFFFF40",
+                      "strokeWidth": 1,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RDa5s",
+                          "name": "Next Icon",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "arrow-right",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jXTlb",
+                  "layoutPosition": "absolute",
+                  "x": 24,
+                  "y": 24,
+                  "name": "Found Stamp",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 32,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 3,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "yWFoe",
+                      "name": "Found Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "copy",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xs7Sw",
+              "name": "Info",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MwOxB",
+                  "name": "Name Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QKbWO",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "TYRANNOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 46,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HLs8F",
+                      "name": "Listen Button",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 28,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "X6XfN",
+                          "name": "Listen Icon",
+                          "width": 28,
+                          "height": 28,
+                          "icon": "volume-2",
+                          "library": "lucide",
+                          "fill": "#1D2742"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KcNdC",
+                  "name": "Diet Tag",
+                  "height": 56,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 28,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    22,
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "elJDu",
+                      "name": "Diet Mark",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#FFFFFF33",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "JQpRc",
+                          "name": "Diet Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "beef",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "jcafT",
+                      "name": "Diet Text",
+                      "fill": "#FFFFFF",
+                      "content": "MEAT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "v2teIm",
+                  "name": "Description",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "Lexend",
+                  "fontSize": 28,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "F3PyT5",
+                  "name": "Facts",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Q9urY",
+                      "name": "Fact TALL",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Pu2XA",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "w4atg",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "M5KV2",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "TALL",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SPlGJ",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "3.7 M",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "K4MVZl",
+                      "name": "Fact HEAVY",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h1CD7",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "ZPRYz",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "weight",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jvkXn",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "HEAVY",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "gzb4x",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "8 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "zbmh8",
+                  "name": "Source Note",
+                  "opacity": 0.8,
+                  "fill": "$fm-ink-soft",
+                  "content": "Facts checked with the Natural History Museum, London",
+                  "fontFamily": "Lexend",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
       "id": "G83iV",
       "x": 3224,
       "y": 20360,

@@ -147,7 +147,7 @@ export function HomePage({
           )}
         </button>
         <div className="games-column">
-          <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
+          <button type="button" className="card catalogue-tile" aria-label={text.catalogueTile} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
             {/* The book sits in the picture's other corner: beside the
                 title it would leave ALL DINOSAURS too little of the row on
@@ -156,7 +156,7 @@ export function HomePage({
               <BookOpen size={20} />
             </span>
             <span className="catalogue-tile-row">
-              <span className="catalogue-tile-title">{text.catalogue}</span>
+              <span className="catalogue-tile-title">{text.catalogueTile}</span>
             </span>
             {/* The counts sit in the tiles' corners, over the pictures: the
                 rows keep their width for the titles. */}
