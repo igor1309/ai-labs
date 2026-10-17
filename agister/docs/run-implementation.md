@@ -366,25 +366,17 @@ document of that name in the snapshot resolve checked. A source other
 than these is refused before anything runs, as before; a brief form no
 longer is.
 
-**Progress.** The runtime protocol grows: a turn is also given a
-report, a function to which a model's wrapper gives each tool call it
-reads, as it reads it: the tool's name and what it was given, as text.
-Claude-code's are the `tool_use` blocks of its assistant events: the
-name and the input's JSON. Codex's are its items: on `item.started`, a
-`command_execution`, `shell` and the command; a `file_change`, `edit`
-and its paths, by spaces; an `mcp_tool_call`, `mcp:<server>/<tool>`
-and its arguments' JSON; on `item.completed`, a `web_search`, `search`
-and its query, which its start does not carry. Other lines report
-nothing; bash reports nothing.
-
-`core/call` is given a report with each call and gives the turn each
-tool call as it comes. `core/workflow`'s port to call a step takes the
-step's report too, and its step names its agent. It reports to its
+**Progress**, best effort. A model's wrapper reports each tool call it
+recognizes in its stream, as it reads it, through a report the turn is
+given: the tool's name and a short text of what it was given, as the
+archive printed them. A line it does not recognize it skips; bash
+reports nothing. `core/call` is given the report with each call and
+passes it to the turn; `core/workflow`'s port to call a step takes it
+too, and its step names its agent. `core/workflow` reports to its
 events port, by the step's name: the step started, on its agent; each
-tool call its turn reports; and the step ended, with its status, its
-class and how long it took. The composition passes the report from
-`core/workflow`, through its chain, to the call, and prints each event
-to stderr as it comes, one line each:
+tool call; and the step ended, with its status, class and how long it
+took. The composition prints each to stderr as a short line, for
+example:
 
 ```
 · implement: started on claude-opus
@@ -392,18 +384,17 @@ to stderr as it comes, one line each:
 · implement: ended completed in 3m2s
 ```
 
-A duration is rounded to the second. A tool call's line has each newline
-of what the tool was given made a space, then is cut to 200 bytes, the
-line whole, its `· <step>: ` included, on a character's boundary. Stdout
-keeps only the result.
+The lines are for a person, not a contract: their wording, length and
+which tool calls a wrapper recognizes may change. Stdout keeps only the
+result.
 
 Decisions, each with its reason:
 
 - Progress is a line on stderr, not a record: the record is runstore's,
   and waits (`backlog/run-path.md`); a person and the loop's logs need
   to see a step working now.
-- Tool calls only, not text or thinking: the archive's lines were these,
-  and they tell what a step is doing in a line each.
+- Tool calls only, not text or thinking, and no format promised: the
+  archive's lines were these, and a person reading along needs no more.
 - `git.changed_files` from the merge base, as the archive gave it: a
   review reads what the candidate changed, not what its base gained.
 - No changes is a refusal, as the archive held: a review of nothing is
