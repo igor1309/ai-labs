@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- Redesigned the home page to the owner's design: a large COMPARE card with two dinosaurs facing off over rolling hills, a RexLab wordmark, and the language and theme switches as small menus for parents (Fredoka, Nunito and Lucide icons, bundled with the app).
 - Gave every dinosaur card its own picture: an 800×600 WebP per dinosaur at `src/assets/dinos/<id>/body.webp`, served under a content-hashed name and named in the chosen language. Until the artwork is generated each is a placeholder with the dinosaur's name, made by `scripts/make-placeholders.sh` and credited in `CREDITS.md`; a test reads every picture's size from its file.
 - Added a README that describes the app and points to the features, the architecture notes and `AGENTS.md`.
 - Gave the quiz one entry point and the screens their own display types, so the answer rule lives only in the quiz; tests now enforce these module boundaries, show the celebrations, and check that progress and the language are saved in `localStorage`.

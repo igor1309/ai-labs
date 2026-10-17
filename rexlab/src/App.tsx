@@ -57,7 +57,10 @@ export type AppProps = {
   themeStore: ThemeStore;
 };
 
-type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
+// The two dinosaurs facing off on the home page's quiz card.
+const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
+
+type Screen ={ kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
 
 export function App({ dinosaurs, bodyPicture, random, orientation, progress, deviceLanguage, languageStore, appearance, themeStore }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -143,6 +146,7 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             onCompareDinosaurs={playNewRound}
           />
         );

@@ -3,8 +3,8 @@ import type { Texts } from "./texts.ts";
 export const ru: Texts = {
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
-  languageSwitch: "Язык",
-  themeSwitch: "Тема",
+  languageMenu: "Язык",
+  themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
   turnSideways: "ПОВЕРНИ ПЛАНШЕТ БОКОМ",
   home: "ДОМОЙ",

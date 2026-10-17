@@ -7,6 +7,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
+import { chooseFrom, choicesIn, openMenu, outsideMenu, symbolOf } from "./menus.ts";
 import {
   SHIPPED_DINOSAURS,
   contrast,
@@ -94,9 +95,12 @@ const describeElement = (element: Element) =>
 // opaque background, is dark in the dark theme and light in the light one,
 // and every text read on it keeps text contrast with its surface. Symbols
 // hidden from reading, such as the faded stars, are pictures, not text.
+// The home page's quiz card is the one exception the approved design
+// draws: a bright yellow card with a dark badge in both themes, its text
+// still held to text contrast.
 function expectScreenIn(theme: Theme) {
   const elements = [document.body, ...document.body.querySelectorAll("*")];
-  const surfaces = elements.filter(opaque);
+  const surfaces = elements.filter((element) => opaque(element) && !element.closest(".quiz-card"));
   const texts = elements.filter(
     (element) =>
       !element.closest('[aria-hidden="true"]') &&
@@ -114,12 +118,17 @@ function expectScreenIn(theme: Theme) {
   ).toEqual([]);
 }
 
-// Checks every screen in every state: the home page, the portrait gate, a
-// whole round, each question before and after its answer, the first one
-// wrong so both marks show, the result with its celebration, and the home
-// page again.
+// Checks every screen in every state: the home page with each menu closed
+// and open, the portrait gate, a whole round, each question before and
+// after its answer, the first one wrong so both marks show, the result with
+// its celebration, and the home page again.
 async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: ManualOrientation) {
   expectScreenIn(theme);
+  for (const menu of ["Theme", "Language"]) {
+    await openMenu(user, menu);
+    expectScreenIn(theme);
+    await user.click(outsideMenu());
+  }
   act(() => orientation.turn("portrait"));
   expectScreenIn(theme);
   act(() => orientation.turn("landscape"));
@@ -186,7 +195,7 @@ describe("a chosen theme", () => {
     const { user } = openApp({ device });
     expectScreenIn(appearance);
 
-    await user.click(screen.getByRole("button", { name }));
+    await chooseFrom(user, "Theme", name);
 
     expectScreenIn(chosen);
     act(() => device.switchTo(chosen));
@@ -202,7 +211,7 @@ describe("a chosen theme", () => {
     const { user } = openApp({ device, storage });
     expectScreenIn("dark");
 
-    await user.click(screen.getByRole("button", { name: "System" }));
+    await chooseFrom(user, "Theme", "System");
 
     expectScreenIn("light");
     expect(storage.items.get(THEME_KEY)).toBe("system");
@@ -217,7 +226,7 @@ describe("a chosen theme", () => {
     const storage = memoryStorage();
     const { user, unmount } = openApp({ device: manualAppearance(appearance), storage });
 
-    await user.click(screen.getByRole("button", { name }));
+    await chooseFrom(user, "Theme", name);
 
     expect(storage.items.get(THEME_KEY)).toBe(chosen);
     unmount();
@@ -228,14 +237,14 @@ describe("a chosen theme", () => {
   it("still applies for this visit when it cannot be saved", async () => {
     const { user } = openApp({ device: manualAppearance("light"), storage: memoryStorage({}, { save: false }) });
 
-    await user.click(screen.getByRole("button", { name: "Dark" }));
+    await chooseFrom(user, "Theme", "Dark");
 
     expectScreenIn("dark");
   });
 
   it("is taken off the page when the app is closed", async () => {
     const { user, unmount } = openApp({ device: manualAppearance("light") });
-    await user.click(screen.getByRole("button", { name: "Dark" }));
+    await chooseFrom(user, "Theme", "Dark");
 
     unmount();
 
@@ -243,55 +252,76 @@ describe("a chosen theme", () => {
   });
 });
 
-describe("the theme switch", () => {
+describe("the theme menu", () => {
   const CHOICES: Record<Language, string[]> = {
-    en: ["◐ System", "☀️ Light", "🌙 Dark"],
-    ru: ["◐ Системная", "☀️ Светлая", "🌙 Тёмная"]
+    en: ["System", "Light", "Dark"],
+    ru: ["Системная", "Светлая", "Тёмная"]
   };
-  const LABELS: Record<Language, { control: string; card: string }> = {
-    en: { control: "Theme", card: "COMPARE" },
-    ru: { control: "Тема", card: "СРАВНИ" }
+  const LABELS: Record<Language, { menu: string; card: string }> = {
+    en: { menu: "Theme", card: "COMPARE" },
+    ru: { menu: "Тема", card: "СРАВНИ" }
   };
 
   it.each(["en", "ru"] as const)(
-    "is a small, faded control in a top corner of the home page only, in normal case with a symbol for each choice, in %s",
+    "is a small, faded button with the current theme's symbol in the top-right corner of the home page only, in %s",
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
-      const control = screen.getByRole("navigation", { name: LABELS[language].control });
+      const button = screen.getByRole("button", { name: LABELS[language].menu });
       const card = screen.getByRole("button", { name: LABELS[language].card });
-      const choices = within(control).getAllByRole("button");
 
-      expect(choices.map((button) => button.textContent)).toEqual(CHOICES[language]);
-      for (const button of choices) {
-        const [symbol] = button.children;
-        expect(symbol?.getAttribute("aria-hidden")).toBe("true");
-        const words = button.textContent?.replace(symbol?.textContent ?? "", "").trim() ?? "";
-        expect(words).not.toBe(words.toLocaleUpperCase(language));
-      }
-      const style = getComputedStyle(control);
-      expect(style.position).toBe("fixed");
-      expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
-      expect(style.left).toMatch(/^[\d.]+(px|rem)$/);
+      expect(button.textContent).toBe("");
+      expect(symbolOf(button)).toBe("monitor");
+      const corner = getComputedStyle(button.closest(".parent-menus") ?? button);
+      expect(corner.position).toBe("fixed");
+      expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
+      expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
+      const style = getComputedStyle(button);
       expect(Number(style.opacity)).toBeLessThan(1);
-      expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(card).getByText(LABELS[language].card)).fontSize) / 2);
+      // A tap area for a parent's finger around the small symbol.
+      expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
+      expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
 
       await user.click(card);
 
-      expect(screen.queryByRole("navigation", { name: LABELS[language].control })).toBeNull();
+      expect(screen.queryByRole("button", { name: LABELS[language].menu })).toBeNull();
     }
   );
 
-  it("marks the choice in use", async () => {
-    const { user } = openApp({ device: manualAppearance("dark") });
-    const pressed = () =>
-      within(screen.getByRole("navigation", { name: "Theme" }))
-        .getAllByRole("button", { pressed: true })
-        .map((button) => button.textContent);
-    expect(pressed()).toEqual(["◐ System"]);
+  it.each(["en", "ru"] as const)(
+    "lists the themes in normal case, each with its symbol, the current one ticked, in %s, and a tap outside changes nothing",
+    async (language) => {
+      const storage = memoryStorage();
+      const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB", storage });
 
-    await user.click(screen.getByRole("button", { name: "Light" }));
+      const menu = await openMenu(user, LABELS[language].menu);
 
-    expect(pressed()).toEqual(["☀️ Light"]);
+      expect(choicesIn(menu)).toEqual(CHOICES[language].map((name, at) => ({ name, checked: at === 0, tick: at === 0 })));
+      expect(within(menu).getAllByRole("menuitemradio").map(symbolOf)).toEqual(["monitor", "sun", "moon"]);
+      expect(CHOICES[language].filter((name) => name === name.toLocaleUpperCase(language))).toEqual([]);
+      expect(parseFloat(getComputedStyle(within(menu).getByText(CHOICES[language][0] ?? "")).fontSize)).toBeLessThan(
+        parseFloat(getComputedStyle(screen.getByText(LABELS[language].card)).fontSize) / 2
+      );
+
+      await user.click(outsideMenu());
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(storage.items.has(THEME_KEY)).toBe(false);
+      expectScreenIn("light");
+    }
+  );
+
+  it.each([
+    ["Light", "sun"],
+    ["Dark", "moon"],
+    ["System", "monitor"]
+  ] as const)("shows the symbol of %s once it is chosen, and ticks it the next time it opens", async (name, symbol) => {
+    const { user } = openApp({ storage: memoryStorage({ [THEME_KEY]: name === "System" ? "dark" : "system" }) });
+
+    await chooseFrom(user, "Theme", name);
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(symbolOf(screen.getByRole("button", { name: "Theme" }))).toBe(symbol);
+    expect(choicesIn(await openMenu(user, "Theme")).filter(({ tick }) => tick)).toEqual([{ name, checked: true, tick: true }]);
   });
 });
 

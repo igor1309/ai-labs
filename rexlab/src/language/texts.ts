@@ -9,10 +9,10 @@ import { ru } from "./ru.ts";
 export type Texts = {
   quizCard: string;
   quizCardPicture: string;
-  // The language switch is for parents, so its label is in normal case.
-  languageSwitch: string;
-  // So is the theme switch, with its label and its choices.
-  themeSwitch: string;
+  // The language menu is for parents, so its label is in normal case.
+  languageMenu: string;
+  // So is the theme menu, with its label and its choices.
+  themeMenu: string;
   themes: { system: string; light: string; dark: string };
   turnSideways: string;
   home: string;

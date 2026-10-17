@@ -29,7 +29,7 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 
 const inQuiz = (file: string) => file.startsWith("quiz/");
 const SCREENS = ["HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
-const PRESENTATION = [...SCREENS, "formatValue.ts", "usePointerState.ts"];
+const PRESENTATION = [...SCREENS, "ParentMenu.tsx", "formatValue.ts", "usePointerState.ts"];
 const ADAPTERS = ["dinosaurPictures.ts", "dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
 const COMPOSITION = ["App.tsx", "main.tsx", "presentation.ts", "root.ts"];
 
