@@ -29,3 +29,9 @@ Feature: Inputs are resolved from their sources
       environment A="x", B from params.p and C from inputs.i
     When the environment is resolved
     Then it is A=x, B=1 and C=2
+
+  Scenario: A source that gives an identity gives the input's
+    Given a source "s" plugged in, giving the value "c1" and the
+      identity "c1", and the input "rev" from "s"
+    When the inputs are resolved
+    Then "rev" is "c1", its identity "c1"

@@ -288,11 +288,26 @@ func (s *wrapperSpy[F, T, R]) ran() []T {
 	return slices.Clone(s.turns)
 }
 
+// reportingSpy is a spy of a runtime wrapper as wrapperSpy is, whose turns
+// also take a report of its tool calls P: it gives each turn's report its
+// test's tools, in order, before it answers.
+type reportingSpy[F, T, P, R any] struct {
+	wrapperSpy[F, T, R]
+	tools []P
+}
+
+func (s *reportingSpy[F, T, P, R]) Run(ctx context.Context, turn T, report func(P)) (R, error) {
+	for _, tool := range s.tools {
+		report(tool)
+	}
+	return s.wrapperSpy.Run(ctx, turn)
+}
+
 // The spies of the bash, claude-code and codex wrappers.
 type (
 	bashWrapperSpy       = wrapperSpy[bash.Facts, bash.Turn, bash.Ended]
-	claudeCodeWrapperSpy = wrapperSpy[claudecode.Facts, claudecode.Turn, claudecode.Result]
-	codexWrapperSpy      = wrapperSpy[codex.Facts, codex.Turn, codex.Result]
+	claudeCodeWrapperSpy = reportingSpy[claudecode.Facts, claudecode.Turn, claudecode.Tool, claudecode.Result]
+	codexWrapperSpy      = reportingSpy[codex.Facts, codex.Turn, codex.Tool, codex.Result]
 )
 
 // answers answers every turn with result.
@@ -335,8 +350,8 @@ func newRuntimesSpy(t *testing.T) *runtimesSpy {
 	}
 	return &runtimesSpy{
 		bash:   &bashWrapperSpy{t: t, facts: b.Facts()},
-		claude: &claudeCodeWrapperSpy{t: t, facts: claude.Facts()},
-		codex:  &codexWrapperSpy{t: t, facts: cx.Facts()},
+		claude: &claudeCodeWrapperSpy{wrapperSpy: wrapperSpy[claudecode.Facts, claudecode.Turn, claudecode.Result]{t: t, facts: claude.Facts()}},
+		codex:  &codexWrapperSpy{wrapperSpy: wrapperSpy[codex.Facts, codex.Turn, codex.Result]{t: t, facts: cx.Facts()}},
 		pi:     piSpy{facts: pi.New().Facts()},
 	}
 }
@@ -363,4 +378,78 @@ func endedContext() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	return ctx
+}
+
+// sourcesSpy is a spy of what a run's inputs are read from: the files its
+// test gives, by path, which exist, as do the paths it gives besides; the
+// commit git names for each revision in its root, and the files changed
+// for each "base..head" there; and gitErr, where its test gives one, as
+// git's answer to everything. A file it does not hold is fs.ErrNotExist,
+// a revision it does not name an error. It keeps what it is asked. It is
+// safe for concurrent use.
+type sourcesSpy struct {
+	root    string
+	files   map[string]string
+	exist   []string
+	commits map[string]string
+	changed map[string][]string
+	gitErr  error
+	mu      sync.Mutex
+	asked   []string
+}
+
+func (s *sourcesSpy) ask(what string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, what)
+}
+
+func (s *sourcesSpy) Bytes(path string) ([]byte, error) {
+	s.ask("bytes " + path)
+	text, ok := s.files[path]
+	if !ok {
+		return nil, &fs.PathError{Op: "open", Path: path, Err: fs.ErrNotExist}
+	}
+	return []byte(text), nil
+}
+
+func (s *sourcesSpy) Exists(path string) (bool, error) {
+	s.ask("exists " + path)
+	_, held := s.files[path]
+	return held || slices.Contains(s.exist, path), nil
+}
+
+func (s *sourcesSpy) Commit(_ context.Context, dir, rev string) (string, error) {
+	s.ask("commit " + rev + " in " + dir)
+	commit, ok := s.commits[rev]
+	switch {
+	case s.gitErr != nil:
+		return "", s.gitErr
+	case dir != s.root || !ok:
+		return "", errors.New("git spy: no commit " + rev + " in " + dir)
+	}
+	return commit, nil
+}
+
+func (s *sourcesSpy) Changed(_ context.Context, dir, base, head string) ([]string, error) {
+	s.ask("changed " + base + ".." + head + " in " + dir)
+	switch {
+	case s.gitErr != nil:
+		return nil, s.gitErr
+	case dir != s.root:
+		return nil, errors.New("git spy: no worktree " + dir)
+	}
+	return slices.Clone(s.changed[base+".."+head]), nil
+}
+
+// askedOf is what the spy was asked, in order.
+func (s *sourcesSpy) askedOf() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.asked)
+}
+
+// sourcing is the spy as build takes it.
+func (s *sourcesSpy) sourcing() sourcing {
+	return sourcing{texts: s, paths: s, commits: s, changes: s}
 }

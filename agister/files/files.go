@@ -1,9 +1,11 @@
 // Package files is the operating system's filesystem, in its own types
 // (ADR-001): a folder's entries, each with what it is, a file's bytes,
-// and a folder's path with its links resolved.
+// whether a path exists, and a folder's path with its links resolved.
 package files
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -53,6 +55,19 @@ func (*Files) Entries(folder string) ([]Entry, error) {
 
 // Bytes gives file's bytes.
 func (*Files) Bytes(file string) ([]byte, error) { return os.ReadFile(file) }
+
+// Exists tells whether something is at path, a link by where it leads: a
+// link that leads nowhere is nothing. An error is one that tells neither.
+func (*Files) Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return false, nil
+	}
+	return false, err
+}
 
 // Resolved gives folder's path with each link in it replaced by where it
 // leads.

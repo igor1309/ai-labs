@@ -2,8 +2,9 @@
 // inputs resolved once at its boundary, then its steps in order, each
 // called through the one port it declares (ADR-012, rule 1) with its
 // process's params bound from the workflow's params and inputs and the
-// outputs of the steps before it; and its result, in the result shape
-// (ADR-001, invariant 3), read through its output mapping.
+// outputs of the steps before it, what each is doing told to its events;
+// and its result, in the result shape (ADR-001, invariant 3), read through
+// its output mapping.
 package workflow
 
 import (
@@ -38,10 +39,11 @@ type Workflow struct {
 	Outputs []Binding
 }
 
-// Step is a step of the workflow, by its name, unique in the workflow, and
-// its bindings, which give its process's params.
+// Step is a step of the workflow, by its name, unique in the workflow; the
+// agent it runs on; and its bindings, which give its process's params.
 type Step struct {
 	Name     string
+	Agent    string
 	Bindings []Binding
 }
 
@@ -85,14 +87,38 @@ type Boundary struct {
 
 // Resolver resolves the workflow's boundary over the params given: what
 // the workflow declares of its params and inputs is the resolver's. An
-// error refuses the run.
+// error refuses the run, its words the run's reason.
 type Resolver interface {
 	Resolve(ctx context.Context, given map[string]string) (Boundary, error)
 }
 
-// Caller calls the step named step, its process's params given by name.
+// Caller calls the step named step, its process's params given by name,
+// and gives each tool call its turn reports to report.
 type Caller interface {
-	Call(ctx context.Context, step string, params map[string]string) Result
+	Call(ctx context.Context, step string, params map[string]string, report func(Tool)) Result
+}
+
+// Tool is a tool call a step's turn reports: the tool's name and a short
+// text of what it was given.
+type Tool struct {
+	Name, Input string
+}
+
+// Events is told what each step of a run is doing, by the step's name: that
+// it started, on its agent; each tool call its turn reports; and how it
+// ended.
+type Events interface {
+	Started(step, agent string)
+	Tool(step string, tool Tool)
+	Ended(step string, ended Ended)
+}
+
+// Ended is how a step's call ended: its status and class, and how long it
+// took.
+type Ended struct {
+	Status   Status
+	Class    Class
+	Duration time.Duration
 }
 
 // Clock tells the time a run's timing is measured by.
@@ -155,30 +181,35 @@ type Timing struct {
 type Runner struct {
 	resolver Resolver
 	caller   Caller
+	events   Events
 	clock    Clock
 }
 
 // New gives a runner whose inputs are resolved by resolver, whose steps are
-// called by caller, and whose timing is read from clock.
-func New(resolver Resolver, caller Caller, clock Clock) (*Runner, error) {
+// called by caller, what each is doing told to events, and whose timing is
+// read from clock.
+func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner, error) {
 	switch {
 	case resolver == nil:
 		return nil, errors.New("workflow: no resolver")
 	case caller == nil:
 		return nil, errors.New("workflow: no caller")
+	case events == nil:
+		return nil, errors.New("workflow: no events")
 	case clock == nil:
 		return nil, errors.New("workflow: no clock")
 	}
-	return &Runner{resolver: resolver, caller: caller, clock: clock}, nil
+	return &Runner{resolver: resolver, caller: caller, events: events, clock: clock}, nil
 }
 
 // Run runs w over the params given: its inputs resolved once, then each
-// step in order, until one does not complete. The run's status, class and
-// reason are its last call's, its output its output mapping once every
-// step has completed, its timing the whole run's, its cost unknown where a
-// call's is, its usage the sum of what its calls reported, its sessions
-// each step's whose call reported one, and its warnings every call's, in
-// order.
+// step in order, until one does not complete, each step's start on its
+// agent, tool calls and end told to the events as they come. The run's
+// status, class and reason are its last call's, its output its output
+// mapping once every step has completed, its timing the whole run's, its
+// cost unknown where a call's is, its usage the sum of what its calls
+// reported, its sessions each step's whose call reported one, and its
+// warnings every call's, in order.
 func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) Result {
 	started := r.clock.Now()
 	result := Result{Status: Completed, Cost: new(float64), Sessions: map[string]string{}}
@@ -194,6 +225,7 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 
 	boundary, err := r.resolver.Resolve(ctx, given)
 	if err != nil {
+		result.Reason = err.Error()
 		return refuse()
 	}
 	read := reader{boundary: boundary, outputs: map[string]map[string]any{}}
@@ -202,7 +234,9 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		if !ok {
 			return refuse()
 		}
-		called := r.caller.Call(ctx, step.Name, params)
+		r.events.Started(step.Name, step.Agent)
+		called := r.caller.Call(ctx, step.Name, params, func(tool Tool) { r.events.Tool(step.Name, tool) })
+		r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
 		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
 		result.Warnings = append(result.Warnings, called.Warnings...)
 		result.Usage = result.Usage.add(called.Usage)

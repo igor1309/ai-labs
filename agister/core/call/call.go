@@ -135,10 +135,17 @@ type Stream struct {
 	Digest     string
 }
 
-// Runtime takes a turn: it gives how the turn's program ended, or an error,
-// wrapping ErrNotStarted when the program could not start.
+// Tool is a tool call a turn reports: the tool's name and a short text of
+// what it was given.
+type Tool struct {
+	Name, Input string
+}
+
+// Runtime takes a turn: it gives each tool call it reports to report, as
+// it reads it, and how the turn's program ended, or an error, wrapping
+// ErrNotStarted when the program could not start.
 type Runtime interface {
-	Turn(ctx context.Context, turn Turn) (Ended, error)
+	Turn(ctx context.Context, turn Turn, report func(Tool)) (Ended, error)
 }
 
 // Clock tells the time a call's timing is measured by.
@@ -240,7 +247,8 @@ var (
 	errTurnReturn = errors.New("the turn has returned")
 )
 
-// Call makes step's one turn, its environment the caller's, then the
+// Call makes step's one turn, each tool call it reports given to report,
+// its environment the caller's, then the
 // process's, then, where the runtime takes them there, each input by its
 // name; and ends it at the step's time limit or when ctx ends. A runtime
 // that takes the inputs in its message is given the message of the step's
@@ -249,7 +257,7 @@ var (
 // turn that ended otherwise ends by its reply. A call whose ctx has
 // already ended makes no turn: its program would start, and act, only to
 // be ended.
-func (c *Caller) Call(ctx context.Context, step Step) Result {
+func (c *Caller) Call(ctx context.Context, step Step, report func(Tool)) Result {
 	started := c.clock.Now()
 	timed := func() Result {
 		finished := c.clock.Now()
@@ -265,7 +273,7 @@ func (c *Caller) Call(ctx context.Context, step Step) Result {
 	}
 	turnCtx, cancel := context.WithCancelCause(ctx)
 	watched := c.watch(turnCtx, cancel, step.TimeLimit)
-	ended, err := c.runtime.Turn(turnCtx, c.turn(step))
+	ended, err := c.runtime.Turn(turnCtx, c.turn(step), report)
 	// The cause is fixed once the turn has returned: a limit that passes
 	// later ends nothing.
 	cancel(errTurnReturn)

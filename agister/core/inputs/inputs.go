@@ -1,7 +1,8 @@
 // Package inputs resolves what a workflow or a process declares (ADR-010):
 // its params over those given, a param not given taking its default; its
 // inputs, each from its source, a port plugged in by name (rule 2), to a
-// value and its identity; and a process's environment.
+// value and its identity, a text checked against the brief forms it names
+// (rule 5); and a process's environment.
 package inputs
 
 import (
@@ -27,12 +28,14 @@ type Param struct {
 	Default *string
 }
 
-// Input is a declared input: the source it comes from and the arguments the
-// source takes.
+// Input is a declared input: the source it comes from, the arguments the
+// source takes, and the brief forms its text may take, none for a text
+// of any structure.
 type Input struct {
 	Name      string
 	Source    string
 	Arguments map[string]Value
+	Forms     []Form
 }
 
 // Variable is a variable of a process's environment.
@@ -62,9 +65,15 @@ const (
 )
 
 // Source gives an input's value from its arguments, their references
-// evaluated, and the params.
+// evaluated, and the params, and its identity where it has one of its
+// own, "" where it has none.
 type Source interface {
-	Value(ctx context.Context, arguments, params map[string]string) (string, error)
+	Value(ctx context.Context, arguments, params map[string]string) (Fixed, error)
+}
+
+// Paths tells whether a path a brief names exists, as the brief writes it.
+type Paths interface {
+	Exists(ctx context.Context, path string) (bool, error)
 }
 
 // Resolved is what Resolve gives: the params, the inputs and the
@@ -75,8 +84,8 @@ type Resolved struct {
 	Environment map[string]string
 }
 
-// Fixed is an input's value and its identity: the hex SHA-256 digest of
-// its text.
+// Fixed is an input's value and its identity: the one its source gives,
+// else the hex SHA-256 digest of its text.
 type Fixed struct {
 	Value    string
 	Identity string
@@ -96,24 +105,30 @@ func (*Refusal) Status() string { return "failed" }
 // Class is the class a refused call ends in.
 func (*Refusal) Class() string { return "refused" }
 
-// Resolver resolves inputs from the sources plugged into it.
+// Resolver resolves inputs from the sources plugged into it, and checks a
+// brief's references through paths.
 type Resolver struct {
 	sources map[string]Source
+	paths   Paths
 }
 
-// New gives a resolver over sources, by their names.
-func New(sources map[string]Source) (*Resolver, error) {
+// New gives a resolver over sources, by their names, and paths.
+func New(sources map[string]Source, paths Paths) (*Resolver, error) {
 	for name, source := range sources {
 		if source == nil {
 			return nil, fmt.Errorf("inputs: no source %q", name)
 		}
 	}
-	return &Resolver{sources: maps.Clone(sources)}, nil
+	if paths == nil {
+		return nil, errors.New("inputs: no paths")
+	}
+	return &Resolver{sources: maps.Clone(sources), paths: paths}, nil
 }
 
 // Resolve resolves declared over the params given: the params, then each
 // input in its order, its arguments read from the params and the inputs
-// before it, then the environment. What cannot be resolved is a *Refusal.
+// before it, its text checked against its forms, then the environment.
+// What cannot be resolved is a *Refusal.
 func (r *Resolver) Resolve(ctx context.Context, declared Declared, given map[string]string) (Resolved, error) {
 	resolved := Resolved{
 		Params:      maps.Clone(given),
@@ -129,12 +144,15 @@ func (r *Resolver) Resolve(ctx context.Context, declared Declared, given map[str
 		}
 	}
 	for _, input := range declared.Inputs {
-		value, err := r.input(ctx, input, resolved)
+		fixed, err := r.input(ctx, input, resolved)
 		if err != nil {
 			return Resolved{}, &Refusal{Reason: fmt.Sprintf("input %q: %v", input.Name, err)}
 		}
-		digest := sha256.Sum256([]byte(value))
-		resolved.Inputs[input.Name] = Fixed{Value: value, Identity: hex.EncodeToString(digest[:])}
+		if fixed.Identity == "" {
+			digest := sha256.Sum256([]byte(fixed.Value))
+			fixed.Identity = hex.EncodeToString(digest[:])
+		}
+		resolved.Inputs[input.Name] = fixed
 	}
 	for _, variable := range declared.Environment {
 		value, err := evaluate(variable.Value, resolved)
@@ -146,20 +164,29 @@ func (r *Resolver) Resolve(ctx context.Context, declared Declared, given map[str
 	return resolved, nil
 }
 
-func (r *Resolver) input(ctx context.Context, input Input, resolved Resolved) (string, error) {
+func (r *Resolver) input(ctx context.Context, input Input, resolved Resolved) (Fixed, error) {
 	source, ok := r.sources[input.Source]
 	if !ok {
-		return "", fmt.Errorf("no source %q is plugged in", input.Source)
+		return Fixed{}, fmt.Errorf("no source %q is plugged in", input.Source)
 	}
 	arguments := map[string]string{}
 	for name, value := range input.Arguments {
 		text, err := evaluate(value, resolved)
 		if err != nil {
-			return "", fmt.Errorf("argument %q: %w", name, err)
+			return Fixed{}, fmt.Errorf("argument %q: %w", name, err)
 		}
 		arguments[name] = text
 	}
-	return source.Value(ctx, arguments, maps.Clone(resolved.Params))
+	fixed, err := source.Value(ctx, arguments, maps.Clone(resolved.Params))
+	if err != nil {
+		return Fixed{}, err
+	}
+	if len(input.Forms) > 0 {
+		if err := r.takesAForm(ctx, fixed.Value, input.Forms); err != nil {
+			return Fixed{}, err
+		}
+	}
+	return fixed, nil
 }
 
 // evaluate is value's text, or what it reads of resolved.
@@ -187,14 +214,14 @@ func evaluate(value Value, resolved Resolved) (string, error) {
 // "name".
 type ParamSource struct{}
 
-func (ParamSource) Value(_ context.Context, arguments, params map[string]string) (string, error) {
+func (ParamSource) Value(_ context.Context, arguments, params map[string]string) (Fixed, error) {
 	name, ok := arguments["name"]
 	if !ok {
-		return "", errors.New(`the source "param" names no param`)
+		return Fixed{}, errors.New(`the source "param" names no param`)
 	}
 	value, ok := params[name]
 	if !ok {
-		return "", fmt.Errorf("no param %q is given", name)
+		return Fixed{}, fmt.Errorf("no param %q is given", name)
 	}
-	return value, nil
+	return Fixed{Value: value}, nil
 }

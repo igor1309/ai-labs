@@ -1,19 +1,18 @@
 package codex
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
+	"unicode/utf8"
 )
 
 // event is what the wrapper reads of a JSON event line.
 type event struct {
 	Type     string `json:"type"`
 	ThreadID string `json:"thread_id"`
-	Item     struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	} `json:"item"`
-	Usage *struct {
+	Item     item   `json:"item"`
+	Usage    *struct {
 		Input     *int64 `json:"input_tokens"`
 		CacheRead *int64 `json:"cached_input_tokens"`
 		Output    *int64 `json:"output_tokens"`
@@ -24,10 +23,29 @@ type event struct {
 	} `json:"error"`
 }
 
+// item is what the wrapper reads of an event's item: its id and type, an
+// agent message's text, and what a tool call was given, by the fields
+// codex gives each kind of call.
+type item struct {
+	ID        string          `json:"id"`
+	Type      string          `json:"type"`
+	Text      string          `json:"text"`
+	Command   string          `json:"command"`
+	Query     string          `json:"query"`
+	Action    json.RawMessage `json:"action"`
+	Changes   json.RawMessage `json:"changes"`
+	Server    string          `json:"server"`
+	Tool      string          `json:"tool"`
+	Arguments json.RawMessage `json:"arguments"`
+}
+
 // stream is what a turn's JSON events told: the thread, the last agent
 // message, whether the turn completed and its usage, and the message of a
-// failed turn.
+// failed turn; the report each tool call is given to, and the searches
+// reported as they started.
 type stream struct {
+	report      func(Tool)
+	searches    map[string]bool
 	thread      string
 	lastMessage string
 	completed   bool
@@ -46,9 +64,19 @@ func (s *stream) line(line string) {
 	switch e.Type {
 	case "thread.started":
 		s.thread = e.ThreadID
+	case "item.started":
+		s.started(e.Item)
 	case "item.completed":
-		if e.Item.Type == "agent_message" {
+		switch e.Item.Type {
+		case "agent_message":
 			s.lastMessage = e.Item.Text
+		case "web_search":
+			// A search not reported as it started is reported here, by
+			// what its completed item gives.
+			if !s.searches[e.Item.ID] {
+				s.report(Tool{Name: "web_search", Input: short(search(e.Item))})
+			}
+			delete(s.searches, e.Item.ID)
 		}
 	case "turn.completed":
 		s.completed = true
@@ -58,6 +86,69 @@ func (s *stream) line(line string) {
 	case "turn.failed":
 		s.failed = &e.Error.Message
 	}
+}
+
+// started reports the tool call an item starts, where it is one the
+// wrapper recognizes, as the archive printed it. A search that starts
+// without its query is no call to tell from another: it is reported as it
+// completes.
+func (s *stream) started(item item) {
+	switch item.Type {
+	case "command_execution":
+		s.report(Tool{Name: "command", Input: short(item.Command)})
+	case "file_change":
+		s.report(Tool{Name: "file_change", Input: short(text(item.Changes))})
+	case "mcp_tool_call":
+		s.report(Tool{Name: "mcp:" + item.Server + "/" + item.Tool, Input: short(text(item.Arguments))})
+	case "web_search":
+		if item.Query != "" {
+			s.searches[item.ID] = true
+			s.report(Tool{Name: "web_search", Input: short(item.Query)})
+		}
+	}
+}
+
+// search is what a completed search was given: its query, then its action
+// where that says more than a search for the query, as an opened page
+// does.
+func search(item item) string {
+	var action map[string]any
+	if json.Unmarshal(item.Action, &action) != nil || action == nil ||
+		len(action) == 2 && action["type"] == "search" && action["query"] == item.Query {
+		return item.Query
+	}
+	return strings.TrimSpace(item.Query + " " + text(item.Action))
+}
+
+// text is raw JSON as text: a string's value, else the JSON on one line,
+// "" where there is none.
+func text(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var b bytes.Buffer
+	if json.Compact(&b, raw) != nil {
+		return string(raw)
+	}
+	return b.String()
+}
+
+// inputLimit is the most of a tool call's input a report gives, in bytes,
+// as the archive printed it.
+const inputLimit = 300
+
+// short is text cut to inputLimit, at the start of a character, and marked
+// "…" where it was cut.
+func short(text string) string {
+	if len(text) <= inputLimit {
+		return text
+	}
+	end := inputLimit
+	for end > 0 && !utf8.RuneStart(text[end]) {
+		end--
+	}
+	return text[:end] + "…"
 }
 
 // reply is the turn's reply, its program having ended as ended and a schema
