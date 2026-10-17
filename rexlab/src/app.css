@@ -576,9 +576,9 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 /* The columns that do not fit scroll sideways under the finger, and the
-   next one peeks in at the edge: at 310px, at least 32px of it on every
-   iPad from 1024 to 1376px wide, where the design's 330px would show none
-   at 1366px. The row reaches past the games above and below, so the
+   next one peeks in at the edge. The columns are narrower than the
+   design's 330px, which fill the row with two at 1366px and leave nothing
+   to peek in. The row reaches past the games above and below, so the
    tiles' shadows are not cut off. */
 .games-tiles {
   flex: 4 1 0;

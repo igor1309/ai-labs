@@ -132,13 +132,18 @@ const tilesRow = () => {
 
 // The widths COMPARE and the tiles' row take on a page `width` wide: they
 // grow from nothing by their shares of what the page's padding, the gap
-// and their own sides leave.
+// and their own sides leave. A width set, capped or floored any other way
+// fails here, since this sum would not see it.
 function gamesWidths(width: number) {
   const home = document.querySelector(".home");
   const games = document.querySelector(".games");
   if (!home || !games) throw new Error("No games on the page");
   const parts = [...games.children].map((part) => ({ part, style: getComputedStyle(part) }));
-  expect(parts.map(({ style }) => [style.flexBasis, style.minWidth])).toEqual(parts.map(() => ["0px", "0px"]));
+  expect(parts.map(({ style }) => [style.flexBasis, style.minWidth, style.maxWidth, style.width])).toEqual(parts.map(() => ["0px", "0px", "none", "auto"]));
+  expect([home, games].map((element) => [getComputedStyle(element).maxWidth, getComputedStyle(element).width])).toEqual([
+    ["none", "auto"],
+    ["none", "auto"]
+  ]);
   const free = width - sidesOf(getComputedStyle(home)) - columnGapOf(getComputedStyle(games)) * (parts.length - 1) - parts.reduce((sum, { style }) => sum + sidesOf(style), 0);
   const shares = parts.reduce((sum, { style }) => sum + Number(style.flexGrow), 0);
   return new Map(parts.map(({ part, style }) => [part, (free * Number(style.flexGrow)) / shares + sidesOf(style)]));
@@ -230,6 +235,13 @@ describe("the home page", () => {
   it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
     openHomePage();
     const sort = screen.getByRole("button", { name: "SORT" });
+
+    // The browser pans the row sideways only if nothing from the tile up
+    // forbids it.
+    const panning: string[] = [];
+    for (let element: Element | null = sort; element; element = element.parentElement) panning.push(getComputedStyle(element).touchAction || "auto");
+    expect(panning.filter((action) => !["auto", "manipulation"].includes(action) && !action.split(" ").includes("pan-x"))).toEqual([]);
+    expect(getComputedStyle(tilesRow()).overflowX).toBe("auto");
 
     // A finger that pans the row gets a pointercancel and no click.
     fireEvent.pointerDown(sort, { pointerType: "touch" });
