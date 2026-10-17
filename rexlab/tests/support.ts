@@ -1,6 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readVisitors } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readPals, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -15,6 +15,7 @@ import type { Theme } from "../src/theme.ts";
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
+export const SHIPPED_PALS = readPals(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
