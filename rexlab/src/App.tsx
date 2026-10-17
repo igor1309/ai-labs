@@ -65,10 +65,6 @@ export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
-// The screen the app opens on: the home page, or the skeleton game's
-// choice of dinosaurs, which no home tile leads to yet.
-export type Opening = "home" | "skeletons";
-
 export type AppProps = CareGameProps &
   PairsGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
@@ -89,8 +85,6 @@ export type AppProps = CareGameProps &
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
-    // The home page unless given.
-    opening?: Opening;
   };
 
 // The two dinosaurs facing off on the home page's quiz card.
@@ -107,6 +101,9 @@ const SORT_TILE = "triceratops";
 
 // The dinosaur on find the pair's tile.
 const PAIRS_TILE = "stegosaurus";
+
+// The dinosaur whose skeleton stands on the skeleton game's tile.
+const SKELETONS_TILE = "triceratops";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
@@ -160,10 +157,9 @@ export function App({
   skeletons,
   skeletonPicture,
   skeletonProgress,
-  opening = "home",
   ...careProps
 }: AppProps) {
-  const [screen, setScreen] = useState<Screen>({ kind: opening });
+  const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
@@ -279,6 +275,11 @@ export function App({
     { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
     home
   );
+
+  const openSkeletons = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "skeletons" }));
+  };
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -421,6 +422,7 @@ export function App({
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
@@ -428,6 +430,7 @@ export function App({
             onCare={openCare}
             onSort={openSorting}
             onPairs={openPairs}
+            onSkeletons={openSkeletons}
           />
         );
     }

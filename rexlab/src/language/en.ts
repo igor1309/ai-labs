@@ -77,6 +77,7 @@ export const en: Texts = {
   newLevel: (level) => `NEW LEVEL ${level}`,
   newlyFound: "NEW",
   found: "FOUND",
+  skeletons: "SKELETONS",
   skeletonTitle: "BUILD A SKELETON",
   museum: "MUSEUM",
   skeleton: "SKELETON",

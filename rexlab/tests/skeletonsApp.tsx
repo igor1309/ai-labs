@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import { isLanguage } from "../src/language/language.ts";
@@ -41,8 +41,8 @@ export type SkeletonsAppOptions = {
   reducedMotion?: boolean;
 };
 
-// The app opened on the skeleton game's choice of dinosaurs, its pictures
-// loading only when the test finishes them.
+// The app opened on the skeleton game's choice of dinosaurs by its home
+// tile, its pictures loading only when the test finishes them.
 export function openSkeletonsApp({
   storage = memoryStorage(),
   pictures = manualPictures(),
@@ -74,10 +74,10 @@ export function openSkeletonsApp({
     skeletonPicture: fakeSkeletonPicture,
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
-    opening: "skeletons",
     ...pictures
   };
   render(<App {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: shownTexts().skeletons }));
   return { user: userEvent.setup(), storage, pictures, orientation, visibility };
 }
 

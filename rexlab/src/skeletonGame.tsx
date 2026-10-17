@@ -108,6 +108,10 @@ export function useSkeletonGame(
 
   const order = skeletons.map(({ id }) => id);
 
+  // The best collection score, undefined while there is none or stored
+  // progress cannot be read.
+  const best = kept.readable ? (kept.progress.bestScore ?? undefined) : undefined;
+
   const show = (next: SkeletonScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
 
   const leave = () => {
@@ -237,7 +241,7 @@ export function useSkeletonGame(
           <SkeletonChoiceScreen
             language={language}
             choices={presentSkeletonChoices(skeletons, language, bodyPicture, kept.progress.earned)}
-            best={kept.readable ? (kept.progress.bestScore ?? undefined) : undefined}
+            best={best}
             onChoose={choose}
             onMuseum={museum}
             onHome={home}
@@ -278,5 +282,5 @@ export function useSkeletonGame(
     }
   };
 
-  return { content };
+  return { content, best };
 }

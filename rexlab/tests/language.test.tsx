@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, type Opening } from "../src/App.tsx";
+import { App } from "../src/App.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -67,15 +67,13 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   progress = emptyProgress(),
-  timers = loadedPictures(),
-  opening = "home"
+  timers = loadedPictures()
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
-  opening?: Opening;
 }) {
   const view = render(
     <App
@@ -93,7 +91,6 @@ function openApp({
       {...emptyPairs()}
       {...emptySkeletons()}
       {...timers}
-      opening={opening}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -469,15 +466,14 @@ type Play = {
 // A compare-dinosaurs record of a best score of 5 from one round.
 const BEST_OF_5 = JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 5, roundsPlayed: 1 } } });
 
-function openPlay(language: Language, progressStorage = memoryStorage(), opening: Opening = "home"): Play {
+function openPlay(language: Language, progressStorage = memoryStorage()): Play {
   const orientation = manualOrientation("landscape");
   const timers = manualTimers();
   const { user } = openApp({
     device: language === "ru" ? "ru-RU" : "en-GB",
     orientation,
     progress: localProgress(() => progressStorage),
-    timers,
-    opening
+    timers
   });
   const seen: Seen = { texts: [], names: [], parentTexts: [], parentLabels: [] };
   const isName = (label: string) => SHIPPED_DINOSAURS.some((dinosaur) => dinosaur.name[language] === label);
@@ -708,15 +704,18 @@ async function findThePair(language: Language): Promise<Seen> {
   return play.seen;
 }
 
-// The skeleton game: its choice of dinosaurs, a puzzle as it starts, its
-// reveal with a first best, the choice again with the star earned, the
-// museum with the skeleton on its stand, its puzzle as it is knocked
-// down, the museum with its stand awaiting it, and the home page again.
+// The skeleton game: its home tile, its choice of dinosaurs, a puzzle as
+// it starts, its reveal with a first best, the choice again with the star
+// earned, the museum with the skeleton on its stand, its puzzle as it is
+// knocked down, the museum with its stand awaiting it, and the home page
+// again with the best on the tile.
 async function skeletons(language: Language): Promise<Seen> {
-  const play = openPlay(language, memoryStorage(), "skeletons");
+  const play = openPlay(language);
   const { user, timers, look } = play;
   const text = TEXTS[language];
   const triceratops = skeletonOf("triceratops");
+  look();
+  await user.click(screen.getByRole("button", { name: text.skeletons }));
   look();
   await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
   expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
@@ -738,6 +737,7 @@ async function skeletons(language: Language): Promise<Seen> {
   expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
   look();
   await user.click(screen.getByRole("button", { name: text.home }));
+  expect(screen.getByRole("button", { name: text.skeletons }).textContent).toBe(`${text.skeletons}1`);
   look();
   return play.seen;
 }
@@ -781,7 +781,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     findThePair,
     (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
   ],
-  ["the skeleton game's choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
+  ["the skeleton game's tile, its choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

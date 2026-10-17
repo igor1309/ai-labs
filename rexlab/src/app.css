@@ -901,6 +901,82 @@ body:has(.result) footer[aria-label="Version"] {
   font-weight: 700;
 }
 
+/* The skeleton game's tile, over MORE COMING, in the other tiles'
+   shape. The design's forest green is no colour of either theme,
+   so the tile takes the navy, as the skeleton screens' mark does, and the
+   bones stand out on it in both themes. */
+.skeletons-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.skeletons-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.skeletons-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeletons-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff33;
+}
+
+.skeletons-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.skeletons-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff1f;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.skeletons-tile-best svg {
+  color: #e39b2d;
+}
+
 /* The question fills the screen, and the cards take what is left of it. */
 .question {
   position: relative;
@@ -4479,6 +4555,7 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .quiz-card-best svg,
 [data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
 [data-theme="dark"] .best-score svg,
@@ -4489,6 +4566,11 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .quiz-card {
   background: #2c3b66;
   box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .skeletons-tile {
+  background: #2c3b66;
+  box-shadow: 0 8px 24px #00000066;
 }
 
 [data-theme="dark"] .sort-tile {

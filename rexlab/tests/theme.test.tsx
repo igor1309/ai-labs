@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, type Opening } from "../src/App.tsx";
+import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -77,8 +77,7 @@ function openApp({
   language = "en-GB",
   timers = manualTimers(),
   sorting = emptySorting(),
-  pairs = memoryStorage(),
-  opening = "home"
+  pairs = memoryStorage()
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
@@ -88,7 +87,6 @@ function openApp({
   sorting?: ReturnType<typeof emptySorting>;
   // Where find the pair's progress is kept.
   pairs?: MemoryStorage;
-  opening?: Opening;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -109,7 +107,6 @@ function openApp({
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
       {...timers}
-      opening={opening}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -307,7 +304,8 @@ async function pairsFound({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
-async function skeletonChoice({ theme }: Walk) {
+async function skeletonChoice({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   expectScreenIn(theme);
 }
 
@@ -316,14 +314,17 @@ async function skeletonChoice({ theme }: Walk) {
 const skeletonPuzzle =
   (name: string) =>
   async ({ theme, user }: Walk) => {
+    await user.click(screen.getByRole("button", { name: "SKELETONS" }));
     await user.click(screen.getByRole("button", { name }));
     expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
     expectScreenIn(theme);
   };
 
-// A skeleton's reveal with a first best, the choice with its star, and a
-// second skeleton's reveal with the best it beat.
+// A skeleton's reveal with a first best, the choice with its star, a
+// second skeleton's reveal with the best it beat, and the home page with
+// the best on the SKELETONS tile.
 async function skeletonReveals({ theme, user, timers }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   for (const [id, celebration] of [
     ["triceratops", "FIRST BEST SCORE"],
     ["stegosaurus", "NEW BEST SCORE"]
@@ -339,6 +340,9 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
     expect(screen.getAllByRole("img", { name: "STAR" })).not.toHaveLength(0);
     expectScreenIn(theme);
   }
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expect(screen.getByRole("button", { name: "SKELETONS" }).querySelector(".skeletons-tile-best")?.textContent).toBe("2");
+  expectScreenIn(theme);
 }
 
 // The museum empty, then with a skeleton on its stand, its puzzle as the
@@ -346,6 +350,7 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
 // stand awaiting it.
 async function skeletonMuseum({ theme, user, timers }: Walk) {
   const triceratops = skeletonOf("triceratops");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   await user.click(screen.getByRole("button", { name: "MUSEUM" }));
   expectScreenIn(theme);
   await user.click(within(screen.getByRole("region", { name: "TRICERATOPS" })).getByRole("button", { name: "BUILD" }));
@@ -364,10 +369,9 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
 }
 
 // Every screen in every state, by group, each part of a group walked from
-// a newly opened app, on the home page unless the group opens it on
-// another screen: one walk over them all outlasts a test's time limit on
-// CI.
-const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>]>, Opening?]> = [
+// a newly opened app: one walk over them all outlasts a test's time limit
+// on CI.
+const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>]>]> = [
   [
     "the home page and its menus",
     [
@@ -416,20 +420,19 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
-      ["two finished skeletons' reveals, a first best and a new one, and the choice with their stars", skeletonReveals],
+      ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
-    ],
-    "skeletons"
+    ]
   ]
 ];
 
 describe("the System theme", () => {
   describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
-    describe.each(SCREEN_GROUPS)("on %s:", (_, parts, opening) => {
+    describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
       it.each(parts)("%s", async (_, walk) => {
         const orientation = manualOrientation("landscape");
         const timers = manualTimers();
-        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers, opening: opening ?? "home" });
+        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
 
         await walk({ theme: appearance, user, orientation, timers });
       });

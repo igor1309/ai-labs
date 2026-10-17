@@ -81,6 +81,7 @@ export const ru: Texts = {
   newLevel: (level) => `НОВЫЙ УРОВЕНЬ ${level}`,
   newlyFound: "НОВЫЙ",
   found: "НАЙДЕНО",
+  skeletons: "СКЕЛЕТЫ",
   skeletonTitle: "СОБЕРИ СКЕЛЕТ",
   museum: "МУЗЕЙ",
   skeleton: "СКЕЛЕТ",
