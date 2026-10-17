@@ -1,6 +1,7 @@
 import type { Texts } from "./texts.ts";
 
 export const ru: Texts = {
+  greeting: "ВЫБЕРИ ИГРУ",
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
   languageMenu: "Язык",
@@ -10,6 +11,7 @@ export const ru: Texts = {
   home: "ДОМОЙ",
   progress: "ПРОГРЕСС",
   dinosaurs: "ДИНОЗАВРЫ",
+  versus: "ИЛИ",
   prompts: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?" },
   marks: { correct: "ВЕРНО", wrong: "НЕВЕРНО" },
   next: "ДАЛЬШЕ",
@@ -23,6 +25,7 @@ export const ru: Texts = {
   // rules are needed.
   stars: (score, total) => `${score} ИЗ ${total} ЗВЁЗД`,
   score: "СЧЁТ",
+  wellDone: "МОЛОДЕЦ!",
   bestScore: "РЕКОРД",
   best: "РЕКОРД",
   playAgain: "ЕЩЁ РАЗ"

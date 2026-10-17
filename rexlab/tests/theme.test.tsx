@@ -7,24 +7,28 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
-import { chooseFrom, choicesIn, openMenu, outsideMenu, symbolOf } from "./menus.ts";
+import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
+  OVERLAYS,
+  PALETTE,
   SHIPPED_DINOSAURS,
   contrast,
   emptyProgress,
   fakeBodyPicture,
-  luminance,
   manualAppearance,
   manualOrientation,
   memoryStorage,
+  sameColour,
   seededRandom,
+  seenOn,
+  surfaceOf,
+  surfacesIn,
+  symbolOf,
   type ManualAppearance,
   type ManualOrientation,
   type MemoryStorage
 } from "./support.ts";
 
-// The luminance of a mid grey: a surface below it is dark, one above light.
-const MID_GREY = 0.18;
 // The WCAG AA contrast for text, which every text read in either theme keeps.
 const TEXT_CONTRAST = 4.5;
 
@@ -77,44 +81,39 @@ function openApp({
   return { user: userEvent.setup(), unmount: view.unmount };
 }
 
-const opaque = (element: Element) => !/^(transparent|rgba\(.*,\s*0\))$/.test(getComputedStyle(element).backgroundColor);
-
-// The surface an element is seen on: its own background, or the nearest
-// one behind it.
-function surfaceOf(element: Element): string {
-  for (let at: Element | null = element; at; at = at.parentElement) {
-    if (opaque(at)) return getComputedStyle(at).backgroundColor;
-  }
-  throw new Error("The page has no background");
-}
-
 const describeElement = (element: Element) =>
   `<${element.tagName.toLowerCase()} class="${element.className}">${element.textContent?.trim().slice(0, 20) ?? ""}`;
 
-// The screen is in `theme` when every surface on it, the page and each
-// opaque background, is dark in the dark theme and light in the light one,
-// and every text read on it keeps text contrast with its surface. Symbols
-// hidden from reading, such as the faded stars, are pictures, not text.
-// The home page's quiz card is the one exception the approved design
-// draws: a bright yellow card with a dark badge in both themes, its text
-// still held to text contrast.
+// The contrast of a text with what it is seen on.
+const textContrast = (text: Element) => {
+  const surface = surfaceOf(text);
+  return contrast(seenOn(getComputedStyle(text).color, surface), surface);
+};
+
+// The screen is in `theme` when the page and every surface on it take the
+// theme's own colours of the design, or a translucent layer both themes
+// lay over the navy, and every text read on it keeps text contrast with
+// what it is seen on. The two themes share no colour but the words on the
+// navy, so a surface left in the other theme shows. Symbols hidden from
+// reading, such as the faded stars, are pictures, not text.
 function expectScreenIn(theme: Theme) {
-  const elements = [document.body, ...document.body.querySelectorAll("*")];
-  const surfaces = elements.filter((element) => opaque(element) && !element.closest(".quiz-card"));
-  const texts = elements.filter(
+  const surfaces = surfacesIn(document.body);
+  const texts = [document.body, ...document.body.querySelectorAll("*")].filter(
     (element) =>
       !element.closest('[aria-hidden="true"]') &&
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
+  const colours = [...Object.values(PALETTE[theme]), ...OVERLAYS];
 
-  expect(surfaces).toContain(document.body);
+  expect(sameColour(getComputedStyle(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
-  const side = (color: string): Theme => (luminance(color) < MID_GREY ? "dark" : "light");
-  expect(surfaces.filter((surface) => side(getComputedStyle(surface).backgroundColor) !== theme).map(describeElement)).toEqual([]);
   expect(
-    texts
-      .filter((text) => contrast(getComputedStyle(text).color, surfaceOf(text)) < TEXT_CONTRAST)
-      .map((text) => `${describeElement(text)}: ${contrast(getComputedStyle(text).color, surfaceOf(text)).toFixed(2)}`)
+    surfaces
+      .filter((surface) => !colours.some((colour) => sameColour(getComputedStyle(surface).backgroundColor, colour)))
+      .map((surface) => `${describeElement(surface)}: ${getComputedStyle(surface).backgroundColor}`)
+  ).toEqual([]);
+  expect(
+    texts.filter((text) => textContrast(text) < TEXT_CONTRAST).map((text) => `${describeElement(text)}: ${textContrast(text).toFixed(2)}`)
   ).toEqual([]);
 }
 
@@ -248,7 +247,7 @@ describe("a chosen theme", () => {
 
     unmount();
 
-    expect(luminance(getComputedStyle(document.body).backgroundColor)).toBeGreaterThan(MID_GREY);
+    expect(sameColour(getComputedStyle(document.body).backgroundColor, PALETTE.light.bg ?? "")).toBe(true);
   });
 });
 
@@ -263,7 +262,7 @@ describe("the theme menu", () => {
   };
 
   it.each(["en", "ru"] as const)(
-    "is a small, faded button with the current theme's symbol in the top-right corner of the home page only, in %s",
+    "is a small button in the soft ink with the current theme's symbol in the top-right corner of the home page only, in %s",
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
       const button = screen.getByRole("button", { name: LABELS[language].menu });
@@ -276,7 +275,8 @@ describe("the theme menu", () => {
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
       const style = getComputedStyle(button);
-      expect(Number(style.opacity)).toBeLessThan(1);
+      // Faded as the design fades what is for parents: in its soft ink.
+      expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
@@ -335,15 +335,15 @@ describe("marks", () => {
 
     expectScreenIn(theme);
     const marks = [largerOf(question), smallerOf(question)].map((dinosaur) => {
-      const card = cardOf(dinosaur);
-      const mark = within(card).getByRole("img", { name: /^(CORRECT|WRONG)$/ });
-      return { symbol: mark.textContent, color: getComputedStyle(mark).color, card: getComputedStyle(card) };
+      const mark = within(cardOf(dinosaur)).getByRole("img", { name: /^(RIGHT|WRONG)$/ });
+      return { symbol: symbolOf(mark), colour: getComputedStyle(mark).backgroundColor, card: surfaceOf(mark.parentElement ?? mark) };
     });
-    expect(marks.map(({ symbol }) => symbol)).toEqual(["✓", "✗"]);
-    expect(new Set(marks.map(({ color }) => color)).size).toBe(2);
-    for (const { color, card } of marks) {
-      expect(color).not.toBe(card.color);
-      expect(contrast(color, card.backgroundColor)).toBeGreaterThanOrEqual(3);
+    expect(marks.map(({ symbol }) => symbol)).toEqual(["check", "x"]);
+    // The right answer in the design's green, the wrong one in its
+    // terracotta.
+    expect(marks.map(({ colour }, at) => sameColour(colour, [PALETTE[theme].good, PALETTE[theme].bad][at] ?? ""))).toEqual([true, true]);
+    for (const { colour, card } of marks) {
+      expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
   });
 });

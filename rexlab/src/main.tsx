@@ -1,8 +1,7 @@
-// The fonts are bundled with the app rather than fetched from a font
+// The font is bundled with the app rather than fetched from a font
 // service, so the page looks the same offline and loads nothing from
 // elsewhere.
-import "@fontsource-variable/fredoka";
-import "@fontsource-variable/nunito";
+import "@fontsource-variable/lexend";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";

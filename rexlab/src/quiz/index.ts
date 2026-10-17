@@ -35,6 +35,9 @@ export type RoundResult = {
   // Undefined when stored progress cannot be read: there is no best to
   // compare with, so the round is neither celebrated nor saved over it.
   progress: { bestScore: number; roundsPlayed: number } | undefined;
+  // The best score before this round, undefined when there was none or it
+  // cannot be read.
+  previousBest: number | undefined;
   celebration: Celebration | null;
 };
 
@@ -73,6 +76,7 @@ export function finishPlay(play: Play, stored: GameProgress | undefined): RoundR
     score: correct,
     total: play.round.length,
     progress: outcome?.progress,
+    previousBest: stored?.bestScore ?? undefined,
     celebration: outcome?.celebration ?? null
   };
 }

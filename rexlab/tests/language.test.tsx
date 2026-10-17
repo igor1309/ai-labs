@@ -9,8 +9,9 @@ import { localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { chooseFrom, choicesIn, openMenu, outsideMenu, symbolOf } from "./menus.ts";
+import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
+  PALETTE,
   SHIPPED_DINOSAURS,
   emptyProgress,
   fakeBodyPicture,
@@ -18,7 +19,10 @@ import {
   manualOrientation,
   memoryStorage,
   questionView,
+  sameColour,
   seededRandom,
+  symbolOf,
+  words,
   type ManualOrientation,
   type MemoryStorage
 } from "./support.ts";
@@ -74,13 +78,6 @@ function expectShownIn(language: Language) {
   expect(words(screen.getByRole("button", { name: QUIZ_CARD[language] }))).toBe(QUIZ_CARD[language]);
 }
 
-// What an element reads in words, without its symbols and pictures.
-function words(element: HTMLElement): string {
-  const copy = element.cloneNode(true) as HTMLElement;
-  copy.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((part) => part.remove());
-  return copy.textContent?.trim() ?? "";
-}
-
 function renderQuestion(
   language: Language,
   {
@@ -134,7 +131,7 @@ describe("the language menu", () => {
     ["en-GB", "en", "EN", "Language", "COMPARE"],
     ["ru-RU", "ru", "RU", "Язык", "СРАВНИ"]
   ] as const)(
-    "is a small, faded globe button in the top-right corner of the home page only, on a %s device",
+    "is a small globe button in the soft ink in the top-right corner of the home page only, on a %s device",
     async (device, language, code, label, card) => {
       const { user } = openApp({ device });
       const button = screen.getByRole("button", { name: label });
@@ -146,7 +143,8 @@ describe("the language menu", () => {
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
       const style = getComputedStyle(button);
-      expect(Number(style.opacity)).toBeLessThan(1);
+      // Faded as the design fades what is for parents: in its soft ink.
+      expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
       expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(screen.getByRole("button", { name: card })).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
@@ -275,7 +273,7 @@ describe("Russian text", () => {
     [
       "Play again button",
       () => {
-        render(<ResultScreen language="ru" score={6} total={10} best={8} celebration={null} onPlayAgain={nothing} onHome={nothing} />);
+        render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
         return screen.getByRole("button", { name: "ЕЩЁ РАЗ" });
       },
       "ЕЩЁ РАЗ"
@@ -303,7 +301,7 @@ describe("Russian text", () => {
   });
 
   it("reads the Home button on the result in Russian too", () => {
-    render(<ResultScreen language="ru" score={6} total={10} best={8} celebration={null} onPlayAgain={nothing} onHome={nothing} />);
+    render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
 
     expect(words(screen.getByRole("button", { name: "ДОМОЙ" }))).toBe("ДОМОЙ");
   });

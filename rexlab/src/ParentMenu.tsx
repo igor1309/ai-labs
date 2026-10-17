@@ -86,7 +86,7 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
               <span className="parent-menu-name" lang={lang}>
                 {name}
               </span>
-              {value === chosen && <Check className="parent-menu-tick" size={15} />}
+              {value === chosen && <Check className="parent-menu-tick" size={18} />}
             </button>
           ))}
         </div>

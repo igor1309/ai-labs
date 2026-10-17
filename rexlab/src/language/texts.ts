@@ -7,6 +7,7 @@ import { ru } from "./ru.ts";
 // typecheck. Children are just learning to read, so every text for them,
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
+  greeting: string;
   quizCard: string;
   quizCardPicture: string;
   // The language menu is for parents, so its label is in normal case.
@@ -18,6 +19,8 @@ export type Texts = {
   home: string;
   progress: string;
   dinosaurs: string;
+  // Between the two dinosaur cards.
+  versus: string;
   prompts: { mass: string; height: string };
   marks: { correct: string; wrong: string };
   next: string;
@@ -26,6 +29,7 @@ export type Texts = {
   celebrations: { "first-best": Celebrated; "new-best": Celebrated };
   stars: (score: number, total: number) => string;
   score: string;
+  wellDone: string;
   bestScore: string;
   best: string;
   playAgain: string;

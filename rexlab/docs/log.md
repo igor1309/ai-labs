@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- Gave the whole app the Field Guide Midnight look: an ink-navy base on warm paper with amber and terracotta, the Lexend font and Lucide icons. The home page shows two locked tiles for games still to come; answers get ✓ RIGHT and ✗ WRONG badges; the result shows the best score, and confetti only for a new best.
 - Added a Midnight edition of the Field Guide design, with an ink-navy base instead of forest green, to `design/rexlab.pen`.
 - Saved the app's designs in `design/rexlab.pen`, opened with Pencil: the original home and parent menus, the Lagoon redesign (LAB-267) and the calmer Field Guide redesign, with their pictures in `design/images/`.
 - Replaced the placeholder dinosaur pictures with generated artwork in one picture-book style, credited in `CREDITS.md`; the style prompt now asks for a pose turned slightly toward the viewer.

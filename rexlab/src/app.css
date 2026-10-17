@@ -1,5 +1,30 @@
-/* The light theme is the default; the dark theme, at the end, overrides
-   its colours while the app sets data-theme="dark" on the document. */
+/* Field Guide Midnight: warm paper, ink navy, amber and terracotta. The
+   colours are the design's fm-* variables, written out because each is
+   read back by the tests' computed styles. The light theme is the
+   default; the dark theme, at the end, gives each the dark value while
+   the app sets data-theme="dark" on the document.
+
+   fm-*       light      dark
+   bg         #F2EFE8    #0F1320
+   surface    #FFFDF8    #181E2E
+   surface-2  #E6E2D9    #222A3D
+   ink        #1D2742    #ECE8DE
+   ink-soft   #5C647A    #9CA3B6
+   line       #1D27421F  #ECE8DE1F
+   base       #1F2B4D    #2C3B66
+   on-base    #F6F2E9    #F6F2E9
+   amber      #E39B2D    #F2B24B
+   terra      #C9583D    #E57A5D
+   sky        #A9BCD6    #34466E
+   strata-1   #E7E1D5    #141A29
+   strata-2   #DCD3C4    #192033
+   strata-3   #D0C5B2    #1F273C
+   good       #2E7D4F    #63C98C
+   bad        #B83B2B    #F08A78
+   shadow     #1D274224  #00000066
+
+   Words and symbols on amber are the light ink in both themes, as the
+   design draws them. */
 :root {
   color-scheme: light;
 }
@@ -7,9 +32,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Nunito Variable", system-ui, sans-serif;
-  background: #f5efdd;
-  color: #2f4a1f;
+  font-family: "Lexend Variable", system-ui, sans-serif;
+  background: #f2efe8;
+  color: #1d2742;
 }
 
 button {
@@ -20,15 +45,12 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 .card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  border: 4px solid #2f4a1f;
-  border-radius: 1.5rem;
-  background: #ffffff;
   transition:
     filter 120ms ease-out,
     transform 80ms ease-out;
@@ -40,7 +62,31 @@ button {
 
 .card[data-pressed] {
   filter: brightness(0.9);
-  transform: scale(0.95);
+  transform: scale(0.97);
+}
+
+/* Bands of rock along the bottom of a screen, behind everything on it. */
+.stratum {
+  position: absolute;
+  z-index: -1;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.stratum-1 {
+  height: 140px;
+  background: #e7e1d5;
+}
+
+.stratum-2 {
+  height: 90px;
+  background: #dcd3c4;
+}
+
+.stratum-3 {
+  height: 44px;
+  background: #d0c5b2;
 }
 
 .home {
@@ -49,168 +95,125 @@ button {
   overflow: hidden;
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 2rem 2rem 3.5rem;
-  display: grid;
-  place-items: center;
-  background-image: radial-gradient(ellipse 45% 60% at 50% 52%, #fff9e8 0%, transparent 100%);
-}
-
-/* Rolling hills along the bottom, placed as fractions of the page so they
-   keep their shape on every iPad. */
-.hill {
-  position: absolute;
-  z-index: -1;
-  border-radius: 50%;
-  background: #e6e3c4;
-}
-
-.hill-back {
-  left: -18%;
-  top: 78%;
-  width: 76%;
-  height: 58%;
-}
-
-.hill-back-right {
-  left: 53%;
-  top: 80%;
-  width: 69%;
-  height: 53%;
-}
-
-.hill-front {
-  left: 18%;
-  top: 88%;
-  width: 69%;
-  height: 47%;
-  background: #d8ddb5;
-}
-
-/* The quiz card keeps its own warm yellow in both themes, as the design
-   draws it: the one bright thing on the page, for the child to tap. */
-.quiz-card {
-  gap: 0.5rem;
-  padding: 2.75rem 4.5rem 3rem;
-  border: none;
-  border-radius: 3rem;
-  background: #ffcc4d;
-  color: #22331a;
-  box-shadow:
-    0 0.75rem 0 #e3a51c,
-    0 2.5rem 5rem rgba(138, 106, 26, 0.2);
-}
-
-.face-off {
+  padding: 116px 56px 72px;
   display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 28px;
 }
 
-.face-off-picture {
-  display: block;
-  width: 12.5rem;
-  height: 11.375rem;
-  object-fit: contain;
-  object-position: bottom;
-  -webkit-user-drag: none;
-  user-select: none;
+/* The menus, the wordmark and the version are for parents: small, in the
+   soft ink, and in the corners, away from the games. */
+.wordmark {
+  position: fixed;
+  top: 36px;
+  left: 56px;
+  height: 52px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
 }
 
-.face-off-left {
-  transform: scaleX(-1);
-}
-
-.face-off-badge {
+.wordmark-mark {
   display: grid;
   place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  margin-bottom: 2.125rem;
-  border-radius: 50%;
-  background: #22331a;
-  color: #ffcc4d;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #1f2b4d;
+  color: #f6f2e9;
 }
 
-.quiz-card-title {
-  font-size: 5rem;
-  font-weight: 900;
-  letter-spacing: 3px;
-  line-height: 1.2;
-}
-
-/* The menus, the wordmark and the version are for parents: small and in
-   the corners, away from the quiz card. */
 .parent-menus {
   position: fixed;
   z-index: 2;
-  top: 1.5rem;
-  right: 1.5rem;
+  top: 36px;
+  right: 56px;
   display: flex;
-  gap: 4px;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 26px;
+  background: #e6e2d9;
 }
 
-.parent-menu {
-  position: relative;
-}
-
-/* Each button keeps its small symbol, faded, inside a tap area big enough
-   for a parent's finger. */
+/* Each button keeps its small symbol inside a tap area big enough for a
+   parent's finger. */
 .parent-menu-button {
   min-width: 44px;
   min-height: 44px;
-  padding: 0 6px;
+  padding: 0 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border: none;
-  border-radius: 8px;
+  border-radius: 22px;
   background: none;
-  color: #566249;
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.75;
+  color: #5c647a;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .parent-menu-button[aria-expanded="true"] {
-  background: #e6e0d0;
+  background: #fffdf8;
+  color: #1d2742;
 }
 
+/* A menu hangs under the pair of buttons, its right edge on theirs. */
 .parent-menu-list {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: calc(100% + 8px);
   right: 0;
-  width: 184px;
+  width: 220px;
   box-sizing: border-box;
-  padding: 6px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-radius: 12px;
-  outline: 1px solid rgba(34, 51, 26, 0.12);
+  border-radius: 20px;
+  outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
-  background: #fffbf0;
-  box-shadow: 0 12px 32px rgba(138, 106, 26, 0.25);
+  background: #fffdf8;
+  box-shadow: 0 16px 40px #1d274224;
 }
 
 .parent-menu-choice {
+  height: 52px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   background: none;
-  color: #566249;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 400;
   text-align: left;
 }
 
 .parent-menu-choice[aria-checked="true"] {
-  background: #f3ead0;
-  color: #22331a;
-  font-weight: 800;
+  background: #e6e2d9;
+  font-weight: 600;
+}
+
+.parent-menu-choice-code {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 24px;
+  border-radius: 6px;
+  background: #e6e2d9;
+  color: #5c647a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.parent-menu-choice[aria-checked="true"] .parent-menu-choice-code {
+  background: #e39b2d;
+  color: #1d2742;
 }
 
 .parent-menu-name {
@@ -218,7 +221,7 @@ button {
 }
 
 .parent-menu-tick {
-  color: #9c6b00;
+  color: #e39b2d;
 }
 
 /* Covers the page under an open menu, to catch a tap outside it. */
@@ -231,129 +234,417 @@ button {
   left: 0;
 }
 
-.wordmark {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  margin: 0;
-  font-family: "Fredoka Variable", system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  color: #566249;
-}
-
 /* The version footer is part of the static page, outside the app. */
 footer[aria-label="Version"] {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  right: 56px;
+  bottom: 17px;
   font-size: 12px;
-  font-weight: 600;
-  color: #566249;
+  font-weight: 400;
+  color: #5c647a;
 }
 
-.question {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 1.5rem 2rem;
+/* The result screen is ink navy in both themes, so the footer takes the
+   faded paper of the words on it. */
+body:has(.result) footer[aria-label="Version"] {
+  color: #f6f1e699;
+}
+
+.greeting {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+/* The games keep the design's proportions, and shrink to fit a shorter
+   iPad above the bands of rock. */
+.games {
+  height: clamp(360px, calc(100vh - 380px), 520px);
+  display: flex;
+  gap: 28px;
+}
+
+.quiz-card {
+  flex: 760 1 0;
+  min-width: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 32px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 18px 40px #1d274224;
+  text-align: left;
+}
+
+.face-off {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 36px 40px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.face-off-picture {
+  display: block;
+  object-fit: contain;
+}
+
+.face-off-left {
+  width: 48.5%;
+  height: 68%;
+}
+
+.face-off-right {
+  width: 47%;
+  height: 82%;
+}
+
+.quiz-card-footer {
+  padding: 24px 40px 32px;
+  display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 16px;
+  background: #00000026;
+}
+
+.quiz-card-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.quiz-card-title {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.quiz-card-best {
+  margin-left: auto;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 24px;
+  background: #ffffff1f;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.quiz-card-best svg {
+  color: #e39b2d;
+}
+
+.locked-games {
+  flex: 540 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.locked-tile {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 28px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+}
+
+.locked-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  opacity: 0.35;
+}
+
+.locked-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #5c647a;
+}
+
+.locked-symbol {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #e6e2d9;
+}
+
+/* The question fills the screen, and the cards take what is left of it. */
+.question {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.question .stratum-1 {
+  height: 40px;
 }
 
 .question-bar {
-  align-self: stretch;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 24px;
 }
 
-.home-button,
-.next-button,
-.play-again-button {
-  min-height: 4rem;
-  padding: 0.5rem 1.5rem;
-  border: 3px solid #2f4a1f;
-  border-radius: 2rem;
-  background: #ffffff;
-  font-size: 1.75rem;
+.home-button {
+  height: 56px;
+  padding: 0 20px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-radius: 16px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.steps {
+  flex: 1 1 0;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step {
+  flex: 1 1 0;
+  height: 6px;
+  border-radius: 3px;
+  background: #e6e2d9;
+}
+
+.step[data-step="done"] {
+  background: #1f2b4d;
+}
+
+.step[data-step="current"] {
+  height: 10px;
+  background: #e39b2d;
 }
 
 .progress {
   margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
+  color: #5c647a;
 }
 
 .prompt {
   margin: 0;
-  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 44px;
+  font-weight: 700;
+}
+
+.prompt-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
 }
 
 .dinosaur-cards {
-  align-self: stretch;
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
-  justify-content: center;
-  gap: 3rem;
+  align-items: center;
+  gap: 24px;
 }
 
 .dinosaur-card {
-  position: relative;
   flex: 1 1 0;
-  max-width: 28rem;
+  align-self: stretch;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  text-align: left;
 }
 
-/* A mark is a symbol in a colour that keeps at least 3:1 contrast with
-   its card, so it reads without telling colours apart. */
-.dinosaur-card[data-mark="correct"] {
-  border-color: #1b6e2d;
-  background: #e6f4e8;
+/* A right answer outlines its card in green, a wrong one the tapped card
+   in terracotta; the card left out of the answer steps back. */
+.dinosaur-card[data-mark="correct"][data-chosen] {
+  outline: 4px solid #2e7d4f;
+  outline-offset: -2px;
 }
 
 .dinosaur-card[data-mark="wrong"] {
-  border-color: #b3261e;
-  background: #fbe9e7;
+  outline: 4px solid #b83b2b;
+  outline-offset: -2px;
 }
 
-.mark {
-  position: absolute;
-  top: 0.75rem;
-  right: 1rem;
-  font-size: 4rem;
-  font-weight: 800;
-  line-height: 1;
+.dinosaur-card[data-answered]:not([data-mark]) {
+  opacity: 0.7;
 }
 
-.dinosaur-card[data-mark="correct"] .mark {
-  color: #1b6e2d;
-}
-
-.dinosaur-card[data-mark="wrong"] .mark {
-  color: #b3261e;
-}
-
-.dinosaur-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  white-space: nowrap;
+.dinosaur-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e6e2d9;
 }
 
 /* The pictures' own 4:3, so a picture of another shape is fitted inside
    the same box rather than shown larger. */
 .dinosaur-picture {
   display: block;
-  width: 16rem;
-  height: 12rem;
+  width: 560px;
+  height: 420px;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  -webkit-user-drag: none;
-  user-select: none;
+}
+
+/* A mark is a badge of a symbol and a word, in a colour that keeps at
+   least 3:1 contrast with the card it sits on, so it reads without
+   telling colours apart. */
+.mark {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 18px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 24px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dinosaur-card[data-mark="correct"] .mark {
+  background: #2e7d4f;
+}
+
+.dinosaur-card[data-mark="wrong"] .mark {
+  background: #b83b2b;
+}
+
+.dinosaur-footer {
+  padding: 20px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .dinosaur-name {
-  font-size: 2.25rem;
-  font-weight: 800;
+  min-width: 0;
+  font-size: 34px;
+  font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.dinosaur-value-chip {
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: #e6e2d9;
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dinosaur-value-chip svg {
+  color: #5c647a;
+}
+
+.dinosaur-card[data-mark="correct"] .dinosaur-value-chip {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.dinosaur-card[data-mark="correct"] .dinosaur-value-chip svg {
+  color: #f6f2e9;
+}
+
+.versus {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  background: #1d2742;
+  color: #f2efe8;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.next-row {
+  min-height: 72px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.next-button {
+  height: 72px;
+  padding: 0 32px 0 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: none;
+  border-radius: 20px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  font-size: 26px;
+  font-weight: 700;
 }
 
 .turn-sideways {
@@ -366,34 +657,122 @@ footer[aria-label="Version"] {
   font-size: 10rem;
 }
 
+/* The result is ink navy in both themes: the dinosaur on the left, the
+   score on the right, under a glow and confetti when there is a best
+   score to celebrate. */
 .result {
-  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
   box-sizing: border-box;
-  padding: 1.5rem 2rem;
+  padding: 40px 60px 40px 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 640fr) minmax(0, 680fr);
+  align-items: center;
+  gap: 20px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.festivity {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.glow {
+  position: absolute;
+  left: 70.8%;
+  top: 37.8%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.glow-outer {
+  width: 133vh;
+  height: 133vh;
+  background: #f6f2e9;
+  opacity: 0.05;
+}
+
+.glow-mid {
+  width: 100vh;
+  height: 100vh;
+  background: #a9bcd6;
+  opacity: 0.08;
+}
+
+.glow-inner {
+  width: 67vh;
+  height: 67vh;
+  background: #a9bcd6;
+  opacity: 0.16;
+}
+
+.confetti {
+  position: absolute;
+  width: 22px;
+  height: 10px;
+  border-radius: 3px;
+  transform-origin: top left;
+}
+
+.confetti-square {
+  width: 14px;
+  height: 14px;
+}
+
+.confetti-amber {
+  background: #e39b2d;
+}
+
+.confetti-terra {
+  background: #c9583d;
+}
+
+.confetti-sky {
+  background: #a9bcd6;
+}
+
+.result-stratum {
+  height: 120px;
+  background: #00000026;
+}
+
+.result-hero {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.result-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
+  gap: 24px;
 }
 
 .celebration {
+  margin: 0;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 0 28px 0 22px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
+  border-radius: 30px;
+  background: #e39b2d;
+  color: #1d2742;
+  font-size: 26px;
+  font-weight: 700;
   animation: celebrate 600ms ease-out both;
-}
-
-.celebration-picture {
-  font-size: 6rem;
-  line-height: 1;
-}
-
-.celebration-text {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #8a4b00;
 }
 
 @keyframes celebrate {
@@ -416,137 +795,251 @@ footer[aria-label="Version"] {
   }
 }
 
+.result-score {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  line-height: 1;
+}
+
+.result-score-value {
+  font-size: min(220px, 24vh);
+  font-weight: 700;
+}
+
+.result-score-total {
+  font-size: 60px;
+  font-weight: 600;
+  color: #e39b2d;
+}
+
 .result-stars {
   margin: 0;
   display: flex;
-  gap: 0.25rem;
-  font-size: 3rem;
+  gap: 8px;
+  font-size: 48px;
   line-height: 1;
 }
 
 .star {
-  color: #c9d3bd;
+  color: #ffffff33;
 }
 
 .star-won {
-  color: #e0a100;
+  color: #e39b2d;
 }
 
-.result-score {
+.result-title {
   margin: 0;
-  font-size: 5rem;
-  font-weight: 800;
+  font-size: 48px;
+  font-weight: 700;
 }
 
 .best-score {
   margin: 0;
-  font-size: 2.25rem;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 24px;
+  background: #00000033;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.best-score-beaten {
+  color: #f6f1e699;
+}
+
+.best-score svg {
+  color: #e39b2d;
+}
+
+.best-score-value {
+  font-size: 24px;
   font-weight: 700;
+  color: #e39b2d;
 }
 
 .result-actions {
+  padding-top: 8px;
   display: flex;
-  gap: 2rem;
+  gap: 16px;
 }
 
-/* The dark theme: the same jungle greens at night. Each surface stays
-   dark and each text light, but for the quiz card's own yellow, and a
-   mark keeps at least 3:1 contrast with its card here too. */
+.play-again-button,
+.result-actions .home-button {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: none;
+  border-radius: 22px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.play-again-button {
+  padding: 0 40px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.result-actions .home-button {
+  padding: 0 32px;
+  outline: 1px solid #ffffff40;
+  outline-offset: -0.5px;
+  background: #ffffff1a;
+}
+
+/* The dark theme: each fm-* colour takes its dark value, in the same
+   shapes. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 }
 
 [data-theme="dark"] body {
-  background: #13200e;
-  color: #e4edd6;
+  background: #0f1320;
+  color: #ece8de;
 }
 
-[data-theme="dark"] .card,
-[data-theme="dark"] .home-button,
-[data-theme="dark"] .next-button,
-[data-theme="dark"] .play-again-button {
-  border-color: #9fb68a;
-  background: #22331a;
+[data-theme="dark"] .stratum-1 {
+  background: #141a29;
 }
 
-[data-theme="dark"] .home {
-  background-image: radial-gradient(ellipse 45% 60% at 50% 52%, #2b4420 0%, transparent 100%);
+[data-theme="dark"] .stratum-2 {
+  background: #192033;
 }
 
-[data-theme="dark"] .hill {
-  background: #1a2b13;
+[data-theme="dark"] .stratum-3 {
+  background: #1f273c;
 }
 
-[data-theme="dark"] .hill-front {
-  background: #203519;
+[data-theme="dark"] .wordmark-mark {
+  background: #2c3b66;
 }
 
-[data-theme="dark"] .quiz-card {
-  background: #ffd25e;
-  box-shadow:
-    0 0.75rem 0 #c99a22,
-    0 2.5rem 5rem rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="dark"] .face-off-badge {
-  color: #ffd25e;
+[data-theme="dark"] .parent-menus {
+  background: #222a3d;
 }
 
 [data-theme="dark"] .parent-menu-button,
-[data-theme="dark"] .wordmark,
+[data-theme="dark"] .parent-menu-choice-code,
+[data-theme="dark"] .locked-row,
+[data-theme="dark"] .progress,
+[data-theme="dark"] .dinosaur-value-chip svg,
 [data-theme="dark"] footer[aria-label="Version"] {
-  color: #9fb092;
+  color: #9ca3b6;
 }
 
 [data-theme="dark"] .parent-menu-button[aria-expanded="true"] {
-  background: #222d1d;
+  background: #181e2e;
+  color: #ece8de;
 }
 
 [data-theme="dark"] .parent-menu-list {
-  outline-color: rgba(255, 255, 255, 0.08);
-  background: #1c2b15;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  outline-color: #ece8de1f;
+  background: #181e2e;
+  box-shadow: 0 16px 40px #00000066;
 }
 
-[data-theme="dark"] .parent-menu-choice {
-  color: #8c9c80;
+[data-theme="dark"] .parent-menu-choice[aria-checked="true"],
+[data-theme="dark"] .parent-menu-choice-code,
+[data-theme="dark"] .locked-symbol,
+[data-theme="dark"] .step,
+[data-theme="dark"] .dinosaur-art,
+[data-theme="dark"] .dinosaur-value-chip {
+  background: #222a3d;
 }
 
-[data-theme="dark"] .parent-menu-choice[aria-checked="true"] {
-  background: #2a3823;
-  color: #dce5d3;
+[data-theme="dark"] .parent-menu-choice[aria-checked="true"] .parent-menu-choice-code,
+[data-theme="dark"] .quiz-card-symbol,
+[data-theme="dark"] .step[data-step="current"],
+[data-theme="dark"] .prompt-symbol,
+[data-theme="dark"] .confetti-amber,
+[data-theme="dark"] .celebration,
+[data-theme="dark"] .play-again-button {
+  background: #f2b24b;
 }
 
-[data-theme="dark"] .parent-menu-tick {
-  color: #ffd25e;
+[data-theme="dark"] .parent-menu-tick,
+[data-theme="dark"] .quiz-card-best svg,
+[data-theme="dark"] .result-score-total,
+[data-theme="dark"] .star-won,
+[data-theme="dark"] .best-score svg,
+[data-theme="dark"] .best-score-value {
+  color: #f2b24b;
 }
 
-[data-theme="dark"] .dinosaur-card[data-mark="correct"] {
-  border-color: #6fd387;
-  background: #13361d;
+[data-theme="dark"] .quiz-card {
+  background: #2c3b66;
+  box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .locked-tile {
+  background: #181e2e;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .home-button {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .step[data-step="done"],
+[data-theme="dark"] .next-button,
+[data-theme="dark"] .dinosaur-card[data-mark="correct"] .dinosaur-value-chip,
+[data-theme="dark"] .result {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .dinosaur-card {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dinosaur-card[data-mark="correct"][data-chosen] {
+  outline-color: #63c98c;
 }
 
 [data-theme="dark"] .dinosaur-card[data-mark="wrong"] {
-  border-color: #ff8a80;
-  background: #3d1714;
+  outline-color: #f08a78;
+}
+
+/* The light marks' white words would fade on the dark theme's lighter
+   green and terracotta, so they take the dark page's ink. */
+[data-theme="dark"] .mark {
+  color: #0f1320;
 }
 
 [data-theme="dark"] .dinosaur-card[data-mark="correct"] .mark {
-  color: #6fd387;
+  background: #63c98c;
 }
 
 [data-theme="dark"] .dinosaur-card[data-mark="wrong"] .mark {
-  color: #ff8a80;
+  background: #f08a78;
 }
 
-[data-theme="dark"] .celebration-text {
-  color: #ffc857;
+[data-theme="dark"] .versus {
+  background: #ece8de;
+  color: #0f1320;
 }
 
-[data-theme="dark"] .star {
-  color: #3a4a30;
+[data-theme="dark"] .glow-mid,
+[data-theme="dark"] .glow-inner,
+[data-theme="dark"] .confetti-sky {
+  background: #34466e;
 }
 
-[data-theme="dark"] .star-won {
-  color: #ffc22e;
+[data-theme="dark"] .confetti-terra {
+  background: #e57a5d;
+}
+
+/* The result's home button keeps its own outline on the navy. */
+[data-theme="dark"] .result-actions .home-button {
+  outline-color: #ffffff40;
+  background: #ffffff1a;
 }

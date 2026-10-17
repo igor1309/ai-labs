@@ -27,7 +27,8 @@ export function presentQuestion(question: QuestionState, language: Language, bod
     name: dinosaur.name[language],
     picture: bodyPicture(dinosaur.id),
     value: question.answered ? FORMATS[question.attribute](value, language) : undefined,
-    mark: !question.answered ? undefined : correct ? "correct" : chosen ? "wrong" : undefined
+    mark: !question.answered ? undefined : correct ? "correct" : chosen ? "wrong" : undefined,
+    chosen
   });
   return {
     prompt: PROMPTS[question.attribute],
@@ -40,13 +41,15 @@ export function presentQuestion(question: QuestionState, language: Language, bod
   };
 }
 
-export type ResultView = Pick<ResultScreenProps, "score" | "total" | "best" | "celebration">;
+export type ResultView = Pick<ResultScreenProps, "score" | "total" | "best" | "beaten" | "celebration">;
 
-export function presentResult({ score, total, progress, celebration }: RoundResult): ResultView {
+export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
   return {
     score,
     total,
     best: progress?.bestScore,
+    // Only a new best shows the best it beat: a first best beat none.
+    beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : CELEBRATIONS[celebration]
   };
 }
