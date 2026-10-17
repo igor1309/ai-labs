@@ -2,6 +2,9 @@
 
 ## 2026-10-17
 
+- Added 12 more dinosaurs, from 18 to 30 (LAB-269): Carnotaurus, Giganotosaurus, Therizinosaurus, Edmontosaurus, Deinonychus, Oviraptor, Coelophysis, Psittacosaurus, Styracosaurus, Kentrosaurus, Baryonyx and Apatosaurus, with height and mass from the trusted sources and artwork in the same picture-book style; Deinonychus, Oviraptor and Therizinosaurus are feathered.
+- Designed the dinosaur catalogue in `design/rexlab.pen` (LAB-268): a list of all dinosaurs with height, weight and a coloured MEAT or PLANTS tag on each card, a page per dinosaur with its food type as a tag under the name, and a catalogue tile for the home page.
+- Listed the trusted science sources for dinosaur facts in `docs/sources.md`: the Natural History Museum (London), the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica.
 - Gave the whole app the Field Guide Midnight look: an ink-navy base on warm paper with amber and terracotta, the Lexend font and Lucide icons. The home page shows two locked tiles for games still to come; answers get ✓ RIGHT and ✗ WRONG badges; the result shows the best score, and confetti only for a new best.
 - Added a Midnight edition of the Field Guide design, with an ink-navy base instead of forest green, to `design/rexlab.pen`.
 - Saved the app's designs in `design/rexlab.pen`, opened with Pencil: the original home and parent menus, the Lagoon redesign (LAB-267) and the calmer Field Guide redesign, with their pictures in `design/images/`.
