@@ -20,7 +20,8 @@ generate with the style prompt below plus that line.
   its real size: the question asks which is heavier or taller, and the
   revealed values answer it, never the picture.
 - **Feathers where science says so:** Velociraptor, Microraptor,
-  Deinonychus, Oviraptor and Therizinosaurus are feathered.
+  Deinonychus, Oviraptor, Therizinosaurus, Utahraptor, Yutyrannus,
+  Archaeopteryx and Troodon are feathered.
 - **Delivery:** 800×600 WebP with alpha, about 40–70 KB, at
   `src/assets/dinos/<id>/body.webp`, where `<id>` is the dinosaur's id in
   `src/data/dinosaurs.json`.

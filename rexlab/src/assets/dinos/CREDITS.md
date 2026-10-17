@@ -34,3 +34,15 @@ Each dinosaur's body picture, `<id>/body.webp`, with the generator that made it 
 | `kentrosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
 | `baryonyx` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
 | `apatosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `ceratosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `utahraptor` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `yutyrannus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `archaeopteryx` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `troodon` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `heterodontosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `mamenchisaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `amargasaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `plateosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `maiasaura` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `corythosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
+| `chasmosaurus` | artwork | Codex image generation (OpenAI) | 2026-10-17 |
