@@ -8,6 +8,7 @@ import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
   fakeBodyPicture,
   fakeItemPicture,
@@ -60,6 +61,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
       reducedMotion={() => reducedMotion}
+      sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       {...clock}
     />

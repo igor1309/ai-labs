@@ -33,7 +33,7 @@ function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), c
 
 const withStorage = (storage: MemoryStorage) => localProgress(() => storage);
 
-const withSorting = (storage: MemoryStorage) => ({ sortingProgress: localSortingProgress(() => storage) });
+const withSorting = (storage: MemoryStorage) => ({ ...emptySorting(), sortingProgress: localSortingProgress(() => storage) });
 
 // A stored record in the section 5 format of docs/mvp-infrastructure.md.
 const record = (bestScore: number | null) =>

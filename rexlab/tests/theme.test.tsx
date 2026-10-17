@@ -592,7 +592,7 @@ describe("the SORT card", () => {
     const sortingStorage = memoryStorage({
       [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, roundsPlayed: 2 } } })
     });
-    openApp({ device: manualAppearance(theme), sorting: { sortingProgress: localSortingProgress(() => sortingStorage) } });
+    openApp({ device: manualAppearance(theme), sorting: { ...emptySorting(), sortingProgress: localSortingProgress(() => sortingStorage) } });
 
     expectScreenIn(theme);
     const card = screen.getByRole("button", { name: "SORT" });

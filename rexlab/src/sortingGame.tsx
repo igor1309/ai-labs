@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { Language } from "./language/language.ts";
+import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
@@ -19,11 +20,17 @@ export type SortingGameProps = {
   sortingProgress: SortingProgressStore;
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
+  loadPicture: LoadPicture;
+  startTimer: StartTimer;
 };
 
 // The dinosaur cheering the child on at the end of a board, as on the
 // quiz's result.
 const HERO = "tyrannosaurus";
+
+// The longest a board waits for its pictures, in milliseconds, as a
+// question does for its pictures.
+const PICTURE_WAIT = 1000;
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
@@ -31,17 +38,44 @@ type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; res
 // turning the iPad pauses a board without losing it. It shows nothing
 // until a board is started. `onHome` takes the child back to the home
 // page.
-export function useSortingGame({ sortables, sortingProgress, bodyPicture, random }: SortingGameProps, onHome: () => void) {
+export function useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }: SortingGameProps, onHome: () => void) {
   const [screen, setScreen] = useState<SortingScreen>();
-  // The board last started, so the next one sorts by another property.
+  // The board last shown, so the next one sorts by another property. It
+  // is kept only while the app is open.
   const last = useRef<Sorting | undefined>(undefined);
+  // A board being started while its pictures load: a second tap meanwhile
+  // starts nothing more.
+  const starting = useRef(false);
+  // Counts each time the child leaves the game, so pictures that finish
+  // loading after the child has gone home show no board.
+  const stay = useRef(0);
 
   const show = (next: SortingScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
 
-  const start = () => {
+  // A new board shows once its six pictures are ready, or the wait runs
+  // out, so none pops in. `shown` runs in the same screen change, so the
+  // owner can bring the game on screen with its board.
+  const start = (shown?: () => void) => {
+    if (starting.current) return;
+    starting.current = true;
+    const visiting = stay.current;
     const sorting = startBoard(sortables, random, last.current);
-    last.current = sorting;
-    show({ kind: "board", sorting });
+    const pictures = boardState(sorting).cards.map(({ dinosaur }) => bodyPicture(dinosaur.id));
+    waitForPictures(pictures, { loadPicture, startTimer, limit: PICTURE_WAIT }, () => {
+      if (stay.current !== visiting) return;
+      starting.current = false;
+      last.current = sorting;
+      changeScreen(SCREEN_CHANGE, () => {
+        setScreen({ kind: "board", sorting });
+        shown?.();
+      });
+    });
+  };
+
+  const home = () => {
+    stay.current++;
+    starting.current = false;
+    onHome();
   };
 
   // Each drop moves from the board as it is, not as last rendered, so a
@@ -72,7 +106,7 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
             language={language}
             {...presentBoard(boardState(sorting), language, bodyPicture)}
             onDrop={onDrop}
-            onHome={onHome}
+            onHome={home}
             onSeeResult={() => seeResult(sorting)}
           />
         );
@@ -83,8 +117,8 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
             language={language}
             {...presentSortingResult(screen.result)}
             hero={bodyPicture(HERO)}
-            onPlayAgain={start}
-            onHome={onHome}
+            onPlayAgain={() => start()}
+            onHome={home}
           />
         );
     }

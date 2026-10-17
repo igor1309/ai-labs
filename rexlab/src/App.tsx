@@ -24,7 +24,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
-import type { SortingGameProps } from "./sortingGame.tsx";
+import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
@@ -53,7 +53,7 @@ export type Appearance = {
 
 export type { CareProgressStore } from "./careGame.tsx";
 
-export type AppProps = CareGameProps & Pick<SortingGameProps, "sortingProgress"> & {
+export type AppProps = CareGameProps & Pick<SortingGameProps, "sortables" | "sortingProgress"> & {
   dinosaurs: readonly Dinosaur[];
   // Every dinosaur, in the order the catalogue shows them.
   catalogue: readonly CatalogueEntry[];
@@ -105,7 +105,9 @@ type Screen =
   // The dinosaur's place in the catalogue.
   | { kind: "dinosaur"; index: number }
   // Dinosaur care, which keeps its own screens.
-  | { kind: "care" };
+  | { kind: "care" }
+  // The sorting game, which keeps its own screens.
+  | { kind: "sorting" };
 
 export function App({
   dinosaurs,
@@ -120,6 +122,7 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  sortables,
   sortingProgress,
   ...careProps
 }: AppProps) {
@@ -195,6 +198,10 @@ export function App({
       care.open();
       setScreen({ kind: "care" });
     });
+
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
+
+  const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -298,6 +305,8 @@ export function App({
       }
       case "care":
         return care.content(language);
+      case "sorting":
+        return sorting.content(language);
       case "home":
         return (
           <HomePage
@@ -314,9 +323,7 @@ export function App({
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}
-            // The card is on the home page before the game is reached
-            // from it, so a tap on it opens nothing yet.
-            onSort={() => {}}
+            onSort={openSorting}
           />
         );
     }

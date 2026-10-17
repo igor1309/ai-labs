@@ -9,7 +9,7 @@ import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, loadedPictures, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
 
 // The board as the app will hold it: the sorting in state above the
 // orientation gate, each drop played through the sorting game.
@@ -164,12 +164,19 @@ export type OpenGame = {
   unmount: () => void;
 };
 
-// The sorting game on its first board, its progress kept in `storage`
-// and its boards picked by a random source of `seed`.
+// The sorting game on its first board, its progress kept in `storage`,
+// its boards picked by a random source of `seed` and their pictures
+// loaded the moment they are asked for.
 export function openSortingGame({ storage = memoryStorage(), seed = 1, language = "en" }: { storage?: MemoryStorage; seed?: number; language?: Language } = {}): OpenGame {
   const homes: number[] = [];
   const owner: { start?: () => void } = {};
-  const props = { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage), bodyPicture: fakeBodyPicture, random: seededRandom(seed) };
+  const props = {
+    sortables: SHIPPED_SORTABLES,
+    sortingProgress: localSortingProgress(() => storage),
+    bodyPicture: fakeBodyPicture,
+    random: seededRandom(seed),
+    ...loadedPictures()
+  };
   const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />);
   act(() => owner.start?.());
   const random = seededRandom(seed);
@@ -209,4 +216,27 @@ export const sortingRecord = (entry: SortingProgress | unknown, games: Record<st
 export function storedRecord(storage: MemoryStorage): { schemaVersion: unknown; games: Record<string, unknown> } | undefined {
   const raw = storage.items.get(PROGRESS_KEY);
   return raw === undefined ? undefined : JSON.parse(raw);
+}
+
+// The baskets of the board on screen, in order, by their names.
+export const basketsShown = () => [...document.querySelectorAll(".basket")].map((basket) => basket.getAttribute("aria-label"));
+
+// Sorts every card on the tray by taps, as a child who tries the first
+// basket and, after a miss, the other one: each card of the second basket
+// misses once. `look` is called after each drop.
+export async function sortByTrying(user: UserEvent, language: Language = "en", look: () => void = () => {}) {
+  const [first, second] = [...document.querySelectorAll<HTMLElement>(".basket")];
+  if (!first || !second) throw new Error("The board has no two baskets");
+  const names = within(tray(language))
+    .getAllByRole("button")
+    .map((card) => card.getAttribute("aria-label") ?? "");
+  for (const name of names) {
+    for (const basket of [first, second]) {
+      const card = within(tray(language)).queryByRole("button", { name });
+      if (!card) break;
+      await user.click(card);
+      await user.click(basket);
+      look();
+    }
+  }
 }

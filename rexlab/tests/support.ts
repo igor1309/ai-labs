@@ -225,11 +225,11 @@ export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemP
   return { visitors: SHIPPED_VISITORS, careProgress: localCareProgress(() => storage), itemPicture: fakeItemPicture, reducedMotion: () => false };
 }
 
-// The sorting game for tests that are not about it: no sorting progress
-// kept yet, and saving works.
-export function emptySorting(): Pick<AppProps, "sortingProgress"> {
+// The sorting game for tests that are not about it: every shipped
+// dinosaur may be sorted, no sorting progress kept yet, and saving works.
+export function emptySorting(): Pick<AppProps, "sortables" | "sortingProgress"> {
   const storage = memoryStorage();
-  return { sortingProgress: localSortingProgress(() => storage) };
+  return { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage) };
 }
 
 // The language for tests that are not about it: an English device, and no

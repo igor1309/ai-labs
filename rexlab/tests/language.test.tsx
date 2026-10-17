@@ -14,7 +14,7 @@ import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
-import { basketButton, finishBoard, openBoard, openSortingGame, trayCard } from "./sorting.tsx";
+import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -644,6 +644,26 @@ async function visitWithoutRefusals(language: Language): Promise<Seen> {
   return play.seen;
 }
 
+// A board of the sorting game reached from the home page, each card tried
+// on the first basket and, after a miss, the other, then its result, a
+// second board from PLAY AGAIN and the home page again.
+async function sortingRounds(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, look } = play;
+  const text = TEXTS[language];
+  await user.click(screen.getByRole("button", { name: text.sort }));
+  look();
+  await sortByTrying(user, language, look);
+  await user.click(screen.getByRole("button", { name: text.seeResult }));
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.playAgain }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+  return play.seen;
+}
+
 // What a part shows for parents: its words, the language menu's codes
 // aside, and the labels read out.
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
@@ -657,7 +677,9 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // each menu for parents closed and open, the portrait gate, two rounds,
 // one with mistakes and one without, and both results, the catalogue, and
 // care: its welcome, its friends with none yet, a visit with each need
-// refused once and one without, both results and the friends made.
+// refused once and one without, both results and the friends made, and
+// the sorting game: a board with wrong drops, its result and the next
+// board.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -673,7 +695,8 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   ],
   ["care's welcome and its friends", careWelcome, NOTHING_FOR_PARENTS],
   ["a visit with each need refused once and its result", visitWithRefusals, NOTHING_FOR_PARENTS],
-  ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE]
+  ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE],
+  ["a sorting board with wrong drops, its result, the next board and the home page again", sortingRounds, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));
