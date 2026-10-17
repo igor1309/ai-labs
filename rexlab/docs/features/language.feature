@@ -18,9 +18,14 @@ Feature: English and Russian
       | en-GB  | English  |
       | de-DE  | English  |
 
-  Scenario: The language switch is for parents
+  Scenario: The language menu is for parents
     When I open the home page
-    Then the language switch is a small "EN | RU" control in a corner
+    Then I see a small globe button showing "EN" or "RU" in the top-right corner
+    When I tap it
+    Then a menu lists "English" and "Русский", each in its own language
+    And the language shown has a ✓
+    When I tap outside the menu
+    Then the menu closes and the language is unchanged
 
   Scenario: Choosing a language is remembered
     Given the app is open in English on the home page
@@ -64,7 +69,7 @@ Feature: English and Russian
     Given the app is in <language>
     When I play a round through to the result
     Then every text on every screen is in capitals
-    But the language switch and the version footer, which are for parents, are not
+    But the language and theme menus and the version footer, which are for parents, are not
 
     Examples:
       | language |

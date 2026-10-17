@@ -24,6 +24,21 @@ Feature: Dark theme
     When the device switches to dark appearance
     Then the app switches to the dark theme without reloading
 
+  Scenario Outline: The theme menu is for parents
+    Given the app is in <language>
+    When I open the home page
+    Then I see a small button with the current theme's symbol in the top-right corner
+    When I tap it
+    Then a menu lists "<system>", "<light>" and "<dark>", each with its symbol
+    And the current theme has a ✓
+    When I tap outside the menu
+    Then the menu closes and the theme is unchanged
+
+    Examples:
+      | language | system    | light   | dark   |
+      | English  | System    | Light   | Dark   |
+      | Russian  | Системная | Светлая | Тёмная |
+
   Scenario: A chosen theme overrides the device
     Given the device appearance is light
     When I choose the Dark theme on the home page
