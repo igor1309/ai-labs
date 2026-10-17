@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import type { CareProgress, Item, Random, Visitor } from "../src/care/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
@@ -60,6 +60,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
       reducedMotion={() => reducedMotion}
+      sortingProgress={localSortingProgress(() => storage)}
       {...clock}
     />
   );

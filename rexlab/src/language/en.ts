@@ -50,6 +50,7 @@ export const en: Texts = {
   newFriend: "NEW FRIEND!",
   friend: "FRIEND",
   noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!",
+  sort: "SORT",
   sortPrompt: "SORT THE DINOSAURS",
   baskets: {
     "two-legs": "TWO LEGS",

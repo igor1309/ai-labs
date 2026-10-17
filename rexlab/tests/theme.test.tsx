@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
+import { PROGRESS_KEY, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
@@ -21,6 +22,7 @@ import {
   contrast,
   emptyCare,
   emptyProgress,
+  emptySorting,
   fakeBodyPicture,
   manualAppearance,
   manualOrientation,
@@ -68,13 +70,15 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   language = "en-GB",
-  timers = manualTimers()
+  timers = manualTimers(),
+  sorting = emptySorting()
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   language?: string;
   timers?: ManualTimers;
+  sorting?: ReturnType<typeof emptySorting>;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -90,6 +94,7 @@ function openApp({
       appearance={device}
       themeStore={localTheme(() => storage)}
       {...emptyCare()}
+      {...sorting}
       {...timers}
     />
   );
@@ -579,6 +584,32 @@ describe("marks", () => {
     for (const { colour, card } of marks) {
       expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("the SORT card", () => {
+  it.each(["light", "dark"] as const)("is on the %s theme's paper, its shapes on terracotta and its words and best score at text contrast", (theme) => {
+    const sortingStorage = memoryStorage({
+      [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, roundsPlayed: 2 } } })
+    });
+    openApp({ device: manualAppearance(theme), sorting: { sortingProgress: localSortingProgress(() => sortingStorage) } });
+
+    expectScreenIn(theme);
+    const card = screen.getByRole("button", { name: "SORT" });
+    const symbol = card.querySelector(".sort-tile-symbol") ?? card;
+    const title = card.querySelector(".sort-tile-title") ?? card;
+    const best = card.querySelector(".sort-tile-best") ?? card;
+    const colours = PALETTE[theme];
+    const parts = {
+      card: [getComputedStyle(card).backgroundColor, colours.surface],
+      symbol: [getComputedStyle(symbol).backgroundColor, colours.terra],
+      words: [getComputedStyle(title).color, colours.ink],
+      best: [getComputedStyle(best).backgroundColor, colours["surface-2"]],
+      trophy: [getComputedStyle(best.querySelector("svg") ?? best).color, colours.amber]
+    };
+    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
+    expect([title.textContent, best.textContent]).toEqual(["SORT", "4"]);
+    expect([title, best].map((text) => textContrast(text) >= TEXT_CONTRAST)).toEqual([true, true]);
   });
 });
 

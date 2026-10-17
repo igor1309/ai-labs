@@ -21,6 +21,7 @@ import {
   SHIPPED_DINOSAURS,
   emptyCare,
   emptyProgress,
+  emptySorting,
   fakeBodyPicture,
   lightDevice,
   loadedPictures,
@@ -81,6 +82,7 @@ function openApp({
       languageStore={localLanguage(() => storage)}
       {...lightDevice()}
       {...emptyCare()}
+      {...emptySorting()}
       {...timers}
     />
   );

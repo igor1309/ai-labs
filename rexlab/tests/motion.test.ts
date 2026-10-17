@@ -225,6 +225,18 @@ describe("the home page's motion", () => {
     expect(rules.length).toBeGreaterThan(0);
     expect(moving).toEqual([]);
   });
+
+  it("brightens and presses the SORT card in as every card does, with motion or without: none of its own rules moves it otherwise", () => {
+    const rules = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.includes("sort-tile"));
+    const moving = rules.flatMap(({ prelude, body }) =>
+      declarationsOf(body)
+        .filter(({ property }) => /^(animation|transition)(-|$)|^(filter|transform|translate|scale)$/.test(property))
+        .map(({ property }) => `${prelude} ${property}`)
+    );
+
+    expect(rules.length).toBeGreaterThan(0);
+    expect(moving).toEqual([]);
+  });
 });
 
 describe("the sorting board's motion", () => {

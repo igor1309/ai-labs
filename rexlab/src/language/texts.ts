@@ -66,6 +66,8 @@ export type Texts = {
   // The friend a visit made, or met again, read out on its chip.
   friend: string;
   noFriends: string;
+  // The sorting game: its card on the home page.
+  sort: string;
   // The sorting game's prompt over its board.
   sortPrompt: string;
   // The sorting game's baskets, each named by what its dinosaurs share.

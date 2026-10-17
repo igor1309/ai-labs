@@ -1,4 +1,4 @@
-import { BookOpen, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { BookOpen, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -26,20 +26,40 @@ export type HomePageProps = {
   // Dinosaur care's tile: the picture on it and its best score,
   // undefined while there is none to show.
   care: { picture: string; best: number | undefined };
+  // The sorting game's card: the picture on it and its best score,
+  // undefined while there is none to show.
+  sort: { picture: string; best: number | undefined };
   // The dinosaur pictured on the card of the games still to come.
   moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
+  onSort: () => void;
 };
 
 type Menu = "language" | "theme";
 
-export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, moreComing, onCompareDinosaurs, onCatalogue, onCare }: HomePageProps) {
+export function HomePage({
+  language,
+  onLanguage,
+  theme,
+  onTheme,
+  faceOff,
+  best,
+  catalogue,
+  care,
+  sort,
+  moreComing,
+  onCompareDinosaurs,
+  onCatalogue,
+  onCare,
+  onSort
+}: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
   const cataloguePointer = usePointerState();
   const carePointer = usePointerState();
+  const sortPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -109,7 +129,7 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
           </span>
           <span className="quiz-card-footer">
             <span className="quiz-card-symbol" aria-hidden="true">
-              <Scale size={30} />
+              <Scale size={28} />
             </span>
             <span className="quiz-card-title">{text.quizCard}</span>
           </span>
@@ -122,13 +142,16 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             </span>
           )}
         </button>
-        <div className="side-games">
+        <div className="games-column">
           <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
+            {/* The book sits in the picture's other corner: beside the
+                title it would leave ALL DINOSAURS too little of the row on
+                the smallest iPad. */}
+            <span className="catalogue-tile-symbol" aria-hidden="true">
+              <BookOpen size={20} />
+            </span>
             <span className="catalogue-tile-row">
-              <span className="catalogue-tile-symbol" aria-hidden="true">
-                <BookOpen size={20} />
-              </span>
               <span className="catalogue-tile-title">{text.catalogue}</span>
             </span>
             {/* The counts sit in the tiles' corners, over the pictures: the
@@ -154,16 +177,33 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             )}
           </button>
         </div>
-        {/* The games still to come are a picture, not a button: a tap on
-            it does nothing, and nothing on it invites one. */}
-        <div className="more-coming">
-          <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
-          <span className="more-coming-label">
-            <span className="more-coming-symbol" aria-hidden="true">
-              <Lock size={24} />
+        <div className="games-column">
+          <button type="button" className="card sort-tile" aria-label={text.sort} onClick={onSort} {...sortPointer}>
+            <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />
+            <span className="sort-tile-row">
+              <span className="sort-tile-symbol" aria-hidden="true">
+                <Shapes size={20} />
+              </span>
+              <span className="sort-tile-title">{text.sort}</span>
             </span>
-            <span className="more-coming-title">{text.moreComing}</span>
-          </span>
+            {sort.best !== undefined && (
+              <span className="sort-tile-best">
+                <Trophy size={18} aria-hidden="true" />
+                {sort.best}
+              </span>
+            )}
+          </button>
+          {/* The games still to come are a picture, not a button: a tap on
+              it does nothing, and nothing on it invites one. */}
+          <div className="more-coming">
+            <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
+            <span className="more-coming-label">
+              <span className="more-coming-symbol" aria-hidden="true">
+                <Lock size={22} />
+              </span>
+              <span className="more-coming-title">{text.moreComing}</span>
+            </span>
+          </div>
         </div>
       </div>
     </main>

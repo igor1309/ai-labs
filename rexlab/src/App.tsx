@@ -24,6 +24,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import type { SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
@@ -52,7 +53,7 @@ export type Appearance = {
 
 export type { CareProgressStore } from "./careGame.tsx";
 
-export type AppProps = CareGameProps & {
+export type AppProps = CareGameProps & Pick<SortingGameProps, "sortingProgress"> & {
   dinosaurs: readonly Dinosaur[];
   // Every dinosaur, in the order the catalogue shows them.
   catalogue: readonly CatalogueEntry[];
@@ -79,8 +80,11 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on dinosaur care's tile.
 const CARE_TILE = "parasaurolophus";
 
+// The dinosaur on the sorting game's card.
+const SORT_TILE = "triceratops";
+
 // The dinosaur on the home page's card of the games still to come.
-const MORE_COMING = "triceratops";
+const MORE_COMING = "stegosaurus";
 
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
@@ -116,6 +120,7 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  sortingProgress,
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -304,10 +309,14 @@ export function App({
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
+            sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}
+            // The card is on the home page before the game is reached
+            // from it, so a tap on it opens nothing yet.
+            onSort={() => {}}
           />
         );
     }

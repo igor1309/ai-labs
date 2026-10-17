@@ -9,6 +9,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptySorting,
   englishDevice,
   fakeBodyPicture,
   lightDevice,
@@ -66,6 +67,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...englishDevice()}
       {...lightDevice()}
       {...emptyCare()}
+      {...emptySorting()}
       {...loadedPictures()}
     />
   );

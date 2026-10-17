@@ -54,6 +54,7 @@ export const ru: Texts = {
   newFriend: "НОВЫЙ ДРУГ!",
   friend: "ДРУГ",
   noFriends: "ПОКА НЕТ ДРУЗЕЙ. ПРИГЛАСИ ДИНОЗАВРА!",
+  sort: "РАЗЛОЖИ",
   sortPrompt: "РАЗЛОЖИ ДИНОЗАВРОВ",
   baskets: {
     "two-legs": "ДВЕ НОГИ",

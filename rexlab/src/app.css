@@ -481,10 +481,10 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 /* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. Three columns share the width 3 : 2 : 1:
-   COMPARE, the tiles, and the games still to come. A third is what the
-   tiles' titles need at 24px on the smallest iPad, and half is what
-   COMPARE's needs at 52px; the games still to come take the sixth left. */
+   iPad above the bands of rock. Three columns share the width 3 : 2 : 2:
+   COMPARE, ALL DINOSAURS over CARE, and SORT over the games still to
+   come. The sizes in them are what fits these shares on the smallest
+   iPad. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
   display: flex;
@@ -533,10 +533,10 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .quiz-card-footer {
-  padding: 24px 32px 32px;
+  padding: 24px 24px 28px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   background: #00000026;
 }
 
@@ -544,17 +544,17 @@ body:has(.result) footer[aria-label="Version"] {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
   background: #e39b2d;
   color: #1d2742;
 }
 
 .quiz-card-title {
-  font-size: 52px;
+  font-size: 46px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -576,7 +576,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #e39b2d;
 }
 
-.side-games {
+.games-column {
   flex: 2 1 0;
   min-width: 0;
   display: flex;
@@ -616,22 +616,25 @@ body:has(.result) footer[aria-label="Version"] {
   padding: 12px 12px 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
   background: #00000026;
 }
 
+/* The book sits in the picture's corner, across from the count, the
+   height of the count's chip. */
 .catalogue-tile-symbol {
-  flex-shrink: 0;
+  position: absolute;
+  top: 12px;
+  left: 12px;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: #ffffff33;
 }
 
-/* A title is never smaller than a child can read: the column is made
-   wide enough for it instead. The CARE tile's title is the same size. */
+/* A title is never smaller than a child can read: the row is left to it
+   instead. The CARE and SORT tiles' titles are no smaller. */
 .catalogue-tile-title {
   flex: 1 1 0;
   min-width: 0;
@@ -658,19 +661,93 @@ body:has(.result) footer[aria-label="Version"] {
   font-weight: 700;
 }
 
-/* The games still to come: a faded dinosaur over a lock, on paper, as
-   tall as the tiles beside it. It is no card, so it neither brightens nor
-   presses in. Its sides are padded inside it: padding of its own would
-   widen it past its share of the row. */
-.more-coming {
+/* The sorting game's tile, on paper over SORT's own terracotta symbol,
+   in the other tiles' shape. */
+.sort-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.sort-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.sort-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.sort-tile-title {
   flex: 1 1 0;
   min-width: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.sort-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
   box-sizing: border-box;
-  padding: 24px 0;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.sort-tile-best svg {
+  color: #e39b2d;
+}
+
+/* The games still to come: a faded dinosaur over a lock, on paper, under
+   SORT. It is no card, so it neither brightens nor presses in. */
+.more-coming {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   border-radius: 28px;
   background: #fffdf8;
   box-shadow: 0 8px 24px #1d274224;
@@ -680,18 +757,15 @@ body:has(.result) footer[aria-label="Version"] {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  box-sizing: border-box;
-  padding: 0 16px;
   object-fit: contain;
   opacity: 0.35;
 }
 
 .more-coming-label {
-  padding: 0 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: #5c647a;
   text-align: center;
 }
@@ -699,9 +773,9 @@ body:has(.result) footer[aria-label="Version"] {
 .more-coming-symbol {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: #e6e2d9;
 }
 
@@ -3043,6 +3117,7 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .more-coming-symbol,
+[data-theme="dark"] .sort-tile-best,
 [data-theme="dark"] .catalogue-count,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
@@ -3064,6 +3139,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .quiz-card-best svg,
+[data-theme="dark"] .sort-tile-best svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
 [data-theme="dark"] .best-score svg,
@@ -3076,9 +3152,14 @@ body:has(.result) footer[aria-label="Version"] {
   box-shadow: 0 18px 40px #00000066;
 }
 
-[data-theme="dark"] .more-coming {
+[data-theme="dark"] .more-coming,
+[data-theme="dark"] .sort-tile {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .sort-tile {
+  outline-color: #ece8de1f;
 }
 
 [data-theme="dark"] .home-button {
@@ -3111,13 +3192,15 @@ body:has(.result) footer[aria-label="Version"] {
    marks do. */
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
-[data-theme="dark"] .diet-tag {
+[data-theme="dark"] .diet-tag,
+[data-theme="dark"] .sort-tile-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
-[data-theme="dark"] .diet-tag[data-diet="meat"] {
+[data-theme="dark"] .diet-tag[data-diet="meat"],
+[data-theme="dark"] .sort-tile-symbol {
   background: #e57a5d;
 }
 
