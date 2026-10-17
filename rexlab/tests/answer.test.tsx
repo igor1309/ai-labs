@@ -7,6 +7,7 @@ import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import {
+  PALETTE,
   SHIPPED_DINOSAURS,
   contrast,
   emptyProgress,
@@ -15,7 +16,10 @@ import {
   lightDevice,
   manualOrientation,
   questionView,
-  seededRandom
+  sameColour,
+  seededRandom,
+  surfaceOf,
+  symbolOf
 } from "./support.ts";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
@@ -32,10 +36,19 @@ const byName = (name: string): Dinosaur => {
 const group = () => screen.getByRole("group", { name: "DINOSAURS" });
 const cards = () => within(group()).getAllByRole("button");
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
+// Each mark on a card, as its symbol and its word.
 const marksOn = (card: HTMLElement) =>
   within(card)
-    .queryAllByRole("img", { name: /^(CORRECT|WRONG)$/ })
-    .map((mark) => `${mark.getAttribute("aria-label")} ${mark.textContent}`);
+    .queryAllByRole("img", { name: /^(RIGHT|WRONG)$/ })
+    .map((mark) => `${symbolOf(mark)} ${mark.textContent}`);
+// How a card is outlined: thick in the colour of its mark, or thin.
+// jsdom keeps the outline shorthand as written, unexpanded.
+const outlineOf = (card: HTMLElement) => {
+  const [outlineWidth, , outlineColor = ""] = getComputedStyle(card).outline.split(" ");
+  const colour = Object.entries(PALETTE.light).find(([, value]) => sameColour(outlineColor, value))?.[0];
+  return `${outlineWidth} ${colour}`;
+};
+const opacityOf = (card: HTMLElement) => Number(getComputedStyle(card).opacity || 1);
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 // The question on screen, read back from the shipped list by its prompt
@@ -91,12 +104,20 @@ describe("answering a question", () => {
       expect(chosen).toEqual([tapped.id]);
       rerender(<QuestionScreen language="en" {...questionView(question, "en", tapped.id)} {...handlers} />);
 
-      expect(marksOn(cardOf(big))).toEqual(["CORRECT ✓"]);
-      expect(marksOn(cardOf(small))).toEqual(answer === "right answer" ? [] : ["WRONG ✗"]);
+      expect(marksOn(cardOf(big))).toEqual(["check RIGHT"]);
+      expect(marksOn(cardOf(small))).toEqual(answer === "right answer" ? [] : ["x WRONG"]);
+      // The tapped card is outlined in its mark's colour; a right answer
+      // dims the other card, a wrong one leaves the right card bright.
+      expect([big, small].map((dinosaur) => outlineOf(cardOf(dinosaur)))).toEqual(
+        answer === "right answer" ? ["4px good", "1px line"] : ["1px line", "4px bad"]
+      );
+      expect([big, small].map((dinosaur) => opacityOf(cardOf(dinosaur)))).toEqual(answer === "right answer" ? [1, 0.7] : [1, 1]);
       expect(within(cardOf(big)).getByText(largerValue)).toBeDefined();
       expect(within(cardOf(small)).getByText(smallerValue)).toBeDefined();
+      expect(symbolOf(within(cardOf(big)).getByText(largerValue).parentElement ?? cardOf(big))).toBe(attribute === "mass" ? "weight" : "ruler");
       expect(score(choose(startPlay([question]), tapped.id))).toBe(answer === "right answer" ? 1 : 0);
-      expect(screen.getByRole("button", { name: "NEXT" }).textContent).toBe("▶ NEXT");
+      const next = screen.getByRole("button", { name: "NEXT" });
+      expect([next.textContent, symbolOf(next)]).toEqual(["NEXT", "arrow-right"]);
     }
   );
 
@@ -110,8 +131,8 @@ describe("answering a question", () => {
       const tapped = number % 2 === 0 ? right : wrong;
       await user.click(cardOf(tapped));
 
-      expect(marksOn(cardOf(right))).toEqual(["CORRECT ✓"]);
-      expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["WRONG ✗"] : []);
+      expect(marksOn(cardOf(right))).toEqual(["check RIGHT"]);
+      expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["x WRONG"] : []);
       for (const dinosaur of [right, wrong]) {
         expect(within(cardOf(dinosaur)).getByText(ENGLISH_VALUES[question.attribute](dinosaur.measures[question.attribute]))).toBeDefined();
       }
@@ -136,7 +157,7 @@ describe("answering a question", () => {
     expect(getComputedStyle(card).transform).not.toMatch(/scale/);
   });
 
-  it("makes each mark a symbol in its own colour, at least 3:1 against its card", async () => {
+  it("makes each mark a symbol and a word on its own colour, at least 3:1 against its card", async () => {
     const [big, small] = [byName("Triceratops"), byName("Velociraptor")];
     const nothing = () => {};
     render(
@@ -150,15 +171,14 @@ describe("answering a question", () => {
     );
 
     const marks = [cardOf(big), cardOf(small)].map((card) => {
-      const mark = within(card).getByRole("img", { name: /^(CORRECT|WRONG)$/ });
-      return { symbol: mark.textContent, color: getComputedStyle(mark).color, card: getComputedStyle(card) };
+      const mark = within(card).getByRole("img", { name: /^(RIGHT|WRONG)$/ });
+      return { symbol: symbolOf(mark), colour: getComputedStyle(mark).backgroundColor, card: surfaceOf(mark.parentElement ?? card) };
     });
 
-    expect(marks.map(({ symbol }) => symbol)).toEqual(["✓", "✗"]);
-    expect(new Set(marks.map(({ color }) => color)).size).toBe(2);
-    for (const { color, card } of marks) {
-      expect(color).not.toBe(card.color);
-      expect(contrast(color, card.backgroundColor)).toBeGreaterThanOrEqual(3);
+    expect(marks.map(({ symbol }) => symbol)).toEqual(["check", "x"]);
+    expect(new Set(marks.map(({ colour }) => colour)).size).toBe(2);
+    for (const { colour, card } of marks) {
+      expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
   });
 
@@ -208,7 +228,8 @@ describe("Next", () => {
 
     await answerUpTo(user, 10);
 
-    expect(screen.getByRole("button", { name: "SEE RESULT" }).textContent).toBe("🏆 SEE RESULT");
+    const seeResult = screen.getByRole("button", { name: "SEE RESULT" });
+    expect([seeResult.textContent, symbolOf(seeResult)]).toEqual(["SEE RESULT", "trophy"]);
     expect(screen.queryByRole("button", { name: "NEXT" })).toBeNull();
   });
 });

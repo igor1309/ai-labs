@@ -5,7 +5,18 @@ import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Language } from "../src/language/language.ts";
 import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, fakeBodyPicture, lightDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
+import {
+  SHIPPED_DINOSAURS,
+  emptyProgress,
+  englishDevice,
+  fakeBodyPicture,
+  lightDevice,
+  manualOrientation,
+  questionView,
+  seededRandom,
+  symbolOf,
+  words
+} from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -29,9 +40,9 @@ async function answerAndGoOn(user: UserEvent) {
 
 describe("a question", () => {
   it.each<[Attribute, string, string]>([
-    ["mass", "⚖️", "WHO IS HEAVIER?"],
-    ["height", "📏", "WHO IS TALLER?"]
-  ])("comparing %s shows %s, its prompt and two dinosaur cards", (attribute, symbol, prompt) => {
+    ["mass", "scale", "WHO IS HEAVIER?"],
+    ["height", "ruler", "WHO IS TALLER?"]
+  ])("comparing %s shows the %s symbol, its prompt and two dinosaur cards", (attribute, symbol, prompt) => {
     const nothing = () => {};
     render(
       <QuestionScreen
@@ -44,7 +55,7 @@ describe("a question", () => {
     );
 
     const heading = screen.getByRole("heading", { name: prompt });
-    expect(heading.textContent).toBe(`${symbol} ${prompt}`);
+    expect([symbolOf(heading), words(heading)]).toEqual([symbol, prompt]);
 
     const [left, right] = cards();
     if (!left || !right) throw new Error("Expected two dinosaur cards");
@@ -67,7 +78,7 @@ describe("a question", () => {
     expect(rightSize).toEqual(leftSize);
 
     const home = screen.getByRole("button", { name: "HOME" });
-    expect(home.textContent).toBe("🏠 HOME");
+    expect([symbolOf(home), home.textContent]).toEqual(["house", "HOME"]);
     expect(screen.getByRole("group", { name: "DINOSAURS" }).contains(home)).toBe(false);
   });
 });
@@ -114,6 +125,18 @@ describe("a round", () => {
 
     expect(progress()).toBe("3/10");
     expect(shownQuestion()).toEqual(third);
+  });
+
+  it("marks the questions done, the one on screen and those to come on its steps", async () => {
+    render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await answerAndGoOn(user);
+    await answerAndGoOn(user);
+
+    const steps = [...document.querySelectorAll<HTMLElement>(".step")].map((step) => step.dataset.step ?? "to come");
+    expect(progress()).toBe("3/10");
+    expect(steps).toEqual(["done", "done", "current", ...Array<string>(7).fill("to come")]);
   });
 
   // The generator's own tests cover the class of random draws; this one

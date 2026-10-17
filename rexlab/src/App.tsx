@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
-import { HomePage } from "./HomePage.tsx";
+import { HomePage, type LockedGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { presentQuestion, presentResult } from "./presentation.ts";
@@ -59,6 +59,12 @@ export type AppProps = {
 
 // The two dinosaurs facing off on the home page's quiz card.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
+
+// The dinosaur on each locked game's tile.
+const LOCKED: Record<LockedGame, string> = { taller: "stegosaurus", diet: "triceratops" };
+
+// The dinosaur cheering the child on at the end of a round.
+const HERO = "tyrannosaurus";
 
 type Screen ={ kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
 
@@ -138,7 +144,15 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
         );
       }
       case "result":
-        return <ResultScreen language={language} {...presentResult(screen.result)} onPlayAgain={playNewRound} onHome={home} />;
+        return (
+          <ResultScreen
+            language={language}
+            {...presentResult(screen.result)}
+            hero={bodyPicture(HERO)}
+            onPlayAgain={playNewRound}
+            onHome={home}
+          />
+        );
       case "home":
         return (
           <HomePage
@@ -147,6 +161,8 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
             theme={themeChoice}
             onTheme={chooseTheme}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
+            best={progress.load()?.bestScore ?? undefined}
+            locked={{ taller: bodyPicture(LOCKED.taller), diet: bodyPicture(LOCKED.diet) }}
             onCompareDinosaurs={playNewRound}
           />
         );

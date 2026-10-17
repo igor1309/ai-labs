@@ -4,7 +4,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { largerOf, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, englishDevice, fakeBodyPicture, lightDevice, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import {
+  PALETTE,
+  SHIPPED_DINOSAURS,
+  englishDevice,
+  fakeBodyPicture,
+  lightDevice,
+  manualOrientation,
+  memoryStorage,
+  sameColour,
+  seededRandom,
+  symbolOf,
+  type MemoryStorage
+} from "./support.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -74,15 +86,20 @@ async function finishRound(user: UserEvent, correct: number) {
 }
 
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
-// What the one celebration shows a child who cannot read its label: each
-// visible part's text, its symbol and then its words.
-const shownCelebration = () =>
-  [...screen.getByRole("status").children]
-    .filter((part) => getComputedStyle(part).display !== "none" && getComputedStyle(part).visibility !== "hidden")
-    .map((part) => part.textContent);
-const shownBest = () => {
+// What the one celebration shows a child who cannot read its label: its
+// symbol and its words.
+const shownCelebration = () => {
+  const status = screen.getByRole("status");
+  return [symbolOf(status), status.textContent];
+};
+// The confetti thrown over the screen, none without a celebration.
+const confetti = () => document.querySelectorAll(".festivity .confetti").length;
+const score = () => screen.getByLabelText("SCORE").textContent;
+const shownBest = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".best-score-value")?.textContent;
+// The best a new best beat, shown before it with an arrow pointing on.
+const shownBeaten = () => {
   const best = screen.queryByLabelText("BEST SCORE");
-  return best && within(best).getByText(/^\d+$/).textContent;
+  return best && [best.querySelector(".best-score-beaten")?.textContent, symbolOf(best)];
 };
 
 describe("the result", () => {
@@ -93,11 +110,21 @@ describe("the result", () => {
 
     await user.click(screen.getByRole("button", { name: "SEE RESULT" }));
 
-    expect(screen.getByText("7/10")).toBeDefined();
-    expect(screen.getByRole("img", { name: "7 OF 10 STARS" })).toBeDefined();
+    expect(score()).toBe("7/10");
+    // One star per question, those scored in amber.
+    const stars = [...screen.getByRole("img", { name: "7 OF 10 STARS" }).children];
+    expect(stars.map((star) => sameColour(getComputedStyle(star).color, PALETTE.light.amber ?? ""))).toEqual([
+      ...Array<boolean>(7).fill(true),
+      ...Array<boolean>(3).fill(false)
+    ]);
     expect(shownBest()).toBe("9");
-    expect(screen.getByRole("button", { name: "PLAY AGAIN" }).textContent).toBe("🔄 PLAY AGAIN");
-    expect(screen.getByRole("button", { name: "HOME" }).textContent).toBe("🏠 HOME");
+    expect(shownBeaten()).toEqual([undefined, undefined]);
+    expect(document.querySelector<HTMLImageElement>(".result-hero")?.getAttribute("src")).toBe(fakeBodyPicture("tyrannosaurus"));
+    const [playAgain, home] = ["PLAY AGAIN", "HOME"].map((name) => screen.getByRole("button", { name }));
+    expect([playAgain, home].map((button) => button && [symbolOf(button), button.textContent])).toEqual([
+      ["rotate-ccw", "PLAY AGAIN"],
+      ["house", "HOME"]
+    ]);
   });
 
   it("starts a new round of 10 questions on Play again", async () => {
@@ -139,20 +166,24 @@ describe("stored progress", () => {
     await finishRound(user, 7);
 
     expect(celebrations()).toEqual(["NEW BEST SCORE"]);
-    expect(shownCelebration()).toEqual(["🎉🏆🎉", "NEW BEST!"]);
+    expect(shownCelebration()).toEqual(["trophy", "NEW BEST!"]);
+    expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("7");
+    expect(shownBeaten()).toEqual(["6", "arrow-right"]);
     expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
   });
 
-  it.each([7, 5])("does not celebrate %i against a best of 7, and the best stays 7", async (score) => {
+  it.each([7, 5])("does not celebrate %i against a best of 7, and the best stays 7", async (points) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: record(7, 3) });
     const user = openApp(storage);
 
-    await finishRound(user, score);
+    await finishRound(user, points);
 
-    expect(screen.getByText(`${score}/10`)).toBeDefined();
+    expect(score()).toBe(`${points}/10`);
     expect(celebrations()).toEqual([]);
+    expect(confetti()).toBe(0);
     expect(shownBest()).toBe("7");
+    expect(shownBeaten()).toEqual([undefined, undefined]);
     expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
   });
 
@@ -163,8 +194,10 @@ describe("stored progress", () => {
     await finishRound(user, 4);
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
-    expect(shownCelebration()).toEqual(["🎉⭐🎉", "FIRST BEST!"]);
+    expect(shownCelebration()).toEqual(["star", "FIRST BEST!"]);
+    expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("4");
+    expect(shownBeaten()).toEqual([undefined, undefined]);
     expect(storedGame(storage)).toEqual({ bestScore: 4, roundsPlayed: 1 });
   });
 
@@ -175,6 +208,7 @@ describe("stored progress", () => {
     await finishRound(user, 0);
 
     expect(celebrations()).toEqual([]);
+    expect(confetti()).toBe(0);
     expect(shownBest()).toBe("0");
     expect(storedGame(storage)).toEqual({ bestScore: 0, roundsPlayed: 1 });
   });
@@ -214,7 +248,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 4);
 
-    expect(screen.getByText("4/10")).toBeDefined();
+    expect(score()).toBe("4/10");
     expect(screen.queryByLabelText("BEST SCORE")).toBeNull();
     expect(celebrations()).toEqual([]);
     expect(storage.items.get(PROGRESS_KEY)).toBe(record(2, 3));
@@ -228,6 +262,7 @@ describe("stored progress", () => {
 
     expect(celebrations()).toEqual(["NEW BEST SCORE"]);
     expect(shownBest()).toBe("7");
+    expect(shownBeaten()).toEqual(["6", "arrow-right"]);
     expect(storedGame(storage)).toEqual({ bestScore: 6, roundsPlayed: 3 });
   });
 });

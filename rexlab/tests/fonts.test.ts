@@ -22,16 +22,15 @@ function bundledFamilies(): Set<string> {
 }
 
 describe("the fonts", () => {
-  it("are Fredoka and Nunito, bundled with the app", () => {
-    expect(bundledFamilies()).toEqual(new Set(["Fredoka Variable", "Nunito Variable"]));
+  it("are Lexend alone, bundled with the app", () => {
+    expect(bundledFamilies()).toEqual(new Set(["Lexend Variable"]));
   });
 
   it("named in the stylesheet are each bundled, or a fallback every device has", () => {
     const named = families(STYLESHEET, /font-family:\s*([^;]+);/g);
     const bundled = bundledFamilies();
 
-    expect(named).toContain("Nunito Variable");
-    expect(named).toContain("Fredoka Variable");
+    expect(named).toContain("Lexend Variable");
     expect(named.filter((family) => !bundled.has(family) && !SYSTEM_FAMILIES.has(family))).toEqual([]);
   });
 
