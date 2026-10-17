@@ -1134,7 +1134,7 @@ func newClaudeCodeTurns(claude claudeCodeRuns) (*claudeCodeTurns, error) {
 
 func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	result, err := c.claude.Run(ctx, claudecode.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
-		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema},
+		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema, Session: turn.Session},
 		func(r claudecode.Report) {
 			var tool *call.Tool
 			if t := r.Tool; t != nil {
@@ -1194,7 +1194,7 @@ func newCodexTurns(codex codexRuns) (*codexTurns, error) {
 
 func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	result, err := c.codex.Run(ctx, codex.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
-		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema},
+		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema, Session: turn.Session},
 		func(r codex.Report) {
 			var tool *call.Tool
 			if t := r.Tool; t != nil {

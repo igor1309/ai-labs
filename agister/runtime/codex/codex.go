@@ -82,8 +82,8 @@ type Stream struct {
 // Turn is a message, the directory it runs in and its environment, as
 // "KEY=value"; the instruction, the model and the effort, each empty where
 // not given; the options, of which a turn takes exactly one, the sandbox
-// it runs in; and the schema its output is checked against, nil where none
-// is given.
+// it runs in; the schema its output is checked against, nil where none
+// is given; and the session it resumes, "" for none.
 type Turn struct {
 	Message     string
 	Dir         string
@@ -93,6 +93,7 @@ type Turn struct {
 	Effort      string
 	Options     []string
 	Schema      []byte
+	Session     string
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
@@ -235,12 +236,15 @@ func (w *Wrapper) write(schema []byte) (dir, file string, err error) {
 // arguments are codex's for turn, its schema's file where one is given,
 // contract codex/2: the option is the sandbox, approval is never asked,
 // the user's config and rules are ignored, and the prompt is read from
-// stdin, "-".
+// stdin, "-". A session given is resumed, exec resume, its id before the
+// prompt; the sandbox is then a config, since exec resume takes no
+// --sandbox.
 func arguments(turn Turn, schema string) []string {
-	args := []string{
-		"exec", "--json", "--skip-git-repo-check", "--sandbox", turn.Options[0],
-		"--config", `approval_policy="never"`, "--ignore-user-config", "--ignore-rules",
+	args := []string{"exec", "--json", "--skip-git-repo-check", "--sandbox", turn.Options[0]}
+	if turn.Session != "" {
+		args = []string{"exec", "resume", "--json", "--skip-git-repo-check", "--config", fmt.Sprintf("sandbox_mode=%q", turn.Options[0])}
 	}
+	args = append(args, "--config", `approval_policy="never"`, "--ignore-user-config", "--ignore-rules")
 	if turn.Model != "" {
 		args = append(args, "--model", turn.Model)
 	}
@@ -249,6 +253,9 @@ func arguments(turn Turn, schema string) []string {
 	}
 	if schema != "" {
 		args = append(args, "--output-schema", schema)
+	}
+	if turn.Session != "" {
+		args = append(args, turn.Session)
 	}
 	return append(args, "-")
 }

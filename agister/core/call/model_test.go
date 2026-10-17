@@ -319,3 +319,67 @@ func TestAReasonIsCutTo1KiB(t *testing.T) {
 		})
 	}
 }
+
+// model.feature, "A step continuing a session gives its turn the
+// session".
+func TestAStepContinuingASessionGivesItsTurnTheSession(t *testing.T) {
+	t.Parallel()
+	spy := &runtimeSpy{turn: replies(call.Reply{Text: "t", Session: "s1"})}
+	step := call.Step{Inputs: []call.Named{{Name: "goal", Text: "g"}}, Documents: []call.Named{{Name: "prompt", Text: "p"}}}
+	continuing := step
+	continuing.Session = "s1"
+	got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), continuing, discard)
+	want := []call.Turn{{Prompt: "## goal\n\ng\n\n## prompt\n\np", Dir: "/r", Session: "s1"}}
+	if !reflect.DeepEqual(spy.given, want) {
+		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
+	}
+	if got.Status != call.Completed || got.Session != "s1" {
+		t.Errorf("ended %q, session %q; want completed, s1", got.Status, got.Session)
+	}
+}
+
+// model.feature, "A turn that reports another session fails the call":
+// before the reply's failure and its schema, the session reported kept.
+// A turn that reports none, or a step that continues none, is ended by
+// its reply.
+func TestATurnThatReportsAnotherSessionFailsTheCall(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name      string
+		continues string
+		reply     call.Reply
+		status    call.Status
+		class     call.Class
+		reason    string
+	}{
+		{"another session", "s1", call.Reply{Text: "t", Session: "s2"}, call.Failed, call.RuntimeError,
+			`the turn reported the session "s2", not "s1"`},
+		{"another session, failed", "s1", call.Reply{Session: "s2", Failure: call.Auth, Reason: "not logged in"}, call.Failed, call.RuntimeError,
+			`the turn reported the session "s2", not "s1"`},
+		{"another session, with a schema", "s1", call.Reply{Output: []byte(`{}`), Session: "s2"}, call.Failed, call.RuntimeError,
+			`the turn reported the session "s2", not "s1"`},
+		{"the same session", "s1", call.Reply{Text: "t", Session: "s1"}, call.Completed, "", ""},
+		{"no session reported", "s1", call.Reply{Failure: call.Auth, Reason: "not logged in"}, call.Failed, call.Auth, "not logged in"},
+		{"no session continued", "", call.Reply{Text: "t", Session: "s2"}, call.Completed, "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			validator := &validatorSpy{}
+			var schema []byte
+			if c.reply.Output != nil {
+				schema = []byte("s")
+			}
+			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, validator).Call(context.Background(), call.Step{Session: c.continues, Schema: schema}, discard)
+			if got.Status != c.status || got.Class != c.class || got.Reason != c.reason {
+				t.Errorf("ended %q, class %q, reason %q; want %q, class %q, reason %q", got.Status, got.Class, got.Reason, c.status, c.class, c.reason)
+			}
+			if got.Session != c.reply.Session {
+				t.Errorf("session %q, want the one reported, %q", got.Session, c.reply.Session)
+			}
+			if c.status != call.Completed && (got.Output != nil || validator.given != nil) {
+				t.Errorf("output %v, validated %q; want none", got.Output, validator.given)
+			}
+		})
+	}
+}
