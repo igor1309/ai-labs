@@ -17,9 +17,10 @@ Feature: A parallel's steps run side by side
       "rate_limited", and "a" completes with {"v": 1}
     And the step "j" binding "all" from steps.p.outputs
     When the workflow runs
-    Then "j" is called with all the JSON of: a completed with {"v": 1},
-      its class null; b completed with {"v": 2}, its class null; c
-      failed, class "rate_limited", its output null
+    Then "j" is called with all the JSON list:
+      {"status": "completed", "class": null, "output": {"v": 1}},
+      {"status": "completed", "class": null, "output": {"v": 2}},
+      {"status": "failed", "class": "rate_limited", "output": null}
 
   Scenario Outline: A step that does not complete does not end the run
     Given the parallel "p" of "a" and "b", where "b" ends <status>,
@@ -32,6 +33,14 @@ Feature: A parallel's steps run side by side
       | failed      | runtime_error |
       | interrupted | timeout       |
       | lost        | no_result     |
+
+  Scenario: A run whose last item is a parallel completes
+    Given the parallel "p" of "a" and "b", where "b" fails, class
+      "runtime_error", its reason "r", and the output "all" from
+      steps.p.outputs
+    When the workflow runs
+    Then the run completes, its reason none, its output "all" the list
+      of both
 
   Scenario: A cancelled run ends after its parallel's steps have ended
     Given the parallel "p" of "a" and "b", then the step "j"

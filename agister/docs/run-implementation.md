@@ -504,10 +504,12 @@ also did, keeping a record of the run and its calls, waits
 **`core/workflow`** runs a parallel (ADR-011, rule 2): it calls each
 of its steps at once, each with its own bindings, each step's start,
 tool calls and end told to the events by its own name. Once all have
-ended, the parallel's outputs are, in declaration order, each step's
-status, class and output: the class null where none, the output null
-where the step did not complete. A step that did not complete does not
-end the run: the join after it reads what there is. When the run is
+ended, the parallel completes, its outputs a list in declaration
+order of each step's `{"status", "class", "output"}`: the class null
+where none, the output null where the step did not complete. A step
+that did not complete does not end the run: the join after it reads
+what there is, and a run whose last item is a parallel completes, its
+reason none. When the run is
 cancelled, the parallel ends it once all its steps have ended,
 interrupted, `cancelled`. Each step's cost, usage, warnings and
 session count as a step's in sequence; warnings in declaration order.
@@ -528,6 +530,9 @@ Decisions, each with its reason:
   it.
 - A parallel's outputs are read whole: the judge takes them whole, and
   a step inside is read through the parallel (resolve's rule).
+- Left as detail for the implementer: distinct bindings per step,
+  a run cancelled before its parallel, a step spy completing after
+  the run's cancellation, and the refusal rows' wording.
 - No cap on steps side by side: a workflow declares how many there are.
 - The loop's scripts move to this Agister when it replaces the
   archive's; until then they run the archive's, whose result they read.
