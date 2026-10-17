@@ -106,17 +106,22 @@ func judged(t *testing.T, f *runFixture) []any {
 func TestFiveReviewsSideBySideThenTheJudge(t *testing.T) {
 	t.Parallel()
 	f := newReviewFixture(t)
-	var all sync.WaitGroup
-	all.Add(len(reviews))
+	// started lets each turn on once all five have started; sampled, once
+	// all five have read the holds, so none is released before then.
+	var started, sampled sync.WaitGroup
+	started.Add(len(reviews))
+	sampled.Add(len(reviews))
 	var mu sync.Mutex
 	held := map[string][2]int{}
 	f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
-		all.Done()
-		all.Wait()
+		started.Done()
+		started.Wait()
 		_, alone, shared := f.holding.locks()
 		mu.Lock()
 		held[processOf(t, f.settings, turn)] = [2]int{alone, shared}
 		mu.Unlock()
+		sampled.Done()
+		sampled.Wait()
 		return completesReview(t, f.settings, turn)
 	}
 	got := f.run(t, "/r", "run", "code_review", "--param", "goal=g.md")
