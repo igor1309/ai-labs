@@ -35,12 +35,20 @@ Feature: The composition records each run
       ended, "b" started, "b" ended, each with its time
 
   Scenario: A refusal by admission is recorded
-    Given git gives "/r" not clean, and the file "/r/s.md" holds a brief
-      of home's form "step"
+    Given git gives "/r" not clean, and names "HEAD" the commit "c1";
+      the file "/r/s.md" holds a brief of home's form "step" whose goal
+      names a file "/r" holds
     When "agister run --process implement --agent claude-opus --param
       brief=s.md" runs in "/r"
-    Then the record holds the run failed, class "refused", its call
-      refused, its HEAD and content empty
+    Then the record holds the run failed, class "refused", the reason
+      that the worktree is not clean, its HEAD and content empty
+
+  Scenario: Calls side by side that end together are both kept
+    Given home's code_review as review.feature gives it, two reviews
+      ending at once
+    When "agister run code_review --param goal=g.md" runs in "/r"
+    Then every record runstore is given after both have ended holds
+      both, and the last holds each of the six calls once
 
   Scenario Outline: What is refused before anything runs is not recorded
     When "agister run <request>" runs in "<dir>"

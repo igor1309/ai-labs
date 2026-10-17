@@ -539,14 +539,16 @@ Decisions, each with its reason:
 
 ## Records
 
-Every run that resolves is recorded (ADR-001, invariants 6 and 7,
+Every run that reaches core is recorded (ADR-001, invariants 6 and 7,
 "Runs"; ADR-004, rule 4): what a continuation will check, and who did
 what. The record keeps what this slice needs, not yet all invariant 6
 lists (`backlog/run-path.md`).
 
 **`git`** gives a worktree's content: the id of the tree its files
 would make, untracked ones too, ignored ones not, written through an
-index of its own, so the worktree's index is untouched.
+index of its own: a copy of the worktree's, in a temporary folder, so
+the worktree's index is untouched and unchanged files are not hashed
+again.
 
 **`runstore`**, a wrapper, keeps runs under a folder it is given: each
 run a folder of its id holding `record.json`, written whole each time
@@ -557,7 +559,8 @@ It gives a record back by the run's id.
 **`core/admit`** reads the worktree's content too, and tells a port of
 its own, for each call it admits, the HEAD when admitted and the
 content at the call's end, however it ended, read before the hold is
-released. A call refused tells nothing.
+released; a fact it cannot read is told empty, and the call goes on as
+before. A call refused tells nothing.
 
 **The composition** gives each run an id: its start's UTC time and six
 hex characters drawn at random, as `20261017T071618Z-55fd36`, a clock
@@ -565,8 +568,10 @@ and a source of randomness its seams. It places runs under home's
 `runs`. Once settings resolve and the composition's own refusals, on
 stderr, are past, it writes the record, `lost`, before anything runs;
 then again as each call ends, and at the run's end as the run ended.
-Refusals in the result, inputs' and admission's, are recorded. A first
-write that fails refuses the run on stderr; a later one is a warning in
+Refusals in the result, inputs' and admission's, are recorded. It
+writes the record one write at a time, each holding every call ended
+so far, steps side by side included. A first write that fails refuses
+the run on stderr; a later one, or an event's append, is a warning in
 the result. The record, schema `agister.record/v1alpha1`:
 
 ```json
@@ -582,10 +587,18 @@ the result. The record, schema `agister.record/v1alpha1`:
 
 A call's entry is written when it ends: its result in the printed
 result's shape, session and reason in it; `head` and `content` empty
-for a call refused before admission's facts. The run's `result` is the
-printed one. Each step's start, tool call and end, as core tells them,
-is a line of `events.jsonl`: `{"at", "step", "kind", ...}`, what the
-event says. The printed result gains `run_id`.
+for a call refused, by inputs or by admission. The run's `result` is
+the printed one. Each step's start, tool call and end, as core tells
+them, is a line of `events.jsonl`:
+
+```json
+{"at": "<RFC 3339>", "step": "a", "kind": "started", "agent": ""}
+{"at": "", "step": "a", "kind": "tool", "name": "", "input": ""}
+{"at": "", "step": "a", "kind": "ended", "status": "", "class": null,
+ "duration_ms": 0}
+```
+
+ The printed result gains `run_id`.
 
 Decisions, each with its reason:
 
@@ -597,6 +610,8 @@ Decisions, each with its reason:
   with no reaper.
 - Runs live under the home in use: the loop's is `~/.agister-next`. Run
   without `AGISTER_HOME`, this Agister reads the archive's home, which
-  does not resolve here; nothing is recorded there in practice.
+  does not resolve here; nothing is recorded there in practice. Were
+  it to resolve, a record would land among the archive's: a risk
+  taken.
 - No command on runs yet, and the id is printed only with the result:
   a lost run is found by its folder's time.

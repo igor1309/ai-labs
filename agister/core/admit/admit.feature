@@ -60,3 +60,8 @@ Feature: A call is admitted before it starts
     Given a call that asks a clean worktree, and it is not clean
     When the call is made through admit
     Then the port is told nothing
+
+  Scenario: A fact that cannot be read is told empty
+    Given the worktree's HEAD cannot be read, and the call pins nothing
+    When the call is made through admit
+    Then the call is made, and the port is told HEAD empty
