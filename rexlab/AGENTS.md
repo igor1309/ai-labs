@@ -46,6 +46,12 @@ one pull request.
 - Review cycles are costly. Code review is the pull request's gate
   only: run it once the branch is complete, never for a small change or
   a single step.
+- Commit every design. A `.pen` file is encrypted and git cannot merge
+  it, so a branch draws its new screens in a `.pen` file of its own
+  under `design/` rather than in a file another open branch changes.
+- The Pencil tools act on the document open in the editor, whatever
+  file path they are given: open the branch's own file first, and check
+  the editor's file before every edit.
 
 ### Spec review
 
