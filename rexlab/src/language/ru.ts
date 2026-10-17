@@ -31,6 +31,8 @@ export const ru: Texts = {
   playAgain: "ЕЩЁ РАЗ",
   catalogue: "ВСЕ ДИНОЗАВРЫ",
   diets: { meat: "МЯСО", plants: "РАСТЕНИЯ", both: "ВСЁ" },
+  foodChoice: "ЕДА",
+  everyFood: "ВСЕ",
   tall: "РОСТ",
   heavy: "ВЕС",
   position: "НОМЕР",

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
-import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
+import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { HomePage } from "./HomePage.tsx";
@@ -101,7 +101,7 @@ type Screen =
   | { kind: "result"; result: RoundResult }
   // The id of the dinosaur whose page the child came back from, if any.
   | { kind: "catalogue"; returning: string | undefined }
-  // The dinosaur's place in the catalogue.
+  // The dinosaur's place among those of the food chosen.
   | { kind: "dinosaur"; index: number }
   // Dinosaur care, which keeps its own screens.
   | { kind: "care" }
@@ -226,9 +226,25 @@ export function App({
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
-  const openCatalogue = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  // The food chosen is kept going to a page and back, but the catalogue
+  // opens from home on every dinosaur.
+  const [food, setFood] = useState<Food>("all");
+  const shown = ofFood(catalogue, food);
 
-  const pictureOf = (index: number) => bodyPicture(catalogue[index]?.id ?? "");
+  const openCatalogue = () =>
+    changeScreen(SCREEN_CHANGE, () => {
+      setFood("all");
+      setScreen({ kind: "catalogue", returning: undefined });
+    });
+
+  // A food newly chosen shows its dinosaurs from the top, rising in.
+  const chooseFood = (chosen: Food) => {
+    if (chosen === food) return;
+    setFood(chosen);
+    setScreen({ kind: "catalogue", returning: undefined });
+  };
+
+  const pictureOf = (index: number) => bodyPicture(shown[index]?.id ?? "");
 
   // A dinosaur's page shows once its picture is ready, as a question
   // does, and only if the screen is still where the child tapped: a
@@ -239,21 +255,21 @@ export function App({
     waitForPictures([pictureOf(index)], wait, () =>
       changeScreen(type, () => setScreen((current) => (still(current) ? { kind: "dinosaur", index } : current)))
     );
-    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, catalogue.length)));
+    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, shown.length)));
     waitForPictures(neighbours, wait, () => {});
   };
 
   const openDinosaur = (id: string) =>
     showDinosaur(
-      catalogue.findIndex((entry) => entry.id === id),
+      shown.findIndex((entry) => entry.id === id),
       OPEN_DINOSAUR,
       (current) => current.kind === "catalogue"
     );
 
   const step = (from: number, way: Step) =>
-    showDinosaur(stepFrom(from, way, catalogue.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
+    showDinosaur(stepFrom(from, way, shown.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
 
-  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: catalogue[index]?.id }));
+  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: shown[index]?.id }));
 
   const content = () => {
     switch (screen.kind) {
@@ -284,23 +300,25 @@ export function App({
         return (
           <CatalogueScreen
             language={language}
-            dinosaurs={catalogue.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
-            found={pairs.found.length}
+            dinosaurs={shown.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
+            foods={FOODS.map((choice) => ({ food: choice, count: ofFood(catalogue, choice).length }))}
+            food={food}
             returning={screen.returning}
+            onFood={chooseFood}
             onOpen={openDinosaur}
             onHome={home}
           />
         );
       case "dinosaur": {
         const { index } = screen;
-        const entry = catalogue[index];
-        if (!entry) throw new Error(`No dinosaur at ${index} in the catalogue`);
+        const entry = shown[index];
+        if (!entry) throw new Error(`No dinosaur at ${index} among those shown`);
         return (
           <DinosaurPage
             language={language}
             dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
             number={index + 1}
-            total={catalogue.length}
+            total={shown.length}
             onPrevious={() => step(index, "previous")}
             onNext={() => step(index, "next")}
             onBack={() => closeDinosaur(index)}

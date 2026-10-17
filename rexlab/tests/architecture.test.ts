@@ -45,7 +45,7 @@ const SCREENS = [
   "ResultScreen.tsx",
   "VisitScreen.tsx"
 ];
-const PRESENTATION = [...SCREENS, "DietTag.tsx", "Festivity.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
+const PRESENTATION = [...SCREENS, "DietTag.tsx", "Festivity.tsx", "FoodChips.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
 const ADAPTERS = [

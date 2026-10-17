@@ -1,4 +1,3 @@
-@next
 Feature: The dinosaur catalogue: choosing dinosaurs by their food
   A child shows only the dinosaurs that ate meat, plants or both, with
   chips that look like the food tags on the cards, so a child who cannot

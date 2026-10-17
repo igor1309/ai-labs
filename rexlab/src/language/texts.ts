@@ -36,9 +36,13 @@ export type Texts = {
   // The catalogue of every dinosaur: its title, also on its home tile.
   catalogue: string;
   diets: { meat: string; plants: string; both: string };
+  // The catalogue's chips that choose the dinosaurs shown by their food,
+  // and the chip that shows them all.
+  foodChoice: string;
+  everyFood: string;
   tall: string;
   heavy: string;
-  // A dinosaur's place in the catalogue, such as "1 / 30".
+  // A dinosaur's place among those of the food chosen, such as "1 / 30".
   position: string;
   previousDinosaur: string;
   nextDinosaur: string;

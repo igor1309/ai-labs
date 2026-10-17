@@ -29,6 +29,8 @@ export const en: Texts = {
   playAgain: "PLAY AGAIN",
   catalogue: "ALL DINOSAURS",
   diets: { meat: "MEAT", plants: "PLANTS", both: "BOTH" },
+  foodChoice: "FOOD",
+  everyFood: "ALL",
   tall: "TALL",
   heavy: "HEAVY",
   position: "NUMBER",
