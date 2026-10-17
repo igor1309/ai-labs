@@ -6,6 +6,7 @@ import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.t
 import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
+import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
@@ -51,24 +52,26 @@ export type Appearance = {
 };
 
 export type { CareProgressStore } from "./careGame.tsx";
+export type { PairsProgressStore } from "./pairsGame.tsx";
 
-export type AppProps = CareGameProps & {
-  dinosaurs: readonly Dinosaur[];
-  // Every dinosaur, in the order the catalogue shows them.
-  catalogue: readonly CatalogueEntry[];
-  // The URL of the body picture of the dinosaur with this id.
-  bodyPicture: (dinosaurId: string) => string;
-  random: Random;
-  orientation: Orientation;
-  progress: ProgressStore;
-  // The device's language tag, such as "ru-RU".
-  deviceLanguage: string;
-  languageStore: LanguageStore;
-  appearance: Appearance;
-  themeStore: ThemeStore;
-  loadPicture: LoadPicture;
-  startTimer: StartTimer;
-};
+export type AppProps = CareGameProps &
+  PairsGameProps & {
+    dinosaurs: readonly Dinosaur[];
+    // Every dinosaur, in the order the catalogue shows them.
+    catalogue: readonly CatalogueEntry[];
+    // The URL of the body picture of the dinosaur with this id.
+    bodyPicture: (dinosaurId: string) => string;
+    random: Random;
+    orientation: Orientation;
+    progress: ProgressStore;
+    // The device's language tag, such as "ru-RU".
+    deviceLanguage: string;
+    languageStore: LanguageStore;
+    appearance: Appearance;
+    themeStore: ThemeStore;
+    loadPicture: LoadPicture;
+    startTimer: StartTimer;
+  };
 
 // The two dinosaurs facing off on the home page's quiz card.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
@@ -79,8 +82,8 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on dinosaur care's tile.
 const CARE_TILE = "parasaurolophus";
 
-// The dinosaur on the home page's card of the games still to come.
-const MORE_COMING = "triceratops";
+// The dinosaur on find the pair's tile.
+const PAIRS_TILE = "stegosaurus";
 
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
@@ -101,7 +104,9 @@ type Screen =
   // The dinosaur's place in the catalogue.
   | { kind: "dinosaur"; index: number }
   // Dinosaur care, which keeps its own screens.
-  | { kind: "care" };
+  | { kind: "care" }
+  // Find the pair, which keeps its own screens too.
+  | { kind: "pairs" };
 
 export function App({
   dinosaurs,
@@ -116,6 +121,8 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  pals,
+  pairsProgress,
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -189,6 +196,14 @@ export function App({
     changeScreen(SCREEN_CHANGE, () => {
       care.open();
       setScreen({ kind: "care" });
+    });
+
+  const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
+
+  const openPairs = () =>
+    changeScreen(SCREEN_CHANGE, () => {
+      pairs.open();
+      setScreen({ kind: "pairs" });
     });
 
   // The next question shows once its pictures are ready, so none pops in,
@@ -269,7 +284,8 @@ export function App({
         return (
           <CatalogueScreen
             language={language}
-            dinosaurs={catalogue.map((entry) => presentCatalogueCard(entry, language, bodyPicture))}
+            dinosaurs={catalogue.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
+            found={pairs.found.length}
             returning={screen.returning}
             onOpen={openDinosaur}
             onHome={home}
@@ -282,7 +298,7 @@ export function App({
         return (
           <DinosaurPage
             language={language}
-            dinosaur={presentDinosaurPage(entry, language, bodyPicture)}
+            dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
             number={index + 1}
             total={catalogue.length}
             onPrevious={() => step(index, "previous")}
@@ -293,6 +309,8 @@ export function App({
       }
       case "care":
         return care.content(language);
+      case "pairs":
+        return pairs.content(language);
       case "home":
         return (
           <HomePage
@@ -304,10 +322,11 @@ export function App({
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
-            moreComing={bodyPicture(MORE_COMING)}
+            pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}
+            onPairs={openPairs}
           />
         );
     }

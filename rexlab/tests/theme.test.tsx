@@ -4,17 +4,20 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
+import { PROGRESS_KEY, localPairsProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
 import {
   OVERLAYS,
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_PALS,
   contrast,
   emptyCare,
   emptyProgress,
@@ -64,13 +67,16 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   language = "en-GB",
-  timers = manualTimers()
+  timers = manualTimers(),
+  pairs = memoryStorage()
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   language?: string;
   timers?: ManualTimers;
+  // Where find the pair's progress is kept.
+  pairs?: MemoryStorage;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -86,6 +92,8 @@ function openApp({
       appearance={device}
       themeStore={localTheme(() => storage)}
       {...emptyCare()}
+      pals={SHIPPED_PALS}
+      pairsProgress={localPairsProgress(() => pairs)}
       {...timers}
     />
   );
@@ -240,6 +248,46 @@ async function careResult({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
+async function pairsWelcome({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  expectScreenIn(theme);
+}
+
+// A board with a card open, a miss, found pairs, and its cards waving,
+// then the result, with its celebration and NEW badges.
+async function pairsBoard({ theme, user, timers }: Walk) {
+    await playPairs(user);
+    expectScreenIn(theme);
+    await turnCard(user, 0);
+    expectScreenIn(theme);
+    await showMiss(user);
+    expectScreenIn(theme);
+    act(() => timers.fire(MISS));
+    await playBoard(user, timers);
+    expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
+    expectScreenIn(theme);
+    endWave(timers);
+    expect(screen.getByRole("status")).toBeDefined();
+    expectScreenIn(theme);
+}
+
+async function pairsFound({ theme, user, timers }: Walk) {
+  await playPairs(user);
+  await playBoard(user, timers);
+  endWave(timers);
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  expect(screen.getAllByRole("img", { name: "FOUND" })).toHaveLength(3);
+  expectScreenIn(theme);
+  const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
+  const stamped = within(grid).getAllByRole("img", { name: "FOUND" })[0]?.closest("button");
+  if (!stamped) throw new Error("No stamped card");
+  await user.click(stamped);
+  expect(screen.getByRole("img", { name: "FOUND" })).toBeDefined();
+  expectScreenIn(theme);
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app: one walk over them all outlasts a test's time limit
 // on CI.
@@ -275,6 +323,14 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["a visit's first two needs, each asked, refused, suggested and met with hearts", visit(1, 2)],
       ["a visit's last two needs, each asked, refused, suggested and met with hearts, and the visitor dancing away", visit(3, NEEDS.length)],
       ["the result with its celebration, and the friend made", careResult]
+    ]
+  ],
+  [
+    "find the pair",
+    [
+      ["the welcome", pairsWelcome],
+      ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
+      ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
   ]
 ];
@@ -485,23 +541,40 @@ describe("marks", () => {
   });
 });
 
-describe("the MORE COMING card", () => {
-  it.each(["light", "dark"] as const)("is on the %s theme's paper, its lock and words in the soft ink at text contrast", (theme) => {
+describe("the FIND THE PAIR tile", () => {
+  it.each(["light", "dark"] as const)("is the %s theme's sky, its words in the ink at text contrast", (theme) => {
     openApp({ device: manualAppearance(theme) });
 
     expectScreenIn(theme);
-    const card = document.querySelector(".more-coming") ?? document.body;
-    const symbol = card.querySelector(".more-coming-symbol") ?? card;
-    const title = card.querySelector(".more-coming-title") ?? card;
+    const tile = screen.getByRole("button", { name: "FIND THE PAIR" });
+    const title = tile.querySelector(".pairs-tile-title") ?? tile;
     const colours = PALETTE[theme];
     const parts = {
-      card: [getComputedStyle(card).backgroundColor, colours.surface],
-      symbol: [getComputedStyle(symbol).backgroundColor, colours["surface-2"]],
-      lock: [getComputedStyle(symbol).color, colours["ink-soft"]],
-      words: [getComputedStyle(title).color, colours["ink-soft"]]
+      tile: [getComputedStyle(tile).backgroundColor, colours.sky],
+      words: [getComputedStyle(title).color, colours.ink]
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
-    expect(title.textContent).toBe("MORE COMING");
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+  });
+});
+
+describe("a board of silhouettes", () => {
+  it.each(["light", "dark"] as const)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
+    const timers = manualTimers();
+    const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
+    const { user } = openApp({ device: manualAppearance(theme), timers, pairs });
+    await playPairs(user);
+    expectScreenIn(theme);
+
+    await playBoard(user, timers);
+
+    expectScreenIn(theme);
+    // A silhouette is black on the light art, white on the dark, and so
+    // keeps text contrast with it.
+    const art = document.querySelector(".pair-card-art") ?? document.body;
+    const silhouette = document.querySelector(".pair-silhouette") ?? document.body;
+    expect(getComputedStyle(silhouette).filter).toBe(theme === "dark" ? "brightness(0) invert(1)" : "brightness(0)");
+    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
+    expect(contrast(theme === "dark" ? "#FFFFFF" : "#000000", PALETTE[theme]["surface-2"] ?? "")).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });

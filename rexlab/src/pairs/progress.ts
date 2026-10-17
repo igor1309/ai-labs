@@ -34,6 +34,9 @@ export type PairsResult = {
   // Undefined when stored progress cannot be read: there is no best to
   // show.
   best: number | undefined;
+  // The level's best before this board, undefined when there was none or
+  // it cannot be read.
+  previousBest: number | undefined;
   celebration: Celebration | null;
   // The level this board moved the child up to, or null.
   levelUp: Level | null;
@@ -72,6 +75,7 @@ export function finishBoard(kept: KeptPairs, board: Board, order: readonly strin
       tries,
       stars: progress.stars,
       best: kept.readable ? progress.best[board.level] : undefined,
+      previousBest: kept.readable ? previousBest : undefined,
       celebration,
       levelUp: moving ? nextLevel : null,
       newlyFound

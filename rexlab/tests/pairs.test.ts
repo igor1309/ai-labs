@@ -182,6 +182,7 @@ describe("finishing a board", () => {
       tries: 5,
       stars: 1,
       best: 5,
+      previousBest: undefined,
       celebration: "first-best",
       levelUp: null,
       newlyFound: ["tyrannosaurus", "triceratops", "stegosaurus"]
@@ -195,7 +196,7 @@ describe("finishing a board", () => {
   it("celebrates fewer tries than the best as a new best", () => {
     const { result, kept } = finishBoard(readable({ ...NO_PAIRS, best: { 1: 7 } }), finished(board(), 2), ORDER);
 
-    expect(result).toMatchObject({ best: 5, celebration: "new-best" });
+    expect(result).toMatchObject({ best: 5, previousBest: 7, celebration: "new-best" });
     expect(kept.progress.best).toEqual({ 1: 5 });
   });
 
@@ -233,7 +234,7 @@ describe("finishing a board", () => {
   it("shows no best and no celebration when progress cannot be read, but counts the board", () => {
     const { result, kept } = finishBoard({ progress: NO_PAIRS, readable: false }, finished(board(), 3), ORDER);
 
-    expect(result).toMatchObject({ tries: 6, stars: 1, best: undefined, celebration: null });
+    expect(result).toMatchObject({ tries: 6, stars: 1, best: undefined, previousBest: undefined, celebration: null });
     expect(kept).toEqual({ readable: false, progress: expect.objectContaining({ stars: 1, found: ["tyrannosaurus", "triceratops", "stegosaurus"] }) });
   });
 

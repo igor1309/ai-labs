@@ -2,7 +2,7 @@ import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
 import { readCatalogue, readDinosaurs, readPals, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -211,6 +211,13 @@ export function emptyProgress() {
 export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemPicture" | "reducedMotion"> {
   const storage = memoryStorage();
   return { visitors: SHIPPED_VISITORS, careProgress: localCareProgress(() => storage), itemPicture: fakeItemPicture, reducedMotion: () => false };
+}
+
+// Find the pair for tests that are not about it: every shipped dinosaur
+// may be dealt, no progress kept yet, and saving works.
+export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
+  const storage = memoryStorage();
+  return { pals: SHIPPED_PALS, pairsProgress: localPairsProgress(() => storage) };
 }
 
 // The language for tests that are not about it: an English device, and no

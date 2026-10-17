@@ -101,6 +101,7 @@ describe("the import graph", () => {
   });
 
   it("reaches find the pair only through its entrypoint", () => {
+    expect(GRAPH.get("pairsGame.tsx")).toContain("pairs/index.ts");
     expect(edges((file) => !inPairs(file), (target) => inPairs(target) && target !== "pairs/index.ts")).toEqual([]);
   });
 

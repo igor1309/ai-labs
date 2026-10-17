@@ -4,7 +4,6 @@ export const en: Texts = {
   greeting: "PICK A GAME",
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
-  moreComing: "MORE COMING",
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },
@@ -49,5 +48,15 @@ export const en: Texts = {
   heartsOf: (hearts, total) => `${hearts} OF ${total} HEARTS`,
   newFriend: "NEW FRIEND!",
   friend: "FRIEND",
-  noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!"
+  noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!",
+  pairs: "FIND THE PAIR",
+  play: "PLAY",
+  level: "LEVEL",
+  starsEarned: "STARS",
+  tries: "TRIES",
+  cards: "CARDS",
+  card: (place) => `CARD ${place}`,
+  newLevel: (level) => `NEW LEVEL ${level}`,
+  newlyFound: "NEW",
+  found: "FOUND"
 };

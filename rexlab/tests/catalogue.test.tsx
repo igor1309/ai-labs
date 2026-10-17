@@ -15,6 +15,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
   fakeBodyPicture,
   loadedPictures,
@@ -49,7 +50,7 @@ function openApp({
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
-      {...emptyCare()}
+      {...emptyCare()} {...emptyPairs()}
     />
   );
   return userEvent.setup();
