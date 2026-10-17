@@ -146,14 +146,15 @@ button {
   white-space: nowrap;
 }
 
+/* The pictures' own 4:3, so a picture of another shape is fitted inside
+   the same box rather than shown larger. */
 .dinosaur-picture {
+  display: block;
   width: 16rem;
   height: 12rem;
-  display: grid;
-  place-items: center;
-  font-size: 8rem;
-  line-height: 1;
-  overflow: hidden;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .dinosaur-name {

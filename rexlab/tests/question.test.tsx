@@ -3,8 +3,9 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
+import type { Language } from "../src/language/language.ts";
 import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, lightDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, fakeBodyPicture, lightDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -52,7 +53,7 @@ describe("a question", () => {
       [left, "Triceratops"],
       [right, "Velociraptor"]
     ] as const) {
-      expect(within(card).getByRole("img", { name })).toBeDefined();
+      expect(within(card).getByRole("img", { name }).getAttribute("src")).toBe(fakeBodyPicture(byName(name).id));
       const label = within(card).getByText(name.toUpperCase());
       expect(parseFloat(getComputedStyle(label).fontSize)).toBeGreaterThanOrEqual(32);
       expect(card.textContent).not.toMatch(/\d/);
@@ -71,10 +72,32 @@ describe("a question", () => {
   });
 });
 
+describe("a dinosaur card's picture", () => {
+  // Each shipped dinosaur once on the left and once on the right, so none
+  // is shown with another's picture on either side.
+  const pairs = SHIPPED_DINOSAURS.map((left, index) => [left, SHIPPED_DINOSAURS[(index + 1) % SHIPPED_DINOSAURS.length] ?? left] as const);
+
+  it.each<Language>(["en", "ru"])("is the dinosaur's own, named in %s", (language) => {
+    const nothing = () => {};
+    for (const [left, right] of pairs) {
+      const { unmount } = render(
+        <QuestionScreen language={language} {...questionView({ attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />
+      );
+
+      const shown = within(screen.getByRole("group")).getAllByRole("button").map((card) => {
+        const picture = within(card).getByRole("img");
+        return { src: picture.getAttribute("src"), name: picture.getAttribute("alt") };
+      });
+      expect(shown).toEqual([left, right].map((dinosaur) => ({ src: fakeBodyPicture(dinosaur.id), name: dinosaur.name[language] })));
+      unmount();
+    }
+  });
+});
+
 describe("a round", () => {
   it("asks to turn the iPad sideways in portrait and resumes the same question", async () => {
     const orientation = manualOrientation("landscape");
-    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "COMPARE" }));
     await answerAndGoOn(user);
@@ -96,7 +119,7 @@ describe("a round", () => {
   // The generator's own tests cover the class of random draws; this one
   // proves the app hands each new round the one played before it.
   it("does not repeat the previous round's questions", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
     const user = userEvent.setup();
 
     async function playRound() {

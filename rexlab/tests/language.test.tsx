@@ -12,6 +12,7 @@ import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/q
 import {
   SHIPPED_DINOSAURS,
   emptyProgress,
+  fakeBodyPicture,
   lightDevice,
   manualOrientation,
   memoryStorage,
@@ -53,6 +54,7 @@ function openApp({
   const view = render(
     <App
       dinosaurs={SHIPPED_DINOSAURS}
+      bodyPicture={fakeBodyPicture}
       random={seededRandom(31)}
       orientation={orientation}
       progress={progress}
@@ -331,6 +333,10 @@ async function playEveryScreen(language: Language): Promise<Seen> {
       if (forParents(element)) seen.parentLabels.push(label);
       else if (isName(label)) seen.names.push(label);
       else seen.texts.push(label);
+    }
+    for (const picture of document.body.querySelectorAll("img")) {
+      const label = picture.alt;
+      (isName(label) ? seen.names : seen.texts).push(label);
     }
   };
 

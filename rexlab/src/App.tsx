@@ -45,6 +45,8 @@ export type Appearance = {
 
 export type AppProps = {
   dinosaurs: readonly Dinosaur[];
+  // The URL of the body picture of the dinosaur with this id.
+  bodyPicture: (dinosaurId: string) => string;
   random: Random;
   orientation: Orientation;
   progress: ProgressStore;
@@ -57,7 +59,7 @@ export type AppProps = {
 
 type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
 
-export function App({ dinosaurs, random, orientation, progress, deviceLanguage, languageStore, appearance, themeStore }: AppProps) {
+export function App({ dinosaurs, bodyPicture, random, orientation, progress, deviceLanguage, languageStore, appearance, themeStore }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
@@ -125,7 +127,7 @@ export function App({ dinosaurs, random, orientation, progress, deviceLanguage, 
         return (
           <QuestionScreen
             language={language}
-            {...presentQuestion(question, language)}
+            {...presentQuestion(question, language, bodyPicture)}
             onChoose={(id) => play((state) => choose(state, id))}
             onNext={question.last ? () => seeResult(current) : () => play(next)}
             onHome={home}

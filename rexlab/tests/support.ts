@@ -14,6 +14,10 @@ import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 
+// A body picture URL of the dinosaur's own, for tests that are not about
+// the picture files.
+export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.webp`;
+
 // A seeded random source (mulberry32): each seed is one repeatable run.
 export function seededRandom(seed: number): Random {
   let state = seed >>> 0;
@@ -112,7 +116,7 @@ export function lightDevice() {
 // the question, presented as the app presents it.
 export function questionView(question: Question, language: Language, choice?: string) {
   const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question));
-  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language);
+  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture);
 }
 
 // Media query lists, one for each query given, whose matches the test

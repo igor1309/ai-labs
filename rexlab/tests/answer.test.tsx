@@ -11,6 +11,7 @@ import {
   contrast,
   emptyProgress,
   englishDevice,
+  fakeBodyPicture,
   lightDevice,
   manualOrientation,
   questionView,
@@ -49,7 +50,7 @@ function shownQuestion(): Question {
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function startRound(seed: number) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
   const user = userEvent.setup();
   return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
 }

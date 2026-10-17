@@ -25,3 +25,8 @@ generate with the style prompt below plus that line.
   `src/data/dinosaurs.json`.
 - **Credits:** record the generator and date for each picture in
   `CREDITS.md` beside the images.
+- **Placeholders:** until a dinosaur's artwork exists, its picture is a
+  placeholder with its name, made by `scripts/make-placeholders.sh`
+  (ImageMagick and `cwebp`): run it with the dinosaur's id to make one,
+  or with none to make every dinosaur's. A test checks that every
+  dinosaur in the list has a picture of the agreed size, with alpha.

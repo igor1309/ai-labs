@@ -11,6 +11,7 @@ import {
   SHIPPED_DINOSAURS,
   contrast,
   emptyProgress,
+  fakeBodyPicture,
   luminance,
   manualAppearance,
   manualOrientation,
@@ -62,6 +63,7 @@ function openApp({
   const view = render(
     <App
       dinosaurs={SHIPPED_DINOSAURS}
+      bodyPicture={fakeBodyPicture}
       random={seededRandom(41)}
       orientation={orientation}
       progress={emptyProgress()}

@@ -14,6 +14,8 @@ const MARKS: Record<Mark, string> = { correct: "✓", wrong: "✗" };
 export type DinosaurCardView = {
   id: string;
   name: string;
+  // The URL of the dinosaur's picture.
+  picture: string;
   // The dinosaur's value, written out, once the question is answered.
   value: string | undefined;
   mark: Mark | undefined;
@@ -79,7 +81,7 @@ type DinosaurCardProps = {
   onChoose: (id: string) => void;
 };
 
-function DinosaurCard({ view: { id, name, value, mark }, language, answered, onChoose }: DinosaurCardProps) {
+function DinosaurCard({ view: { id, name, picture, value, mark }, language, answered, onChoose }: DinosaurCardProps) {
   const { "data-hovered": hovered, "data-pressed": pressed, ...pointer } = usePointerState();
   // An answered card no longer responds to touch: only the first tap
   // counts, and a card that still looked pressable would say otherwise.
@@ -100,11 +102,9 @@ function DinosaurCard({ view: { id, name, value, mark }, language, answered, onC
           {MARKS[mark]}
         </span>
       )}
-      {/* Every card shows the same placeholder at the same size until
-          artwork exists: a picture must not hint at which one is larger. */}
-      <span className="dinosaur-picture" role="img" aria-label={name}>
-        🦕
-      </span>
+      {/* Every picture is shown at the same size, whatever the dinosaur's
+          real size: a picture must not hint at which one is larger. */}
+      <img className="dinosaur-picture" src={picture} alt={name} width={800} height={600} draggable={false} />
       <span className="dinosaur-name">{name.toLocaleUpperCase(language)}</span>
       {value !== undefined && <span className="dinosaur-value">{value}</span>}
     </button>

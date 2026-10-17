@@ -1,11 +1,16 @@
 import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
+import { bodyPictures } from "./dinosaurPictures.ts";
 import { readDinosaurs } from "./dinosaurs.ts";
 import { localLanguage } from "./localLanguage.ts";
 import { localProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
+
+// Every body picture, loaded through Vite so its URL carries a content
+// hash. Never inlined, so a picture is cached as a file of its own.
+const BODY_PICTURES = import.meta.glob<string>("./assets/dinos/*/body.webp", { eager: true, query: "?url&no-inline", import: "default" });
 
 // What the app takes from the browser it runs in.
 export type Browser = {
@@ -21,8 +26,10 @@ export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
   const media = mediaOrientation((query) => browser.matchMedia(query));
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
+  const dinosaurs = readDinosaurs(records);
   return {
-    dinosaurs: readDinosaurs(records),
+    dinosaurs,
+    bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     orientation: { isPortrait: media.portrait, subscribe: media.watch },
     progress: localProgress(storage),
