@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
@@ -363,14 +364,33 @@ func (s *runtimesSpy) runtimes() runtimes {
 }
 
 // idleHost is the machine for a command that runs nothing: a run that
-// watches its signals fails the test.
+// watches its signals or draws randomness fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
 	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}
-		}}
+		},
+		random: idleRandom{t: t}}
+}
+
+// idleRandom is randomness that fails the test it is drawn from.
+type idleRandom struct{ t *testing.T }
+
+func (r idleRandom) Read([]byte) (int, error) {
+	r.t.Error("a run drew randomness, want none run")
+	return 0, errors.New("no randomness here")
+}
+
+// randomSpy is randomness that gives its bytes, over and over.
+type randomSpy []byte
+
+func (r randomSpy) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = r[i%len(r)]
+	}
+	return len(p), nil
 }
 
 // endedContext is a context that has ended, cancelled: one an adapter
@@ -534,14 +554,16 @@ func (s *holdingSpy) locks() (asked []lockAsked, alone, shared int) {
 func (s *holdingSpy) holding() holding { return holding{facts: s, locks: s} }
 
 // admissionSpy is a spy of core/admit: it keeps each request it is asked
-// to admit, and refuses it with err, or, with none, makes the call.
+// to admit, and refuses it with err, or, with none, makes the call and
+// tells facts.
 type admissionSpy struct {
 	err      error
+	facts    admit.Facts
 	mu       sync.Mutex
 	requests []admit.Request
 }
 
-func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made func(context.Context), _ func(admit.Facts)) error {
+func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made func(context.Context), told func(admit.Facts)) error {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
@@ -549,6 +571,7 @@ func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made fun
 		return s.err
 	}
 	made(ctx)
+	told(s.facts)
 	return nil
 }
 
@@ -556,4 +579,92 @@ func (s *admissionSpy) asked() []admit.Request {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return slices.Clone(s.requests)
+}
+
+// storeSpy is a spy of runstore: it keeps the folder each store is asked
+// for, each record written and each event appended, in order, with the
+// run's id. The write its test numbers in failWrite, from 1, fails with
+// errFull, and so does every append where failAppend is set. It is safe for
+// concurrent use.
+type storeSpy struct {
+	failWrite  int
+	failAppend bool
+	mu         sync.Mutex
+	folders    []string
+	records    []runstore.Record
+	events     []storedEvent
+}
+
+// storedEvent is an event appended, and the id of its run.
+type storedEvent struct {
+	id    string
+	event runstore.Event
+}
+
+// errFull is the failure of a write or an append the store's test fails.
+var errFull = errors.New("disk full")
+
+func (s *storeSpy) at(folder string) (recordStore, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.folders = append(s.folders, folder)
+	return s, nil
+}
+
+func (s *storeSpy) Write(record runstore.Record) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record.Calls = slices.Clone(record.Calls)
+	s.records = append(s.records, record)
+	if len(s.records) == s.failWrite {
+		return errFull
+	}
+	return nil
+}
+
+func (s *storeSpy) Append(id string, event runstore.Event) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.events = append(s.events, storedEvent{id: id, event: event})
+	if s.failAppend {
+		return errFull
+	}
+	return nil
+}
+
+// given is what the store was given: the folders asked, each record
+// written and each event appended, in order.
+func (s *storeSpy) given() (folders []string, records []runstore.Record, events []storedEvent) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.folders), slices.Clone(s.records), slices.Clone(s.events)
+}
+
+// last is the last record written, failing t where none was.
+func (s *storeSpy) last(t *testing.T) runstore.Record {
+	t.Helper()
+	_, records, _ := s.given()
+	if len(records) == 0 {
+		t.Fatal("runstore was given no record, want one")
+	}
+	return records[len(records)-1]
+}
+
+// callsSpy is a spy of a step call's records: it keeps each call told,
+// in order. It is safe for concurrent use.
+type callsSpy struct {
+	mu    sync.Mutex
+	ended []endedCall
+}
+
+func (s *callsSpy) Called(ended endedCall) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ended = append(s.ended, ended)
+}
+
+func (s *callsSpy) told() []endedCall {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.ended)
 }

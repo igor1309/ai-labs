@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/git"
+	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
@@ -63,9 +65,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 // wrappers over the supervisor, its programs started in gokit's process
 // groups and its grace on the wall clock, codex's schemas under the
 // system's temporary folder, jsonschema's validator, a worktree's facts of
-// git and its holds of files' locks, and the machine: Agister's
-// environment, the wall clock, and SIGINT, SIGTERM, SIGHUP and SIGQUIT,
-// each cancelling a run.
+// git and its holds of files' locks, runs kept by runstore, and the
+// machine: Agister's environment, the wall clock, SIGINT, SIGTERM, SIGHUP
+// and SIGQUIT, each cancelling a run, and crypto/rand's randomness.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -92,9 +94,18 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader}
 	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
-	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, machine, stdout, stderr)
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, keptRuns, machine, stdout, stderr)
+}
+
+// keptRuns is runstore over folder.
+func keptRuns(folder string) (recordStore, error) {
+	store, err := runstore.New(folder)
+	if err != nil {
+		return nil, err
+	}
+	return store, nil
 }
 
 // newRuntimes is the runtime wrappers over programs: bash, claude-code and
@@ -189,10 +200,11 @@ type piWrapper interface {
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
 // runs on machine, a call's output checked by validator, its inputs read
 // through inputsFrom, and the call admitted and held through held's facts
-// and locks, for the user whose home directory is user: home's folder is
+// and locks, its runs kept by the store storeAt gives for home's "runs",
+// for the user whose home directory is user: home's folder is
 // homeFolder's, and the lock files are under lockFolder's. A run's result
 // is printed to stdout, and its progress, as it goes, to stderr.
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, storeAt recordStoreAt, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
 		return nil, errors.New("build: a runtime wrapper is missing")
 	}
@@ -226,7 +238,14 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 		return nil, err
 	}
 	held.folder = lockFolder(user)
-	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, held, machine, events)
+	if storeAt == nil {
+		return nil, errors.New("build: no record store")
+	}
+	store, err := storeAt(filepath.Join(home, "runs"))
+	if err != nil {
+		return nil, err
+	}
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, held, machine, events, store)
 	if err != nil {
 		return nil, err
 	}
