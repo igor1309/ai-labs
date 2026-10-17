@@ -207,16 +207,16 @@ describe("friends", () => {
     expect(heartsShown()).toBe("0");
   });
 
-  it("are all 30 dinosaurs once each, in the list's order, scrolled, each to be tapped", async () => {
-    const storage = stored(8, 30, SHIPPED_VISITORS.map(({ id }) => id).reverse());
+  it("are all 42 dinosaurs once each, in the list's order, scrolled, each to be tapped", async () => {
+    const storage = stored(8, 42, SHIPPED_VISITORS.map(({ id }) => id).reverse());
     const { user } = openCareApp({ storage });
     await openCare(user);
 
     await user.click(button("FRIENDS"));
 
     expect(friendCards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_VISITORS.map(({ name }) => name.en));
-    expect(SHIPPED_VISITORS).toHaveLength(30);
-    expect(friendCount()).toBe("30");
+    expect(SHIPPED_VISITORS).toHaveLength(42);
+    expect(friendCount()).toBe("42");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).overflowY).toBe("auto");
     expect(["NEW VISITOR", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["footprints", "arrow-left", "house"]);
     const last = friendCards().at(-1);

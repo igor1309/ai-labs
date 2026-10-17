@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -89,7 +90,8 @@ var ErrNotStarted = errors.New("the program could not start")
 // Turn is what a turn is given: the prompt, a script on bash and the
 // message on a model; the directory; the environment, as "KEY=value"; the
 // instruction, the model and the effort, each empty where not given; the
-// options; and the schema, nil where none is given.
+// options; the schema, nil where none is given; and the session it
+// resumes, "" for none.
 type Turn struct {
 	Prompt      string
 	Dir         string
@@ -99,6 +101,7 @@ type Turn struct {
 	Effort      string
 	Options     []string
 	Schema      []byte
+	Session     string
 }
 
 // Ended is how a turn's program ended and what it wrote: the code it
@@ -210,8 +213,9 @@ type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // the process's environment, each value by its name; the call's inputs, in
 // the order its process declares them, and its documents, in order, which
 // a model takes in its message; the instruction, the model, the effort,
-// the options and the schema the turn is given; its time limit, none when
-// zero; its staleness limits; and the warnings of its plan.
+// the options and the schema the turn is given; the session it continues,
+// "" for none; its time limit, none when zero; its staleness limits; and
+// the warnings of its plan.
 type Step struct {
 	Prompt      string
 	Environment map[string]string
@@ -222,6 +226,7 @@ type Step struct {
 	Effort      string
 	Options     []string
 	Schema      []byte
+	Session     string
 	TimeLimit   time.Duration
 	Staleness   Limits
 	Warnings    []string
@@ -391,15 +396,20 @@ func (c *Caller) turn(step Step) Turn {
 		Effort:      step.Effort,
 		Options:     slices.Clone(step.Options),
 		Schema:      bytes.Clone(step.Schema),
+		Session:     step.Session,
 	}
 }
 
-// replied ends result by reply: its failure first, a turn that failed not
-// checked; then, where step gives a schema, its structured output checked
-// against it by the validator, and decoded as the call's output; else its
-// text the output.
+// replied ends result by reply: a session reported other than the one
+// step continues first, since the turn's work went elsewhere; then its
+// failure, a turn that failed not checked; then, where step gives a
+// schema, its structured output checked against it by the validator, and
+// decoded as the call's output; else its text the output.
 func (c *Caller) replied(result *Result, step Step, reply Reply) {
 	switch failure := reply.Failure; {
+	case step.Session != "" && reply.Session != "" && reply.Session != step.Session:
+		result.Status, result.Class = Failed, RuntimeError
+		result.Reason = cut(fmt.Sprintf("the turn reported the session %q, not %q", reply.Session, step.Session))
 	case failure == NoResult:
 		result.Status, result.Class, result.Reason = Lost, NoResult, cut(reply.Reason)
 	case known(failure):

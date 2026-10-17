@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,27 +35,31 @@ type Record struct {
 }
 
 // Request is what a run was asked: a workflow, or a process on an agent;
-// its params, by name; and the directory it was asked in.
+// its params, by name; the directory it was asked in; and the id of the
+// run it continues, nil for none.
 type Request struct {
 	Workflow string            `json:"workflow"`
 	Process  string            `json:"process"`
 	Agent    string            `json:"agent"`
 	Params   map[string]string `json:"params"`
 	Dir      string            `json:"dir"`
+	Continue *string           `json:"continue"`
 }
 
 // Call is a call of a run, as it ended: its id, its step, process and
 // agent; its worktree's root, the commit HEAD was when it was admitted and
-// its content at its end, "" where it was refused; and its result.
+// its content at its end, "" where it was refused; the id of the call
+// whose session it continues, nil for none; and its result.
 type Call struct {
-	ID      string     `json:"id"`
-	Step    string     `json:"step"`
-	Process string     `json:"process"`
-	Agent   string     `json:"agent"`
-	Root    string     `json:"root"`
-	Head    string     `json:"head"`
-	Content string     `json:"content"`
-	Result  CallResult `json:"result"`
+	ID        string     `json:"id"`
+	Step      string     `json:"step"`
+	Process   string     `json:"process"`
+	Agent     string     `json:"agent"`
+	Root      string     `json:"root"`
+	Head      string     `json:"head"`
+	Content   string     `json:"content"`
+	Continues *string    `json:"continues"`
+	Result    CallResult `json:"result"`
 }
 
 // Outcome is how a run or a call ended, in the shape Agister prints a
@@ -238,6 +243,35 @@ func (s *Store) Record(id string) (Record, error) {
 		return Record{}, fmt.Errorf("runstore: the record of %q: %w", id, err)
 	}
 	return record, nil
+}
+
+// Runs gives the ids of the runs kept, each a folder holding its record,
+// in name order; none where the store's folder is not there yet.
+func (s *Store) Runs() ([]string, error) {
+	entries, err := os.ReadDir(s.folder)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("runstore: the runs kept: %w", err)
+	}
+	var ids []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		info, err := os.Stat(filepath.Join(s.folder, entry.Name(), "record.json"))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("runstore: the runs kept: %w", err)
+		}
+		if info.Mode().IsRegular() {
+			ids = append(ids, entry.Name())
+		}
+	}
+	return ids, nil
 }
 
 // Append appends event to the events of the run id names, as a line of

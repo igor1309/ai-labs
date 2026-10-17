@@ -1,6 +1,6 @@
-# cli's run (docs/run-implementation.md, "The first run"; ADR-013): a
-# command turned into a request on the port, the result printed as JSON.
-# A spy answers the port in every test.
+# cli's run (docs/run-implementation.md, "The first run" and "Continuation";
+# ADR-013): a command turned into a request on the port, the result printed
+# as JSON. A spy answers the port in every test.
 
 Feature: The command line runs a request
 
@@ -48,3 +48,12 @@ Feature: The command line runs a request
       | run --process p   |
       | run w --param a   |
       | run w x           |
+
+  Scenario Outline: A request may continue a run
+    When "agister <args>" runs
+    Then it asks the port to run <request>, continuing the run "R1"
+
+    Examples:
+      | args                                    | request                    |
+      | run w --continue R1                     | the workflow "w"           |
+      | run --process p --agent a --continue R1 | the process "p", agent "a" |

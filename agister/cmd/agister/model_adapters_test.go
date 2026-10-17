@@ -56,11 +56,11 @@ func (s *codexRunSpy) Run(ctx context.Context, turn codex.Turn, report func(code
 
 // modelTurn is a model's turn as core/call gives it, every field given.
 var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
-	Options: []string{"Read"}, Schema: []byte("{}")}
+	Options: []string{"Read"}, Schema: []byte("{}"), Session: "s0"}
 
 // A turn on claude-code runs its prompt as the message, in its context,
-// with its directory, environment, instruction, model, effort, options and
-// schema, and gives each line it reports, how the program ended and
+// with its directory, environment, instruction, model, effort, options,
+// schema and session, and gives each line it reports, how the program ended and
 // its reply in core's words, its failure class by its name; a program
 // ended by a signal gives no reply; a program that could not start is
 // core's ErrNotStarted, and any other error passes as it is.
@@ -108,7 +108,7 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
 			want := []claudecode.Turn{{Message: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
-				Options: []string{"Read"}, Schema: []byte("{}")}}
+				Options: []string{"Read"}, Schema: []byte("{}"), Session: "s0"}}
 			if !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
 			}
@@ -120,8 +120,8 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 }
 
 // A turn on codex runs its prompt as the message, in its context, with its
-// directory, environment, instruction, model, effort, options and schema,
-// and gives each line it reports, how the program ended and its reply
+// directory, environment, instruction, model, effort, options, schema and
+// session, and gives each line it reports, how the program ended and its reply
 // in core's words, its failure class by its name and its cost unknown; a
 // program ended by a signal gives no reply; a program that could not start
 // is core's ErrNotStarted, and any other error passes as it is.
@@ -168,7 +168,7 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
 			want := []codex.Turn{{Message: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
-				Options: []string{"Read"}, Schema: []byte("{}")}}
+				Options: []string{"Read"}, Schema: []byte("{}"), Session: "s0"}}
 			if !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
 			}

@@ -1,6 +1,7 @@
 // Package e2e_test is the end-to-end check (docs/run-implementation.md, "A
-// step on a model runtime"): the built agister runs a step on real
-// claude-code and codex, on the owner's logins. It costs a few cents, so
+// step on a model runtime" and "Continuation"): the built agister runs a
+// step on real claude-code and codex, on the owner's logins, and continues
+// it. It costs a few cents, so
 // it is opt-in: its tests run only where AGISTER_E2E is 1, by
 // scripts/e2e.sh, and are skipped otherwise, saying so.
 package e2e_test
@@ -92,8 +93,8 @@ output:
 }
 
 // scratch makes the test's own home's folder, a copy of ../home with the
-// agents, and its own git repository, holding the repository's settings;
-// and gives each.
+// agents, and its own git repository, holding the repository's settings
+// and a commit, so that HEAD names one; and gives each.
 func scratch(t *testing.T) (home, repo string) {
 	t.Helper()
 	root := t.TempDir()
@@ -116,8 +117,13 @@ func scratch(t *testing.T) (home, repo string) {
 			t.Fatal(err)
 		}
 	}
-	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
+	for _, args := range [][]string{
+		{"init", "-q", repo},
+		{"-C", repo, "-c", "user.name=e2e", "-c", "user.email=e2e@example.invalid", "commit", "-q", "--allow-empty", "-m", "e2e"},
+	} {
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
+		}
 	}
 	return home, repo
 }
@@ -131,6 +137,7 @@ type printed struct {
 		Output *int64 `json:"output_tokens"`
 	} `json:"usage"`
 	Sessions map[string]string `json:"sessions"`
+	RunID    string            `json:"run_id"`
 }
 
 // runDeadline guards a run that hangs: at it, Agister is sent SIGTERM,
@@ -144,6 +151,57 @@ const (
 	cancelBound = 10 * time.Second
 )
 
+// ranAgister is what a run of the built agister printed and its exit
+// code.
+type ranAgister struct {
+	stdout, stderr []byte
+	code           int
+}
+
+// runAgister runs the built agister with args in repo, its home's folder
+// home, failing t where it hangs or cannot be started.
+func runAgister(t *testing.T, home, repo string, args ...string) ranAgister {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), runDeadline)
+	defer cancel()
+	run := exec.CommandContext(ctx, binary, args...)
+	run.Cancel = func() error { return run.Process.Signal(syscall.SIGTERM) }
+	run.WaitDelay = cancelBound
+	run.Dir = repo
+	run.Env = append(os.Environ(), "AGISTER_HOME="+home)
+	var stdout, stderr bytes.Buffer
+	run.Stdout, run.Stderr = &stdout, &stderr
+	err := run.Run()
+	if ctx.Err() != nil {
+		t.Fatalf("the run hung past %v, and Agister was sent SIGTERM: %v\nstdout:\n%s\nstderr:\n%s", runDeadline, err, stdout.Bytes(), stderr.Bytes())
+	}
+	if exit := (*exec.ExitError)(nil); err != nil && !errors.As(err, &exit) {
+		t.Fatal(err)
+	}
+	return ranAgister{stdout: stdout.Bytes(), stderr: stderr.Bytes(), code: run.ProcessState.ExitCode()}
+}
+
+// printedOf is the result got printed, failing t where it printed none.
+func printedOf(t *testing.T, got ranAgister) printed {
+	t.Helper()
+	var p printed
+	if err := json.Unmarshal(got.stdout, &p); err != nil {
+		t.Fatalf("stdout is no result: %v\nstdout:\n%s\nstderr:\n%s", err, got.stdout, got.stderr)
+	}
+	return p
+}
+
+// answerOf is the answer p's step gave, failing t where it gave none.
+func answerOf(t *testing.T, p printed) string {
+	t.Helper()
+	step, _ := p.Output["output"].(map[string]any)
+	answer, ok := step["answer"].(string)
+	if !ok {
+		t.Errorf("output %v, want its step's answer a string", p.Output)
+	}
+	return answer
+}
+
 // e2e.feature, "A step on a real runtime completes". A step alone's run
 // gives its step's output as its output "output" (ADR-013, rule 1).
 //
@@ -156,36 +214,15 @@ func TestAStepOnARealRuntimeCompletes(t *testing.T) {
 		t.Run(agent, func(t *testing.T) {
 			t.Parallel()
 			home, repo := scratch(t)
-			ctx, cancel := context.WithTimeout(t.Context(), runDeadline)
-			defer cancel()
-			run := exec.CommandContext(ctx, binary, "run", "--process", "ask", "--agent", agent, "--param", "q=hi")
-			run.Cancel = func() error { return run.Process.Signal(syscall.SIGTERM) }
-			run.WaitDelay = cancelBound
-			run.Dir = repo
-			run.Env = append(os.Environ(), "AGISTER_HOME="+home)
-			var stdout, stderr bytes.Buffer
-			run.Stdout, run.Stderr = &stdout, &stderr
-			err := run.Run()
-			if ctx.Err() != nil {
-				t.Fatalf("the run hung past %v, and Agister was sent SIGTERM: %v\nstdout:\n%s\nstderr:\n%s", runDeadline, err, stdout.Bytes(), stderr.Bytes())
+			ran := runAgister(t, home, repo, "run", "--process", "ask", "--agent", agent, "--param", "q=hi")
+			if ran.code != 0 {
+				t.Errorf("exit %d, want 0", ran.code)
 			}
-			if exit := (*exec.ExitError)(nil); err != nil && !errors.As(err, &exit) {
-				t.Fatal(err)
-			}
-			if code := run.ProcessState.ExitCode(); code != 0 {
-				t.Errorf("exit %d, want 0", code)
-			}
-			var got printed
-			if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
-				t.Fatalf("stdout is no result: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.Bytes(), stderr.Bytes())
-			}
+			got := printedOf(t, ran)
 			if got.Status != "completed" {
 				t.Errorf("status %q, want completed", got.Status)
 			}
-			step, _ := got.Output["output"].(map[string]any)
-			if _, ok := step["answer"].(string); !ok {
-				t.Errorf("output %v, want its step's answer a string", got.Output)
-			}
+			answerOf(t, got)
 			if got.Usage.Input == nil || *got.Usage.Input <= 0 || got.Usage.Output == nil || *got.Usage.Output <= 0 {
 				t.Errorf("usage of %v input and %v output tokens, want each more than 0", got.Usage.Input, got.Usage.Output)
 			}
@@ -193,7 +230,45 @@ func TestAStepOnARealRuntimeCompletes(t *testing.T) {
 				t.Errorf("sessions %v, want one for ask", got.Sessions)
 			}
 			if t.Failed() {
-				t.Logf("stdout:\n%s\nstderr:\n%s", stdout.Bytes(), stderr.Bytes())
+				t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
+			}
+		})
+	}
+}
+
+// e2e.feature, "A run on a real runtime is continued": the second run
+// knows only from its session the word the first was asked to remember.
+//
+// Contract test: the built agister, on real claude-code and codex and the
+// owner's logins, in a real git repository, its runs kept by runstore.
+func TestARunOnARealRuntimeIsContinued(t *testing.T) {
+	t.Parallel()
+	requireOptIn(t, os.Getenv)
+	for _, agent := range []string{"e2e-haiku", "e2e-codex"} {
+		t.Run(agent, func(t *testing.T) {
+			t.Parallel()
+			home, repo := scratch(t)
+			ran := runAgister(t, home, repo, "run", "--process", "ask", "--agent", agent,
+				"--param", "q=Remember the word kiwi for later, and reply that you will.")
+			first := printedOf(t, ran)
+			if ran.code != 0 || first.RunID == "" || first.Sessions["ask"] == "" {
+				t.Fatalf("exit %d, run %q, sessions %v; want 0, a run's id, a session for ask\nstdout:\n%s\nstderr:\n%s",
+					ran.code, first.RunID, first.Sessions, ran.stdout, ran.stderr)
+			}
+			ran = runAgister(t, home, repo, "run", "--process", "ask", "--agent", agent,
+				"--param", "q=Which word did I ask you to remember? Reply with that word.", "--continue", first.RunID)
+			if ran.code != 0 {
+				t.Errorf("exit %d, want 0", ran.code)
+			}
+			got := printedOf(t, ran)
+			if answer := answerOf(t, got); !strings.Contains(strings.ToLower(answer), "kiwi") {
+				t.Errorf("answer %q, want it holding kiwi", answer)
+			}
+			if got.Sessions["ask"] != first.Sessions["ask"] {
+				t.Errorf("sessions %v, want the first's, %v", got.Sessions, first.Sessions)
+			}
+			if t.Failed() {
+				t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
 			}
 		})
 	}

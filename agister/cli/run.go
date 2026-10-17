@@ -18,12 +18,14 @@ type Runner interface {
 }
 
 // Request is what a run names: a workflow, or a step, by its process and
-// its agent (ADR-013); and the params given, by name, nil for none.
+// its agent (ADR-013); the params given, by name, nil for none; and the id
+// of the run whose session it continues, "" for none.
 type Request struct {
 	Workflow string
 	Process  string
 	Agent    string
 	Params   map[string]string
+	Continue string
 }
 
 // RunStatus is how a run ended.
@@ -136,9 +138,10 @@ func (c *CLI) runRequest(out io.Writer, launch string, request Request) (int, er
 
 // parseRun is the request of "run" with the words after it and the flags
 // given: a workflow, by the one word, or a step, by --process and --agent;
-// and each --param, as <name>=<value>, a name given once.
+// each --param, as <name>=<value>, a name given once; and the run
+// --continue names.
 func parseRun(words []string, f flags) (Request, error) {
-	request := Request{Process: f.process, Agent: f.agent}
+	request := Request{Process: f.process, Agent: f.agent, Continue: f.continued}
 	switch {
 	case len(words) == 1 && f.process == "" && f.agent == "":
 		request.Workflow = words[0]
