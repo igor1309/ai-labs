@@ -67,6 +67,7 @@ export const en: Texts = {
     "no-feathers": "NO FEATHERS"
   },
   pairs: "FIND THE PAIR",
+  moreComing: "MORE COMING",
   play: "PLAY",
   level: "LEVEL",
   starsEarned: "STARS",
