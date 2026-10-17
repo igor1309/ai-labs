@@ -223,6 +223,25 @@ describe("leaving a visit", () => {
     expect([heartsShown(), needStates()]).toEqual(["0", ["current", "pending", "pending", "pending"]]);
   });
 
+  it("starts no visit when the child goes home while its picture loads, and the next visit starts afresh", async () => {
+    const clock = manualPictures();
+    const { user } = openCareApp({ clock });
+    await openCare(user);
+    await user.click(button("NEW VISITOR"));
+    expect(clock.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
+
+    await user.click(button("HOME"));
+    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
+
+    expect(button("COMPARE")).toBeDefined();
+    expect(screen.queryByLabelText("HEARTS")).toBeNull();
+    await user.click(button("CARE"));
+    await user.click(button("NEW VISITOR"));
+    expect(clock.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
+    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
+    expect([visitorShown().id, heartsShown(), needStates()]).toEqual(["tyrannosaurus", "0", ["current", "pending", "pending", "pending"]]);
+  });
+
   it("is dropped on a reload, which opens care on its welcome screen", async () => {
     const storage = memoryStorage();
     const first = openCareApp({ storage });

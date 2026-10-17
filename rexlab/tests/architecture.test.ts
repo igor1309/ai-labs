@@ -83,6 +83,15 @@ describe("the import graph", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inCare)).toEqual([]);
   });
 
+  // The empty bowl is a picture of the visit screen's, not something care
+  // gives or a need asks for.
+  it("keeps the visit screen's pictures out of dinosaur care", () => {
+    const care = [...GRAPH.keys()].filter(inCare);
+
+    expect(care).toContain("care/index.ts");
+    expect(care.filter((file) => /\bbowl\b/i.test(readFileSync(join(SRC, file), "utf8")))).toEqual([]);
+  });
+
   it("keeps dinosaur care free of all but the languages", () => {
     expect(edges(inCare, (target) => !inCare(target) && !target.startsWith("language/"))).toEqual([]);
   });

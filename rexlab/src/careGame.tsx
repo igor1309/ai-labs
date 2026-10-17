@@ -9,7 +9,6 @@ import {
   pickVisitor,
   settle,
   startVisit,
-  visitState,
   type CareProgress,
   type CareResult,
   type Item,
@@ -215,7 +214,7 @@ export function useCareGame(
         return (
           <VisitScreen
             language={language}
-            visit={presentVisit(visitState(screen.visit), screen.leaving, language, bodyPicture)}
+            visit={presentVisit(screen.visit, screen.leaving, language, bodyPicture)}
             itemPicture={itemPicture}
             onGive={(item) => giveItem(GIVEN[item])}
             onHome={home}

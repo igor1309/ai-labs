@@ -63,9 +63,16 @@ export function startVisit(visitor: Visitor): Visit {
   return { visitor, met: 0, hearts: 0, refused: [], reacting: null };
 }
 
-// The need asked now, or undefined once all four are met.
-export function currentNeed(visit: Visit): Need | undefined {
+// The need to meet next, or undefined once all four are met.
+function currentNeed(visit: Visit): Need | undefined {
   return NEEDS[visit.met];
+}
+
+// The need the visitor asks for now: none while it enjoys what met the
+// last one, so the next is asked only once that reaction has played, and
+// none once all four are met.
+export function askedNeed(visit: Visit): Need | undefined {
+  return visit.reacting?.reaction === "happy" ? undefined : currentNeed(visit);
 }
 
 // An item is taken only when a need is asked and no reaction plays, so a

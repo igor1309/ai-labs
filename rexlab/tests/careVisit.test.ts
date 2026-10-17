@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  askedNeed,
   finishVisit,
   friendsOf,
   give,
@@ -11,7 +12,7 @@ import {
   pickVisitor,
   settle,
   startVisit,
-  visitState,
+  suitableItems,
   type Celebration,
   type Diet,
   type Item,
@@ -48,13 +49,13 @@ describe("a visit", () => {
     const asked: Array<Need | undefined> = [];
     let visit = startVisit(REX);
     for (const item of ["meat", "water", "bath", "nest"] as const) {
-      asked.push(visitState(visit).need);
+      asked.push(askedNeed(visit));
       visit = giveAll(visit, [item]);
     }
 
     expect(asked).toEqual(["hungry", "thirsty", "dirty", "tired"]);
     expect(isFinished(visit)).toBe(true);
-    expect(visitState(visit).need).toBeUndefined();
+    expect(askedNeed(visit)).toBeUndefined();
   });
 
   it.each<[Visitor, readonly Item[], readonly Item[]]>([
@@ -78,6 +79,14 @@ describe("a visit", () => {
     }
   });
 
+  it.each<[Visitor, readonly Item[]]>([
+    [REX, ["meat"]],
+    [TRIKE, ["plants"]],
+    [GALLI, ["plants", "meat"]]
+  ])("names what meets each need of %o: its food, water, a bath and the nest", (who, foods) => {
+    expect(NEEDS.map((need) => suitableItems(who, need))).toEqual([foods, ["water"], ["bath"], ["nest"]]);
+  });
+
   it("knows the food type of every shipped dinosaur", () => {
     expect(SHIPPED_VISITORS.length).toBeGreaterThan(0);
     expect(SHIPPED_VISITORS.filter(({ diet }) => !["meat", "plants", "both"].includes(diet))).toEqual([]);
@@ -97,8 +106,8 @@ describe("a visit", () => {
     expect(refused.reacting).toEqual({ item: "plants", reaction: "refusal", earned: 0 });
     expect(refused.hearts).toBe(0);
     const settled = settle(refused);
-    expect(visitState(settled).need).toBe("hungry");
-    expect(visitState(giveAll(settled, ["water", "plants"])).refused).toEqual(["plants", "water"]);
+    expect(askedNeed(settled)).toBe("hungry");
+    expect(giveAll(settled, ["water", "plants"]).refused).toEqual(["plants", "water"]);
   });
 
   it("takes nothing while a reaction plays, or once every need is met", () => {
@@ -114,32 +123,8 @@ describe("a visit", () => {
   it("asks the next need only once the happy reaction has played", () => {
     const eating = give(startVisit(REX), "meat");
 
-    expect(visitState(eating)).toMatchObject({ need: undefined, bubble: [], hearts: 2 });
-    expect(visitState(eating).needs.map(({ state }) => state)).toEqual(["met", "pending", "pending", "pending"]);
-    expect(visitState(settle(eating)).needs.map(({ state }) => state)).toEqual(["met", "current", "pending", "pending"]);
-  });
-});
-
-describe("the need's bubble", () => {
-  it.each([REX, TRIKE, GALLI])("shows the same empty bowl for hunger, for %o", (who) => {
-    expect(visitState(startVisit(who))).toMatchObject({ need: "hungry", bubble: ["bowl"], suggested: [] });
-  });
-
-  it.each<[Visitor, readonly Item[]]>([
-    [REX, ["meat"]],
-    [TRIKE, ["plants"]],
-    [GALLI, ["plants", "meat"]]
-  ])("shows, after a refusal, the food that would do and suggests it, for %o", (who, foods) => {
-    expect(visitState(settle(give(startVisit(who), "water")))).toMatchObject({ bubble: foods, suggested: foods, refused: ["water"] });
-  });
-
-  it("shows the item each other need asks for, and suggests it only after a refusal", () => {
-    const thirsty = giveAll(startVisit(REX), ["meat"]);
-
-    expect(visitState(thirsty)).toMatchObject({ need: "thirsty", bubble: ["water"], suggested: [] });
-    expect(visitState(giveAll(thirsty, ["nest"]))).toMatchObject({ bubble: ["water"], suggested: ["water"] });
-    const tired = giveAll(thirsty, ["water", "bath"]);
-    expect(visitState(tired)).toMatchObject({ need: "tired", bubble: ["nest"] });
+    expect([askedNeed(eating), eating.met, eating.hearts]).toEqual([undefined, 1, 2]);
+    expect(askedNeed(settle(eating))).toBe("thirsty");
   });
 });
 

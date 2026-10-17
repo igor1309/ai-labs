@@ -1,4 +1,4 @@
-import type { CareResult, Celebration as CareCelebration, Item, Need, NeedState as CareNeedState, VisitState, Visitor } from "./care/index.ts";
+import { askedNeed, NEEDS as CARE_NEEDS, suitableItems, type CareResult, type Celebration as CareCelebration, type Item, type Need, type Visit, type Visitor } from "./care/index.ts";
 import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } from "./CareResultScreen.tsx";
 import type { CatalogueEntry, Diet } from "./catalogue.ts";
 import type { CatalogueCardView } from "./CatalogueScreen.tsx";
@@ -81,20 +81,28 @@ export function presentDinosaurPage(entry: CatalogueEntry, language: Language, b
 
 const ITEMS: Record<Item, CareItem> = { plants: "plants", meat: "meat", water: "water", bath: "bath", nest: "nest" };
 const NEEDS: Record<Need, CareNeed> = { hungry: "hungry", thirsty: "thirsty", dirty: "dirty", tired: "tired" };
-const NEED_STATES: Record<CareNeedState, NeedState> = { met: "met", current: "current", pending: "pending" };
 const CARE_CELEBRATIONS: Record<CareCelebration, ShownCareCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
-export function presentVisit(state: VisitState, leaving: boolean, language: Language, bodyPicture: (dinosaurId: string) => string): VisitView {
-  const { visitor, needs, hearts, need, bubble, suggested, refused, reacting } = state;
+// The visit screen's view of a visit. Each need, in the order asked, is
+// met, asked now or still to come. The bubble pictures the need asked
+// now: an empty bowl for hunger, the same for every dinosaur, so it never
+// tells which food; after a refusal, what would meet the need, which the
+// tray then suggests. It is empty while no need is asked.
+export function presentVisit(visit: Visit, leaving: boolean, language: Language, bodyPicture: (dinosaurId: string) => string): VisitView {
+  const { visitor, met, hearts, refused, reacting } = visit;
+  const need = askedNeed(visit);
+  const retried = refused.length > 0;
+  const meeting = need === undefined ? [] : suitableItems(visitor, need).map((item) => ITEMS[item]);
+  const state = (each: Need, at: number): NeedState => (at < met ? "met" : each === need ? "current" : "pending");
   return {
     id: visitor.id,
     name: visitor.name[language],
     picture: bodyPicture(visitor.id),
-    needs: needs.map((each) => ({ need: NEEDS[each.need], state: NEED_STATES[each.state] })),
+    needs: CARE_NEEDS.map((each, at) => ({ need: NEEDS[each], state: state(each, at) })),
     hearts,
     need: need === undefined ? undefined : NEEDS[need],
-    bubble: bubble.map((shown) => (shown === "bowl" ? "bowl" : ITEMS[shown])),
-    suggested: suggested.map((item) => ITEMS[item]),
+    bubble: need === "hungry" && !retried ? ["bowl"] : meeting,
+    suggested: retried ? meeting : [],
     refused: refused.map((item) => ITEMS[item]),
     reacting: reacting && { ...reacting, item: ITEMS[reacting.item] },
     leaving
