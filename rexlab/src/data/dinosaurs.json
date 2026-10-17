@@ -13,7 +13,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "big"
     },
     "description": {
       "en": "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS.",
@@ -34,7 +35,8 @@
     "traits": {
       "legs": 4,
       "horns": true,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "THREE HORNS AND A BIG BONY FRILL. IT LIVED AT THE SAME TIME AS TYRANNOSAURUS.",
@@ -55,7 +57,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": true
+      "feathers": true,
+      "size": "small"
     },
     "description": {
       "en": "A FEATHERED HUNTER THE SIZE OF A TURKEY, WITH A BIG CURVED CLAW ON EACH FOOT.",
@@ -76,7 +79,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "ITS FRONT LEGS WERE LONGER THAN ITS BACK LEGS, SO IT COULD REACH THE TOPS OF TREES.",
@@ -97,7 +101,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "BIG PLATES ALONG ITS BACK AND FOUR SPIKES ON ITS TAIL. ITS BRAIN WAS VERY SMALL.",
@@ -118,7 +123,8 @@
     "traits": {
       "legs": 4,
       "horns": null,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "COVERED IN BONY ARMOUR, WITH A HEAVY CLUB AT THE END OF ITS TAIL.",
@@ -139,7 +145,8 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "big"
     },
     "description": {
       "en": "A BIG SAIL ON ITS BACK. IT CAUGHT FISH IN RIVERS WITH ITS LONG JAWS.",
@@ -160,7 +167,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "ONE OF THE LONGEST DINOSAURS, WITH A VERY LONG NECK AND A TAIL LIKE A WHIP.",
@@ -181,7 +189,8 @@
     "traits": {
       "legs": null,
       "horns": null,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "A LONG HOLLOW CREST ON ITS HEAD. IT MAY HAVE USED IT TO MAKE LOUD CALLS.",
@@ -202,7 +211,8 @@
     "traits": {
       "legs": 2,
       "horns": null,
-      "feathers": false
+      "feathers": false,
+      "size": "small"
     },
     "description": {
       "en": "A VERY THICK, DOME-SHAPED SKULL WITH LITTLE BUMPS AROUND IT.",
@@ -223,7 +233,8 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "A SPIKE INSTEAD OF A THUMB ON EACH HAND. ONE OF THE FIRST DINOSAURS EVER FOUND.",
@@ -244,7 +255,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "small"
     },
     "description": {
       "en": "A TINY HUNTER THE SIZE OF A CHICKEN. IT CAUGHT LIZARDS.",
@@ -265,7 +277,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "small"
     },
     "description": {
       "en": "A FAST RUNNER WITH LONG LEGS AND A BEAK, LIKE A BIG OSTRICH.",
@@ -286,7 +299,8 @@
     "traits": {
       "legs": 2,
       "horns": null,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "A BIG HUNTER THAT LIVED LONG BEFORE TYRANNOSAURUS, WITH SMALL HORNS ABOVE ITS EYES.",
@@ -307,7 +321,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "ONE OF THE BIGGEST ANIMALS THAT EVER WALKED ON LAND.",
@@ -328,7 +343,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": true
+      "feathers": true,
+      "size": "small"
     },
     "description": {
       "en": "A TINY DINOSAUR WITH FEATHERED WINGS ON ITS ARMS AND LEGS. IT COULD GLIDE.",
@@ -349,7 +365,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "small"
     },
     "description": {
       "en": "A SMALL COUSIN OF TRICERATOPS, WITH A FRILL BUT NO BIG HORNS.",
@@ -370,7 +387,8 @@
     "traits": {
       "legs": 2,
       "horns": null,
-      "feathers": null
+      "feathers": null,
+      "size": "small"
     },
     "description": {
       "en": "TWO THIN CRESTS ON ITS HEAD. A HUNTER FROM THE EARLY DAYS OF THE DINOSAURS.",
@@ -391,7 +409,8 @@
     "traits": {
       "legs": 2,
       "horns": true,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "TWO HORNS ABOVE ITS EYES, LIKE A BULL, AND EVEN TINIER ARMS THAN TYRANNOSAURUS.",
@@ -412,7 +431,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "big"
     },
     "description": {
       "en": "ONE OF THE BIGGEST HUNTERS EVER, AS LONG AS A BUS.",
@@ -433,7 +453,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": true
+      "feathers": true,
+      "size": null
     },
     "description": {
       "en": "HUGE CLAWS AS LONG AS A CHILD'S ARM, BUT IT ATE PLANTS.",
@@ -454,7 +475,8 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "A DUCK-BILLED DINOSAUR WITH HUNDREDS OF TEETH FOR CHEWING PLANTS.",
@@ -475,7 +497,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": true
+      "feathers": true,
+      "size": "small"
     },
     "description": {
       "en": "A FEATHERED HUNTER WITH A BIG CLAW LIKE A SICKLE, BIGGER THAN VELOCIRAPTOR.",
@@ -496,7 +519,8 @@
     "traits": {
       "legs": 2,
       "horns": null,
-      "feathers": true
+      "feathers": true,
+      "size": "small"
     },
     "description": {
       "en": "A FEATHERED DINOSAUR WITH A BEAK. THE FIRST ONE WAS FOUND ON A NEST OF EGGS.",
@@ -517,7 +541,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": "small"
     },
     "description": {
       "en": "A SLIM, FAST HUNTER FROM THE TIME OF THE FIRST DINOSAURS.",
@@ -538,7 +563,8 @@
     "traits": {
       "legs": null,
       "horns": null,
-      "feathers": null
+      "feathers": null,
+      "size": "small"
     },
     "description": {
       "en": "ITS NAME MEANS PARROT LIZARD: IT HAD A BEAK LIKE A PARROT.",
@@ -559,7 +585,8 @@
     "traits": {
       "legs": 4,
       "horns": true,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "A LONG HORN ON ITS NOSE AND BIG SPIKES ALL AROUND ITS FRILL.",
@@ -580,7 +607,8 @@
     "traits": {
       "legs": 4,
       "horns": null,
-      "feathers": false
+      "feathers": false,
+      "size": null
     },
     "description": {
       "en": "A SMALLER COUSIN OF STEGOSAURUS, WITH SHARP SPIKES ALONG ITS BACK AND TAIL.",
@@ -601,7 +629,8 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null
+      "feathers": null,
+      "size": null
     },
     "description": {
       "en": "A BIG CLAW ON EACH HAND AND LONG JAWS FOR CATCHING FISH.",
@@ -622,7 +651,8 @@
     "traits": {
       "legs": 4,
       "horns": false,
-      "feathers": false
+      "feathers": false,
+      "size": "big"
     },
     "description": {
       "en": "A HUGE LONG-NECKED DINOSAUR WITH A VERY THICK, STRONG NECK.",

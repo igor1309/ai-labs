@@ -10,6 +10,7 @@ Feature: Sort dinosaurs: the result and the best score
     Given I have sorted all 6 cards, 4 of them right on the first drop
     When I tap "SEE RESULT"
     Then I see "4/6" and 6 stars, 4 of them won, popping in one by one
+    And with reduced motion the won stars appear with a short fade
     And I see my best score of the sorting game
     And I see "PLAY AGAIN" with a 🔄 symbol and "HOME" with a 🏠 symbol
 

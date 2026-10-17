@@ -1,6 +1,5 @@
 Feature: Sort dinosaurs: dragging cards into baskets
-  A card dropped in the right basket stays; a wrong one slides back with
-  a hint. A card is right when its first drop on a basket is right.
+  A wrong drop slides back with a hint; a card is right when its first drop on a basket is.
 
   Background:
     Given an iPad in landscape
@@ -60,7 +59,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
   Scenario: A sorted card cannot be moved again
     Given a card has landed in its basket
     When I try to drag or tap it
-    Then nothing changes
+    Then it stays in its basket and the score is unchanged
 
   Scenario: The board shows how far the round is
     Given I have sorted 2 of the 6 cards
@@ -93,6 +92,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
       | change                                    |
       | the board enters                          |
       | a card is picked up                       |
+      | a picked-up card is put down              |
       | a dragged card lights the basket under it |
       | a card lands                              |
       | a card slides back                        |

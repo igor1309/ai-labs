@@ -78,17 +78,10 @@ Feature: Sort dinosaurs: starting a round and the board
     When a round sorts by that property
     Then that dinosaur is not on the board
 
-  Scenario Outline: Size sorts only clearly big or clearly small dinosaurs
-    Given a dinosaur list with a dinosaur of <mass>
-    When rounds sort by size
-    Then that dinosaur <place>
-
-    Examples:
-      | mass    | place                                         |
-      | 3000 kg | belongs in the basket BIG whenever it shows   |
-      | 2999 kg | is never on the board                         |
-      | 501 kg  | is never on the board                         |
-      | 500 kg  | belongs in the basket SMALL whenever it shows |
+  Scenario: Size agrees with the mass the app shows
+    Given the dinosaur list the app ships with
+    Then every BIG dinosaur weighs 3000 kg or more
+    And every SMALL dinosaur weighs 500 kg or less
 
   Scenario: Rounds vary
     When I start two rounds in a row in one visit, through PLAY AGAIN or from the home page, finished or left early

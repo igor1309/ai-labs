@@ -27,20 +27,20 @@ against these sources only.
   ate `both` (Gallimimus and Oviraptor). Pachycephalosaurus is `plants`,
   as the Dino Directory lists it, though its teeth leave meat possible.
 - Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `horns`
-  and `feathers` (true or false). A trait is `null`, and the dinosaur is
+  and `feathers` (true or false) and `size` (`big` or `small`). A trait is `null`, and the dinosaur is
   left out of that sort, when the sources leave it unclear (Iguanodon
   and Parasaurolophus walked on two legs or four; feathers are unknown for
   Tyrannosaurus and most large theropods) or when the dinosaur's picture
-  could mislead a child (Allosaurus's brow bumps, Pachycephalosaurus's
-  knobs and Kentrosaurus's shoulder spikes are not horns). Feathered
+  could mislead a child (Allosaurus's small brow horns are hard to see in
+  its picture, and Pachycephalosaurus's knobs and Kentrosaurus's shoulder
+  spikes are not horns). Feathered
   means feathered in the picture too, as `art/style.md` lists. Feathers
   are `false` for the plant-eaters drawn without them, Psittacosaurus,
   with its tail bristles, aside, and for the meat-eaters whose skin
   impressions show scales (Allosaurus and Carnotaurus); for the other
   meat-eaters and the omnivores drawn without feathers they are `null`.
-- Size is not stored: the sorting game reads it from mass. A dinosaur
-  of 3000 kg or more is BIG, one of 500 kg or less is SMALL, and one in
-  between is never sorted by size. The lines sit far apart, so the whole
-  range of estimates the sources give for each shipped dinosaur lies on
-  one side of a line; a new dinosaur whose range crosses a line gets the
-  middle of its range, inside the band that is never sorted, or no size.
+- Size is `big` only for a dinosaur of 3000 kg or more and `small` only
+  for one of 500 kg or less, and only when no source's estimate crosses
+  that line; it is `null` in between and when the estimates cross a line
+  or are guesswork (Stegosaurus, at 2720 kg by AMNH; Therizinosaurus,
+  known only from a few bones).
