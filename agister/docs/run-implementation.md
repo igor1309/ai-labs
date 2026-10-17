@@ -404,5 +404,9 @@ Decisions, each with its reason:
   a mistake in the request.
 - A path is relative to the launch directory: the person names a brief
   where they stand; the run's root is git's.
+- Progress is not guarded beyond a person reading it: no test of when
+  a line appears, none of a stderr its reader has closed. Agister's
+  stderr is a terminal or a file in every use; a reader that closes it
+  early is the caller's choice.
 - A report is given with every call, never left out: core needs no
   fallback for a call with none (ADR-009, rule 2).
