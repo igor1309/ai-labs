@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
@@ -14,12 +14,15 @@ import {
   englishDevice,
   fakeBodyPicture,
   lightDevice,
+  loadedPictures,
+  manualPictures,
   manualOrientation,
   questionView,
   sameColour,
   seededRandom,
   surfaceOf,
-  symbolOf
+  symbolOf,
+  type ManualPictures
 } from "./support.ts";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
@@ -62,20 +65,30 @@ function shownQuestion(): Question {
 
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
-function startRound(seed: number) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
+function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof loadedPictures> = loadedPictures()) {
+  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...pictures} />);
   const user = userEvent.setup();
-  return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
+  // Taps COMPARE and, with manual pictures, lets the first question's
+  // pictures finish loading.
+  const start = async () => {
+    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    if ("finish" in pictures) act(() => pictures.loading().forEach(pictures.finish));
+  };
+  return { user, start };
 }
 
-// Answers questions until `number` is answered and on screen.
-async function answerUpTo(user: UserEvent, number: number) {
+// Answers questions until `number` is answered and on screen, letting the
+// pictures each Next asks for finish loading.
+async function answerUpTo(user: UserEvent, number: number, pictures?: ManualPictures) {
   for (;;) {
     await user.click(cardOf(largerOf(shownQuestion())));
     if (progress() === `${number}/10`) return;
     await user.click(screen.getByRole("button", { name: "NEXT" }));
+    if (pictures) act(() => pictures.loading().forEach(pictures.finish));
   }
 }
+
+const picturesShown = () => cards().map((card) => within(card).getByRole("img").getAttribute("src"));
 
 describe("answering a question", () => {
   const examples: Array<[string, Attribute, string, string, string, string]> = [
@@ -220,6 +233,75 @@ describe("Next", () => {
     await user.dblClick(screen.getByRole("button", { name: "NEXT" }));
 
     expect(progress()).toBe("4/10");
+  });
+
+  it("waits for the next question's pictures, with question 3 on screen until both have loaded", async () => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(14, pictures);
+    await start();
+    await answerUpTo(user, 3, pictures);
+    const third = { question: shownQuestion(), html: document.body.innerHTML };
+
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
+
+    const asked = pictures.loading();
+    expect(asked).toHaveLength(2);
+    expect(pictures.timers()).toEqual([1000]);
+    const [first, second] = asked;
+    act(() => pictures.finish(first ?? ""));
+    expect([shownQuestion(), document.body.innerHTML]).toEqual([third.question, third.html]);
+
+    act(() => pictures.finish(second ?? ""));
+
+    expect(progress()).toBe("4/10");
+    expect(picturesShown()).toEqual(asked);
+    expect(pictures.timers()).toEqual([]);
+  });
+
+  it("goes on to question 4 when its pictures take a second, and not again when they arrive", async () => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(14, pictures);
+    await start();
+    await answerUpTo(user, 3, pictures);
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
+    const asked = pictures.loading();
+
+    act(() => pictures.fire(1000));
+
+    expect(progress()).toBe("4/10");
+    expect(picturesShown()).toEqual(asked);
+    const fourth = document.body.innerHTML;
+    act(() => asked.forEach(pictures.finish));
+    expect(document.body.innerHTML).toBe(fourth);
+  });
+
+  it("skips nothing on a quick double tap while the pictures load", async () => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(15, pictures);
+    await start();
+    await answerUpTo(user, 3, pictures);
+
+    await user.dblClick(screen.getByRole("button", { name: "NEXT" }));
+    act(() => pictures.loading().forEach(pictures.finish));
+
+    expect(progress()).toBe("4/10");
+    expect(pictures.timers()).toEqual([]);
+  });
+
+  it("moves nothing on once the round is left while the pictures load", async () => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(15, pictures);
+    await start();
+    await answerUpTo(user, 3, pictures);
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
+    const asked = pictures.loading();
+
+    await user.click(screen.getByRole("button", { name: "HOME" }));
+    await start();
+    act(() => asked.forEach(pictures.finish));
+    act(() => pictures.fire(1000));
+
+    expect(progress()).toBe("1/10");
   });
 
   it('reads "See result" with a 🏆 on the last question', async () => {

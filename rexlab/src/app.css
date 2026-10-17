@@ -29,6 +29,132 @@
   color-scheme: light;
 }
 
+/* The motion tokens every screen moves by: arrivals ease out, and only
+   rewards overshoot. Each distance and growth is scaled by
+   --motion-amount, which reduced motion sets to 0, so that there all
+   motion is a short fade. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-small: 160ms;
+  --motion-standard: 240ms;
+  --motion-screen: 320ms;
+  --motion-count: 600ms;
+  --motion-stagger: 40ms;
+  --motion-amount: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(16px * var(--motion-amount));
+  }
+}
+
+@keyframes grow-in {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.08 * var(--motion-amount));
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.7 * var(--motion-amount));
+  }
+}
+
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    scale: calc(1 + 0.6 * var(--motion-amount));
+  }
+}
+
+@keyframes squish {
+  40% {
+    scale: calc(1 - 0.05 * var(--motion-amount));
+  }
+}
+
+@keyframes drift-down {
+  from {
+    opacity: 0;
+    translate: 0 calc(-48px * var(--motion-amount));
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    translate: calc(96px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes slide-out {
+  to {
+    opacity: 0;
+    translate: calc(-96px * var(--motion-amount)) 0;
+  }
+}
+
+/* A screen cross-fades into the next with a slight lift; the rest of the
+   page, such as the question's words when the next one comes, fades. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-standard);
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(.screen) {
+  animation: fade-out var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-new(.screen) {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-old(.card-out),
+::view-transition-old(.card-out-late) {
+  animation: slide-out var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-new(.card-in),
+::view-transition-new(.card-in-late) {
+  animation: slide-in var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-old(.card-out-late),
+::view-transition-new(.card-in-late) {
+  animation-delay: var(--motion-stagger);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -50,10 +176,12 @@ img {
   user-select: none;
 }
 
+/* A card is pressed in quickly, under the finger, and eases back. */
 .card {
   transition:
-    filter 120ms ease-out,
-    transform 80ms ease-out;
+    filter var(--motion-small) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out),
+    transform var(--motion-small) var(--ease-out);
 }
 
 .card[data-hovered] {
@@ -63,6 +191,7 @@ img {
 .card[data-pressed] {
   filter: brightness(0.9);
   transform: scale(0.97);
+  transition-duration: calc(var(--motion-small) / 2);
 }
 
 /* Bands of rock along the bottom of a screen, behind everything on it. */
@@ -178,6 +307,8 @@ img {
   outline-offset: -0.5px;
   background: #fffdf8;
   box-shadow: 0 16px 40px #1d274224;
+  transform-origin: top right;
+  animation: grow-in var(--motion-small) var(--ease-out) both;
 }
 
 .parent-menu-choice {
@@ -443,6 +574,9 @@ body:has(.result) footer[aria-label="Version"] {
   height: 6px;
   border-radius: 3px;
   background: #e6e2d9;
+  transition:
+    height var(--motion-standard) var(--ease-out),
+    background-color var(--motion-standard) var(--ease-out);
 }
 
 .step[data-step="done"] {
@@ -521,6 +655,11 @@ body:has(.result) footer[aria-label="Version"] {
   opacity: 0.7;
 }
 
+/* The tapped card gives under the finger and springs back. */
+.dinosaur-card[data-chosen] {
+  animation: squish var(--motion-standard) var(--ease-out);
+}
+
 .dinosaur-art {
   position: relative;
   flex: 1 1 0;
@@ -561,10 +700,12 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ffffff;
   font-size: 18px;
   font-weight: 700;
+  animation: stamp-in var(--motion-standard) var(--ease-out) both;
 }
 
 .dinosaur-card[data-mark="correct"] .mark {
   background: #2e7d4f;
+  animation-timing-function: var(--ease-overshoot);
 }
 
 .dinosaur-card[data-mark="wrong"] .mark {
@@ -599,6 +740,12 @@ body:has(.result) footer[aria-label="Version"] {
   font-size: 22px;
   font-weight: 700;
   white-space: nowrap;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+/* The values rise in one after the other. */
+.dinosaur-cards > :last-child .dinosaur-value-chip {
+  animation-delay: calc(var(--motion-stagger) * 2);
 }
 
 .dinosaur-value-chip svg {
@@ -645,6 +792,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #f6f2e9;
   font-size: 26px;
   font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
 }
 
 .turn-sideways {
@@ -721,6 +869,8 @@ body:has(.result) footer[aria-label="Version"] {
   height: 10px;
   border-radius: 3px;
   transform-origin: top left;
+  animation: drift-down var(--motion-screen) var(--ease-out) both;
+  animation-delay: calc(var(--piece) * var(--motion-stagger) / 2);
 }
 
 .confetti-square {
@@ -772,27 +922,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #1d2742;
   font-size: 26px;
   font-weight: 700;
-  animation: celebrate 600ms ease-out both;
-}
-
-@keyframes celebrate {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .celebration {
-    animation: none;
-  }
+  animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
 }
 
 .result-score {
@@ -803,9 +933,37 @@ body:has(.result) footer[aria-label="Version"] {
   line-height: 1;
 }
 
+/* The score counts up from 0, drawn over its own digits. */
+@property --count {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes count-up {
+  from {
+    --count: 0;
+  }
+}
+
 .result-score-value {
+  --count: var(--score);
+  display: inline-grid;
+  justify-items: end;
+  counter-reset: score var(--count);
   font-size: min(220px, 24vh);
   font-weight: 700;
+  animation: count-up var(--motion-count) var(--ease-out) both;
+}
+
+.result-score-value::before {
+  content: counter(score);
+  grid-area: 1 / 1;
+}
+
+.result-score-digits {
+  grid-area: 1 / 1;
+  visibility: hidden;
 }
 
 .result-score-total {
@@ -826,8 +984,11 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ffffff33;
 }
 
+/* The stars won pop in one by one. */
 .star-won {
   color: #e39b2d;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+  animation-delay: calc(var(--star) * var(--motion-stagger) * 1.5);
 }
 
 .result-title {

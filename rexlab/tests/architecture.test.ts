@@ -30,8 +30,10 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 const inQuiz = (file: string) => file.startsWith("quiz/");
 const SCREENS = ["HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
 const PRESENTATION = [...SCREENS, "ParentMenu.tsx", "formatValue.ts", "usePointerState.ts"];
-const ADAPTERS = ["dinosaurPictures.ts", "dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
+const ADAPTERS = ["decodedPictures.ts", "dinosaurPictures.ts", "dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
 const COMPOSITION = ["App.tsx", "main.tsx", "presentation.ts", "root.ts"];
+// What waits for pictures, given how to load them and keep time.
+const WAITING = ["pictureWait.ts"];
 
 describe("the import graph", () => {
   it("is read from the source", () => {
@@ -48,7 +50,11 @@ describe("the import graph", () => {
   });
 
   it("keeps adapters free of their consumers", () => {
-    expect(edges((file) => ADAPTERS.includes(file), (target) => [...SCREENS, ...COMPOSITION].includes(target))).toEqual([]);
+    expect(edges((file) => ADAPTERS.includes(file), (target) => [...SCREENS, ...COMPOSITION, ...WAITING].includes(target))).toEqual([]);
+  });
+
+  it("keeps the wait for pictures free of the rest of the app", () => {
+    expect(edges((file) => WAITING.includes(file), () => true)).toEqual([]);
   });
 
   it("leaves the composition root to the composition root", () => {

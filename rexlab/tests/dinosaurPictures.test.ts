@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bodyPictures } from "../src/dinosaurPictures.ts";
 import { appProps } from "../src/root.ts";
-import { SHIPPED_DINOSAURS, mediaQueries, memoryStorage } from "./support.ts";
+import { SHIPPED_DINOSAURS, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -94,7 +94,7 @@ describe("bodyPictures", () => {
 // The shipped pictures as the app is given them in a browser.
 function shippedBodyPicture() {
   const media = mediaQueries({ "(orientation: portrait)": false, "(prefers-color-scheme: dark)": false });
-  return appProps({ localStorage: memoryStorage(), matchMedia: media.matchMedia, navigator: { language: "en-GB" } }).bodyPicture;
+  return appProps({ localStorage: memoryStorage(), matchMedia: media.matchMedia, navigator: { language: "en-GB" }, ...pictureBrowser() }).bodyPicture;
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

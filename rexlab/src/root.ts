@@ -1,5 +1,6 @@
 import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
+import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { bodyPictures } from "./dinosaurPictures.ts";
 import { readDinosaurs } from "./dinosaurs.ts";
 import { localLanguage } from "./localLanguage.ts";
@@ -17,6 +18,9 @@ export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
   navigator: { language: string };
+  Image: new () => DecodingImage;
+  setTimeout(fire: () => void, ms: number): number;
+  clearTimeout(id: number): void;
 };
 
 // The app's collaborators in a browser. Progress, the chosen language and
@@ -36,6 +40,11 @@ export function appProps(browser: Browser): AppProps {
     deviceLanguage: browser.navigator.language,
     languageStore: localLanguage(storage),
     appearance: { isDark: appearance.dark, subscribe: appearance.watch },
-    themeStore: localTheme(storage)
+    themeStore: localTheme(storage),
+    loadPicture: decodedPictures(() => new browser.Image()),
+    startTimer: (ms, fire) => {
+      const id = browser.setTimeout(fire, ms);
+      return () => browser.clearTimeout(id);
+    }
   };
 }

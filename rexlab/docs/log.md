@@ -2,7 +2,8 @@
 
 ## 2026-10-17
 
-- Specified that the next question waits up to a second for its pictures, so no picture pops in (LAB-277).
+- Made every change on screen smooth (LAB-277): screens cross-fade with a slight lift, the next question's pair slides in from the right once its pictures are decoded (waiting at most a second), an answer squishes the tapped card, stamps its ✓ or ✗ and raises the values one after the other before NEXT slides up, the progress step grows, the result counts its score up and pops its stars in one by one under drifting confetti, and the parent menus grow from their button. The easing and durations are shared motion tokens in `app.css`; with reduced motion everything is a short fade. `AGENTS.md` now makes motion a product principle: an abrupt change is a defect.
+- Specified that every question, the first of a round too, waits up to a second for its pictures, so no picture pops in, and that a double tap on COMPARE starts one round (LAB-277).
 - Added 12 more dinosaurs, from 18 to 30 (LAB-269): Carnotaurus, Giganotosaurus, Therizinosaurus, Edmontosaurus, Deinonychus, Oviraptor, Coelophysis, Psittacosaurus, Styracosaurus, Kentrosaurus, Baryonyx and Apatosaurus, with height and mass from the trusted sources and artwork in the same picture-book style; Deinonychus, Oviraptor and Therizinosaurus are feathered.
 - Designed the dinosaur catalogue in `design/rexlab.pen` (LAB-268): a list of all dinosaurs with height, weight and a coloured MEAT or PLANTS tag on each card, a page per dinosaur with its food type as a tag under the name, and a catalogue tile for the home page.
 - Listed the trusted science sources for dinosaur facts in `docs/sources.md`: the Natural History Museum (London), the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica.

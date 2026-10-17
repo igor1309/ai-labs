@@ -10,6 +10,7 @@ import {
   englishDevice,
   fakeBodyPicture,
   lightDevice,
+  loadedPictures,
   manualOrientation,
   memoryStorage,
   sameColour,
@@ -61,6 +62,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()}
+      {...loadedPictures()}
     />
   );
   return userEvent.setup();
