@@ -89,11 +89,11 @@ describe("the catalogue's tile on the home page", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
-    expect(words(tile)).toBe("ALL DINOSAURS30");
+    expect(words(tile)).toBe("ALL DINOSAURS42");
     expect(symbolsOf(tile)).toEqual(["book-open", "footprints"]);
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
-    expect(SHIPPED_CATALOGUE).toHaveLength(30);
+    expect(SHIPPED_CATALOGUE).toHaveLength(42);
     const games = screen.getByRole("button", { name: "COMPARE" }).parentElement;
     const locked = document.querySelector(".locked-tile");
     expect(games?.contains(tile)).toBe(true);
@@ -111,7 +111,7 @@ describe("the list of every dinosaur", () => {
     expect(words(title)).toBe("ALL DINOSAURS");
     expect(symbolOf(title)).toBe("book-open");
     const count = screen.getByLabelText("DINOSAURS");
-    expect([symbolOf(count), count.textContent]).toEqual(["footprints", "30"]);
+    expect([symbolOf(count), count.textContent]).toEqual(["footprints", "42"]);
     expect(cards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
     expect(getComputedStyle(grid()).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
   });
@@ -188,7 +188,7 @@ describe("a dinosaur's page", () => {
     ]);
     const back = screen.getByRole("button", { name: "ALL DINOSAURS" });
     expect([words(back), symbolOf(back)]).toEqual(["ALL DINOSAURS", "book-open"]);
-    expect(position()).toBe("1 / 30");
+    expect(position()).toBe("1 / 42");
   });
 
   it("shows each dinosaur's own description and food, and its place in the list", async () => {
@@ -199,10 +199,10 @@ describe("a dinosaur's page", () => {
       expect(pageName()).toBe(dinosaur.name.en.toUpperCase());
       expect(document.querySelector(".dinosaur-description")?.textContent).toBe(dinosaur.description.en);
       expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe(TEXTS.en.diets[dinosaur.diet]);
-      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 30`);
+      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 42`);
       await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
-    expect(position()).toBe("1 / 30");
+    expect(position()).toBe("1 / 42");
   });
 
   it("has arrows to the previous and next dinosaur, each a tap target of at least 44 by 44", async () => {
@@ -220,15 +220,15 @@ describe("a dinosaur's page", () => {
   it("goes round the whole list: next from the last is the first, and previous from the first the last", async () => {
     const user = openApp();
     await openPage(user, LAST.id);
-    expect(position()).toBe("30 / 30");
+    expect(position()).toBe("42 / 42");
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
 
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 30"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 42"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
 
-    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "30 / 30"]);
+    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "42 / 42"]);
   });
 
   it("waits for its picture with the list on screen, and loads the pictures either side of it ahead", async () => {
@@ -244,11 +244,11 @@ describe("a dinosaur's page", () => {
     act(() => pictures.finish(fakeBodyPicture("triceratops")));
     act(() => pictures.finish(fakeBodyPicture("brachiosaurus")));
     expect(position()).toBeUndefined();
-    expect(cards()).toHaveLength(30);
+    expect(cards()).toHaveLength(42);
 
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 30"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
     expect(pictures.timers()).toEqual([]);
   });
 
@@ -260,7 +260,7 @@ describe("a dinosaur's page", () => {
 
     act(() => pictures.fire(1000));
 
-    expect(position()).toBe("3 / 30");
+    expect(position()).toBe("3 / 42");
     const page = document.body.innerHTML;
     act(() => pictures.loading().forEach(pictures.finish));
     expect(document.body.innerHTML).toBe(page);
@@ -272,12 +272,12 @@ describe("a dinosaur's page", () => {
     await openCatalogue(user);
     await user.click(cardOf("tyrannosaurus"));
     act(() => pictures.loading().forEach(pictures.finish));
-    expect(position()).toBe("1 / 30");
+    expect(position()).toBe("1 / 42");
 
     await user.dblClick(screen.getByRole("button", { name: "NEXT" }));
     act(() => pictures.loading().forEach(pictures.finish));
 
-    expect([pageName(), position()]).toEqual(["TRICERATOPS", "2 / 30"]);
+    expect([pageName(), position()]).toEqual(["TRICERATOPS", "2 / 42"]);
   });
 
   it("opens one page when two cards are tapped while the first picture loads", async () => {
@@ -290,7 +290,7 @@ describe("a dinosaur's page", () => {
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
     act(() => pictures.loading().forEach(pictures.finish));
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 30"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
   });
 
   it("goes back to the list with its card scrolled into view, the cards then standing still", async () => {
@@ -302,7 +302,7 @@ describe("a dinosaur's page", () => {
 
     await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
 
-    expect(cards()).toHaveLength(30);
+    expect(cards()).toHaveLength(42);
     expect(grid().dataset.rise).toBeUndefined();
     const scrolled = vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts;
     expect(scrolled).toEqual([cardOf(LAST.id)]);
@@ -332,7 +332,7 @@ describe("a dinosaur's page", () => {
 describe("the catalogue in Russian", () => {
   it("reads its tile, its title, its food tags and its descriptions in Russian", async () => {
     const user = openApp({ language: "ru" });
-    expect(words(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }))).toBe("ВСЕ ДИНОЗАВРЫ30");
+    expect(words(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }))).toBe("ВСЕ ДИНОЗАВРЫ42");
 
     await openPage(user, "gallimimus", "ru");
 
