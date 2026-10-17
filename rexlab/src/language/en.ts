@@ -26,5 +26,14 @@ export const en: Texts = {
   wellDone: "WELL DONE!",
   bestScore: "BEST SCORE",
   best: "BEST",
-  playAgain: "PLAY AGAIN"
+  playAgain: "PLAY AGAIN",
+  catalogue: "ALL DINOSAURS",
+  diets: { meat: "MEAT", plants: "PLANTS", both: "BOTH" },
+  tall: "TALL",
+  heavy: "HEAVY",
+  position: "NUMBER",
+  previousDinosaur: "PREVIOUS",
+  nextDinosaur: "NEXT",
+  sourceNote:
+    "Facts checked with the Natural History Museum, London, the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica."
 };

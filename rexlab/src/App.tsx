@@ -1,9 +1,12 @@
 import { addTransitionType, startTransition, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
+import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { HomePage, type LockedGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
-import { presentQuestion, presentResult } from "./presentation.ts";
+import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
 import {
   choose,
@@ -18,6 +21,7 @@ import {
   type RoundResult
 } from "./quiz/index.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
+import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
@@ -46,6 +50,8 @@ export type Appearance = {
 
 export type AppProps = {
   dinosaurs: readonly Dinosaur[];
+  // Every dinosaur, in the order the catalogue shows them.
+  catalogue: readonly CatalogueEntry[];
   // The URL of the body picture of the dinosaur with this id.
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
@@ -64,7 +70,10 @@ export type AppProps = {
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
 // The dinosaur on each locked game's tile.
-const LOCKED: Record<LockedGame, string> = { taller: "stegosaurus", diet: "triceratops" };
+const LOCKED: Record<LockedGame, string> = { diet: "triceratops" };
+
+// The dinosaur on the catalogue's tile.
+const CATALOGUE_TILE = "stegosaurus";
 
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
@@ -77,6 +86,8 @@ const PICTURE_WAIT = 1000;
 // The view transition type of one screen giving way to another.
 const SCREEN_CHANGE = "screen-change";
 
+const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
+
 // Makes `update` a view transition of `type`, where the browser has view
 // transitions; elsewhere the screen changes at once.
 function changeScreen(type: string, update: () => void) {
@@ -86,10 +97,18 @@ function changeScreen(type: string, update: () => void) {
   });
 }
 
-type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
+type Screen =
+  | { kind: "home" }
+  | { kind: "question"; play: Play }
+  | { kind: "result"; result: RoundResult }
+  // The id of the dinosaur whose page the child came back from, if any.
+  | { kind: "catalogue"; returning: string | undefined }
+  // The dinosaur's place in the catalogue.
+  | { kind: "dinosaur"; index: number };
 
 export function App({
   dinosaurs,
+  catalogue,
   bodyPicture,
   random,
   orientation,
@@ -186,6 +205,35 @@ export function App({
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
+  const openCatalogue = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+
+  const pictureOf = (index: number) => bodyPicture(catalogue[index]?.id ?? "");
+
+  // A dinosaur's page shows once its picture is ready, as a question
+  // does, and only if the screen is still where the child tapped: a
+  // second tap meanwhile changes nothing more. The pictures either side
+  // are loaded ahead, so a step to them does not wait.
+  const showDinosaur = (index: number, type: string, still: (current: Screen) => boolean) => {
+    const wait = { loadPicture, startTimer, limit: PICTURE_WAIT };
+    waitForPictures([pictureOf(index)], wait, () =>
+      changeScreen(type, () => setScreen((current) => (still(current) ? { kind: "dinosaur", index } : current)))
+    );
+    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, catalogue.length)));
+    waitForPictures(neighbours, wait, () => {});
+  };
+
+  const openDinosaur = (id: string) =>
+    showDinosaur(
+      catalogue.findIndex((entry) => entry.id === id),
+      OPEN_DINOSAUR,
+      (current) => current.kind === "catalogue"
+    );
+
+  const step = (from: number, way: Step) =>
+    showDinosaur(stepFrom(from, way, catalogue.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
+
+  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: catalogue[index]?.id }));
+
   const content = () => {
     switch (screen.kind) {
       case "question": {
@@ -211,6 +259,32 @@ export function App({
             onHome={home}
           />
         );
+      case "catalogue":
+        return (
+          <CatalogueScreen
+            language={language}
+            dinosaurs={catalogue.map((entry) => presentCatalogueCard(entry, language, bodyPicture))}
+            returning={screen.returning}
+            onOpen={openDinosaur}
+            onHome={home}
+          />
+        );
+      case "dinosaur": {
+        const { index } = screen;
+        const entry = catalogue[index];
+        if (!entry) throw new Error(`No dinosaur at ${index} in the catalogue`);
+        return (
+          <DinosaurPage
+            language={language}
+            dinosaur={presentDinosaurPage(entry, language, bodyPicture)}
+            number={index + 1}
+            total={catalogue.length}
+            onPrevious={() => step(index, "previous")}
+            onNext={() => step(index, "next")}
+            onBack={() => closeDinosaur(index)}
+          />
+        );
+      }
       case "home":
         return (
           <HomePage
@@ -220,18 +294,25 @@ export function App({
             onTheme={chooseTheme}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}
-            locked={{ taller: bodyPicture(LOCKED.taller), diet: bodyPicture(LOCKED.diet) }}
+            catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
+            locked={{ diet: bodyPicture(LOCKED.diet) }}
             onCompareDinosaurs={playNewRound}
+            onCatalogue={openCatalogue}
           />
         );
     }
   };
 
   // One screen cross-fades into the next; a new question animates only its
-  // pair of cards, inside the question screen.
+  // pair of cards, inside the question screen, and so does the next
+  // dinosaur inside its page. As a dinosaur's page opens or closes, the
+  // rest of the screen fades while its picture moves.
   return (
     <OrientationGate orientation={orientation} language={language}>
-      <ViewTransition default="none" update={{ [SCREEN_CHANGE]: "screen", default: "none" }}>
+      <ViewTransition
+        default="none"
+        update={{ [SCREEN_CHANGE]: "screen", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}
+      >
         {content()}
       </ViewTransition>
     </OrientationGate>

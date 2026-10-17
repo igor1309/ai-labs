@@ -1,6 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readDinosaurs } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -13,6 +13,7 @@ import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
+export const SHIPPED_CATALOGUE = readCatalogue(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -338,8 +339,9 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
   }
 };
 
-// The translucent layers the design lays over the navy in both themes.
-export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F"];
+// The translucent layers the design lays over the navy and the
+// terracotta in both themes.
+export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33"];
 
 // The name of the first symbol an element shows, such as "sun" or "globe".
 export function symbolOf(element: Element): string | undefined {
