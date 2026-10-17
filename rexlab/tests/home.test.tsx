@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
@@ -227,6 +227,33 @@ describe("the home page", () => {
     expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
   });
 
+  it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
+    openHomePage();
+    const sort = screen.getByRole("button", { name: "SORT" });
+
+    // A finger that pans the row gets a pointercancel and no click.
+    fireEvent.pointerDown(sort, { pointerType: "touch" });
+    expect(sort.dataset.pressed).toBe("true");
+    fireEvent.pointerCancel(sort, { pointerType: "touch" });
+
+    expect(sort.dataset.pressed).toBeUndefined();
+    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+  });
+
+  it("stands the tiles at their start again on coming home from a game", async () => {
+    const { user } = openHomePage();
+    const row = tilesRow();
+
+    await user.click(pairsTile());
+    await user.click(await screen.findByRole("button", { name: "HOME" }));
+
+    // The row is drawn anew, so it is scrolled to its start.
+    await screen.findByRole("button", { name: "FIND THE PAIR" });
+    expect(document.querySelectorAll(".games-tiles")).toHaveLength(1);
+    expect(tilesRow()).not.toBe(row);
+    expect(row.isConnected).toBe(false);
+  });
+
   it("shows the games still to come as a faded Triceratops's shape over a lock, with nothing to tap, brighten or press in", async () => {
     const { user } = openHomePage();
 
@@ -250,7 +277,7 @@ describe("the home page", () => {
     expect(screen.getByRole("button", { name: "COMPARE" })).toBe(tilesRow().previousElementSibling);
   });
 
-  it.each([1024, 1180, 1366])("scrolls the tiles sideways beside a COMPARE that stays, with the next column peeking in, at %ipx wide", (width) => {
+  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a COMPARE that stays, with the next column peeking in, at %ipx wide", (width) => {
     const { card } = openHomePage();
 
     const row = tilesRow();
@@ -273,13 +300,13 @@ describe("the home page", () => {
   it.each([1024, 1180, 1366])(
     "keeps the title of every game on one line in every language at %ipx wide, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
     (width) => {
-      const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 7, visitsFinished: 1, friends: [] }) });
+      const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
       openHomePage(
         withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })),
         loadedPictures(),
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
-        withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(10) })),
-        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 3 }) })) }
+        withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
+        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) }
       );
 
       const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
@@ -312,9 +339,9 @@ describe("the home page", () => {
       const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
         [String(SHIPPED_CATALOGUE.length), true, "absolute"],
-        ["7", true, "absolute"],
-        ["10", true, "absolute"],
-        ["3", true, "absolute"]
+        ["8", true, "absolute"],
+        ["6", true, "absolute"],
+        ["120", true, "absolute"]
       ]);
       expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true, true]);
       expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative", "relative"]);
