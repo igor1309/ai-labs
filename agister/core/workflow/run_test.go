@@ -3,6 +3,7 @@ package workflow_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"testing"
@@ -31,19 +32,24 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 	return s.answer, s.err
 }
 
-// callerSpy answers each step by its test's answer for its name, and keeps
-// each call's params. A step it has no answer for fails its test, and is
-// answered with nothing.
+// callerSpy answers each step by its test's answer for its name, once it
+// has given the call's report its test's tools for that name, in order; and
+// keeps each call's params. A step it has no answer for fails its test, and
+// is answered with nothing.
 type callerSpy struct {
 	t       *testing.T
 	trail   *trail
 	answers map[string]func() workflow.Result
+	tools   map[string][]workflow.Tool
 	params  []map[string]string
 }
 
-func (s *callerSpy) Call(_ context.Context, step string, params map[string]string) workflow.Result {
+func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, report func(workflow.Tool)) workflow.Result {
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
+	for _, tool := range s.tools[step] {
+		report(tool)
+	}
 	answer, ok := s.answers[step]
 	if !ok {
 		s.t.Errorf("step %q called, with no answer given", step)
@@ -61,11 +67,31 @@ func completes(code int) func() workflow.Result {
 
 var start = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
-// fixture is a runner over its spies and its clock, which share one trail.
+// eventsSpy keeps what it is told, in order, each a line of the step's
+// name and what it was told of it.
+type eventsSpy struct {
+	told []string
+}
+
+func (s *eventsSpy) Started(step, agent string) {
+	s.told = append(s.told, fmt.Sprintf("%s started on %s", step, agent))
+}
+
+func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
+	s.told = append(s.told, fmt.Sprintf("%s %s %s", step, tool.Name, tool.Input))
+}
+
+func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
+	s.told = append(s.told, fmt.Sprintf("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration))
+}
+
+// fixture is a runner over its spies and its clock, the resolver and the
+// caller sharing one trail.
 type fixture struct {
 	trail    trail
 	resolver *resolverSpy
 	caller   *callerSpy
+	events   *eventsSpy
 	clock    *clocktest.Clock
 	runner   *workflow.Runner
 }
@@ -77,7 +103,8 @@ func newFixture(t *testing.T, boundary workflow.Boundary, answers map[string]fun
 	f := &fixture{clock: clocktest.NewClock(start)}
 	f.resolver = &resolverSpy{trail: &f.trail, answer: boundary}
 	f.caller = &callerSpy{t: t, trail: &f.trail, answers: answers}
-	runner, err := workflow.New(f.resolver, f.caller, f.clock)
+	f.events = &eventsSpy{}
+	runner, err := workflow.New(f.resolver, f.caller, f.events, f.clock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,21 +134,23 @@ func bind(name string, value workflow.Value) workflow.Binding {
 func TestNewFailsWithoutACollaborator(t *testing.T) {
 	t.Parallel()
 	var tr trail
-	resolver, caller, clock := &resolverSpy{trail: &tr}, &callerSpy{t: t, trail: &tr}, clocktest.NewClock(start)
+	resolver, caller, events, clock := &resolverSpy{trail: &tr}, &callerSpy{t: t, trail: &tr}, &eventsSpy{}, clocktest.NewClock(start)
 	cases := []struct {
 		name     string
 		resolver workflow.Resolver
 		caller   workflow.Caller
+		events   workflow.Events
 		clock    workflow.Clock
 	}{
-		{"resolver", nil, caller, clock},
-		{"caller", resolver, nil, clock},
-		{"clock", resolver, caller, nil},
+		{"resolver", nil, caller, events, clock},
+		{"caller", resolver, nil, events, clock},
+		{"events", resolver, caller, nil, clock},
+		{"clock", resolver, caller, events, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := workflow.New(c.resolver, c.caller, c.clock); err == nil || err.Error() != "workflow: no "+c.name {
+			if _, err := workflow.New(c.resolver, c.caller, c.events, c.clock); err == nil || err.Error() != "workflow: no "+c.name {
 				t.Errorf("New without a %s: %v, want workflow: no %s", c.name, err, c.name)
 			}
 		})

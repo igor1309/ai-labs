@@ -186,7 +186,8 @@ type piWrapper interface {
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
 // runs on machine, a call's output checked by validator and its inputs read
 // through inputsFrom, for the user whose home directory is user: home's
-// folder is homeFolder's.
+// folder is homeFolder's. A run's result is printed to stdout, and its
+// progress, as it goes, to stderr.
 func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
 		return nil, errors.New("build: a runtime wrapper is missing")
@@ -216,7 +217,11 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
 	}
 	home := homeFolder(user, machine.environ)
-	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, machine)
+	events, err := newProgress(stderr)
+	if err != nil {
+		return nil, err
+	}
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, machine, events)
 	if err != nil {
 		return nil, err
 	}

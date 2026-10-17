@@ -288,11 +288,26 @@ func (s *wrapperSpy[F, T, R]) ran() []T {
 	return slices.Clone(s.turns)
 }
 
+// reportingSpy is a spy of a runtime wrapper as wrapperSpy is, whose turns
+// also take a report of its tool calls P: it gives each turn's report its
+// test's tools, in order, before it answers.
+type reportingSpy[F, T, P, R any] struct {
+	wrapperSpy[F, T, R]
+	tools []P
+}
+
+func (s *reportingSpy[F, T, P, R]) Run(ctx context.Context, turn T, report func(P)) (R, error) {
+	for _, tool := range s.tools {
+		report(tool)
+	}
+	return s.wrapperSpy.Run(ctx, turn)
+}
+
 // The spies of the bash, claude-code and codex wrappers.
 type (
 	bashWrapperSpy       = wrapperSpy[bash.Facts, bash.Turn, bash.Ended]
-	claudeCodeWrapperSpy = wrapperSpy[claudecode.Facts, claudecode.Turn, claudecode.Result]
-	codexWrapperSpy      = wrapperSpy[codex.Facts, codex.Turn, codex.Result]
+	claudeCodeWrapperSpy = reportingSpy[claudecode.Facts, claudecode.Turn, claudecode.Tool, claudecode.Result]
+	codexWrapperSpy      = reportingSpy[codex.Facts, codex.Turn, codex.Tool, codex.Result]
 )
 
 // answers answers every turn with result.
@@ -335,8 +350,8 @@ func newRuntimesSpy(t *testing.T) *runtimesSpy {
 	}
 	return &runtimesSpy{
 		bash:   &bashWrapperSpy{t: t, facts: b.Facts()},
-		claude: &claudeCodeWrapperSpy{t: t, facts: claude.Facts()},
-		codex:  &codexWrapperSpy{t: t, facts: cx.Facts()},
+		claude: &claudeCodeWrapperSpy{wrapperSpy: wrapperSpy[claudecode.Facts, claudecode.Turn, claudecode.Result]{t: t, facts: claude.Facts()}},
+		codex:  &codexWrapperSpy{wrapperSpy: wrapperSpy[codex.Facts, codex.Turn, codex.Result]{t: t, facts: cx.Facts()}},
 		pi:     piSpy{facts: pi.New().Facts()},
 	}
 }

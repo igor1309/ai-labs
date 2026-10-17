@@ -176,7 +176,24 @@ func (f *runFixture) runWatching(t *testing.T, watch signals, environment []stri
 		t.Fatal(err)
 	}
 	code := commandLine.Run(args, dir)
-	return ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
+	got := ran{stdout: stdout.String(), code: code}
+	got.progress, got.stderr = progressApart(stderr.String())
+	return got
+}
+
+// progressApart is the progress lines of stderr, each "· " and what it
+// tells, and the rest of it. A run prints its progress among whatever else
+// it prints to stderr: progress_test.go proves those lines, and every
+// other test of a run asserts the rest.
+func progressApart(stderr string) (progress, rest string) {
+	for _, line := range strings.SplitAfter(stderr, "\n") {
+		if strings.HasPrefix(line, "· ") {
+			progress += line
+		} else {
+			rest += line
+		}
+	}
+	return progress, rest
 }
 
 // printedResult is a result as cli prints it.

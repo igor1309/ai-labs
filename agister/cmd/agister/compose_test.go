@@ -35,9 +35,11 @@ func shippedHome(t *testing.T) map[string]string {
 	return shipped
 }
 
-// ran is what a command printed and its exit code.
+// ran is what a command printed and its exit code; of a run, its progress
+// lines apart from the rest of stderr.
 type ran struct {
 	stdout, stderr string
+	progress       string
 	code           int
 }
 

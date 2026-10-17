@@ -95,6 +95,12 @@ type Turn struct {
 	Schema      []byte
 }
 
+// Tool is a tool call a turn reports: the tool's name and a short text of
+// what it was given.
+type Tool struct {
+	Name, Input string
+}
+
 // Result is how a turn's program ended, and its reply: none where a signal
 // ended it.
 type Result struct {
@@ -166,14 +172,19 @@ func (*Wrapper) Facts() Facts {
 
 // Run runs the turn as codex exec in its directory with its environment,
 // the instruction and the message on stdin, through the supervisor, and
-// gives how the program ended and the reply its JSON events give. A turn
-// not given exactly one option is an error before anything starts. The
+// gives how the program ended and the reply its JSON events give; each
+// tool call it recognizes is given to report as its line is read. A turn
+// given no report, or not exactly one option, is an error before anything
+// starts. The
 // schema's folder is removed once the turn has returned, best effort: one
 // that cannot be is left, the turn's end unchanged, since the turn has
 // already run and a folder under the system's temporary folder harms
 // nothing. A supervisor's error is the turn's, its error that the program
 // could not start included.
-func (w *Wrapper) Run(ctx context.Context, turn Turn) (Result, error) {
+func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Tool)) (Result, error) {
+	if report == nil {
+		return Result{}, errors.New("codex: no report")
+	}
 	if len(turn.Options) != 1 {
 		return Result{}, fmt.Errorf("codex: a turn takes exactly one option, its sandbox, given %q", turn.Options)
 	}
@@ -184,7 +195,7 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	var read stream
+	read := stream{report: report, searches: map[string]bool{}}
 	ended, err := w.supervisor.Run(ctx, Program{
 		Name: "codex", Args: arguments(turn, schema), Dir: turn.Dir, Env: turn.Env, Stdin: prompt(turn), Line: read.line,
 	})

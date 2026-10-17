@@ -13,18 +13,21 @@ import (
 // supervisorSpy answers in place of the supervisor: it keeps each program
 // it is asked to run, its line function left out, and why its context had
 // ended, nil where it had not; gives that function the lines its test
-// gives, in order, and gives the result and the error its test gives.
+// gives, in order, counting in given those it has begun to give; and gives
+// the result and the error its test gives.
 type supervisorSpy struct {
 	lines  []string
 	result claudecode.Ended
 	err    error
 	asked  []claudecode.Program
 	ended  []error
+	given  int
 }
 
 func (s *supervisorSpy) Run(ctx context.Context, program claudecode.Program) (claudecode.Ended, error) {
 	s.ended = append(s.ended, ctx.Err())
 	for _, line := range s.lines {
+		s.given++
 		program.Line(line)
 	}
 	program.Line = nil
@@ -45,7 +48,7 @@ func wrapper(t *testing.T, spy *supervisorSpy) *claudecode.Wrapper {
 // reply is the reply of a turn, given schema, over spy's lines and result.
 func reply(t *testing.T, spy *supervisorSpy, schema []byte) claudecode.Reply {
 	t.Helper()
-	got, err := wrapper(t, spy).Run(context.Background(), claudecode.Turn{Message: "m", Schema: schema})
+	got, err := wrapper(t, spy).Run(context.Background(), claudecode.Turn{Message: "m", Schema: schema}, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,6 +78,10 @@ func assistant(text string) string {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// discard is a report that keeps nothing, for a turn whose test is not
+// about its tool calls.
+func discard(claudecode.Tool) {}
 
 // facts.feature, "Its facts".
 func TestItsFacts(t *testing.T) {
@@ -128,7 +135,7 @@ func TestATurnAsksTheSupervisorForClaudeTheMessageOnStdin(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &supervisorSpy{}
-			if _, err := wrapper(t, spy).Run(context.Background(), c.turn); err != nil {
+			if _, err := wrapper(t, spy).Run(context.Background(), c.turn, discard); err != nil {
 				t.Fatal(err)
 			}
 			if want := []claudecode.Program{c.want}; !reflect.DeepEqual(spy.asked, want) {
@@ -143,7 +150,7 @@ func TestATurnAsksTheSupervisorForClaudeTheMessageOnStdin(t *testing.T) {
 func TestSkillIsNotWrittenIntoTheCallersOptions(t *testing.T) {
 	t.Parallel()
 	room := []string{"Read", "kept"}
-	if _, err := wrapper(t, &supervisorSpy{}).Run(context.Background(), claudecode.Turn{Message: "m", Options: room[:1]}); err != nil {
+	if _, err := wrapper(t, &supervisorSpy{}).Run(context.Background(), claudecode.Turn{Message: "m", Options: room[:1]}, discard); err != nil {
 		t.Fatal(err)
 	}
 	if room[1] != "kept" {
@@ -205,7 +212,7 @@ func TestATurnsContextReachesTheSupervisor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	spy := &supervisorSpy{}
-	if _, err := wrapper(t, spy).Run(ctx, claudecode.Turn{Message: "m"}); err != nil {
+	if _, err := wrapper(t, spy).Run(ctx, claudecode.Turn{Message: "m"}, discard); err != nil {
 		t.Fatal(err)
 	}
 	if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {
@@ -306,7 +313,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	t.Parallel()
 	given := claudecode.Ended{Signal: "killed", Stderr: claudecode.Stream{Head: "e", Tail: "e", Size: 1, Digest: "ed"}}
 	spy := &supervisorSpy{lines: []string{initLine, `{"type":"result","subtype":"success","is_error":false,"result":"done"}`}, result: given}
-	got, err := wrapper(t, spy).Run(context.Background(), claudecode.Turn{Message: "m"})
+	got, err := wrapper(t, spy).Run(context.Background(), claudecode.Turn{Message: "m"}, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +329,7 @@ func TestAProgramThatCouldNotStartIsTheTurns(t *testing.T) {
 	for _, given := range []error{fmt.Errorf("%w: claude: not found", claudecode.ErrNotStarted), errors.New("observing claude exiting")} {
 		t.Run(given.Error(), func(t *testing.T) {
 			t.Parallel()
-			got, err := wrapper(t, &supervisorSpy{err: given}).Run(context.Background(), claudecode.Turn{Message: "m"})
+			got, err := wrapper(t, &supervisorSpy{err: given}).Run(context.Background(), claudecode.Turn{Message: "m"}, discard)
 			if !errors.Is(err, given) || !reflect.DeepEqual(got, claudecode.Result{}) {
 				t.Errorf("turn gave %+v, %v; want nothing, %v", got, err, given)
 			}

@@ -14,17 +14,26 @@ import (
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
-// runtimeSpy answers the runtime protocol: it keeps each turn it is given
-// and answers it by its test's turn, run with the turn's context.
+// runtimeSpy answers the runtime protocol: it keeps each turn it is given,
+// reports its test's tools to the turn's report, in order, and answers it
+// by its test's turn, run with the turn's context.
 type runtimeSpy struct {
 	turn  func(ctx context.Context) (call.Ended, error)
+	tools []call.Tool
 	given []call.Turn
 }
 
-func (s *runtimeSpy) Turn(ctx context.Context, turn call.Turn) (call.Ended, error) {
+func (s *runtimeSpy) Turn(ctx context.Context, turn call.Turn, report func(call.Tool)) (call.Ended, error) {
 	s.given = append(s.given, turn)
+	for _, tool := range s.tools {
+		report(tool)
+	}
 	return s.turn(ctx)
 }
+
+// discard is a report that keeps nothing, for a call whose test is not
+// about its tool calls.
+func discard(call.Tool) {}
 
 // exits is a turn that exits with ended at once.
 func exits(ended call.Ended) func(context.Context) (call.Ended, error) {
@@ -101,7 +110,7 @@ func TestTheTurnIsGivenTheScriptTheDirectoryAndTheEnvironment(t *testing.T) {
 		Prompt:      "s",
 		Environment: map[string]string{"A": "1", "B": "2"},
 		Inputs:      []call.Named{{Name: "B", Text: "3"}},
-	})
+	}, discard)
 	want := []call.Turn{{Prompt: "s", Dir: "/r", Env: []string{"PATH=/bin", "A=1", "B=3"}}}
 	if !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
@@ -152,7 +161,7 @@ func TestHowTheTurnEndedDecidesTheStatusAndClass(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			t.Cleanup(cancel)
 			spy := &runtimeSpy{turn: c.turn(cancel)}
-			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(ctx, call.Step{Prompt: "s", Warnings: []string{"w"}})
+			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(ctx, call.Step{Prompt: "s", Warnings: []string{"w"}}, discard)
 			if got.Status != c.status || got.Class != c.class || got.Reason != c.reason {
 				t.Errorf("ended %q, class %q, reason %q; want %q, class %q, reason %q", got.Status, got.Class, got.Reason, c.status, c.class, c.reason)
 			}
@@ -174,7 +183,7 @@ func TestACallWhoseContextIsAlreadyCancelledMakesNoTurn(t *testing.T) {
 	spy := &runtimeSpy{turn: exits(call.Ended{Code: 0})}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	got := caller(t, spy, clock, "/r").Call(ctx, call.Step{Prompt: "s", TimeLimit: time.Second, Warnings: []string{"w"}})
+	got := caller(t, spy, clock, "/r").Call(ctx, call.Step{Prompt: "s", TimeLimit: time.Second, Warnings: []string{"w"}}, discard)
 	want := call.Result{
 		Status: call.Interrupted, Class: call.Cancelled,
 		Timing:   call.Timing{Started: start, Ended: start},
@@ -212,7 +221,7 @@ func TestACompletedCallsOutputIsTheExitCodeAndBothStreams(t *testing.T) {
 		t.Run(c.ends, func(t *testing.T) {
 			t.Parallel()
 			spy := &runtimeSpy{turn: exits(call.Ended{Code: 4, Stdout: c.stdout, Stderr: c.stderr})}
-			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"})
+			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"}, discard)
 			want := map[string]any{
 				"exit_code": 4,
 				"stdout":    map[string]any{"head": c.stdout.Head, "tail": c.stdout.Tail, "size": c.stdout.Size, "digest": c.stdout.Digest},
@@ -237,7 +246,7 @@ func TestATimeLimitEndsTheTurn(t *testing.T) {
 	}}
 	c := caller(t, spy, clock, "/r")
 	done := make(chan call.Result, 1)
-	go func() { done <- c.Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second}) }()
+	go func() { done <- c.Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second}, discard) }()
 	clock.Started(time.Second)
 	clock.Advance(time.Second)
 	if err := <-ended; !errors.Is(err, context.Canceled) {
@@ -254,7 +263,7 @@ func TestATimeLimitNotPassedEndsNothing(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(start)
 	spy := &runtimeSpy{turn: exits(call.Ended{Code: 0})}
-	got := caller(t, spy, clock, "/r").Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second})
+	got := caller(t, spy, clock, "/r").Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second}, discard)
 	if got.Status != call.Completed {
 		t.Errorf("ended %q, class %q; want completed", got.Status, got.Class)
 	}
@@ -271,7 +280,7 @@ func TestTimingIsMeasuredAndTheCostIsUnknown(t *testing.T) {
 		clock.Advance(5 * time.Second)
 		return call.Ended{}, nil
 	}}
-	got := caller(t, spy, clock, "/r").Call(context.Background(), call.Step{Prompt: "s"})
+	got := caller(t, spy, clock, "/r").Call(context.Background(), call.Step{Prompt: "s"}, discard)
 	want := call.Timing{Started: start, Ended: start.Add(5 * time.Second), Duration: 5 * time.Second}
 	if got.Timing != want {
 		t.Errorf("timing %+v, want %+v", got.Timing, want)
@@ -293,7 +302,7 @@ func TestTheStepsWarningsAreTheCallsWhateverItsStatus(t *testing.T) {
 	warnings := []string{"grants network beyond what it allows"}
 	done := make(chan call.Result, 1)
 	go func() {
-		done <- c.Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second, Warnings: warnings})
+		done <- c.Call(context.Background(), call.Step{Prompt: "s", TimeLimit: time.Second, Warnings: warnings}, discard)
 	}()
 	clock.Started(time.Second)
 	clock.Advance(time.Second)
