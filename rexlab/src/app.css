@@ -62,6 +62,11 @@
     transition-property: background-color;
   }
 
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
   /* A dinosaur's picture does not travel between its card and its page:
      the two only cross-fade, in place. */
   ::view-transition-group(.dinosaur-share) {
@@ -470,7 +475,10 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 /* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. */
+   iPad above the bands of rock. Three columns share the width 3 : 2 : 1:
+   COMPARE, the tiles, and the games still to come. A third is what the
+   tiles' titles need at 24px on the smallest iPad, and half is what
+   COMPARE's needs at 52px; the games still to come take the sixth left. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
   display: flex;
@@ -478,7 +486,8 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .quiz-card {
-  flex: 760 1 0;
+  position: relative;
+  flex: 3 1 0;
   min-width: 0;
   padding: 0;
   display: flex;
@@ -496,7 +505,7 @@ body:has(.result) footer[aria-label="Version"] {
   flex: 1 1 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 36px 40px 0;
+  padding: 36px 32px 0;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -518,7 +527,7 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .quiz-card-footer {
-  padding: 24px 40px 32px;
+  padding: 24px 32px 32px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -540,10 +549,13 @@ body:has(.result) footer[aria-label="Version"] {
   font-size: 52px;
   font-weight: 700;
   letter-spacing: 2px;
+  white-space: nowrap;
 }
 
 .quiz-card-best {
-  margin-left: auto;
+  position: absolute;
+  top: 24px;
+  right: 24px;
   padding: 10px 18px;
   display: flex;
   align-items: center;
@@ -559,54 +571,17 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .side-games {
-  flex: 540 1 0;
+  flex: 2 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 28px;
 }
 
-.locked-tile {
-  flex: 1 1 0;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-radius: 28px;
-  background: #fffdf8;
-  box-shadow: 0 8px 24px #1d274224;
-}
-
-.locked-picture {
-  flex: 1 1 0;
-  min-height: 0;
-  width: 100%;
-  object-fit: contain;
-  opacity: 0.35;
-}
-
-.locked-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #5c647a;
-}
-
-.locked-symbol {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: #e6e2d9;
-}
-
-/* The catalogue's tile is terracotta, in the place of a locked game. White
-   words keep text contrast on terracotta only under the shade the quiz
-   card's footer also has. */
+/* The catalogue's tile is terracotta. White words keep text contrast on
+   terracotta only under the shade the quiz card's footer also has. */
 .catalogue-tile {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   padding: 0;
@@ -627,15 +602,15 @@ body:has(.result) footer[aria-label="Version"] {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 24px 12px;
+  padding: 16px 20px 10px;
   object-fit: contain;
 }
 
 .catalogue-tile-row {
-  padding: 14px 24px 18px;
+  padding: 12px 12px 14px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   background: #00000026;
 }
 
@@ -643,30 +618,89 @@ body:has(.result) footer[aria-label="Version"] {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   background: #ffffff33;
 }
 
+/* A title is never smaller than a child can read: the column is made
+   wide enough for it instead. The CARE tile's title is the same size. */
 .catalogue-tile-title {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
+/* The count sits in the tile's corner, over the picture: beside the
+   title it would leave the title too little of the row. */
 .catalogue-tile-count {
-  flex-shrink: 0;
+  position: absolute;
+  top: 12px;
+  right: 12px;
   height: 40px;
   box-sizing: border-box;
-  padding: 0 14px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 6px;
   border-radius: 20px;
   background: #00000026;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* The games still to come: a faded dinosaur over a lock, on paper, as
+   tall as the tiles beside it. It is no card, so it neither brightens nor
+   presses in. Its sides are padded inside it: padding of its own would
+   widen it past its share of the row. */
+.more-coming {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  border-radius: 28px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+}
+
+.more-coming-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 16px;
+  object-fit: contain;
+  opacity: 0.35;
+}
+
+.more-coming-label {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #5c647a;
+  text-align: center;
+}
+
+.more-coming-symbol {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #e6e2d9;
+}
+
+.more-coming-title {
+  font-size: 22px;
   font-weight: 700;
 }
 
@@ -1594,6 +1628,1009 @@ body:has(.result) footer[aria-label="Version"] {
   background: #ffffff1a;
 }
 
+/* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
+   ink keeps its contrast on amber with no shade under it, so the row is
+   lit, as the design draws it. */
+.care-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #e39b2d;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.care-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.care-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.care-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff59;
+}
+
+.care-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.care-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff59;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Care's welcome, its friends and a visit fill the screen under a bar
+   like the catalogue's. */
+.care-welcome,
+.friends,
+.visit {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.care-welcome {
+  padding: 40px 56px 48px;
+  gap: 28px;
+}
+
+.care-bar,
+.friends-bar,
+.visit-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.care-title,
+.friends-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.care-mark,
+.friends-mark {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.care-mark {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.friends-mark {
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.care-best,
+.friend-count {
+  flex-shrink: 0;
+  margin: 0;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.friend-count svg {
+  color: #c9583d;
+}
+
+.care-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.new-visitor-card {
+  flex: 760 1 0;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 32px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 18px 40px #1d274224;
+  text-align: left;
+}
+
+.new-visitor-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.new-visitor-glow {
+  position: absolute;
+  left: 23.7%;
+  top: 5%;
+  width: 52.6%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #a9bcd6;
+  opacity: 0.12;
+}
+
+.new-visitor-picture {
+  position: absolute;
+  left: 19.7%;
+  top: 10%;
+  width: 60.5%;
+  height: 85%;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* The visitor knocks: its bubble grows in after the screen. */
+.knock-bubble {
+  position: absolute;
+  left: 73.7%;
+  top: 10%;
+  width: 110px;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fffdf8;
+  color: #1d2742;
+  transform-origin: bottom left;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+
+.new-visitor-footer {
+  padding: 24px 40px 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #00000026;
+}
+
+.new-visitor-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.new-visitor-title {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.friends-card {
+  flex: 540 1 0;
+  min-width: 0;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  border: none;
+  border-radius: 32px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.friend-faces {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.friend-face {
+  min-height: 0;
+  display: flex;
+  border-radius: 20px;
+  background: #e6e2d9;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+  animation-delay: calc(var(--face) * var(--motion-stagger) * 0.75);
+}
+
+.friend-face-picture {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  object-fit: contain;
+}
+
+.friends-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.friends-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.friends-row .friends-title {
+  font-size: 34px;
+}
+
+/* A visit: the needs and hearts above, the visitor on its stage, and the
+   items below. */
+.visit {
+  padding: 40px 56px;
+  gap: 24px;
+}
+
+.visit-bar {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.needs {
+  margin: 0;
+  padding: 8px;
+  display: flex;
+  gap: 14px;
+  list-style: none;
+  border-radius: 36px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+/* The need asked now grows a little and turns amber; a met need turns
+   green and its tick pops in. */
+.need {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6e2d9;
+  color: #5c647a;
+  transition:
+    background-color var(--motion-standard) var(--ease-out),
+    scale var(--motion-standard) var(--ease-overshoot);
+}
+
+.need[data-state="current"] {
+  background: #e39b2d;
+  color: #1d2742;
+  scale: calc(1 + 0.08 * var(--motion-amount));
+}
+
+.need[data-state="met"] {
+  background: #2e7d4f;
+  color: #ffffff;
+}
+
+.need[data-state="met"] svg {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.hearts-counter {
+  margin: 0;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 22px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.hearts-counter svg {
+  color: #c9583d;
+}
+
+/* The count bumps as the hearts earned reach it; until then it shows,
+   never blank. */
+.hearts-count {
+  display: inline-block;
+  animation: bump-in var(--motion-standard) var(--ease-overshoot) forwards;
+  animation-delay: calc(var(--motion-screen) + var(--motion-standard) * 2);
+}
+
+@keyframes bump-in {
+  from {
+    opacity: 0;
+    scale: calc(1 + 0.5 * var(--motion-amount));
+  }
+}
+
+.stage {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.stage-glow {
+  position: absolute;
+  z-index: -1;
+  left: 22.6%;
+  top: -11%;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #a9bcd6;
+  opacity: 0.12;
+}
+
+.stage-ground {
+  position: absolute;
+  z-index: -1;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 24%;
+  background: #00000026;
+}
+
+.visitor-name {
+  position: absolute;
+  z-index: 1;
+  left: 40px;
+  top: 30px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* The visitor walks in from the right once its picture is ready. */
+.visitor {
+  position: absolute;
+  left: 18.8%;
+  top: 7.6%;
+  width: 42%;
+  height: 80%;
+  object-fit: contain;
+  transform-origin: bottom center;
+  animation: walk-in var(--motion-screen) var(--ease-out) both;
+}
+
+@keyframes walk-in {
+  from {
+    opacity: 0;
+    translate: calc(240px * var(--motion-amount)) 0;
+  }
+}
+
+/* A happy visitor hops twice once the item reaches it. */
+.stage[data-reaction="happy"] .visitor {
+  animation: hop calc(var(--motion-count) * 0.8) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes hop {
+  25% {
+    translate: 0 calc(-28px * var(--motion-amount));
+  }
+  50% {
+    translate: 0 calc(0px * var(--motion-amount));
+  }
+  75% {
+    translate: 0 calc(-20px * var(--motion-amount));
+  }
+}
+
+/* An unsuitable item: the visitor gently turns its head away, no shake
+   and no mark. */
+.stage[data-reaction="refusal"] .visitor {
+  animation: turn-away calc(var(--motion-standard) * 1.5) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes turn-away {
+  35% {
+    rotate: calc(-4deg * var(--motion-amount));
+    translate: calc(-16px * var(--motion-amount)) 0;
+  }
+  70% {
+    rotate: calc(2deg * var(--motion-amount));
+    translate: calc(6px * var(--motion-amount)) 0;
+  }
+}
+
+/* Every need met, the visitor dances three hops with a tilt, then walks
+   off to the left. */
+.stage[data-leaving] .visitor {
+  animation:
+    dance calc(var(--motion-count) * 1.6) var(--ease-out) both,
+    walk-off var(--motion-screen) var(--ease-out) calc(var(--motion-count) * 1.6) forwards;
+}
+
+@keyframes dance {
+  16% {
+    translate: 0 calc(-32px * var(--motion-amount));
+    rotate: calc(-6deg * var(--motion-amount));
+  }
+  33% {
+    translate: 0 calc(0px * var(--motion-amount));
+    rotate: calc(0deg * var(--motion-amount));
+  }
+  50% {
+    translate: 0 calc(-32px * var(--motion-amount));
+    rotate: calc(6deg * var(--motion-amount));
+  }
+  66% {
+    translate: 0 calc(0px * var(--motion-amount));
+    rotate: calc(0deg * var(--motion-amount));
+  }
+  83% {
+    translate: 0 calc(-32px * var(--motion-amount));
+    rotate: calc(-6deg * var(--motion-amount));
+  }
+}
+
+@keyframes walk-off {
+  to {
+    opacity: 0;
+    translate: calc(-480px * var(--motion-amount)) 0;
+  }
+}
+
+/* The need's bubble grows from its tail; the bubble of a need just met
+   fades as the visitor enjoys it. */
+.need-bubble {
+  position: absolute;
+  left: 61.7%;
+  top: 4.6%;
+  width: min(220px, 40%);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fffdf8;
+  color: #1d2742;
+  transform-origin: -20% 120%;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.bubble-tail {
+  position: absolute;
+  border-radius: 50%;
+  background: #fffdf8;
+}
+
+.bubble-tail-1 {
+  left: -9%;
+  top: 93.6%;
+  width: 16.4%;
+  height: 16.4%;
+}
+
+.bubble-tail-2 {
+  left: -20%;
+  top: 111%;
+  width: 9%;
+  height: 9%;
+}
+
+.bubble-art {
+  position: relative;
+  width: 86%;
+  height: 86%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-picture {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bubble-art[data-count="2"] .bubble-picture {
+  width: 50%;
+}
+
+.bubble-badge {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+/* The item given flies up from the tray to the visitor's mouth, where it
+   is eaten, drunk or used, or from where it drifts back, turned away. */
+.given {
+  position: absolute;
+  left: 52%;
+  top: 30%;
+  width: min(130px, 26%);
+  pointer-events: none;
+  animation:
+    fly-in var(--motion-screen) var(--ease-out) both,
+    fade-out var(--motion-small) var(--ease-out) var(--motion-screen) forwards;
+}
+
+.given[data-reaction="refusal"] {
+  left: 5%;
+  top: 36%;
+  width: min(170px, 32%);
+  animation:
+    fly-in var(--motion-screen) var(--ease-out) both,
+    drift-back calc(var(--motion-standard) * 1.5) var(--ease-out) var(--motion-screen) forwards;
+}
+
+.given-picture {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.given[data-reaction="refusal"] .given-picture {
+  opacity: 0.85;
+  rotate: -18deg;
+}
+
+.turn-away {
+  position: absolute;
+  left: 24%;
+  top: -18%;
+  color: #f6f2e9;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+
+@keyframes fly-in {
+  from {
+    opacity: 0;
+    translate: calc(80px * var(--motion-amount)) calc(360px * var(--motion-amount));
+    scale: calc(1 - 0.4 * var(--motion-amount));
+  }
+}
+
+@keyframes drift-back {
+  to {
+    opacity: 0;
+    translate: calc(-24px * var(--motion-amount)) calc(48px * var(--motion-amount));
+  }
+}
+
+/* The hearts earned pop up beside the visitor, then fly to the counter. */
+.hearts-pop {
+  position: absolute;
+  left: 63%;
+  top: 17%;
+  padding: 14px 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 40px;
+  background: #fffdf8;
+  color: #c9583d;
+  animation:
+    pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both,
+    fly-to-counter var(--motion-standard) var(--ease-out) calc(var(--motion-screen) + var(--motion-standard)) forwards;
+}
+
+.hearts-pop-count {
+  color: #1d2742;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+@keyframes fly-to-counter {
+  to {
+    opacity: 0;
+    translate: calc(240px * var(--motion-amount)) calc(-200px * var(--motion-amount));
+    scale: calc(1 - 0.6 * var(--motion-amount));
+  }
+}
+
+/* Bubbles rise from a bath, and moons drift up from a nest. */
+.rising {
+  position: absolute;
+  left: 18.8%;
+  top: 20%;
+  width: 42%;
+  height: 60%;
+  pointer-events: none;
+}
+
+.rising-piece {
+  position: absolute;
+  bottom: 0;
+  color: #f6f2e9;
+  animation: rise-away calc(var(--motion-count) * 0.8) var(--ease-out) both;
+  animation-delay: calc(var(--motion-screen) + var(--piece) * var(--motion-stagger) * 2);
+}
+
+.rising[data-item="bath"] .rising-piece {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff33;
+}
+
+@keyframes rise-away {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 calc(-180px * var(--motion-amount));
+  }
+}
+
+/* The items, each a big picture with its word under it. While a
+   reaction plays they rest dimmed and take no tap, and fade back in once
+   it ends. */
+.tray {
+  display: flex;
+  gap: 20px;
+}
+
+.tray-item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 120px;
+  height: 190px;
+  box-sizing: border-box;
+  padding: 10px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 24px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 6px 16px #1d274224;
+}
+
+.tray-item[data-pressed] {
+  background: #e6e2d9;
+}
+
+.tray-item:disabled {
+  cursor: default;
+}
+
+.tray[data-busy] .tray-item,
+.tray-item[data-refused] {
+  opacity: 0.5;
+}
+
+/* After a refusal, what would meet the need is ringed in amber. */
+.tray-item[data-suggested]::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 5px solid #e39b2d;
+  border-radius: 29px;
+  pointer-events: none;
+  animation: fade-in var(--motion-standard) var(--ease-out) both;
+}
+
+.tray-picture {
+  width: 100%;
+  height: 124px;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.tray-label {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* A care result is the quiz's, with hearts for stars and the visitor,
+   tilted, as its hero. */
+.care-result-hero {
+  rotate: 6deg;
+}
+
+.result-hearts {
+  margin: 0;
+  display: flex;
+  gap: 14px;
+  line-height: 0;
+}
+
+.result-heart {
+  color: #ffffff33;
+}
+
+/* The hearts earned fill one by one. */
+.result-heart-won {
+  color: #c9583d;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+  animation-delay: calc(var(--heart) * var(--motion-stagger) * 1.5);
+}
+
+.care-result-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.friend-chip {
+  margin: 0;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 24px;
+  background: #00000033;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.friend-chip svg {
+  color: #c9583d;
+}
+
+/* Eight hearts and three buttons, one line each, need a wider column
+   than the quiz's result. */
+.care-result {
+  grid-template-columns: minmax(0, 520fr) minmax(0, 800fr);
+}
+
+.care-result .result-actions {
+  gap: 12px;
+}
+
+.care-result .play-again-button,
+.care-result .result-actions .home-button {
+  padding: 0 22px;
+  gap: 10px;
+  font-size: 22px;
+  white-space: nowrap;
+}
+
+/* Friends: the bar stays at the top while the cards, four to a row,
+   scroll under it, the first row rising in one after the other. */
+.friends {
+  padding: 40px 56px 0;
+  gap: 28px;
+}
+
+.friends-bar {
+  gap: 16px;
+}
+
+.friends-bar .friends-title {
+  padding-left: 12px;
+}
+
+.new-visitor-button {
+  flex-shrink: 0;
+  height: 56px;
+  padding: 0 20px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.friends-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding-bottom: 48px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 20px;
+}
+
+.friend-card {
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 24px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  text-align: left;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+  animation-delay: calc(var(--card) * var(--motion-stagger) * 0.75);
+}
+
+.friend-art {
+  flex-shrink: 0;
+  aspect-ratio: 317 / 200;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  background: #e6e2d9;
+}
+
+.friend-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.friend-footer {
+  padding: 14px 16px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.friend-footer svg {
+  flex-shrink: 0;
+  color: #c9583d;
+}
+
+.friend-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.no-friends {
+  flex: 1 1 0;
+  padding-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.no-friends-picture {
+  position: relative;
+  width: 420px;
+  height: min(300px, 32vh);
+}
+
+.no-friends-nest {
+  position: absolute;
+  left: 14%;
+  bottom: 0;
+  width: 72%;
+  height: 60%;
+  object-fit: contain;
+}
+
+.no-friends-bubble {
+  position: absolute;
+  left: 60%;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  color: #c9583d;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+
+.no-friends-text {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.no-friends-button {
+  padding: 0 36px;
+  font-size: 28px;
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -1627,7 +2664,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-button,
 [data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .locked-row,
+[data-theme="dark"] .more-coming-label,
 [data-theme="dark"] .progress,
 [data-theme="dark"] .dinosaur-position,
 [data-theme="dark"] .dinosaur-fact-label,
@@ -1650,7 +2687,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .locked-symbol,
+[data-theme="dark"] .more-coming-symbol,
 [data-theme="dark"] .catalogue-count,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
@@ -1684,7 +2721,7 @@ body:has(.result) footer[aria-label="Version"] {
   box-shadow: 0 18px 40px #00000066;
 }
 
-[data-theme="dark"] .locked-tile {
+[data-theme="dark"] .more-coming {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
 }
@@ -1785,4 +2822,107 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .result-actions .home-button {
   outline-color: #ffffff40;
   background: #ffffff1a;
+}
+
+/* Care's screens take the dark values in the same shapes. Words and
+   symbols on amber stay the light ink. */
+[data-theme="dark"] .care-tile,
+[data-theme="dark"] .care-mark,
+[data-theme="dark"] .new-visitor-symbol,
+[data-theme="dark"] .need[data-state="current"],
+[data-theme="dark"] .bubble-badge,
+[data-theme="dark"] .new-visitor-button {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .care-tile {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .care-best,
+[data-theme="dark"] .friend-count,
+[data-theme="dark"] .friend-face,
+[data-theme="dark"] .need,
+[data-theme="dark"] .tray-item[data-pressed],
+[data-theme="dark"] .friend-art {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .need {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .need[data-state="current"] {
+  color: #1d2742;
+}
+
+[data-theme="dark"] .new-visitor-card,
+[data-theme="dark"] .stage {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .new-visitor-card {
+  box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .new-visitor-glow,
+[data-theme="dark"] .stage-glow {
+  background: #34466e;
+}
+
+[data-theme="dark"] .knock-bubble,
+[data-theme="dark"] .need-bubble,
+[data-theme="dark"] .bubble-tail,
+[data-theme="dark"] .hearts-pop {
+  background: #181e2e;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .hearts-pop {
+  color: #e57a5d;
+}
+
+[data-theme="dark"] .hearts-pop-count {
+  color: #ece8de;
+}
+
+[data-theme="dark"] .friends-card,
+[data-theme="dark"] .needs,
+[data-theme="dark"] .hearts-counter,
+[data-theme="dark"] .tray-item,
+[data-theme="dark"] .friend-card,
+[data-theme="dark"] .no-friends-bubble {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .friends-card,
+[data-theme="dark"] .tray-item {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .tray-item[data-suggested]::after {
+  border-color: #f2b24b;
+}
+
+/* White would fade on the dark theme's lighter terracotta and green, so
+   the marks there take the dark page's ink, as the catalogue's do. */
+[data-theme="dark"] .friends-mark,
+[data-theme="dark"] .friends-symbol {
+  background: #e57a5d;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .need[data-state="met"] {
+  background: #63c98c;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .friend-count svg,
+[data-theme="dark"] .hearts-counter svg,
+[data-theme="dark"] .result-heart-won,
+[data-theme="dark"] .friend-chip svg,
+[data-theme="dark"] .friend-footer svg,
+[data-theme="dark"] .no-friends-bubble {
+  color: #e57a5d;
 }

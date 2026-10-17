@@ -1,8 +1,8 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -14,10 +14,15 @@ import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
+export const SHIPPED_VISITORS = readVisitors(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
 export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.webp`;
+
+// A care picture URL of the item's own, for tests that are not about the
+// picture files.
+export const fakeItemPicture = (name: string) => `/care/${name}.webp`;
 
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
@@ -93,6 +98,30 @@ export function pictureBrowser() {
     decoding,
     timers,
     stopped
+  };
+}
+
+export type ManualTimers = Pick<AppProps, "loadPicture" | "startTimer"> & {
+  // The length of every timer started and not yet fired or stopped.
+  timers(): number[];
+  // Fires every running timer of `ms`.
+  fire(ms: number): void;
+  // Fires the running timers, and those they start, until none is left.
+  settle(): void;
+};
+
+// Pictures loaded the moment they are asked for, and timers that fire
+// only when the test says.
+export function manualTimers(): ManualTimers {
+  const pictures = manualPictures();
+  return {
+    loadPicture: (_url, done) => done(),
+    startTimer: pictures.startTimer,
+    timers: pictures.timers,
+    fire: pictures.fire,
+    settle: () => {
+      for (let ms = pictures.timers()[0]; ms !== undefined; ms = pictures.timers()[0]) pictures.fire(ms);
+    }
   };
 }
 
@@ -175,6 +204,14 @@ export function emptyProgress() {
   return localProgress(() => storage);
 }
 
+// Care for tests that are not about it: every shipped dinosaur may
+// visit, no care progress kept yet, saving works, and the device asks for
+// full motion.
+export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemPicture" | "reducedMotion"> {
+  const storage = memoryStorage();
+  return { visitors: SHIPPED_VISITORS, careProgress: localCareProgress(() => storage), itemPicture: fakeItemPicture, reducedMotion: () => false };
+}
+
 // The language for tests that are not about it: an English device, and no
 // language chosen yet.
 export function englishDevice() {
@@ -224,6 +261,37 @@ export function mediaQueries(initial: Record<string, boolean>) {
       target.dispatchEvent(new Event("change"));
     }
   };
+}
+
+// The media query lists the app asks a browser for, none of them
+// matching: an iPad in landscape, in its light appearance, asking for full
+// motion.
+export function browserQueries() {
+  return mediaQueries({ "(orientation: portrait)": false, "(prefers-color-scheme: dark)": false, "(prefers-reduced-motion: reduce)": false });
+}
+
+export type WebpImage = { width: number; height: number; alpha: boolean };
+
+const fourCC = (bytes: Uint8Array, at: number) => String.fromCharCode(...bytes.subarray(at, at + 4));
+const uint24 = (bytes: Uint8Array, at: number) => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8) | ((bytes[at + 2] ?? 0) << 16);
+
+// The canvas size of a WebP file and whether it has alpha, from the header
+// of its first chunk: extended (VP8X), lossless (VP8L) or lossy (VP8).
+export function readWebp(bytes: Uint8Array): WebpImage {
+  if (fourCC(bytes, 0) !== "RIFF" || fourCC(bytes, 8) !== "WEBP") throw new Error("Not a WebP file");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  switch (fourCC(bytes, 12)) {
+    case "VP8X":
+      return { width: uint24(bytes, 24) + 1, height: uint24(bytes, 27) + 1, alpha: ((bytes[20] ?? 0) & 0x10) !== 0 };
+    case "VP8L": {
+      const bits = view.getUint32(21, true);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1, alpha: ((bits >>> 28) & 1) === 1 };
+    }
+    case "VP8 ":
+      return { width: view.getUint16(26, true) & 0x3fff, height: view.getUint16(28, true) & 0x3fff, alpha: false };
+    default:
+      throw new Error(`Unknown WebP chunk ${fourCC(bytes, 12)}`);
+  }
 }
 
 // A colour's red, green and blue channels, from 0 to 255, and its alpha,
@@ -339,9 +407,9 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
   }
 };
 
-// The translucent layers the design lays over the navy and the
-// terracotta in both themes.
-export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33"];
+// The translucent layers the design lays over the navy, the terracotta
+// and the amber in both themes.
+export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33", "#FFFFFF59"];
 
 // The name of the first symbol an element shows, such as "sun" or "globe".
 export function symbolOf(element: Element): string | undefined {
