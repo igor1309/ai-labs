@@ -135,7 +135,8 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 // holding its settings; a git whose worktree root of "/r" and below is
 // "/r"; the runtime wrappers' spies, bash's answering by the answer its
 // test gives, claude-code's and codex's by those it sets; the validator,
-// jsonschema's unless its test gives another; and the machine: Agister's
+// jsonschema's unless its test gives another; the sources' spy, git's root
+// "/r", holding what its test gives; and the machine: Agister's
 // environment environ, a manual clock and the signals spy.
 type runFixture struct {
 	settings  map[string]string
@@ -143,6 +144,7 @@ type runFixture struct {
 	validator call.Validator
 	signals   *signalsSpy
 	clock     *clocktest.Clock
+	sources   *sourcesSpy
 }
 
 func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
@@ -155,6 +157,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 		validator: schemaValidator{},
 		signals:   &signalsSpy{fired: make(chan os.Signal)},
 		clock:     clocktest.NewClock(runStart),
+		sources:   &sourcesSpy{root: "/r"},
 	}
 }
 
@@ -168,12 +171,29 @@ func (f *runFixture) runWatching(t *testing.T, watch signals, environment []stri
 	t.Helper()
 	var stdout, stderr strings.Builder
 	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, machine, &stdout, &stderr)
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	code := commandLine.Run(args, dir)
-	return ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
+	got := ran{stdout: stdout.String(), code: code}
+	got.progress, got.stderr = progressApart(stderr.String())
+	return got
+}
+
+// progressApart is the progress lines of stderr, each "· " and what it
+// tells, and the rest of it. A run prints its progress among whatever else
+// it prints to stderr: progress_test.go proves those lines, and every
+// other test of a run asserts the rest.
+func progressApart(stderr string) (progress, rest string) {
+	for _, line := range strings.SplitAfter(stderr, "\n") {
+		if strings.HasPrefix(line, "· ") {
+			progress += line
+		} else {
+			rest += line
+		}
+	}
+	return progress, rest
 }
 
 // printedResult is a result as cli prints it.
@@ -182,6 +202,7 @@ type printedResult struct {
 	Class    *string        `json:"class"`
 	Output   map[string]any `json:"output"`
 	Cost     *float64       `json:"cost"`
+	Reason   *string        `json:"reason"`
 	Warnings []string       `json:"warnings"`
 }
 
@@ -285,11 +306,11 @@ func TestOutsideAGitWorktreeTheRequestIsRefused(t *testing.T) {
 func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		declares    string
-		input, more string
-		files       map[string]string
-		agent       string
-		what        string
+		declares string
+		more     string
+		files    map[string]string
+		agent    string
+		what     string
 	}{
 		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn`},
 		{declares: "a recovery of 1 resume", more: "recovery: {resumes: 1, instruction: resume}\n",
@@ -298,10 +319,8 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 			agent: "claude-opus", what: `the process "say": the cost limit`},
 		{declares: `an input "prompt" from the param "what"`, more: "  prompt: {source: param, name: what}\n",
 			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name,`},
-		{declares: `an input "b" from the source "git.revision"`, more: "  b: {source: git.revision, rev: {from: params.what}}\n",
-			agent: "bash", what: `the process "say": the input "b" from the source "git.revision"`},
-		{declares: `the input "what" with the form "goal"`, input: ", form: [goal]",
-			agent: "bash", what: `the process "say": the brief form of "what"`},
+		{declares: `an input "b" from the source "git.diff"`, more: "  b: {source: git.diff, base: {from: params.what}, head: HEAD}\n",
+			agent: "bash", what: `the process "say": the input "b" from the source "git.diff"`},
 		{declares: "a workspace revision from inputs.what", more: "workspace: {revision: {from: inputs.what}}\n",
 			agent: "bash", what: `the process "say": the workspace's revision`},
 		{declares: "a workspace clean", more: "workspace: {clean: true}\n",
@@ -319,7 +338,7 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.declares, func(t *testing.T) {
 			t.Parallel()
-			files := map[string]string{"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, c.input, c.more)}
+			files := map[string]string{"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", c.more)}
 			maps.Copy(files, c.files)
 			f := newRunFixture(t, runSettings(t, files), echoes)
 			got := f.run(t, "/r", "run", "--process", "say", "--agent", c.agent, "--param", "what=hi")
@@ -343,11 +362,8 @@ func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
 	t.Parallel()
 	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r", "run", "code_review", "--param", "goal=g")
+	// Its inputs, from git.revision and file, a form named, are run now.
 	lines := []string{
-		`the workflow "code_review": the input "base" from the source "git.revision" is not run yet`,
-		`the workflow "code_review": the input "candidate" from the source "git.revision" is not run yet`,
-		`the workflow "code_review": the input "goal" from the source "file" is not run yet`,
-		`the workflow "code_review": the brief form of "goal" is not run yet`,
 		`the workflow "code_review": the item "reviews", a parallel, is not run yet`,
 		`the process "review_judge": the staleness limit is not run yet`,
 	}

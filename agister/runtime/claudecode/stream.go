@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // event is what the wrapper reads of a stream-json line.
@@ -14,8 +15,10 @@ type event struct {
 	SessionID string `json:"session_id"`
 	Message   struct {
 		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
+			Type  string          `json:"type"`
+			Text  string          `json:"text"`
+			Name  string          `json:"name"`
+			Input json.RawMessage `json:"input"`
 		} `json:"content"`
 	} `json:"message"`
 	RateLimitInfo struct {
@@ -36,8 +39,10 @@ type event struct {
 }
 
 // stream is what a turn's stream-json lines told: the session, the last
-// assistant text, whether a rate limit was rejected, and the result event.
+// assistant text, whether a rate limit was rejected, and the result event;
+// and the report each tool call is given to.
 type stream struct {
+	report   func(Tool)
 	session  string
 	lastText string
 	rejected bool
@@ -59,8 +64,11 @@ func (s *stream) line(line string) {
 		}
 	case "assistant":
 		for _, block := range e.Message.Content {
-			if block.Type == "text" && strings.TrimSpace(block.Text) != "" {
+			switch {
+			case block.Type == "text" && strings.TrimSpace(block.Text) != "":
 				s.lastText = block.Text
+			case block.Type == "tool_use":
+				s.report(Tool{Name: block.Name, Input: short(compact(block.Input))})
 			}
 		}
 	case "rate_limit_event":
@@ -73,6 +81,33 @@ func (s *stream) line(line string) {
 			s.session = e.SessionID
 		}
 	}
+}
+
+// inputLimit is the most of a tool call's input a report gives, in bytes,
+// as the archive printed it.
+const inputLimit = 300
+
+// short is text cut to inputLimit, at the start of a character, and marked
+// "…" where it was cut.
+func short(text string) string {
+	if len(text) <= inputLimit {
+		return text
+	}
+	end := inputLimit
+	for end > 0 && !utf8.RuneStart(text[end]) {
+		end--
+	}
+	return text[:end] + "…"
+}
+
+// compact is raw JSON on one line, its fields in the order written; as it
+// is where it is not JSON.
+func compact(raw json.RawMessage) string {
+	var b bytes.Buffer
+	if err := json.Compact(&b, raw); err != nil {
+		return string(raw)
+	}
+	return b.String()
 }
 
 // reply is the turn's reply, its program having ended as ended and a schema

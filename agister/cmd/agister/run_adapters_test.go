@@ -53,7 +53,7 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
 	wrappers := newRuntimesSpy(t)
 	wrappers.bash.answer = echoes
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, machine, &strings.Builder{}, &strings.Builder{})
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,26 +79,36 @@ func sayCall(prompt string) plannedCall {
 }
 
 // turnSpy is a spy of core/call's caller: it keeps each step it is asked
-// to call, and answers result.
+// to call, gives the call's report its test's tools, in order, and answers
+// result.
 type turnSpy struct {
 	result call.Result
+	tools  []call.Tool
 	steps  []call.Step
 }
 
-func (s *turnSpy) Call(_ context.Context, step call.Step) call.Result {
+func (s *turnSpy) Call(_ context.Context, step call.Step, report func(call.Tool)) call.Result {
 	s.steps = append(s.steps, step)
+	for _, tool := range s.tools {
+		report(tool)
+	}
 	return s.result
 }
+
+// discard is a report that keeps nothing, for a call whose test is not
+// about its tool calls.
+func discard(workflow.Tool) {}
 
 // A step's call is given its process's environment and inputs, resolved
 // over the params its bindings give, the inputs in the order its process
 // declares them, and its plan's time limit, and gives core/call's result
 // in core/workflow's words, a call with no usage every count of it
 // unknown; one whose inputs cannot be resolved is refused, failed, class
-// "refused", with its plan's warnings, and no turn is taken.
+// "refused", its reason core/inputs', with its plan's warnings, and no
+// turn is taken.
 func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	t.Parallel()
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +126,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"})
+	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard)
 	want := workflow.Result{Status: workflow.Completed, Output: map[string]any{"exit_code": 0},
 		Timing: workflow.Timing{Started: runStart, Ended: runStart.Add(time.Second), Duration: time.Second}, Cost: &cost, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
@@ -129,8 +139,9 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		t.Errorf("called %+v, want %+v", spy.steps, wantStep)
 	}
 
-	got = steps.Call(context.Background(), "b", map[string]string{"what": "hi"})
-	want = workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: runStart, Ended: runStart}, Warnings: []string{"w"}}
+	got = steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, discard)
+	want = workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: runStart, Ended: runStart},
+		Reason: `input "what": no source "git.revision" is plugged in`, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("b gave %+v, want %+v", got, want)
 	}
@@ -143,7 +154,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 // core/workflow's words, and a lost call ends lost.
 func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	t.Parallel()
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +165,7 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"})
+	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard)
 	want := workflow.Result{Status: "lost", Class: "no_result", Session: "s1", Reason: "exited 0",
 		Usage: workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}
 	if !reflect.DeepEqual(got, want) {
@@ -347,7 +358,9 @@ func TestATurnOnBashRunsItsPromptAsTheScript(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(context.Background(), call.Turn{Prompt: "echo", Dir: "/r", Env: []string{"A=1"}})
+			got, err := turns.Turn(context.Background(), call.Turn{Prompt: "echo", Dir: "/r", Env: []string{"A=1"}}, func(tool call.Tool) {
+				t.Errorf("bash reported %+v, want no tool call", tool)
+			})
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
@@ -533,7 +546,8 @@ func TestNewCodexSupervisedFailsWithoutPrograms(t *testing.T) {
 	}
 }
 
-// The runs take each of their collaborators, and fail without one, or with
+// The runs take each of their collaborators, each port of the sources
+// and the events among them, and fail without one, or with
 // a turn of no contract, no runtime, no inputs or a contract another turn
 // has.
 func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
@@ -549,56 +563,81 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
-	if _, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, machine); err != nil {
+	sources := (&sourcesSpy{}).sourcing()
+	events := &eventsSpy{}
+	if _, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, machine, events); err != nil {
 		t.Fatalf("runs with every collaborator: %v", err)
 	}
 	cases := map[string]func() error{
 		"home": func() error {
-			_, err := newRuns("", l, fs, roots, wrappers, tu, schemaValidator{}, machine)
+			_, err := newRuns("", l, fs, roots, wrappers, tu, schemaValidator{}, sources, machine, events)
 			return err
 		},
 		"links": func() error {
-			_, err := newRuns(home, nil, fs, roots, wrappers, tu, schemaValidator{}, machine)
+			_, err := newRuns(home, nil, fs, roots, wrappers, tu, schemaValidator{}, sources, machine, events)
 			return err
 		},
 		"turn": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, machine)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, sources, machine, events)
 			if err == nil || err.Error() != "runs: no turn" {
 				return err
 			}
-			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, machine)
+			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, sources, machine, events)
 			return err
 		},
 		"turn's inputs": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, machine)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, sources, machine, events)
 			return err
 		},
 		"context": func() error {
 			m := machine
 			m.ctx = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, m, events)
 			return err
 		},
 		"clock": func() error {
 			m := machine
 			m.clock = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, m, events)
 			return err
 		},
 		"timer": func() error {
 			m := machine
 			m.timer = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, m, events)
 			return err
 		},
 		"signals": func() error {
 			m := machine
 			m.signals = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, m)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, m, events)
 			return err
 		},
-		"wrappers":  func() error { _, err := newRuns(home, l, fs, roots, nil, tu, schemaValidator{}, machine); return err },
-		"validator": func() error { _, err := newRuns(home, l, fs, roots, wrappers, tu, nil, machine); return err },
+		"wrappers": func() error {
+			_, err := newRuns(home, l, fs, roots, nil, tu, schemaValidator{}, sources, machine, events)
+			return err
+		},
+		"validator": func() error {
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, nil, sources, machine, events)
+			return err
+		},
+		"events": func() error {
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, machine, nil)
+			return err
+		},
+	}
+	for name, without := range map[string]func(*sourcing){
+		"file texts": func(s *sourcing) { s.texts = nil },
+		"paths":      func(s *sourcing) { s.paths = nil },
+		"commits":    func(s *sourcing) { s.commits = nil },
+		"changes":    func(s *sourcing) { s.changes = nil },
+	} {
+		partial := sources
+		without(&partial)
+		cases[name] = func() error {
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, partial, machine, events)
+			return err
+		}
 	}
 	for name, build := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -609,7 +648,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 		})
 	}
 	twice := append(slices.Clone(tu), turn{contract: "bash/1", inputs: call.InMessage, runtime: turns})
-	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, machine); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
+	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, sources, machine, events); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
 		t.Errorf("runs with two turns of a contract: %v, want the error that says so", err)
 	}
 }

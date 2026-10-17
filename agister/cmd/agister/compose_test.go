@@ -35,9 +35,11 @@ func shippedHome(t *testing.T) map[string]string {
 	return shipped
 }
 
-// ran is what a command printed and its exit code.
+// ran is what a command printed and its exit code; of a run, its progress
+// lines apart from the rest of stderr.
 type ran struct {
 	stdout, stderr string
+	progress       string
 	code           int
 }
 
@@ -66,7 +68,7 @@ func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), idleHost(t), &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +274,7 @@ func TestAgisterHomeNamesHomesFolder(t *testing.T) {
 			machine := idleHost(t)
 			machine.environ = c.environ
 			var stdout, stderr strings.Builder
-			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, machine, &stdout, &stderr)
+			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), machine, &stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -329,7 +331,7 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
 		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
 	}
-	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), idleHost(t), io.Discard, io.Discard); err == nil {
 		t.Error("command line built with no links, want an error")
 	}
 }
@@ -347,7 +349,7 @@ func TestACommandLineIsBuiltWithEveryRuntimeWrapper(t *testing.T) {
 			t.Parallel()
 			wrappers := newRuntimesSpy(t).runtimes()
 			without(&wrappers)
-			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
+			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, (&sourcesSpy{}).sourcing(), idleHost(t), io.Discard, io.Discard); err == nil {
 				t.Errorf("command line built with no %s wrapper, want an error", name)
 			}
 		})

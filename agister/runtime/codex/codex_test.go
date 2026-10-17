@@ -18,8 +18,8 @@ import (
 // it is asked to run, its line function left out, and the bytes of the
 // file its --output-schema names, and why its context had ended, nil
 // where it had not; gives that function the lines its test gives, in
-// order, runs its test's hook, and gives the result and the error its test
-// gives.
+// order, counting in given those it has begun to give, runs its test's
+// hook, and gives the result and the error its test gives.
 type supervisorSpy struct {
 	lines  []string
 	result codex.Ended
@@ -28,6 +28,7 @@ type supervisorSpy struct {
 	asked  []codex.Program
 	schema []byte
 	ended  []error
+	given  int
 }
 
 func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
@@ -40,6 +41,7 @@ func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.E
 		s.schema = schema
 	}
 	for _, line := range s.lines {
+		s.given++
 		program.Line(line)
 	}
 	program.Line = nil
@@ -63,7 +65,7 @@ func wrapper(t *testing.T, spy *supervisorSpy, folder string) *codex.Wrapper {
 // reply is the reply of a turn, given schema, over spy's lines and result.
 func reply(t *testing.T, spy *supervisorSpy, schema []byte) codex.Reply {
 	t.Helper()
-	got, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: schema})
+	got, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: schema}, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,6 +114,10 @@ func failed(message string) string {
 
 func ptr[T any](v T) *T { return &v }
 
+// discard is a report that keeps nothing, for a turn whose test is not
+// about its tool calls.
+func discard(codex.Tool) {}
+
 // facts.feature, "Its facts".
 func TestItsFacts(t *testing.T) {
 	t.Parallel()
@@ -140,7 +146,7 @@ func TestATurnAsksTheSupervisorForCodexExecTheMessageOnStdin(t *testing.T) {
 	spy := &supervisorSpy{}
 	turn := codex.Turn{Message: "m", Dir: "/r", Env: []string{"goal=g"}, Instruction: "i", Model: "gpt-6.1-sol", Effort: "high",
 		Options: []string{"read-only"}, Schema: []byte("{}")}
-	if _, err := wrapper(t, spy, folder).Run(context.Background(), turn); err != nil {
+	if _, err := wrapper(t, spy, folder).Run(context.Background(), turn, discard); err != nil {
 		t.Fatal(err)
 	}
 	if len(spy.asked) != 1 {
@@ -173,7 +179,7 @@ func TestWhatIsNotGivenIsLeftOut(t *testing.T) {
 	t.Parallel()
 	folder := t.TempDir()
 	spy := &supervisorSpy{}
-	if _, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}}); err != nil {
+	if _, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}}, discard); err != nil {
 		t.Fatal(err)
 	}
 	want := []codex.Program{{Name: "codex", Stdin: "m", Args: []string{
@@ -194,7 +200,7 @@ func TestATurnIsGivenExactlyOneOption(t *testing.T) {
 			t.Parallel()
 			folder := t.TempDir()
 			spy := &supervisorSpy{}
-			got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: options, Schema: []byte("{}")})
+			got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: options, Schema: []byte("{}")}, discard)
 			if err == nil || !reflect.DeepEqual(got, codex.Result{}) {
 				t.Errorf("turn gave %+v, %v; want nothing and an error", got, err)
 			}
@@ -331,7 +337,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	t.Parallel()
 	given := codex.Ended{Signal: "killed", Stderr: codex.Stream{Head: "e", Tail: "e", Size: 1, Digest: "ed"}}
 	spy := &supervisorSpy{lines: []string{threadLine, completedLine}, result: given}
-	got, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}})
+	got, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}}, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +355,7 @@ func TestAProgramThatCouldNotStartIsTheTurns(t *testing.T) {
 			t.Parallel()
 			folder := t.TempDir()
 			spy := &supervisorSpy{err: given}
-			got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")})
+			got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")}, discard)
 			if !errors.Is(err, given) || !reflect.DeepEqual(got, codex.Result{}) {
 				t.Errorf("turn gave %+v, %v; want nothing, %v", got, err, given)
 			}
@@ -370,7 +376,7 @@ func TestASchemasFolderThatCannotBeMadeIsTheTurnsErrorAndOneNotRemovedIsLeft(t *
 		t.Parallel()
 		spy := &supervisorSpy{}
 		missing := filepath.Join(t.TempDir(), "missing")
-		got, err := wrapper(t, spy, missing).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")})
+		got, err := wrapper(t, spy, missing).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")}, discard)
 		if err == nil || !reflect.DeepEqual(got, codex.Result{}) || len(spy.asked) > 0 {
 			t.Errorf("turn gave %+v, %v, asked %+v; want nothing, an error, and nothing asked", got, err, spy.asked)
 		}
@@ -388,7 +394,7 @@ func TestASchemasFolderThatCannotBeMadeIsTheTurnsErrorAndOneNotRemovedIsLeft(t *
 				t.Error(err)
 			}
 		}}
-		got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")})
+		got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")}, discard)
 		if err != nil {
 			t.Fatalf("turn gave the error %v, want none", err)
 		}
@@ -426,7 +432,7 @@ func TestATurnsContextReachesTheSupervisor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	spy := &supervisorSpy{}
-	if _, err := wrapper(t, spy, t.TempDir()).Run(ctx, codex.Turn{Message: "m", Options: []string{"read-only"}}); err != nil {
+	if _, err := wrapper(t, spy, t.TempDir()).Run(ctx, codex.Turn{Message: "m", Options: []string{"read-only"}}, discard); err != nil {
 		t.Fatal(err)
 	}
 	if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {

@@ -322,3 +322,91 @@ Decisions, each with its reason:
   array or a string, gets `invalid_output` for it.
 - The run carries each step's session, by its name, until the record
   keeps it (ADR-011, rule 5).
+
+## Inputs and progress
+
+A step reads a file, a revision and the files a change touched, a brief
+checked against its forms, and a run tells, as it goes, what each step
+is doing. The processes `home` ships declare these, and the archive
+gave them; what they also declare, a workspace and staleness, waits
+(`backlog/run-path.md`).
+
+**`git`** gives, besides a worktree's root, in a directory: a
+revision's commit, the full id of what `git rev-parse --verify
+<rev>^{commit}` names, or an error naming the revision, with git's
+words, where it names none;
+and the files changed between two revisions, from their merge base to
+the second, as `git diff --name-only -z` lists them. Its tests run git
+in a temporary folder (ADR-009, rule 3).
+
+**`core/inputs`** checks a text input against the brief forms it names
+(ADR-010, rule 5), as the archive did: a part is found by its heading
+line, outside fenced code, up to the next heading of its level or
+above. A text takes a form where no part appears twice, each required
+part is there and not empty, a part that `reads` a text reads exactly
+it, and a part that refers to a `file` names one in back quotes, the
+first such, that exists. A text that takes none of its forms is
+refused: failed, `refused`, naming, for each form, what is wrong; a
+workflow's input refused so ends the run with that reason. Core
+knows no file: whether a path exists is a port, the composition
+answers it. A source may give its value's identity; where it gives
+none, the identity is the SHA-256 of the text, as before.
+
+**The composition** plugs in the sources:
+
+| Source | Its arguments | Its value |
+|---|---|---|
+| `param` | `name` | the param, as before |
+| `file` | `path` | the file's text |
+| `git.revision` | `rev` | the commit's full id, its identity too (ADR-001, invariant 4) |
+| `git.changed_files` | `base`, `head` | the paths, one a line, sorted as git lists them; none is a refusal |
+
+A path, a file's and a brief's reference alike, is relative to the
+launch directory, as the person typed it, or stands as given where it
+is absolute; the git sources run in the
+worktree's root. Each brief form a text input names is the brief
+document of that name in the snapshot resolve checked. A source other
+than these is refused before anything runs, as before; a brief form no
+longer is.
+
+**Progress**, best effort. A model's wrapper reports each tool call it
+recognizes in its stream, as it reads it, through a report the turn is
+given: the tool's name and a short text of what it was given, as the
+archive printed them. A line it does not recognize it skips; bash
+reports nothing. `core/call` is given the report with each call and
+passes it to the turn; `core/workflow`'s port to call a step takes it
+too, and its step names its agent. `core/workflow` reports to its
+events port, by the step's name: the step started, on its agent; each
+tool call; and the step ended, with its status, class and how long it
+took. The composition prints each to stderr as a short line, for
+example:
+
+```
+· implement: started on claude-opus
+· implement: Bash {"command":"go test ./..."}
+· implement: ended completed in 3m2s
+```
+
+The lines are for a person, not a contract: their wording, length and
+which tool calls a wrapper recognizes may change. Stdout keeps only the
+result.
+
+Decisions, each with its reason:
+
+- Progress is a line on stderr, not a record: the record is runstore's,
+  and waits (`backlog/run-path.md`); a person and the loop's logs need
+  to see a step working now.
+- Tool calls only, not text or thinking, and no format promised: the
+  archive's lines were these, and a person reading along needs no more.
+- `git.changed_files` from the merge base, as the archive gave it: a
+  review reads what the candidate changed, not what its base gained.
+- No changes is a refusal, as the archive held: a review of nothing is
+  a mistake in the request.
+- A path is relative to the launch directory: the person names a brief
+  where they stand; the run's root is git's.
+- Progress is not guarded beyond a person reading it: no test of when
+  a line appears, none of a stderr its reader has closed. Agister's
+  stderr is a terminal or a file in every use; a reader that closes it
+  early is the caller's choice.
+- A report is given with every call, never left out: core needs no
+  fallback for a call with none (ADR-009, rule 2).

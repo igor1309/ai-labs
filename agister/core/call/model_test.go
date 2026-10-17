@@ -40,7 +40,7 @@ func TestTheMessageIsEachInputThenEachDocumentInSections(t *testing.T) {
 		Environment: map[string]string{"A": "1"},
 		Inputs:      []call.Named{{Name: "goal", Text: "g"}, {Name: "brief", Text: "a\nb"}},
 		Documents:   []call.Named{{Name: "prompt", Text: "p"}},
-	})
+	}, discard)
 	want := []call.Turn{{
 		Prompt: "## goal\n\ng\n\n## brief\n\n```\na\nb\n```\n\n## prompt\n\np",
 		Dir:    "/r",
@@ -66,7 +66,7 @@ func TestATextWithANewlineIsFenced(t *testing.T) {
 			spy := &runtimeSpy{turn: replies(call.Reply{Text: "t"})}
 			modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{
 				Inputs: []call.Named{{Name: "diff", Text: c.text}},
-			})
+			}, discard)
 			if len(spy.given) != 1 || spy.given[0].Prompt != c.message {
 				t.Errorf("turns %+v, want the message %q", spy.given, c.message)
 			}
@@ -80,7 +80,7 @@ func TestTheTurnIsGivenWhatTheStepGivesOfTheModel(t *testing.T) {
 	spy := &runtimeSpy{turn: replies(call.Reply{Output: []byte(`{}`)})}
 	modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{
 		Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read", "Grep"}, Schema: []byte("s"),
-	})
+	}, discard)
 	want := []call.Turn{{
 		Dir: "/r", Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read", "Grep"}, Schema: []byte("s"),
 	}}
@@ -118,7 +118,7 @@ func TestTheReplyDecidesTheStatusAndClass(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			validator := &validatorSpy{err: c.rejects}
-			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, validator).Call(context.Background(), call.Step{Schema: c.schema})
+			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, validator).Call(context.Background(), call.Step{Schema: c.schema}, discard)
 			if got.Status != c.status || got.Class != c.class {
 				t.Errorf("ended %q, class %q; want %q, class %q", got.Status, got.Class, c.status, c.class)
 			}
@@ -165,7 +165,7 @@ func TestHowTheProgramEndedComesBeforeTheReply(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithCancel(context.Background())
 			t.Cleanup(cancel)
-			got := modelCaller(t, &runtimeSpy{turn: c.turn(cancel)}, &validatorSpy{}).Call(ctx, call.Step{})
+			got := modelCaller(t, &runtimeSpy{turn: c.turn(cancel)}, &validatorSpy{}).Call(ctx, call.Step{}, discard)
 			if got.Status != c.status || got.Class != c.class || got.Output != nil {
 				t.Errorf("ended %q, class %q, output %v; want %q, class %q, none", got.Status, got.Class, got.Output, c.status, c.class)
 			}
@@ -189,7 +189,7 @@ func TestACompletedCallsOutputIsWhatTheReplyGives(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &runtimeSpy{turn: replies(call.Reply{Text: "t", Output: []byte(`{"ok":true,"n":12345678901234567890}`)})}
-			got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{Schema: c.schema})
+			got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{Schema: c.schema}, discard)
 			if got.Status != call.Completed || !reflect.DeepEqual(got.Output, c.want) {
 				t.Errorf("ended %q, output %v; want completed, %v", got.Status, got.Output, c.want)
 			}
@@ -232,7 +232,7 @@ func TestUsageSessionAndCostAreAsTheRuntimeReportedThem(t *testing.T) {
 				spy := &runtimeSpy{turn: replies(call.Reply{
 					Text: "t", Session: "s1", Cost: &cost, Usage: u.usage, Failure: c.failure,
 				})}
-				got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{})
+				got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{}, discard)
 				if got.Session != "s1" || got.Cost == nil || *got.Cost != 0.25 {
 					t.Errorf("session %q, cost %v; want s1, 0.25", got.Session, got.Cost)
 				}
@@ -254,7 +254,7 @@ func TestUsageSessionAndCostAreAsTheRuntimeReportedThem(t *testing.T) {
 // reply.feature, "A bash call has no usage".
 func TestABashCallHasNoUsage(t *testing.T) {
 	t.Parallel()
-	got := caller(t, &runtimeSpy{turn: exits(call.Ended{Code: 0})}, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"})
+	got := caller(t, &runtimeSpy{turn: exits(call.Ended{Code: 0})}, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"}, discard)
 	printed, err := json.Marshal(got.Usage)
 	if err != nil {
 		t.Fatal(err)
@@ -284,7 +284,7 @@ func TestAFailedCallKeepsTheRuntimesReason(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, &validatorSpy{err: c.rejects}).Call(context.Background(), call.Step{Schema: c.schema})
+			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, &validatorSpy{err: c.rejects}).Call(context.Background(), call.Step{Schema: c.schema}, discard)
 			if got.Class != c.class || got.Reason != c.reason {
 				t.Errorf("class %q, reason %q; want %q, %q", got.Class, got.Reason, c.class, c.reason)
 			}
@@ -312,7 +312,7 @@ func TestAReasonIsCutTo1KiB(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, &validatorSpy{err: c.rejects}).Call(context.Background(), call.Step{Schema: c.schema})
+			got := modelCaller(t, &runtimeSpy{turn: replies(c.reply)}, &validatorSpy{err: c.rejects}).Call(context.Background(), call.Step{Schema: c.schema}, discard)
 			if got.Reason != c.want {
 				t.Errorf("reason of %d bytes, want the first %d", len(got.Reason), len(c.want))
 			}

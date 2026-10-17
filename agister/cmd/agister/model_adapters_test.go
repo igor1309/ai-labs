@@ -15,33 +15,42 @@ import (
 )
 
 // claudeCodeRunSpy is a spy of the claude-code wrapper: it keeps each turn
-// and why its context had ended, nil where it had not, and answers result
-// and err.
+// and why its context had ended, nil where it had not, gives the turn's
+// report its test's tools, in order, and answers result and err.
 type claudeCodeRunSpy struct {
 	result claudecode.Result
 	err    error
+	tools  []claudecode.Tool
 	turns  []claudecode.Turn
 	ended  []error
 }
 
-func (s *claudeCodeRunSpy) Run(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+func (s *claudeCodeRunSpy) Run(ctx context.Context, turn claudecode.Turn, report func(claudecode.Tool)) (claudecode.Result, error) {
 	s.turns = append(s.turns, turn)
 	s.ended = append(s.ended, ctx.Err())
+	for _, tool := range s.tools {
+		report(tool)
+	}
 	return s.result, s.err
 }
 
 // codexRunSpy is a spy of the codex wrapper: it keeps each turn and why
-// its context had ended, nil where it had not, and answers result and err.
+// its context had ended, nil where it had not, gives the turn's report its
+// test's tools, in order, and answers result and err.
 type codexRunSpy struct {
 	result codex.Result
 	err    error
+	tools  []codex.Tool
 	turns  []codex.Turn
 	ended  []error
 }
 
-func (s *codexRunSpy) Run(ctx context.Context, turn codex.Turn) (codex.Result, error) {
+func (s *codexRunSpy) Run(ctx context.Context, turn codex.Turn, report func(codex.Tool)) (codex.Result, error) {
 	s.turns = append(s.turns, turn)
 	s.ended = append(s.ended, ctx.Err())
+	for _, tool := range s.tools {
+		report(tool)
+	}
 	return s.result, s.err
 }
 
@@ -51,10 +60,10 @@ var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruct
 
 // A turn on claude-code runs its prompt as the message, in its context,
 // with its directory, environment, instruction, model, effort, options and
-// schema, and gives how the program ended and its reply in core's words,
-// its failure class by its name; a program ended by a signal gives no
-// reply; a program that could not start is core's ErrNotStarted, and any
-// other error passes as it is.
+// schema, and gives each tool call it reports, how the program ended and
+// its reply in core's words, its failure class by its name; a program
+// ended by a signal gives no reply; a program that could not start is
+// core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -84,12 +93,16 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			spy := &claudeCodeRunSpy{result: c.result, err: c.err}
+			spy := &claudeCodeRunSpy{result: c.result, err: c.err, tools: []claudecode.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}}
 			turns, err := newClaudeCodeTurns(spy)
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(endedContext(), modelTurn)
+			var reported []call.Tool
+			got, err := turns.Turn(endedContext(), modelTurn, func(tool call.Tool) { reported = append(reported, tool) })
+			if want := []call.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}; !reflect.DeepEqual(reported, want) {
+				t.Errorf("reported %+v, want %+v", reported, want)
+			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
@@ -107,10 +120,10 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 
 // A turn on codex runs its prompt as the message, in its context, with its
 // directory, environment, instruction, model, effort, options and schema,
-// and gives how the program ended and its reply in core's words, its
-// failure class by its name and its cost unknown; a program ended by a
-// signal gives no reply; a program that could not start is core's
-// ErrNotStarted, and any other error passes as it is.
+// and gives each tool call it reports, how the program ended and its reply
+// in core's words, its failure class by its name and its cost unknown; a
+// program ended by a signal gives no reply; a program that could not start
+// is core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -139,12 +152,16 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			spy := &codexRunSpy{result: c.result, err: c.err}
+			spy := &codexRunSpy{result: c.result, err: c.err, tools: []codex.Tool{{Name: "command", Input: "go test"}, {Name: "web_search", Input: "q"}}}
 			turns, err := newCodexTurns(spy)
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(endedContext(), modelTurn)
+			var reported []call.Tool
+			got, err := turns.Turn(endedContext(), modelTurn, func(tool call.Tool) { reported = append(reported, tool) })
+			if want := []call.Tool{{Name: "command", Input: "go test"}, {Name: "web_search", Input: "q"}}; !reflect.DeepEqual(reported, want) {
+				t.Errorf("reported %+v, want %+v", reported, want)
+			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
@@ -211,7 +228,7 @@ func TestCoreTakesTheInputsOnAModelAsItsFactsSay(t *testing.T) {
 // calls are built with a caller for every step's.
 func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 	t.Parallel()
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,10 +242,10 @@ func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}); got.Class != "auth" {
+	if got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, discard); got.Class != "auth" {
 		t.Errorf("b gave %+v, want codex's answer", got)
 	}
-	if got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}); got.Status != "completed" {
+	if got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard); got.Status != "completed" {
 		t.Errorf("a gave %+v, want bash's answer", got)
 	}
 	if len(bashSpy.steps) != 1 || bashSpy.steps[0].Prompt != "b" || len(codexSpy.steps) != 1 || codexSpy.steps[0].Prompt != "c" {

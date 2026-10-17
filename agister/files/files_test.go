@@ -94,3 +94,30 @@ func TestAFoldersPathWithItsLinksResolved(t *testing.T) {
 		t.Errorf("resolved %q, want %q", got, a)
 	}
 }
+
+// Whether a path exists: a file, a folder and a link to either do; a
+// path with nothing at it and a link that leads nowhere do not.
+//
+// Contract test: the operating system's filesystem.
+func TestWhetherAPathExists(t *testing.T) {
+	t.Parallel()
+	d := t.TempDir()
+	if err := os.WriteFile(filepath.Join(d, "f"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(d, "s"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("f", filepath.Join(d, "l")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing", filepath.Join(d, "dangling")); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]bool{"f": true, "s": true, "l": true, "missing": false, "dangling": false} {
+		got, err := files.New().Exists(filepath.Join(d, name))
+		if err != nil || got != want {
+			t.Errorf("%s exists: %v, %v; want %v, no error", name, got, err, want)
+		}
+	}
+}
