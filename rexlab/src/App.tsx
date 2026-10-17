@@ -1,8 +1,9 @@
-import { addTransitionType, startTransition, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
-import { HomePage, type LockedGame } from "./HomePage.tsx";
+import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
@@ -21,6 +22,7 @@ import {
   type RoundResult
 } from "./quiz/index.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
+import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
@@ -48,7 +50,9 @@ export type Appearance = {
   subscribe(onChange: () => void): () => void;
 };
 
-export type AppProps = {
+export type { CareProgressStore } from "./careGame.tsx";
+
+export type AppProps = CareGameProps & {
   dinosaurs: readonly Dinosaur[];
   // Every dinosaur, in the order the catalogue shows them.
   catalogue: readonly CatalogueEntry[];
@@ -69,11 +73,14 @@ export type AppProps = {
 // The two dinosaurs facing off on the home page's quiz card.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
-// The dinosaur on each locked game's tile.
-const LOCKED: Record<LockedGame, string> = { diet: "triceratops" };
-
 // The dinosaur on the catalogue's tile.
 const CATALOGUE_TILE = "stegosaurus";
+
+// The dinosaur on dinosaur care's tile.
+const CARE_TILE = "parasaurolophus";
+
+// The dinosaur on the home page's card of the games still to come.
+const MORE_COMING = "triceratops";
 
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
@@ -83,19 +90,7 @@ const HERO = "tyrannosaurus";
 // broken one does not keep the child waiting.
 const PICTURE_WAIT = 1000;
 
-// The view transition type of one screen giving way to another.
-const SCREEN_CHANGE = "screen-change";
-
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
-
-// Makes `update` a view transition of `type`, where the browser has view
-// transitions; elsewhere the screen changes at once.
-function changeScreen(type: string, update: () => void) {
-  startTransition(() => {
-    addTransitionType(type);
-    update();
-  });
-}
 
 type Screen =
   | { kind: "home" }
@@ -104,7 +99,9 @@ type Screen =
   // The id of the dinosaur whose page the child came back from, if any.
   | { kind: "catalogue"; returning: string | undefined }
   // The dinosaur's place in the catalogue.
-  | { kind: "dinosaur"; index: number };
+  | { kind: "dinosaur"; index: number }
+  // Dinosaur care, which keeps its own screens.
+  | { kind: "care" };
 
 export function App({
   dinosaurs,
@@ -118,7 +115,8 @@ export function App({
   appearance,
   themeStore,
   loadPicture,
-  startTimer
+  startTimer,
+  ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastPlay, setLastPlay] = useState<Play>();
@@ -184,6 +182,14 @@ export function App({
   const play = (move: (play: Play) => Play) =>
     setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
+
+  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
+
+  const openCare = () =>
+    changeScreen(SCREEN_CHANGE, () => {
+      care.open();
+      setScreen({ kind: "care" });
+    });
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -285,6 +291,8 @@ export function App({
           />
         );
       }
+      case "care":
+        return care.content(language);
       case "home":
         return (
           <HomePage
@@ -295,9 +303,11 @@ export function App({
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
-            locked={{ diet: bodyPicture(LOCKED.diet) }}
+            care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
+            moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
+            onCare={openCare}
           />
         );
     }

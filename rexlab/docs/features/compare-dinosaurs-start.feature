@@ -9,10 +9,11 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     When I open the home page
     Then I see a "COMPARE" quiz card with a picture of two dinosaurs
 
-  Scenario: A game still to come is shown locked
+  Scenario: The other games sit beside the quiz card
     When I open the home page
-    Then I see a locked game tile beside the "COMPARE" card, with a dinosaur and a 🔒 symbol
-    And tapping the locked tile does nothing
+    Then I see the "ALL DINOSAURS" tile and, under it, the "CARE" tile beside the "COMPARE" card
+    And beside them, in a third column, a "MORE COMING" card with a dinosaur and a 🔒 symbol
+    And tapping the "MORE COMING" card does nothing
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page

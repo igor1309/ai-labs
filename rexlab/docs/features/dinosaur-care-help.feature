@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: meeting needs
   Each need is shown in a picture bubble. A suitable item meets it; any
   other item gets a gentle reaction and another try, never a wrong mark.
@@ -60,20 +59,20 @@ Feature: Dinosaur care: meeting needs
 
   Scenario Outline: An unrelated item invites another try
     Given the dinosaur is <need>
-    And I have 2 hearts
+    And I have <hearts> hearts
     When I give it <item>
     Then it reacts gently and keeps its current need
     And the bubble now shows a suitable item to try
-    And I still have 2 hearts
+    And I still have <hearts> hearts
     And I see no cross, failure message or lost-heart animation
     And I can try another item after the reaction
 
     Examples:
-      | need    | item   |
-      | hungry  | water  |
-      | thirsty | nest   |
-      | dirty   | plants |
-      | tired   | bath   |
+      | need    | hearts | item   |
+      | hungry  | 0      | water  |
+      | thirsty | 2      | nest   |
+      | dirty   | 4      | plants |
+      | tired   | 6      | bath   |
 
   Scenario: Unsuitable food also invites a retry without taking hearts
     Given Triceratops is hungry

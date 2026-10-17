@@ -8,6 +8,7 @@ import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  emptyCare,
   englishDevice,
   fakeBodyPicture,
   lightDevice,
@@ -64,6 +65,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()}
+      {...emptyCare()}
       {...loadedPictures()}
     />
   );
