@@ -11,7 +11,8 @@ Feature: Find the pair: starting a board
   Scenario: The home page offers the game
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
-    And it is in the third column, above the "MORE COMING" card
+    And it takes the place of the "MORE COMING" card in the third column
+    And its title stays on one line
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
@@ -19,11 +20,11 @@ Feature: Find the pair: starting a board
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  # Provisional until the design locks the board sizes (LAB-280).
   Scenario Outline: Each level has its own board
     Given I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
+    And every face-down card shows the same footprints symbol
     And each pair matches <match>
     And every card is at least 150 by 150 CSS pixels
 

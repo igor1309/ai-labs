@@ -21,7 +21,7 @@ Feature: Find the pair: turning cards
     Given one card shows Triceratops
     When I turn over the other Triceratops card
     Then both cards stay open with a short happy bounce
-    And the name "TRICERATOPS" appears in large capital letters under the pair
+    And both cards get a green border and the name "TRICERATOPS" in capital letters
     And the pair counts as found
 
   Scenario: Two different cards turn back
