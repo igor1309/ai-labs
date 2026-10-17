@@ -1,8 +1,7 @@
 Feature: Sort dinosaurs: dragging cards into baskets
   A card dropped in the right basket stays there; a wrong one slides
   back with a hint. A card counts as right when its first drop on a
-  basket is on the right one; a drop away from the baskets is not a
-  drop on a basket.
+  basket is on the right one; a drop away from the baskets is none.
 
   Background:
     Given an iPad in landscape
@@ -85,7 +84,17 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then the 3 cards are still in their baskets
     And the wrong drop still counts
 
-  Scenario: Every move animates
-    When a card lands, slides back or is picked up
-    Then it moves smoothly with the shared motion tokens
+  Scenario Outline: Every change on the board animates
+    When <change>
+    Then it changes smoothly, with the shared motion tokens
     And with reduced motion it changes with a short fade
+
+    Examples:
+      | change                                    |
+      | the board enters                          |
+      | a card is picked up                       |
+      | a dragged card lights the basket under it |
+      | a card lands                              |
+      | a card slides back                        |
+      | a hint appears                            |
+      | "SEE RESULT" appears                      |

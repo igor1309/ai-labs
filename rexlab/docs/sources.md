@@ -34,7 +34,10 @@ against these sources only.
   are `false` for the plant-eaters drawn without them, Psittacosaurus,
   with its tail bristles, aside, and for the meat-eaters whose skin
   impressions show scales (Allosaurus and Carnotaurus); for the other
-  meat-eaters drawn without feathers they are `null`.
+  meat-eaters and the omnivores drawn without feathers they are `null`.
 - Size is not stored: the sorting game reads it from mass. A dinosaur
-  of 2000 kg or more is BIG, one of 100 kg or less is SMALL, and one in
-  between is never sorted by size, so no estimate decides a basket.
+  of 3000 kg or more is BIG, one of 500 kg or less is SMALL, and one in
+  between is never sorted by size. The lines sit far apart, so the whole
+  range of estimates the sources give for each shipped dinosaur lies on
+  one side of a line; a new dinosaur whose range crosses a line gets the
+  middle of its range, inside the band that is never sorted, or no size.

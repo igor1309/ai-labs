@@ -79,11 +79,13 @@ Feature: English and Russian
 
   Scenario Outline: Text for children is in capitals
     Given the app is in <language>
-    When I play a round through to the result
+    When I play a round of <game> through to the result
     Then every text on every screen is in capitals
     But the language and theme menus and the version footer, which are for parents, are not
 
     Examples:
-      | language |
-      | English  |
-      | Russian  |
+      | language | game             |
+      | English  | the compare quiz |
+      | Russian  | the compare quiz |
+      | English  | the sorting game |
+      | Russian  | the sorting game |

@@ -17,7 +17,11 @@ Feature: Sort dinosaurs: starting a round and the board
     Then a round of the sorting game starts
     And I see the prompt "SORT THE DINOSAURS"
     And I see two baskets and six dinosaur cards to sort
-    And each card shows its own dinosaur's picture and its name in capitals
+    And each card shows its own dinosaur's picture and its name, large and in capitals
+
+  Scenario: A long name fits its card
+    When a card shows a long name, such as PACHYCEPHALOSAURUS or ПАХИЦЕФАЛОЗАВР
+    Then the whole name shows on one line inside the card, as large as fits
 
   Scenario: The first board waits for its pictures
     Given I am on the home page
@@ -53,8 +57,8 @@ Feature: Sort dinosaurs: starting a round and the board
 
   Scenario: The dinosaur list can fill a board of every property
     Given the dinosaur list the app ships with
-    Then for every property it holds at least two dinosaurs for each basket
-    And at least six dinosaurs in all
+    Then for every property it holds at least six dinosaurs with a clear value
+    And at least two of them for each basket
 
   Scenario: Only clear facts are asked
     Given a dinosaur whose property the trusted sources leave unclear, or whose picture could mislead
@@ -62,16 +66,17 @@ Feature: Sort dinosaurs: starting a round and the board
     Then that dinosaur is not on the board
 
   Scenario Outline: Size sorts only clearly big or clearly small dinosaurs
-    When a round sorts by size
-    Then a dinosaur of <mass> is <place>
+    Given a dinosaur list with a dinosaur of <mass>
+    When rounds sort by size
+    Then that dinosaur <place>
 
     Examples:
-      | mass    | place               |
-      | 2000 kg | in the basket BIG   |
-      | 1999 kg | not on the board    |
-      | 101 kg  | not on the board    |
-      | 100 kg  | in the basket SMALL |
+      | mass    | place                                         |
+      | 3000 kg | belongs in the basket BIG whenever it shows   |
+      | 2999 kg | is never on the board                         |
+      | 501 kg  | is never on the board                         |
+      | 500 kg  | belongs in the basket SMALL whenever it shows |
 
   Scenario: Rounds vary
-    When I play two rounds in a row, through PLAY AGAIN or from the home page
+    When I start two rounds in a row in one visit, through PLAY AGAIN or from the home page, finished or left early
     Then the second round sorts by a different property than the first
