@@ -1,9 +1,10 @@
 # git, a wrapper (docs/run-implementation.md, "A step in a held
-# worktree"): a worktree's HEAD and whether its content is HEAD's.
+# worktree" and "Records"): a worktree's HEAD, whether its content is
+# HEAD's, and its content.
 # Contract tests against git itself, in a temporary folder (ADR-009,
 # rule 3).
 
-Feature: git gives a worktree's HEAD and whether it is clean
+Feature: git gives a worktree's HEAD, whether it is clean, and its content
 
   Scenario: HEAD is its commit
     Given a git repository at "r" whose HEAD is the commit "c1"

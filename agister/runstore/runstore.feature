@@ -9,11 +9,14 @@ Feature: runstore keeps runs
     When the record of the run "x" is written, then written again
     Then "runs/x/record.json" holds the second, given back by "x"
 
-  Scenario: A record is written whole
+  Scenario: A record is written whole, no temporary file left
     Given the record of the run "x" written once
     When it is written again
-    Then no file but "record.json" and "events.jsonl" is left in
-      "runs/x", and the record never reads as part of either
+    Then "runs/x" holds "record.json" alone, the second record whole
+
+  Scenario: Appends side by side are each a whole line
+    When 50 events are appended to the run "x" at once
+    Then "runs/x/events.jsonl" holds 50 lines, each one event whole
 
   Scenario: Events are appended, a line each, in order
     When the events "a", "b", then "c" are appended to the run "x"

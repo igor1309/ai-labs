@@ -550,38 +550,53 @@ index of its own, so the worktree's index is untouched.
 
 **`runstore`**, a wrapper, keeps runs under a folder it is given: each
 run a folder of its id holding `record.json`, written whole each time
-(a temporary file, then renamed), and `events.jsonl`, a line appended
-for each event. It gives a record back by the run's id.
+(a temporary file, then renamed; none left behind), and
+`events.jsonl`, a line appended for each event, one append at a time.
+It gives a record back by the run's id.
+
+**`core/admit`** reads the worktree's content too, and tells a port of
+its own, for each call it admits, the HEAD when admitted and the
+content at the call's end, however it ended, read before the hold is
+released. A call refused tells nothing.
 
 **The composition** gives each run an id: its start's UTC time and six
 hex characters drawn at random, as `20261017T071618Z-55fd36`, a clock
 and a source of randomness its seams. It places runs under home's
-`runs`. Once settings resolve, before anything runs, it writes the
-record, its status `lost`; at the run's end it writes it again, as the
-run ended. A request that does not resolve is not recorded; a refusal
-after it, admission's included, is. The record, schema
-`agister.record/v1alpha1`, holds:
+`runs`. Once settings resolve and the composition's own refusals, on
+stderr, are past, it writes the record, `lost`, before anything runs;
+then again as each call ends, and at the run's end as the run ended.
+Refusals in the result, inputs' and admission's, are recorded. A first
+write that fails refuses the run on stderr; a later one is a warning in
+the result. The record, schema `agister.record/v1alpha1`:
 
-- the request: the workflow, or the process and agent; the params; the
-  launch directory; the run's start and end;
-- each call: its id, the run's id and its step's name joined by `/`;
-  its step, process and agent; the worktree's root, its HEAD when
-  admitted and its content at the call's end, however it ended; its
-  provider session; its status, class and reason;
-- the run's result, as printed.
+```json
+{"schema": "agister.record/v1alpha1", "id": "<run id>",
+ "request": {"workflow": "", "process": "", "agent": "",
+   "params": {}, "dir": ""},
+ "started": "<RFC 3339>", "ended": null, "status": "lost",
+ "calls": [{"id": "<run id>/<step>", "step": "", "process": "",
+   "agent": "", "root": "", "head": "", "content": "",
+   "result": {}}],
+ "result": null}
+```
 
-Each step's start, tool call and end, as core tells them, is a line of
-`events.jsonl`: its time, step and kind, and what the event says. Steps
-side by side append their lines one at a time. The printed result
-gains `run_id`.
+A call's entry is written when it ends: its result in the printed
+result's shape, session and reason in it; `head` and `content` empty
+for a call refused before admission's facts. The run's `result` is the
+printed one. Each step's start, tool call and end, as core tells them,
+is a line of `events.jsonl`: `{"at", "step", "kind", ...}`, what the
+event says. The printed result gains `run_id`.
 
 Decisions, each with its reason:
 
 - Not yet in the record: the definitions with their digests, the
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
   the continuation needs none of them.
-- A record starts `lost` and is rewritten at the end: a run that dies
-  reads as lost, never as running (invariant 7), with no reaper.
-- Runs live under the home in use, `~/.agister-next` for the loop:
-  apart from the archive's, whose format this is not.
-- No command on runs yet: the record is a file to read.
+- A record starts `lost` and is rewritten as calls end: a run that dies
+  reads as lost, never as running (invariant 7), its ended calls kept,
+  with no reaper.
+- Runs live under the home in use: the loop's is `~/.agister-next`. Run
+  without `AGISTER_HOME`, this Agister reads the archive's home, which
+  does not resolve here; nothing is recorded there in practice.
+- No command on runs yet, and the id is printed only with the result:
+  a lost run is found by its folder's time.

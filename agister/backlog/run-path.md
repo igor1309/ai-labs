@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first six slices: continuation, the rest of the record, reaping, recovery, the rest of the model runtimes, the other operators, sources and continuation"
+description: "Backlog: the run path after its first six slices: continuation, the rest of the record, reaping, recovery, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path

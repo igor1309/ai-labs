@@ -1,7 +1,8 @@
 # core/admit (docs/run-implementation.md, "A step in a held worktree";
 # ADR-004, rules 2 and 3): a call admitted before it starts, made
-# through admit. Spies answer the worktree's facts, the hold and the call
-# (ADR-009, rule 1).
+# through admit. Spies answer the worktree's facts, the hold, the call and
+# the port told an admitted call's worktree (ADR-009, rule 1);
+# "Records" for what it tells.
 
 Feature: A call is admitted before it starts
 
@@ -41,3 +42,21 @@ Feature: A call is admitted before it starts
       | completes    |
       | fails        |
       | is cancelled |
+
+  Scenario Outline: An admitted call's worktree is told, read under its hold
+    Given the worktree's HEAD is "c1" and its content "t1" until the
+      call ends, then "t2"
+    And an admitted call, whose turn <ends>
+    When the call ends
+    Then the port is told HEAD "c1" and the content "t2", read before
+      the hold is released
+
+    Examples:
+      | ends         |
+      | completes    |
+      | is cancelled |
+
+  Scenario: A refused call's worktree is not told
+    Given a call that asks a clean worktree, and it is not clean
+    When the call is made through admit
+    Then the port is told nothing
