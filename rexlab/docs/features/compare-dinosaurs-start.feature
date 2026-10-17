@@ -1,6 +1,7 @@
 Feature: Compare dinosaurs quiz: starting a round and asking
   A child picks which of two dinosaurs is heavier or taller,
   ten questions per round, and tries to beat their best score.
+  home-tiles.feature tells how the other games' tiles stand and scroll.
 
   Background:
     Given an iPad in landscape
@@ -11,9 +12,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: The other games sit beside the quiz card
     When I open the home page
-    Then I see the "ALL DINOSAURS" tile and, under it, the "CARE" tile beside the "COMPARE" card
-    And beside them, in the next column, the "SORT" card and, under it, the "FIND THE PAIR" tile
-    And home-tiles.feature tells how the tiles stand and scroll
+    Then I see the other games' tiles beside the "COMPARE" card
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page
