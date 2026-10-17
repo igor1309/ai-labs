@@ -492,3 +492,43 @@ Decisions, each with its reason:
 - Tests that are detail, left to the implementer: a temporary folder
   for "/r", quiet from the turn's start, the end-to-end hold, a clean
   call admitted, a stale call's hold released.
+
+## Parallel steps and a join
+
+A workflow whose items include a parallel of steps runs: home's
+`code_review`, as `agister run code_review --param goal=<path>`, its
+five reviews on codex side by side, then its judge. What the archive
+also did, keeping a record of the run and its calls, waits
+(`backlog/run-path.md`).
+
+**`core/workflow`** runs a parallel (ADR-011, rule 2): it calls each
+of its steps at once, each with its own bindings, each step's start,
+tool calls and end told to the events by its own name. Once all have
+ended, the parallel's outputs are, in declaration order, each step's
+status, class and output: the class null where none, the output null
+where the step did not complete. A step that did not complete does not
+end the run: the join after it reads what there is. When the run is
+cancelled, the parallel ends it once all its steps have ended,
+interrupted, `cancelled`. Each step's cost, usage, warnings and
+session count as a step's in sequence; warnings in declaration order.
+The caller port is called from many goroutines at once, and the events
+port too.
+
+**The composition** plans a parallel's steps as it plans a step in
+sequence: each admitted and held on its own, readers sharing the
+worktree. Progress lines from steps side by side come as they come,
+each printed whole. It no longer refuses a parallel of steps; it still
+refuses, as not run yet, a parallel holding an item that is not a
+step, a parallel's own output mapping, and a field read within a
+parallel's outputs.
+
+Decisions, each with its reason:
+
+- No record of the run (ADR-011, rule 6): it is runstore's, and
+  `code_review` reads nothing from one; the run's identity waits with
+  it.
+- A parallel's outputs are read whole: the judge takes them whole, and
+  a step inside is read through the parallel (resolve's rule).
+- No cap on steps side by side: a workflow declares how many there are.
+- The loop's scripts move to this Agister when it replaces the
+  archive's; until then they run the archive's, whose result they read.
