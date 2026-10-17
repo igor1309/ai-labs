@@ -441,10 +441,10 @@ which the progress lines skip. Claude-code's and codex's tool calls are
 reported whole, cut only where printed. The watch reports the turn
 stale when the same tool call, its name and all it was given, comes
 the process's `repeated_tool_calls` times in a row, the other lines
-between them not counted; when nothing follows a tool call for its `tool_command`; or
-when nothing comes at all, from the turn's start, for its `no_event`. A
-limit not set is not watched. Its time is a clock and a timer (ADR-009,
-rule 5).
+between them not counted; when nothing follows a tool call for its
+`tool_command`; or when nothing comes at all, from the turn's start,
+for its `no_event`. A limit not set is not watched. Its time is a clock
+and a timer (ADR-009, rule 5).
 
 **`core/call`** declares its staleness port (ADR-001): given a turn's
 limits and its reports, it tells when the turn went stale and what went
