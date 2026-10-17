@@ -53,6 +53,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
+| rexlab (`rexlab/tests/*.test.ts`), typecheck, build | `rexlab-core` | the `rexlab` filter | runs |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
@@ -84,6 +85,13 @@ Notio has separate backend and frontend release units:
 - `notio-frontend-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `notio-frontend_v<version>` tags after the frontend core gate. A Notio frontend release succeeds only after the production Cloudflare Pages app renders the expected `Version` text in the browser-rendered page-version smoke check.
 
 There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
+
+## RexLab
+
+- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`.
+- `rexlab-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `rexlab_v<version>` tags. It deploys `rexlab/dist` to the Cloudflare Pages project `rexlab` and succeeds only after `https://rexlab.enoa.ai/` serves a page whose `rexlab-version` meta tag matches the tag's version.
+
+There is no trunk-push deploy path for RexLab.
 
 ## Shared Infrastructure
 

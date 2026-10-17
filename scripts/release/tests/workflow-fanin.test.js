@@ -62,6 +62,25 @@ describe('release-unit workflow fan-in', () => {
     }
   });
 
+  it('includes the RexLab deploy in release and notification fan-in', () => {
+    for (const section of [jobSection('github-release'), jobSection('notify')]) {
+      assert.ok(section.includes('deploy-rexlab'), `${sectionName(section)} missing deploy-rexlab`);
+    }
+    assert.ok(jobSection('notify').includes('deploy-rexlab=${{ needs.deploy-rexlab.result }}'));
+  });
+
+  it('requires a successful RexLab deploy before GitHub release', () => {
+    const githubRelease = jobSection('github-release');
+
+    assert.ok(githubRelease.includes("needs.verify.outputs.basename != 'rexlab'"));
+    assert.ok(githubRelease.includes("needs.deploy-rexlab.result == 'success'"));
+  });
+
+  it('releases RexLab through its own deploy workflow, not the root core job', () => {
+    assert.ok(jobSection('core').includes("needs.verify.outputs.basename != 'rexlab'"));
+    assert.ok(jobSection('deploy-rexlab').includes('uses: ./.github/workflows/rexlab-deploy.yml'));
+  });
+
   it('requires successful FolioTell TestFlight upload before GitHub release', () => {
     const githubRelease = jobSection('github-release');
 

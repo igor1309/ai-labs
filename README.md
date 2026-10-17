@@ -48,6 +48,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
 | agonara | Application | Bring-your-own-agent (BYOA) structured learning program environment. API-first backend with `/learn`/`/admin` UIs and an operator CLI as first-class clients; curated programs, learner progression, evidence of mastery |
 | nexum | Application | Private repo memory system |
+| rexlab | Web App | Dinosaur educational web app for children aged 5–7 (working name; research stage) |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
