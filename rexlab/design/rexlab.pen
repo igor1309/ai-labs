@@ -9,7 +9,7 @@
       "fill": {
         "type": "image",
         "enabled": true,
-        "url": "images/reference-pickers.webp",
+        "url": "rexlab-assets/reference-pickers.webp",
         "mode": "cover"
       },
       "width": 2980,
@@ -2576,7 +2576,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/tyrannosaurus.webp",
+                            "url": "rexlab-assets/tyrannosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -2630,7 +2630,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/brachiosaurus.webp",
+                            "url": "rexlab-assets/brachiosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -2987,7 +2987,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/tyrannosaurus.webp",
+                            "url": "rexlab-assets/tyrannosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -3041,7 +3041,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/brachiosaurus.webp",
+                            "url": "rexlab-assets/brachiosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -3599,7 +3599,7 @@
                     {
                       "type": "image",
                       "enabled": true,
-                      "url": "images/triceratops.webp",
+                      "url": "rexlab-assets/triceratops.webp",
                       "mode": "contain"
                     }
                   ],
@@ -3717,7 +3717,7 @@
                     {
                       "type": "image",
                       "enabled": true,
-                      "url": "images/velociraptor.webp",
+                      "url": "rexlab-assets/velociraptor.webp",
                       "mode": "contain"
                     }
                   ],
@@ -4627,7 +4627,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
+                        "url": "rexlab-assets/tyrannosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -4640,7 +4640,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/brachiosaurus.webp",
+                        "url": "rexlab-assets/brachiosaurus.webp",
                         "mode": "contain"
                       }
                     }
@@ -4783,7 +4783,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/stegosaurus.webp",
+                        "url": "rexlab-assets/stegosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -4864,7 +4864,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -5191,7 +5191,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
+                        "url": "rexlab-assets/tyrannosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -5204,7 +5204,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/brachiosaurus.webp",
+                        "url": "rexlab-assets/brachiosaurus.webp",
                         "mode": "contain"
                       }
                     }
@@ -5347,7 +5347,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/stegosaurus.webp",
+                        "url": "rexlab-assets/stegosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -5428,7 +5428,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -5923,7 +5923,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -6087,7 +6087,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/velociraptor.webp",
+                        "url": "rexlab-assets/velociraptor.webp",
                         "mode": "contain"
                       }
                     }
@@ -6443,7 +6443,7 @@
           "fill": {
             "type": "image",
             "enabled": true,
-            "url": "images/tyrannosaurus.webp",
+            "url": "rexlab-assets/tyrannosaurus.webp",
             "mode": "contain"
           }
         },
@@ -6976,7 +6976,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
+                        "url": "rexlab-assets/tyrannosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -6989,7 +6989,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/brachiosaurus.webp",
+                        "url": "rexlab-assets/brachiosaurus.webp",
                         "mode": "contain"
                       }
                     }
@@ -7132,7 +7132,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/stegosaurus.webp",
+                        "url": "rexlab-assets/stegosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -7213,7 +7213,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -7540,7 +7540,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
+                        "url": "rexlab-assets/tyrannosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -7553,7 +7553,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/brachiosaurus.webp",
+                        "url": "rexlab-assets/brachiosaurus.webp",
                         "mode": "contain"
                       }
                     }
@@ -7696,7 +7696,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/stegosaurus.webp",
+                        "url": "rexlab-assets/stegosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -7777,7 +7777,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -8272,7 +8272,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -8436,7 +8436,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/velociraptor.webp",
+                        "url": "rexlab-assets/velociraptor.webp",
                         "mode": "contain"
                       }
                     }
@@ -8792,7 +8792,7 @@
           "fill": {
             "type": "image",
             "enabled": true,
-            "url": "images/tyrannosaurus.webp",
+            "url": "rexlab-assets/tyrannosaurus.webp",
             "mode": "contain"
           }
         },
@@ -9272,7 +9272,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/tyrannosaurus.webp",
+                            "url": "rexlab-assets/tyrannosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -9454,7 +9454,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/triceratops.webp",
+                            "url": "rexlab-assets/triceratops.webp",
                             "mode": "contain"
                           }
                         }
@@ -9636,7 +9636,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/velociraptor.webp",
+                            "url": "rexlab-assets/velociraptor.webp",
                             "mode": "contain"
                           }
                         }
@@ -9818,7 +9818,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/brachiosaurus.webp",
+                            "url": "rexlab-assets/brachiosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10009,7 +10009,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/stegosaurus.webp",
+                            "url": "rexlab-assets/stegosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10191,7 +10191,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/ankylosaurus.webp",
+                            "url": "rexlab-assets/ankylosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10373,7 +10373,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/spinosaurus.webp",
+                            "url": "rexlab-assets/spinosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10555,7 +10555,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/diplodocus.webp",
+                            "url": "rexlab-assets/diplodocus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10746,7 +10746,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/parasaurolophus.webp",
+                            "url": "rexlab-assets/parasaurolophus.webp",
                             "mode": "contain"
                           }
                         }
@@ -10928,7 +10928,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/pachycephalosaurus.webp",
+                            "url": "rexlab-assets/pachycephalosaurus.webp",
                             "mode": "contain"
                           }
                         }
@@ -11110,7 +11110,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/iguanodon.webp",
+                            "url": "rexlab-assets/iguanodon.webp",
                             "mode": "contain"
                           }
                         }
@@ -11292,7 +11292,7 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/compsognathus.webp",
+                            "url": "rexlab-assets/compsognathus.webp",
                             "mode": "contain"
                           }
                         }
@@ -11580,7 +11580,7 @@
                   "fill": {
                     "type": "image",
                     "enabled": true,
-                    "url": "images/tyrannosaurus.webp",
+                    "url": "rexlab-assets/tyrannosaurus.webp",
                     "mode": "contain"
                   }
                 },
@@ -12151,7 +12151,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
+                        "url": "rexlab-assets/tyrannosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -12164,7 +12164,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/brachiosaurus.webp",
+                        "url": "rexlab-assets/brachiosaurus.webp",
                         "mode": "contain"
                       }
                     }
@@ -12306,7 +12306,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/stegosaurus.webp",
+                        "url": "rexlab-assets/stegosaurus.webp",
                         "mode": "contain"
                       }
                     },
@@ -12426,7 +12426,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/triceratops.webp",
+                        "url": "rexlab-assets/triceratops.webp",
                         "mode": "contain"
                       }
                     },
@@ -12498,6 +12498,2336 @@
               "fontFamily": "Lexend",
               "fontSize": 12,
               "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "oELHt",
+      "x": 1664,
+      "y": 8537,
+      "name": "Field Guide Midnight · Home — Light · Sort tile",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        36,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "dfFKK",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 760,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 1440,
+          "height": 140
+        },
+        {
+          "type": "rectangle",
+          "id": "gkY9R",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 810,
+          "name": "Strata 2",
+          "fill": "$fm-strata-2",
+          "width": 1440,
+          "height": 90
+        },
+        {
+          "type": "rectangle",
+          "id": "Q7yhl",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 856,
+          "name": "Strata 3",
+          "fill": "$fm-strata-3",
+          "width": 1440,
+          "height": 44
+        },
+        {
+          "type": "frame",
+          "id": "xIzXd",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "H5L4HA",
+              "name": "Wordmark",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kyrzW",
+                  "name": "Mark",
+                  "width": 34,
+                  "height": 34,
+                  "fill": "$fm-base",
+                  "cornerRadius": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "w35PF9",
+                      "name": "Mark Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "footprints",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "X7VhL",
+                  "name": "Wordmark Text",
+                  "fill": "$fm-ink",
+                  "content": "RexLab",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "600",
+                  "letterSpacing": -0.3
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "L1pJ43",
+              "name": "Parent Controls",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 26,
+              "gap": 8,
+              "padding": 4,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U7Xvm",
+                  "name": "Language Button",
+                  "height": 44,
+                  "cornerRadius": 22,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "hm3mr",
+                      "name": "Language Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "languages",
+                      "library": "lucide",
+                      "fill": "$fm-ink-soft"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Mmaof",
+                      "name": "Language Code",
+                      "fill": "$fm-ink-soft",
+                      "content": "EN",
+                      "fontFamily": "Lexend",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "riLL7",
+                  "name": "Theme Button",
+                  "width": 44,
+                  "height": 44,
+                  "cornerRadius": 22,
+                  "gap": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "V4kvIC",
+                      "name": "Theme Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "sun-medium",
+                      "library": "lucide",
+                      "fill": "$fm-ink-soft"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lwTk3",
+          "name": "Greeting",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "b6UIDM",
+              "name": "Greeting Title",
+              "fill": "$fm-ink",
+              "content": "PICK A GAME",
+              "fontFamily": "Lexend",
+              "fontSize": 40,
+              "fontWeight": "700",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "awNM7",
+          "name": "Games",
+          "width": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "LTotV",
+              "name": "Compare Tile",
+              "clip": true,
+              "width": 760,
+              "height": 520,
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 18
+                },
+                "blur": 40
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "b7LXRh",
+                  "name": "Tile Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    36,
+                    40,
+                    0,
+                    40
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "s4VFs",
+                      "name": "Art T-Rex",
+                      "width": 330,
+                      "height": 250,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/tyrannosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Xo5bk",
+                      "name": "Art Brachio",
+                      "width": 320,
+                      "height": 300,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/brachiosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ilC6q",
+                  "name": "Tile Footer",
+                  "width": "fill_container",
+                  "fill": "#00000026",
+                  "padding": [
+                    24,
+                    40,
+                    32,
+                    40
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Teoe2",
+                      "name": "Tile Title",
+                      "gap": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "H7eAJx",
+                          "name": "Tile Icon",
+                          "width": 60,
+                          "height": 60,
+                          "fill": "$fm-amber",
+                          "cornerRadius": 18,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Xznqr",
+                              "name": "Tile Icon Glyph",
+                              "width": 30,
+                              "height": 30,
+                              "icon": "scale",
+                              "library": "lucide",
+                              "fill": "#1D2742"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "eTg9m",
+                          "name": "Tile Label",
+                          "fill": "$fm-on-base",
+                          "content": "COMPARE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 52,
+                          "fontWeight": "700",
+                          "letterSpacing": 2
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "S37tA",
+                      "name": "Best Chip",
+                      "fill": "#FFFFFF1F",
+                      "cornerRadius": 24,
+                      "gap": 8,
+                      "padding": [
+                        10,
+                        18
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RiJMq",
+                          "name": "Best Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "trophy",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ggzLx",
+                          "name": "Best Value",
+                          "fill": "$fm-on-base",
+                          "content": "7",
+                          "fontFamily": "Lexend",
+                          "fontSize": 26,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "P2xk3O",
+              "name": "Coming Soon",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AM9Jf",
+                  "name": "Locked Tile ruler",
+                  "width": "fill_container",
+                  "height": 246,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "padding": 24,
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "P3dws2",
+                      "name": "Locked Art ruler",
+                      "opacity": 0.35,
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/stegosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t1ToDx",
+                      "name": "Locked Row ruler",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Ug2Kh",
+                          "name": "Locked Icon ruler",
+                          "width": 48,
+                          "height": 48,
+                          "fill": "$fm-surface-2",
+                          "cornerRadius": 14,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Byrc3",
+                              "name": "Locked Glyph ruler",
+                              "width": 24,
+                              "height": 24,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon",
+                          "id": "hwDX5",
+                          "name": "Lock ruler",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "lock",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V7M7AA",
+                  "name": "Sort Tile",
+                  "width": "fill_container",
+                  "height": 246,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    20,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fZ0DN",
+                      "name": "Sort Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JIVfd",
+                      "name": "Sort Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zFN7o",
+                          "name": "Sort Title",
+                          "gap": 14,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Ln2aG",
+                              "name": "Sort Icon",
+                              "width": 48,
+                              "height": 48,
+                              "fill": "$fm-terra",
+                              "cornerRadius": 14,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "jfUFg",
+                                  "name": "Sort Symbol",
+                                  "width": 26,
+                                  "height": 26,
+                                  "icon": "shapes",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "OhJTC",
+                              "name": "Sort Label",
+                              "fill": "$fm-ink",
+                              "content": "SORT",
+                              "fontFamily": "Lexend",
+                              "fontSize": 34,
+                              "fontWeight": "700",
+                              "letterSpacing": 2
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "PQSqR",
+                          "name": "Sort Best",
+                          "fill": "$fm-surface-2",
+                          "cornerRadius": 20,
+                          "gap": 8,
+                          "padding": [
+                            8,
+                            14
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "pchzE",
+                              "name": "Sort Best Icon",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$fm-amber"
+                            },
+                            {
+                              "type": "text",
+                              "id": "t15kXD",
+                              "name": "Sort Best Value",
+                              "fill": "$fm-ink",
+                              "content": "4",
+                              "fontFamily": "Lexend",
+                              "fontSize": 22,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ihp6B",
+          "layoutPosition": "absolute",
+          "x": 56,
+          "y": 868,
+          "name": "Bottom Bar",
+          "width": 1328,
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "text",
+              "id": "rRgUH",
+              "name": "Version",
+              "fill": "$fm-ink-soft",
+              "content": "v1.0.0",
+              "fontFamily": "Lexend",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "TQGIT",
+      "x": 3224,
+      "y": 8537,
+      "name": "Field Guide Midnight · Sort — Light · Dragging",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "P9SPRE",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 860,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 1440,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "RZkyY",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "RMtRP",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "m9nWuZ",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "d7hnF",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Y5Tg6o",
+              "name": "Progress",
+              "width": "fill_container",
+              "height": 10,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "l2lqq",
+                  "name": "Step 1",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "IEuzV",
+                  "name": "Step 2",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "L09nXg",
+                  "name": "Step 3",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "VFRzK",
+                  "name": "Step 4",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "s6O1kO",
+                  "name": "Step 5",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "BXs1W",
+                  "name": "Step 6",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Aivz2",
+              "name": "Counter",
+              "fill": "$fm-ink-soft",
+              "content": "2 / 6",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "d7gZc",
+          "name": "Prompt",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kJ3ym",
+              "name": "Prompt Mark",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "EhKza",
+                  "name": "Prompt Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "shapes",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "vnaCZ",
+              "name": "Prompt Text",
+              "fill": "$fm-ink",
+              "content": "SORT THE DINOSAURS",
+              "fontFamily": "Lexend",
+              "fontSize": 44,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "a12mP",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 230,
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ZTsae",
+              "name": "Empty Slot 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#1D27420A",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 2
+            },
+            {
+              "type": "frame",
+              "id": "uwYAU",
+              "name": "Tray Card TRICERATOPS",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vwkRS",
+                  "name": "Art TRICERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zxL1A",
+                      "name": "Picture TRICERATOPS",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wHB9a",
+                  "name": "Footer TRICERATOPS",
+                  "width": "fill_container",
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s6cvu",
+                      "name": "Name TRICERATOPS",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "N4URa",
+              "name": "Empty Slot 3",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#1D27420A",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 2
+            },
+            {
+              "type": "frame",
+              "id": "q0f25",
+              "name": "Tray Card DIPLODOCUS",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "RJtmq",
+                  "name": "Art DIPLODOCUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "J5kZkN",
+                      "name": "Picture DIPLODOCUS",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/diplodocus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "snWos",
+                      "layoutPosition": "absolute",
+                      "x": 10,
+                      "y": 10,
+                      "name": "Hint DIPLODOCUS",
+                      "width": 44,
+                      "height": 44,
+                      "fill": "$fm-good",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-surface",
+                      "strokeWidth": 3,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "muUB7",
+                          "name": "Hint Icon DIPLODOCUS",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SbczU",
+                  "name": "Footer DIPLODOCUS",
+                  "width": "fill_container",
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "y6fVX",
+                      "name": "Name DIPLODOCUS",
+                      "fill": "$fm-ink",
+                      "content": "DIPLODOCUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "A2eTUT",
+              "name": "Empty Slot 5",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#1D27420A",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 2
+            },
+            {
+              "type": "frame",
+              "id": "xMip2",
+              "name": "Tray Card SPINOSAURUS",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 22,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r95Br",
+                  "name": "Art SPINOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "p1u6Mr",
+                      "name": "Picture SPINOSAURUS",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "rexlab-assets/spinosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Rine6",
+                  "name": "Footer SPINOSAURUS",
+                  "width": "fill_container",
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "x5L9Yz",
+                      "name": "Name SPINOSAURUS",
+                      "fill": "$fm-ink",
+                      "content": "SPINOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xdooD",
+          "name": "Baskets",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "cdeH6",
+              "name": "Basket Plants",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 32,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 18,
+              "padding": [
+                22,
+                28
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "drgV2",
+                  "name": "Basket Label Plants",
+                  "gap": 14,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IInZd",
+                      "name": "Basket Mark Plants",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "$fm-good",
+                      "cornerRadius": 16,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "umBZj",
+                          "name": "Basket Icon Plants",
+                          "width": 30,
+                          "height": 30,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "oNYnd",
+                      "name": "Basket Text Plants",
+                      "fill": "$fm-ink",
+                      "content": "PLANTS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CKosT",
+                  "name": "Basket Cards Plants",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 14,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "EnR6y",
+                      "name": "Sorted STEGOSAURUS",
+                      "clip": true,
+                      "width": 170,
+                      "height": 150,
+                      "fill": "$fm-surface",
+                      "cornerRadius": 18,
+                      "stroke": "$fm-good",
+                      "strokeWidth": 3,
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "YtplY",
+                          "name": "Sorted Art STEGOSAURUS",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "U3My7i",
+                              "name": "Sorted Picture STEGOSAURUS",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "rexlab-assets/stegosaurus.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            {
+                              "type": "frame",
+                              "id": "zCbBh",
+                              "layoutPosition": "absolute",
+                              "x": 8,
+                              "y": 8,
+                              "name": "Sorted Mark STEGOSAURUS",
+                              "width": 32,
+                              "height": 32,
+                              "fill": "$fm-good",
+                              "cornerRadius": 16,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "X1erwk",
+                                  "name": "Sorted Check STEGOSAURUS",
+                                  "width": 20,
+                                  "height": 20,
+                                  "icon": "check",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "OZ1sd",
+                          "name": "Sorted Footer STEGOSAURUS",
+                          "width": "fill_container",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "mLO5l",
+                              "name": "Sorted Name STEGOSAURUS",
+                              "fill": "$fm-ink",
+                              "content": "STEGOSAURUS",
+                              "fontFamily": "Lexend",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "l9N2QG",
+              "name": "Basket Meat",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 32,
+              "stroke": "$fm-amber",
+              "strokeWidth": 5,
+              "layout": "vertical",
+              "gap": 18,
+              "padding": [
+                22,
+                28
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "SwSO4",
+                  "name": "Basket Label Meat",
+                  "gap": 14,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "G0Vna1",
+                      "name": "Basket Mark Meat",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "$fm-terra",
+                      "cornerRadius": 16,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "AjitA",
+                          "name": "Basket Icon Meat",
+                          "width": 30,
+                          "height": 30,
+                          "icon": "drumstick",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "pM6IF",
+                      "name": "Basket Text Meat",
+                      "fill": "$fm-ink",
+                      "content": "MEAT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "crkUz",
+                  "name": "Basket Cards Meat",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 14,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "F1SeQ",
+                      "name": "Sorted VELOCIRAPTOR",
+                      "clip": true,
+                      "width": 170,
+                      "height": 150,
+                      "fill": "$fm-surface",
+                      "cornerRadius": 18,
+                      "stroke": "$fm-good",
+                      "strokeWidth": 3,
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "cRHjH",
+                          "name": "Sorted Art VELOCIRAPTOR",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "QV16h",
+                              "name": "Sorted Picture VELOCIRAPTOR",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "rexlab-assets/velociraptor.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            {
+                              "type": "frame",
+                              "id": "sYg0R",
+                              "layoutPosition": "absolute",
+                              "x": 8,
+                              "y": 8,
+                              "name": "Sorted Mark VELOCIRAPTOR",
+                              "width": 32,
+                              "height": 32,
+                              "fill": "$fm-good",
+                              "cornerRadius": 16,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "ohfue",
+                                  "name": "Sorted Check VELOCIRAPTOR",
+                                  "width": 20,
+                                  "height": 20,
+                                  "icon": "check",
+                                  "library": "lucide",
+                                  "fill": "#FFFFFF"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "mpJZN",
+                          "name": "Sorted Footer VELOCIRAPTOR",
+                          "width": "fill_container",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Z9JgRn",
+                              "name": "Sorted Name VELOCIRAPTOR",
+                              "fill": "$fm-ink",
+                              "content": "VELOCIRAPTOR",
+                              "fontFamily": "Lexend",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "h1QRz",
+          "layoutPosition": "absolute",
+          "x": 900,
+          "y": 430,
+          "name": "Dragged Card TYRANNOSAURUS",
+          "rotation": -6.000000000000001,
+          "clip": true,
+          "width": 200,
+          "height": 220,
+          "fill": "$fm-surface",
+          "cornerRadius": 22,
+          "stroke": "$fm-amber",
+          "strokeWidth": 3,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#1D274259",
+            "offset": {
+              "x": 0,
+              "y": 22
+            },
+            "blur": 36
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kMKPI",
+              "name": "Dragged Art",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "aaPfJ",
+                  "name": "Dragged Picture",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "rexlab-assets/tyrannosaurus.webp",
+                    "mode": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "V5rnk",
+              "name": "Dragged Footer",
+              "width": "fill_container",
+              "padding": [
+                12,
+                14
+              ],
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Zux6m",
+                  "name": "Dragged Name",
+                  "fill": "$fm-ink",
+                  "content": "TYRANNOSAURUS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uXCVK",
+          "layoutPosition": "absolute",
+          "x": 1050,
+          "y": 600,
+          "name": "Hand",
+          "width": 44,
+          "height": 44,
+          "fill": "#1D274233",
+          "cornerRadius": 22,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "E5bhy3",
+              "name": "Hand Icon",
+              "width": 26,
+              "height": 26,
+              "icon": "hand",
+              "library": "lucide",
+              "fill": "$fm-ink"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "P1WFm",
+      "x": 4784,
+      "y": 8537,
+      "name": "Field Guide Midnight · Sort — Basket symbols",
+      "theme": {
+        "mode": "light"
+      },
+      "width": 1440,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "text",
+          "id": "Qp4ak",
+          "name": "Sheet Title",
+          "fill": "$fm-ink",
+          "content": "BASKETS",
+          "fontFamily": "Lexend",
+          "fontSize": 44,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "DxQoG",
+          "name": "Row 1",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "TIBsW",
+              "name": "Basket TWO LEGS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bAhOm",
+                  "name": "Mark TWO LEGS",
+                  "width": 92,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 4,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "a6NxH3",
+                      "name": "Number TWO LEGS",
+                      "fill": "#FFFFFF",
+                      "content": "2",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qFgbK",
+                      "name": "Icon Box TWO LEGS",
+                      "width": 26,
+                      "height": 26,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "ejU7a",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon TWO LEGS",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Ef6MT",
+                  "name": "Label TWO LEGS",
+                  "fill": "$fm-ink",
+                  "content": "TWO LEGS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LWv0s",
+              "name": "Basket FOUR LEGS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "O2X1nr",
+                  "name": "Mark FOUR LEGS",
+                  "width": 92,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 4,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hQicI",
+                      "name": "Number FOUR LEGS",
+                      "fill": "#FFFFFF",
+                      "content": "4",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "i3rIHa",
+                      "name": "Icon Box FOUR LEGS",
+                      "width": 26,
+                      "height": 26,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "z44Yjk",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon FOUR LEGS",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qWJQP",
+                  "name": "Label FOUR LEGS",
+                  "fill": "$fm-ink",
+                  "content": "FOUR LEGS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Xgy2S",
+          "name": "Row 2",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "AxrvV",
+              "name": "Basket PLANTS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "X0sf8t",
+                  "name": "Mark PLANTS",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-good",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CnjAW",
+                      "name": "Icon Box PLANTS",
+                      "width": 32,
+                      "height": 32,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "uK2zB",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon PLANTS",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "vWieS",
+                  "name": "Label PLANTS",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JUeRl",
+              "name": "Basket MEAT",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "C1KOKg",
+                  "name": "Mark MEAT",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "M9NCuv",
+                      "name": "Icon Box MEAT",
+                      "width": 32,
+                      "height": 32,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "N00W2V",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon MEAT",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "drumstick",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Z0J0T5",
+                  "name": "Label MEAT",
+                  "fill": "$fm-ink",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nZOmt",
+          "name": "Row 3",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "GifnR",
+              "name": "Basket BIG",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nzj8c",
+                  "name": "Mark BIG",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PHl9T",
+                      "name": "Icon Box BIG",
+                      "width": 40,
+                      "height": 40,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "KLw6M",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon BIG",
+                          "width": 40,
+                          "height": 40,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "i1XDDB",
+                  "name": "Label BIG",
+                  "fill": "$fm-ink",
+                  "content": "BIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fqm4P",
+              "name": "Basket SMALL",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Xm6Lk",
+                  "name": "Mark SMALL",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "BEeTW",
+                      "name": "Icon Box SMALL",
+                      "width": 20,
+                      "height": 20,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "brp3i",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon SMALL",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "MiImT",
+                  "name": "Label SMALL",
+                  "fill": "$fm-ink",
+                  "content": "SMALL",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tFHmp",
+          "name": "Row 4",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "g79mNX",
+              "name": "Basket HORNS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ImczI",
+                  "name": "Mark HORNS",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "K3yv7E",
+                      "name": "Horn Box HORNS",
+                      "width": 34,
+                      "height": 34,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "OfXhN",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Horn HORNS",
+                          "geometry": "M4 20c2-8 6-14 15-17-4 5-6 10-7 17z",
+                          "viewBox": [
+                            0,
+                            0,
+                            24,
+                            24
+                          ],
+                          "fill": "#00000000",
+                          "width": 34,
+                          "height": 34,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 2.2,
+                          "strokeLinejoin": "round"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "MKIrz",
+                  "name": "Label HORNS",
+                  "fill": "$fm-ink",
+                  "content": "HORNS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DxHkr",
+              "name": "Basket NO HORNS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OmfBK",
+                  "name": "Mark NO HORNS",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-terra",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gztCi",
+                      "name": "Horn Box NO HORNS",
+                      "width": 34,
+                      "height": 34,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "PtK1g",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Horn NO HORNS",
+                          "geometry": "M4 20c2-8 6-14 15-17-4 5-6 10-7 17z",
+                          "viewBox": [
+                            0,
+                            0,
+                            24,
+                            24
+                          ],
+                          "fill": "#00000000",
+                          "width": 34,
+                          "height": 34,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 2.2,
+                          "strokeLinejoin": "round"
+                        },
+                        {
+                          "type": "path",
+                          "id": "Sw0At",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Slash NO HORNS",
+                          "geometry": "M3 3l18 18",
+                          "viewBox": [
+                            0,
+                            0,
+                            24,
+                            24
+                          ],
+                          "width": 34,
+                          "height": 34,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 3,
+                          "strokeLinecap": "round"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "wTHA6",
+                  "name": "Label NO HORNS",
+                  "fill": "$fm-ink",
+                  "content": "NO HORNS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uMjNL",
+          "name": "Row 5",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "AqKjg",
+              "name": "Basket FEATHERS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "v6O0c",
+                  "name": "Mark FEATHERS",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "xIdiw",
+                      "name": "Icon Box FEATHERS",
+                      "width": 32,
+                      "height": 32,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Z47s3",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon FEATHERS",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "feather",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "P2ewQ",
+                  "name": "Label FEATHERS",
+                  "fill": "$fm-ink",
+                  "content": "FEATHERS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dtlRC",
+              "name": "Basket NO FEATHERS",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 2,
+              "gap": 16,
+              "padding": [
+                0,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "X5KkT",
+                  "name": "Mark NO FEATHERS",
+                  "width": 64,
+                  "height": 64,
+                  "fill": "$fm-base",
+                  "cornerRadius": 18,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QlzmH",
+                      "name": "Icon Box NO FEATHERS",
+                      "width": 32,
+                      "height": 32,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Xgunp",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Icon NO FEATHERS",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "feather",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "path",
+                          "id": "OmSfM",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Slash NO FEATHERS",
+                          "geometry": "M2 2l20 20",
+                          "viewBox": [
+                            0,
+                            0,
+                            24,
+                            24
+                          ],
+                          "width": 32,
+                          "height": 32,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 3,
+                          "strokeLinecap": "round"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Y3zv3",
+                  "name": "Label NO FEATHERS",
+                  "fill": "$fm-ink",
+                  "content": "NO FEATHERS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
             }
           ]
         }
@@ -14098,7 +16428,421 @@
           }
         }
       ]
+    },
+    "fc-bg": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F7ECDD",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1B1311",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#1B1311",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-surface": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFAF2",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#271C19",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#271C19",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-surface-2": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#EFDFCA",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#362722",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#362722",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-ink": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3B201A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F6EADB",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#F6EADB",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-ink-soft": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#7A5E52",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#B8A193",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#B8A193",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-line": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3B201A1F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F6EADB1F",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#F6EADB1F",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-base": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#1F6B66",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1D5E5A",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#1D5E5A",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-on-base": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFF8EC",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFF7EA",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#FFF7EA",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-amber": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E8A21E",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFC23D",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#FFC23D",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-on-amber": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3B201A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A1612",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#2A1612",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-terra": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D0603F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F0805E",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#F0805E",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-sky": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#9FCFC8",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2E6E6A",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#2E6E6A",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-strata-1": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#EFD9C0",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A1B16",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#2A1B16",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-strata-2": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E6C9A9",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#38231A",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#38231A",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-strata-3": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#DBB693",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#4A2D1F",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#4A2D1F",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-good": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#2E7D4F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#6AD39A",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#6AD39A",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-bad": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#B83B2B",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FF8F7A",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#FF8F7A",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
+    },
+    "fc-shadow": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#5A2E1A26",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#00000073",
+          "theme": {
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#00000073",
+          "theme": {
+            "mode": "dusk"
+          }
+        }
+      ]
     }
   },
-  "fileToken": "eaeae323-dfc9-4a12-97f6-3016870ee72b"
+  "fileToken": "05274acc-3fcb-4ba2-9bef-2f2b1ba4bf59"
 }
