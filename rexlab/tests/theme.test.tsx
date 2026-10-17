@@ -7,7 +7,8 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
-import { endReaction, meets, missesFor, needAsked, trayItem, visitorShown } from "./care.ts";
+import { NEEDS } from "../src/care/index.ts";
+import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
   OVERLAYS,
@@ -127,83 +128,168 @@ function expectScreenIn(theme: Theme) {
   ).toEqual([]);
 }
 
-// Checks every screen in every state: the home page with each menu closed
-// and open, the portrait gate, a whole round, each question before and
-// after its answer, the first one wrong so both marks show, the result with
-// its celebration, the home page again, the catalogue with a card of each
-// food type, and a page of each; then care's welcome, its friends with
-// none yet, a visit with each need asked, refused, suggested, met with
-// hearts and the visitor dancing away, its result with its celebration,
-// and the friend made.
-async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: ManualOrientation, timers: ManualTimers) {
+// What a walk over screens is given: the theme each screen is to be in,
+// and the app it walks, opened on the home page.
+type Walk = { theme: Theme; user: UserEvent; orientation: ManualOrientation; timers: ManualTimers };
+
+const unchecked = () => {};
+
+async function home({ theme }: Walk) {
   expectScreenIn(theme);
+}
+
+async function menus({ theme, user }: Walk) {
   for (const menu of ["Theme", "Language"]) {
     await openMenu(user, menu);
     expectScreenIn(theme);
     await user.click(outsideMenu());
   }
+}
+
+async function portraitGate({ theme, orientation }: Walk) {
   act(() => orientation.turn("portrait"));
   expectScreenIn(theme);
-  act(() => orientation.turn("landscape"));
+}
 
-  await user.click(screen.getByRole("button", { name: "COMPARE" }));
-  for (let number = 1; number <= 10; number++) {
-    expectScreenIn(theme);
+// Answers the round's questions `from` to `to`, the first one wrong so
+// both marks show, with `check` before and after each answer.
+async function answer(user: UserEvent, from: number, to: number, check: () => void) {
+  for (let number = from; number <= to; number++) {
+    check();
     const question = shownQuestion();
     await user.click(cardOf(number === 1 ? smallerOf(question) : largerOf(question)));
-    expectScreenIn(theme);
+    check();
     await user.click(screen.getByRole("button", { name: number < 10 ? "NEXT" : "SEE RESULT" }));
   }
+}
+
+// Questions `from` to `to`, those before them answered unchecked.
+const questions =
+  (from: number, to: number) =>
+  async ({ theme, user }: Walk) => {
+    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await answer(user, 1, from - 1, unchecked);
+    await answer(user, from, to, () => expectScreenIn(theme));
+  };
+
+async function quizResult({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "COMPARE" }));
+  await answer(user, 1, 10, unchecked);
   expect(screen.getByRole("status")).toBeDefined();
   expectScreenIn(theme);
 
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expectScreenIn(theme);
+}
 
+async function catalogueList({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
   expectScreenIn(theme);
+}
+
+async function cataloguePages({ theme, user }: Walk) {
   for (const name of ["Tyrannosaurus", "Triceratops", "Gallimimus"]) {
+    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
     await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name }));
     expectScreenIn(theme);
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
   }
-  await user.click(screen.getByRole("button", { name: "HOME" }));
+}
 
+async function careWelcome({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "CARE" }));
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "FRIENDS" }));
   expectScreenIn(theme);
-  await user.click(screen.getByRole("button", { name: "BACK" }));
+}
+
+// The visit's needs from the `from`th to the `to`th, each asked, refused,
+// suggested and met with hearts, those before them met unchecked, and the
+// visitor dancing away after the last.
+const visit =
+  (from: number, to: number) =>
+  async ({ theme, user, timers }: Walk) => {
+    await user.click(screen.getByRole("button", { name: "CARE" }));
+    await user.click(screen.getByRole("button", { name: "NEW VISITOR" }));
+    for (let number = 1; number < from; number++) await meetNeed(user, timers, true);
+    for (let number = from; number <= to; number++) {
+      const need = needAsked();
+      if (need === undefined) throw new Error(`No need ${number} is asked`);
+      expectScreenIn(theme);
+      const visitor = visitorShown();
+      await user.click(trayItem(missesFor(visitor, need)));
+      expectScreenIn(theme);
+      endReaction(timers);
+      expectScreenIn(theme);
+      await user.click(trayItem(meets(visitor, need)));
+      expectScreenIn(theme);
+      endReaction(timers);
+    }
+    if (to < NEEDS.length) return;
+    expect(document.querySelector(".stage[data-leaving]")).not.toBeNull();
+    expectScreenIn(theme);
+  };
+
+async function careResult({ theme, user, timers }: Walk) {
+  await user.click(screen.getByRole("button", { name: "CARE" }));
   await user.click(screen.getByRole("button", { name: "NEW VISITOR" }));
-  for (let need = needAsked(); need !== undefined; need = needAsked()) {
-    expectScreenIn(theme);
-    const visitor = visitorShown();
-    await user.click(trayItem(missesFor(visitor, need)));
-    expectScreenIn(theme);
-    endReaction(timers);
-    expectScreenIn(theme);
-    await user.click(trayItem(meets(visitor, need)));
-    expectScreenIn(theme);
-    endReaction(timers);
-  }
-  expect(document.querySelector(".stage[data-leaving]")).not.toBeNull();
-  expectScreenIn(theme);
-  endReaction(timers);
+  await playVisit(user, timers, NEEDS);
   expect(screen.getByRole("status")).toBeDefined();
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "FRIENDS" }));
   expect(within(screen.getByRole("group", { name: "FRIENDS" })).getAllByRole("button")).toHaveLength(1);
   expectScreenIn(theme);
-  await user.click(screen.getByRole("button", { name: "HOME" }));
 }
 
-describe("the System theme", () => {
-  it.each(["light", "dark"] as const)("follows the device appearance %s on every screen", async (appearance) => {
-    const orientation = manualOrientation("landscape");
-    const timers = manualTimers();
-    const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
+// Every screen in every state, by group, each part of a group walked from
+// a newly opened app: one walk over them all outlasts a test's time limit
+// on CI.
+const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>]>]> = [
+  [
+    "the home page and its menus",
+    [
+      ["the home page", home],
+      ["each menu open", menus],
+      ["the portrait gate", portraitGate]
+    ]
+  ],
+  [
+    "the quiz and its result",
+    [
+      ["questions 1 to 4 before and after their answers, the first one wrong so both marks show", questions(1, 4)],
+      ["questions 5 to 7 before and after their answers", questions(5, 7)],
+      ["questions 8 to 10 before and after their answers", questions(8, 10)],
+      ["the result with its celebration, and the home page again", quizResult]
+    ]
+  ],
+  [
+    "the catalogue",
+    [
+      ["the list with a card of each food type", catalogueList],
+      ["a page of each food type", cataloguePages]
+    ]
+  ],
+  [
+    "care",
+    [
+      ["the welcome, and the friends with none yet", careWelcome],
+      ["a visit's first two needs, each asked, refused, suggested and met with hearts", visit(1, 2)],
+      ["a visit's last two needs, each asked, refused, suggested and met with hearts, and the visitor dancing away", visit(3, NEEDS.length)],
+      ["the result with its celebration, and the friend made", careResult]
+    ]
+  ]
+];
 
-    await expectEveryScreenIn(appearance, user, orientation, timers);
+describe("the System theme", () => {
+  describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
+    describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
+      it.each(parts)("%s", async (_, walk) => {
+        const orientation = manualOrientation("landscape");
+        const timers = manualTimers();
+        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
+
+        await walk({ theme: appearance, user, orientation, timers });
+      });
+    });
   });
 
   it.each([

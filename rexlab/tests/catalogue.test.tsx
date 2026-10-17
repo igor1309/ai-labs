@@ -192,18 +192,25 @@ describe("a dinosaur's page", () => {
     expect(position()).toBe("1 / 30");
   });
 
-  it("shows each dinosaur's own description and food, and its place in the list", async () => {
+  // A third of the list to a test, each walked by the arrow from its first
+  // dinosaur's card: one walk over the whole list outlasts a test's time
+  // limit on CI.
+  it.each([
+    [1, 10],
+    [11, 20],
+    [21, 30]
+  ])("shows each dinosaur's own description and food, and its place in the list, from the %ith to the %ith", async (first, last) => {
     const user = openApp();
-    await openPage(user, "tyrannosaurus");
+    await openPage(user, SHIPPED_CATALOGUE[first - 1]?.id ?? "");
 
-    for (const dinosaur of SHIPPED_CATALOGUE) {
+    for (const dinosaur of SHIPPED_CATALOGUE.slice(first - 1, last)) {
       expect(pageName()).toBe(dinosaur.name.en.toUpperCase());
       expect(document.querySelector(".dinosaur-description")?.textContent).toBe(dinosaur.description.en);
       expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe(TEXTS.en.diets[dinosaur.diet]);
       expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 30`);
       await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
-    expect(position()).toBe("1 / 30");
+    expect(position()).toBe(`${(last % 30) + 1} / 30`);
   });
 
   it("has arrows to the previous and next dinosaur, each a tap target of at least 44 by 44", async () => {
