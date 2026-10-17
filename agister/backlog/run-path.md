@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first seven slices: a binding continuing a session, the rest of the record, reaping, recovery, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first eight slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -12,8 +12,9 @@ runtime") a step on claude-code or codex; the third ("Inputs and
 progress") the file and git sources, brief forms, and a run's progress
 on stderr; the fourth ("A step in a held worktree") admission, holds
 and staleness; the fifth ("Parallel steps and a join") a parallel of
-steps and the join after it; the sixth ("Records") a run's record; the seventh ("Continuation")
-`--continue`.
+steps and the join after it; the sixth ("Records") a run's record; the seventh
+("Continuation") `--continue`; the eighth ("Recovery") a stale turn
+resumed.
 What it leaves out, roughly in the
 order it is needed:
 
@@ -27,14 +28,13 @@ order it is needed:
   what left a program's group, which the supervisor reads no longer
   than the grace and does not yet end.
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
-  turn on pi; recovery; skills
+  turn on pi; skills
   given to a turn; codex's cost through `ccusage`; the version warning
   (ADR-003, rule 8), from the version the turn reports; a cost limit.
 - **Staleness on bash**: the no-event limit on every runtime (ADR-012,
   rule 6), bash's lines reported as the models' are.
-- **Recovery**: a recovery turn resuming a stale call's session
-  (ADR-006, rule 3); the worktree's changes recorded at a call's end
-  (ADR-004, rule 4), with the record.
+- **The worktree's changes** recorded at a call's end (ADR-004, rule
+  4), with the record.
 - **Operators**: a parallel of more than steps, and a field read
   within its outputs; branch, bounded
   repetition, a child workflow (ADR-011, rule 2); conditions.

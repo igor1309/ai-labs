@@ -688,3 +688,48 @@ Decisions, each with its reason:
   longer resumes them is a settings change a later run meets.
 - A name an input shares with `continuation` is not refused: no
   process names one so.
+
+## Recovery
+
+A stale turn with a resume left is followed by a recovery turn in its
+session (ADR-006, rules 3 to 5), where it used to end the call.
+
+**claude-code and codex** give the session their stream reported for
+a turn a signal ended too, read as it came: claude-code's from its
+first line that names one, codex's from `thread.started`.
+
+**`core/call`** takes a step's recovery: its budget of resumes, none
+by default, and its instruction. When a turn goes stale, the call has
+a resume left, the turn's session is known, and the same thing has not
+gone stale before in this call, the call makes a recovery turn: the
+turn as the step gives it, but in that session, its message the
+instruction, a blank line, then what went stale; watched anew, under
+the call's one time limit. Otherwise the call ends as a stale turn
+ends it (rule 2). What follows a recovery turn follows it as it would
+any turn, another recovery included. The call's cost and usage are
+its turns', summed, as reported; its session the latest reported. It
+reports each stale turn, what went stale and whether a recovery turn
+follows, among a turn's reports.
+
+**The composition** gives core a process's recovery, no longer
+refusing it on a model. A stale turn is a progress line, `· <step>:
+stale: <what>`, with `; recovering` where a recovery turn follows, and
+an event:
+
+```json
+{"at": "", "step": "a", "kind": "stale", "what": "", "recovering": true}
+```
+
+**home**'s `implement` gets a recovery of one resume.
+
+Decisions, each with its reason:
+
+- The record keeps a stale turn as an event, not in `record.json`:
+  events are the run's history, and the result's shape does not change
+  (rule 5).
+- "The same thing" is the same words of what went stale: the watch
+  names the tool call, the command or the quiet.
+- No cost is left to check: no cost limit is run yet.
+- No end-to-end recovery: a turn made stale on purpose costs minutes
+  of a real model; the wrappers' contract tests and core's spies
+  carry it.
