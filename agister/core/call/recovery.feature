@@ -24,17 +24,30 @@ Feature: A stale turn is followed by a recovery turn
       last report of a stale turn not recovering
 
     Examples:
-      | recovery  | turns                                                 | made     |
-      | none      | once, on "no event for 21m"                           | one turn |
-      | 1 resume  | twice, on "no event for 21m", then "Bash ran over 1m" | 2 turns  |
-      | 2 resumes | twice, each on "no event for 21m"                     | 2 turns  |
-      | 1 resume  | once, its turn having reported no session             | one turn |
+      | recovery  | turns                                                                      | made     |
+      | none      | once, on "no event for 21m"                                                | one turn |
+      | 1 resume  | twice, on "no event for 21m", then "the tool command \"Bash\" ran over 1m" | 2 turns  |
+      | 2 resumes | twice, each on "no event for 21m"                                          | 2 turns  |
+      | 1 resume  | once, its turn having reported no session                                  | one turn |
 
-  Scenario: A recovered call's cost and usage are its turns', summed
-    Given a model step whose first turn goes stale, reporting no cost,
-      and whose recovery turn completes, its cost 0.5 and input tokens 10
+  Scenario Outline: A recovered call's cost and usage are its turns'
+    Given a model step whose first turn goes stale, its cost <first> and
+      input tokens 4, and whose recovery turn completes, its cost 0.5
+      and input tokens 10
     When the call is made
-    Then the call's cost is 0.5 and its input tokens 10
+    Then the call's cost is <cost>, and its input tokens 14
+
+    Examples:
+      | first   | cost    |
+      | 0.25    | 0.75    |
+      | unknown | unknown |
+
+  Scenario: A recovery turn that reports another session fails the call
+    Given a model step whose first turn reports the session "s1", then
+      goes stale, and whose recovery turn reports the session "s2"
+    When the call is made
+    Then it ends failed, class "runtime_error", the reason that the
+      turn reported the session "s2", not "s1"
 
   Scenario: The call's time limit spans its turns
     Given a model step of the time limit 10m, whose first turn goes stale

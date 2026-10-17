@@ -698,18 +698,28 @@ session (ADR-006, rules 3 to 5), where it used to end the call.
 a turn a signal ended too, read as it came: claude-code's from its
 first line that names one, codex's from `thread.started`.
 
-**`core/call`** takes a step's recovery: its budget of resumes, none
-by default, and its instruction. When a turn goes stale, the call has
-a resume left, the turn's session is known, and the same thing has not
-gone stale before in this call, the call makes a recovery turn: the
+**`core/call`**'s runtime protocol grows: a turn's end carries the
+session its runtime reported outside the reply, so a turn a signal ended
+gives it too. Core/call takes a step's recovery: its budget of resumes,
+none by default, and its instruction. When a turn goes stale, the call
+has a resume left, the turn's session is known, and the same thing has
+not gone stale before in this call, the call makes a recovery turn: the
 turn as the step gives it, but in that session, its message the
-instruction, a blank line, then what went stale; watched anew, under
-the call's one time limit. Otherwise the call ends as a stale turn
-ends it (rule 2). What follows a recovery turn follows it as it would
-any turn, another recovery included. The call's cost and usage are
-its turns', summed, as reported; its session the latest reported. It
-reports each stale turn, what went stale and whether a recovery turn
-follows, among a turn's reports.
+instruction, a blank line, then what went stale; watched anew, under the
+call's one time limit. Otherwise the call ends as a stale turn ends it
+(rule 2). What follows a recovery turn follows it as it would any turn,
+another recovery included. A recovery turn that reports a session other
+than the one it resumed fails the call, `runtime_error`, as a
+continuation's does. The call's usage is its turns', summed, as
+reported; its cost the same, but unknown where any turn reported none
+(ADR-001, invariant 3), as a turn a stale end cut short does. Its report
+grows: besides a tool call, a stale turn, what went stale and whether a
+recovery turn follows.
+
+**`core/workflow`** gives a call's stale report to its events port,
+which grows a stale event, by the step's name, as it gives a tool
+call. **`runstore`**'s event grows the kind `stale`, with `what` and
+`recovering`.
 
 **The composition** gives core a process's recovery, no longer
 refusing it on a model. A stale turn is a progress line, `· <step>:
@@ -720,16 +730,21 @@ an event:
 {"at": "", "step": "a", "kind": "stale", "what": "", "recovering": true}
 ```
 
-**home**'s `implement` gets a recovery of one resume.
+**home**'s `implement` gets a recovery of one resume, its instruction
+"Your last turn was ended: it stopped making progress, as said below.
+Its work is in the worktree. Go on with the task another way."
 
 Decisions, each with its reason:
 
 - The record keeps a stale turn as an event, not in `record.json`:
   events are the run's history, and the result's shape does not change
   (rule 5).
-- "The same thing" is the same words of what went stale: the watch
-  names the tool call, the command or the quiet.
+- "The same thing" is the same words of what went stale: the same
+  words make the same message, which tells the agent nothing new
+  (rule 4). The watch names a tool, not what it was given, so two
+  hung `Bash` commands are one thing; with home's one resume, it does
+  not matter.
 - No cost is left to check: no cost limit is run yet.
-- No end-to-end recovery: a turn made stale on purpose costs minutes
-  of a real model; the wrappers' contract tests and core's spies
-  carry it.
+- End to end, a turn made stale in seconds, by a tool command limit
+  of a few seconds and a prompt that sleeps, proves that each runtime
+  resumes a session whose program was ended mid-tool.

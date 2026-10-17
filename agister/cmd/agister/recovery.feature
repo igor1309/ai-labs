@@ -23,4 +23,6 @@ Feature: The composition recovers a stale turn
 
   Scenario: home's implement recovers once
     When home's process "implement" is read, as shipped
-    Then its recovery is 1 resume
+    Then its recovery is 1 resume, its instruction "Your last turn was
+      ended: it stopped making progress, as said below. Its work is in
+      the worktree. Go on with the task another way."
