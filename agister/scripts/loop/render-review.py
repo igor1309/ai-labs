@@ -1,14 +1,18 @@
 """render-review.py <review.json> <review.md> <triage.md>: an agister
-code_review result as markdown, every field of every item, and a triage
-skeleton of one row an item, its triage and reason left to fill."""
+code_review result, its output "judgement", as markdown, every field of
+every item, and a triage skeleton of one row an item, its triage and
+reason left to fill. A review that did not complete is reported."""
 import json
 import sys
 
 src, md, triage = sys.argv[1:4]
 run = json.load(open(src))
-out = run["output"]
-lines = [f"# Branch review, run {run['run_id']}", "",
-         f"Status {run['status']}; ${run['cost']['usd']:.2f}; {run['timing']['wall_ms'] / 1000:.0f}s.", "",
+if run["status"] != "completed":
+    sys.exit(f"the review {run['status']}, class {run['class']}: {run['reason']}")
+out = run["output"]["judgement"]
+cost = "cost unknown" if run["cost"] is None else f"${run['cost']:.2f}"
+lines = ["# Branch review", "",
+         f"Status {run['status']}; {cost}; {run['timing']['duration_ms'] / 1000:.0f}s.", "",
          "## Summary", "", out["summary"], "",
          "## Coverage gaps", ""]
 for gap in out["coverage_gaps"]:
@@ -29,7 +33,7 @@ for i, item in enumerate(out["items"], 1):
     lines.append("")
 open(md, "w").write("\n".join(lines))
 
-rows = [f"# Branch review, run {run['run_id']}: triage", "",
+rows = ["# Branch review: triage", "",
         "| # | Finding | Judge | Triage | Reason |", "|---|---|---|---|---|"]
 for i, item in enumerate(out["items"], 1):
     rows.append(f"| {i} | {item['title']} | {item['ruling']} ({item['severity']}) |  |  |")
