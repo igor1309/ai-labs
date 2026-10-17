@@ -88,5 +88,9 @@ export const ru: Texts = {
   pieces: { skull: "ЧЕРЕП", spine: "ПОЗВОНОЧНИК", legs: "НОГИ", tail: "ХВОСТ" },
   fitted: "КОСТИ НА МЕСТЕ",
   star: "ЗВЕЗДА",
-  buildAnother: "СОБРАТЬ ЕЩЁ"
+  buildAnother: "СОБРАТЬ ЕЩЁ",
+  stands: "СТЕНДЫ",
+  build: "СОБРАТЬ",
+  rebuild: "ПЕРЕСОБРАТЬ",
+  keepBuilding: "ДОСТРОИТЬ"
 };

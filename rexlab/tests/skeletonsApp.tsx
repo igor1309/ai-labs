@@ -4,8 +4,9 @@ import { App, type AppProps } from "../src/App.tsx";
 import { isLanguage } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -212,3 +213,22 @@ export function fitAll(skeleton: Skeleton, last: Piece = "tail") {
 
 // The reveal of a finished skeleton, or null while it is not shown.
 export const reveal = () => document.querySelector<HTMLElement>(".skeleton-result");
+
+// Storage holding the skeleton game's entry, beside a quiz entry of its
+// own.
+export const keptSkeletons = (entry: unknown) =>
+  memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": entry } }) });
+
+// The skeleton game's entry as saved, or undefined.
+export const savedSkeletons = (storage: MemoryStorage) => {
+  const raw = storage.items.get(PROGRESS_KEY);
+  return raw === undefined ? undefined : JSON.parse(raw).games["skeleton-assembly"];
+};
+
+// The finished skeleton's pause, and its body picture, both over.
+export function revealNow(pictures: ManualPictures, id: string, pause = REVEAL.motion) {
+  act(() => {
+    pictures.fire(pause);
+    pictures.finish(fakeBodyPicture(id));
+  });
+}

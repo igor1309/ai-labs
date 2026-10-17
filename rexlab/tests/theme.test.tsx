@@ -341,6 +341,28 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
   }
 }
 
+// The museum empty, then with a skeleton on its stand, its puzzle as the
+// skeleton is knocked down and its bones scatter, and the museum with that
+// stand awaiting it.
+async function skeletonMuseum({ theme, user, timers }: Walk) {
+  const triceratops = skeletonOf("triceratops");
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expectScreenIn(theme);
+  await user.click(within(screen.getByRole("region", { name: "TRICERATOPS" })).getByRole("button", { name: "BUILD" }));
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "REBUILD" }));
+  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getByRole("button", { name: "CONTINUE" })).toBeDefined();
+  expectScreenIn(theme);
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app, on the home page unless the group opens it on
 // another screen: one walk over them all outlasts a test's time limit on
@@ -394,7 +416,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
-      ["two finished skeletons' reveals, a first best and a new one, and the choice with their stars", skeletonReveals]
+      ["two finished skeletons' reveals, a first best and a new one, and the choice with their stars", skeletonReveals],
+      ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ],
     "skeletons"
   ]

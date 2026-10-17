@@ -327,6 +327,36 @@ describe("the skeleton puzzle's motion", () => {
   it("fades help's glow in", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
   });
+
+  it("scatters a knocked-down skeleton's bones from their homes to the tray one after the other, each spinning on its way, its spots already there", () => {
+    expect(animations.get(".skeleton-piece[data-scattering]")).toBe("scatter");
+    const body = PLAIN.find(({ prelude }) => prelude === ".skeleton-piece[data-scattering]")?.body ?? "";
+    expect(body).toMatch(/scatter var\(--motion-screen\) var\(--ease-overshoot\) calc\(var\(--motion-screen\) \+ var\(--piece\) \* var\(--motion-stagger\)\) both/);
+    expect(animations.get(".skeleton-tray[data-scatter] .skeleton-tray-spot")).toBe("none");
+    const scatter = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes scatter")?.body ?? "").map(({ prelude, body: frame }) => [prelude, declarationsOf(frame)]);
+    expect(scatter).toEqual([
+      [
+        "from",
+        [
+          { property: "opacity", value: "calc(1 - 0.6 * (1 - var(--motion-amount)))" },
+          { property: "translate", value: "calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount))" },
+          { property: "scale", value: "calc(1 + (var(--from-scale) - 1) * var(--motion-amount))" }
+        ]
+      ],
+      ["50%", [{ property: "rotate", value: "calc((var(--piece) - 1.5) * 16deg * var(--motion-amount))" }]]
+    ]);
+  });
+});
+
+describe("the skeleton museum's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("rises the stands in one after the other, and pops each star in after its stand", () => {
+    expect([".skeleton-stand", ".skeleton-stand-star"].map((selector) => animations.get(selector))).toEqual(["rise-in", "pop-in"]);
+    expect(bodyOf(".skeleton-stand")).toMatch(/calc\(var\(--stand\) \* var\(--motion-stagger\)\) both/);
+    expect(bodyOf(".skeleton-stand-star")).toMatch(/calc\(var\(--motion-stagger\) \* \(var\(--stand\) \+ 2\)\) both/);
+  });
 });
 
 describe("the skeleton reveal's motion", () => {

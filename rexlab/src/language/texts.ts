@@ -122,6 +122,13 @@ export type Texts = {
   // way back to the choice of dinosaurs.
   star: string;
   buildAnother: string;
+  // The museum's stands, and a stand's ways to build its skeleton: the
+  // first time, again from the start once it stands there, and on once it
+  // has been knocked down.
+  stands: string;
+  build: string;
+  rebuild: string;
+  keepBuilding: string;
 };
 
 // A celebration's label, read out, and its text, shown.

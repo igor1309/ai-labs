@@ -13,8 +13,10 @@ export const NO_SKELETONS: SkeletonProgress = { earned: [], bestScore: null };
 
 // The progress the game goes by while the app is open. When stored
 // progress cannot be read there is no best to compare with, but stars
-// earned meanwhile are still kept.
-export type KeptSkeletons = { progress: SkeletonProgress; readable: boolean };
+// earned meanwhile are still kept. `rebuilding` is the ids of the earned
+// skeletons knocked down to be built again, whose stands wait for them;
+// it is kept only while the app is open.
+export type KeptSkeletons = { progress: SkeletonProgress; readable: boolean; rebuilding: readonly string[] };
 
 export type Celebration = "first-best" | "new-best";
 
@@ -50,13 +52,11 @@ export function finishSkeleton(kept: KeptSkeletons, puzzle: Puzzle, order: reado
   }
   const { earned, bestScore } = kept.progress;
   const { skeleton } = puzzle;
-  const all = new Set([...earned, skeleton.id]);
-  // Each dinosaur of `order` with a star counts once; one no longer in it
-  // has no star to show.
-  const stars = order.filter((id) => all.has(id));
+  const all = [...new Set([...earned, skeleton.id])];
+  const stars = starsOf(all, order);
   const beaten = beatBest(bestScore, stars.length);
   const progress: SkeletonProgress = {
-    earned: [...stars, ...[...all].filter((id) => !order.includes(id))],
+    earned: [...stars, ...all.filter((id) => !order.includes(id))],
     bestScore: beaten.best
   };
   return {
@@ -69,6 +69,56 @@ export function finishSkeleton(kept: KeptSkeletons, puzzle: Puzzle, order: reado
       celebration: kept.readable ? beaten.celebration : null,
       newStar: !earned.includes(skeleton.id)
     },
-    kept: { progress, readable: kept.readable }
+    // A skeleton finished stands on its stand again.
+    kept: { progress, readable: kept.readable, rebuilding: kept.rebuilding.filter((id) => id !== skeleton.id) }
+  };
+}
+
+// Each dinosaur of `order` with a star counts once; one no longer in it
+// has no star to show.
+function starsOf(earned: readonly string[], order: readonly string[]): string[] {
+  return order.filter((id) => earned.includes(id));
+}
+
+// An earned skeleton knocked down to be built again keeps its star and its
+// stand, which waits for it until it is finished again. One not earned,
+// or already knocked down, has nothing to knock down.
+export function knockDown(kept: KeptSkeletons, id: string): KeptSkeletons {
+  if (!kept.progress.earned.includes(id) || kept.rebuilding.includes(id)) return kept;
+  return { ...kept, rebuilding: [...kept.rebuilding, id] };
+}
+
+// A stand shows its skeleton once earned, and its silhouette while the
+// skeleton is still to build, or has been knocked down to be built again.
+export type StandState = "built" | "rebuilding" | "empty";
+
+export type Stand = { skeleton: Skeleton; state: StandState };
+
+export type Museum = {
+  // One stand for each skeleton, in their order.
+  stands: Stand[];
+  // The collection score: the dinosaurs with a star, a stand awaiting its
+  // skeleton among them, out of every skeleton there is to build.
+  score: number;
+  total: number;
+  // Undefined until a skeleton is finished, or when stored progress cannot
+  // be read: there is no best to show.
+  best: number | undefined;
+};
+
+// The museum of every skeleton there is to build: a star of a dinosaur
+// with no skeleton, or kept twice, gets no stand of its own and counts
+// for nothing.
+export function museumOf(kept: KeptSkeletons, skeletons: readonly Skeleton[]): Museum {
+  const { earned, bestScore } = kept.progress;
+  const order = skeletons.map(({ id }) => id);
+  return {
+    stands: skeletons.map((skeleton) => ({
+      skeleton,
+      state: !earned.includes(skeleton.id) ? "empty" : kept.rebuilding.includes(skeleton.id) ? "rebuilding" : "built"
+    })),
+    score: starsOf(earned, order).length,
+    total: skeletons.length,
+    best: kept.readable ? (bestScore ?? undefined) : undefined
   };
 }

@@ -14,6 +14,7 @@ import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionSc
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
 import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
@@ -21,10 +22,12 @@ import {
   isComplete,
   PIECES,
   type Celebration as SkeletonCelebration,
+  type Museum,
   type Piece,
   type Puzzle,
   type Skeleton,
-  type SkeletonResult
+  type SkeletonResult,
+  type StandState
 } from "./skeletons/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
@@ -33,8 +36,8 @@ import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx
 // How the app shows the quiz, the catalogue, dinosaur care, find the pair,
 // the sorting game and the skeleton game: the composition root's
 // translation from their APIs to what each screen renders. A new
-// attribute, celebration, food type, need, item, basket or bone piece
-// fails the typecheck here until it is given a presentation.
+// attribute, celebration, food type, need, item, basket, bone piece or
+// museum stand fails the typecheck here until it is given a presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -326,5 +329,20 @@ export function presentSkeletonResult(
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
     newStar
+  };
+}
+
+const STANDS: Record<StandState, ShownStand> = { built: "built", rebuilding: "rebuilding", empty: "empty" };
+
+export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "score" | "total" | "best">;
+
+// Each stand shows its whole skeleton, drawn as a silhouette while it is
+// not standing there.
+export function presentSkeletonMuseum({ stands, score, total, best }: Museum, language: Language, skeletonPicture: SkeletonPicture): SkeletonMuseumView {
+  return {
+    stands: stands.map(({ skeleton: { id, name }, state }) => ({ id, name: name[language], skeleton: skeletonPicture(id, "skeleton"), state: STANDS[state] })),
+    score,
+    total,
+    best
   };
 }

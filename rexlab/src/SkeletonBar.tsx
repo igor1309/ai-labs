@@ -1,20 +1,23 @@
-import { Bone, House, Landmark } from "lucide-react";
+import { Bone, House, Landmark, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
 // The bar over every skeleton screen: HOME, the screen's title beside a
-// bone, and MUSEUM where the screen has no MUSEUM of its own, with
-// anything else the screen shows in the bar after them.
+// bone, or the screen's own symbol, and MUSEUM where the screen has no
+// MUSEUM of its own, with anything else the screen shows in the bar after
+// them.
 export function SkeletonBar({
   language,
   title,
+  Mark = Bone,
   onMuseum,
   onHome,
   children
 }: {
   language: Language;
   title: string;
+  Mark?: LucideIcon;
   onMuseum?: () => void;
   onHome: () => void;
   children?: ReactNode;
@@ -28,7 +31,7 @@ export function SkeletonBar({
       </button>
       <h1 className="skeleton-title">
         <span className="skeleton-mark" aria-hidden="true">
-          <Bone size={28} />
+          <Mark size={28} />
         </span>
         {title}
       </h1>

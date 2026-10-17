@@ -1,5 +1,5 @@
 import { Bone } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { SkeletonBar } from "./SkeletonBar.tsx";
@@ -37,6 +37,9 @@ export type SkeletonPuzzleScreenProps = {
   hint: ShownPiece | undefined;
   // Every piece is fitted.
   complete: boolean;
+  // The skeleton was knocked down from its stand: each piece scatters from
+  // its home on the outline to its spot in the tray as the puzzle starts.
+  scatter: boolean;
   // A piece let go with its centre at `centre`, and how far from its home
   // it still fits, both in pixels of the frame.
   onDrop: (piece: ShownPiece, centre: FramePoint, reach: number) => void;
@@ -67,11 +70,16 @@ const offsetFrom = (x: number, y: number, { left, top, width, height }: typeof N
 
 const fromStyle = ({ dx, dy }: Offset) => ({ "--from-x": `${dx}px`, "--from-y": `${dy}px` }) as CSSProperties;
 
-export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hint, complete, onDrop, onMuseum, onHome }: SkeletonPuzzleScreenProps) {
+// Where a scattered piece starts, from the centre of its picture in the
+// tray, and how much larger it is drawn in its home than there.
+type Scattered = Offset & { scale: number };
+
+export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hint, complete, scatter, onDrop, onMuseum, onHome }: SkeletonPuzzleScreenProps) {
   const text = TEXTS[language];
   const fitted = slots.filter((slot) => slot.fitted).length;
   const [held, setHeld] = useState<Hold>();
   const [releases, setReleases] = useState<Partial<Record<ShownPiece, Release>>>({});
+  const [scattered, setScattered] = useState<Partial<Record<ShownPiece, Scattered>>>({});
   // The listeners on the window read the hold as it is now, not as it was
   // when they were rendered.
   const hold = useRef<Hold>(undefined);
@@ -92,6 +100,25 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
     if (!slot) return NO_RECT;
     return { left: board.left + slot.left * board.width, top: board.top + slot.top * board.height, width: slot.width * board.width, height: slot.height * board.height };
   };
+
+  // Only the puzzle as it starts scatters: each piece is measured where
+  // the puzzle first lays it out, before it is painted, so it is first
+  // seen whole in its home. The picture keeps its home's shape, so it is
+  // drawn as wide as its spot lets it.
+  useLayoutEffect(() => {
+    if (!scatter) return;
+    setScattered(
+      Object.fromEntries(
+        slots.map(({ piece }) => {
+          const home = slotRect(piece);
+          const picture = spotElements.current.get(piece)?.querySelector(".skeleton-piece")?.getBoundingClientRect() ?? NO_RECT;
+          const drawn = Math.min(picture.width, home.height === 0 ? 0 : (picture.height * home.width) / home.height);
+          const { dx, dy } = offsetFrom(home.left + home.width / 2, home.top + home.height / 2, picture);
+          return [piece, { dx, dy, scale: drawn === 0 ? 1 : home.width / drawn }];
+        })
+      )
+    );
+  }, []);
 
   // Only the pointer that holds a piece moves it, so a second finger
   // neither picks up nor drops anything while one piece is held. A piece
@@ -187,9 +214,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
             );
           })}
         </div>
-        <div className="skeleton-tray" role="group" aria-label={text.bones}>
+        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined}>
           {slots.map((slot, index) => {
             const release = releases[slot.piece];
+            // A piece once let go floats back from where it was let go
+            // instead.
+            const scattering = release ? undefined : scattered[slot.piece];
             return (
               <span
                 key={slot.piece}
@@ -219,7 +249,8 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                     draggable={false}
                     data-held={held?.piece === slot.piece || undefined}
                     data-returning={release ? true : undefined}
-                    style={release && fromStyle(release.spot)}
+                    data-scattering={scattering ? true : undefined}
+                    style={release ? fromStyle(release.spot) : scattering && ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)}
                   />
                 )}
               </span>

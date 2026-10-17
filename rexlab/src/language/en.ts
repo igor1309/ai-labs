@@ -84,5 +84,9 @@ export const en: Texts = {
   pieces: { skull: "SKULL", spine: "SPINE", legs: "LEGS", tail: "TAIL" },
   fitted: "BONES IN PLACE",
   star: "STAR",
-  buildAnother: "BUILD ANOTHER"
+  buildAnother: "BUILD ANOTHER",
+  stands: "STANDS",
+  build: "BUILD",
+  rebuild: "REBUILD",
+  keepBuilding: "CONTINUE"
 };

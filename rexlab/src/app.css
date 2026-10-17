@@ -3850,7 +3850,8 @@ body:has(.result) footer[aria-label="Version"] {
   color: #f6f2e9;
 }
 
-.museum-button {
+.museum-button,
+.skeleton-bar-button {
   padding: 0 22px 0 18px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -4051,6 +4052,30 @@ body:has(.result) footer[aria-label="Version"] {
   }
 }
 
+/* A skeleton knocked down to be built again shows whole on its outline as
+   the puzzle comes in, then its bones scatter playfully to the tray, one
+   after the other, each shrinking to its spot and spinning on its way.
+   The tray's spots are there already, so a bone in flight is never
+   hidden. With reduced motion a bone only fades in in its spot. */
+.skeleton-tray[data-scatter] .skeleton-tray-spot {
+  animation: none;
+}
+
+.skeleton-piece[data-scattering] {
+  animation: scatter var(--motion-screen) var(--ease-overshoot) calc(var(--motion-screen) + var(--piece) * var(--motion-stagger)) both;
+}
+
+@keyframes scatter {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+    scale: calc(1 + (var(--from-scale) - 1) * var(--motion-amount));
+  }
+  50% {
+    rotate: calc((var(--piece) - 1.5) * 16deg * var(--motion-amount));
+  }
+}
+
 /* Help: the slot to fill and its piece in the tray glow alike, ringed in
    amber, so the next move needs no words. */
 .skeleton-glow {
@@ -4245,6 +4270,134 @@ body:has(.result) footer[aria-label="Version"] {
 
 .skeleton-actions .home-button {
   outline-width: 2px;
+  outline-offset: -1px;
+}
+
+/* The museum: a hall of one stand for each dinosaur, rising in one after
+   the other, each its name and star over its exhibit on a plinth. A
+   skeleton not on its stand shows as its faint silhouette; one knocked
+   down to be built again keeps its star, and its exhibit and button are
+   ringed in amber, so it reads as work in progress, not as never built. */
+.skeleton-hall {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 32px 32px 0;
+  display: flex;
+  gap: 32px;
+  border-radius: 32px;
+  background: #e6e2d9;
+}
+
+.skeleton-stand {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--stand) * var(--motion-stagger)) both;
+}
+
+.skeleton-stand-top {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* A name is large, its size the stand's width, less its star's, over the
+   longest name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-stand-name {
+  margin: 0;
+  font-size: min(26px, (100cqi - 50px) / 9.4);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #5c647a;
+}
+
+.skeleton-stand-star {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--stand) + 2)) both;
+}
+
+.skeleton-exhibit {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  border-radius: 20px;
+}
+
+.skeleton-exhibit-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.skeleton-silhouette {
+  filter: brightness(0);
+  opacity: 0.22;
+}
+
+.skeleton-plinth {
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 18px 20px 24px;
+  border-radius: 20px 20px 0 0;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+/* A button's words shrink with the room the plinth leaves beside its
+   symbol, over 8 ems, so the longest, ПЕРЕСОБРАТЬ, keeps to one line on
+   the narrowest iPad. */
+.skeleton-stand-button {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: none;
+  border-radius: 18px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #e6e2d9;
+  font-size: min(22px, (100cqi - 78px) / 8);
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-stand-button svg {
+  flex-shrink: 0;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  outline: none;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+.skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline: 2px dashed #e39b2d;
   outline-offset: -1px;
 }
 
@@ -4826,6 +4979,41 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .skeleton-build-another {
   background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-hall,
+[data-theme="dark"] .skeleton-stand-button {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-plinth,
+[data-theme="dark"] .skeleton-stand-button {
+  outline-color: #ece8de1f;
+}
+
+[data-theme="dark"] .skeleton-plinth {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-stand-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-silhouette {
+  filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline-color: #f2b24b;
 }
 
 [data-theme="dark"] .more-coming {

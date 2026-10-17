@@ -709,8 +709,9 @@ async function findThePair(language: Language): Promise<Seen> {
 }
 
 // The skeleton game: its choice of dinosaurs, a puzzle as it starts, its
-// reveal with a first best, the choice again with the star earned, and the
-// home page again.
+// reveal with a first best, the choice again with the star earned, the
+// museum with the skeleton on its stand, its puzzle as it is knocked
+// down, the museum with its stand awaiting it, and the home page again.
 async function skeletons(language: Language): Promise<Seen> {
   const play = openPlay(language, memoryStorage(), "skeletons");
   const { user, timers, look } = play;
@@ -727,6 +728,14 @@ async function skeletons(language: Language): Promise<Seen> {
   look();
   await user.click(screen.getByRole("button", { name: text.buildAnother }));
   expect(screen.getAllByRole("img", { name: text.star })).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.rebuild }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
   look();
   await user.click(screen.getByRole("button", { name: text.home }));
   look();
@@ -749,7 +758,7 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // refused once and one without, both results and the friends made,
 // the sorting game: a board with wrong drops, its result and the next
 // board, find the pair from its welcome to the dinosaurs found, and the
-// skeleton game's choice, a puzzle and its reveal.
+// skeleton game's choice, a puzzle, its reveal and its museum.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -772,7 +781,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     findThePair,
     (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
   ],
-  ["the skeleton game's choice of dinosaurs, a puzzle, its reveal, the choice again and the home page again", skeletons, HOME_PAGE]
+  ["the skeleton game's choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

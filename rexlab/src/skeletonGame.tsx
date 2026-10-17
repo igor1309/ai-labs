@@ -2,14 +2,17 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
-import { droppedPiece, presentPuzzle, presentSkeletonChoices, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
+import { droppedPiece, presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
+import { SkeletonMuseumScreen } from "./SkeletonMuseumScreen.tsx";
 import {
   awaitsHelp,
   drop,
   finishSkeleton,
   isComplete,
+  knockDown,
+  museumOf,
   NO_SKELETONS,
   PIECES,
   startPuzzle,
@@ -67,7 +70,13 @@ const HELP_TICK = 1000;
 // meanwhile, never longer than PICTURE_WAIT.
 export const REVEAL: Record<"motion" | "reduced", number> = { motion: 480, reduced: 160 };
 
-type SkeletonScreen = { kind: "choice" } | { kind: "puzzle"; puzzle: Puzzle } | { kind: "result"; result: SkeletonResult };
+// A puzzle of a skeleton knocked down from its stand starts with its
+// bones scattering from the outline to the tray.
+type SkeletonScreen =
+  | { kind: "choice" }
+  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean }
+  | { kind: "result"; result: SkeletonResult }
+  | { kind: "museum" };
 
 // The skeleton game, kept by the app above its orientation gate, so
 // turning the iPad pauses a puzzle without losing it. `onHome` takes the
@@ -84,7 +93,7 @@ export function useSkeletonGame(
   // while the app is open, and so is progress that cannot be saved.
   const [kept, setKept] = useState<KeptSkeletons>(() => {
     const stored = skeletonProgress.load();
-    return { progress: stored ?? NO_SKELETONS, readable: stored !== undefined };
+    return { progress: stored ?? NO_SKELETONS, readable: stored !== undefined, rebuilding: [] };
   });
   const keptNow = useRef(kept);
   // The puzzle in play, ahead of the screen: a drop, or a tick, acts on the
@@ -107,9 +116,16 @@ export function useSkeletonGame(
     starting.current = false;
   };
 
+  const keep = (next: KeptSkeletons) => {
+    keptNow.current = next;
+    setKept(next);
+  };
+
   // A puzzle shows once its outline and pieces are ready, or the wait
-  // runs out, so no bone pops in, and only if the child is still here.
-  const choose = (id: string) => {
+  // runs out, so no bone pops in, and only if the child is still here. A
+  // skeleton rebuilt is knocked down from its stand only as its puzzle
+  // starts, its bones scattering from the outline.
+  const start = (id: string, rebuild: boolean) => {
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined || starting.current) return;
     starting.current = true;
@@ -120,12 +136,17 @@ export function useSkeletonGame(
       () => {
         if (stay.current !== choosing) return;
         starting.current = false;
+        if (rebuild) keep(knockDown(keptNow.current, id));
         const started = startPuzzle(skeleton);
         live.current = started;
-        show({ kind: "puzzle", puzzle: started });
+        show({ kind: "puzzle", puzzle: started, scatter: rebuild });
       }
     );
   };
+
+  const choose = (id: string) => start(id, false);
+
+  const rebuild = (id: string) => start(id, true);
 
   // A puzzle left is dropped with the screen it was on, so its wait for
   // help stops, and the game opens again on its choice of dinosaurs.
@@ -142,7 +163,7 @@ export function useSkeletonGame(
   // on, changes nothing.
   const showPuzzle = (from: Puzzle, to: Puzzle) => {
     live.current = to;
-    setScreen((current) => (current.kind === "puzzle" && current.puzzle === from ? { kind: "puzzle", puzzle: to } : current));
+    setScreen((current) => (current.kind === "puzzle" && current.puzzle === from ? { ...current, puzzle: to } : current));
   };
 
   // A skeleton is recorded the moment its last piece fits, before the
@@ -150,8 +171,7 @@ export function useSkeletonGame(
   // or record it twice. Unreadable progress is not saved over.
   const record = (finished: Puzzle): SkeletonResult => {
     const { result, kept: next } = finishSkeleton(keptNow.current, finished, order, beatBest);
-    keptNow.current = next;
-    setKept(next);
+    keep(next);
     if (next.readable) skeletonProgress.save(next.progress);
     return result;
   };
@@ -200,11 +220,15 @@ export function useSkeletonGame(
 
   // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
   // meanwhile changes nothing more.
-  const buildAnother = () => changeScreen(SCREEN_CHANGE, () => setScreen((current) => (current.kind === "result" ? { kind: "choice" } : current)));
+  const buildAnother = () =>
+    changeScreen(SCREEN_CHANGE, () => setScreen((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current)));
 
-  // The museum has no screen of its own yet, so MUSEUM keeps the child
-  // where they are.
-  const museum = () => {};
+  // MUSEUM leaves whatever the child was doing: an unfinished puzzle is
+  // dropped, earning nothing, and a puzzle still loading never starts.
+  const museum = () => {
+    leave();
+    show({ kind: "museum" });
+  };
 
   const content = (language: Language) => {
     switch (screen.kind) {
@@ -224,6 +248,7 @@ export function useSkeletonGame(
           <SkeletonPuzzleScreen
             language={language}
             {...presentPuzzle(screen.puzzle, language, skeletonPicture)}
+            scatter={screen.scatter}
             onDrop={onDrop}
             onMuseum={museum}
             onHome={home}
@@ -236,6 +261,17 @@ export function useSkeletonGame(
             {...presentSkeletonResult(screen.result, language, skeletonPicture, bodyPicture)}
             onBuildAnother={buildAnother}
             onMuseum={museum}
+            onHome={home}
+          />
+        );
+      case "museum":
+        return (
+          <SkeletonMuseumScreen
+            language={language}
+            {...presentSkeletonMuseum(museumOf(kept, skeletons), language, skeletonPicture)}
+            onBuild={choose}
+            onRebuild={rebuild}
+            onBuildAnother={buildAnother}
             onHome={home}
           />
         );
