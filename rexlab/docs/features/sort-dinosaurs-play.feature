@@ -16,6 +16,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
     When I drop a dinosaur card on the wrong basket
     Then the card slides back to its place
     And the card shows the symbol of its right basket as a hint, until it lands
+    And the right basket glows for a moment, so the hint points at it
     And it counts as wrong, even when I then put it in the right basket
 
   Scenario: Only the right basket takes a card
@@ -63,7 +64,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
 
   Scenario: The board shows how far the round is
     Given I have sorted 2 of the 6 cards
-    Then I see the progress "2/6"
+    Then I see 2 of 6 progress steps filled, with no numbers
 
   Scenario: The last card leads to the result
     When the last card lands in its basket
@@ -82,19 +83,3 @@ Feature: Sort dinosaurs: dragging cards into baskets
     When I turn the iPad back to landscape
     Then the 3 cards are still in their baskets
     And the wrong drop still counts
-
-  Scenario Outline: Every change on the board animates
-    When <change>
-    Then it changes smoothly, with the shared motion tokens
-    And with reduced motion it changes with a short fade
-
-    Examples:
-      | change                                    |
-      | the board enters                          |
-      | a card is picked up                       |
-      | a picked-up card is put down              |
-      | a dragged card lights the basket under it |
-      | a card lands                              |
-      | a card slides back                        |
-      | a hint appears                            |
-      | "SEE RESULT" appears                      |

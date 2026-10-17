@@ -33,8 +33,8 @@ against these sources only.
   and Parasaurolophus walked on two legs or four; feathers are unknown for
   Tyrannosaurus and most large theropods) or when the dinosaur's picture
   could mislead a child (Allosaurus's small brow horns are hard to see in
-  its picture, and Pachycephalosaurus's knobs and Kentrosaurus's shoulder
-  spikes are not horns). Feathered
+  its picture, and Pachycephalosaurus's knobs, Kentrosaurus's shoulder
+  spikes and the tail spikes of both stegosaurs are not horns). Feathered
   means feathered in the picture too, as `art/style.md` lists. Feathers
   are `false` for the plant-eaters drawn without them, Psittacosaurus,
   with its tail bristles, aside, and for the meat-eaters whose skin

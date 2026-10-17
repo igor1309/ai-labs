@@ -32,22 +32,28 @@ Feature: Sort dinosaurs: starting a round and the board
     And each card shows its own dinosaur's picture and its name, large and in capitals
     And I see a "HOME" button with a 🏠 symbol, away from the dinosaur cards
 
-  Scenario: A long name fits its card
-    When a card shows a long name, such as PACHYCEPHALOSAURUS or ПАХИЦЕФАЛОЗАВР
+  Scenario Outline: A long name fits its card
+    When a card <where> shows a long name, such as PACHYCEPHALOSAURUS or ПАХИЦЕФАЛОЗАВР
     Then the whole name shows on one line inside the card, as large as fits
 
-  Scenario: The first board waits for its pictures
-    Given I am on the home page
-    And the pictures of the round's six dinosaurs are still loading
-    When I tap the "SORT" card
-    Then the home page stays on screen
-    And when the pictures have loaded, or after a second at most, the round starts
+    Examples:
+      | where       |
+      | on the tray |
+      | in a basket |
 
-  Scenario: A quick double tap on the card starts one round
-    Given I am on the home page
-    And the pictures of the round's six dinosaurs are still loading
-    When I tap the "SORT" card twice quickly
-    Then one round starts
+  Scenario Outline: A new board waits for its pictures
+    Given I am on <screen>
+    And the pictures of the next round's six dinosaurs are still loading
+    When I tap "<button>" <taps>
+    Then <screen> stays on screen
+    And when the pictures have loaded, or after a second at most, one round starts
+
+    Examples:
+      | screen                                | button     | taps          |
+      | the home page                         | SORT       | once          |
+      | the home page                         | SORT       | twice quickly |
+      | the result screen of the sorting game | PLAY AGAIN | once          |
+      | the result screen of the sorting game | PLAY AGAIN | twice quickly |
 
   Scenario Outline: A round sorts by one property
     When a round sorts by <property>
@@ -86,3 +92,4 @@ Feature: Sort dinosaurs: starting a round and the board
   Scenario: Rounds vary
     When I start two rounds in a row in one visit, through PLAY AGAIN or from the home page, finished or left early
     Then the second round sorts by a different property than the first
+    But after the app is reloaded, the first round may sort by any property

@@ -100,7 +100,7 @@
     "diet": "plants",
     "traits": {
       "legs": 4,
-      "horns": false,
+      "horns": null,
       "feathers": false,
       "size": null
     },
