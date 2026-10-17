@@ -2,7 +2,9 @@
 // rules 2 and 3): the worktree's HEAD is the revision its process pins,
 // its content is HEAD's where its process asks a clean worktree, and the
 // call holds the worktree, a writer alone and a reader shared, until it
-// ends. A call not admitted is refused, not queued.
+// ends. A call not admitted is refused, not queued. An admitted call's
+// worktree is told, read under its hold (ADR-004, rule 4): its HEAD when
+// admitted and its content at the call's end.
 package admit
 
 import (
@@ -29,10 +31,20 @@ type Pin struct {
 }
 
 // Worktree tells the facts of the call's worktree: the commit its HEAD
-// is, and whether its content is HEAD's.
+// is, whether its content is HEAD's, and its content, as the id of the
+// tree its files make.
 type Worktree interface {
 	Head(ctx context.Context) (string, error)
 	Clean(ctx context.Context) (bool, error)
+	Content(ctx context.Context) (string, error)
+}
+
+// Facts is what an admitted call's worktree was: the commit its HEAD was
+// when the call was admitted, and its content when the call ended; each ""
+// where it could not be read.
+type Facts struct {
+	Head    string
+	Content string
 }
 
 // ErrHeld is what a hold's error wraps when another call holds the
@@ -67,9 +79,11 @@ func New(worktree Worktree, hold Hold) (*Admitter, error) {
 // Make admits the call request declares and, admitted, makes it through
 // made, holding the worktree until made returns, however it ends. It
 // checks, then holds: the pin first, then the content, then the hold. A
-// call not admitted is its error, which says why: no hold is taken and
-// made is not called.
-func (a *Admitter) Make(ctx context.Context, request Request, made func(ctx context.Context)) error {
+// call not admitted is its error, which says why: no hold is taken, made
+// is not called and told is not told. An admitted call's facts are told
+// once made returns, however it ends, before the hold is released: a fact
+// that cannot be read is told "", and the call goes on as before.
+func (a *Admitter) Make(ctx context.Context, request Request, made func(ctx context.Context), told func(Facts)) error {
 	if pin := request.Pin; pin != nil {
 		if pin.Commit == "" {
 			return fmt.Errorf("a pin from the input %q, of the source %q, is not run yet", pin.Input, pin.Source)
@@ -99,6 +113,19 @@ func (a *Admitter) Make(ctx context.Context, request Request, made func(ctx cont
 		return fmt.Errorf("the worktree's hold: %w", err)
 	}
 	defer release()
+	head, err := a.worktree.Head(ctx)
+	if err != nil {
+		head = ""
+	}
+	defer func() {
+		// The content is read whether or not the call was cancelled: a call
+		// that ends so has left its worktree as well.
+		content, err := a.worktree.Content(context.WithoutCancel(ctx))
+		if err != nil {
+			content = ""
+		}
+		told(Facts{Head: head, Content: content})
+	}()
 	made(ctx)
 	return nil
 }

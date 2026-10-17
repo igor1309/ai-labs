@@ -895,7 +895,7 @@ type turnCaller interface {
 
 // admission is what a step's call asks of core/admit.
 type admission interface {
-	Make(ctx context.Context, request admit.Request, made func(ctx context.Context)) error
+	Make(ctx context.Context, request admit.Request, made func(ctx context.Context), told func(admit.Facts)) error
 }
 
 // stepCalls answers core/workflow's caller from core/inputs, core/admit
@@ -964,7 +964,7 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 				report(workflow.Tool{Name: tool.Name, Input: tool.Input})
 			}
 		})
-	})
+	}, func(admit.Facts) {})
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}

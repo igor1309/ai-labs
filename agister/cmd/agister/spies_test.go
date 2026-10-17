@@ -456,14 +456,15 @@ func (s *sourcesSpy) sourcing() sourcing {
 }
 
 // holdingSpy is a spy of what a run admits and holds a worktree through:
-// git's HEAD and cleanness of root, as its test gives them, any other
-// directory an error; and files' locks, each taken unless its test gives
-// lockErr, as Lock's error. It keeps each lock asked, and how many are held
-// now, alone or shared. It is safe for concurrent use.
+// git's HEAD, cleanness and content of root, as its test gives them, any
+// other directory an error; and files' locks, each taken unless its test
+// gives lockErr, as Lock's error. It keeps each lock asked, and how many
+// are held now, alone or shared. It is safe for concurrent use.
 type holdingSpy struct {
 	root    string
 	head    string
 	clean   bool
+	content string
 	lockErr error
 	mu      sync.Mutex
 	asked   []lockAsked
@@ -489,6 +490,13 @@ func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
 		return false, errors.New("git spy: no worktree " + dir)
 	}
 	return s.clean, nil
+}
+
+func (s *holdingSpy) Content(_ context.Context, dir string) (string, error) {
+	if dir != s.root {
+		return "", errors.New("git spy: no worktree " + dir)
+	}
+	return s.content, nil
 }
 
 func (s *holdingSpy) Lock(file string, alone bool) (func() error, error) {
@@ -533,7 +541,7 @@ type admissionSpy struct {
 	requests []admit.Request
 }
 
-func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made func(context.Context)) error {
+func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made func(context.Context), _ func(admit.Facts)) error {
 	s.mu.Lock()
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
