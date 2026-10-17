@@ -114,3 +114,53 @@ describe("the motion", () => {
     expect(moving.filter((selector) => MOVING.test(reducedTransitions.get(selector) ?? "transform"))).toEqual([]);
   });
 });
+
+// The animation each selector of a rule runs, from its `animation`
+// shorthand, by the selector.
+const animationsOf = (rules: Rule[]) =>
+  new Map(
+    rules.flatMap(({ prelude, body }) =>
+      declarationsOf(body)
+        .filter(({ property }) => property === "animation")
+        .flatMap(({ value }) => prelude.split(",").map((selector) => [selector.trim(), value.split(" ")[0]] as const))
+    )
+  );
+
+describe("the catalogue's motion", () => {
+  const animations = animationsOf(PLAIN);
+
+  it("grows a card's picture into its page and back, while the rest of the screen fades", () => {
+    expect(animations.get("::view-transition-old(.screen-fade)")).toBe("fade-out");
+    expect(animations.get("::view-transition-new(.screen-fade)")).toBe("fade-in");
+    const group = PLAIN.find(({ prelude }) => prelude === "::view-transition-group(.dinosaur-share)");
+    expect(declarationsOf(group?.body ?? "")).toEqual([
+      { property: "animation-duration", value: "var(--motion-screen)" },
+      { property: "animation-timing-function", value: "var(--ease-out)" }
+    ]);
+  });
+
+  it("slides the next dinosaur in from the right and the previous one from the left, its words after its picture", () => {
+    expect(
+      ["dinosaur-out", "dinosaur-in", "dinosaur-out-back", "dinosaur-in-back"].flatMap((name) =>
+        [name, `${name}-late`].map((part) => animations.get(`::view-transition-${name.includes("-in") ? "new" : "old"}(.${part})`))
+      )
+    ).toEqual(["slide-out", "slide-out", "slide-in", "slide-in", "slide-out-back", "slide-out-back", "slide-in-back", "slide-in-back"]);
+    const shift = (name: string) => {
+      const frames = KEYFRAMES.find(({ prelude }) => prelude === `@keyframes ${name}`)?.body ?? "";
+      return /translate: calc\((-?\d+)px/.exec(frames)?.[1];
+    };
+    expect(["slide-in", "slide-out", "slide-in-back", "slide-out-back"].map(shift)).toEqual(["96", "-96", "-96", "96"]);
+    const late = PLAIN.find(({ prelude }) => prelude.includes("(.dinosaur-in-late)") && prelude.includes("(.dinosaur-in-back-late)") && !prelude.includes("(.dinosaur-in)"));
+    expect(declarationsOf(late?.body ?? "")).toEqual([{ property: "animation-delay", value: "var(--motion-stagger)" }]);
+  });
+
+  it("fades and rises the cards in one after the other on opening the list, the first row only", () => {
+    expect(animations.get(".catalogue-grid[data-rise] .catalogue-card")).toBe("rise-in");
+    const rise = PLAIN.find(({ prelude }) => prelude === ".catalogue-grid[data-rise] .catalogue-card");
+    expect(declarationsOf(rise?.body ?? "")).toContainEqual({ property: "animation-delay", value: "calc(var(--card) * var(--motion-stagger) * 0.75)" });
+  });
+
+  it("only cross-fades a dinosaur's picture in place with reduced motion", () => {
+    expect(animationsOf(REDUCED).get("::view-transition-group(.dinosaur-share)")).toBe("none");
+  });
+});

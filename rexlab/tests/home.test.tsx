@@ -5,6 +5,7 @@ import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import {
+  SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyProgress,
   englishDevice,
@@ -20,7 +21,7 @@ import {
 } from "./support.ts";
 
 function openHomePage(progress = emptyProgress(), pictures = loadedPictures()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...pictures} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
@@ -51,16 +52,18 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("shows two locked games beside the quiz card, each a dinosaur with its symbol and a lock, and no words", () => {
+  it("shows a locked game beside the quiz card, under the catalogue's tile, a dinosaur with its symbol and a lock, and no words", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
     expect(games?.classList.contains("games")).toBe(true);
     expect(lockedTiles().every((tile) => games?.contains(tile))).toBe(true);
     expect(lockedTiles().map((tile) => [tile.querySelector("img")?.getAttribute("src"), ...symbolsOf(tile)])).toEqual([
-      [fakeBodyPicture("stegosaurus"), "ruler", "lock"],
       [fakeBodyPicture("triceratops"), "utensils", "lock"]
     ]);
+    const catalogue = screen.getByRole("button", { name: "ALL DINOSAURS" });
+    expect(games?.contains(catalogue)).toBe(true);
+    expect(catalogue.compareDocumentPosition(lockedTiles()[0] ?? catalogue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     for (const tile of lockedTiles()) {
       expect(tile.textContent).toBe("");
       expect(within(tile).queryAllByRole("button")).toEqual([]);

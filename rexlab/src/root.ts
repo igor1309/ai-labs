@@ -2,7 +2,7 @@ import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { bodyPictures } from "./dinosaurPictures.ts";
-import { readDinosaurs } from "./dinosaurs.ts";
+import { readCatalogue, readDinosaurs } from "./dinosaurs.ts";
 import { localLanguage } from "./localLanguage.ts";
 import { localProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
@@ -33,6 +33,7 @@ export function appProps(browser: Browser): AppProps {
   const dinosaurs = readDinosaurs(records);
   return {
     dinosaurs,
+    catalogue: readCatalogue(records),
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     orientation: { isPortrait: media.portrait, subscribe: media.watch },

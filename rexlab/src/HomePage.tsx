@@ -1,4 +1,4 @@
-import { Footprints, Globe, Lock, Monitor, Moon, Ruler, Scale, Sun, Trophy, Utensils, type LucideIcon } from "lucide-react";
+import { BookOpen, Footprints, Globe, Lock, Monitor, Moon, Scale, Sun, Trophy, Utensils, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -13,9 +13,9 @@ const BRAND = "RexLab";
 
 // The games still to come, each shown locked by the symbol of what it
 // will ask about.
-export type LockedGame = "taller" | "diet";
+export type LockedGame = "diet";
 
-const LOCKED_SYMBOLS: Record<LockedGame, LucideIcon> = { taller: Ruler, diet: Utensils };
+const LOCKED_SYMBOLS: Record<LockedGame, LucideIcon> = { diet: Utensils };
 
 export type HomePageProps = {
   language: Language;
@@ -26,16 +26,21 @@ export type HomePageProps = {
   faceOff: { left: string; right: string };
   // The best score of the quiz, undefined while there is none to show.
   best: number | undefined;
+  // The catalogue's tile: the picture on it and how many dinosaurs it
+  // holds.
+  catalogue: { picture: string; count: number };
   // The dinosaur pictured on each locked game's tile.
   locked: Record<LockedGame, string>;
   onCompareDinosaurs: () => void;
+  onCatalogue: () => void;
 };
 
 type Menu = "language" | "theme";
 
-export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, locked, onCompareDinosaurs }: HomePageProps) {
+export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, locked, onCompareDinosaurs, onCatalogue }: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
+  const cataloguePointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -116,9 +121,22 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             )}
           </span>
         </button>
-        {/* Locked tiles are pictures, not buttons: a tap on one does
-            nothing, and nothing on it invites one. */}
-        <div className="locked-games">
+        <div className="side-games">
+          <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
+            <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
+            <span className="catalogue-tile-row">
+              <span className="catalogue-tile-symbol" aria-hidden="true">
+                <BookOpen size={24} />
+              </span>
+              <span className="catalogue-tile-title">{text.catalogue}</span>
+              <span className="catalogue-tile-count">
+                <Footprints size={18} aria-hidden="true" />
+                {catalogue.count}
+              </span>
+            </span>
+          </button>
+          {/* Locked tiles are pictures, not buttons: a tap on one does
+              nothing, and nothing on it invites one. */}
           {(Object.keys(LOCKED_SYMBOLS) as LockedGame[]).map((game) => {
             const Symbol = LOCKED_SYMBOLS[game];
             return (

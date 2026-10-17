@@ -1,12 +1,17 @@
+import type { CatalogueEntry, Diet } from "./catalogue.ts";
+import type { CatalogueCardView } from "./CatalogueScreen.tsx";
+import type { Diet as ShownDiet } from "./DietTag.tsx";
+import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 
-// How the app shows the quiz: the composition root's translation from the
-// quiz API to what each screen renders. A new attribute or celebration in
-// the quiz fails the typecheck here until it is given a presentation.
+// How the app shows the quiz and the catalogue: the composition root's
+// translation from their APIs to what each screen renders. A new
+// attribute, celebration or food type fails the typecheck here until it is
+// given a presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -52,4 +57,21 @@ export function presentResult({ score, total, progress, previousBest, celebratio
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : CELEBRATIONS[celebration]
   };
+}
+
+const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
+
+export function presentCatalogueCard(entry: CatalogueEntry, language: Language, bodyPicture: (dinosaurId: string) => string): CatalogueCardView {
+  return {
+    id: entry.id,
+    name: entry.name[language],
+    picture: bodyPicture(entry.id),
+    height: formatHeight(entry.height, language),
+    mass: formatMass(entry.mass, language),
+    diet: DIETS[entry.diet]
+  };
+}
+
+export function presentDinosaurPage(entry: CatalogueEntry, language: Language, bodyPicture: (dinosaurId: string) => string): DinosaurPageView {
+  return { ...presentCatalogueCard(entry, language, bodyPicture), description: entry.description[language] };
 }

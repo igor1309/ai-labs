@@ -28,8 +28,10 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 }
 
 const inQuiz = (file: string) => file.startsWith("quiz/");
-const SCREENS = ["HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
-const PRESENTATION = [...SCREENS, "ParentMenu.tsx", "formatValue.ts", "usePointerState.ts"];
+const SCREENS = ["CatalogueScreen.tsx", "DinosaurPage.tsx", "HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
+const PRESENTATION = [...SCREENS, "DietTag.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
+// The catalogue's own model of a dinosaur, apart from the quiz's.
+const CATALOGUE = "catalogue.ts";
 const ADAPTERS = ["decodedPictures.ts", "dinosaurPictures.ts", "dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
 const COMPOSITION = ["App.tsx", "main.tsx", "presentation.ts", "root.ts"];
 // What waits for pictures, given how to load them and keep time.
@@ -47,6 +49,15 @@ describe("the import graph", () => {
 
   it("keeps screens, formatting, texts and themes free of the quiz", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inQuiz)).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target === CATALOGUE)).toEqual([]);
+  });
+
+  it("keeps the catalogue's model free of all but the languages", () => {
+    expect(GRAPH.get(CATALOGUE)).toBeDefined();
+    expect(edges((file) => file === CATALOGUE, (target) => !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps adapters free of their consumers", () => {
