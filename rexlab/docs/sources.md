@@ -24,8 +24,11 @@ against these sources only.
   popular-science writing.
 - Diet is the one the catalogue shows, as the Dino Directory gives it;
   the sorting game sorts by it too and leaves out the dinosaurs that
-  ate `both` (Gallimimus and Oviraptor). Pachycephalosaurus is `plants`,
-  as the Dino Directory lists it, though its teeth leave meat possible.
+  ate `both` (Gallimimus and Oviraptor). A dinosaur whose diet the
+  sources leave unsure also has `"diet": null` in its traits, and the
+  sorting game leaves it out: Pachycephalosaurus is `plants` in the
+  catalogue, but "nobody knows for sure", and its teeth leave meat
+  possible.
 - Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `horns`
   and `feathers` (true or false) and `size` (`big` or `small`). A trait is `null`, and the dinosaur is
   left out of that sort, when the sources leave it unclear (Iguanodon
