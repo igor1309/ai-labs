@@ -19,6 +19,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
@@ -133,7 +134,7 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
 // runFixture is the composition as build gives it, over a filesystem
 // holding its settings; a git whose worktree root of "/r" and below is
-// "/r"; the runtime wrappers' spies, bash's answering by the answer its
+// "/r", unless its test gives other roots; the runtime wrappers' spies, bash's answering by the answer its
 // test gives, claude-code's and codex's by those it sets; the validator,
 // jsonschema's unless its test gives another; the sources' spy, git's root
 // "/r", holding what its test gives; the holding's spy, git's HEAD of "/r"
@@ -142,6 +143,7 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 // randomness giving 55fd36.
 type runFixture struct {
 	settings  map[string]string
+	roots     layout.WorktreeRoot
 	runtimes  *runtimesSpy
 	validator call.Validator
 	signals   *signalsSpy
@@ -157,6 +159,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 	runtimes.bash.answer = answer
 	return &runFixture{
 		settings:  settings,
+		roots:     rootSpy{root: "/r"},
 		runtimes:  runtimes,
 		validator: schemaValidator{},
 		signals:   &signalsSpy{fired: make(chan os.Signal)},
@@ -178,7 +181,7 @@ func (f *runFixture) runWatching(t *testing.T, watch signals, environment []stri
 	var stdout, stderr strings.Builder
 	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch,
 		random: randomSpy{0x55, 0xfd, 0x36}}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), f.store.at, machine, &stdout, &stderr)
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), f.roots, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), f.store.at, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}

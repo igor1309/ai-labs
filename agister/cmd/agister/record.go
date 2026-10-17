@@ -24,8 +24,8 @@ type recordStore interface {
 	Append(id string, event runstore.Event) error
 }
 
-// recordStoreAt is the store of the runs kept under folder.
-type recordStoreAt func(folder string) (recordStore, error)
+// runStoreAt is the store of the runs kept under folder.
+type runStoreAt func(folder string) (runStore, error)
 
 // runIDOf is the id of a run started at started: its UTC time to the
 // second, and six hex characters drawn from random, as
@@ -38,10 +38,12 @@ func runIDOf(started time.Time, random io.Reader) (string, error) {
 	return started.UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(drawn), nil
 }
 
-// endedCall is a step's call as it ended: its step, process and agent; its
-// worktree's facts, none for a call refused; and its result.
+// endedCall is a step's call as it ended: its step, process and agent; the
+// id of the call whose session it continues, "" for none; its worktree's
+// facts, none for a call refused; and its result.
 type endedCall struct {
 	step, process, agent string
+	continues            string
 	facts                admit.Facts
 	result               workflow.Result
 }
@@ -73,11 +75,15 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 	case clock == nil:
 		return nil, errors.New("run record: no clock")
 	}
+	asked := runstore.Request{Workflow: request.Workflow, Process: request.Process, Agent: request.Agent,
+		Params: maps.Clone(request.Params), Dir: launch}
+	if continues := request.Continue; continues != "" {
+		asked.Continue = &continues
+	}
 	return &runRecord{store: store, clock: clock, root: root, record: runstore.Record{
-		Schema: runstore.Schema,
-		ID:     id,
-		Request: runstore.Request{Workflow: request.Workflow, Process: request.Process, Agent: request.Agent,
-			Params: maps.Clone(request.Params), Dir: launch},
+		Schema:  runstore.Schema,
+		ID:      id,
+		Request: asked,
 		Started: started,
 		Status:  string(cli.RunLost),
 	}}, nil
@@ -102,6 +108,9 @@ func (r *runRecord) Called(ended endedCall) {
 		Head:    ended.facts.Head,
 		Content: ended.facts.Content,
 		Result:  runstore.CallResult{Outcome: outcomeOf(ended.result)},
+	}
+	if continues := ended.continues; continues != "" {
+		call.Continues = &continues
 	}
 	if session := ended.result.Session; session != "" {
 		call.Result.Session = &session

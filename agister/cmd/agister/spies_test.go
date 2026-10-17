@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -584,11 +585,13 @@ func (s *admissionSpy) asked() []admit.Request {
 // storeSpy is a spy of runstore: it keeps the folder each store is asked
 // for, each record written and each event appended, in order, with the
 // run's id. The write its test numbers in failWrite, from 1, fails with
-// errFull, and so does every append where failAppend is set. It is safe for
-// concurrent use.
+// errFull, and so does every append where failAppend is set. The runs it
+// gives as kept are those of kept, by id, and no other: a record written
+// is not read back. It is safe for concurrent use.
 type storeSpy struct {
 	failWrite  int
 	failAppend bool
+	kept       map[string]runstore.Record
 	mu         sync.Mutex
 	folders    []string
 	records    []runstore.Record
@@ -604,7 +607,7 @@ type storedEvent struct {
 // errFull is the failure of a write or an append the store's test fails.
 var errFull = errors.New("disk full")
 
-func (s *storeSpy) at(folder string) (recordStore, error) {
+func (s *storeSpy) at(folder string) (runStore, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.folders = append(s.folders, folder)
@@ -630,6 +633,19 @@ func (s *storeSpy) Append(id string, event runstore.Event) error {
 		return errFull
 	}
 	return nil
+}
+
+func (s *storeSpy) Runs() ([]string, error) {
+	return slices.Sorted(maps.Keys(s.kept)), nil
+}
+
+func (s *storeSpy) Record(id string) (runstore.Record, error) {
+	record, ok := s.kept[id]
+	if !ok {
+		return runstore.Record{}, &fs.PathError{Op: "open", Path: id + "/record.json", Err: fs.ErrNotExist}
+	}
+	record.Calls = slices.Clone(record.Calls)
+	return record, nil
 }
 
 // given is what the store was given: the folders asked, each record

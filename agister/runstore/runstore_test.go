@@ -39,16 +39,17 @@ func lost(id string) runstore.Record {
 		Started: started, Status: "lost", Calls: []runstore.Call{}}
 }
 
-// ended is the record of the run id, completed, its call "a" kept.
+// ended is the record of the run id, completed, its call "a" kept, which
+// continues the call "r0/a" of the run "r0".
 func ended(id string) runstore.Record {
 	end := started.Add(3 * time.Second)
-	class, session := "refused", "s1"
+	class, session, continued, continues := "refused", "s1", "r0", "r0/a"
 	outcome := runstore.Outcome{Status: "completed", Output: map[string]any{"q": "<why>"},
 		Timing: runstore.Timing{Started: started, Ended: end, DurationMS: 3000}, Warnings: []string{"w"}}
 	record := lost(id)
-	record.Ended, record.Status = &end, "completed"
+	record.Ended, record.Status, record.Request.Continue = &end, "completed", &continued
 	record.Calls = []runstore.Call{{ID: id + "/a", Step: "a", Process: "ask", Agent: "claude-opus", Root: "/r",
-		Head: "c1", Content: "t1", Result: runstore.CallResult{Outcome: outcome, Session: &session}}}
+		Head: "c1", Content: "t1", Continues: &continues, Result: runstore.CallResult{Outcome: outcome, Session: &session}}}
 	failed := outcome
 	failed.Status, failed.Class = "failed", &class
 	record.Result = &runstore.Result{Outcome: failed, Sessions: map[string]string{"a": "s1"}, RunID: id}
@@ -120,7 +121,9 @@ func TestARecordIsWrittenWholeNoTemporaryFileLeft(t *testing.T) {
 }
 
 // A record is written in the shape of its schema: a run not ended has
-// its end and result null, and calls and params that are none are empty.
+// its end and result null, a run or call that continues none its
+// continue or continues null, and calls and params that are none are
+// empty.
 //
 // Contract test: the operating system's filesystem.
 func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
@@ -128,6 +131,11 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 	s, runs := store(t)
 	record := lost("x")
 	record.Calls, record.Request.Params = nil, nil
+	if err := s.Write(record); err != nil {
+		t.Fatal(err)
+	}
+	record.ID = "y"
+	record.Calls = []runstore.Call{{ID: "y/a", Step: "a"}}
 	if err := s.Write(record); err != nil {
 		t.Fatal(err)
 	}
@@ -140,10 +148,26 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"schema": "agister.record/v1alpha1", "id": "x",
-		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r"},
+		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r", "continue": nil},
 		"started": "2026-10-17T07:16:18Z", "ended": nil, "status": "lost", "calls": []any{}, "result": nil}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("record.json holds\n %v\nwant\n %v", got, want)
+	}
+	data, err = os.ReadFile(filepath.Join(runs, "y", "record.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var call struct {
+		Calls []map[string]any `json:"calls"`
+	}
+	if err := json.Unmarshal(data, &call); err != nil {
+		t.Fatal(err)
+	}
+	if len(call.Calls) != 1 {
+		t.Fatalf("record.json holds the calls %v, want one", call.Calls)
+	}
+	if continues, ok := call.Calls[0]["continues"]; !ok || continues != nil {
+		t.Errorf("record.json holds the call %v, want its continues null", call.Calls[0])
 	}
 }
 
@@ -235,6 +259,48 @@ func TestARunNotKeptIsAnError(t *testing.T) {
 	s, _ := store(t)
 	if got, err := s.Record("y"); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("record %+v, %v; want an error that is fs.ErrNotExist", got, err)
+	}
+}
+
+// runstore.feature, "The runs kept are given in name order": a folder
+// with no record, and a file, are no runs kept.
+//
+// Contract test: the operating system's filesystem.
+func TestTheRunsKeptAreGivenInNameOrder(t *testing.T) {
+	t.Parallel()
+	s, runs := store(t)
+	for _, id := range []string{"20261017T071618Z-55fd36", "20261016T090000Z-0a0b0c"} {
+		if err := s.Write(lost(id)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Append("20261015T000000Z-000000", runstore.Event{At: started, Step: "a", Kind: runstore.Started}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(runs, "20261014T000000Z-000000"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Runs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"20261016T090000Z-0a0b0c", "20261017T071618Z-55fd36"}; !slices.Equal(got, want) {
+		t.Errorf("runs kept %q, want %q", got, want)
+	}
+}
+
+// A store whose folder is not there yet keeps no runs, and the folder is
+// not made.
+//
+// Contract test: the operating system's filesystem.
+func TestAStoreWithNoFolderYetKeepsNoRuns(t *testing.T) {
+	t.Parallel()
+	s, runs := store(t)
+	if got, err := s.Runs(); err != nil || len(got) > 0 {
+		t.Errorf("runs kept %q, %v; want none", got, err)
+	}
+	if _, err := os.Stat(runs); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the store's folder: %v, want it not made", err)
 	}
 }
 

@@ -80,8 +80,9 @@ type Stream struct {
 
 // Turn is a message, the directory it runs in and its environment, as
 // "KEY=value"; the instruction, the model and the effort, each empty where
-// not given; the options, the tools the turn may use; and the schema its
-// output is checked against, nil where none is given.
+// not given; the options, the tools the turn may use; the schema its
+// output is checked against, nil where none is given; and the session it
+// resumes, "" for none.
 type Turn struct {
 	Message     string
 	Dir         string
@@ -91,6 +92,7 @@ type Turn struct {
 	Effort      string
 	Options     []string
 	Schema      []byte
+	Session     string
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
@@ -202,7 +204,8 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 // arguments are claude's for turn, contract claude-code/3: the tools are
 // the options and Skill, Skill once, given as both --tools and
 // --allowedTools under --permission-mode dontAsk, so the repository's
-// skills load as they would for a person there (ADR-003, rule 6).
+// skills load as they would for a person there (ADR-003, rule 6); a
+// session given is resumed, --resume.
 func arguments(turn Turn) []string {
 	tools := turn.Options
 	if !slices.Contains(tools, skill) {
@@ -224,6 +227,9 @@ func arguments(turn Turn) []string {
 	}
 	if len(turn.Schema) > 0 {
 		args = append(args, "--json-schema", string(turn.Schema))
+	}
+	if turn.Session != "" {
+		args = append(args, "--resume", turn.Session)
 	}
 	return args
 }
