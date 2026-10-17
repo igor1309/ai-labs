@@ -1,7 +1,10 @@
 package git_test
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -359,5 +362,144 @@ func TestCleanOutsideAnyWorktreeIsAnError(t *testing.T) {
 	o := t.TempDir()
 	if got, err := newGit(t).Clean(context.Background(), o); err == nil || !strings.Contains(err.Error(), o) {
 		t.Errorf("clean %v, %v; want an error naming %s", got, err, o)
+	}
+}
+
+// tree is the id of the tree of r's HEAD, as the real git gives it.
+func tree(t *testing.T, r string) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", r, "rev-parse", "HEAD^{tree}").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// content asks the real git the content of r, and fails t on an error.
+func content(t *testing.T, r string) string {
+	t.Helper()
+	got, err := newGit(t).Content(context.Background(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+// index is the bytes of r's index.
+func index(t *testing.T, r string) []byte {
+	t.Helper()
+	return readFile(t, filepath.Join(r, ".git", "index"))
+}
+
+// worktree.feature, "A worktree's content is the tree its files make":
+// the first read is HEAD's tree, and neither read changes the index.
+//
+// Contract test: git.
+func TestAWorktreesContentIsTheTreeItsFilesMake(t *testing.T) {
+	t.Parallel()
+	write := func(t *testing.T, r, name, text string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(r, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		change string
+		make   func(t *testing.T, r string)
+		same   bool
+	}{
+		{"nothing changed", func(*testing.T, string) {}, true},
+		{"an untracked file added", func(t *testing.T, r string) { write(t, r, "u.txt", "u") }, false},
+		{"an ignored file added", func(t *testing.T, r string) { write(t, r, "x.log", "x") }, true},
+		{"a tracked file changed", func(t *testing.T, r string) { write(t, r, "a.txt", "changed") }, false},
+	}
+	for _, c := range cases {
+		t.Run(c.change, func(t *testing.T) {
+			t.Parallel()
+			r := repository(t, t.TempDir(), "r", "")
+			write(t, r, ".gitignore", "*.log\n")
+			commitFiles(t, r, "c1", "a.txt")
+			before := index(t, r)
+			first := content(t, r)
+			if want := tree(t, r); first != want {
+				t.Errorf("content %q, want HEAD's tree %q", first, want)
+			}
+			c.make(t, r)
+			if again := content(t, r); (again == first) != c.same {
+				t.Errorf("content %q again after %q, first %q; want the same %v", again, first, c.change, c.same)
+			}
+			if after := index(t, r); !bytes.Equal(after, before) {
+				t.Error("the index changed")
+			}
+		})
+	}
+}
+
+// A repository nothing was ever added to has no index: its content is
+// still the tree its files make, and it is left with no index.
+//
+// Contract test: git.
+func TestTheContentOfARepositoryWithNoIndex(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	if err := os.WriteFile(filepath.Join(r, "a.txt"), []byte("a.txt"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := content(t, r)
+	if _, err := os.Stat(filepath.Join(r, ".git", "index")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the index after: %v, want none", err)
+	}
+	commitFiles(t, r, "c1")
+	if want := tree(t, r); got != want {
+		t.Errorf("content %q, want the tree of its files %q", got, want)
+	}
+}
+
+// A linked worktree's content is read through a copy of its own index,
+// which git keeps outside it: the tree its files make, its index and the
+// main worktree's as they were.
+//
+// Contract test: git.
+func TestTheContentOfALinkedWorktree(t *testing.T) {
+	t.Parallel()
+	folder := t.TempDir()
+	r := repository(t, folder, "r", "")
+	commitFiles(t, r, "c1", "a.txt")
+	w := filepath.Join(folder, "w")
+	run(t, r, "worktree", "add", "-q", "--detach", w)
+	own := filepath.Join(r, ".git", "worktrees", "w", "index")
+	before, main := readFile(t, own), index(t, r)
+	if err := os.WriteFile(filepath.Join(w, "u.txt"), []byte("u"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := content(t, w)
+	if !bytes.Equal(readFile(t, own), before) || !bytes.Equal(index(t, r), main) {
+		t.Error("an index changed")
+	}
+	run(t, w, "add", "u.txt")
+	run(t, w, "commit", "-q", "-m", "c2")
+	if want := tree(t, w); got != want {
+		t.Errorf("content %q, want the tree of its files %q", got, want)
+	}
+}
+
+// readFile is file's bytes.
+func readFile(t *testing.T, file string) []byte {
+	t.Helper()
+	got, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+// A directory git cannot run in is Content's error, naming it.
+//
+// Contract test: git.
+func TestContentOutsideAnyWorktreeIsAnError(t *testing.T) {
+	t.Parallel()
+	o := t.TempDir()
+	if got, err := newGit(t).Content(context.Background(), o); err == nil || !strings.Contains(err.Error(), o) {
+		t.Errorf("content %q, %v; want an error naming %s", got, err, o)
 	}
 }

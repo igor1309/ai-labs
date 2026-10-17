@@ -40,14 +40,15 @@ type clock interface {
 
 // host is what a run is given of the machine Agister runs on: the context
 // every run ends within; Agister's own environment, as "KEY=value"; the
-// clock and the timer a call's timing and time limit are kept on; and the
-// signals that cancel a run.
+// clock and the timer a call's timing and time limit are kept on; the
+// signals that cancel a run; and the randomness a run's id is drawn from.
 type host struct {
 	ctx     context.Context
 	environ []string
 	clock   clock
 	timer   call.Timer
 	signals signals
+	random  io.Reader
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,
@@ -69,7 +70,8 @@ type turn struct {
 // its agent's runtime names. A call's output is checked against its schema
 // by the validator, and its inputs are read through sourcing; each call is
 // admitted against its worktree, and holds it, through holding; what each
-// step is doing is told to events.
+// step is doing is told to events. Each run that reaches core is recorded
+// in store (docs/run-implementation.md, "Records").
 type runs struct {
 	home      string
 	links     links
@@ -82,9 +84,10 @@ type runs struct {
 	holding   holding
 	host      host
 	events    workflow.Events
+	store     recordStore
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, holding holding, host host, events workflow.Events) (*runs, error) {
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, holding holding, host host, events workflow.Events, store recordStore) (*runs, error) {
 	contracts := map[string]bool{}
 	for _, t := range turns {
 		switch {
@@ -124,10 +127,14 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 		return nil, errors.New("runs: no timer")
 	case host.signals == nil:
 		return nil, errors.New("runs: no signals")
+	case host.random == nil:
+		return nil, errors.New("runs: no randomness")
 	case events == nil:
 		return nil, errors.New("runs: no events")
+	case store == nil:
+		return nil, errors.New("runs: no record store")
 	}
-	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, sourcing: sourcing, holding: holding, host: host, events: events}, nil
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, sourcing: sourcing, holding: holding, host: host, events: events, store: store}, nil
 }
 
 // takes is how each turn takes a call's inputs, by its contract.
@@ -169,13 +176,25 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if len(unrun) > 0 {
 		return cli.Result{}, refused(unrun)
 	}
-	runner, err := r.runner(built, launch, root)
+	started := r.host.clock.Now()
+	id, err := runIDOf(started, r.host.random)
 	if err != nil {
 		return cli.Result{}, err
 	}
+	record, err := newRunRecord(r.store, r.host.clock, id, started, request, launch, root)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	runner, err := r.runner(built, launch, root, record)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	if err := record.begin(); err != nil {
+		return cli.Result{}, refused([]string{"its record cannot be written: " + err.Error()})
+	}
 	ctx, stop := r.cancelled()
 	defer stop()
-	return cliResult(runner.Run(ctx, built.workflow, request.Params)), nil
+	return record.end(runner.Run(ctx, built.workflow, request.Params)), nil
 }
 
 // runner is core's runner of built, its calls' turns taken in dir, the
@@ -183,8 +202,9 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 // turn's contract, once core/admit has admitted it against that worktree,
 // and watched for staleness by core/watch, on the host's timer; its inputs
 // read by the sources, a path relative to launch, as the person gave it;
-// what each step is doing told to the run's events.
-func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) {
+// what each step is doing told to the run's events and to record, and each
+// call, as it ends, to record.
+func (r *runs) runner(built plan, launch, dir string, record *runRecord) (*workflow.Runner, error) {
 	watcher, err := watch.New(watch.Timer(r.host.timer))
 	if err != nil {
 		return nil, err
@@ -210,11 +230,11 @@ func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) 
 	if err != nil {
 		return nil, err
 	}
-	steps, err := newStepCalls(resolver, admitter, callers, r.host.clock, built.calls)
+	steps, err := newStepCalls(resolver, admitter, callers, r.host.clock, built.calls, record)
 	if err != nil {
 		return nil, err
 	}
-	return workflow.New(boundary{inputs: resolver, declared: built.boundary}, steps, r.events, r.host.clock)
+	return workflow.New(boundary{inputs: resolver, declared: built.boundary}, steps, bothEvents{r.events, record}, r.host.clock)
 }
 
 // cancelled is the host's context, ended once a signal arrives; stop ends
@@ -331,12 +351,15 @@ type plan struct {
 	calls    map[string]plannedCall
 }
 
-// plannedCall is a step's call: the contract of the turn it is taken on;
-// what its process declares, which core/inputs resolves before the call
-// starts; what it declares of the worktree, which core/admit admits it by,
-// but the commit of its pin, which its inputs give; and the call core/call
-// makes, but its environment and inputs, which those give.
+// plannedCall is a step's call: its process and agent, by name; the
+// contract of the turn it is taken on; what its process declares, which
+// core/inputs resolves before the call starts; what it declares of the
+// worktree, which core/admit admits it by, but the commit of its pin,
+// which its inputs give; and the call core/call makes, but its environment
+// and inputs, which those give.
 type plannedCall struct {
+	process   string
+	agent     string
 	contract  string
 	declared  inputs.Declared
 	admission admit.Request
@@ -613,7 +636,8 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 	for _, input := range definition.Inputs.Value {
 		sources[input.Value.Name] = input.Value.Source.Value
 	}
-	planned := plannedCall{contract: resolved.Runtimes[agent.Runtime.Value].Contract.Value}
+	planned := plannedCall{process: item.Process.Value, agent: item.Agent.Value,
+		contract: resolved.Runtimes[agent.Runtime.Value].Contract.Value}
 	workspace := definition.Workspace.Value
 	planned.admission.Writer = workspace.Access.Value == "read-write"
 	planned.admission.Clean = workspace.Clean.Given && workspace.Clean.Value
@@ -895,7 +919,7 @@ type turnCaller interface {
 
 // admission is what a step's call asks of core/admit.
 type admission interface {
-	Make(ctx context.Context, request admit.Request, made func(ctx context.Context)) error
+	Make(ctx context.Context, request admit.Request, made func(ctx context.Context), told func(admit.Facts)) error
 }
 
 // stepCalls answers core/workflow's caller from core/inputs, core/admit
@@ -909,16 +933,25 @@ type admission interface {
 // call is made by the caller of its turn's contract, each tool call its
 // turn reports given on to core/workflow's report, and no other line, which
 // the progress skips. A call with no usage,
-// as on bash, has every count of it unknown.
+// as on bash, has every count of it unknown. Each call, refused or made,
+// is told to records as it ends, with the worktree's facts admit told of
+// it.
 type stepCalls struct {
 	inputs  declaredResolver
 	admits  admission
 	callers map[string]turnCaller
 	clock   clock
 	calls   map[string]plannedCall
+	records callRecords
 }
 
-func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
+// callRecords is told each step's call as it ends. It is told from many
+// goroutines at once, one for each step of a parallel.
+type callRecords interface {
+	Called(ended endedCall)
+}
+
+func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall, records callRecords) (*stepCalls, error) {
 	switch {
 	case inputs == nil:
 		return nil, errors.New("step calls: no inputs")
@@ -926,16 +959,28 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 		return nil, errors.New("step calls: no admission")
 	case clock == nil:
 		return nil, errors.New("step calls: no clock")
+	case records == nil:
+		return nil, errors.New("step calls: no records")
 	}
 	for _, name := range slices.Sorted(maps.Keys(calls)) {
 		if callers[calls[name].contract] == nil {
 			return nil, fmt.Errorf("step calls: no caller for the step %q, of the contract %q", name, calls[name].contract)
 		}
 	}
-	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls}, nil
+	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records}, nil
 }
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Tool)) workflow.Result {
+	planned := s.calls[name]
+	var facts admit.Facts
+	result := s.call(ctx, name, params, report, &facts)
+	s.records.Called(endedCall{step: name, process: planned.process, agent: planned.agent, facts: facts, result: result})
+	return result
+}
+
+// call is the result of the step name's call, its worktree's facts told
+// to facts where admit tells them.
+func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Tool), facts *admit.Facts) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
 		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
@@ -964,7 +1009,7 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 				report(workflow.Tool{Name: tool.Name, Input: tool.Input})
 			}
 		})
-	})
+	}, func(told admit.Facts) { *facts = told })
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}

@@ -137,8 +137,9 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 // test gives, claude-code's and codex's by those it sets; the validator,
 // jsonschema's unless its test gives another; the sources' spy, git's root
 // "/r", holding what its test gives; the holding's spy, git's HEAD of "/r"
-// "c1" and clean, every lock taken; and the machine: Agister's
-// environment environ, a manual clock and the signals spy.
+// "c1" and clean, every lock taken; runstore's spy; and the machine:
+// Agister's environment environ, a manual clock, the signals spy and
+// randomness giving 55fd36.
 type runFixture struct {
 	settings  map[string]string
 	runtimes  *runtimesSpy
@@ -147,6 +148,7 @@ type runFixture struct {
 	clock     *clocktest.Clock
 	sources   *sourcesSpy
 	holding   *holdingSpy
+	store     *storeSpy
 }
 
 func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
@@ -161,6 +163,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 		clock:     clocktest.NewClock(runStart),
 		sources:   &sourcesSpy{root: "/r"},
 		holding:   &holdingSpy{root: "/r", head: "c1", clean: true},
+		store:     &storeSpy{},
 	}
 }
 
@@ -173,8 +176,9 @@ func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), machine, &stdout, &stderr)
+	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch,
+		random: randomSpy{0x55, 0xfd, 0x36}}
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), f.store.at, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}

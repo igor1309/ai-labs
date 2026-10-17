@@ -50,10 +50,11 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	t.Parallel()
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
-	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
+	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch,
+		random: randomSpy{0x55, 0xfd, 0x36}}
 	wrappers := newRuntimesSpy(t)
 	wrappers.bash.answer = echoes
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), machine, &strings.Builder{}, &strings.Builder{})
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), (&storeSpy{}).at, machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: "a", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}})
 	unplugged := sayCall("x")
 	unplugged.declared.Inputs[0].Source = "git.revision"
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged}, &callsSpy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +162,7 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	count := func(n int64) *int64 { return &n }
 	spy := &turnSpy{result: call.Result{Status: call.Lost, Class: call.NoResult, Session: "s1", Reason: "exited 0",
 		Usage: &call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}}
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -560,71 +561,82 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, []turn, host) {
 		return "/u/.agister", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappersSpy{},
 			[]turn{{contract: "bash/1", inputs: call.InEnvironment, runtime: turns}},
-			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
+			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, random: randomSpy{0}}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
 	sources := (&sourcesSpy{}).sourcing()
 	held := (&holdingSpy{}).holding()
 	held.folder = "/u/.agister/locks/in-place"
 	events := &eventsSpy{}
-	if _, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events); err != nil {
+	store := &storeSpy{}
+	if _, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events, store); err != nil {
 		t.Fatalf("runs with every collaborator: %v", err)
 	}
 	cases := map[string]func() error{
 		"home": func() error {
-			_, err := newRuns("", l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events)
+			_, err := newRuns("", l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events, store)
 			return err
 		},
 		"links": func() error {
-			_, err := newRuns(home, nil, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events)
+			_, err := newRuns(home, nil, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events, store)
 			return err
 		},
 		"turn": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, sources, held, machine, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, sources, held, machine, events, store)
 			if err == nil || err.Error() != "runs: no turn" {
 				return err
 			}
-			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, sources, held, machine, events)
+			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, sources, held, machine, events, store)
 			return err
 		},
 		"turn's inputs": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, sources, held, machine, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, sources, held, machine, events, store)
 			return err
 		},
 		"context": func() error {
 			m := machine
 			m.ctx = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events, store)
 			return err
 		},
 		"clock": func() error {
 			m := machine
 			m.clock = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events, store)
 			return err
 		},
 		"timer": func() error {
 			m := machine
 			m.timer = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events, store)
 			return err
 		},
 		"signals": func() error {
 			m := machine
 			m.signals = nil
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events, store)
 			return err
 		},
 		"wrappers": func() error {
-			_, err := newRuns(home, l, fs, roots, nil, tu, schemaValidator{}, sources, held, machine, events)
+			_, err := newRuns(home, l, fs, roots, nil, tu, schemaValidator{}, sources, held, machine, events, store)
 			return err
 		},
 		"validator": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, nil, sources, held, machine, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, nil, sources, held, machine, events, store)
 			return err
 		},
 		"events": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, nil)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, nil, store)
+			return err
+		},
+		"randomness": func() error {
+			m := machine
+			m.random = nil
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, m, events, store)
+			return err
+		},
+		"record store": func() error {
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, held, machine, events, nil)
 			return err
 		},
 	}
@@ -637,7 +649,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 		partial := sources
 		without(&partial)
 		cases[name] = func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, partial, held, machine, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, partial, held, machine, events, store)
 			return err
 		}
 	}
@@ -649,7 +661,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 		partial := held
 		without(&partial)
 		cases[name] = func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, partial, machine, events)
+			_, err := newRuns(home, l, fs, roots, wrappers, tu, schemaValidator{}, sources, partial, machine, events, store)
 			return err
 		}
 	}
@@ -662,7 +674,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 		})
 	}
 	twice := append(slices.Clone(tu), turn{contract: "bash/1", inputs: call.InMessage, runtime: turns})
-	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, sources, held, machine, events); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
+	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, sources, held, machine, events, store); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
 		t.Errorf("runs with two turns of a contract: %v, want the error that says so", err)
 	}
 }

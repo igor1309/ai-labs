@@ -1,7 +1,7 @@
 // Package git is a wrapper over git, in its own types (ADR-001): the root
 // of the git worktree that holds a directory, a revision's commit, the
-// files changed between two revisions, and a worktree's HEAD and whether
-// its content is HEAD's.
+// files changed between two revisions, and a worktree's HEAD, whether its
+// content is HEAD's, and its content.
 package git
 
 import (
@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,13 +100,77 @@ func (g *Git) Clean(ctx context.Context, dir string) (bool, error) {
 	return stdout == "", nil
 }
 
-// run runs git with args in dir, and gives its stdout and stderr. Git's
-// messages are in the C locale: a caller that reads them, or a person,
-// gets the same words in every user's language.
+// Content gives the id of the tree dir's worktree's files would make, as
+// git write-tree gives it: tracked and untracked files as they are now,
+// ignored ones not. Git writes it through an index of its own, a copy of
+// the worktree's in a temporary folder, removed after: the worktree's
+// index is neither changed nor locked, and the copy's stat data spares
+// hashing the files unchanged since it was written.
+func (g *Git) Content(ctx context.Context, dir string) (string, error) {
+	stdout, stderr, err := g.run(ctx, dir, "rev-parse", "--git-path", "index")
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse --git-path index in %s: %w: %s", dir, err, strings.TrimSpace(stderr))
+	}
+	index := strings.TrimSuffix(stdout, "\n")
+	if !filepath.IsAbs(index) {
+		index = filepath.Join(dir, index)
+	}
+	folder, err := os.MkdirTemp("", "agister-index-")
+	if err != nil {
+		return "", fmt.Errorf("git: the content of %s: %w", dir, err)
+	}
+	defer os.RemoveAll(folder)
+	own := filepath.Join(folder, "index")
+	if err := copyFile(index, own); err != nil {
+		return "", fmt.Errorf("git: the content of %s: %w", dir, err)
+	}
+	env := []string{"GIT_INDEX_FILE=" + own}
+	if _, stderr, err := g.runWith(ctx, dir, env, "add", "--all"); err != nil {
+		return "", fmt.Errorf("git add --all in %s: %w: %s", dir, err, strings.TrimSpace(stderr))
+	}
+	stdout, stderr, err = g.runWith(ctx, dir, env, "write-tree")
+	if err != nil {
+		return "", fmt.Errorf("git write-tree in %s: %w: %s", dir, err, strings.TrimSpace(stderr))
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+// copyFile copies the file from to the new file to. A from that does not
+// exist, as the index of a repository nothing was ever added to, copies
+// nothing: git starts an index of its own empty.
+func copyFile(from, to string) error {
+	source, err := os.Open(from)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	copied, err := os.OpenFile(to, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(copied, source); err != nil {
+		copied.Close()
+		return err
+	}
+	return copied.Close()
+}
+
+// run runs git with args in dir, and gives its stdout and stderr.
 func (g *Git) run(ctx context.Context, dir string, args ...string) (string, string, error) {
+	return g.runWith(ctx, dir, nil, args...)
+}
+
+// runWith runs git with args in dir, env added to its environment, and
+// gives its stdout and stderr. Git's messages are in the C locale: a
+// caller that reads them, or a person, gets the same words in every user's
+// language.
+func (g *Git) runWith(ctx context.Context, dir string, env []string, args ...string) (string, string, error) {
 	command := exec.CommandContext(ctx, g.program, args...)
 	command.Dir = dir
-	command.Env = append(os.Environ(), "LC_ALL=C")
+	command.Env = append(append(os.Environ(), "LC_ALL=C"), env...)
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err := command.Run()
