@@ -410,3 +410,60 @@ Decisions, each with its reason:
   early is the caller's choice.
 - A report is given with every call, never left out: core needs no
   fallback for a call with none (ADR-009, rule 2).
+
+## A step in a held worktree
+
+A step whose process pins a revision, asks a clean worktree, writes to
+it, or sets staleness limits runs: home's `implement`, as
+`agister run --process implement --agent claude-opus --param
+brief=<path>`. What the archive also did, recording the worktree's
+changes and resuming a stale turn, waits (`backlog/run-path.md`).
+
+**`git`** gives a worktree's HEAD, and whether its content is HEAD's:
+no change staged, unstaged or untracked, as `git status --porcelain`
+lists them.
+
+**`core/admit`** admits a call before it starts (ADR-004, rules 2 and
+3): where its process pins a revision, the worktree's HEAD is that
+input's commit; where it asks a clean worktree, its content is HEAD's;
+and it takes the worktree's hold, alone for a writer, a process
+declaring read-write access, shared for a reader. A call not admitted
+is refused, not queued: failed, `refused`, saying why. The hold is
+released when the call ends, however it ends. The worktree's facts and
+the hold are ports, the composition answers them.
+
+**`core/watch`** observes a turn (ADR-006, rule 1), best effort, over
+what its wrapper reports: each tool call, as before, and every other
+line it reads, which the progress lines skip. It reports the turn stale
+when the same tool call, its name and what it was given, comes the
+process's `repeated_tool_calls` times in a row; when nothing follows a
+tool call for its `tool_command`; or when nothing comes at all for its
+`no_event`. A limit not set is not watched. Its time is a clock and a
+timer (ADR-009, rule 5).
+
+**`core/call`** ends a stale turn, its program's group with it (ADR-006,
+rule 2); the turn's work stays in the worktree. A repeated tool call
+ends the call failed, `budget_exhausted`, a class core adds; a quiet
+turn or a hung tool command ends it interrupted, `timeout`. Its reason
+says what went stale.
+
+**The composition** chains `inputs`, `admit` and `call` for each step
+(ADR-001). The hold is a lock file under home's `locks`, named by the
+SHA-256 of the worktree root's path, links resolved, taken with `flock`
+without waiting, shared or alone: the archive's, so the two Agisters
+exclude each other on a worktree. A hold ends with the process that
+took it, so a dead owner leaves none. It no longer refuses a
+workspace's revision, clean or read-write access, or a staleness limit
+on a model; on bash, which reports nothing to watch, a staleness limit
+is still refused.
+
+Decisions, each with its reason:
+
+- No record of the worktree's changes yet (ADR-004, rule 4): the
+  changes are in the worktree, and the record is runstore's.
+- No recovery turn yet (ADR-006, rule 3): a stale call ends, and the
+  caller reruns; resuming waits with sessions.
+- Staleness is best effort: what a wrapper does not report is not
+  watched, and a limit is kept to within a timer's tick.
+- Untracked files make a worktree not clean, as the archive held: an
+  untracked file is content HEAD does not have.

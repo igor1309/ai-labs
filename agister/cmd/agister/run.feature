@@ -1,5 +1,6 @@
 # cmd/agister, the run (docs/run-implementation.md, "The first run" and
-# "A step on a model runtime" and "Inputs and progress";
+# "A step on a model runtime", "Inputs and progress" and "A step in a
+# held worktree";
 # ADR-001, "Starting a run"): cli's run answered from resolve and core,
 # with spies in place of the wrappers (ADR-009, rule 4): the settings,
 # home's as shipped with a bash process "say" whose prompt is the script
@@ -49,10 +50,7 @@ Feature: The composition runs a request
       | the cost limit 1                             | claude-opus | the cost limit                        |
       | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name |
       | an input "b" from the source "git.diff"      | bash        | the source "git.diff"                 |
-      | a workspace revision from inputs.what        | bash        | the workspace's revision              |
-      | a workspace clean                            | bash        | the workspace's clean                 |
-      | the workspace access read-write              | bash        | the workspace's read-write access     |
-      | the stale limit no_event 1m                  | bash        | the staleness limit                   |
+      | the stale limit no_event 1m                  | bash        | the staleness limit on bash           |
       | an instruction "think"                       | bash        | the instruction on bash               |
       | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
 
