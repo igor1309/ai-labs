@@ -130,10 +130,12 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
                 <BookOpen size={20} />
               </span>
               <span className="catalogue-tile-title">{text.catalogue}</span>
-              <span className="catalogue-tile-count">
-                <Footprints size={14} aria-hidden="true" />
-                {catalogue.count}
-              </span>
+            </span>
+            {/* The counts sit in the tiles' corners, over the pictures: the
+                rows keep their width for the titles. */}
+            <span className="catalogue-tile-count">
+              <Footprints size={18} aria-hidden="true" />
+              {catalogue.count}
             </span>
           </button>
           <button type="button" className="card care-tile" aria-label={text.care} onClick={onCare} {...carePointer}>
@@ -143,13 +145,13 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
                 <Heart size={20} />
               </span>
               <span className="care-tile-title">{text.care}</span>
-              {care.best !== undefined && (
-                <span className="care-tile-best">
-                  <Trophy size={14} aria-hidden="true" />
-                  {care.best}
-                </span>
-              )}
             </span>
+            {care.best !== undefined && (
+              <span className="care-tile-best">
+                <Trophy size={18} aria-hidden="true" />
+                {care.best}
+              </span>
+            )}
           </button>
         </div>
         {/* The games still to come are a picture, not a button: a tap on

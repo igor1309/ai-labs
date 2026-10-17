@@ -2,7 +2,10 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
+import { LANGUAGES } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
+import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
+import { careRecord } from "./careApp.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
 import {
   SHIPPED_CATALOGUE,
@@ -21,8 +24,8 @@ import {
   type MemoryStorage
 } from "./support.ts";
 
-function openHomePage(progress = emptyProgress(), pictures = loadedPictures()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...pictures} />);
+function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), care = emptyCare()) {
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
@@ -42,6 +45,66 @@ const moreComing = () => {
   return card;
 };
 
+// jsdom lays nothing out, so the width of each title in every language
+// is given here in ems of its bold face, rounded up: Lexend's for the
+// Latin words, and the iPad's own face for the Cyrillic ones, which
+// Lexend has no letters for. A title missing here fails the test that
+// reads it.
+const TITLE_EMS: Record<string, number> = {
+  COMPARE: 5.1,
+  СРАВНИ: 4.1,
+  "ALL DINOSAURS": 8.6,
+  "ВСЕ ДИНОЗАВРЫ": 8.8,
+  CARE: 2.8,
+  ПОЗАБОТЬСЯ: 6.9
+};
+
+// The words each title on the home page shows.
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogue" | "care"> = {
+  "quiz-card-title": "quizCard",
+  "catalogue-tile-title": "catalogue",
+  "care-tile-title": "care"
+};
+
+const px = (value: string) => Number.parseFloat(value) || 0;
+
+// jsdom keeps a gap as it is written, unexpanded.
+const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
+
+const sidesOf = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth);
+
+// The width each column of the games takes on a page `width` wide: the
+// columns grow from nothing by their shares of what the page's padding,
+// the gaps and their own sides leave.
+function columnWidths(width: number) {
+  const home = document.querySelector(".home");
+  const games = document.querySelector(".games");
+  if (!home || !games) throw new Error("No games on the page");
+  const columns = [...games.children].map((column) => ({ column, style: getComputedStyle(column) }));
+  expect(columns.map(({ style }) => [style.flexBasis, style.minWidth])).toEqual(columns.map(() => ["0px", "0px"]));
+  const free = width - sidesOf(getComputedStyle(home)) - columnGapOf(getComputedStyle(games)) * (columns.length - 1) - columns.reduce((sum, { style }) => sum + sidesOf(style), 0);
+  const shares = columns.reduce((sum, { style }) => sum + Number(style.flexGrow), 0);
+  return new Map(columns.map(({ column, style }) => [column, (free * Number(style.flexGrow)) / shares + sidesOf(style)]));
+}
+
+// The width a title has on a page `width` wide: its card's column, short
+// of the sides of the card and the row, and of the row's other parts and
+// the gaps between them.
+function roomFor(title: Element, width: number) {
+  const row = title.parentElement;
+  const card = title.closest("button");
+  const column = [...columnWidths(width)].find(([column]) => column.contains(card));
+  if (!row || !card || !column) throw new Error("A title outside the games");
+  const others = [...row.children].filter((child) => child !== title);
+  return (
+    column[1] -
+    sidesOf(getComputedStyle(card)) -
+    sidesOf(getComputedStyle(row)) -
+    others.reduce((sum, other) => sum + px(getComputedStyle(other).width), 0) -
+    columnGapOf(getComputedStyle(row)) * others.length
+  );
+}
+
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -58,7 +121,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("lays the games out in three columns, 5 : 3 : 2 of the width: COMPARE, ALL DINOSAURS over CARE, then MORE COMING as tall as them", () => {
+  it("lays the games out in three columns, 3 : 2 : 1 of the width: COMPARE, ALL DINOSAURS over CARE, then MORE COMING as tall as them", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -74,27 +137,52 @@ describe("the home page", () => {
         return [style.flexGrow, style.flexBasis, style.alignSelf];
       })
     ).toEqual([
-      ["5", "0px", "auto"],
       ["3", "0px", "auto"],
-      ["2", "0px", "auto"]
+      ["2", "0px", "auto"],
+      ["1", "0px", "auto"]
     ]);
     expect(getComputedStyle(games ?? card).alignItems).toBe("normal");
   });
 
-  it("keeps the titles of the quiz card and the tiles on one line, the tiles' sized by their own width", () => {
-    openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })));
+  it.each([1024, 1180, 1366])(
+    "keeps the title of every game on one line in every language at %ipx wide, the tiles' at least 24px and their counts at least 20px in the pictures' corners",
+    (width) => {
+      const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 7, visitsFinished: 1, friends: [] }) });
+      openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })), loadedPictures(), { ...emptyCare(), careProgress: localCareProgress(() => careStorage) });
 
-    const words = document.querySelectorAll(".quiz-card-title, .catalogue-tile-title, .care-tile-title");
-    expect([...words].map((title) => [title.textContent, getComputedStyle(title).whiteSpace])).toEqual([
-      ["COMPARE", "nowrap"],
-      ["ALL DINOSAURS", "nowrap"],
-      ["CARE", "nowrap"]
-    ]);
-    expect([".catalogue-tile", ".care-tile"].map((tile) => getComputedStyle(document.querySelector(tile) ?? document.body).getPropertyValue("container-type"))).toEqual([
-      "inline-size",
-      "inline-size"
-    ]);
-  });
+      const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
+      expect(titles.map((title) => [title.textContent, getComputedStyle(title).whiteSpace])).toEqual([
+        ["COMPARE", "nowrap"],
+        ["ALL DINOSAURS", "nowrap"],
+        ["CARE", "nowrap"]
+      ]);
+      const overflowing = titles.flatMap((title) => {
+        const style = getComputedStyle(title);
+        const room = roomFor(title, width);
+        const key = TITLE_TEXTS[title.className];
+        // A size worked out by the browser, such as one from the tile's
+        // width, cannot be read here, so a title's size is in pixels.
+        if (!/^[\d.]+px$/.test(style.fontSize)) return [`${title.textContent}: a size of ${style.fontSize}`];
+        return LANGUAGES.map((language) => (key ? TEXTS[language][key] : "")).flatMap((words) => {
+          const ems = TITLE_EMS[words];
+          if (ems === undefined) return [`${words}: no width in ems`];
+          const needed = ems * px(style.fontSize) + px(style.letterSpacing) * words.length;
+          return needed > room ? [`${words}: ${needed.toFixed(1)}px in ${room.toFixed(1)}px`] : [];
+        });
+      });
+      expect(overflowing).toEqual([]);
+
+      const tiles = [screen.getByRole("button", { name: "ALL DINOSAURS" }), screen.getByRole("button", { name: "CARE" })];
+      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true]);
+      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best"));
+      expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
+        [String(SHIPPED_CATALOGUE.length), true, "absolute"],
+        ["7", true, "absolute"]
+      ]);
+      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true]);
+      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative"]);
+    }
+  );
 
   it("shows MORE COMING beside the tiles as a picture, not a button: a faded Triceratops over a lock", () => {
     openHomePage();

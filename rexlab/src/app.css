@@ -475,8 +475,10 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 /* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. Three columns share the width 5 : 3 : 2:
-   COMPARE, the tiles, and the games still to come. */
+   iPad above the bands of rock. Three columns share the width 3 : 2 : 1:
+   COMPARE, the tiles, and the games still to come. A third is what the
+   tiles' titles need at 24px on the smallest iPad, and half is what
+   COMPARE's needs at 52px; the games still to come take the sixth left. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
   display: flex;
@@ -485,7 +487,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 .quiz-card {
   position: relative;
-  flex: 5 1 0;
+  flex: 3 1 0;
   min-width: 0;
   padding: 0;
   display: flex;
@@ -569,7 +571,7 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .side-games {
-  flex: 3 1 0;
+  flex: 2 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -579,6 +581,7 @@ body:has(.result) footer[aria-label="Version"] {
 /* The catalogue's tile is terracotta. White words keep text contrast on
    terracotta only under the shade the quiz card's footer also has. */
 .catalogue-tile {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   padding: 0;
@@ -592,7 +595,6 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ffffff;
   box-shadow: 0 8px 24px #1d274224;
   text-align: left;
-  container-type: inline-size;
 }
 
 .catalogue-tile-picture {
@@ -622,30 +624,31 @@ body:has(.result) footer[aria-label="Version"] {
   background: #ffffff33;
 }
 
-/* A title takes the width the row leaves beside the symbol and the
-   count, about 136px short of the tile. The longest, ВСЕ ДИНОЗАВРЫ, is
-   nearly 9 times as wide as its font size, so at a ninth of that width
-   it stays on one line on the smallest iPad. The CARE tile's title is the
-   same size. */
+/* A title is never smaller than a child can read: the column is made
+   wide enough for it instead. The CARE tile's title is the same size. */
 .catalogue-tile-title {
   flex: 1 1 0;
   min-width: 0;
-  font-size: min(26px, calc((100cqi - 136px) / 9));
+  font-size: 24px;
   font-weight: 700;
   white-space: nowrap;
 }
 
+/* The count sits in the tile's corner, over the picture: beside the
+   title it would leave the title too little of the row. */
 .catalogue-tile-count {
-  flex-shrink: 0;
-  height: 32px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
   box-sizing: border-box;
-  padding: 0 8px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  border-radius: 16px;
+  gap: 6px;
+  border-radius: 20px;
   background: #00000026;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -654,7 +657,7 @@ body:has(.result) footer[aria-label="Version"] {
    presses in. Its sides are padded inside it: padding of its own would
    widen it past its share of the row. */
 .more-coming {
-  flex: 2 1 0;
+  flex: 1 1 0;
   min-width: 0;
   box-sizing: border-box;
   padding: 24px 0;
@@ -1629,6 +1632,7 @@ body:has(.result) footer[aria-label="Version"] {
    ink keeps its contrast on amber with no shade under it, so the row is
    lit, as the design draws it. */
 .care-tile {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   padding: 0;
@@ -1642,7 +1646,6 @@ body:has(.result) footer[aria-label="Version"] {
   color: #1d2742;
   box-shadow: 0 8px 24px #1d274224;
   text-align: left;
-  container-type: inline-size;
 }
 
 .care-tile-picture {
@@ -1674,22 +1677,24 @@ body:has(.result) footer[aria-label="Version"] {
 .care-tile-title {
   flex: 1 1 0;
   min-width: 0;
-  font-size: min(26px, calc((100cqi - 136px) / 9));
+  font-size: 24px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .care-tile-best {
-  flex-shrink: 0;
-  height: 32px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
   box-sizing: border-box;
-  padding: 0 8px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  border-radius: 16px;
+  gap: 6px;
+  border-radius: 20px;
   background: #ffffff59;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
 }
 
