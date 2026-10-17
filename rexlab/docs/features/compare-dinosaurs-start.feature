@@ -30,6 +30,19 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 
+  Scenario: The first question waits for its pictures
+    Given I am on the home page
+    And the pictures of question 1 are still loading
+    When I tap the "COMPARE" card
+    Then the home page stays on screen
+    And when the pictures have loaded, or after a second at most, I see the progress "1/10"
+
+  Scenario: A quick double tap on the card starts one round
+    Given I am on the home page
+    And the pictures of question 1 are still loading
+    When I tap the "COMPARE" card twice quickly
+    Then one round starts, at "1/10"
+
   Scenario: Portrait asks to turn the iPad
     Given I am on question 3 of a round
     When I turn the iPad to portrait

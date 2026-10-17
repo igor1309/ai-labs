@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { addTransitionType, startTransition, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { HomePage, type LockedGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
+import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentQuestion, presentResult } from "./presentation.ts";
-import { QuestionScreen } from "./QuestionScreen.tsx";
+import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
 import {
   choose,
   finishPlay,
@@ -55,6 +56,8 @@ export type AppProps = {
   languageStore: LanguageStore;
   appearance: Appearance;
   themeStore: ThemeStore;
+  loadPicture: LoadPicture;
+  startTimer: StartTimer;
 };
 
 // The two dinosaurs facing off on the home page's quiz card.
@@ -66,9 +69,38 @@ const LOCKED: Record<LockedGame, string> = { taller: "stegosaurus", diet: "trice
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
 
-type Screen ={ kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
+// The longest a question waits for its pictures, in milliseconds:
+// long enough for a picture on a slow connection, short enough that a
+// broken one does not keep the child waiting.
+const PICTURE_WAIT = 1000;
 
-export function App({ dinosaurs, bodyPicture, random, orientation, progress, deviceLanguage, languageStore, appearance, themeStore }: AppProps) {
+// The view transition type of one screen giving way to another.
+const SCREEN_CHANGE = "screen-change";
+
+// Makes `update` a view transition of `type`, where the browser has view
+// transitions; elsewhere the screen changes at once.
+function changeScreen(type: string, update: () => void) {
+  startTransition(() => {
+    addTransitionType(type);
+    update();
+  });
+}
+
+type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
+
+export function App({
+  dinosaurs,
+  bodyPicture,
+  random,
+  orientation,
+  progress,
+  deviceLanguage,
+  languageStore,
+  appearance,
+  themeStore,
+  loadPicture,
+  startTimer
+}: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
@@ -105,10 +137,26 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
     themeStore.save(chosen);
   };
 
+  // The pictures of the question `play` is on, once they are ready or the
+  // wait runs out.
+  const whenPicturesReady = (play: Play, ready: () => void) => {
+    const { left, right } = questionState(play);
+    waitForPictures([bodyPicture(left.dinosaur.id), bodyPicture(right.dinosaur.id)], { loadPicture, startTimer, limit: PICTURE_WAIT }, ready);
+  };
+
+  // A round being started, while its first pictures load: a second tap on
+  // COMPARE or PLAY AGAIN meanwhile starts nothing more.
+  const starting = useRef(false);
+
   const playNewRound = () => {
+    if (starting.current) return;
+    starting.current = true;
     const started = startRound(dinosaurs, random, lastPlay);
-    setLastPlay(started);
-    setScreen({ kind: "question", play: started });
+    whenPicturesReady(started, () => {
+      starting.current = false;
+      setLastPlay(started);
+      changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "question", play: started }));
+    });
   };
 
   // Each update moves from the state it is given, not the one last
@@ -116,7 +164,17 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
   // changes nothing.
   const play = (move: (play: Play) => Play) =>
     setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
-  const home = () => setScreen({ kind: "home" });
+  const home = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
+
+  // The next question shows once its pictures are ready, so none pops in,
+  // and only if the round is still where Next was tapped: a second tap, or
+  // Home, while the pictures load changes nothing more.
+  const goOn = (from: Play) => {
+    const to = next(from);
+    whenPicturesReady(to, () =>
+      changeScreen(NEXT_QUESTION, () => setScreen((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current)))
+    );
+  };
 
   // A round is recorded only here, when its result is shown, so a round
   // left early changes nothing.
@@ -125,7 +183,7 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
     if (result.progress) {
       progress.save(result.progress);
     }
-    setScreen({ kind: "result", result });
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
   const content = () => {
@@ -138,7 +196,7 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
             language={language}
             {...presentQuestion(question, language, bodyPicture)}
             onChoose={(id) => play((state) => choose(state, id))}
-            onNext={question.last ? () => seeResult(current) : () => play(next)}
+            onNext={question.last ? () => seeResult(current) : () => goOn(current)}
             onHome={home}
           />
         );
@@ -169,5 +227,13 @@ export function App({ dinosaurs, bodyPicture, random, orientation, progress, dev
     }
   };
 
-  return <OrientationGate orientation={orientation} language={language}>{content()}</OrientationGate>;
+  // One screen cross-fades into the next; a new question animates only its
+  // pair of cards, inside the question screen.
+  return (
+    <OrientationGate orientation={orientation} language={language}>
+      <ViewTransition default="none" update={{ [SCREEN_CHANGE]: "screen", default: "none" }}>
+        {content()}
+      </ViewTransition>
+    </OrientationGate>
+  );
 }

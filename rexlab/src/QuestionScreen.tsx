@@ -1,4 +1,5 @@
 import { ArrowRight, Check, House, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
+import { ViewTransition } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { usePointerState } from "./usePointerState.ts";
@@ -14,6 +15,11 @@ const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler 
 export type Mark = keyof Texts["marks"];
 
 const MARKS: Record<Mark, LucideIcon> = { correct: Check, wrong: X };
+
+// The view transition type of the next question taking the last one's
+// place: the old pair slides out to the left and the new one in from the
+// right, the second card a little after the first.
+export const NEXT_QUESTION = "next-question";
 
 export type DinosaurCardView = {
   id: string;
@@ -44,9 +50,21 @@ export type QuestionScreenProps = {
 export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome }: QuestionScreenProps) {
   const text = TEXTS[language];
   const Symbol = SYMBOLS[prompt];
-  const card = (view: DinosaurCardView) => (
-    <DinosaurCard key={view.id} view={view} language={language} prompt={prompt} answered={answered} onChoose={onChoose} />
-  );
+  // Each question's cards are its own, so the next question's pair enters
+  // as the last one leaves, even when a dinosaur is in both.
+  const card = (view: DinosaurCardView, side: "left" | "right") => {
+    const late = side === "right" ? "-late" : "";
+    return (
+      <ViewTransition
+        key={`${number}-${side}`}
+        default="none"
+        enter={{ [NEXT_QUESTION]: `card-in${late}`, default: "none" }}
+        exit={{ [NEXT_QUESTION]: `card-out${late}`, default: "none" }}
+      >
+        <DinosaurCard view={view} language={language} prompt={prompt} answered={answered} onChoose={onChoose} />
+      </ViewTransition>
+    );
+  };
   return (
     <main className="question">
       <div className="stratum stratum-1" aria-hidden="true" />
@@ -73,11 +91,11 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
         {text.prompts[prompt]}
       </h1>
       <div className="dinosaur-cards" role="group" aria-label={text.dinosaurs}>
-        {card(left)}
+        {card(left, "left")}
         <span className="versus" aria-hidden="true">
           {text.versus}
         </span>
-        {card(right)}
+        {card(right, "right")}
       </div>
       {/* The row keeps its place before the answer, so the cards do not
           move when Next appears. */}

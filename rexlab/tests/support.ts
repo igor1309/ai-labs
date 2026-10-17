@@ -1,5 +1,5 @@
 import records from "../src/data/dinosaurs.json";
-import type { Appearance } from "../src/App.tsx";
+import type { AppProps, Appearance } from "../src/App.tsx";
 import { readDinosaurs } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
@@ -17,6 +17,83 @@ export const SHIPPED_DINOSAURS = readDinosaurs(records);
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
 export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.webp`;
+
+// Pictures for tests that are not about them: each is loaded the moment
+// it is asked for, so nothing waits on the timer, which never fires.
+export function loadedPictures(): Pick<AppProps, "loadPicture" | "startTimer"> {
+  return { loadPicture: (_url, done) => done(), startTimer: () => () => {} };
+}
+
+export type ManualPictures = Pick<AppProps, "loadPicture" | "startTimer"> & {
+  // The URL of every picture asked for and not yet finished, in order.
+  loading(): string[];
+  // Ends the loading of `url`: from then on it is loaded or has failed.
+  finish(url: string): void;
+  // The length of every timer started and not yet fired or stopped.
+  timers(): number[];
+  // Fires every running timer of `ms`.
+  fire(ms: number): void;
+};
+
+// Pictures that load and a timer that fires only when the test says.
+export function manualPictures(): ManualPictures {
+  const loading: Array<{ url: string; done: () => void }> = [];
+  const timers: Array<{ ms: number; fire: () => void }> = [];
+  const drop = <T>(list: T[], item: T) => list.splice(list.indexOf(item), 1);
+  return {
+    loadPicture: (url, done) => {
+      loading.push({ url, done });
+    },
+    startTimer: (ms, fire) => {
+      const timer = { ms, fire };
+      timers.push(timer);
+      return () => {
+        if (timers.includes(timer)) drop(timers, timer);
+      };
+    },
+    loading: () => loading.map(({ url }) => url),
+    finish: (url) => {
+      for (const picture of loading.filter((picture) => picture.url === url)) {
+        drop(loading, picture);
+        picture.done();
+      }
+    },
+    timers: () => timers.map(({ ms }) => ms),
+    fire: (ms) => {
+      for (const timer of timers.filter((timer) => timer.ms === ms)) {
+        drop(timers, timer);
+        timer.fire();
+      }
+    }
+  };
+}
+
+// What the app takes from a browser to load pictures and keep time, as
+// spies: the source of each image it decodes, the timers it started, by
+// their id, and the ids of those it stopped. No image ever finishes
+// decoding and no timer ever fires.
+export function pictureBrowser() {
+  const decoding: string[] = [];
+  const timers: Array<{ ms: number; fire: () => void }> = [];
+  const stopped: number[] = [];
+  class Image {
+    src = "";
+    decode() {
+      decoding.push(this.src);
+      return new Promise<void>(() => {});
+    }
+  }
+  return {
+    Image,
+    setTimeout: (fire: () => void, ms: number) => timers.push({ ms, fire }) - 1,
+    clearTimeout: (id: number) => {
+      stopped.push(id);
+    },
+    decoding,
+    timers,
+    stopped
+  };
+}
 
 // A seeded random source (mulberry32): each seed is one repeatable run.
 export function seededRandom(seed: number): Random {

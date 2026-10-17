@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
@@ -10,6 +10,8 @@ import {
   englishDevice,
   fakeBodyPicture,
   lightDevice,
+  loadedPictures,
+  manualPictures,
   manualOrientation,
   memoryStorage,
   seededRandom,
@@ -17,8 +19,8 @@ import {
   type MemoryStorage
 } from "./support.ts";
 
-function openHomePage(progress = emptyProgress()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} />);
+function openHomePage(progress = emptyProgress(), pictures = loadedPictures()) {
+  render(<App dinosaurs={SHIPPED_DINOSAURS} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
@@ -180,5 +182,62 @@ describe("the home page", () => {
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
     expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")).toHaveLength(2);
+  });
+});
+
+describe("the first question of a round", () => {
+  const progressShown = () => screen.queryByLabelText("PROGRESS")?.textContent;
+  const picturesShown = () =>
+    within(screen.getByRole("group", { name: "DINOSAURS" }))
+      .getAllByRole("img")
+      .map((picture) => picture.getAttribute("src"));
+
+  it("waits for its pictures, with the home page on screen until both have loaded", async () => {
+    const pictures = manualPictures();
+    const { user, card } = openHomePage(emptyProgress(), pictures);
+
+    await user.click(card);
+
+    const asked = pictures.loading();
+    expect(asked).toHaveLength(2);
+    expect(pictures.timers()).toEqual([1000]);
+    act(() => pictures.finish(asked[0] ?? ""));
+    expect(progressShown()).toBeUndefined();
+    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+
+    act(() => pictures.finish(asked[1] ?? ""));
+
+    expect(progressShown()).toBe("1/10");
+    expect(picturesShown()).toEqual(asked);
+    expect(pictures.timers()).toEqual([]);
+  });
+
+  it("starts after a second when its pictures are slow, and not again when they arrive", async () => {
+    const pictures = manualPictures();
+    const { user, card } = openHomePage(emptyProgress(), pictures);
+    await user.click(card);
+    const asked = pictures.loading();
+
+    act(() => pictures.fire(1000));
+
+    expect(progressShown()).toBe("1/10");
+    expect(picturesShown()).toEqual(asked);
+    const first = document.body.innerHTML;
+    act(() => asked.forEach(pictures.finish));
+    expect(document.body.innerHTML).toBe(first);
+  });
+
+  it("starts one round on a quick double tap while its pictures load", async () => {
+    const pictures = manualPictures();
+    const { user, card } = openHomePage(emptyProgress(), pictures);
+
+    await user.dblClick(card);
+
+    const asked = pictures.loading();
+    expect(asked).toHaveLength(2);
+    expect(pictures.timers()).toEqual([1000]);
+    act(() => asked.forEach(pictures.finish));
+    expect(progressShown()).toBe("1/10");
+    expect(picturesShown()).toEqual(asked);
   });
 });

@@ -15,6 +15,7 @@ import {
   contrast,
   emptyProgress,
   fakeBodyPicture,
+  loadedPictures,
   manualAppearance,
   manualOrientation,
   memoryStorage,
@@ -76,6 +77,7 @@ function openApp({
       languageStore={localLanguage(() => languages)}
       appearance={device}
       themeStore={localTheme(() => storage)}
+      {...loadedPictures()}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };

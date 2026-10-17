@@ -16,6 +16,7 @@ import {
   emptyProgress,
   fakeBodyPicture,
   lightDevice,
+  loadedPictures,
   manualOrientation,
   memoryStorage,
   questionView,
@@ -66,6 +67,7 @@ function openApp({
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
       {...lightDevice()}
+      {...loadedPictures()}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
