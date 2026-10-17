@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/admit"
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
@@ -57,13 +58,15 @@ type turn struct {
 }
 
 // runs answers cli's run from resolve and core (docs/run-implementation.md,
-// "The first run", "A step on a model runtime" and "Inputs and progress"): a request resolves over
+// "The first run", "A step on a model runtime", "Inputs and progress" and
+// "A step in a held worktree"): a request resolves over
 // the settings of home's folder and its launch directory, read once; what
 // this slice does not run is refused before anything runs; and the
 // workflow runs in the root of the git worktree that holds the launch
 // directory, a signal cancelling it, each step on the turn of the contract
 // its agent's runtime names. A call's output is checked against its schema
-// by the validator, and its inputs are read through sourcing; what each
+// by the validator, and its inputs are read through sourcing; each call is
+// admitted against its worktree, and holds it, through holding; what each
 // step is doing is told to events.
 type runs struct {
 	home      string
@@ -74,11 +77,12 @@ type runs struct {
 	turns     []turn
 	validator call.Validator
 	sourcing  sourcing
+	holding   holding
 	host      host
 	events    workflow.Events
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, host host, events workflow.Events) (*runs, error) {
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, holding holding, host host, events workflow.Events) (*runs, error) {
 	contracts := map[string]bool{}
 	for _, t := range turns {
 		switch {
@@ -108,6 +112,8 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 		return nil, errors.New("runs: no validator")
 	case sourcing.check() != nil:
 		return nil, fmt.Errorf("runs: %w", sourcing.check())
+	case holding.check() != nil:
+		return nil, fmt.Errorf("runs: %w", holding.check())
 	case host.ctx == nil:
 		return nil, errors.New("runs: no context")
 	case host.clock == nil:
@@ -119,7 +125,7 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 	case events == nil:
 		return nil, errors.New("runs: no events")
 	}
-	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, sourcing: sourcing, host: host, events: events}, nil
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, sourcing: sourcing, holding: holding, host: host, events: events}, nil
 }
 
 // takes is how each turn takes a call's inputs, by its contract.
@@ -172,9 +178,9 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 
 // runner is core's runner of built, its calls' turns taken in dir, the
 // worktree's root, over Agister's environment, each by the caller of its
-// turn's contract; its inputs read by the sources, a path relative to
-// launch, as the person gave it; what each step is doing told to the
-// run's events.
+// turn's contract, once core/admit has admitted it against that worktree;
+// its inputs read by the sources, a path relative to launch, as the person
+// gave it; what each step is doing told to the run's events.
 func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) {
 	callers := map[string]turnCaller{}
 	for _, t := range r.turns {
@@ -188,7 +194,12 @@ func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) 
 	if err != nil {
 		return nil, err
 	}
-	steps, err := newStepCalls(resolver, callers, r.host.clock, built.calls)
+	admitter, err := admit.New(worktreeAt{facts: r.holding.facts, root: dir},
+		worktreeHold{locks: r.holding.locks, links: r.links, folder: r.holding.folder, root: dir})
+	if err != nil {
+		return nil, err
+	}
+	steps, err := newStepCalls(resolver, admitter, callers, r.host.clock, built.calls)
 	if err != nil {
 		return nil, err
 	}
@@ -311,12 +322,14 @@ type plan struct {
 
 // plannedCall is a step's call: the contract of the turn it is taken on;
 // what its process declares, which core/inputs resolves before the call
-// starts; and the call core/call makes, but its environment and inputs,
-// which that gives.
+// starts; what it declares of the worktree, which core/admit admits it by,
+// but the commit of its pin, which its inputs give; and the call core/call
+// makes, but its environment and inputs, which those give.
 type plannedCall struct {
-	contract string
-	declared inputs.Declared
-	step     call.Step
+	contract  string
+	declared  inputs.Declared
+	admission admit.Request
+	step      call.Step
 }
 
 // planOf is the run of resolved, the workflow name, "" for one made of a
@@ -408,10 +421,10 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 // for one made of a step, in the order its documents give it: the
 // workflow's inputs and each of its items that is not a step; then, for
 // each step, a runtime with no turn, its session, and what its process
-// declares that is not run, among them its instruction and its guidance on
-// a runtime that takes no message, as bash does, and an input named as a
-// document of its message, which two sections of one name would leave
-// ambiguous.
+// declares that is not run, among them its instruction, its guidance and
+// its staleness limits on a runtime that takes no message and reports no
+// line, as bash does, and an input named as a document of its message,
+// which two sections of one name would leave ambiguous.
 func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]string, error) {
 	var unrun notRun
 	if name != "" {
@@ -461,21 +474,11 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				unrun.add(owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
 			}
 		}
-		workspace := definition.Workspace.Value
-		if workspace.Access.Value == "read-write" {
-			unrun.add(owner, "the workspace's read-write access")
-		}
-		if workspace.Revision.Given {
-			unrun.add(owner, "the workspace's revision")
-		}
-		if workspace.Clean.Given && workspace.Clean.Value {
-			unrun.add(owner, "the workspace's clean")
-		}
 		if definition.Limits.Value.Cost.Given {
 			unrun.add(owner, "the cost limit")
 		}
-		if definition.Limits.Value.Stale.Given {
-			unrun.add(owner, "the staleness limit")
+		if inEnvironment && definition.Limits.Value.Stale.Given {
+			unrun.add(owner, fmt.Sprintf("the staleness limit on %s", runtime))
 		}
 		if definition.Recovery.Given {
 			unrun.add(owner, "the recovery")
@@ -500,7 +503,9 @@ func documentNamesOf(definition documents.ProcessDefinition) []string {
 
 // plannedCallOf is the call of the step item of the workflow name: the
 // contract of its runtime; its process's params, their defaults, inputs,
-// their sources, and environment; on a runtime that takes its inputs in its
+// their sources, and environment; its process's workspace: the input it
+// pins, with that input's source, whether it asks a clean worktree, and
+// whether it writes, declaring read-write access; on a runtime that takes its inputs in its
 // environment, its script, the text of its process's prompt; on one that
 // takes them in its message, its documents, the prompt as "prompt" where
 // its process names one, then each guidance by its name, its process's
@@ -519,6 +524,13 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 		sources[input.Value.Name] = input.Value.Source.Value
 	}
 	planned := plannedCall{contract: resolved.Runtimes[agent.Runtime.Value].Contract.Value}
+	workspace := definition.Workspace.Value
+	planned.admission.Writer = workspace.Access.Value == "read-write"
+	planned.admission.Clean = workspace.Clean.Given && workspace.Clean.Value
+	if workspace.Revision.Given {
+		pinned := workspace.Revision.Value.Name
+		planned.admission.Pin = &admit.Pin{Input: pinned, Source: sources[pinned]}
+	}
 	defaults := declaredParams(definition.Params.Value)
 	for _, param := range process.Params {
 		planned.declared.Params = append(planned.declared.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
@@ -788,25 +800,36 @@ type turnCaller interface {
 	Call(ctx context.Context, step call.Step, report func(call.Tool)) call.Result
 }
 
-// stepCalls answers core/workflow's caller from core/inputs and core/call:
-// a step's process's inputs and environment are resolved over the params
-// its bindings give before its call starts, the inputs given in the order
-// its process declares them, and one that cannot be resolved refuses the
-// call, its turn not taken, its reason why. Each call is made by the caller of its turn's
-// contract, each tool call its turn reports given on to core/workflow's
-// report. A call with no usage, as on bash, has every count of it
-// unknown.
+// admission is what a step's call asks of core/admit.
+type admission interface {
+	Make(ctx context.Context, request admit.Request, made func(ctx context.Context)) error
+}
+
+// stepCalls answers core/workflow's caller from core/inputs, core/admit
+// and core/call (ADR-001, "Core"): a step's process's inputs and
+// environment are resolved over the params its bindings give before its
+// call starts, the inputs given in the order its process declares them,
+// and one that cannot be resolved refuses the call, its turn not taken,
+// its reason why. The call is then admitted, its pin the commit its
+// git.revision input gives, and made through admit, which holds the
+// worktree while it is made; a call not admitted is refused as well. Each
+// call is made by the caller of its turn's contract, each tool call its
+// turn reports given on to core/workflow's report. A call with no usage,
+// as on bash, has every count of it unknown.
 type stepCalls struct {
 	inputs  declaredResolver
+	admits  admission
 	callers map[string]turnCaller
 	clock   clock
 	calls   map[string]plannedCall
 }
 
-func newStepCalls(inputs declaredResolver, callers map[string]turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
+func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
 	switch {
 	case inputs == nil:
 		return nil, errors.New("step calls: no inputs")
+	case admits == nil:
+		return nil, errors.New("step calls: no admission")
 	case clock == nil:
 		return nil, errors.New("step calls: no clock")
 	}
@@ -815,7 +838,7 @@ func newStepCalls(inputs declaredResolver, callers map[string]turnCaller, clock 
 			return nil, fmt.Errorf("step calls: no caller for the step %q, of the contract %q", name, calls[name].contract)
 		}
 	}
-	return &stepCalls{inputs: inputs, callers: maps.Clone(callers), clock: clock, calls: calls}, nil
+	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls}, nil
 }
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Tool)) workflow.Result {
@@ -832,9 +855,23 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 	for _, input := range planned.declared.Inputs {
 		step.Inputs = append(step.Inputs, call.Named{Name: input.Name, Text: resolved.Inputs[input.Name].Value})
 	}
-	called := s.callers[planned.contract].Call(ctx, step, func(tool call.Tool) {
-		report(workflow.Tool{Name: tool.Name, Input: tool.Input})
+	request := planned.admission
+	if pin := request.Pin; pin != nil {
+		pinned := *pin
+		if pinned.Source == revisionSourceName {
+			pinned.Commit = resolved.Inputs[pinned.Input].Value
+		}
+		request.Pin = &pinned
+	}
+	var called call.Result
+	err = s.admits.Make(ctx, request, func(ctx context.Context) {
+		called = s.callers[planned.contract].Call(ctx, step, func(tool call.Tool) {
+			report(workflow.Tool{Name: tool.Name, Input: tool.Input})
+		})
 	})
+	if err != nil {
+		return s.refused(err.Error(), planned.step.Warnings)
+	}
 	var usage workflow.Usage
 	if u := called.Usage; u != nil {
 		usage = workflow.Usage(*u)

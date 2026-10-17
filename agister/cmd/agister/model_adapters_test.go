@@ -237,7 +237,7 @@ func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 	onCodex.contract = "codex/2"
 	bashSpy := &turnSpy{result: call.Result{Status: call.Completed}}
 	codexSpy := &turnSpy{result: call.Result{Status: call.Failed, Class: call.Auth}}
-	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": bashSpy, "codex/2": codexSpy}, clock,
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": bashSpy, "codex/2": codexSpy}, clock,
 		map[string]plannedCall{"a": onBash, "b": onCodex})
 	if err != nil {
 		t.Fatal(err)
@@ -252,7 +252,7 @@ func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 		t.Errorf("bash called %+v, codex %+v; want a on bash, b on codex", bashSpy.steps, codexSpy.steps)
 	}
 
-	_, err = newStepCalls(resolver, map[string]turnCaller{"bash/1": bashSpy}, clock, map[string]plannedCall{"a": onBash, "b": onCodex})
+	_, err = newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": bashSpy}, clock, map[string]plannedCall{"a": onBash, "b": onCodex})
 	if want := `step calls: no caller for the step "b", of the contract "codex/2"`; err == nil || err.Error() != want {
 		t.Errorf("step calls with no caller for b's contract: %v, want %s", err, want)
 	}

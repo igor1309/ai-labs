@@ -70,7 +70,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	spy := &turnSpy{result: call.Result{Status: call.Completed}, tools: []call.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}}
-	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/core/admit"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
@@ -452,4 +453,99 @@ func (s *sourcesSpy) askedOf() []string {
 // sourcing is the spy as build takes it.
 func (s *sourcesSpy) sourcing() sourcing {
 	return sourcing{texts: s, paths: s, commits: s, changes: s}
+}
+
+// holdingSpy is a spy of what a run admits and holds a worktree through:
+// git's HEAD and cleanness of root, as its test gives them, any other
+// directory an error; and files' locks, each taken unless its test gives
+// lockErr, as Lock's error. It keeps each lock asked, and how many are held
+// now, alone or shared. It is safe for concurrent use.
+type holdingSpy struct {
+	root    string
+	head    string
+	clean   bool
+	lockErr error
+	mu      sync.Mutex
+	asked   []lockAsked
+	alone   int
+	shared  int
+}
+
+// lockAsked is a lock asked of files: its file, and whether alone.
+type lockAsked struct {
+	file  string
+	alone bool
+}
+
+func (s *holdingSpy) Head(_ context.Context, dir string) (string, error) {
+	if dir != s.root {
+		return "", errors.New("git spy: no worktree " + dir)
+	}
+	return s.head, nil
+}
+
+func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
+	if dir != s.root {
+		return false, errors.New("git spy: no worktree " + dir)
+	}
+	return s.clean, nil
+}
+
+func (s *holdingSpy) Lock(file string, alone bool) (func() error, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, lockAsked{file: file, alone: alone})
+	if s.lockErr != nil {
+		return nil, s.lockErr
+	}
+	held := &s.shared
+	if alone {
+		held = &s.alone
+	}
+	*held++
+	var once sync.Once
+	return func() error {
+		once.Do(func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			*held--
+		})
+		return nil
+	}, nil
+}
+
+// locks is each lock asked, in order, and how many are held now, alone
+// and shared.
+func (s *holdingSpy) locks() (asked []lockAsked, alone, shared int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.asked), s.alone, s.shared
+}
+
+// holding is the spy as build takes it.
+func (s *holdingSpy) holding() holding { return holding{facts: s, locks: s} }
+
+// admissionSpy is a spy of core/admit: it keeps each request it is asked
+// to admit, and refuses it with err, or, with none, makes the call.
+type admissionSpy struct {
+	err      error
+	mu       sync.Mutex
+	requests []admit.Request
+}
+
+func (s *admissionSpy) Make(ctx context.Context, request admit.Request, made func(context.Context)) error {
+	s.mu.Lock()
+	s.requests = append(s.requests, request)
+	s.mu.Unlock()
+	if s.err != nil {
+		return s.err
+	}
+	made(ctx)
+	return nil
+}
+
+func (s *admissionSpy) asked() []admit.Request {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.requests)
 }
