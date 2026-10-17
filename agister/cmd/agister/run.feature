@@ -1,6 +1,6 @@
 # cmd/agister, the run (docs/run-implementation.md, "The first run" and
-# "A step on a model runtime", "Inputs and progress" and "A step in a
-# held worktree";
+# "A step on a model runtime", "Inputs and progress", "A step in a
+# held worktree" and "Parallel steps and a join";
 # ADR-001, "Starting a run"): cli's run answered from resolve and core,
 # with spies in place of the wrappers (ADR-009, rule 4): the settings,
 # home's as shipped with a bash process "say" whose prompt is the script
@@ -54,11 +54,16 @@ Feature: The composition runs a request
       | an instruction "think"                       | bash        | the instruction on bash               |
       | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
 
-  Scenario: A workflow with an item that is not a step is refused
-    When "agister run code_review --param goal=g" runs in "/r"
-    Then it prints to stderr each thing not run yet, in the order its
-      documents give them, the item "reviews", a parallel, among them;
-      nothing runs, and it exits 1
+  Scenario Outline: What a parallel does not run yet is refused
+    Given the workflow "w" with the parallel "p" <holding>
+    When "agister run w" runs in "/r"
+    Then it prints to stderr that <what> is not run yet, nothing runs,
+      and it exits 1
+
+    Examples:
+      | holding                                 | what                                      |
+      | of "say" and a branch "b"               | the item "b", a branch,                   |
+      | of two "say", read by steps.p.outputs.x | a field within the parallel "p"'s outputs |
 
   Scenario: A step reaches core with its process's time limit, as layered
     Given home's process "say" has the time limit 1m, and the

@@ -59,8 +59,9 @@ type turn struct {
 }
 
 // runs answers cli's run from resolve and core (docs/run-implementation.md,
-// "The first run", "A step on a model runtime", "Inputs and progress" and
-// "A step in a held worktree"): a request resolves over
+// "The first run", "A step on a model runtime", "Inputs and progress", "A
+// step in a held worktree" and "Parallel steps and a join"): a request
+// resolves over
 // the settings of home's folder and its launch directory, read once; what
 // this slice does not run is refused before anything runs; and the
 // workflow runs in the root of the git worktree that holds the launch
@@ -371,6 +372,9 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		params = definition.Params.Value
 		for _, item := range definition.Steps.Value {
 			bindingsByStep[item.Value.Name] = item.Value.Inputs.Value
+			for _, inner := range item.Value.Parallel.Value {
+				bindingsByStep[inner.Value.Name] = inner.Value.Inputs.Value
+			}
 		}
 		outputs = definition.Outputs.Value
 		for _, input := range definition.Inputs.Value {
@@ -399,10 +403,11 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		}
 		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments, Forms: forms})
 	}
-	for _, item := range w.Steps {
+	// A step of a parallel is planned as a step in sequence is.
+	stepOf := func(item resolve.Item) (workflow.Step, error) {
 		planned, err := plannedCallOf(name, item, resolved, docs, takes)
 		if err != nil {
-			return plan{}, nil, err
+			return workflow.Step{}, err
 		}
 		var bindings []workflow.Binding
 		if name == "" {
@@ -411,10 +416,29 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 			bindings, err = documentWorkflowBindings(bindingsByStep[item.Name])
 		}
 		if err != nil {
-			return plan{}, nil, err
+			return workflow.Step{}, err
 		}
-		built.workflow.Steps = append(built.workflow.Steps, workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings})
 		built.calls[item.Name] = planned
+		return workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings}, nil
+	}
+	for _, item := range w.Steps {
+		if item.Parallel == nil {
+			step, err := stepOf(item)
+			if err != nil {
+				return plan{}, nil, err
+			}
+			built.workflow.Steps = append(built.workflow.Steps, step)
+			continue
+		}
+		together := workflow.Step{Name: item.Name, Parallel: []workflow.Step{}}
+		for _, inner := range item.Parallel {
+			step, err := stepOf(inner)
+			if err != nil {
+				return plan{}, nil, err
+			}
+			together.Parallel = append(together.Parallel, step)
+		}
+		built.workflow.Steps = append(built.workflow.Steps, together)
 	}
 	if name == "" {
 		built.workflow.Outputs, err = workflowBindings(w.Outputs)
@@ -429,12 +453,14 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 
 // notRunOf is what this slice does not run of w, the workflow name, ""
 // for one made of a step, in the order its documents give it: the
-// workflow's inputs and each of its items that is not a step; then, for
-// each step, a runtime with no turn, its session, and what its process
-// declares that is not run, among them its instruction, its guidance and
-// its staleness limits on a runtime that takes no message and reports no
-// line, as bash does, and an input named as a document of its message,
-// which two sections of one name would leave ambiguous.
+// workflow's inputs; each of its items that is neither a step nor a
+// parallel, and each item a parallel holds that is not a step; a field
+// read within a parallel's outputs, which are a list; then, for each step,
+// a parallel's included, a runtime with no turn, its session, and what its
+// process declares that is not run, among them its instruction, its
+// guidance and its staleness limits on a runtime that takes no message and
+// reports no line, as bash does, and an input named as a document of its
+// message, which two sections of one name would leave ambiguous.
 func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]string, error) {
 	var unrun notRun
 	if name != "" {
@@ -446,16 +472,29 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		for _, input := range definition.Inputs.Value {
 			unrun.input(owner, input.Value)
 		}
-		for _, item := range w.Steps {
+		parallels := map[string]bool{}
+		notStep := func(item resolve.Item) {
 			if kind := itemKind(item); kind != "" {
 				unrun.add(owner, fmt.Sprintf("the item %q, %s,", item.Name, kind))
 			}
 		}
-	}
-	for _, item := range w.Steps {
-		if itemKind(item) != "" {
-			continue
+		for _, item := range w.Steps {
+			if item.Parallel == nil {
+				notStep(item)
+				continue
+			}
+			parallels[item.Name] = true
+			for _, inner := range item.Parallel {
+				notStep(inner)
+			}
 		}
+		for _, binding := range referencesOf(w) {
+			if read := binding.From; read.Root == resolve.RootOutputs && parallels[read.Name] && read.Field != "" {
+				unrun.add(owner, fmt.Sprintf("a field within the parallel %q's outputs", read.Name))
+			}
+		}
+	}
+	for _, item := range stepsOf(w.Steps) {
 		runtime := resolved.Agents[item.Agent.Value].Runtime.Value
 		inputsTaken, turned := takes[resolved.Runtimes[runtime].Contract.Value]
 		step := fmt.Sprintf("the step %q", item.Name)
@@ -495,6 +534,46 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		}
 	}
 	return unrun.lines, nil
+}
+
+// stepsOf is each step of items, in order, those a parallel holds in its
+// place.
+func stepsOf(items []resolve.Item) []resolve.Item {
+	var steps []resolve.Item
+	for _, item := range items {
+		switch {
+		case item.Parallel != nil:
+			steps = append(steps, stepsOf(item.Parallel)...)
+		case itemKind(item) == "":
+			steps = append(steps, item)
+		}
+	}
+	return steps
+}
+
+// referencesOf is each binding of w that reads a reference, in the order its
+// document gives them: each item's, a parallel's steps' in their place,
+// then its outputs'.
+func referencesOf(w resolve.Workflow) []resolve.Binding {
+	var reads []resolve.Binding
+	var of func(items []resolve.Item)
+	of = func(items []resolve.Item) {
+		for _, item := range items {
+			for _, binding := range item.Inputs {
+				if binding.From != nil {
+					reads = append(reads, binding)
+				}
+			}
+			of(item.Parallel)
+		}
+	}
+	of(w.Steps)
+	for _, binding := range w.Outputs {
+		if binding.From != nil {
+			reads = append(reads, binding)
+		}
+	}
+	return reads
 }
 
 // documentNamesOf is the name of each document a model's message gives of

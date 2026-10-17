@@ -350,26 +350,48 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 	}
 }
 
-// run.feature, "A workflow with an item that is not a step is refused".
-// A process's instruction is named only for a step on bash: the judge's,
-// on claude-code, is not.
+// run.feature, "What a parallel does not run yet is refused": the workflow
+// "w", its parallel "p" holding a branch, or read by a join's binding of a
+// field within its outputs.
 //
 // Contract test: the files home holds, as Agister ships them.
-func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
+func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(t, runSettings(t, nil), echoes)
-	got := f.run(t, "/r", "run", "code_review", "--param", "goal=g")
-	// Its inputs, from git.revision and file, a form named, are run now,
-	// and so is the judge's staleness limit, on claude-code.
-	lines := []string{
-		`the workflow "code_review": the item "reviews", a parallel, is not run yet`,
+	cases := []struct {
+		holding string
+		steps   string
+		what    string
+	}{
+		{holding: `of "say" and a branch "b"`, steps: `  - name: p
+    parallel:
+      - {name: a, process: say, agent: bash, inputs: {what: hi}}
+      - name: b
+        branch:
+          - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+          - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+`, what: `the item "b", a branch,`},
+		{holding: `of two "say", read by steps.p.outputs.x`, steps: `  - name: p
+    parallel:
+      - {name: a, process: say, agent: bash, inputs: {what: hi}}
+      - {name: b, process: say, agent: bash, inputs: {what: hi}}
+  - {name: j, process: say, agent: bash, inputs: {what: {from: steps.p.outputs.x}}}
+`, what: `a field within the parallel "p"'s outputs`},
 	}
-	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + strings.Join(lines, "\n  ") + "\n", code: 1}
-	if got != want {
-		t.Errorf("ran\n%+v\nwant\n%+v", got, want)
-	}
-	if ran := f.runtimes.bash.ran(); len(ran) > 0 {
-		t.Errorf("ran %+v, want nothing", ran)
+	for _, c := range cases {
+		t.Run(c.holding, func(t *testing.T) {
+			t.Parallel()
+			f := newRunFixture(t, runSettings(t, map[string]string{
+				"/u/.agister/workflows/w.yaml": "schema: agister.workflow/v1alpha1\nparams:\n  what: {default: hi}\nsteps:\n" + c.steps,
+			}), echoes)
+			got := f.run(t, "/r", "run", "w")
+			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  the workflow \"w\": " + c.what + " is not run yet\n", code: 1}
+			if got != want {
+				t.Errorf("ran\n%+v\nwant\n%+v", got, want)
+			}
+			if ran := f.runtimes.bash.ran(); len(ran) > 0 {
+				t.Errorf("ran %+v, want nothing", ran)
+			}
+		})
 	}
 }
 

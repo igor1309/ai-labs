@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,19 +35,28 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 
 // callerSpy answers each step by its test's answer for its name, once it
 // has given the call's report its test's tools for that name, in order; and
-// keeps each call's params. A step it has no answer for fails its test, and
-// is answered with nothing.
+// keeps each call's params, in the order called and by its step. A step it
+// has no answer for fails its test, and is answered with nothing. It is
+// safe for concurrent use; the trail is read once the run has ended.
 type callerSpy struct {
 	t       *testing.T
 	trail   *trail
 	answers map[string]func() workflow.Result
 	tools   map[string][]workflow.Tool
+	mu      sync.Mutex
 	params  []map[string]string
+	bound   map[string]map[string]string
 }
 
 func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, report func(workflow.Tool)) workflow.Result {
+	s.mu.Lock()
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
+	if s.bound == nil {
+		s.bound = map[string]map[string]string{}
+	}
+	s.bound[step] = params
+	s.mu.Unlock()
 	for _, tool := range s.tools[step] {
 		report(tool)
 	}
@@ -68,21 +78,29 @@ func completes(code int) func() workflow.Result {
 var start = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
 // eventsSpy keeps what it is told, in order, each a line of the step's
-// name and what it was told of it.
+// name and what it was told of it. It is safe for concurrent use; told is
+// read once the run has ended.
 type eventsSpy struct {
+	mu   sync.Mutex
 	told []string
 }
 
+func (s *eventsSpy) tell(format string, args ...any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.told = append(s.told, fmt.Sprintf(format, args...))
+}
+
 func (s *eventsSpy) Started(step, agent string) {
-	s.told = append(s.told, fmt.Sprintf("%s started on %s", step, agent))
+	s.tell("%s started on %s", step, agent)
 }
 
 func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
-	s.told = append(s.told, fmt.Sprintf("%s %s %s", step, tool.Name, tool.Input))
+	s.tell("%s %s %s", step, tool.Name, tool.Input)
 }
 
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
-	s.told = append(s.told, fmt.Sprintf("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration))
+	s.tell("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration)
 }
 
 // fixture is a runner over its spies and its clock, the resolver and the
