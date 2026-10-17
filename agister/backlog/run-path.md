@@ -30,8 +30,8 @@ order it is needed:
 - **Recovery**: a recovery turn resuming a stale call's session
   (ADR-006, rule 3); the worktree's changes recorded at a call's end
   (ADR-004, rule 4), with the record.
-- **Operators**: a parallel of more than steps, its own output
-  mapping and a field read within its outputs; branch, bounded
+- **Operators**: a parallel of more than steps, and a field read
+  within its outputs; branch, bounded
   repetition, a child workflow (ADR-011, rule 2); conditions.
 - **Sources, the rest**: `git.merge_base`, `git.diff`; artifacts; the
   record keeping each call's bytes (ADR-010, rule 4).

@@ -54,7 +54,7 @@ Feature: The composition runs a request
       | an instruction "think"                       | bash        | the instruction on bash               |
       | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
 
-  Scenario Outline: A parallel that is not of steps alone is refused
+  Scenario Outline: What a parallel does not run yet is refused
     Given the workflow "w" with the parallel "p" <holding>
     When "agister run w" runs in "/r"
     Then it prints to stderr that <what> is not run yet, nothing runs,
@@ -63,7 +63,6 @@ Feature: The composition runs a request
     Examples:
       | holding                                 | what                                      |
       | of "say" and a branch "b"               | the item "b", a branch,                   |
-      | of two "say", its output "o"            | the output mapping of the parallel "p"    |
       | of two "say", read by steps.p.outputs.x | a field within the parallel "p"'s outputs |
 
   Scenario: A step reaches core with its process's time limit, as layered

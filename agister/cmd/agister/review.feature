@@ -1,8 +1,9 @@
 # cmd/agister, home's code_review (docs/run-implementation.md, "Parallel
 # steps and a join"; ADR-011, rule 2): a parallel of steps, then a join,
 # with spies in place of the wrappers (ADR-009, rule 4). Settings: home's
-# as shipped; git gives "/r" HEAD "c1", clean, and names "origin/trunk"
-# "c0" and "HEAD" "c1"; the file "/r/g.md" holds a goal.
+# as shipped; git gives "/r" HEAD "c1", clean, names "origin/trunk" and
+# "c0" the commit "c0", "HEAD" and "c1" the commit "c1", and gives "a.go"
+# changed from "c0" to "c1"; the file "/r/g.md" holds a goal.
 
 Feature: The composition runs home's code_review
 

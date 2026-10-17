@@ -519,8 +519,7 @@ sequence: each admitted and held on its own, readers sharing the
 worktree. Progress lines from steps side by side come as they come,
 each printed whole. It no longer refuses a parallel of steps; it still
 refuses, as not run yet, a parallel holding an item that is not a
-step, a parallel's own output mapping, and a field read within a
-parallel's outputs.
+step, and a field read within a parallel's outputs.
 
 Decisions, each with its reason:
 
