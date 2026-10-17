@@ -31,6 +31,59 @@ Architecture: `docs/mvp-infrastructure.md`.
 Behaviour is specified in Gherkin under `docs/features/`; a feature tagged
 `@next` is not in the current build.
 
+## Working an issue
+
+An issue goes spec, design, implementation, review, in one branch and
+one pull request.
+
+- Work in a worktree of your own:
+  `git worktree add -b <branch> ../ai-labs.worktrees/<branch> origin/trunk`.
+  The main checkout stays on trunk: it serves the owner's dev server.
+- Keep the round files (briefs, review outputs, logs) in `/tmp/<branch>/`,
+  never in the repository.
+- Run every review and implementer in the background and act on its
+  completion notice; a run takes 5 to 30 minutes.
+- Review cycles are costly. Code review is the pull request's gate
+  only: run it once the branch is complete, never for a small change or
+  a single step.
+
+### Spec review
+
+Commit the spec first, then from the worktree's root run
+`rexlab/scripts/spec-review.sh /tmp/<branch> <feature files>`. It
+gives the same prompt to Codex and Claude, both read-only, and writes
+`spec-review-<n>-codex.md` and `-claude.md`. Fix what holds up, commit
+and run another round until no findings are left.
+
+### Implementation with agister
+
+1. Write a goal file in the format of `~/.agister/briefs/goal.yaml`:
+   `## Intent` (referencing the issue, specs and design), `## Done when`
+   (numbered, observable criteria), `## Out of scope`, `## Sources`,
+   `## Decisions` (the owner's rulings, dated) and `## Open` ("None.").
+2. Write a step brief in the format of `~/.agister/briefs/step.yaml`:
+   `# <branch> step <n>: <what>, at <short sha>`, `## Goal` (the goal
+   file's path in backticks), `## Covers` (criterion numbers),
+   `## Acts on` (the findings it answers), `## Constraints` and `## Open`.
+3. From the worktree's root, not inside `rexlab/`:
+   `agister run implement_opus --dir rexlab --param brief=/tmp/<branch>/step-<n>.md --json > /tmp/<branch>/implement-<n>.json 2> /tmp/<branch>/implement-<n>.log`.
+4. Read `.status`, `.output.checks`, `.output.summary`, `.output.notes`
+   and `.output.open`; a failed run names its cause in `.error.class`.
+   The implementer leaves its changes uncommitted: read the diff, run
+   `rexlab/scripts/test.sh`, update `docs/log.md` and commit yourself.
+
+### Code review with agister
+
+The gate before the pull request. Commit first: the review reads the
+committed diff. From the worktree's root, run
+`agister run code_review --dir rexlab --param goal=/tmp/<branch>/goal.md --json > /tmp/<branch>/review-<n>.json`.
+Five Codex reviewers (architecture, tests, adversarial, clarity, intent)
+report and a Claude Opus judge joins their findings; the base defaults to
+`origin/trunk` and the candidate to `HEAD`. Answer the judge's items in
+one more step brief's `## Acts on`, and fix small items yourself; run
+the gate again only when the fixes change the design.
+`agister workflow show code_review --dir rexlab` shows the output shape.
+
 ## Commands
 
 Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
