@@ -455,11 +455,10 @@ says what went stale.
 
 **The composition** chains `inputs`, `admit` and `call` for each step
 (ADR-001). The hold is a lock file under home's `locks/in-place`,
-named by the SHA-256 of the worktree root's path, links resolved, taken with `flock`
-without waiting, shared or alone: the archive's, so the two Agisters
-exclude each other on a worktree. A hold ends with the process that
-took it. It no longer refuses a
-workspace's revision, clean or read-write access, or a staleness limit
+named by the SHA-256 of the worktree root's path, links resolved,
+taken with `flock` without waiting, shared or alone: the archive's, so
+the two Agisters exclude each other on a worktree. A hold ends with the
+process that took it. It no longer refuses a workspace's revision, clean or read-write access, or a staleness limit
 on a model; on bash, which reports nothing to watch, a staleness limit
 is still refused.
 
