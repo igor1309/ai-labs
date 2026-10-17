@@ -15,25 +15,40 @@ import (
 )
 
 // runtimeSpy answers the runtime protocol: it keeps each turn it is given,
-// reports its test's tools to the turn's report, in order, and answers it
-// by its test's turn, run with the turn's context.
+// gives the turn's report its test's reports, in order, and answers it by
+// its test's turn, run with the turn's context.
 type runtimeSpy struct {
-	turn  func(ctx context.Context) (call.Ended, error)
-	tools []call.Tool
-	given []call.Turn
+	turn    func(ctx context.Context) (call.Ended, error)
+	reports []call.Report
+	given   []call.Turn
 }
 
-func (s *runtimeSpy) Turn(ctx context.Context, turn call.Turn, report func(call.Tool)) (call.Ended, error) {
+func (s *runtimeSpy) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	s.given = append(s.given, turn)
-	for _, tool := range s.tools {
-		report(tool)
+	for _, r := range s.reports {
+		report(r)
 	}
 	return s.turn(ctx)
 }
 
 // discard is a report that keeps nothing, for a call whose test is not
-// about its tool calls.
-func discard(call.Tool) {}
+// about what its turn reports.
+func discard(call.Report) {}
+
+// stalenessSpy answers the staleness port: it keeps the limits of each
+// watch it starts, each report a watch is given and how many watches were
+// stopped; stale tells the latest watch's stale, nil before any watch.
+type stalenessSpy struct {
+	limits  []call.Limits
+	reports []call.Report
+	stopped int
+	stale   func(call.Stale)
+}
+
+func (s *stalenessSpy) Watch(limits call.Limits, stale func(call.Stale)) (func(call.Report), func()) {
+	s.limits, s.stale = append(s.limits, limits), stale
+	return func(r call.Report) { s.reports = append(s.reports, r) }, func() { s.stopped++ }
+}
 
 // exits is a turn that exits with ended at once.
 func exits(ended call.Ended) func(context.Context) (call.Ended, error) {
@@ -64,7 +79,7 @@ var start = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 // in dir, over env, its timing and time limits on clock.
 func caller(t *testing.T, spy *runtimeSpy, clock *clocktest.Clock, dir string, env ...string) *call.Caller {
 	t.Helper()
-	c, err := call.New(spy, call.InEnvironment, &validatorSpy{}, clock, clock.Timer, dir, env)
+	c, err := call.New(spy, call.InEnvironment, &validatorSpy{}, &stalenessSpy{}, clock, clock.Timer, dir, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,19 +96,21 @@ func TestNewFailsWithoutACollaborator(t *testing.T) {
 		runtime   call.Runtime
 		inputs    call.Inputs
 		validator call.Validator
+		staleness call.Staleness
 		clock     call.Clock
 		timer     call.Timer
 	}{
-		{"runtime", nil, call.InMessage, &validatorSpy{}, clock, clock.Timer},
-		{"inputs", &runtimeSpy{}, 0, &validatorSpy{}, clock, clock.Timer},
-		{"validator", &runtimeSpy{}, call.InMessage, nil, clock, clock.Timer},
-		{"clock", &runtimeSpy{}, call.InMessage, &validatorSpy{}, nil, clock.Timer},
-		{"timer", &runtimeSpy{}, call.InMessage, &validatorSpy{}, clock, nil},
+		{"runtime", nil, call.InMessage, &validatorSpy{}, &stalenessSpy{}, clock, clock.Timer},
+		{"inputs", &runtimeSpy{}, 0, &validatorSpy{}, &stalenessSpy{}, clock, clock.Timer},
+		{"validator", &runtimeSpy{}, call.InMessage, nil, &stalenessSpy{}, clock, clock.Timer},
+		{"staleness", &runtimeSpy{}, call.InMessage, &validatorSpy{}, nil, clock, clock.Timer},
+		{"clock", &runtimeSpy{}, call.InMessage, &validatorSpy{}, &stalenessSpy{}, nil, clock.Timer},
+		{"timer", &runtimeSpy{}, call.InMessage, &validatorSpy{}, &stalenessSpy{}, clock, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := call.New(c.runtime, c.inputs, c.validator, c.clock, c.timer, "/r", nil); err == nil || err.Error() != "call: no "+c.name {
+			if _, err := call.New(c.runtime, c.inputs, c.validator, c.staleness, c.clock, c.timer, "/r", nil); err == nil || err.Error() != "call: no "+c.name {
 				t.Errorf("New without a %s: %v, want call: no %s", c.name, err, c.name)
 			}
 		})

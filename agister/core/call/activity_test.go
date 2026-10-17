@@ -9,17 +9,18 @@ import (
 )
 
 // activity.feature, "Each tool call reaches the call's report, in order":
-// what the report was given is read once the call has ended.
+// what the report was given is read once the call has ended; a line that
+// makes no tool call reaches it too.
 func TestEachToolCallReachesTheCallsReportInOrder(t *testing.T) {
 	t.Parallel()
-	tools := []call.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}
-	spy := &runtimeSpy{turn: replies(call.Reply{Text: "t"}), tools: tools}
-	var reported []call.Tool
-	got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{}, func(tool call.Tool) {
-		reported = append(reported, tool)
+	reports := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}
+	spy := &runtimeSpy{turn: replies(call.Reply{Text: "t"}), reports: reports}
+	var reported []call.Report
+	got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{}, func(r call.Report) {
+		reported = append(reported, r)
 	})
-	if !reflect.DeepEqual(reported, tools) {
-		t.Errorf("reported %+v, want %+v", reported, tools)
+	if !reflect.DeepEqual(reported, reports) {
+		t.Errorf("reported %+v, want %+v", reported, reports)
 	}
 	if got.Status != call.Completed {
 		t.Errorf("status %q, want completed", got.Status)

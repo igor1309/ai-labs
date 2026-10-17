@@ -79,18 +79,18 @@ func sayCall(prompt string) plannedCall {
 }
 
 // turnSpy is a spy of core/call's caller: it keeps each step it is asked
-// to call, gives the call's report its test's tools, in order, and answers
-// result.
+// to call, gives the call's report its test's reports, in order, and
+// answers result.
 type turnSpy struct {
-	result call.Result
-	tools  []call.Tool
-	steps  []call.Step
+	result  call.Result
+	reports []call.Report
+	steps   []call.Step
 }
 
-func (s *turnSpy) Call(_ context.Context, step call.Step, report func(call.Tool)) call.Result {
+func (s *turnSpy) Call(_ context.Context, step call.Step, report func(call.Report)) call.Result {
 	s.steps = append(s.steps, step)
-	for _, tool := range s.tools {
-		report(tool)
+	for _, r := range s.reports {
+		report(r)
 	}
 	return s.result
 }
@@ -358,8 +358,8 @@ func TestATurnOnBashRunsItsPromptAsTheScript(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(context.Background(), call.Turn{Prompt: "echo", Dir: "/r", Env: []string{"A=1"}}, func(tool call.Tool) {
-				t.Errorf("bash reported %+v, want no tool call", tool)
+			got, err := turns.Turn(context.Background(), call.Turn{Prompt: "echo", Dir: "/r", Env: []string{"A=1"}}, func(r call.Report) {
+				t.Errorf("bash reported %+v, want no line", r)
 			})
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
-	"unicode/utf8"
 )
 
 // event is what the wrapper reads of a JSON event line.
@@ -41,10 +40,10 @@ type item struct {
 
 // stream is what a turn's JSON events told: the thread, the last agent
 // message, whether the turn completed and its usage, and the message of a
-// failed turn; the report each tool call is given to, and the searches
+// failed turn; the report each line is given to, and the searches
 // reported as they started.
 type stream struct {
-	report      func(Tool)
+	report      func(Report)
 	searches    map[string]bool
 	thread      string
 	lastMessage string
@@ -53,19 +52,26 @@ type stream struct {
 	failed      *string
 }
 
-// line reads one JSON event. A line that is not an event the wrapper reads
-// is skipped, an error event among them: only turn.completed and
+// line reads one JSON event, and reports the tool call it makes, or the
+// line where it makes none. A line that is not an event the wrapper reads
+// tells nothing more, an error event among them: only turn.completed and
 // turn.failed decide, and codex may report an error it then recovers from.
 func (s *stream) line(line string) {
+	s.report(Report{Tool: s.read(line)})
+}
+
+// read reads one JSON event, and gives the tool call it makes, nil for
+// none.
+func (s *stream) read(line string) (tool *Tool) {
 	var e event
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		return
+		return nil
 	}
 	switch e.Type {
 	case "thread.started":
 		s.thread = e.ThreadID
 	case "item.started":
-		s.started(e.Item)
+		return s.started(e.Item)
 	case "item.completed":
 		switch e.Item.Type {
 		case "agent_message":
@@ -74,7 +80,7 @@ func (s *stream) line(line string) {
 			// A search not reported as it started is reported here, by
 			// what its completed item gives.
 			if !s.searches[e.Item.ID] {
-				s.report(Tool{Name: "web_search", Input: short(search(e.Item))})
+				tool = &Tool{Name: "web_search", Input: search(e.Item)}
 			}
 			delete(s.searches, e.Item.ID)
 		}
@@ -86,26 +92,28 @@ func (s *stream) line(line string) {
 	case "turn.failed":
 		s.failed = &e.Error.Message
 	}
+	return tool
 }
 
-// started reports the tool call an item starts, where it is one the
-// wrapper recognizes, as the archive printed it. A search that starts
-// without its query is no call to tell from another: it is reported as it
-// completes.
-func (s *stream) started(item item) {
+// started is the tool call an item starts, where it is one the wrapper
+// recognizes, as the archive printed it; nil for none. A search that
+// starts without its query is no call to tell from another: it is
+// reported as it completes.
+func (s *stream) started(item item) *Tool {
 	switch item.Type {
 	case "command_execution":
-		s.report(Tool{Name: "command", Input: short(item.Command)})
+		return &Tool{Name: "command", Input: item.Command}
 	case "file_change":
-		s.report(Tool{Name: "file_change", Input: short(text(item.Changes))})
+		return &Tool{Name: "file_change", Input: text(item.Changes)}
 	case "mcp_tool_call":
-		s.report(Tool{Name: "mcp:" + item.Server + "/" + item.Tool, Input: short(text(item.Arguments))})
+		return &Tool{Name: "mcp:" + item.Server + "/" + item.Tool, Input: text(item.Arguments)}
 	case "web_search":
 		if item.Query != "" {
 			s.searches[item.ID] = true
-			s.report(Tool{Name: "web_search", Input: short(item.Query)})
+			return &Tool{Name: "web_search", Input: item.Query}
 		}
 	}
+	return nil
 }
 
 // search is what a completed search was given: its query, then its action
@@ -132,23 +140,6 @@ func text(raw json.RawMessage) string {
 		return string(raw)
 	}
 	return b.String()
-}
-
-// inputLimit is the most of a tool call's input a report gives, in bytes,
-// as the archive printed it.
-const inputLimit = 300
-
-// short is text cut to inputLimit, at the start of a character, and marked
-// "…" where it was cut.
-func short(text string) string {
-	if len(text) <= inputLimit {
-		return text
-	}
-	end := inputLimit
-	for end > 0 && !utf8.RuneStart(text[end]) {
-		end--
-	}
-	return text[:end] + "…"
 }
 
 // reply is the turn's reply, its program having ended as ended and a schema

@@ -17,6 +17,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/admit"
 	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/inputs"
+	"github.com/igor1309/ai-labs/agister/core/watch"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -178,13 +179,22 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 
 // runner is core's runner of built, its calls' turns taken in dir, the
 // worktree's root, over Agister's environment, each by the caller of its
-// turn's contract, once core/admit has admitted it against that worktree;
-// its inputs read by the sources, a path relative to launch, as the person
-// gave it; what each step is doing told to the run's events.
+// turn's contract, once core/admit has admitted it against that worktree,
+// and watched for staleness by core/watch, on the host's timer; its inputs
+// read by the sources, a path relative to launch, as the person gave it;
+// what each step is doing told to the run's events.
 func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) {
+	watcher, err := watch.New(watch.Timer(r.host.timer))
+	if err != nil {
+		return nil, err
+	}
+	stale, err := newStaleness(watcher)
+	if err != nil {
+		return nil, err
+	}
 	callers := map[string]turnCaller{}
 	for _, t := range r.turns {
-		caller, err := call.New(t.runtime, t.inputs, r.validator, r.host.clock, r.host.timer, dir, r.host.environ)
+		caller, err := call.New(t.runtime, t.inputs, r.validator, stale, r.host.clock, r.host.timer, dir, r.host.environ)
 		if err != nil {
 			return nil, err
 		}
@@ -510,8 +520,9 @@ func documentNamesOf(definition documents.ProcessDefinition) []string {
 // takes them in its message, its documents, the prompt as "prompt" where
 // its process names one, then each guidance by its name, its process's
 // instruction, its agent's model and effort, its plan's options and the
-// bytes of its process's output schema; its process's time limit; and its
-// plan's warnings, those resolve gives at the step.
+// bytes of its process's output schema; its process's time limit and
+// staleness limits; and its plan's warnings, those resolve gives at the
+// step.
 func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) (plannedCall, error) {
 	process := resolved.Processes[item.Process.Value]
 	agent := resolved.Agents[item.Agent.Value]
@@ -597,6 +608,9 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 		planned.step.Prompt = string(text)
 	}
 	planned.step.TimeLimit = definition.Limits.Value.Time.Value
+	stale := definition.Limits.Value.Stale.Value
+	planned.step.Staleness = call.Limits{RepeatedToolCalls: stale.RepeatedToolCalls.Value,
+		ToolCommand: stale.ToolCommand.Value, NoEvent: stale.NoEvent.Value}
 	for _, warning := range resolved.Warnings {
 		if warning.Origin == item.Origin {
 			planned.step.Warnings = append(planned.step.Warnings, problemLine(warning.Origin, warning.Message))
@@ -797,7 +811,7 @@ func values(fixed map[string]inputs.Fixed) map[string]string {
 
 // turnCaller is what a step's call asks of core/call.
 type turnCaller interface {
-	Call(ctx context.Context, step call.Step, report func(call.Tool)) call.Result
+	Call(ctx context.Context, step call.Step, report func(call.Report)) call.Result
 }
 
 // admission is what a step's call asks of core/admit.
@@ -814,7 +828,8 @@ type admission interface {
 // git.revision input gives, and made through admit, which holds the
 // worktree while it is made; a call not admitted is refused as well. Each
 // call is made by the caller of its turn's contract, each tool call its
-// turn reports given on to core/workflow's report. A call with no usage,
+// turn reports given on to core/workflow's report, and no other line, which
+// the progress skips. A call with no usage,
 // as on bash, has every count of it unknown.
 type stepCalls struct {
 	inputs  declaredResolver
@@ -865,8 +880,10 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 	}
 	var called call.Result
 	err = s.admits.Make(ctx, request, func(ctx context.Context) {
-		called = s.callers[planned.contract].Call(ctx, step, func(tool call.Tool) {
-			report(workflow.Tool{Name: tool.Name, Input: tool.Input})
+		called = s.callers[planned.contract].Call(ctx, step, func(r call.Report) {
+			if tool := r.Tool; tool != nil {
+				report(workflow.Tool{Name: tool.Name, Input: tool.Input})
+			}
 		})
 	})
 	if err != nil {
@@ -930,7 +947,7 @@ func bashInputs(inputs bash.Inputs) call.Inputs {
 }
 
 // bashTurns answers core/call's runtime from the bash wrapper: the turn's
-// prompt is its script, and it reports no tool call. A program that could
+// prompt is its script, and it reports no line. A program that could
 // not start is core's ErrNotStarted. A stream is given by the fields a
 // call's output has: an incomplete one as it was kept.
 type bashTurns struct {
@@ -944,7 +961,7 @@ func newBashTurns(bash bashRuns) (*bashTurns, error) {
 	return &bashTurns{bash: bash}, nil
 }
 
-func (b *bashTurns) Turn(ctx context.Context, turn call.Turn, _ func(call.Tool)) (call.Ended, error) {
+func (b *bashTurns) Turn(ctx context.Context, turn call.Turn, _ func(call.Report)) (call.Ended, error) {
 	result, err := b.bash.Run(ctx, bash.Turn{Script: turn.Prompt, Dir: turn.Dir, Env: turn.Env})
 	if errors.Is(err, bash.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
@@ -961,7 +978,7 @@ func (b *bashTurns) Turn(ctx context.Context, turn call.Turn, _ func(call.Tool))
 // claudeCodeRuns is what a turn on claude-code asks of the claude-code
 // wrapper.
 type claudeCodeRuns interface {
-	Run(ctx context.Context, turn claudecode.Turn, report func(claudecode.Tool)) (claudecode.Result, error)
+	Run(ctx context.Context, turn claudecode.Turn, report func(claudecode.Report)) (claudecode.Result, error)
 }
 
 // claudeCodeInputs is how core/call takes a call's inputs on claude-code,
@@ -977,8 +994,8 @@ func claudeCodeInputs(inputs claudecode.Inputs) call.Inputs {
 }
 
 // claudeCodeTurns answers core/call's runtime from the claude-code wrapper:
-// the turn's prompt is its message, each tool call it reports core's, and
-// its reply core's, its failure class by its name. A program that could not
+// the turn's prompt is its message, each line it reports core's, and its
+// reply core's, its failure class by its name. A program that could not
 // start is core's ErrNotStarted.
 type claudeCodeTurns struct {
 	claude claudeCodeRuns
@@ -991,10 +1008,16 @@ func newClaudeCodeTurns(claude claudeCodeRuns) (*claudeCodeTurns, error) {
 	return &claudeCodeTurns{claude: claude}, nil
 }
 
-func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Tool)) (call.Ended, error) {
+func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	result, err := c.claude.Run(ctx, claudecode.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
 		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema},
-		func(tool claudecode.Tool) { report(call.Tool{Name: tool.Name, Input: tool.Input}) })
+		func(r claudecode.Report) {
+			var tool *call.Tool
+			if t := r.Tool; t != nil {
+				tool = &call.Tool{Name: t.Name, Input: t.Input}
+			}
+			report(call.Report{Tool: tool})
+		})
 	if errors.Is(err, claudecode.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
 	}
@@ -1015,7 +1038,7 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 
 // codexRuns is what a turn on codex asks of the codex wrapper.
 type codexRuns interface {
-	Run(ctx context.Context, turn codex.Turn, report func(codex.Tool)) (codex.Result, error)
+	Run(ctx context.Context, turn codex.Turn, report func(codex.Report)) (codex.Result, error)
 }
 
 // codexInputs is how core/call takes a call's inputs on codex, as its
@@ -1031,7 +1054,7 @@ func codexInputs(inputs codex.Inputs) call.Inputs {
 }
 
 // codexTurns answers core/call's runtime from the codex wrapper: the turn's
-// prompt is its message, each tool call it reports core's, and its reply
+// prompt is its message, each line it reports core's, and its reply
 // core's, its failure class by its name, its cost unknown, codex reporting
 // none. A program that could not start is core's ErrNotStarted.
 type codexTurns struct {
@@ -1045,10 +1068,16 @@ func newCodexTurns(codex codexRuns) (*codexTurns, error) {
 	return &codexTurns{codex: codex}, nil
 }
 
-func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Tool)) (call.Ended, error) {
+func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	result, err := c.codex.Run(ctx, codex.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
 		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema},
-		func(tool codex.Tool) { report(call.Tool{Name: tool.Name, Input: tool.Input}) })
+		func(r codex.Report) {
+			var tool *call.Tool
+			if t := r.Tool; t != nil {
+				tool = &call.Tool{Name: t.Name, Input: t.Input}
+			}
+			report(call.Report{Tool: tool})
+		})
 	if errors.Is(err, codex.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
 	}

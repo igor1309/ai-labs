@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 )
 
 // event is what the wrapper reads of a stream-json line.
@@ -40,22 +39,31 @@ type event struct {
 
 // stream is what a turn's stream-json lines told: the session, the last
 // assistant text, whether a rate limit was rejected, and the result event;
-// and the report each tool call is given to.
+// and the report each line is given to.
 type stream struct {
-	report   func(Tool)
+	report   func(Report)
 	session  string
 	lastText string
 	rejected bool
 	result   *event
 }
 
-// line reads one line of stream-json. A line that is not an event the
-// wrapper reads is skipped: the result event decides, and what precedes it
-// only adds to it.
+// line reads one line of stream-json, and reports each tool call it makes,
+// or the line where it makes none. A line that is not an event the
+// wrapper reads tells nothing more: the result event decides, and what
+// precedes it only adds to it.
 func (s *stream) line(line string) {
+	if s.read(line) == 0 {
+		s.report(Report{})
+	}
+}
+
+// read reads one line, reports each tool call it makes, and gives how
+// many it reported.
+func (s *stream) read(line string) (reported int) {
 	var e event
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		return
+		return 0
 	}
 	switch e.Type {
 	case "system":
@@ -68,7 +76,8 @@ func (s *stream) line(line string) {
 			case block.Type == "text" && strings.TrimSpace(block.Text) != "":
 				s.lastText = block.Text
 			case block.Type == "tool_use":
-				s.report(Tool{Name: block.Name, Input: short(compact(block.Input))})
+				s.report(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
+				reported++
 			}
 		}
 	case "rate_limit_event":
@@ -81,23 +90,7 @@ func (s *stream) line(line string) {
 			s.session = e.SessionID
 		}
 	}
-}
-
-// inputLimit is the most of a tool call's input a report gives, in bytes,
-// as the archive printed it.
-const inputLimit = 300
-
-// short is text cut to inputLimit, at the start of a character, and marked
-// "…" where it was cut.
-func short(text string) string {
-	if len(text) <= inputLimit {
-		return text
-	}
-	end := inputLimit
-	for end > 0 && !utf8.RuneStart(text[end]) {
-		end--
-	}
-	return text[:end] + "…"
+	return reported
 }
 
 // compact is raw JSON on one line, its fields in the order written; as it

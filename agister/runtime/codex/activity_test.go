@@ -6,16 +6,15 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
 )
 
-// reported is a tool call as a turn reported it, and how many lines the
+// reported is a line as a turn reported it, and how many lines the
 // supervisor had begun to give by then.
 type reported struct {
-	tool codex.Tool
-	read int
+	report codex.Report
+	read   int
 }
 
 // reports runs a turn over spy and gives what it reported, and its reply.
@@ -23,7 +22,7 @@ func reports(t *testing.T, spy *supervisorSpy) ([]reported, codex.Reply) {
 	t.Helper()
 	var got []reported
 	result, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}},
-		func(tool codex.Tool) { got = append(got, reported{tool: tool, read: spy.given}) })
+		func(r codex.Report) { got = append(got, reported{report: r, read: spy.given}) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,14 +32,33 @@ func reports(t *testing.T, spy *supervisorSpy) ([]reported, codex.Reply) {
 	return got, *result.Reply
 }
 
+// tools is each tool call of what a turn reported, in order.
+func tools(got []reported) []codex.Tool {
+	var calls []codex.Tool
+	for _, r := range got {
+		if r.report.Tool != nil {
+			calls = append(calls, *r.report.Tool)
+		}
+	}
+	return calls
+}
+
 // itemLine is an item event's line, kind "started" or "completed", of the
 // item's fields, JSON without its braces.
 func itemLine(kind, fields string) string {
 	return `{"type":"item.` + kind + `","item":{` + fields + `}}`
 }
 
+// tool is the report of a tool call of name, given input.
+func tool(name, input string) codex.Report {
+	return codex.Report{Tool: &codex.Tool{Name: name, Input: input}}
+}
+
+// line is the report of a line that makes no tool call.
+var line = codex.Report{}
+
 // activity.feature, "Commands and searches are reported, messages are
-// not".
+// not": each other line is reported as a line.
 func TestCommandsAndSearchesAreReportedMessagesAreNot(t *testing.T) {
 	t.Parallel()
 	spy := &supervisorSpy{lines: []string{
@@ -52,15 +70,57 @@ func TestCommandsAndSearchesAreReportedMessagesAreNot(t *testing.T) {
 	}}
 	got, reply := reports(t, spy)
 	want := []reported{
-		{tool: codex.Tool{Name: "command", Input: "go test"}, read: 2},
-		{tool: codex.Tool{Name: "web_search", Input: "q"}, read: 4},
+		{report: line, read: 1},
+		{report: tool("command", "go test"), read: 2},
+		{report: line, read: 3},
+		{report: tool("web_search", "q"), read: 4},
+		{report: line, read: 5},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("reported %+v, want %+v", got, want)
+		t.Errorf("reported %s, want %s", shown(got), shown(want))
 	}
 	if reply.Text != "looking" || reply.Session != "t1" || reply.Failure != "" {
 		t.Errorf("reply %+v, want the text looking, the session t1, no failure", reply)
 	}
+}
+
+// activity.feature, "Every other line is reported as a line".
+func TestEveryOtherLineIsReportedAsALine(t *testing.T) {
+	t.Parallel()
+	got, _ := reports(t, &supervisorSpy{lines: []string{threadLine, reasoningLine, completedLine}})
+	want := []reported{{report: line, read: 1}, {report: line, read: 2}, {report: line, read: 3}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("reported %s, want %s", shown(got), shown(want))
+	}
+}
+
+// activity.feature, "A command is reported whole".
+func TestACommandIsReportedWhole(t *testing.T) {
+	t.Parallel()
+	command := strings.Repeat("é", 249) + "ab"
+	if len(command) != 500 {
+		t.Fatalf("the command is %d bytes, want 500", len(command))
+	}
+	got, _ := reports(t, &supervisorSpy{lines: []string{
+		itemLine("started", fmt.Sprintf(`"id":"item_1","type":"command_execution","command":%q`, command)), completedLine,
+	}})
+	if want := []codex.Tool{{Name: "command", Input: command}}; !reflect.DeepEqual(tools(got), want) {
+		t.Errorf("reported %s, want the command whole", shown(got))
+	}
+}
+
+// shown is what a turn reported, as a test reads it: each tool call its
+// name and input, each other line "a line", and the lines read by then.
+func shown(reports []reported) string {
+	var parts []string
+	for _, r := range reports {
+		what := "a line"
+		if tool := r.report.Tool; tool != nil {
+			what = fmt.Sprintf("%s %s", tool.Name, tool.Input)
+		}
+		parts = append(parts, fmt.Sprintf("%s (read %d)", what, r.read))
+	}
+	return "[" + strings.Join(parts, "; ") + "]"
 }
 
 // Each tool call codex starts is reported once, by what it was given: a
@@ -99,42 +159,11 @@ func TestEachToolCallIsReportedOnceByWhatItWasGiven(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			got, _ := reports(t, &supervisorSpy{lines: append(c.lines, completedLine)})
-			var tools []codex.Tool
-			for _, r := range got {
-				tools = append(tools, r.tool)
+			if !reflect.DeepEqual(tools(got), c.want) {
+				t.Errorf("reported %s, want %+v", shown(got), c.want)
 			}
-			if !reflect.DeepEqual(tools, c.want) {
-				t.Errorf("reported %+v, want %+v", tools, c.want)
-			}
-		})
-	}
-}
-
-// A tool call's input is reported short: at most 300 bytes of it, cut at
-// the start of a character and marked where it was cut; one that fits is
-// whole.
-func TestAToolCallsInputIsReportedShort(t *testing.T) {
-	t.Parallel()
-	for _, n := range []int{10, 150, 151, 400} {
-		t.Run(fmt.Sprint(n), func(t *testing.T) {
-			t.Parallel()
-			command := strings.Repeat("é", n)
-			got, _ := reports(t, &supervisorSpy{lines: []string{
-				itemLine("started", fmt.Sprintf(`"id":"item_1","type":"command_execution","command":%q`, command)), completedLine,
-			}})
-			if len(got) != 1 {
-				t.Fatalf("reported %+v, want one call", got)
-			}
-			text := got[0].tool.Input
-			if len(command) <= 300 {
-				if text != command {
-					t.Errorf("reported %q, want it whole", text)
-				}
-				return
-			}
-			cut, marked := strings.CutSuffix(text, "…")
-			if !marked || !strings.HasPrefix(command, cut) || len(cut) > 300 || len(cut) < 299 || !utf8.ValidString(cut) {
-				t.Errorf("reported %q, want at most 300 bytes of the command, whole characters, then …", text)
+			if len(got) != len(c.lines)+1 {
+				t.Errorf("reported %s, want one report for each of %d lines", shown(got), len(c.lines)+1)
 			}
 		})
 	}
