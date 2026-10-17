@@ -45,9 +45,11 @@ Feature: The composition gives a step its file and git inputs
     Then it prints the result, failed, class "refused", naming the parts
       of "step" missing, and bash runs nothing
 
-  Scenario: The shipped implement process's inputs resolve
-    Given the file "/r/s.md" holds a brief of home's form "step", git
-      names "HEAD" the commit "c1"
-    When the inputs of home's process "implement" are resolved with
-      brief=s.md in "/r"
-    Then "candidate_revision" is "c1" and "brief" the brief's text
+  Scenario: A workflow's input that cannot be resolved ends the run
+    saying why
+    Given the repository's workflow "w" of the step "say", its input
+      "goal" from the source "file", path "g.md", and no file "/r/g.md"
+    When "agister run w" runs in "/r"
+    Then it prints the result, failed, class "refused", its reason
+      naming the input "goal" and that the file does not exist, and bash
+      runs nothing

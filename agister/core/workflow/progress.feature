@@ -17,3 +17,9 @@ Feature: A workflow reports what each step is doing
     Given the steps "a", failing, then "b"
     When the workflow runs
     Then no event names "b"
+
+  Scenario: Each step's report reaches the call port
+    Given the step "a", its call reporting "Bash" with "ls"
+    When the workflow runs
+    Then the call port was given a report for "a", and the event of
+      "Bash" with "ls" names "a"

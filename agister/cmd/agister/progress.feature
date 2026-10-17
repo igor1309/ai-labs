@@ -27,11 +27,14 @@ Feature: The composition prints a run's progress to stderr
       runs in "/r"
     Then stderr ends with "· ask: ended failed rate_limited in 4s"
 
-  Scenario: A tool call's line is cut to 200 bytes, on one line
-    Given claude-code reports the tool call "Write" given 500 bytes of
-      JSON with newlines in its strings' values
-    When the run of "ask" runs
-    Then its line on stderr is its first 200 bytes, no newline in it
+  Scenario: A tool call's line is one line, cut to 200 bytes
+    Given codex reports the tool call "shell" with a command of 300
+      bytes, a newline among them, and the clock gives the step 1.6s
+    When "agister run --process ask --agent codex-sol-61 --param q=why"
+      runs in "/r"
+    Then its line on stderr is "· ask: shell " and the command, its
+      newline a space, cut so the line is 200 bytes
+    And the step's last line ends "in 2s"
 
   Scenario: A bash step prints its start and end
     When "agister run --process say --agent bash --param what=hi" runs

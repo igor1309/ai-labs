@@ -345,7 +345,8 @@ above. A text takes a form where no part appears twice, each required
 part is there and not empty, a part that `reads` a text reads exactly
 it, and a part that refers to a `file` names one in back quotes, the
 first such, that exists. A text that takes none of its forms is
-refused: failed, `refused`, naming, for each form, what is wrong. Core
+refused: failed, `refused`, naming, for each form, what is wrong; a
+workflow's input refused so ends the run with that reason. Core
 knows no file: whether a path exists is a port, the composition
 answers it.
 
@@ -366,18 +367,24 @@ than these is refused before anything runs, as before; a brief form no
 longer is.
 
 **Progress.** The runtime protocol grows: a turn is also given a
-function, to which a model's wrapper reports each tool call it reads, as
-it reads it: the tool's name and what it was given, as one line.
+report, a function to which a model's wrapper gives each tool call it
+reads, as it reads it: the tool's name and what it was given, as text.
 Claude-code's are the `tool_use` blocks of its assistant events: the
-name and the input's JSON. Codex's are the items it starts:
-`command_execution`, `shell` and the command; `file_change`, `edit` and
-the paths; `mcp_tool_call`, the tool's name and its arguments; and
-`web_search`, `search` and the query. Other lines report nothing; bash
-reports nothing. `core/call` passes each to its step's, and
-`core/workflow` reports to its events port when a step starts, on its
-agent, each tool call its turn reports, and when it ends, with its
-status, its class and how long it took, by the step's name. The
-composition prints each to stderr as it comes, one line each:
+name and the input's JSON. Codex's are its items: on `item.started`, a
+`command_execution`, `shell` and the command; a `file_change`, `edit`
+and its paths, by spaces; an `mcp_tool_call`, `mcp:<server>/<tool>`
+and its arguments' JSON; on `item.completed`, a `web_search`, `search`
+and its query, which its start does not carry. Other lines report
+nothing; bash reports nothing.
+
+`core/call` is given a report with each call and gives the turn each
+tool call as it comes. `core/workflow`'s port to call a step takes the
+step's report too, and its step names its agent. It reports to its
+events port, by the step's name: the step started, on its agent; each
+tool call its turn reports; and the step ended, with its status, its
+class and how long it took. The composition passes the report from
+`core/workflow`, through its chain, to the call, and prints each event
+to stderr as it comes, one line each:
 
 ```
 · implement: started on claude-opus
@@ -385,8 +392,10 @@ composition prints each to stderr as it comes, one line each:
 · implement: ended completed in 3m2s
 ```
 
-a tool call's line cut to 200 bytes, its newlines spaces. Stdout keeps
-only the result.
+A duration is rounded to the second. A tool call's line has each newline
+of what the tool was given made a space, then is cut to 200 bytes, the
+line whole, its `· <step>: ` included, on a character's boundary. Stdout
+keeps only the result.
 
 Decisions, each with its reason:
 
@@ -401,3 +410,8 @@ Decisions, each with its reason:
   a mistake in the request.
 - A path is relative to the launch directory: the person names a brief
   where they stand; the run's root is git's.
+- Each input's identity stays the SHA-256 of its text, a revision's
+  included, whose text is its commit: nothing reads an identity until
+  the record (ADR-001, invariant 4), which settles it.
+- A report is given with every call, never left out: core needs no
+  fallback for a call with none (ADR-009, rule 2).

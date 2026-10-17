@@ -10,8 +10,3 @@ Feature: A call passes on the tool calls its turn reports
     When the call is made with a report
     Then the report is given "Bash" with "ls", then "Read" with "a.go",
       before the call ends
-
-  Scenario: A call made with no report reports nothing, and runs
-    Given a model step, and the turn reports "Bash" with "ls"
-    When the call is made with no report
-    Then it ends as its reply says
