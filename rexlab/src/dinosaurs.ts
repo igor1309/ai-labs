@@ -1,0 +1,16 @@
+import type { Dinosaur } from "./quiz/index.ts";
+
+// One entry of the shipped dinosaur list, in the content model's format.
+export type DinosaurRecord = {
+  id: string;
+  name: { en: string; ru: string };
+  attributes: { massKg: number; heightMeters: number };
+};
+
+export function readDinosaurs(records: readonly DinosaurRecord[]): Dinosaur[] {
+  return records.map(({ id, name, attributes }) => ({
+    id,
+    name: { en: name.en, ru: name.ru },
+    measures: { mass: attributes.massKg, height: attributes.heightMeters }
+  }));
+}

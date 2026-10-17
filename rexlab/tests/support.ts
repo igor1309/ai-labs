@@ -1,0 +1,278 @@
+import records from "../src/data/dinosaurs.json";
+import type { Appearance } from "../src/App.tsx";
+import { readDinosaurs } from "../src/dinosaurs.ts";
+import { localLanguage } from "../src/localLanguage.ts";
+import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localTheme } from "../src/localTheme.ts";
+import type { Orientation } from "../src/OrientationGate.tsx";
+import type { Language } from "../src/language/language.ts";
+import { presentQuestion } from "../src/presentation.ts";
+import { choose, questionState, type Random } from "../src/quiz/index.ts";
+import { startPlay } from "../src/quiz/play.ts";
+import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import type { Theme } from "../src/theme.ts";
+
+export const SHIPPED_DINOSAURS = readDinosaurs(records);
+
+// A body picture URL of the dinosaur's own, for tests that are not about
+// the picture files.
+export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.webp`;
+
+// A seeded random source (mulberry32): each seed is one repeatable run.
+export function seededRandom(seed: number): Random {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export type ManualOrientation = Orientation & { turn(to: "portrait" | "landscape"): void };
+
+// The iPad's orientation, turned only when the test turns it.
+export function manualOrientation(initial: "portrait" | "landscape"): ManualOrientation {
+  let portrait = initial === "portrait";
+  const listeners = new Set<() => void>();
+  return {
+    isPortrait: () => portrait,
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    turn: (to) => {
+      portrait = to === "portrait";
+      listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+export type ManualAppearance = Appearance & { switchTo(to: Theme): void };
+
+// The device appearance, switched only when the test switches it.
+export function manualAppearance(initial: Theme): ManualAppearance {
+  let dark = initial === "dark";
+  const listeners = new Set<() => void>();
+  return {
+    isDark: () => dark,
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    switchTo: (to) => {
+      dark = to === "dark";
+      listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+export type MemoryStorage = KeyValueStorage & { items: Map<string, string> };
+
+// Browser storage held in a map the test reads. `read: false` throws on
+// every read, as a browser that blocks storage does; `save: false` throws
+// on every write, as a full or read-only storage does.
+export function memoryStorage(
+  items: Record<string, string> = {},
+  { read = true, save = true }: { read?: boolean; save?: boolean } = {}
+): MemoryStorage {
+  const map = new Map(Object.entries(items));
+  return {
+    items: map,
+    getItem: (key) => {
+      if (!read) throw new DOMException("The storage cannot be read", "SecurityError");
+      return map.get(key) ?? null;
+    },
+    setItem: (key, value) => {
+      if (!save) throw new DOMException("The storage is full", "QuotaExceededError");
+      map.set(key, value);
+    }
+  };
+}
+
+// Progress for tests that are not about it: none kept yet, and saving works.
+export function emptyProgress() {
+  const storage = memoryStorage();
+  return localProgress(() => storage);
+}
+
+// The language for tests that are not about it: an English device, and no
+// language chosen yet.
+export function englishDevice() {
+  const storage = memoryStorage();
+  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
+}
+
+// The theme for tests that are not about it: a device in its light
+// appearance, and no theme chosen yet.
+export function lightDevice() {
+  const storage = memoryStorage();
+  return { appearance: manualAppearance("light"), themeStore: localTheme(() => storage) };
+}
+
+// What the question screen shows of `question`, asked first in a round of
+// it alone, once `choice` is chosen when one is given: the quiz's state of
+// the question, presented as the app presents it.
+export function questionView(question: Question, language: Language, choice?: string) {
+  const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question));
+  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture);
+}
+
+// Media query lists, one for each query given, whose matches the test
+// sets. A query not given has no list, so the test fails on it.
+export function mediaQueries(initial: Record<string, boolean>) {
+  const queries: string[] = [];
+  const lists = new Map(
+    Object.entries(initial).map(([query, matches]) => {
+      const target = new EventTarget();
+      return [query, { target, list: Object.assign(target, { matches, media: query }) as unknown as MediaQueryList }];
+    })
+  );
+  const of = (query: string) => {
+    const found = lists.get(query);
+    if (!found) throw new Error(`No media query list for ${query}`);
+    return found;
+  };
+  return {
+    queries,
+    matchMedia: (query: string) => {
+      queries.push(query);
+      return of(query).list;
+    },
+    change: (query: string, to: boolean) => {
+      const { target, list } = of(query);
+      (list as { matches: boolean }).matches = to;
+      target.dispatchEvent(new Event("change"));
+    }
+  };
+}
+
+// A colour's red, green and blue channels, from 0 to 255, and its alpha,
+// from 0 to 1, from a hex or rgb() form.
+function rgba(color: string): [number, number, number, number] {
+  const hex = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})?$/i.exec(color);
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(color);
+  const parts = hex
+    ? [...hex.slice(1, 4).map((part) => parseInt(part, 16)), hex[4] === undefined ? 1 : parseInt(hex[4], 16) / 255]
+    : rgb && [...rgb.slice(1, 4).map(Number), rgb[4] === undefined ? 1 : Number(rgb[4])];
+  const [r, g, b, a] = parts ?? [];
+  if (r === undefined || g === undefined || b === undefined || a === undefined) throw new Error(`Cannot read the colour ${color}`);
+  return [r, g, b, a];
+}
+
+const format = ([r, g, b]: number[]) => `rgb(${(r ?? 0).toFixed(0)}, ${(g ?? 0).toFixed(0)}, ${(b ?? 0).toFixed(0)})`;
+
+// Whether two colours are the same, to the two decimals of alpha a
+// computed style keeps.
+export function sameColour(a: string, b: string): boolean {
+  const [x, y] = [rgba(a), rgba(b)];
+  return x.every((channel, at) => Math.abs(channel - (y[at] ?? NaN)) <= (at === 3 ? 0.01 : 0));
+}
+
+// What `color` looks like laid over the opaque colour `under`.
+export function seenOn(color: string, under: string): string {
+  const [top, bottom] = [rgba(color), rgba(under)];
+  const alpha = top[3];
+  return format([0, 1, 2].map((at) => (top[at] ?? 0) * alpha + (bottom[at] ?? 0) * (1 - alpha)));
+}
+
+const hasBackground = (element: Element) => rgba(getComputedStyle(element).backgroundColor)[3] > 0;
+
+// The elements with a background of their own, translucent or not.
+export function surfacesIn(root: Element): Element[] {
+  return [root, ...root.querySelectorAll("*")].filter(hasBackground);
+}
+
+// The colour an element is seen on: its own background, or the nearest
+// one behind it, with each translucent layer laid over what is behind it.
+export function surfaceOf(element: Element): string {
+  const layers: string[] = [];
+  for (let at: Element | null = element; at; at = at.parentElement) {
+    const background = getComputedStyle(at).backgroundColor;
+    if (!hasBackground(at)) continue;
+    if (rgba(background)[3] < 1) {
+      layers.push(background);
+      continue;
+    }
+    return layers.reduceRight((under, layer) => seenOn(layer, under), format(rgba(background)));
+  }
+  throw new Error("The page has no background");
+}
+
+// The WCAG 2 relative luminance of an opaque colour, from 0 for black to
+// 1 for white.
+export function luminance(color: string): number {
+  const [r, g, b] = rgba(color)
+    .slice(0, 3)
+    .map((channel) => {
+      const c = channel / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+}
+
+// The WCAG 2 contrast ratio of two opaque colours.
+export function contrast(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05);
+}
+
+// The design's colours, its fm-* variables in each theme, as
+// design/rexlab.pen gives them.
+export const PALETTE: Record<Theme, Record<string, string>> = {
+  light: {
+    bg: "#F2EFE8",
+    surface: "#FFFDF8",
+    "surface-2": "#E6E2D9",
+    ink: "#1D2742",
+    "ink-soft": "#5C647A",
+    line: "#1D27421F",
+    base: "#1F2B4D",
+    "on-base": "#F6F2E9",
+    amber: "#E39B2D",
+    terra: "#C9583D",
+    sky: "#A9BCD6",
+    "strata-1": "#E7E1D5",
+    "strata-2": "#DCD3C4",
+    "strata-3": "#D0C5B2",
+    good: "#2E7D4F",
+    bad: "#B83B2B",
+    shadow: "#1D274224"
+  },
+  dark: {
+    bg: "#0F1320",
+    surface: "#181E2E",
+    "surface-2": "#222A3D",
+    ink: "#ECE8DE",
+    "ink-soft": "#9CA3B6",
+    line: "#ECE8DE1F",
+    base: "#2C3B66",
+    "on-base": "#F6F2E9",
+    amber: "#F2B24B",
+    terra: "#E57A5D",
+    sky: "#34466E",
+    "strata-1": "#141A29",
+    "strata-2": "#192033",
+    "strata-3": "#1F273C",
+    good: "#63C98C",
+    bad: "#F08A78",
+    shadow: "#00000066"
+  }
+};
+
+// The translucent layers the design lays over the navy in both themes.
+export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F"];
+
+// The name of the first symbol an element shows, such as "sun" or "globe".
+export function symbolOf(element: Element): string | undefined {
+  const classes = element.querySelector("svg.lucide")?.classList ?? [];
+  return [...classes].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length);
+}
+
+// What an element reads in words, without its symbols and pictures.
+export function words(element: HTMLElement): string {
+  const copy = element.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((part) => part.remove());
+  return copy.textContent?.trim() ?? "";
+}

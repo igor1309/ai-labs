@@ -1,0 +1,156 @@
+import { ArrowRight, Check, House, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
+import type { Language } from "./language/language.ts";
+import { TEXTS, type Texts } from "./language/texts.ts";
+import { usePointerState } from "./usePointerState.ts";
+
+// What the prompt asks about.
+export type Prompt = keyof Texts["prompts"];
+
+const SYMBOLS: Record<Prompt, LucideIcon> = { mass: Scale, height: Ruler };
+
+// The symbol beside a revealed value, of what the value measures.
+const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler };
+
+export type Mark = keyof Texts["marks"];
+
+const MARKS: Record<Mark, LucideIcon> = { correct: Check, wrong: X };
+
+export type DinosaurCardView = {
+  id: string;
+  name: string;
+  // The URL of the dinosaur's picture.
+  picture: string;
+  // The dinosaur's value, written out, once the question is answered.
+  value: string | undefined;
+  mark: Mark | undefined;
+  // The child tapped this card.
+  chosen: boolean;
+};
+
+export type QuestionScreenProps = {
+  language: Language;
+  prompt: Prompt;
+  number: number;
+  total: number;
+  left: DinosaurCardView;
+  right: DinosaurCardView;
+  answered: boolean;
+  last: boolean;
+  onChoose: (id: string) => void;
+  onNext: () => void;
+  onHome: () => void;
+};
+
+export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome }: QuestionScreenProps) {
+  const text = TEXTS[language];
+  const Symbol = SYMBOLS[prompt];
+  const card = (view: DinosaurCardView) => (
+    <DinosaurCard key={view.id} view={view} language={language} prompt={prompt} answered={answered} onChoose={onChoose} />
+  );
+  return (
+    <main className="question">
+      <div className="stratum stratum-1" aria-hidden="true" />
+      <header className="question-bar">
+        <button type="button" className="home-button" onClick={onHome}>
+          <House size={24} aria-hidden="true" />
+          {text.home}
+        </button>
+        {/* One step per question: those done, the one on screen, and those
+            still to come. */}
+        <span className="steps" aria-hidden="true">
+          {Array.from({ length: total }, (_, index) => (
+            <span key={index} className="step" data-step={index + 1 < number ? "done" : index + 1 === number ? "current" : undefined} />
+          ))}
+        </span>
+        <p className="progress" aria-label={text.progress}>
+          {number}/{total}
+        </p>
+      </header>
+      <h1 className="prompt">
+        <span className="prompt-symbol" aria-hidden="true">
+          <Symbol size={30} />
+        </span>
+        {text.prompts[prompt]}
+      </h1>
+      <div className="dinosaur-cards" role="group" aria-label={text.dinosaurs}>
+        {card(left)}
+        <span className="versus" aria-hidden="true">
+          {text.versus}
+        </span>
+        {card(right)}
+      </div>
+      {/* The row keeps its place before the answer, so the cards do not
+          move when Next appears. */}
+      <div className="next-row">
+        {answered && (
+          <button type="button" className="next-button" onClick={onNext}>
+            {last ? (
+              <>
+                <Trophy size={28} aria-hidden="true" />
+                {text.seeResult}
+              </>
+            ) : (
+              <>
+                {text.next}
+                <ArrowRight size={28} aria-hidden="true" />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </main>
+  );
+}
+
+type DinosaurCardProps = {
+  view: DinosaurCardView;
+  language: Language;
+  prompt: Prompt;
+  answered: boolean;
+  onChoose: (id: string) => void;
+};
+
+function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, language, prompt, answered, onChoose }: DinosaurCardProps) {
+  const { "data-hovered": hovered, "data-pressed": pressed, ...pointer } = usePointerState();
+  const text = TEXTS[language];
+  const ValueSymbol = VALUE_SYMBOLS[prompt];
+  const MarkSymbol = mark && MARKS[mark];
+  // An answered card no longer responds to touch: only the first tap
+  // counts, and a card that still looked pressable would say otherwise.
+  return (
+    <button
+      type="button"
+      className="card dinosaur-card"
+      aria-label={name}
+      aria-disabled={answered || undefined}
+      data-answered={answered || undefined}
+      data-mark={mark}
+      data-chosen={(answered && chosen) || undefined}
+      data-hovered={answered ? undefined : hovered}
+      data-pressed={answered ? undefined : pressed}
+      onClick={() => onChoose(id)}
+      {...pointer}
+    >
+      <span className="dinosaur-art">
+        {/* Every picture is shown at the same size, whatever the dinosaur's
+            real size: a picture must not hint at which one is larger. */}
+        <img className="dinosaur-picture" src={picture} alt={name} width={800} height={600} draggable={false} />
+        {mark && MarkSymbol && (
+          <span className="mark" role="img" aria-label={text.marks[mark]}>
+            <MarkSymbol size={24} strokeWidth={3} />
+            {text.marks[mark]}
+          </span>
+        )}
+      </span>
+      <span className="dinosaur-footer">
+        <span className="dinosaur-name">{name.toLocaleUpperCase(language)}</span>
+        {value !== undefined && (
+          <span className="dinosaur-value-chip">
+            <ValueSymbol size={22} aria-hidden="true" />
+            <span className="dinosaur-value">{value}</span>
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
