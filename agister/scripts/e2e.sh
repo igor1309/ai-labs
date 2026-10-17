@@ -1,7 +1,8 @@
 #!/bin/sh
 # The end-to-end check (docs/run-implementation.md, "A step on a model
-# runtime"): the built agister runs a step on real claude-code and codex,
-# on the owner's logins, for a few cents. Opt-in: its tests run only with
+# runtime" and "Continuation"): the built agister runs a step on real
+# claude-code and codex, and continues it, on the owner's logins, for a
+# few cents. Opt-in: its tests run only with
 # AGISTER_E2E=1, and are skipped otherwise, saying so. Each stage says what
 # it ran, as scripts/test.sh does (gokit's testreport).
 set -eu

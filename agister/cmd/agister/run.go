@@ -71,7 +71,9 @@ type turn struct {
 // by the validator, and its inputs are read through sourcing; each call is
 // admitted against its worktree, and holds it, through holding; what each
 // step is doing is told to events. Each run that reaches core is recorded
-// in store (docs/run-implementation.md, "Records").
+// in store (docs/run-implementation.md, "Records"); a run that continues
+// one store keeps is checked against it first, and its step resumes that
+// run's session ("Continuation").
 type runs struct {
 	home      string
 	links     links
@@ -84,10 +86,17 @@ type runs struct {
 	holding   holding
 	host      host
 	events    workflow.Events
-	store     recordStore
+	store     runStore
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, holding holding, host host, events workflow.Events, store recordStore) (*runs, error) {
+// runStore is what a run asks of runstore: its record kept, and the runs
+// kept that a continuation reads.
+type runStore interface {
+	recordStore
+	keptRuns
+}
+
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, holding holding, host host, events workflow.Events, store runStore) (*runs, error) {
 	contracts := map[string]bool{}
 	for _, t := range turns {
 		switch {
@@ -175,6 +184,16 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	}
 	if len(unrun) > 0 {
 		return cli.Result{}, refused(unrun)
+	}
+	if request.Continue != "" {
+		c, refusal, err := continuationOf(r.host.ctx, request.Continue, built, root, r.store, r.holding.facts, read.documents)
+		if err != nil {
+			return cli.Result{}, err
+		}
+		if len(refusal) > 0 {
+			return cli.Result{}, refused(refusal)
+		}
+		built = continued(built, c)
 	}
 	started := r.host.clock.Now()
 	id, err := runIDOf(started, r.host.random)
@@ -352,7 +371,8 @@ type plan struct {
 }
 
 // plannedCall is a step's call: its process and agent, by name; the
-// contract of the turn it is taken on; what its process declares, which
+// contract of the turn it is taken on; the id of the call whose session
+// it continues, "" for none; what its process declares, which
 // core/inputs resolves before the call starts; what it declares of the
 // worktree, which core/admit admits it by, but the commit of its pin,
 // which its inputs give; and the call core/call makes, but its environment
@@ -361,6 +381,7 @@ type plannedCall struct {
 	process   string
 	agent     string
 	contract  string
+	continues string
 	declared  inputs.Declared
 	admission admit.Request
 	step      call.Step
@@ -974,7 +995,8 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 	planned := s.calls[name]
 	var facts admit.Facts
 	result := s.call(ctx, name, params, report, &facts)
-	s.records.Called(endedCall{step: name, process: planned.process, agent: planned.agent, facts: facts, result: result})
+	s.records.Called(endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues,
+		facts: facts, result: result})
 	return result
 }
 

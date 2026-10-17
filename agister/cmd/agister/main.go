@@ -96,11 +96,11 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	}
 	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader}
 	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
-	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, keptRuns, machine, stdout, stderr)
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, runsAt, machine, stdout, stderr)
 }
 
-// keptRuns is runstore over folder.
-func keptRuns(folder string) (recordStore, error) {
+// runsAt is runstore over folder.
+func runsAt(folder string) (runStore, error) {
 	store, err := runstore.New(folder)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ type piWrapper interface {
 // for the user whose home directory is user: home's folder is
 // homeFolder's, and the lock files are under lockFolder's. A run's result
 // is printed to stdout, and its progress, as it goes, to stderr.
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, storeAt recordStoreAt, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, storeAt runStoreAt, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
 		return nil, errors.New("build: a runtime wrapper is missing")
 	}
