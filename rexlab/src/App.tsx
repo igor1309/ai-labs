@@ -91,6 +91,10 @@ const SORT_TILE = "triceratops";
 // The dinosaur on find the pair's tile.
 const PAIRS_TILE = "stegosaurus";
 
+// The dinosaur whose shape stands on the home tile of the games still to
+// come.
+const MORE_COMING = "triceratops";
+
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
 
@@ -370,6 +374,7 @@ export function App({
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
+            moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}

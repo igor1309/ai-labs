@@ -71,6 +71,7 @@ export const ru: Texts = {
     "no-feathers": "БЕЗ ПЕРЬЕВ"
   },
   pairs: "НАЙДИ ПАРУ",
+  moreComing: "СКОРО ЕЩЁ",
   play: "ИГРАТЬ",
   level: "УРОВЕНЬ",
   starsEarned: "ЗВЁЗДЫ",

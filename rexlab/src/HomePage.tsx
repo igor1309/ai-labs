@@ -1,4 +1,4 @@
-import { BookOpen, Copy, Footprints, Globe, Heart, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -32,6 +32,9 @@ export type HomePageProps = {
   // Find the pair's tile: the dinosaur on its cards and the stars earned,
   // undefined until a board is finished.
   pairs: { picture: string; stars: number | undefined };
+  // The dinosaur whose shape stands on the tile of the games still to
+  // come.
+  moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
@@ -52,6 +55,7 @@ export function HomePage({
   care,
   sort,
   pairs,
+  moreComing,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -146,7 +150,9 @@ export function HomePage({
             </span>
           )}
         </button>
-        <div className="games-column">
+        {/* The other games stand in columns of two, in reading order, and
+            scroll sideways beside COMPARE when they do not fit. */}
+        <div className="games-tiles">
           <button type="button" className="card catalogue-tile" aria-label={text.catalogueTile} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
             {/* The book sits in the picture's other corner: beside the
@@ -180,8 +186,6 @@ export function HomePage({
               </span>
             )}
           </button>
-        </div>
-        <div className="games-column">
           <button type="button" className="card sort-tile" aria-label={text.sort} onClick={onSort} {...sortPointer}>
             <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />
             <span className="sort-tile-row">
@@ -222,6 +226,15 @@ export function HomePage({
               </span>
             )}
           </button>
+          {/* The games still to come are a picture, not a button: a tap on
+              it does nothing, and nothing on it invites one. */}
+          <div className="more-coming">
+            <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
+            <span className="more-coming-row">
+              <Lock size={22} aria-hidden="true" />
+              <span className="more-coming-title">{text.moreComing}</span>
+            </span>
+          </div>
         </div>
       </div>
     </main>

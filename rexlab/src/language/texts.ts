@@ -87,6 +87,8 @@ export type Texts = {
     feathers: string;
     "no-feathers": string;
   };
+  // The home tile of the games still to come.
+  moreComing: string;
   // Find the pair: its title, also on its home tile.
   pairs: string;
   play: string;
