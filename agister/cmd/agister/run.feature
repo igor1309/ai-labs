@@ -66,8 +66,15 @@ Feature: The composition runs a request
     When the run of "say" on "bash" is built
     Then core's step has the time limit 1s
 
-  Scenario: A signal to Agister cancels the run
+  Scenario Outline: A signal to Agister cancels the run
     Given bash has started the script and not ended
-    When the signal source gives SIGINT
+    When the signal source gives <signal>
     Then the turn's context is ended, and it prints the result,
       interrupted, class "cancelled", and exits 1
+
+    Examples:
+      | signal  |
+      | SIGINT  |
+      | SIGTERM |
+      | SIGHUP  |
+      | SIGQUIT |

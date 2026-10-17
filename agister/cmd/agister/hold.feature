@@ -1,31 +1,14 @@
 # cmd/agister, the hold and the chain (docs/run-implementation.md, "A step
-# in a held worktree"; ADR-004, rule 3): the hold a lock file under home's
-# locks, run against the real filesystem in a temporary folder (ADR-009,
-# rule 3); the rest with spies in place of the wrappers.
+# in a held worktree"; ADR-004, rule 3): admit's hold port answered by
+# files' lock, with spies in place of the wrappers (ADR-009, rule 1).
 
 Feature: The composition holds a worktree for each call
 
-  Scenario Outline: Holds on one worktree share or exclude
-    Given the worktree "/r" held <first>
-    When a hold <second> is asked of "/r"
-    Then it is <given>
-
-    Examples:
-      | first  | second | given   |
-      | shared | shared | taken   |
-      | shared | alone  | refused |
-      | alone  | shared | refused |
-      | alone  | alone  | refused |
-
-  Scenario: The lock file is the archive's
-    When a hold is taken of "/r"
-    Then it is the file named by the SHA-256 of "/r", links resolved,
-      with ".lock", under home's "locks/in-place"
-
-  Scenario: A hold released can be taken again
-    Given the worktree "/r" held alone, then released
-    When a hold alone is asked of "/r"
-    Then it is taken
+  Scenario: The lock file is the archive's, whatever home is
+    Given AGISTER_HOME "/h" and the user's home "/u"
+    When a hold alone is taken of "/r"
+    Then files is asked to lock, alone, the file named by the SHA-256
+      of "/r", links resolved, with ".lock", under "/u/.agister/locks/in-place"
 
   Scenario: home's implement runs on claude-code, admitted and held
     Given git gives "/r" HEAD "c1", clean, and names "HEAD" the commit

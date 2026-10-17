@@ -19,3 +19,9 @@ Feature: The codex wrapper reports the tool calls it recognizes
       turn.completed
     When codex runs a turn
     Then it reports three lines and no tool call
+
+  Scenario: A command is reported whole
+    Given the supervisor's lines: a command_execution of 500 bytes
+      started, then turn.completed
+    When codex runs a turn
+    Then it reports a call naming the command with all 500 bytes
