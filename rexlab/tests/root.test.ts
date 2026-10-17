@@ -7,10 +7,11 @@ import { mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const DARK = "(prefers-color-scheme: dark)";
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
 // A browser whose local and session storage the test reads apart.
-function browser({ local = memoryStorage(), language = "en-GB", portrait = false, dark = false } = {}) {
-  const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark });
+function browser({ local = memoryStorage(), language = "en-GB", portrait = false, dark = false, reduced = false } = {}) {
+  const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark, [REDUCED_MOTION]: reduced });
   return {
     localStorage: local,
     sessionStorage: memoryStorage(),
@@ -45,6 +46,44 @@ describe("the app in a browser", () => {
     expect(given.localStorage.items.get(LANGUAGE_KEY)).toBe("ru");
     expect(given.localStorage.items.get(THEME_KEY)).toBe("light");
     expect([...given.sessionStorage.items]).toEqual([]);
+  });
+
+  it("keeps care progress beside the quiz's in local storage", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const props = appProps(given);
+
+    props.careProgress.save({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 7, visitsFinished: 3, friends: ["triceratops"] } }
+    });
+    expect(appProps(given).careProgress.load()).toEqual({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
+  });
+
+  it("lets every dinosaur of the shipped list visit, with its food type", () => {
+    const { visitors, dinosaurs } = appProps(browser());
+
+    expect(visitors.map(({ id }) => id)).toEqual(dinosaurs.map(({ id }) => id));
+    expect(visitors.find(({ id }) => id === "tyrannosaurus")?.diet).toBe("meat");
+  });
+
+  it("finds each care picture among the shipped files", () => {
+    const { itemPicture } = appProps(browser());
+
+    expect(["plants", "meat", "water", "bath", "nest", "bowl"].map((name) => itemPicture(name).replace(/\?.*$/, ""))).toEqual(
+      ["plants", "meat", "water", "bath", "nest", "bowl"].map((name) => `/src/assets/care/${name}.webp`)
+    );
+  });
+
+  it("follows the reduced motion media query each time it asks", () => {
+    const given = browser({ reduced: true });
+    const { reducedMotion } = appProps(given);
+    expect(reducedMotion()).toBe(true);
+
+    given.media.change(REDUCED_MOTION, false);
+
+    expect(reducedMotion()).toBe(false);
   });
 
   it.each(["ru-RU", "en-GB"])("takes the device language %s from the browser", (language) => {

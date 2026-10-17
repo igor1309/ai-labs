@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PROGRESS_KEY, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { NO_CARE } from "../src/care/index.ts";
+import { PROGRESS_KEY, localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { NO_PROGRESS } from "../src/quiz/progress.ts";
 import { memoryStorage } from "./support.ts";
 
@@ -108,5 +109,75 @@ describe("localProgress", () => {
 
     expect(storage.items.get(PROGRESS_KEY)).toBe(kept);
     expect(progress.load()).toEqual({ bestScore: 6, roundsPlayed: 3 });
+  });
+});
+
+const care = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "dinosaur-care": entry } });
+
+describe("localCareProgress", () => {
+  it("reads no care progress from empty storage", () => {
+    const storage = memoryStorage();
+
+    expect(localCareProgress(() => storage).load()).toEqual(NO_CARE);
+  });
+
+  it.each([
+    [{ bestScore: 6, visitsFinished: 2, friends: ["tyrannosaurus", "stegosaurus"] }, { bestScore: 6, visitsFinished: 2, friends: ["tyrannosaurus", "stegosaurus"] }],
+    [{ bestScore: null, visitsFinished: 0, friends: [], achievements: ["first-visit"] }, { bestScore: null, visitsFinished: 0, friends: [] }]
+  ])("reads care's best score, finished visits and friends from %j", (entry, progress) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: care(entry) });
+
+    expect(localCareProgress(() => storage).load()).toEqual(progress);
+  });
+
+  it.each([
+    ["a best score in text", { bestScore: "6", visitsFinished: 2, friends: [] }],
+    ["a fractional best score", { bestScore: 6.5, visitsFinished: 2, friends: [] }],
+    ["no finished visits count", { bestScore: 6, friends: [] }],
+    ["no friends", { bestScore: 6, visitsFinished: 2 }],
+    ["friends that are not a list", { bestScore: 6, visitsFinished: 2, friends: "tyrannosaurus" }],
+    ["a friend that is not an id", { bestScore: 6, visitsFinished: 2, friends: ["tyrannosaurus", 3] }],
+    ["an entry that is not a record", 6]
+  ])("reads %s as no care progress, and keeps the quiz's", (_, entry) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: care(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 } }) });
+
+    expect(localCareProgress(() => storage).load()).toEqual(NO_CARE);
+    expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
+  });
+
+  it("keeps care beside the quiz in one record, each saved without touching the other", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
+
+    localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: ["triceratops"] });
+    localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 9, roundsPlayed: 4 },
+        "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: ["triceratops"] }
+      }
+    });
+  });
+
+  it("replaces an unusable care entry on save, and keeps a quiz entry it cannot read", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: care({ bestScore: "8" }, { "compare-dinosaurs": { bestScore: "x" } }) });
+
+    localCareProgress(() => storage).save({ bestScore: 4, visitsFinished: 1, friends: [] });
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: "x" }, "dinosaur-care": { bestScore: 4, visitsFinished: 1, friends: [] } }
+    });
+  });
+
+  it.each([
+    ["the storage cannot be reached", blocked],
+    ["the storage cannot be read", () => memoryStorage({ [PROGRESS_KEY]: care({ bestScore: 8, visitsFinished: 1, friends: [] }) }, { read: false })]
+  ])("loads nothing and saves nothing when %s", (_, storage) => {
+    const progress = localCareProgress(storage);
+
+    expect(progress.load()).toBeUndefined();
+    expect(() => progress.save({ bestScore: 4, visitsFinished: 1, friends: [] })).not.toThrow();
   });
 });

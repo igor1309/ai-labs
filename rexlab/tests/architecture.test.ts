@@ -28,12 +28,35 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 }
 
 const inQuiz = (file: string) => file.startsWith("quiz/");
-const SCREENS = ["CatalogueScreen.tsx", "DinosaurPage.tsx", "HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
-const PRESENTATION = [...SCREENS, "DietTag.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
+const inCare = (file: string) => file.startsWith("care/");
+const SCREENS = [
+  "CareResultScreen.tsx",
+  "CareWelcomeScreen.tsx",
+  "CatalogueScreen.tsx",
+  "DinosaurPage.tsx",
+  "FriendsScreen.tsx",
+  "HomePage.tsx",
+  "OrientationGate.tsx",
+  "QuestionScreen.tsx",
+  "ResultScreen.tsx",
+  "VisitScreen.tsx"
+];
+const PRESENTATION = [...SCREENS, "DietTag.tsx", "Festivity.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
-const ADAPTERS = ["decodedPictures.ts", "dinosaurPictures.ts", "dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
-const COMPOSITION = ["App.tsx", "main.tsx", "presentation.ts", "root.ts"];
+const ADAPTERS = [
+  "decodedPictures.ts",
+  "dinosaurPictures.ts",
+  "dinosaurs.ts",
+  "itemPictures.ts",
+  "localLanguage.ts",
+  "localProgress.ts",
+  "localTheme.ts",
+  "mediaAppearance.ts",
+  "mediaMotion.ts",
+  "mediaOrientation.ts"
+];
+const COMPOSITION = ["App.tsx", "careGame.tsx", "main.tsx", "presentation.ts", "root.ts", "screenChange.ts"];
 // What waits for pictures, given how to load them and keep time.
 const WAITING = ["pictureWait.ts"];
 
@@ -49,6 +72,28 @@ describe("the import graph", () => {
 
   it("keeps screens, formatting, texts and themes free of the quiz", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inQuiz)).toEqual([]);
+  });
+
+  it("reaches dinosaur care only through its entrypoint", () => {
+    expect(GRAPH.get("careGame.tsx")).toContain("care/index.ts");
+    expect(edges((file) => !inCare(file), (target) => inCare(target) && target !== "care/index.ts")).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of dinosaur care", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inCare)).toEqual([]);
+  });
+
+  // The empty bowl is a picture of the visit screen's, not something care
+  // gives or a need asks for.
+  it("keeps the visit screen's pictures out of dinosaur care", () => {
+    const care = [...GRAPH.keys()].filter(inCare);
+
+    expect(care).toContain("care/index.ts");
+    expect(care.filter((file) => /\bbowl\b/i.test(readFileSync(join(SRC, file), "utf8")))).toEqual([]);
+  });
+
+  it("keeps dinosaur care free of all but the languages", () => {
+    expect(edges(inCare, (target) => !inCare(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {

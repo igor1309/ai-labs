@@ -38,9 +38,10 @@ func TestARequestNamesAWorkflowOrAStepWithItsParams(t *testing.T) {
 }
 
 // run.feature, "The result is printed as JSON, and the exit code says
-// whether the run completed". A cost, each count of usage, 0 included, a
-// session and a reason the run reports are printed as they are, and a run
-// with no output, no sessions or no warnings prints them as none.
+// whether the run completed". The run's id, a cost, each count of usage, 0
+// included, a session and a reason the run reports are printed as they
+// are, and a run with no output, no sessions or no warnings prints them as
+// none.
 func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *testing.T) {
 	t.Parallel()
 	started := time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
@@ -71,10 +72,11 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
 		stdout string
 		code   int
 	}{
-		{"completed", cli.Result{Status: cli.RunCompleted,
+		{"completed", cli.Result{RunID: "r1", Status: cli.RunCompleted,
 			Output:   map[string]any{"exit_code": 0, "stdout": map[string]any{"head": "<hi> & bye\n", "size": 11}},
 			Timing:   timing,
 			Warnings: []string{`its plan grants "network"`}}, `{
+  "run_id": "r1",
   "status": "completed",
   "class": null,
   "output": {
@@ -89,29 +91,33 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   ]
 }
 `, 0},
-		{"failed, killed", cli.Result{Status: cli.RunFailed, Class: "killed", Timing: timing}, `{
+		{"failed, killed", cli.Result{RunID: "r1", Status: cli.RunFailed, Class: "killed", Timing: timing}, `{
+  "run_id": "r1",
   "status": "failed",
   "class": "killed",
   "output": null,
 ` + printedTiming + unknown + `  "warnings": []
 }
 `, 1},
-		{"interrupted, timeout", cli.Result{Status: cli.RunInterrupted, Class: "timeout", Output: map[string]any{}, Timing: timing}, `{
+		{"interrupted, timeout", cli.Result{RunID: "r1", Status: cli.RunInterrupted, Class: "timeout", Output: map[string]any{}, Timing: timing}, `{
+  "run_id": "r1",
   "status": "interrupted",
   "class": "timeout",
   "output": {},
 ` + printedTiming + unknown + `  "warnings": []
 }
 `, 1},
-		{"lost, no_result", cli.Result{Status: cli.RunLost, Class: "no_result", Timing: timing}, `{
+		{"lost, no_result", cli.Result{RunID: "r1", Status: cli.RunLost, Class: "no_result", Timing: timing}, `{
+  "run_id": "r1",
   "status": "lost",
   "class": "no_result",
   "output": null,
 ` + printedTiming + unknown + `  "warnings": []
 }
 `, 1},
-		{"completed, a cost, usage and a session reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing, Cost: &cost,
+		{"completed, a cost, usage and a session reported", cli.Result{RunID: "r1", Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing, Cost: &cost,
 			Usage: cli.Usage{Input: &input, Output: &output}, Sessions: map[string]string{"ask": "s1"}}, `{
+  "run_id": "r1",
   "status": "completed",
   "class": null,
   "output": {},
@@ -130,8 +136,9 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   "warnings": []
 }
 `, 0},
-		{"completed, every count of usage reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+		{"completed, every count of usage reported", cli.Result{RunID: "r1", Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
 			Usage: cli.Usage{Input: count(10), Output: count(3), CacheRead: count(7), CacheWrite: count(5), Reasoning: count(2)}}, `{
+  "run_id": "r1",
   "status": "completed",
   "class": null,
   "output": {},
@@ -148,8 +155,9 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   "warnings": []
 }
 `, 0},
-		{"completed, every count of usage 0", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+		{"completed, every count of usage 0", cli.Result{RunID: "r1", Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
 			Usage: cli.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)}}, `{
+  "run_id": "r1",
   "status": "completed",
   "class": null,
   "output": {},
@@ -166,7 +174,8 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   "warnings": []
 }
 `, 0},
-		{"failed, a reason reported", cli.Result{Status: cli.RunFailed, Class: "auth", Timing: timing, Reason: "not logged in"}, `{
+		{"failed, a reason reported", cli.Result{RunID: "r1", Status: cli.RunFailed, Class: "auth", Timing: timing, Reason: "not logged in"}, `{
+  "run_id": "r1",
   "status": "failed",
   "class": "auth",
   "output": null,

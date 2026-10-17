@@ -4,6 +4,7 @@ export const ru: Texts = {
   greeting: "ВЫБЕРИ ИГРУ",
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
+  moreComing: "СКОРО ЕЩЁ",
   languageMenu: "Язык",
   themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
@@ -37,5 +38,20 @@ export const ru: Texts = {
   previousDinosaur: "НАЗАД",
   nextDinosaur: "ДАЛЬШЕ",
   sourceNote:
-    "Факты сверены с Музеем естествознания в Лондоне, Американским музеем естественной истории, Национальным музеем естественной истории Смитсоновского института, Музеем палеонтологии Калифорнийского университета и Британской энциклопедией."
+    "Факты сверены с Музеем естествознания в Лондоне, Американским музеем естественной истории, Национальным музеем естественной истории Смитсоновского института, Музеем палеонтологии Калифорнийского университета и Британской энциклопедией.",
+  care: "ПОЗАБОТЬСЯ",
+  newVisitor: "НОВЫЙ ГОСТЬ",
+  friends: "ДРУЗЬЯ",
+  back: "НАЗАД",
+  items: { plants: "РАСТЕНИЯ", meat: "МЯСО", water: "ВОДА", bath: "КУПАНИЕ", nest: "ГНЕЗДО" },
+  needsLabel: "ЧТО НУЖНО",
+  needs: { hungry: "ГОЛОДЕН", thirsty: "ХОЧЕТ ПИТЬ", dirty: "ГРЯЗНЫЙ", tired: "УСТАЛ" },
+  needStates: { met: "ГОТОВО", current: "СЕЙЧАС", pending: "ПОТОМ" },
+  hearts: "СЕРДЕЧКИ",
+  // "ИЗ 8 СЕРДЕЧЕК" takes the same form whatever the count, so no plural
+  // rules are needed.
+  heartsOf: (hearts, total) => `${hearts} ИЗ ${total} СЕРДЕЧЕК`,
+  newFriend: "НОВЫЙ ДРУГ!",
+  friend: "ДРУГ",
+  noFriends: "ПОКА НЕТ ДРУЗЕЙ. ПРИГЛАСИ ДИНОЗАВРА!"
 };

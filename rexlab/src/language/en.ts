@@ -4,6 +4,7 @@ export const en: Texts = {
   greeting: "PICK A GAME",
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
+  moreComing: "MORE COMING",
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },
@@ -35,5 +36,18 @@ export const en: Texts = {
   previousDinosaur: "PREVIOUS",
   nextDinosaur: "NEXT",
   sourceNote:
-    "Facts checked with the Natural History Museum, London, the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica."
+    "Facts checked with the Natural History Museum, London, the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica.",
+  care: "CARE",
+  newVisitor: "NEW VISITOR",
+  friends: "FRIENDS",
+  back: "BACK",
+  items: { plants: "PLANTS", meat: "MEAT", water: "WATER", bath: "BATH", nest: "NEST" },
+  needsLabel: "NEEDS",
+  needs: { hungry: "HUNGRY", thirsty: "THIRSTY", dirty: "DIRTY", tired: "TIRED" },
+  needStates: { met: "DONE", current: "NOW", pending: "LATER" },
+  hearts: "HEARTS",
+  heartsOf: (hearts, total) => `${hearts} OF ${total} HEARTS`,
+  newFriend: "NEW FRIEND!",
+  friend: "FRIEND",
+  noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!"
 };

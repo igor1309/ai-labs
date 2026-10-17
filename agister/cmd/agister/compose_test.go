@@ -68,7 +68,7 @@ func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), idleHost(t), &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), (&storeSpy{}).at, idleHost(t), &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ func TestAgisterHomeNamesHomesFolder(t *testing.T) {
 			machine := idleHost(t)
 			machine.environ = c.environ
 			var stdout, stderr strings.Builder
-			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), machine, &stdout, &stderr)
+			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), (&storeSpy{}).at, machine, &stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -331,7 +331,7 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
 		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
 	}
-	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), idleHost(t), io.Discard, io.Discard); err == nil {
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), (&storeSpy{}).at, idleHost(t), io.Discard, io.Discard); err == nil {
 		t.Error("command line built with no links, want an error")
 	}
 }
@@ -349,9 +349,17 @@ func TestACommandLineIsBuiltWithEveryRuntimeWrapper(t *testing.T) {
 			t.Parallel()
 			wrappers := newRuntimesSpy(t).runtimes()
 			without(&wrappers)
-			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), idleHost(t), io.Discard, io.Discard); err == nil {
+			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), (&storeSpy{}).at, idleHost(t), io.Discard, io.Discard); err == nil {
 				t.Errorf("command line built with no %s wrapper, want an error", name)
 			}
 		})
+	}
+}
+
+// A command line is built with a store of runs, which it fails without.
+func TestACommandLineIsBuiltWithAStoreOfRuns(t *testing.T) {
+	t.Parallel()
+	if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), nil, idleHost(t), io.Discard, io.Discard); err == nil || err.Error() != "build: no record store" {
+		t.Errorf("command line built with no store of runs: %v, want build: no record store", err)
 	}
 }
