@@ -9,11 +9,6 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     When I open the home page
     Then I see a "COMPARE" quiz card with a picture of two dinosaurs
 
-  Scenario: A game still to come is shown locked
-    When I open the home page
-    Then I see a locked game tile beside the "COMPARE" card, with a dinosaur and a 🔒 symbol
-    And tapping the locked tile does nothing
-
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page
     When I hover over the "COMPARE" card with a pointer

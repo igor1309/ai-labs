@@ -1,7 +1,7 @@
 # Trusted science sources
 
-Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass, the
-sorting game's traits and, when they exist, descriptions) are checked
+Dinosaur facts in `src/data/dinosaurs.json` (names, height, mass, diet,
+the sorting game's traits and, when they exist, descriptions) are checked
 against these sources only.
 
 1. Natural History Museum, London: Dino Directory,
@@ -22,11 +22,14 @@ against these sources only.
   support, and note the disagreement in the change.
 - Russian names follow the spelling used in Russian scientific and
   popular-science writing.
-- Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `diet`
-  (`plants` or `meat`), `horns` and `feathers` (true or false). A trait is
-  `null`, and the dinosaur is left out of that sort, when the sources
-  leave it unclear (Iguanodon and Parasaurolophus walked on two legs or
-  four; Gallimimus and Oviraptor were omnivores; feathers are unknown for
+- Diet is the one the catalogue shows, as the Dino Directory gives it;
+  the sorting game sorts by it too and leaves out the dinosaurs that
+  ate `both` (Gallimimus and Oviraptor). Pachycephalosaurus is `plants`,
+  as the Dino Directory lists it, though its teeth leave meat possible.
+- Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `horns`
+  and `feathers` (true or false). A trait is `null`, and the dinosaur is
+  left out of that sort, when the sources leave it unclear (Iguanodon
+  and Parasaurolophus walked on two legs or four; feathers are unknown for
   Tyrannosaurus and most large theropods) or when the dinosaur's picture
   could mislead a child (Allosaurus's brow bumps, Pachycephalosaurus's
   knobs and Kentrosaurus's shoulder spikes are not horns). Feathered

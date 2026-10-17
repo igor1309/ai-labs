@@ -1,7 +1,6 @@
 Feature: Sort dinosaurs: dragging cards into baskets
-  A card dropped in the right basket stays there; a wrong one slides
-  back with a hint. A card counts as right when its first drop on a
-  basket is on the right one; a drop away from the baskets is none.
+  A card dropped in the right basket stays; a wrong one slides back with
+  a hint. A card is right when its first drop on a basket is right.
 
   Background:
     Given an iPad in landscape
@@ -40,17 +39,18 @@ Feature: Sort dinosaurs: dragging cards into baskets
     When I tap a basket
     Then the card is dropped on that basket, as if dragged there
 
-  Scenario Outline: Tapping with a card picked up, or none
+  Scenario Outline: Touching the board with a card picked up, or none
     Given <state>
-    When I tap <target>
+    When I <action>
     Then <outcome>
 
     Examples:
-      | state                | target        | outcome                                 |
-      | a card is picked up  | the same card | the card is put down and nothing counts |
-      | a card is picked up  | another card  | the other card is picked up instead     |
-      | a card is picked up  | an empty spot | the card is put down and nothing counts |
-      | no card is picked up | a basket      | nothing changes                         |
+      | state                | action                                                | outcome                                               |
+      | a card is picked up  | tap the same card                                     | the card is put down and nothing counts               |
+      | a card is picked up  | tap another card                                      | the other card is picked up instead                   |
+      | a card is picked up  | tap a sorted card, an empty slot or the space between | the card is put down and nothing counts               |
+      | a card is picked up  | drag another card                                     | the picked card is put down and the dragged one moves |
+      | no card is picked up | tap a basket                                          | nothing changes                                       |
 
   Scenario: One card moves at a time
     Given I am dragging a dinosaur card

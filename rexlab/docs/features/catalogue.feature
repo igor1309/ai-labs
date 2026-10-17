@@ -9,7 +9,7 @@ Feature: The dinosaur catalogue
   Scenario: The home page offers the catalogue as a tile
     When I open the home page
     Then I see an "ALL DINOSAURS" tile with a 📖 symbol, a dinosaur and the count "30"
-    And it is beside the "COMPARE" card, above the locked game
+    And it is beside the "COMPARE" card, above the "SORT" card
 
   Scenario: The tile opens the list of every dinosaur
     Given I am on the home page

@@ -9,7 +9,19 @@ Feature: Sort dinosaurs: starting a round and the board
   Scenario: The home page offers the sorting game as a card
     When I open the home page
     Then I see a "SORT" game card with a dinosaur and a symbol of shapes
+    And it is beside the "COMPARE" card, below the "ALL DINOSAURS" tile
     And the card shows my best score when there is one
+    And the home page shows no locked game
+
+  Scenario: The sorting card brightens under a pointer
+    Given I am on the home page
+    When I hover over the "SORT" card with a pointer
+    Then the card brightens
+
+  Scenario: The sorting card shows it is pressed
+    Given I am on the home page
+    When I press the "SORT" card
+    Then the card shows a pressed state before the round opens
 
   Scenario: Tapping the card starts a round
     Given I am on the home page
@@ -18,6 +30,7 @@ Feature: Sort dinosaurs: starting a round and the board
     And I see the prompt "SORT THE DINOSAURS"
     And I see two baskets and six dinosaur cards to sort
     And each card shows its own dinosaur's picture and its name, large and in capitals
+    And I see a "HOME" button with a 🏠 symbol, away from the dinosaur cards
 
   Scenario: A long name fits its card
     When a card shows a long name, such as PACHYCEPHALOSAURUS or ПАХИЦЕФАЛОЗАВР
@@ -61,7 +74,7 @@ Feature: Sort dinosaurs: starting a round and the board
     And at least two of them for each basket
 
   Scenario: Only clear facts are asked
-    Given a dinosaur whose property the trusted sources leave unclear, or whose picture could mislead
+    Given a dinosaur with no clear value for a property in the data, such as a null trait or a diet of both
     When a round sorts by that property
     Then that dinosaur is not on the board
 
