@@ -14,6 +14,7 @@ import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  emptyCare,
   emptyProgress,
   fakeBodyPicture,
   loadedPictures,
@@ -48,6 +49,7 @@ function openApp({
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
+      {...emptyCare()}
     />
   );
   return userEvent.setup();
@@ -85,7 +87,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, beside the quiz card above the locked game", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, beside the quiz card above the CARE tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -95,9 +97,8 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(42);
     const games = screen.getByRole("button", { name: "COMPARE" }).parentElement;
-    const locked = document.querySelector(".locked-tile");
     expect(games?.contains(tile)).toBe(true);
-    expect(locked && tile.compareDocumentPosition(locked) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tile.nextElementSibling).toBe(screen.getByRole("button", { name: "CARE" }));
   });
 });
 
@@ -191,18 +192,26 @@ describe("a dinosaur's page", () => {
     expect(position()).toBe("1 / 42");
   });
 
-  it("shows each dinosaur's own description and food, and its place in the list", async () => {
+  // About ten dinosaurs to a test, each walked by the arrow from its first
+  // dinosaur's card: one walk over the whole list outlasts a test's time
+  // limit on CI.
+  it.each([
+    [1, 11],
+    [12, 22],
+    [23, 32],
+    [33, 42]
+  ])("shows each dinosaur's own description and food, and its place in the list, from the %ith to the %ith", async (first, last) => {
     const user = openApp();
-    await openPage(user, "tyrannosaurus");
+    await openPage(user, SHIPPED_CATALOGUE[first - 1]?.id ?? "");
 
-    for (const dinosaur of SHIPPED_CATALOGUE) {
+    for (const dinosaur of SHIPPED_CATALOGUE.slice(first - 1, last)) {
       expect(pageName()).toBe(dinosaur.name.en.toUpperCase());
       expect(document.querySelector(".dinosaur-description")?.textContent).toBe(dinosaur.description.en);
       expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe(TEXTS.en.diets[dinosaur.diet]);
       expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 42`);
       await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
-    expect(position()).toBe("1 / 42");
+    expect(position()).toBe(`${(last % 42) + 1} / 42`);
   });
 
   it("has arrows to the previous and next dinosaur, each a tap target of at least 44 by 44", async () => {

@@ -31,6 +31,12 @@ Architecture: `docs/mvp-infrastructure.md`.
 Behaviour is specified in Gherkin under `docs/features/`; a feature tagged
 `@next` is not in the current build.
 
+Build a game the way its specs are split: one implementation step per
+screen, then one step for the full flow across screens. Never hand a whole
+game to a single implementer run. Each criterion in a goal's "Done when"
+opens with `**Screen <name>:**` or `**Full flow:**` and names its feature
+files; each step's `## Covers` names exactly one of them.
+
 ## Commands
 
 Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.

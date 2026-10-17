@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { DIETS } from "../src/catalogue.ts";
-import { readCatalogue, readDinosaurs, type DinosaurRecord } from "../src/dinosaurs.ts";
-import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS } from "./support.ts";
+import { readCatalogue, readDinosaurs, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
+import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_VISITORS } from "./support.ts";
 
 const STEGOSAURUS: DinosaurRecord = {
   id: "stegosaurus",
@@ -23,6 +23,18 @@ describe("readDinosaurs", () => {
       { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4 } },
       { id: "compsognathus", name: { en: "Compsognathus", ru: "Компсогнат" }, measures: { mass: 3, height: 0.3 } }
     ]);
+  });
+});
+
+describe("readVisitors", () => {
+  it("reads each record's id, names and food type", () => {
+    expect(readVisitors([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, diet: "plants" }]);
+  });
+
+  it.each([undefined, "", "fish", "Meat"])("fails on a record whose food type is %j", (diet) => {
+    const record = { ...STEGOSAURUS, diet } as DinosaurRecord;
+
+    expect(() => readVisitors([record])).toThrow(`stegosaurus has no known food type: ${JSON.stringify(diet)}`);
   });
 });
 
@@ -62,6 +74,15 @@ describe("the shipped dinosaur list", () => {
   it("gives every dinosaur a food type of meat, plants or both", () => {
     expect(records.filter(({ diet }) => !DIETS.includes(diet as never)).map(({ id }) => id)).toEqual([]);
     expect(SHIPPED_CATALOGUE.map(({ id }) => id)).toEqual(SHIPPED_DINOSAURS.map(({ id }) => id));
+  });
+
+  // Care feeds each visitor by its diet, so the game teaches what each
+  // dinosaur ate: every visitor's diet is its own record's.
+  it("gives every visitor the food type of its own record", () => {
+    const diets = (list: ReadonlyArray<{ id: string; diet: string }>) => Object.fromEntries(list.map(({ id, diet }) => [id, diet]));
+
+    expect(SHIPPED_VISITORS.map(({ id }) => id)).toEqual(records.map(({ id }) => id));
+    expect(diets(SHIPPED_VISITORS)).toEqual(diets(records));
   });
 
   // Descriptions are for children, so in capitals, each in its own script.

@@ -1,44 +1,67 @@
+import { NO_CARE, type CareProgress } from "./care/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
 
 const SCHEMA_VERSION = 1;
-const GAME = "compare-dinosaurs";
 
 export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 
-type Games = Record<string, unknown>;
+type Entry = Record<string, unknown>;
 
-// Progress kept in browser storage, in the versioned record of
-// docs/mvp-infrastructure.md section 5. The storage is reached through a
-// function because a browser that blocks storage throws on reaching
-// `localStorage` itself, not only on reading it.
+// The quiz's progress, under its game in the shared record.
 export function localProgress(storage: () => KeyValueStorage) {
+  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, ({ bestScore, roundsPlayed }) =>
+    (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined
+  );
+}
+
+// Dinosaur care's progress, beside the quiz's in the same record.
+export function localCareProgress(storage: () => KeyValueStorage) {
+  return gameProgress<CareProgress>(storage, "dinosaur-care", NO_CARE, ({ bestScore, visitsFinished, friends }) =>
+    (bestScore === null || isCount(bestScore)) && isCount(visitsFinished) && Array.isArray(friends) && friends.every((id) => typeof id === "string")
+      ? { bestScore, visitsFinished, friends: [...friends] }
+      : undefined
+  );
+}
+
+// One game's progress kept in browser storage, in the versioned record of
+// docs/mvp-infrastructure.md section 5, which holds every game's. The
+// storage is reached through a function because a browser that blocks
+// storage throws on reaching `localStorage` itself, not only on reading
+// it. `read` gives the game's progress from its entry, or undefined when
+// the entry is unusable.
+function gameProgress<P extends object>(storage: () => KeyValueStorage, game: string, empty: P, read: (entry: Entry) => P | undefined) {
+  const entryOf = (games: Entry | undefined) => {
+    const entry = games?.[game];
+    return isObject(entry) ? entry : undefined;
+  };
   return {
-    // Undefined when storage cannot be read at all. A record that is
-    // unreadable or of an unknown schema version counts as no progress.
-    load(): GameProgress | undefined {
+    // Undefined when storage cannot be read at all. A record, or this
+    // game's entry in it, that is unreadable or of an unknown schema
+    // version counts as no progress.
+    load(): P | undefined {
       let raw: string | null;
       try {
         raw = storage().getItem(PROGRESS_KEY);
       } catch {
         return undefined;
       }
-      return parse(raw)?.progress ?? NO_PROGRESS;
+      const entry = entryOf(parse(raw));
+      return (entry && read(entry)) ?? empty;
     },
 
     // Best effort: losing browser-local scores is an accepted trade-off, so
     // progress that cannot be saved is dropped. A readable record keeps its
-    // other games and fields; an unusable one is replaced.
-    save(progress: GameProgress): void {
+    // other games, and a readable entry its other fields; an unusable
+    // record, or this game's unusable entry, is replaced.
+    save(progress: P): void {
       try {
         const target = storage();
-        const games = parse(target.getItem(PROGRESS_KEY))?.games ?? {};
-        const game = games[GAME];
-        const record = {
-          schemaVersion: SCHEMA_VERSION,
-          games: { ...games, [GAME]: { ...(isObject(game) ? game : {}), ...progress } }
-        };
+        const games = parse(target.getItem(PROGRESS_KEY)) ?? {};
+        const entry = entryOf(games);
+        const kept = entry && read(entry) !== undefined ? entry : {};
+        const record = { schemaVersion: SCHEMA_VERSION, games: { ...games, [game]: { ...kept, ...progress } } };
         target.setItem(PROGRESS_KEY, JSON.stringify(record));
       } catch {
         return;
@@ -47,7 +70,8 @@ export function localProgress(storage: () => KeyValueStorage) {
   };
 }
 
-function parse(raw: string | null): { games: Games; progress: GameProgress } | undefined {
+// Every game's entry of a readable record of the known schema version.
+function parse(raw: string | null): Entry | undefined {
   if (raw === null) return undefined;
   let record: unknown;
   try {
@@ -58,19 +82,10 @@ function parse(raw: string | null): { games: Games; progress: GameProgress } | u
   if (!isObject(record) || record.schemaVersion !== SCHEMA_VERSION || !isObject(record.games)) {
     return undefined;
   }
-  const game = record.games[GAME];
-  if (game === undefined) {
-    return { games: record.games, progress: NO_PROGRESS };
-  }
-  if (!isObject(game)) return undefined;
-  const { bestScore, roundsPlayed } = game;
-  if (!(bestScore === null || isCount(bestScore)) || !isCount(roundsPlayed)) {
-    return undefined;
-  }
-  return { games: record.games, progress: { bestScore, roundsPlayed } };
+  return record.games;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+function isObject(value: unknown): value is Entry {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

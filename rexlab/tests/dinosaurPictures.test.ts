@@ -3,36 +3,12 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bodyPictures } from "../src/dinosaurPictures.ts";
 import { appProps } from "../src/root.ts";
-import { SHIPPED_DINOSAURS, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { SHIPPED_DINOSAURS, browserQueries, memoryStorage, pictureBrowser, readWebp, type WebpImage } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
 // The agreed size of every body picture (art/style.md).
 const BODY_SIZE = { width: 800, height: 600 };
-
-type WebpImage = { width: number; height: number; alpha: boolean };
-
-const fourCC = (bytes: Uint8Array, at: number) => String.fromCharCode(...bytes.subarray(at, at + 4));
-const uint24 = (bytes: Uint8Array, at: number) => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8) | ((bytes[at + 2] ?? 0) << 16);
-
-// The canvas size of a WebP file and whether it has alpha, from the header
-// of its first chunk: extended (VP8X), lossless (VP8L) or lossy (VP8).
-function readWebp(bytes: Uint8Array): WebpImage {
-  if (fourCC(bytes, 0) !== "RIFF" || fourCC(bytes, 8) !== "WEBP") throw new Error("Not a WebP file");
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  switch (fourCC(bytes, 12)) {
-    case "VP8X":
-      return { width: uint24(bytes, 24) + 1, height: uint24(bytes, 27) + 1, alpha: ((bytes[20] ?? 0) & 0x10) !== 0 };
-    case "VP8L": {
-      const bits = view.getUint32(21, true);
-      return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1, alpha: ((bits >>> 28) & 1) === 1 };
-    }
-    case "VP8 ":
-      return { width: view.getUint16(26, true) & 0x3fff, height: view.getUint16(28, true) & 0x3fff, alpha: false };
-    default:
-      throw new Error(`Unknown WebP chunk ${fourCC(bytes, 12)}`);
-  }
-}
 
 // A WebP file of one chunk whose header `payload` is.
 function webp(chunk: string, payload: number[]): Uint8Array {
@@ -93,8 +69,7 @@ describe("bodyPictures", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedBodyPicture() {
-  const media = mediaQueries({ "(orientation: portrait)": false, "(prefers-color-scheme: dark)": false });
-  return appProps({ localStorage: memoryStorage(), matchMedia: media.matchMedia, navigator: { language: "en-GB" }, ...pictureBrowser() }).bodyPicture;
+  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, ...pictureBrowser() }).bodyPicture;
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

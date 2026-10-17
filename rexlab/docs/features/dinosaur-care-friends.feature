@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: friends
   Every dinosaur cared for to the end becomes a friend the child can
   call back for a fresh visit.
