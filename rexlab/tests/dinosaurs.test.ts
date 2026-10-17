@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { DIETS } from "../src/catalogue.ts";
-import { readCatalogue, readDinosaurs, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
-import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_VISITORS } from "./support.ts";
+import { LEVELS, TOP_LEVEL } from "../src/pairs/index.ts";
+import { readCatalogue, readDinosaurs, readPals, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
+import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_VISITORS } from "./support.ts";
 
 const STEGOSAURUS: DinosaurRecord = {
   id: "stegosaurus",
   name: { en: "Stegosaurus", ru: "Стегозавр" },
   attributes: { massKg: 5000, heightMeters: 4 },
   diet: "plants",
-  description: { en: "PLATES ON ITS BACK.", ru: "ПЛАСТИНЫ НА СПИНЕ." }
+  description: { en: "PLATES ON ITS BACK.", ru: "ПЛАСТИНЫ НА СПИНЕ." },
+  lookAlike: "plated-back"
 };
 
 describe("readDinosaurs", () => {
@@ -70,6 +72,18 @@ describe("readCatalogue", () => {
   });
 });
 
+describe("readPals", () => {
+  it("reads each record's id, names and look-alike group", () => {
+    expect(readPals([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, lookAlike: "plated-back" }]);
+  });
+
+  it.each([undefined, "", " ", 3])("fails on a record whose look-alike group is %j", (lookAlike) => {
+    const record = { ...STEGOSAURUS, lookAlike };
+
+    expect(() => readPals([record])).toThrow(`stegosaurus has no look-alike group: ${JSON.stringify(lookAlike)}`);
+  });
+});
+
 describe("the shipped dinosaur list", () => {
   it("gives every dinosaur a food type of meat, plants or both", () => {
     expect(records.filter(({ diet }) => !DIETS.includes(diet as never)).map(({ id }) => id)).toEqual([]);
@@ -83,6 +97,17 @@ describe("the shipped dinosaur list", () => {
 
     expect(SHIPPED_VISITORS.map(({ id }) => id)).toEqual(records.map(({ id }) => id));
     expect(diets(SHIPPED_VISITORS)).toEqual(diets(records));
+  });
+
+  // A silhouette board deals one dinosaur of each look-alike group, so the
+  // biggest board needs that many groups even once the board before it
+  // has taken its dinosaurs away.
+  it("puts every dinosaur in one look-alike group, enough for two silhouette boards in a row", () => {
+    const groups = new Set(SHIPPED_PALS.map(({ lookAlike }) => lookAlike));
+    const { pairs } = LEVELS[TOP_LEVEL];
+
+    expect(SHIPPED_PALS.map(({ id }) => id)).toEqual(records.map(({ id }) => id));
+    expect(groups.size - pairs).toBeGreaterThanOrEqual(pairs);
   });
 
   // Descriptions are for children, so in capitals, each in its own script.

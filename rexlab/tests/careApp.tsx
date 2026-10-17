@@ -3,11 +3,12 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import type { CareProgress, Item, Random, Visitor } from "../src/care/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_PALS,
   SHIPPED_VISITORS,
   fakeBodyPicture,
   fakeItemPicture,
@@ -59,6 +60,8 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       visitors={visitors}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
+      pals={SHIPPED_PALS}
+      pairsProgress={localPairsProgress(() => storage)}
       reducedMotion={() => reducedMotion}
       {...clock}
     />

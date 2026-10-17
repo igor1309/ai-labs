@@ -1,4 +1,4 @@
-import { BookOpen, Footprints, House, Ruler, Weight } from "lucide-react";
+import { BookOpen, Copy, Footprints, House, Ruler, Weight } from "lucide-react";
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
@@ -18,11 +18,15 @@ export type CatalogueCardView = {
   height: string;
   mass: string;
   diet: Diet;
+  // Found in find the pair.
+  found: boolean;
 };
 
 export type CatalogueScreenProps = {
   language: Language;
   dinosaurs: readonly CatalogueCardView[];
+  // How many of them are found in find the pair.
+  found: number;
   // The dinosaur whose page the child came back from, undefined when the
   // catalogue opens from the home page.
   returning: string | undefined;
@@ -30,7 +34,7 @@ export type CatalogueScreenProps = {
   onHome: () => void;
 };
 
-export function CatalogueScreen({ language, dinosaurs, returning, onOpen, onHome }: CatalogueScreenProps) {
+export function CatalogueScreen({ language, dinosaurs, found, returning, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
   const grid = useRef<HTMLDivElement>(null);
 
@@ -55,10 +59,18 @@ export function CatalogueScreen({ language, dinosaurs, returning, onOpen, onHome
           </span>
           {text.catalogue}
         </h1>
-        <p className="catalogue-count" aria-label={text.dinosaurs}>
-          <Footprints size={20} aria-hidden="true" />
-          {dinosaurs.length}
-        </p>
+        {/* Once a dinosaur is found, the count is of those found. */}
+        {found > 0 ? (
+          <p className="catalogue-count catalogue-found" aria-label={text.found}>
+            <Copy size={20} aria-hidden="true" />
+            {found} / {dinosaurs.length}
+          </p>
+        ) : (
+          <p className="catalogue-count" aria-label={text.dinosaurs}>
+            <Footprints size={20} aria-hidden="true" />
+            {dinosaurs.length}
+          </p>
+        )}
       </header>
       {/* The cards rise in only when the catalogue opens from home: back
           from a page, the picture shrinking into its card is the motion. */}
@@ -80,8 +92,9 @@ type CatalogueCardProps = {
   onOpen: (id: string) => void;
 };
 
-function CatalogueCard({ view: { id, name, picture, height, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
+function CatalogueCard({ view: { id, name, picture, height, mass, diet, found }, language, place, onOpen }: CatalogueCardProps) {
   const pointer = usePointerState();
+  const text = TEXTS[language];
   return (
     <button
       type="button"
@@ -96,6 +109,11 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet }, langua
         <SharedPicture id={id}>
           <img className="catalogue-picture" src={picture} alt="" width={800} height={600} draggable={false} />
         </SharedPicture>
+        {found && (
+          <span className="found-stamp" role="img" aria-label={text.found}>
+            <Copy size={26} aria-hidden="true" />
+          </span>
+        )}
       </span>
       <span className="catalogue-footer">
         <span className="catalogue-name">{name.toLocaleUpperCase(language)}</span>

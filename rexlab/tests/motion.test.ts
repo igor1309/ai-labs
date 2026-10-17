@@ -202,16 +202,50 @@ describe("care's motion", () => {
   });
 });
 
-describe("the home page's motion", () => {
-  it("keeps the MORE COMING card still, with motion or without: nothing on it animates, brightens or moves", () => {
-    const rules = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.includes("more-coming"));
-    const moving = rules.flatMap(({ prelude, body }) =>
-      declarationsOf(body)
-        .filter(({ property }) => /^(animation|transition)(-|$)|^(filter|transform|translate|scale)$/.test(property))
-        .map(({ property }) => `${prelude} ${property}`)
+describe("find the pair's motion", () => {
+  // Every animation of a rule's `animation` shorthand, by name, with the
+  // rest of its value.
+  const runs = (selector: string) =>
+    new Map(
+      declarationsOf(PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "")
+        .filter(({ property }) => property === "animation")
+        .flatMap(({ value }) => value.split(/,\s*(?![^()]*\))/))
+        .map((run) => run.trim().split(/\s+(.*)/s))
+        .map(([name = "", rest = ""]) => [name, rest] as const)
     );
 
-    expect(rules.length).toBeGreaterThan(0);
-    expect(moving).toEqual([]);
+  it("rises the cards in one after the other, and flips each side in as it is turned to", () => {
+    expect(runs(".pair-card")).toEqual(new Map([["rise-in", "var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both"]]));
+    expect(runs(".pair-card-back,\n.pair-card-face")).toEqual(new Map([["flip-in", "var(--motion-standard) var(--ease-out) both"]]));
+  });
+
+  it("bounces a found pair once it has flipped, without flipping it again", () => {
+    expect(runs('.pair-card[data-state="found"] .pair-card-face')).toEqual(
+      new Map([
+        ["flip-in", "var(--motion-standard) var(--ease-out) both"],
+        ["bounce", "var(--motion-screen) var(--ease-overshoot) var(--motion-standard)"]
+      ])
+    );
+  });
+
+  it("waves every card, one after the other, after the last flip, without rising them in again", () => {
+    expect(runs(".pair-board[data-finished] .pair-card")).toEqual(
+      new Map([
+        ["rise-in", "var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both"],
+        ["wave", "var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger))"]
+      ])
+    );
+  });
+
+  it("bumps a new count of tries in, and pops the result's NEW badges and star in", () => {
+    const animations = animationsOf(PLAIN);
+    expect([".pairs-tries", ".pairs-new-badge", ".pairs-result-star", ".pairs-level-up", ".pairs-found-card", ".dinosaur-found-stamp"].map((selector) => animations.get(selector))).toEqual([
+      "bump-in",
+      "pop-in",
+      "pop-in",
+      "pop-in",
+      "rise-in",
+      "stamp-in"
+    ]);
   });
 });

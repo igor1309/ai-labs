@@ -1,4 +1,4 @@
-import { BookOpen, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { BookOpen, Copy, Footprints, Globe, Heart, Monitor, Moon, Scale, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -26,20 +26,23 @@ export type HomePageProps = {
   // Dinosaur care's tile: the picture on it and its best score,
   // undefined while there is none to show.
   care: { picture: string; best: number | undefined };
-  // The dinosaur pictured on the card of the games still to come.
-  moreComing: string;
+  // Find the pair's tile: the dinosaur on its cards and the stars earned,
+  // undefined until a board is finished.
+  pairs: { picture: string; stars: number | undefined };
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
+  onPairs: () => void;
 };
 
 type Menu = "language" | "theme";
 
-export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, moreComing, onCompareDinosaurs, onCatalogue, onCare }: HomePageProps) {
+export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, pairs, onCompareDinosaurs, onCatalogue, onCare, onPairs }: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
   const cataloguePointer = usePointerState();
   const carePointer = usePointerState();
+  const pairsPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -154,17 +157,34 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             )}
           </button>
         </div>
-        {/* The games still to come are a picture, not a button: a tap on
-            it does nothing, and nothing on it invites one. */}
-        <div className="more-coming">
-          <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
-          <span className="more-coming-label">
-            <span className="more-coming-symbol" aria-hidden="true">
-              <Lock size={24} />
+        {/* Find the pair's tile takes the third column: a pair of cards and
+            a face-down one over its symbol and its title, which may take
+            two lines there. */}
+        <button type="button" className="card pairs-tile" aria-label={text.pairs} onClick={onPairs} {...pairsPointer}>
+          <span className="pairs-tile-art" aria-hidden="true">
+            <span className="pairs-tile-card pairs-tile-card-first">
+              <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
             </span>
-            <span className="more-coming-title">{text.moreComing}</span>
+            <span className="pairs-tile-card pairs-tile-back">
+              <Footprints size={44} />
+            </span>
+            <span className="pairs-tile-card pairs-tile-card-second">
+              <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
+            </span>
           </span>
-        </div>
+          <span className="pairs-tile-row">
+            <span className="pairs-tile-symbol" aria-hidden="true">
+              <Copy size={24} />
+            </span>
+            <span className="pairs-tile-title">{text.pairs}</span>
+          </span>
+          {pairs.stars !== undefined && (
+            <span className="pairs-tile-stars">
+              <Star size={18} aria-hidden="true" />
+              {pairs.stars}
+            </span>
+          )}
+        </button>
       </div>
     </main>
   );

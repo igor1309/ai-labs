@@ -5,8 +5,9 @@ Feature: Home page: the featured card and the tiles
   so a child who cannot read yet finds a game by its picture where it was
   last time, whichever game is featured. When this is built it replaces the
   fixed COMPARE card of compare-dinosaurs-start.feature, and the home layout
-  scenarios there and in catalogue.feature and dinosaur-care-start.feature
-  change with it. The choice is in home-featured-choice.feature.
+  scenarios there and in catalogue.feature, dinosaur-care-start.feature
+  and find-the-pair-start.feature change with it. The choice is in
+  home-featured-choice.feature.
 
   Background:
     Given an iPad in landscape
