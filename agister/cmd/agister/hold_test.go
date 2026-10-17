@@ -137,7 +137,9 @@ func TestHomesImplementRunsOnClaudeCodeAdmittedAndHeld(t *testing.T) {
 // its pin the commit its git.revision input gives, and is made through
 // admit; a pin from another source gives no commit. A call admit refuses
 // ends failed, class "refused", its reason admit's, with its plan's
-// warnings, and its turn is not taken.
+// warnings, and its turn is not taken. Each call is told to the records
+// as it ends: its step, process and agent, the facts admit told of it,
+// none for a call refused, and its result.
 func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	t.Parallel()
 	sources := &sourcesSpy{root: "/r", commits: map[string]string{"main": "c1"}}
@@ -146,6 +148,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		t.Fatal(err)
 	}
 	pinned := sayCall("x")
+	pinned.process, pinned.agent = "say", "bash"
 	pinned.declared.Inputs = append(pinned.declared.Inputs, inputs.Input{Name: "rev", Source: "git.revision", Arguments: map[string]inputs.Value{"rev": {Text: "main"}}})
 	pinned.admission = admit.Request{Pin: &admit.Pin{Input: "rev", Source: "git.revision"}, Clean: true, Writer: true}
 	byParam := sayCall("x")
@@ -157,23 +160,30 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		"nothing":  {},
 	}
 	for _, name := range slices.Sorted(maps.Keys(calls)) {
-		admits := &admissionSpy{}
+		admits := &admissionSpy{facts: admit.Facts{Head: "c1", Content: "t1"}}
 		spy := &turnSpy{result: call.Result{Status: call.Completed}}
-		steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls)
+		records := &callsSpy{}
+		steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := steps.Call(context.Background(), name, map[string]string{"what": "hi"}, discard); got.Status != workflow.Completed || len(spy.steps) != 1 {
+		got := steps.Call(context.Background(), name, map[string]string{"what": "hi"}, discard)
+		if got.Status != workflow.Completed || len(spy.steps) != 1 {
 			t.Errorf("%s: gave %+v, called %d times; want completed, called once", name, got, len(spy.steps))
+		}
+		want := []endedCall{{step: name, process: calls[name].process, agent: calls[name].agent, facts: admits.facts, result: got}}
+		if told := records.told(); !reflect.DeepEqual(told, want) {
+			t.Errorf("%s: told the records %+v, want %+v", name, told, want)
 		}
 		if asked := admits.asked(); len(asked) != 1 || !reflect.DeepEqual(asked[0], wants[name]) {
 			t.Errorf("%s: admit asked %+v, want %+v", name, asked, wants[name])
 		}
 	}
 
-	admits := &admissionSpy{err: errors.New(`HEAD is "c0", not the pinned "c1"`)}
+	admits := &admissionSpy{err: errors.New(`HEAD is "c0", not the pinned "c1"`), facts: admit.Facts{Head: "c1", Content: "t1"}}
 	spy := &turnSpy{}
-	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls)
+	records := &callsSpy{}
+	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,8 +193,14 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	if !reflect.DeepEqual(got, want) || len(spy.steps) > 0 {
 		t.Errorf("refused: gave %+v, called %+v; want %+v, no turn taken", got, spy.steps, want)
 	}
-	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls); err == nil {
+	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", result: want}}; !reflect.DeepEqual(told, want) {
+		t.Errorf("refused: told the records %+v, want %+v, no facts", told, want)
+	}
+	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, &callsSpy{}); err == nil {
 		t.Error("step calls built with no admission, want an error")
+	}
+	if _, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, nil); err == nil {
+		t.Error("step calls built with no records, want an error")
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 type worktreeFacts interface {
 	Head(ctx context.Context, dir string) (string, error)
 	Clean(ctx context.Context, dir string) (bool, error)
+	Content(ctx context.Context, dir string) (string, error)
 }
 
 // lockFiles is what core/admit's hold asks of files.
@@ -25,8 +26,8 @@ type lockFiles interface {
 
 // holding is what a run admits a call against and holds its worktree by
 // (docs/run-implementation.md, "A step in a held worktree"): a worktree's
-// HEAD and whether it is clean, of git; and the lock files under folder,
-// of files.
+// HEAD, whether it is clean and its content, of git; and the lock files
+// under folder, of files.
 type holding struct {
 	facts  worktreeFacts
 	locks  lockFiles
@@ -59,8 +60,9 @@ type worktreeAt struct {
 	root  string
 }
 
-func (w worktreeAt) Head(ctx context.Context) (string, error) { return w.facts.Head(ctx, w.root) }
-func (w worktreeAt) Clean(ctx context.Context) (bool, error)  { return w.facts.Clean(ctx, w.root) }
+func (w worktreeAt) Head(ctx context.Context) (string, error)    { return w.facts.Head(ctx, w.root) }
+func (w worktreeAt) Clean(ctx context.Context) (bool, error)     { return w.facts.Clean(ctx, w.root) }
+func (w worktreeAt) Content(ctx context.Context) (string, error) { return w.facts.Content(ctx, w.root) }
 
 // worktreeHold answers core/admit's hold from files' lock: the lock file
 // under folder named by the SHA-256 of root's path, its links resolved

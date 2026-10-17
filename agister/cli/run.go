@@ -39,11 +39,12 @@ const (
 // Class is why a run that did not complete ended so.
 type Class string
 
-// Result is a run's result (ADR-001, invariant 3): its status and class,
-// "" for none; its output; its timing; its cost, nil where it is unknown;
-// its usage; its sessions, each step's name to the session its call
-// reported; its reason, "" for none; and its warnings.
+// Result is a run's result (ADR-001, invariant 3): the id of its run; its
+// status and class, "" for none; its output; its timing; its cost, nil
+// where it is unknown; its usage; its sessions, each step's name to the
+// session its call reported; its reason, "" for none; and its warnings.
 type Result struct {
+	RunID    string
 	Status   RunStatus
 	Class    Class
 	Output   map[string]any
@@ -69,6 +70,7 @@ type Timing struct {
 // printed is a result as it is printed: a class, a cost, a count of usage
 // and a reason that are none as null, never "" or 0.
 type printed struct {
+	RunID    string            `json:"run_id"`
 	Status   RunStatus         `json:"status"`
 	Class    *Class            `json:"class"`
 	Output   map[string]any    `json:"output"`
@@ -102,6 +104,7 @@ func (c *CLI) runRequest(out io.Writer, launch string, request Request) (int, er
 		return 0, err
 	}
 	p := printed{
+		RunID:    result.RunID,
 		Status:   result.Status,
 		Output:   result.Output,
 		Timing:   printedTiming{Started: result.Timing.Started, Ended: result.Timing.Ended, DurationMS: result.Timing.Duration.Milliseconds()},
