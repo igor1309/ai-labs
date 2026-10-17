@@ -21,3 +21,16 @@ Feature: git gives a worktree's HEAD and whether it is clean
       | a file staged          | no    |
       | a tracked file changed | no    |
       | an untracked file      | no    |
+
+  Scenario Outline: A worktree's content is the tree its files make
+    Given a git repository at "r" with one commit, its content read,
+      then <change>
+    When git is asked the content of "r" again
+    Then it gives <same> tree, and "r"'s index is as it was
+
+    Examples:
+      | change                  | same     |
+      | nothing changed         | the same |
+      | an untracked file added | another  |
+      | an ignored file added   | the same |
+      | a tracked file changed  | another  |
