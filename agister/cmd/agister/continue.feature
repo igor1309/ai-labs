@@ -11,7 +11,8 @@ Feature: The composition continues an earlier run's call
   Scenario: A continuation resumes its call's session
     When "agister run --process ask --agent claude-opus --param q=more
       --continue R1" runs in "/r"
-    Then claude-code's turn is given the session "s1"
+    Then claude-code's turn is given the session "s1", and its message
+      starts with the section "continuation", home's prompt
     And the record's request continues "R1", and its call continues
       "R1/ask"
 
@@ -38,13 +39,14 @@ Feature: The composition continues an earlier run's call
       written, and it exits 1
 
     Examples:
-      | given                           | request                            | run | dir | what                                         |
-      | nothing more                    | pair                               | R1  | /r  | that a continuation runs one step            |
-      | nothing more                    | --process ask --agent claude-opus  | R9  | /r  | that no run "R9" is kept                     |
-      | "R1" holds a second call        | --process ask --agent claude-opus  | R1  | /r  | that "R1" is not a run of one call           |
-      | "R1/ask" has no session         | --process ask --agent claude-opus  | R1  | /r  | that "R1/ask" has no session                 |
-      | nothing more                    | --process ask --agent codex-sol-61 | R1  | /r  | that "R1/ask" ran on "claude-opus"           |
-      | git gives "/s" the root "/s"    | --process ask --agent claude-opus  | R1  | /s  | that "R1/ask" worked in "/r"                 |
-      | git gives "/r" HEAD "c2"        | --process ask --agent claude-opus  | R1  | /r  | that HEAD is "c2", not "R1/ask"'s "c1"       |
-      | git gives "/r" the content "t2" | --process ask --agent claude-opus  | R1  | /r  | that the worktree is not as "R1/ask" left it |
-      | "R1/ask"'s content is empty     | --process ask --agent claude-opus  | R1  | /r  | that the worktree is not as "R1/ask" left it |
+      | given                               | request                            | run | dir | what                                            |
+      | nothing more                        | pair                               | R1  | /r  | that a continuation runs one step               |
+      | nothing more                        | --process ask --agent claude-opus  | R9  | /r  | that no run "R9" is kept                        |
+      | "R1" holds a second call            | --process ask --agent claude-opus  | R1  | /r  | that "R1" is not a run of one call              |
+      | "R1/ask" has no session             | --process ask --agent claude-opus  | R1  | /r  | that "R1/ask" has no session                    |
+      | nothing more                        | --process ask --agent codex-sol-61 | R1  | /r  | that "R1/ask" ran on "claude-opus"              |
+      | git gives "/s" the root "/s"        | --process ask --agent claude-opus  | R1  | /s  | that "R1/ask" worked in "/r"                    |
+      | git gives "/r" HEAD "c2"            | --process ask --agent claude-opus  | R1  | /r  | that HEAD is "c2", not "R1/ask"'s "c1"          |
+      | git gives "/r" the content "t2"     | --process ask --agent claude-opus  | R1  | /r  | that the worktree is not as "R1/ask" left it    |
+      | "R1/ask"'s content is empty         | --process ask --agent claude-opus  | R1  | /r  | that the worktree is not as "R1/ask" left it    |
+      | home holds no prompt "continuation" | --process ask --agent claude-opus  | R1  | /r  | that the prompt "continuation" does not resolve |

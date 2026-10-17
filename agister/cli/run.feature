@@ -49,7 +49,11 @@ Feature: The command line runs a request
       | run w --param a   |
       | run w x           |
 
-  Scenario: A request may continue a run
-    When "agister run --process p --agent a --continue R1" runs
-    Then it asks the port to run the process "p", agent "a", continuing
-      the run "R1"
+  Scenario Outline: A request may continue a run
+    When "agister <args>" runs
+    Then it asks the port to run <request>, continuing the run "R1"
+
+    Examples:
+      | args                                    | request                    |
+      | run w --continue R1                     | the workflow "w"           |
+      | run --process p --agent a --continue R1 | the process "p", agent "a" |

@@ -75,10 +75,8 @@ Feature: A call on a model takes its inputs in its message
       | with a schema  | {"ok":true}  |
       | with no schema | {"text":"t"} |
 
-  Scenario: A step continuing a session resumes it, and says so
-    Given a model step whose input "q" is "more", continuing the
-      session "s1"
+  Scenario: A step continuing a session gives its turn the session
+    Given a model step continuing the session "s1"
     When the call is made
-    Then the turn is given the session "s1", and the message "You
-      continue your earlier work; its changes are in this worktree."
-      followed by a blank line and "## q\n\nmore"
+    Then the turn is given the session "s1", and the message as it is
+      for a step that continues none
