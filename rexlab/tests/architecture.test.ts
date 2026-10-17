@@ -31,6 +31,7 @@ const inQuiz = (file: string) => file.startsWith("quiz/");
 const inCare = (file: string) => file.startsWith("care/");
 const inPairs = (file: string) => file.startsWith("pairs/");
 const inSorting = (file: string) => file.startsWith("sorting/");
+const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const SCREENS = [
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
@@ -44,6 +45,10 @@ const SCREENS = [
   "PairsWelcomeScreen.tsx",
   "QuestionScreen.tsx",
   "ResultScreen.tsx",
+  "SkeletonChoiceScreen.tsx",
+  "SkeletonMuseumScreen.tsx",
+  "SkeletonPuzzleScreen.tsx",
+  "SkeletonResultScreen.tsx",
   "SortScreen.tsx",
   "VisitScreen.tsx"
 ];
@@ -55,6 +60,7 @@ const PRESENTATION = [
   "ParentMenu.tsx",
   "ResultParts.tsx",
   "SharedPicture.tsx",
+  "SkeletonBar.tsx",
   "formatValue.ts",
   "usePointerState.ts"
 ];
@@ -64,6 +70,7 @@ const ADAPTERS = [
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
+  "documentVisibility.ts",
   "itemPictures.ts",
   "localLanguage.ts",
   "localProgress.ts",
@@ -72,7 +79,17 @@ const ADAPTERS = [
   "mediaMotion.ts",
   "mediaOrientation.ts"
 ];
-const COMPOSITION = ["App.tsx", "careGame.tsx", "main.tsx", "pairsGame.tsx", "presentation.ts", "root.ts", "screenChange.ts", "sortingGame.tsx"];
+const COMPOSITION = [
+  "App.tsx",
+  "careGame.tsx",
+  "main.tsx",
+  "pairsGame.tsx",
+  "presentation.ts",
+  "root.ts",
+  "screenChange.ts",
+  "skeletonGame.tsx",
+  "sortingGame.tsx"
+];
 // The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
@@ -138,7 +155,7 @@ describe("the import graph", () => {
   // composition root names the one rule, which is free of the rest of the
   // app.
   it("leaves the one best-score rule to the composition root, which gives it to each game", () => {
-    expect(["App.tsx", "careGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
+    expect(["App.tsx", "careGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
     expect(edges((file) => !COMPOSITION.includes(file), (target) => target === BEST_SCORE)).toEqual([]);
     expect(edges((file) => file === BEST_SCORE, () => true)).toEqual([]);
   });
@@ -155,6 +172,20 @@ describe("the import graph", () => {
   it("keeps find the pair free of all but the languages", () => {
     expect(GRAPH.get("pairs/index.ts")).toBeDefined();
     expect(edges(inPairs, (target) => !inPairs(target) && !target.startsWith("language/"))).toEqual([]);
+  });
+
+  it("reaches the skeleton game only through its entrypoint", () => {
+    expect(GRAPH.get("skeletonGame.tsx")).toContain("skeletons/index.ts");
+    expect(edges((file) => !inSkeletons(file), (target) => inSkeletons(target) && target !== "skeletons/index.ts")).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of the skeleton game", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inSkeletons)).toEqual([]);
+  });
+
+  it("keeps the skeleton game free of all but the languages", () => {
+    expect(GRAPH.get("skeletons/index.ts")).toBeDefined();
+    expect(edges(inSkeletons, (target) => !inSkeletons(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {

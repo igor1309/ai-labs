@@ -5,20 +5,23 @@ import { App } from "../src/App.tsx";
 import { HomePage } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { NO_PAIRS } from "../src/pairs/progress.ts";
 import { careRecord } from "./careApp.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { pairsRecord } from "./pairsApp.tsx";
+import { keptSkeletons } from "./skeletonsApp.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   englishDevice,
   fakeBodyPicture,
+  fakeSkeletonPicture,
   lightDevice,
   loadedPictures,
   manualPictures,
@@ -29,14 +32,23 @@ import {
   type MemoryStorage
 } from "./support.ts";
 
-function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), care = emptyCare(), sorting = emptySorting(), pairs = emptyPairs()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...pictures} />);
+function openHomePage(
+  progress = emptyProgress(),
+  pictures = loadedPictures(),
+  care = emptyCare(),
+  sorting = emptySorting(),
+  pairs = emptyPairs(),
+  skeletons = emptySkeletons()
+) {
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
 const withStorage = (storage: MemoryStorage) => localProgress(() => storage);
 
 const withSorting = (storage: MemoryStorage) => ({ ...emptySorting(), sortingProgress: localSortingProgress(() => storage) });
+
+const withSkeletons = (storage: MemoryStorage) => ({ ...emptySkeletons(), skeletonProgress: localSkeletonProgress(() => storage) });
 
 // A stored record in the section 5 format of docs/mvp-infrastructure.md.
 const record = (bestScore: number | null) =>
@@ -62,12 +74,14 @@ function renderHomePage(taps: number[]) {
       care={{ picture: fakeBodyPicture("parasaurolophus"), best: undefined }}
       sort={{ picture: fakeBodyPicture("triceratops"), best: undefined }}
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
+      skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
       onCare={nothing}
       onSort={() => taps.push(1)}
       onPairs={nothing}
+      onSkeletons={nothing}
     />
   );
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "SORT" }) };
@@ -78,6 +92,8 @@ const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
 const pairsTile = () => screen.getByRole("button", { name: "FIND THE PAIR" });
+
+const skeletonsTile = () => screen.getByRole("button", { name: "SKELETONS" });
 
 // jsdom lays nothing out, so the width of each title in every language
 // is given here in ems of its bold face, rounded up: Lexend's for the
@@ -103,16 +119,19 @@ const TITLE_EMS: Record<string, number> = {
   "НАЙДИ ПАРУ": 6.6,
   НАЙДИ: 3.7,
   ПАРУ: 2.7,
+  SKELETONS: 6.2,
+  СКЕЛЕТЫ: 4.8,
   "MORE COMING": 7.9,
   "СКОРО ЕЩЁ": 6.0
 };
 
 // The words each title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "moreComing"> = {
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "moreComing"> = {
   "quiz-card-title": "quizCard",
   "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care",
   "sort-tile-title": "sort",
+  "skeletons-tile-title": "skeletons",
   "more-coming-title": "moreComing"
 };
 
@@ -213,7 +232,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands the other games beside COMPARE in equal columns of two: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, then MORE COMING", () => {
+  it("stands the other games beside COMPARE in equal columns of two: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, then SKELETONS over MORE COMING", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -222,7 +241,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // COMPARE takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR"].map((name) => screen.getByRole("button", { name })), document.querySelector(".more-coming")];
+    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name })), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height.
@@ -319,7 +338,8 @@ describe("the home page", () => {
         loadedPictures(),
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
-        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) }
+        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) },
+        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
       );
 
       const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
@@ -328,6 +348,7 @@ describe("the home page", () => {
         ["ALL DINOSAURS", "nowrap"],
         ["CARE", "nowrap"],
         ["SORT", "nowrap"],
+        ["SKELETONS", "nowrap"],
         ["MORE COMING", "nowrap"]
       ]);
       const overflowing = titles.flatMap((title) => {
@@ -346,18 +367,19 @@ describe("the home page", () => {
       });
       expect(overflowing).toEqual([]);
 
-      const tiles = ["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR"].map((name) => screen.getByRole("button", { name }));
-      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true, true, true]);
+      const tiles = ["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name }));
+      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true, true, true, true]);
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
-      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars"));
+      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
         [String(SHIPPED_CATALOGUE.length), true, "absolute"],
         ["8", true, "absolute"],
         ["6", true, "absolute"],
-        ["120", true, "absolute"]
+        ["120", true, "absolute"],
+        ["3", true, "absolute"]
       ]);
-      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true, true]);
-      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative", "relative"]);
+      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true, true, true]);
+      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative", "relative", "relative"]);
 
       const title = pairsTile().querySelector(".pairs-tile-title");
       if (!title) throw new Error("No FIND THE PAIR title");
@@ -390,6 +412,71 @@ describe("the home page", () => {
     await user.pointer({ keys: "[/TouchA]", target: tile });
 
     expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
+  });
+
+  it("offers the skeleton game as a SKELETONS tile over MORE COMING: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
+    openHomePage();
+
+    const tile = skeletonsTile();
+    expect(tile.textContent).toBe("SKELETONS");
+    expect(TEXTS.ru.skeletons).toBe("СКЕЛЕТЫ");
+    expect(symbolsOf(tile)).toEqual(["bone"]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("triceratops", "skeleton")]);
+    const title = tile.querySelector(".skeletons-tile-title");
+    expect(title?.previousElementSibling?.contains(tile.querySelector("svg.lucide-bone"))).toBe(true);
+    expect(tile.nextElementSibling).toBe(document.querySelector(".more-coming"));
+    expect(tile.querySelector(".skeletons-tile-best")).toBeNull();
+  });
+
+  it("shows the best collection score in the SKELETONS tile's picture's corner, beside a trophy", () => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(keptSkeletons({ earned: ["triceratops", "stegosaurus"], bestScore: 2, rebuilding: [] })));
+
+    const tile = skeletonsTile();
+    const best = tile.querySelector(".skeletons-tile-best");
+    expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "2"]);
+    expect(best?.parentElement).toBe(tile);
+    expect(tile.querySelector(".skeletons-tile-row")?.contains(best)).toBe(false);
+    const [tileStyle, style] = [getComputedStyle(tile), getComputedStyle(best ?? tile)];
+    expect([tileStyle.position, style.position, style.top, style.right]).toEqual(["relative", "absolute", "12px", "12px"]);
+  });
+
+  it.each([
+    ["no skeleton built", keptSkeletons({ earned: [], bestScore: null, rebuilding: [] })],
+    ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "skeleton-assembly": { earned: ["triceratops"], bestScore: 1, rebuilding: [] } } }) }, { read: false })],
+    ["only the quiz's best kept", memoryStorage({ [PROGRESS_KEY]: record(7) })]
+  ])("shows no best score on the SKELETONS tile with %s", (_, storage) => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(storage));
+
+    expect(skeletonsTile().querySelector(".skeletons-tile-best")).toBeNull();
+    expect(symbolsOf(skeletonsTile())).toEqual(["bone"]);
+  });
+
+  it("opens the skeleton game's choice of dinosaurs on SKELETONS, with MUSEUM beside a museum and HOME beside a house", async () => {
+    const { user } = openHomePage();
+
+    await user.click(skeletonsTile());
+
+    expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
+    expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
+      "TYRANNOSAURUS",
+      "TRICERATOPS",
+      "STEGOSAURUS"
+    ]);
+    expect([symbolOf(screen.getByRole("button", { name: "MUSEUM" })), symbolOf(screen.getByRole("button", { name: "HOME" }))]).toEqual(["landmark", "house"]);
+  });
+
+  it("brightens the SKELETONS tile under a pointer, and presses it in before the game opens", async () => {
+    const { user } = openHomePage();
+    const tile = skeletonsTile();
+
+    await user.hover(tile);
+    expect(brightness(tile)).toBeGreaterThan(1);
+    await user.pointer({ keys: "[TouchA>]", target: tile });
+    expect(getComputedStyle(tile).transform).toMatch(/^scale\(0\.\d+\)$/);
+    expect(screen.queryByRole("heading", { name: "BUILD A SKELETON" })).toBeNull();
+    await user.pointer({ keys: "[/TouchA]", target: tile });
+
+    expect(screen.getByRole("heading", { name: "BUILD A SKELETON" })).toBeDefined();
   });
 
   it("shows the best score in the quiz card's corner, over the face-off, beside a trophy", () => {

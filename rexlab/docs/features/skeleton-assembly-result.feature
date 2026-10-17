@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: revealing and rewarding a dinosaur
   Finishing a skeleton reveals the dinosaur and one short anatomy fact.
   The collection score is one permanent star per different skeleton,

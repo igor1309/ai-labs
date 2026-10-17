@@ -108,6 +108,28 @@ export type Texts = {
   // The dinosaurs found in find the pair, read out on the catalogue's
   // count and stamps.
   found: string;
+  // The skeleton game: its home tile, the title over its dinosaurs to
+  // build, and its museum.
+  skeletons: string;
+  skeletonTitle: string;
+  museum: string;
+  // The skeleton being built, its tray of bones and each bone by its name.
+  skeleton: string;
+  bones: string;
+  pieces: { skull: string; spine: string; legs: string; tail: string };
+  // The bones fitted so far, read out on their chip.
+  fitted: string;
+  // The star a finished skeleton earns, read out on its badge, and the
+  // way back to the choice of dinosaurs.
+  star: string;
+  buildAnother: string;
+  // The museum's stands, and a stand's ways to build its skeleton: the
+  // first time, again from the start once it stands there, and on once it
+  // has been knocked down.
+  stands: string;
+  build: string;
+  rebuild: string;
+  keepBuilding: string;
 };
 
 // A celebration's label, read out, and its text, shown.

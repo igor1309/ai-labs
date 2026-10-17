@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: no-fail help
   After about ten seconds without fitting a piece, one correct slot
   glows to invite the next move. Help never places a piece for the child

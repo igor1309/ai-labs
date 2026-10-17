@@ -1,6 +1,6 @@
 Feature: The home page's game tiles
   Beside the COMPARE card the other games stand in a row of columns, two
-  tiles to a column but the last, every column as wide as the others. The columns do
+  tiles to a column, every column as wide as the others. The columns do
   not all fit beside COMPARE on any iPad, so the row scrolls sideways
   under the finger, and the next column peeks in at the edge to show
   there is more.
@@ -12,7 +12,7 @@ Feature: The home page's game tiles
     When I open the home page
     Then beside the "COMPARE" card I see "ALL DINOSAURS" over "CARE"
     And then "SORT" over "FIND THE PAIR"
-    And then "MORE COMING", last, at the top of its column, with nothing under it
+    And then "SKELETONS" over "MORE COMING", last
     And every column of tiles is as wide as the others
     And every tile is as tall as the others, half its column
 
@@ -58,7 +58,7 @@ Feature: The home page's game tiles
   Scenario Outline: Every tile's words fit it
     Given the app is in <language>
     And the screen is <width> by <height> CSS pixels
-    And I have a best score of 8 in CARE and 6 in SORT, and 120 stars in FIND THE PAIR
+    And I have a best score of 8 in CARE, 6 in SORT and 3 in SKELETONS, and 120 stars in FIND THE PAIR
     When I open the home page
     Then every tile keeps its title on one line, but "FIND THE PAIR" on two at most
     And every title is at least 24 pixels tall, and "MORE COMING" at least 20

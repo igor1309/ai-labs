@@ -52,10 +52,14 @@ one pull request.
 - Review cycles are costly. Code review is the pull request's gate
   only: run it once the branch is complete, never for a small change or
   a single step.
-- Commit every design, in the one design file `design/rexlab.pen`. A
-  `.pen` file is encrypted and git cannot merge it, so only one open
-  branch changes it at a time: a branch that needs it while another
-  branch's change is unmerged waits for that merge and starts from trunk.
+- Commit every design, in the one design file `design/rexlab.pen`. It is
+  JSON, one document whose top-level frames are the screens, but git's
+  line merge cannot join two branches' changes to it. Add new frames
+  rather than changing other branches' ones. On a conflict, merge the
+  parsed files: take trunk's, append the frames your branch added, write
+  it back with `json.dumps(..., indent=2)`, and check that no id
+  repeats. A branch that changes an existing frame while another
+  branch's change to it is unmerged waits for that merge.
 - The Pencil tools act on the document open in the editor, whatever
   file path they are given: open the branch's own file first, and check
   the editor's file before every edit.

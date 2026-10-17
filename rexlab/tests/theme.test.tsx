@@ -7,6 +7,8 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
+import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
@@ -14,6 +16,7 @@ import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
+import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -24,6 +27,7 @@ import {
   contrast,
   emptyCare,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   manualAppearance,
@@ -102,6 +106,7 @@ function openApp({
       {...sorting}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
+      {...emptySkeletons()}
       {...timers}
     />
   );
@@ -300,6 +305,90 @@ async function pairsFound({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
+async function skeletonChoice({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  expectScreenIn(theme);
+}
+
+// A dinosaur's puzzle as it starts: its faint outline and its pieces in
+// the tray.
+const skeletonPuzzle =
+  (name: string) =>
+  async ({ theme, user }: Walk) => {
+    await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+    await user.click(screen.getByRole("button", { name }));
+    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+    expectScreenIn(theme);
+  };
+
+// A puzzle at work: a bone fitted, another lifted from the tray, and,
+// once the child has waited, help glowing on a slot and its bone.
+async function skeletonAtWork({ theme, user, timers }: Walk) {
+  const stegosaurus = skeletonOf("stegosaurus");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
+  layOutPuzzle();
+  fit(stegosaurus, "spine");
+  const spot = spotOf("tail");
+  const { left, top } = spot.getBoundingClientRect();
+  press(spot, { clientX: left + 40, clientY: top + 40 });
+  moveTo(AWAY);
+  expect([fittedPieces(), lifted()]).toEqual([["spine"], expect.anything()]);
+  expectScreenIn(theme);
+  release(AWAY);
+  for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
+  expect(hints()).toEqual(["slot skull", "spot skull"]);
+  expectScreenIn(theme);
+}
+
+// A skeleton's reveal with a first best, the choice with its star, a
+// second skeleton's reveal with the best it beat, and the home page with
+// the best on the SKELETONS tile.
+async function skeletonReveals({ theme, user, timers }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  for (const [id, celebration] of [
+    ["triceratops", "FIRST BEST SCORE"],
+    ["stegosaurus", "NEW BEST SCORE"]
+  ] as const) {
+    const skeleton = skeletonOf(id);
+    await user.click(screen.getByRole("button", { name: skeleton.name.en.toUpperCase() }));
+    layOutPuzzle();
+    fitAll(skeleton);
+    act(() => timers.fire(REVEAL.motion));
+    expect(screen.getByRole("status").getAttribute("aria-label")).toBe(celebration);
+    expectScreenIn(theme);
+    await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
+    expect(screen.getAllByRole("img", { name: "STAR" })).not.toHaveLength(0);
+    expectScreenIn(theme);
+  }
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expect(screen.getByRole("button", { name: "SKELETONS" }).querySelector(".skeletons-tile-best")?.textContent).toBe("2");
+  expectScreenIn(theme);
+}
+
+// The museum empty, then with a skeleton on its stand, its puzzle as the
+// skeleton is knocked down and its bones scatter, and the museum with that
+// stand awaiting it.
+async function skeletonMuseum({ theme, user, timers }: Walk) {
+  const triceratops = skeletonOf("triceratops");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expectScreenIn(theme);
+  await user.click(within(screen.getByRole("region", { name: "TRICERATOPS" })).getByRole("button", { name: "BUILD" }));
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "REBUILD" }));
+  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getByRole("button", { name: "CONTINUE" })).toBeDefined();
+  expectScreenIn(theme);
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app: one walk over them all outlasts a test's time limit
 // on CI.
@@ -343,6 +432,18 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the welcome", pairsWelcome],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
+    ]
+  ],
+  [
+    "the skeleton game",
+    [
+      ["the choice of dinosaurs", skeletonChoice],
+      ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
+      ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
+      ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
+      ["a puzzle with a bone fitted, one lifted and help glowing", skeletonAtWork],
+      ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
+      ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]
   ]
 ];

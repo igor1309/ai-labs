@@ -1,4 +1,4 @@
-import { BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -32,6 +32,9 @@ export type HomePageProps = {
   // Find the pair's tile: the dinosaur on its cards and the stars earned,
   // undefined until a board is finished.
   pairs: { picture: string; stars: number | undefined };
+  // The skeleton game's tile: the skeleton on it and the best collection
+  // score, undefined while there is none to show.
+  skeletons: { picture: string; best: number | undefined };
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
   moreComing: string;
@@ -40,6 +43,7 @@ export type HomePageProps = {
   onCare: () => void;
   onSort: () => void;
   onPairs: () => void;
+  onSkeletons: () => void;
 };
 
 type Menu = "language" | "theme";
@@ -55,12 +59,14 @@ export function HomePage({
   care,
   sort,
   pairs,
+  skeletons,
   moreComing,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
   onSort,
-  onPairs
+  onPairs,
+  onSkeletons
 }: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
@@ -68,6 +74,7 @@ export function HomePage({
   const carePointer = usePointerState();
   const sortPointer = usePointerState();
   const pairsPointer = usePointerState();
+  const skeletonsPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -223,6 +230,21 @@ export function HomePage({
               <span className="pairs-tile-stars">
                 <Star size={18} aria-hidden="true" />
                 {pairs.stars}
+              </span>
+            )}
+          </button>
+          <button type="button" className="card skeletons-tile" aria-label={text.skeletons} onClick={onSkeletons} {...skeletonsPointer}>
+            <img className="skeletons-tile-picture" src={skeletons.picture} alt="" draggable={false} />
+            <span className="skeletons-tile-row">
+              <span className="skeletons-tile-symbol" aria-hidden="true">
+                <Bone size={20} />
+              </span>
+              <span className="skeletons-tile-title">{text.skeletons}</span>
+            </span>
+            {skeletons.best !== undefined && (
+              <span className="skeletons-tile-best">
+                <Trophy size={18} aria-hidden="true" />
+                {skeletons.best}
               </span>
             )}
           </button>

@@ -12,6 +12,7 @@ import {
   emptySorting,
   emptyPairs,
   englishDevice,
+  emptySkeletons,
   fakeBodyPicture,
   lightDevice,
   loadedPictures,
@@ -70,6 +71,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
+      {...emptySkeletons()}
       {...loadedPictures()}
     />
   );

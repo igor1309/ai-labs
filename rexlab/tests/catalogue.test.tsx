@@ -17,6 +17,7 @@ import {
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   loadedPictures,
@@ -54,6 +55,7 @@ function openApp({
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
+      {...emptySkeletons()}
     />
   );
   return userEvent.setup();

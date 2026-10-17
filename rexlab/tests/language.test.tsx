@@ -10,11 +10,13 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { MISS, endWave, playBoard, showMiss, turnCard } from "./pairsApp.tsx";
+import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
 import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
@@ -23,6 +25,7 @@ import {
   emptyCare,
   emptyPairs,
   emptyProgress,
+  emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   lightDevice,
@@ -86,6 +89,7 @@ function openApp({
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
+      {...emptySkeletons()}
       {...timers}
     />
   );
@@ -448,7 +452,8 @@ type Seen = {
 };
 
 // A walk over screens in `language`, on an app opened on the home page of
-// a device in it: `look` records what the screen shows now in `seen`.
+// a device in it, or on the screen it is opened on: `look` records what
+// the screen shows now in `seen`.
 type Play = {
   language: Language;
   user: UserEvent;
@@ -699,6 +704,44 @@ async function findThePair(language: Language): Promise<Seen> {
   return play.seen;
 }
 
+// The skeleton game: its home tile, its choice of dinosaurs, a puzzle as
+// it starts, its reveal with a first best, the choice again with the star
+// earned, the museum with the skeleton on its stand, its puzzle as it is
+// knocked down, the museum with its stand awaiting it, and the home page
+// again with the best on the tile.
+async function skeletons(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, timers, look } = play;
+  const text = TEXTS[language];
+  const triceratops = skeletonOf("triceratops");
+  look();
+  await user.click(screen.getByRole("button", { name: text.skeletons }));
+  look();
+  await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.buildAnother }));
+  expect(screen.getAllByRole("img", { name: text.star })).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.rebuild }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  expect(screen.getByRole("button", { name: text.skeletons }).textContent).toBe(`${text.skeletons}1`);
+  look();
+  return play.seen;
+}
+
 // What a part shows for parents: its words, the language menu's codes
 // aside, and the labels read out.
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
@@ -714,7 +757,8 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // care: its welcome, its friends with none yet, a visit with each need
 // refused once and one without, both results and the friends made,
 // the sorting game: a board with wrong drops, its result and the next
-// board, and find the pair from its welcome to the dinosaurs found.
+// board, find the pair from its welcome to the dinosaurs found, and the
+// skeleton game's choice, a puzzle, its reveal and its museum.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -736,7 +780,8 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     "find the pair, its result, and the dinosaurs found in the catalogue",
     findThePair,
     (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
-  ]
+  ],
+  ["the skeleton game's tile, its choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

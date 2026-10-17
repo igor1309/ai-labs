@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: choosing a dinosaur
   A child builds a dinosaur from large bone pieces, then keeps it in a
   museum. The MVP uses the first difficulty level: a full outline and

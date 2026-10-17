@@ -1,4 +1,3 @@
-@next
 Feature: Skeleton assembly: keeping the collection
   Earned stars and museum stand states are kept on this browser, best
   effort. An unfinished rebuild keeps only its earned identity and

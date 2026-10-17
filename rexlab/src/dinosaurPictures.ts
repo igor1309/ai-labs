@@ -24,3 +24,26 @@ export function bodyPictures(files: PictureFiles, ids: readonly string[]): (id: 
     return url;
   };
 }
+
+const SKELETON_PICTURE = /(?:^|\/)assets\/skeletons\/([^/]+)\/([^/]+)\.webp$/;
+
+// Each skeleton's pictures, by the dinosaur's id and the part's name, from
+// the files at `assets/skeletons/<id>/<part>.webp`: the whole skeleton and
+// each of its pieces. A skeleton in `ids` missing one of `parts` fails
+// here, when the app is put together, rather than as a hole in a puzzle.
+export function skeletonPictures<Part extends string>(files: PictureFiles, ids: readonly string[], parts: readonly Part[]): (id: string, part: Part) => string {
+  const byPart = new Map<string, string>();
+  for (const [path, url] of Object.entries(files)) {
+    const found = SKELETON_PICTURE.exec(path);
+    if (found) byPart.set(`${found[1]}/${found[2]}`, url);
+  }
+  const missing = ids.flatMap((id) => parts.filter((part) => !byPart.has(`${id}/${part}`)).map((part) => `${id}/${part}`));
+  if (missing.length > 0) {
+    throw new Error(`No skeleton picture for ${missing.join(", ")}`);
+  }
+  return (id, part) => {
+    const url = byPart.get(`${id}/${part}`);
+    if (url === undefined) throw new Error(`No skeleton picture for ${id}/${part}`);
+    return url;
+  };
+}

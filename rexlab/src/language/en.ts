@@ -76,5 +76,18 @@ export const en: Texts = {
   card: (place) => `CARD ${place}`,
   newLevel: (level) => `NEW LEVEL ${level}`,
   newlyFound: "NEW",
-  found: "FOUND"
+  found: "FOUND",
+  skeletons: "SKELETONS",
+  skeletonTitle: "BUILD A SKELETON",
+  museum: "MUSEUM",
+  skeleton: "SKELETON",
+  bones: "BONES",
+  pieces: { skull: "SKULL", spine: "SPINE", legs: "LEGS", tail: "TAIL" },
+  fitted: "BONES IN PLACE",
+  star: "STAR",
+  buildAnother: "BUILD ANOTHER",
+  stands: "STANDS",
+  build: "BUILD",
+  rebuild: "REBUILD",
+  keepBuilding: "CONTINUE"
 };

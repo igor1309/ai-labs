@@ -308,3 +308,84 @@ describe("the sorting board's motion", () => {
     expect(declarationsOf(bodyOf(".sort-card", REDUCED))).toEqual([{ property: "transition-property", value: "filter, opacity, box-shadow, outline" }]);
   });
 });
+
+describe("the skeleton puzzle's motion", () => {
+  const animations = animationsOf(PLAIN);
+
+  it("lifts a piece in, floats one let go back to the tray and slides one that fits into its slot, each from where it was let go", () => {
+    expect([".skeleton-lifted", ".skeleton-piece[data-returning]", ".skeleton-fitted[data-snapped]"].map((selector) => animations.get(selector))).toEqual([
+      "grow-in",
+      "settle-in",
+      "settle-in"
+    ]);
+    const settle = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes settle-in")?.body ?? "";
+    expect(settle).toMatch(/translate: calc\(var\(--from-x\) \* var\(--motion-amount\)\) calc\(var\(--from-y\) \* var\(--motion-amount\)\)/);
+    // With reduced motion the piece only fades in where it ends.
+    expect(settle).toMatch(/opacity: calc\(1 - 0\.6 \* \(1 - var\(--motion-amount\)\)\)/);
+  });
+
+  it("fades help's glow in", () => {
+    expect(animations.get(".skeleton-glow")).toBe("fade-in");
+  });
+
+  it("scatters a knocked-down skeleton's bones from their homes to the tray one after the other, each spinning on its way, its spots already there", () => {
+    expect(animations.get(".skeleton-piece[data-scattering]")).toBe("scatter");
+    const body = PLAIN.find(({ prelude }) => prelude === ".skeleton-piece[data-scattering]")?.body ?? "";
+    expect(body).toMatch(/scatter var\(--motion-screen\) var\(--ease-overshoot\) calc\(var\(--motion-screen\) \+ var\(--piece\) \* var\(--motion-stagger\)\) both/);
+    expect(animations.get(".skeleton-tray[data-scatter] .skeleton-tray-spot")).toBe("none");
+    const scatter = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes scatter")?.body ?? "").map(({ prelude, body: frame }) => [prelude, declarationsOf(frame)]);
+    expect(scatter).toEqual([
+      [
+        "from",
+        [
+          { property: "opacity", value: "calc(1 - 0.6 * (1 - var(--motion-amount)))" },
+          { property: "translate", value: "calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount))" },
+          { property: "scale", value: "calc(1 + (var(--from-scale) - 1) * var(--motion-amount))" }
+        ]
+      ],
+      ["50%", [{ property: "rotate", value: "calc((var(--piece) - 1.5) * 16deg * var(--motion-amount))" }]]
+    ]);
+  });
+});
+
+describe("the skeleton museum's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("rises the stands in one after the other, and pops each star in after its stand", () => {
+    expect([".skeleton-stand", ".skeleton-stand-star"].map((selector) => animations.get(selector))).toEqual(["rise-in", "pop-in"]);
+    expect(bodyOf(".skeleton-stand")).toMatch(/calc\(var\(--stand\) \* var\(--motion-stagger\)\) both/);
+    expect(bodyOf(".skeleton-stand-star")).toMatch(/calc\(var\(--motion-stagger\) \* \(var\(--stand\) \+ 2\)\) both/);
+  });
+});
+
+describe("the skeleton reveal's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
+
+  it("holds the whole skeleton through the screen change, then fades the body in over it as the bones fade back", () => {
+    expect([".skeleton-reveal-bones", ".skeleton-reveal-body"].map((selector) => animations.get(selector))).toEqual(["fade-back", "fade-in"]);
+    for (const selector of [".skeleton-reveal-bones", ".skeleton-reveal-body"]) {
+      expect(bodyOf(selector)).toMatch(/calc\(var\(--motion-screen\) \* 2\) var\(--ease-out\) var\(--motion-screen\) both/);
+    }
+    const back = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-back")?.body ?? "";
+    expect(rulesOf(back).flatMap(({ body }) => declarationsOf(body))).toEqual([{ property: "opacity", value: "1" }]);
+    expect(declarationsOf(bodyOf(".skeleton-reveal-bones"))).toContainEqual({ property: "opacity", value: "0.25" });
+  });
+
+  it("keeps a skeleton whose body cannot be shown whole and still", () => {
+    expect(declarationsOf(bodyOf(".skeleton-reveal-bones[data-alone]"))).toEqual([
+      { property: "opacity", value: "1" },
+      { property: "animation", value: "none" }
+    ]);
+  });
+
+  it("rises the reward in, pops a new star in once the body has faded in, and pops a built dinosaur's star onto its card", () => {
+    expect([".skeleton-reward", ".skeleton-star[data-new]", ".skeleton-choice-star"].map((selector) => animations.get(selector))).toEqual([
+      "rise-in",
+      "pop-in",
+      "pop-in"
+    ]);
+    expect(bodyOf(".skeleton-star[data-new]")).toMatch(/calc\(var\(--motion-screen\) \* 2\) both/);
+  });
+});

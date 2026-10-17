@@ -12,15 +12,32 @@ import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps 
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
+import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
+import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
+import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
+import {
+  help,
+  isComplete,
+  PIECES,
+  type Celebration as SkeletonCelebration,
+  type Museum,
+  type Piece,
+  type Puzzle,
+  type Skeleton,
+  type SkeletonResult,
+  type StandState
+} from "./skeletons/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
-// How the app shows the quiz, the catalogue, dinosaur care, find the pair
-// and the sorting game: the composition root's translation from their
-// APIs to what each screen renders. A new attribute, celebration, food
-// type, need, item or basket fails the typecheck here until it is given a
-// presentation.
+// How the app shows the quiz, the catalogue, dinosaur care, find the pair,
+// the sorting game and the skeleton game: the composition root's
+// translation from their APIs to what each screen renders. A new
+// attribute, celebration, food type, need, item, basket, bone piece or
+// museum stand fails the typecheck here until it is given a presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -227,5 +244,105 @@ export function presentPairsResult(result: PairsResult, language: Language, body
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
     levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+  };
+}
+
+// Each dinosaur to build is shown by its body picture, which its skeleton
+// is traced from, with its star once its skeleton is finished. `earned` is
+// the ids of the dinosaurs with a star.
+export function presentSkeletonChoices(
+  skeletons: readonly Skeleton[],
+  language: Language,
+  bodyPicture: (dinosaurId: string) => string,
+  earned: readonly string[]
+): SkeletonChoiceView[] {
+  return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
+}
+
+const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+
+const DROPPED_PIECES: Record<ShownPiece, Piece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+
+// The piece the child dropped on the puzzle's board.
+export function droppedPiece(piece: ShownPiece): Piece {
+  return DROPPED_PIECES[piece];
+}
+
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots" | "hint" | "complete">;
+
+// The pictures of a skeleton: the whole of it, or one of its pieces.
+export type SkeletonPicture = (dinosaurId: string, part: "skeleton" | Piece) => string;
+
+// Each slot is placed as a fraction of the frame, so the outline and its
+// pieces scale together to any board.
+export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
+  const { skeleton, fitted } = puzzle;
+  const { id, name, frame, places } = skeleton;
+  const helped = help(puzzle);
+  return {
+    name: name[language],
+    outline: skeletonPicture(id, "skeleton"),
+    frame,
+    slots: PIECES.map((piece) => {
+      const { x, y, width, height } = places[piece];
+      return {
+        piece: SHOWN_PIECES[piece],
+        picture: skeletonPicture(id, piece),
+        left: x / frame.width,
+        top: y / frame.height,
+        width: width / frame.width,
+        height: height / frame.height,
+        fitted: fitted.includes(piece)
+      };
+    }),
+    hint: helped && SHOWN_PIECES[helped],
+    complete: isComplete(puzzle)
+  };
+}
+
+const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebration> = { "first-best": "first-best", "new-best": "new-best" };
+
+export type SkeletonResultView = Pick<
+  SkeletonResultScreenProps,
+  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar"
+>;
+
+// A finished skeleton is revealed as its dinosaur, its body picture over
+// the whole skeleton in the frame they share.
+export function presentSkeletonResult(
+  { skeleton, score, total, best, previousBest, celebration, newStar }: SkeletonResult,
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  bodyPicture: (dinosaurId: string) => string
+): SkeletonResultView {
+  const { id, name, fact, frame } = skeleton;
+  return {
+    name: name[language],
+    fact: fact[language],
+    skeleton: skeletonPicture(id, "skeleton"),
+    body: bodyPicture(id),
+    frame,
+    score,
+    total,
+    best,
+    // Only a new best shows the best it beat: a first best beat none.
+    beaten: celebration === "new-best" ? previousBest : undefined,
+    celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
+    newStar
+  };
+}
+
+const STANDS: Record<StandState, ShownStand> = { built: "built", rebuilding: "rebuilding", empty: "empty" };
+
+export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "score" | "total" | "best">;
+
+// Each stand shows its whole skeleton, drawn as a silhouette while it is
+// not standing there.
+export function presentSkeletonMuseum({ stands, score, total, best }: Museum, language: Language, skeletonPicture: SkeletonPicture): SkeletonMuseumView {
+  return {
+    stands: stands.map(({ skeleton: { id, name }, state }) => ({ id, name: name[language], skeleton: skeletonPicture(id, "skeleton"), state: STANDS[state] })),
+    score,
+    total,
+    best
   };
 }

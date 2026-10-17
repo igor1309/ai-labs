@@ -1,8 +1,9 @@
 import records from "../src/data/dinosaurs.json";
-import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors } from "../src/dinosaurs.ts";
+import skeletonPlaces from "../src/data/skeletons.json";
+import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
+import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -18,6 +19,7 @@ export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
 export const SHIPPED_SORTABLES = readSortables(records);
 export const SHIPPED_PALS = readPals(records);
+export const SHIPPED_SKELETONS = readSkeletons(records, skeletonPlaces);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -26,6 +28,10 @@ export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.
 // A care picture URL of the item's own, for tests that are not about the
 // picture files.
 export const fakeItemPicture = (name: string) => `/care/${name}.webp`;
+
+// A skeleton picture URL of the part's own, for tests that are not about
+// the picture files.
+export const fakeSkeletonPicture = (dinosaurId: string, part: string) => `/skeletons/${dinosaurId}/${part}.webp`;
 
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
@@ -183,6 +189,39 @@ export function manualOrientation(initial: "portrait" | "landscape"): ManualOrie
   };
 }
 
+export type ManualVisibility = PageVisibility & { switchTo(to: "hidden" | "visible"): void };
+
+// The app's visibility, switched only when the test switches it.
+export function manualVisibility(initial: "hidden" | "visible"): ManualVisibility {
+  let hidden = initial === "hidden";
+  const listeners = new Set<() => void>();
+  return {
+    isHidden: () => hidden,
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    switchTo: (to) => {
+      hidden = to === "hidden";
+      listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+// A browser's document, whose visibility the test sets and which reports
+// each change as a browser does.
+export function browserDocument(initial: DocumentVisibilityState = "visible") {
+  const target = new EventTarget();
+  const document = Object.assign(target, { visibilityState: initial });
+  return {
+    document,
+    switchTo: (to: DocumentVisibilityState) => {
+      document.visibilityState = to;
+      target.dispatchEvent(new Event("visibilitychange"));
+    }
+  };
+}
+
 export type ManualAppearance = Appearance & { switchTo(to: Theme): void };
 
 // The device appearance, switched only when the test switches it.
@@ -251,6 +290,19 @@ export function emptySorting(): Pick<AppProps, "sortables" | "sortingProgress"> 
 export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
   const storage = memoryStorage();
   return { pals: SHIPPED_PALS, pairsProgress: localPairsProgress(() => storage) };
+}
+
+// The skeleton game for tests that are not about it: every shipped
+// skeleton may be built, no skeleton progress kept yet, saving works, and
+// the app is never hidden.
+export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture" | "skeletonProgress" | "pageVisibility"> {
+  const storage = memoryStorage();
+  return {
+    skeletons: SHIPPED_SKELETONS,
+    skeletonPicture: fakeSkeletonPicture,
+    skeletonProgress: localSkeletonProgress(() => storage),
+    pageVisibility: manualVisibility("visible")
+  };
 }
 
 // The language for tests that are not about it: an English device, and no

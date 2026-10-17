@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
@@ -26,6 +26,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
@@ -53,12 +54,21 @@ export type Appearance = {
   subscribe(onChange: () => void): () => void;
 };
 
+// Whether the app is hidden, as when the iPad shows another app or is
+// locked, and its changes.
+export type PageVisibility = {
+  isHidden(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
+
 export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
+export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
 export type AppProps = CareGameProps &
   PairsGameProps &
-  Pick<SortingGameProps, "sortables" | "sortingProgress"> & {
+  Pick<SortingGameProps, "sortables" | "sortingProgress"> &
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -66,6 +76,7 @@ export type AppProps = CareGameProps &
     bodyPicture: (dinosaurId: string) => string;
     random: Random;
     orientation: Orientation;
+    pageVisibility: PageVisibility;
     progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
@@ -90,6 +101,9 @@ const SORT_TILE = "triceratops";
 
 // The dinosaur on find the pair's tile.
 const PAIRS_TILE = "stegosaurus";
+
+// The dinosaur whose skeleton stands on the skeleton game's tile.
+const SKELETONS_TILE = "triceratops";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
@@ -118,7 +132,9 @@ type Screen =
   // The sorting game, which keeps its own screens.
   | { kind: "sorting" }
   // Find the pair, which keeps its own screens too.
-  | { kind: "pairs" };
+  | { kind: "pairs" }
+  // And the skeleton game.
+  | { kind: "skeletons" };
 
 export function App({
   dinosaurs,
@@ -126,6 +142,7 @@ export function App({
   bodyPicture,
   random,
   orientation,
+  pageVisibility,
   progress,
   deviceLanguage,
   languageStore,
@@ -137,6 +154,9 @@ export function App({
   sortingProgress,
   pals,
   pairsProgress,
+  skeletons,
+  skeletonPicture,
+  skeletonProgress,
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -232,6 +252,33 @@ export function App({
       pairs.open();
       setScreen({ kind: "pairs" });
     });
+  };
+
+  // The child is away from a game while the app is hidden, or while the
+  // iPad is in portrait and the orientation gate covers it.
+  const presence = useMemo<Presence>(
+    () => ({
+      isAway: () => orientation.isPortrait() || pageVisibility.isHidden(),
+      subscribe: (onChange) => {
+        const stopOrientation = orientation.subscribe(onChange);
+        const stopVisibility = pageVisibility.subscribe(onChange);
+        return () => {
+          stopOrientation();
+          stopVisibility();
+        };
+      }
+    }),
+    [orientation, pageVisibility]
+  );
+
+  const skeletonGame = useSkeletonGame(
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
+    home
+  );
+
+  const openSkeletons = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "skeletons" }));
   };
 
   // The next question shows once its pictures are ready, so none pops in,
@@ -361,6 +408,8 @@ export function App({
         return sorting.content(language);
       case "pairs":
         return pairs.content(language);
+      case "skeletons":
+        return skeletonGame.content(language);
       case "home":
         return (
           <HomePage
@@ -373,6 +422,7 @@ export function App({
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
@@ -380,6 +430,7 @@ export function App({
             onCare={openCare}
             onSort={openSorting}
             onPairs={openPairs}
+            onSkeletons={openSkeletons}
           />
         );
     }

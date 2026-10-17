@@ -901,6 +901,82 @@ body:has(.result) footer[aria-label="Version"] {
   font-weight: 700;
 }
 
+/* The skeleton game's tile, over MORE COMING, in the other tiles'
+   shape. The design's forest green is no colour of either theme,
+   so the tile takes the navy, as the skeleton screens' mark does, and the
+   bones stand out on it in both themes. */
+.skeletons-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.skeletons-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.skeletons-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeletons-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff33;
+}
+
+.skeletons-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.skeletons-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff1f;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.skeletons-tile-best svg {
+  color: #e39b2d;
+}
+
 /* The question fills the screen, and the cards take what is left of it. */
 .question {
   position: relative;
@@ -3801,6 +3877,615 @@ body:has(.result) footer[aria-label="Version"] {
   animation: stamp-in var(--motion-standard) var(--ease-overshoot) both;
 }
 
+/* The skeleton game's screens fill the screen under a bar like find the
+   pair's: HOME, the title beside a bone, MUSEUM and, while building, the
+   bones fitted. */
+.skeleton-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.skeleton-screen .stratum-1 {
+  height: 40px;
+}
+
+.skeleton-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.skeleton-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-mark {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.museum-button,
+.skeleton-bar-button {
+  padding: 0 22px 0 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.skeleton-chip {
+  flex-shrink: 0;
+  height: 44px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Every card and button keeps a touch target of at least 48 by 48 CSS
+   pixels, whatever its words. */
+.skeleton-bar .home-button,
+.skeleton-choice {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* A button in the bar keeps its words on one line, at its full width;
+   the title takes the room the buttons and chips leave. */
+.skeleton-bar .home-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* The three dinosaurs side by side, each a big card of its picture over
+   its name, rising in one after the other. */
+.skeleton-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: none;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.skeleton-choice-art {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+
+.skeleton-choice-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name is large, and its size is the card's width over the longest
+   name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-choice-name {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: min(30px, (100cqi - 8px) / 9.4);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A puzzle: the board, in the outline's frame, beside the tray of bones.
+   The outline is drawn faint; each slot is its piece's place on it. */
+.skeleton-puzzle {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-board {
+  position: relative;
+  flex: 920 1 0;
+  min-width: 0;
+  align-self: center;
+  max-height: 100%;
+  aspect-ratio: var(--frame-width) / var(--frame-height);
+  overflow: hidden;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.skeleton-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.28;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-slot {
+  position: absolute;
+  display: flex;
+}
+
+.skeleton-fitted,
+.skeleton-piece {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skeleton-piece {
+  object-fit: contain;
+}
+
+/* The tray keeps a spot for every piece, each piece large in its own,
+   rising in one after the other after the outline. */
+.skeleton-tray {
+  flex: 380 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-radius: 28px;
+  background: #e6e2d9;
+}
+
+.skeleton-tray-spot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  border-radius: 22px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  touch-action: none;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * (var(--piece) + 2)) both;
+}
+
+/* A piece is picked up at the size it fits on the board and follows the
+   pointer at once, the right way up, over everything else; its spot in
+   the tray stays where it is, empty while the piece is held. */
+.skeleton-lifted {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 24px #1d274259);
+  animation: grow-in var(--motion-small) var(--ease-out);
+}
+
+.skeleton-piece[data-held] {
+  opacity: 0;
+}
+
+/* While a piece is held, its slot shows faintly where it goes. */
+.skeleton-slot[data-target] {
+  border-radius: 20px;
+  outline: 2px solid #5c647a59;
+  outline-offset: -1px;
+}
+
+/* A piece let go floats back to its spot in the tray, and one that fits
+   slides into exact alignment with its slot, each from where it was let
+   go. With reduced motion it does not travel: it fades in where it
+   ends. */
+.skeleton-piece[data-returning],
+.skeleton-fitted[data-snapped] {
+  animation: settle-in var(--motion-standard) var(--ease-out);
+}
+
+@keyframes settle-in {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+  }
+}
+
+/* A skeleton knocked down to be built again shows whole on its outline as
+   the puzzle comes in, then its bones scatter playfully to the tray, one
+   after the other, each shrinking to its spot and spinning on its way.
+   The tray's spots are there already, so a bone in flight is never
+   hidden. With reduced motion a bone only fades in in its spot. */
+.skeleton-tray[data-scatter] .skeleton-tray-spot {
+  animation: none;
+}
+
+.skeleton-piece[data-scattering] {
+  animation: scatter var(--motion-screen) var(--ease-overshoot) calc(var(--motion-screen) + var(--piece) * var(--motion-stagger)) both;
+}
+
+@keyframes scatter {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+    scale: calc(1 + (var(--from-scale) - 1) * var(--motion-amount));
+  }
+  50% {
+    rotate: calc((var(--piece) - 1.5) * 16deg * var(--motion-amount));
+  }
+}
+
+/* Help: the slot to fill and its piece in the tray glow alike, ringed in
+   amber, so the next move needs no words. */
+.skeleton-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 24px;
+  outline: 4px solid #e39b2d;
+  outline-offset: -2px;
+  box-shadow: 0 0 24px #e39b2d80;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-tray-spot .skeleton-glow {
+  inset: 0;
+  border-radius: 22px;
+}
+
+/* A dinosaur built: its star sits on its card in the choice. */
+.skeleton-choice-art {
+  position: relative;
+}
+
+.skeleton-choice-star,
+.skeleton-star {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+}
+
+.skeleton-choice-star {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 52px;
+  height: 52px;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
+}
+
+/* The reveal: the whole skeleton on its board, then the dinosaur's body
+   fading in over it in the frame they share while the bones fade back,
+   beside the reward, the name, the fact and the ways on. A skeleton whose
+   body cannot be shown stays whole. */
+.skeleton-reveal {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-reveal-bones,
+.skeleton-reveal-body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-reveal-bones {
+  opacity: 0.25;
+  animation: fade-back calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reveal-bones[data-alone] {
+  opacity: 1;
+  animation: none;
+}
+
+.skeleton-reveal-body {
+  animation: fade-in calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes fade-back {
+  from {
+    opacity: 1;
+  }
+}
+
+/* The panel is at least as wide as its longest button needs on one line,
+   СОБРАТЬ ДРУГОЙ beside its symbol, and the name is large, its size the
+   panel's width over the longest name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-reward {
+  flex: 380 1 0;
+  min-width: 360px;
+  box-sizing: border-box;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reward-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.skeleton-star {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 6px 16px #e39b2d66;
+}
+
+/* A star newly earned pops in as the body fades in. */
+.skeleton-star[data-new] {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-screen) * 2) both;
+}
+
+.skeleton-reward .celebration {
+  height: 52px;
+  padding: 0 22px 0 16px;
+  font-size: 22px;
+}
+
+.skeleton-reveal-name {
+  margin: 0;
+  font-size: min(34px, 100cqi / 9.4);
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-fact {
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  border-radius: 20px;
+  background: #e6e2d9;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.skeleton-fact svg {
+  flex-shrink: 0;
+  color: #5c647a;
+}
+
+.skeleton-best {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.skeleton-best-beaten {
+  color: #5c647a;
+}
+
+.skeleton-best-value {
+  font-weight: 700;
+}
+
+.skeleton-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeleton-build-another,
+.skeleton-actions .home-button {
+  height: 72px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: none;
+  border-radius: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-build-another {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-actions .home-button {
+  outline-width: 2px;
+  outline-offset: -1px;
+}
+
+/* The museum: a hall of one stand for each dinosaur, rising in one after
+   the other, each its name and star over its exhibit on a plinth. A
+   skeleton not on its stand shows as its faint silhouette; one knocked
+   down to be built again keeps its star, and its exhibit and button are
+   ringed in amber, so it reads as work in progress, not as never built. */
+.skeleton-hall {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 32px 32px 0;
+  display: flex;
+  gap: 32px;
+  border-radius: 32px;
+  background: #e6e2d9;
+}
+
+.skeleton-stand {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--stand) * var(--motion-stagger)) both;
+}
+
+.skeleton-stand-top {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* A name is large, its size the stand's width, less its star's, over the
+   longest name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-stand-name {
+  margin: 0;
+  font-size: min(26px, (100cqi - 50px) / 9.4);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #5c647a;
+}
+
+.skeleton-stand-star {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--stand) + 2)) both;
+}
+
+.skeleton-exhibit {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  border-radius: 20px;
+}
+
+.skeleton-exhibit-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.skeleton-silhouette {
+  filter: brightness(0);
+  opacity: 0.22;
+}
+
+.skeleton-plinth {
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 18px 14px 24px;
+  border-radius: 20px 20px 0 0;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+/* A button's words shrink with the room the plinth and the button's sides
+   leave beside its symbol, over the longest words', in ems: СОБРАТЬ
+   ЗАНОВО's 9.8. Unspaced, unlike the other buttons' words, they stay at
+   least as large as the bar's on the narrowest iPad. */
+.skeleton-stand-button {
+  width: 100%;
+  height: 64px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  border-radius: 18px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #e6e2d9;
+  font-size: min(22px, (100cqi - 82px) / 9.8);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-stand-button svg {
+  flex-shrink: 0;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  outline: none;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+.skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline: 2px dashed #e39b2d;
+  outline-offset: -1px;
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -3879,6 +4564,7 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .quiz-card-best svg,
 [data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
 [data-theme="dark"] .best-score svg,
@@ -3889,6 +4575,11 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .quiz-card {
   background: #2c3b66;
   box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .skeletons-tile {
+  background: #2c3b66;
+  box-shadow: 0 8px 24px #00000066;
 }
 
 [data-theme="dark"] .sort-tile {
@@ -4318,6 +5009,102 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .pair-silhouette {
   filter: brightness(0) invert(1);
+}
+
+/* The skeleton game takes the dark values in the same shapes. */
+[data-theme="dark"] .skeleton-mark {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-chip,
+[data-theme="dark"] .skeleton-tray {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-choice,
+[data-theme="dark"] .skeleton-board,
+[data-theme="dark"] .skeleton-tray-spot {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-choice {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .skeleton-lifted {
+  filter: drop-shadow(0 18px 24px #00000066);
+}
+
+[data-theme="dark"] .skeleton-slot[data-target] {
+  outline-color: #9ca3b659;
+}
+
+[data-theme="dark"] .skeleton-glow {
+  outline-color: #f2b24b;
+  box-shadow: 0 0 24px #f2b24b80;
+}
+
+[data-theme="dark"] .skeleton-reward {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-fact {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-fact svg,
+[data-theme="dark"] .skeleton-best-beaten {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-choice-star,
+[data-theme="dark"] .skeleton-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-star {
+  box-shadow: 0 6px 16px #00000066;
+}
+
+[data-theme="dark"] .skeleton-build-another {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-hall,
+[data-theme="dark"] .skeleton-stand-button {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-plinth,
+[data-theme="dark"] .skeleton-stand-button {
+  outline-color: #ece8de1f;
+}
+
+[data-theme="dark"] .skeleton-plinth {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-stand-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-silhouette {
+  filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline-color: #f2b24b;
 }
 
 [data-theme="dark"] .more-coming {
