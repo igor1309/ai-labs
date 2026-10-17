@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first six slices: continuation, the rest of the record, reaping, recovery, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first seven slices: a binding continuing a session, the rest of the record, reaping, recovery, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -12,12 +12,13 @@ runtime") a step on claude-code or codex; the third ("Inputs and
 progress") the file and git sources, brief forms, and a run's progress
 on stderr; the fourth ("A step in a held worktree") admission, holds
 and staleness; the fifth ("Parallel steps and a join") a parallel of
-steps and the join after it; the sixth ("Records") a run's record.
+steps and the join after it; the sixth ("Records") a run's record; the seventh ("Continuation")
+`--continue`.
 What it leaves out, roughly in the
 order it is needed:
 
-- **Continuation**: `--continue` resuming the session of an earlier
-  one-step run's call, checked against its record (ADR-004, rule 5).
+- **A binding continuing a session**: a step inside a run continuing an
+  earlier step's session, checked by `core/admit` (ADR-001, rule 5).
 - **The rest of the record**: definitions with their digests, inputs,
   the permission plan, a pinned call's patch (ADR-001, invariant 6;
   ADR-004, rule 4); commands on runs.

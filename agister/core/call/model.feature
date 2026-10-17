@@ -1,8 +1,8 @@
 # core/call, a call on a model (docs/run-implementation.md, "A step on a
-# model runtime"; ADR-012, rules 2 and 7; ADR-001, invariant 3): the
-# inputs in the message, the reply checked against the schema. A spy
-# answers the runtime protocol, a validator spy the schema, a clock spy
-# the time and a timer spy the time limit (ADR-009, rule 1).
+# model runtime" and "Continuation"; ADR-012, rules 2 and 7; ADR-001,
+# invariant 3): the inputs in the message, the reply checked against the
+# schema. A spy answers the runtime protocol, a validator spy the schema, a
+# clock spy the time and a timer spy the time limit (ADR-009, rule 1).
 
 Feature: A call on a model takes its inputs in its message
 
@@ -74,3 +74,11 @@ Feature: A call on a model takes its inputs in its message
       | schema         | output       |
       | with a schema  | {"ok":true}  |
       | with no schema | {"text":"t"} |
+
+  Scenario: A step continuing a session resumes it, and says so
+    Given a model step whose input "q" is "more", continuing the
+      session "s1"
+    When the call is made
+    Then the turn is given the session "s1", and the message "You
+      continue your earlier work; its changes are in this worktree."
+      followed by a blank line and "## q\n\nmore"

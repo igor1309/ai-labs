@@ -615,3 +615,55 @@ Decisions, each with its reason:
   taken.
 - No command on runs yet, and the id is printed only with the result:
   a lost run is found by its folder's time.
+
+## Continuation
+
+`agister run ... --continue <run id>` continues the session of an
+earlier one-step run's call (ADR-001, rule 5; ADR-004, rule 5; ADR-007,
+rule 2): the work goes on in the same worktree, in the same session.
+A binding that continues a session inside a run is not run yet.
+
+**`cli`** takes `--continue <run id>` with either form of request; the
+request carries it.
+
+**`runstore`** gives the ids of the runs it keeps, oldest first.
+
+**`core/call`** takes a step's session to resume. A model's message
+then starts with "You continue your earlier work; its changes are in
+this worktree.", a blank line, then its sections as before.
+
+**claude-code** resumes a turn's session with `--resume <session>`.
+**codex** runs `exec resume <session>` with the arguments it runs
+`exec` with, the sandbox given as `--config sandbox_mode="<option>"`,
+since `exec resume` takes no `--sandbox`; the prompt from stdin, `-`,
+last.
+
+**The composition**, once settings resolve and before the record is
+first written, checks a continuation, each failure a refusal on stderr,
+exit 1, nothing run and nothing recorded:
+
+1. The request is one step: a step alone, or a workflow of one step.
+2. The run named is kept; it is a run of one call, and that call has a
+   session.
+3. The session's latest call: of the runs runstore keeps, the newest
+   holding a call of that session; the run named, where no later one
+   continued it.
+4. The request's agent is that call's; its launch directory is in that
+   call's root; the root's HEAD is that call's, and its content is the
+   content that call recorded, not empty.
+
+The step's call is then made with the session, and its process's
+request for a clean worktree is dropped: the checks take its place
+(ADR-004, rule 5). The record's request gains `"continue": "<run id>"`,
+and the call's entry `"continues": "<call id>"`, the latest call's.
+
+Decisions, each with its reason:
+
+- The worktree is checked before the hold is taken: the caller does not
+  change the worktree while a writer works in it (ADR-004, rule 6).
+- The agent is the earlier call's: a session belongs to its runtime,
+  and one agent is the plainest same runtime.
+- The latest call is found by reading the records newest first: there
+  are few, and no index is kept.
+- Not run yet: a binding continuing a session inside a run; the model
+  told nothing more than the line above.
