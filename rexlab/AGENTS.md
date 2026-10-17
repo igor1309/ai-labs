@@ -21,6 +21,10 @@ Architecture: `docs/mvp-infrastructure.md`.
   pictures rather than text: every button and card has a symbol or picture
   beside its words. Guidance text for parents, only where it is truly
   needed, is a small, slightly faded footnote in normal case.
+- Motion is mandatory, not decoration. Every change on screen (a new screen,
+  question, answer, reward or menu) animates smoothly with the shared motion
+  tokens, quick rather than long, and falls back to short fades when the
+  device asks for reduced motion. Treat an abrupt change as a defect.
 
 ## Specs
 

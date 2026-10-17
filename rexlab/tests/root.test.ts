@@ -3,7 +3,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps } from "../src/root.ts";
-import { mediaQueries, memoryStorage } from "./support.ts";
+import { mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const DARK = "(prefers-color-scheme: dark)";
@@ -16,7 +16,8 @@ function browser({ local = memoryStorage(), language = "en-GB", portrait = false
     sessionStorage: memoryStorage(),
     matchMedia: media.matchMedia,
     navigator: { language },
-    media
+    media,
+    ...pictureBrowser()
   };
 }
 
@@ -76,5 +77,30 @@ describe("the app in a browser", () => {
     given.media.change(DARK, true);
 
     expect(seen).toEqual([false]);
+  });
+
+  it("decodes each picture with the browser's own images", () => {
+    const given = browser();
+    const { loadPicture } = appProps(given);
+
+    loadPicture("/pictures/stegosaurus.webp", () => {});
+    loadPicture("/pictures/triceratops.webp", () => {});
+
+    expect(given.decoding).toEqual(["/pictures/stegosaurus.webp", "/pictures/triceratops.webp"]);
+  });
+
+  it("starts and stops the browser's own timers", () => {
+    const given = browser();
+    const { startTimer } = appProps(given);
+    const fired: number[] = [];
+
+    startTimer(1000, () => fired.push(1000));
+    const stop = startTimer(500, () => fired.push(500));
+    stop();
+    given.timers[0]?.fire();
+
+    expect(given.timers.map(({ ms }) => ms)).toEqual([1000, 500]);
+    expect(given.stopped).toEqual([1]);
+    expect(fired).toEqual([1000]);
   });
 });

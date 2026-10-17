@@ -1,4 +1,5 @@
 import { ArrowRight, House, RotateCcw, Star, Trophy, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 
@@ -42,6 +43,10 @@ export type ResultScreenProps = {
   onHome: () => void;
 };
 
+// Custom properties the stylesheet animates by: the score the count-up
+// ends on, and the place of a star or a piece of confetti in its stagger.
+const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
+
 export function ResultScreen({ language, score, total, best, beaten, celebration, hero, onPlayAgain, onHome }: ResultScreenProps) {
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
@@ -56,7 +61,7 @@ export function ResultScreen({ language, score, total, best, beaten, celebration
             <span
               key={index}
               className={`confetti confetti-${colour}${square ? " confetti-square" : ""}`}
-              style={{ left: `${left * 100}%`, top: `${top * 100}%`, transform: `rotate(${turn}deg)` }}
+              style={{ left: `${left * 100}%`, top: `${top * 100}%`, transform: `rotate(${turn}deg)`, ...motion({ "--piece": index }) }}
             />
           ))}
         </div>
@@ -71,13 +76,17 @@ export function ResultScreen({ language, score, total, best, beaten, celebration
           </p>
         )}
         <p className="result-score" aria-label={text.score}>
-          <span className="result-score-value">{score}</span>
+          {/* The stylesheet counts the score up over its own digits, which
+              keep its width and the score in the page's text. */}
+          <span className="result-score-value" style={motion({ "--score": score })}>
+            <span className="result-score-digits">{score}</span>
+          </span>
           <span className="result-score-total">/{total}</span>
         </p>
         {/* A child who cannot read the numbers yet counts the stars. */}
         <p className="result-stars" role="img" aria-label={text.stars(score, total)}>
           {Array.from({ length: total }, (_, index) => (
-            <span key={index} className={index < score ? "star star-won" : "star"} aria-hidden="true">
+            <span key={index} className={index < score ? "star star-won" : "star"} style={motion({ "--star": index })} aria-hidden="true">
               ★
             </span>
           ))}

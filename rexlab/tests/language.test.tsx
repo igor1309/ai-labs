@@ -12,10 +12,12 @@ import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/q
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
   PALETTE,
+  SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyProgress,
   fakeBodyPicture,
   lightDevice,
+  loadedPictures,
   manualOrientation,
   memoryStorage,
   questionView,
@@ -59,6 +61,7 @@ function openApp({
   const view = render(
     <App
       dinosaurs={SHIPPED_DINOSAURS}
+      catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(31)}
       orientation={orientation}
@@ -66,6 +69,7 @@ function openApp({
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
       {...lightDevice()}
+      {...loadedPictures()}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -358,7 +362,8 @@ async function playEveryScreen(language: Language): Promise<Seen> {
   const look = () => {
     const controls = [
       ...PARENT_CONTROLS[language].flatMap((name) => [...screen.queryAllByRole("button", { name }), ...screen.queryAllByRole("menu", { name })]),
-      ...screen.queryAllByText(BRAND)
+      ...screen.queryAllByText(BRAND),
+      ...screen.queryAllByText(TEXTS[language].sourceNote)
     ];
     const forParents = (node: Node) => controls.some((control) => control.contains(node));
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -420,6 +425,26 @@ async function playEveryScreen(language: Language): Promise<Seen> {
   await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
   look();
 
+  // The catalogue, and the page of a dinosaur of each food type, the
+  // first reached from its card, the others by the arrows, the last
+  // round from the first.
+  const catalogue = TEXTS[language].catalogue;
+  await user.click(screen.getByRole("button", { name: catalogue }));
+  look();
+  await user.click(within(screen.getByRole("group", { name: catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
+  look();
+  await user.click(screen.getByRole("button", { name: TEXTS[language].previousDinosaur }));
+  look();
+  await user.click(screen.getByRole("button", { name: catalogue }));
+  await user.click(within(screen.getByRole("group", { name: catalogue })).getAllByRole("button")[0] ?? document.body);
+  await user.click(screen.getByRole("button", { name: TEXTS[language].previousDinosaur }));
+  look();
+  await user.click(screen.getByRole("button", { name: TEXTS[language].nextDinosaur }));
+  look();
+  await user.click(screen.getByRole("button", { name: catalogue }));
+  await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
+  look();
+
   return seen;
 }
 
@@ -454,20 +479,20 @@ describe("text for children", () => {
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect(new Set(parentLabels)).toEqual(new Set(PARENT_CONTROLS[language]));
     const words = parentTexts.filter((text) => !CODES.has(text));
-    expect(new Set(words)).toEqual(new Set([BRAND, ...OWN_NAMES, ...Object.values(TEXTS[language].themes)]));
+    expect(new Set(words)).toEqual(new Set([BRAND, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), TEXTS[language].sourceNote]));
     expect(words.filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, stars, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, sourceNote, stars, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), stars(7, 10)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect(Object.values(themes).filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });

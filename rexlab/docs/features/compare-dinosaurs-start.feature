@@ -9,10 +9,10 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     When I open the home page
     Then I see a "COMPARE" quiz card with a picture of two dinosaurs
 
-  Scenario: Games still to come are shown locked
+  Scenario: A game still to come is shown locked
     When I open the home page
-    Then I see two locked game tiles beside the "COMPARE" card, each with a dinosaur and a 🔒 symbol
-    And tapping a locked tile does nothing
+    Then I see a locked game tile beside the "COMPARE" card, with a dinosaur and a 🔒 symbol
+    And tapping the locked tile does nothing
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page
@@ -29,6 +29,19 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     When I tap the "COMPARE" card
     Then a new round of 10 questions starts
     And I see the progress "1/10"
+
+  Scenario: The first question waits for its pictures
+    Given I am on the home page
+    And the pictures of question 1 are still loading
+    When I tap the "COMPARE" card
+    Then the home page stays on screen
+    And when the pictures have loaded, or after a second at most, I see the progress "1/10"
+
+  Scenario: A quick double tap on the card starts one round
+    Given I am on the home page
+    And the pictures of question 1 are still loading
+    When I tap the "COMPARE" card twice quickly
+    Then one round starts, at "1/10"
 
   Scenario: Portrait asks to turn the iPad
     Given I am on question 3 of a round

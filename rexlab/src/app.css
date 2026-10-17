@@ -29,6 +29,213 @@
   color-scheme: light;
 }
 
+/* The motion tokens every screen moves by: arrivals ease out, and only
+   rewards overshoot. Each distance and growth is scaled by
+   --motion-amount, which reduced motion sets to 0, so that there all
+   motion is a short fade. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-small: 160ms;
+  --motion-standard: 240ms;
+  --motion-screen: 320ms;
+  --motion-count: 600ms;
+  --motion-stagger: 40ms;
+  --motion-amount: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(16px * var(--motion-amount));
+  }
+}
+
+@keyframes grow-in {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.08 * var(--motion-amount));
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.7 * var(--motion-amount));
+  }
+}
+
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    scale: calc(1 + 0.6 * var(--motion-amount));
+  }
+}
+
+@keyframes squish {
+  40% {
+    scale: calc(1 - 0.05 * var(--motion-amount));
+  }
+}
+
+@keyframes drift-down {
+  from {
+    opacity: 0;
+    translate: 0 calc(-48px * var(--motion-amount));
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    translate: calc(96px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes slide-out {
+  to {
+    opacity: 0;
+    translate: calc(-96px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in-back {
+  from {
+    opacity: 0;
+    translate: calc(-96px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes slide-out-back {
+  to {
+    opacity: 0;
+    translate: calc(96px * var(--motion-amount)) 0;
+  }
+}
+
+/* A screen cross-fades into the next with a slight lift; the rest of the
+   page, such as the question's words when the next one comes, fades. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-standard);
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(.screen) {
+  animation: fade-out var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-new(.screen) {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-old(.card-out),
+::view-transition-old(.card-out-late) {
+  animation: slide-out var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-new(.card-in),
+::view-transition-new(.card-in-late) {
+  animation: slide-in var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-old(.card-out-late),
+::view-transition-new(.card-in-late) {
+  animation-delay: var(--motion-stagger);
+}
+
+/* As a dinosaur's page opens from its card, or closes back to it, the
+   rest of the screen only fades while the picture moves. */
+::view-transition-old(.screen-fade) {
+  animation: fade-out var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-new(.screen-fade) {
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+/* The card's picture grows into the page's, and back. The two pictures
+   are boxes of different shapes, so each is fitted whole inside the box
+   as it changes. */
+::view-transition-group(.dinosaur-share) {
+  animation-duration: var(--motion-screen);
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(.dinosaur-share),
+::view-transition-new(.dinosaur-share) {
+  height: 100%;
+  object-fit: contain;
+  animation-duration: var(--motion-screen);
+  animation-timing-function: var(--ease-out);
+}
+
+/* The next dinosaur slides in from the right, the previous one from the
+   left, its words a little after its picture. */
+::view-transition-old(.dinosaur-out),
+::view-transition-old(.dinosaur-out-late) {
+  animation: slide-out var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-new(.dinosaur-in),
+::view-transition-new(.dinosaur-in-late) {
+  animation: slide-in var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-old(.dinosaur-out-back),
+::view-transition-old(.dinosaur-out-back-late) {
+  animation: slide-out-back var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-new(.dinosaur-in-back),
+::view-transition-new(.dinosaur-in-back-late) {
+  animation: slide-in-back var(--motion-standard) var(--ease-out) both;
+}
+
+::view-transition-old(.dinosaur-out-late),
+::view-transition-new(.dinosaur-in-late),
+::view-transition-old(.dinosaur-out-back-late),
+::view-transition-new(.dinosaur-in-back-late) {
+  animation-delay: var(--motion-stagger);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -50,10 +257,12 @@ img {
   user-select: none;
 }
 
+/* A card is pressed in quickly, under the finger, and eases back. */
 .card {
   transition:
-    filter 120ms ease-out,
-    transform 80ms ease-out;
+    filter var(--motion-small) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out),
+    transform var(--motion-small) var(--ease-out);
 }
 
 .card[data-hovered] {
@@ -63,6 +272,7 @@ img {
 .card[data-pressed] {
   filter: brightness(0.9);
   transform: scale(0.97);
+  transition-duration: calc(var(--motion-small) / 2);
 }
 
 /* Bands of rock along the bottom of a screen, behind everything on it. */
@@ -178,6 +388,8 @@ img {
   outline-offset: -0.5px;
   background: #fffdf8;
   box-shadow: 0 16px 40px #1d274224;
+  transform-origin: top right;
+  animation: grow-in var(--motion-small) var(--ease-out) both;
 }
 
 .parent-menu-choice {
@@ -346,7 +558,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #e39b2d;
 }
 
-.locked-games {
+.side-games {
   flex: 540 1 0;
   min-width: 0;
   display: flex;
@@ -389,6 +601,73 @@ body:has(.result) footer[aria-label="Version"] {
   height: 48px;
   border-radius: 14px;
   background: #e6e2d9;
+}
+
+/* The catalogue's tile is terracotta, in the place of a locked game. White
+   words keep text contrast on terracotta only under the shade the quiz
+   card's footer also has. */
+.catalogue-tile {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #c9583d;
+  color: #ffffff;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.catalogue-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 24px 12px;
+  object-fit: contain;
+}
+
+.catalogue-tile-row {
+  padding: 14px 24px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #00000026;
+}
+
+.catalogue-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #ffffff33;
+}
+
+.catalogue-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.catalogue-tile-count {
+  flex-shrink: 0;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #00000026;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 /* The question fills the screen, and the cards take what is left of it. */
@@ -443,6 +722,9 @@ body:has(.result) footer[aria-label="Version"] {
   height: 6px;
   border-radius: 3px;
   background: #e6e2d9;
+  transition:
+    height var(--motion-standard) var(--ease-out),
+    background-color var(--motion-standard) var(--ease-out);
 }
 
 .step[data-step="done"] {
@@ -521,6 +803,11 @@ body:has(.result) footer[aria-label="Version"] {
   opacity: 0.7;
 }
 
+/* The tapped card gives under the finger and springs back. */
+.dinosaur-card[data-chosen] {
+  animation: squish var(--motion-standard) var(--ease-out);
+}
+
 .dinosaur-art {
   position: relative;
   flex: 1 1 0;
@@ -561,10 +848,12 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ffffff;
   font-size: 18px;
   font-weight: 700;
+  animation: stamp-in var(--motion-standard) var(--ease-out) both;
 }
 
 .dinosaur-card[data-mark="correct"] .mark {
   background: #2e7d4f;
+  animation-timing-function: var(--ease-overshoot);
 }
 
 .dinosaur-card[data-mark="wrong"] .mark {
@@ -599,6 +888,12 @@ body:has(.result) footer[aria-label="Version"] {
   font-size: 22px;
   font-weight: 700;
   white-space: nowrap;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+/* The values rise in one after the other. */
+.dinosaur-cards > :last-child .dinosaur-value-chip {
+  animation-delay: calc(var(--motion-stagger) * 2);
 }
 
 .dinosaur-value-chip svg {
@@ -645,6 +940,397 @@ body:has(.result) footer[aria-label="Version"] {
   color: #f6f2e9;
   font-size: 26px;
   font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
+}
+
+/* The catalogue: its bar stays at the top while the cards, four to a row,
+   scroll under it. */
+.catalogue {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.catalogue-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.catalogue-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.catalogue-mark {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.catalogue-count {
+  margin: 0;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.catalogue-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding-bottom: 48px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Rows keep their cards' full height; the grid scrolls instead. */
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 20px;
+}
+
+.catalogue-card {
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 24px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  text-align: left;
+  container-type: inline-size;
+}
+
+/* Opening from home, the first row of cards fades and rises in one after
+   the other, and the rows below with the last of it. */
+.catalogue-grid[data-rise] .catalogue-card {
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+  animation-delay: calc(var(--card) * var(--motion-stagger) * 0.75);
+}
+
+.catalogue-art {
+  flex-shrink: 0;
+  aspect-ratio: 317 / 200;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  background: #e6e2d9;
+}
+
+.catalogue-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.catalogue-footer {
+  padding: 14px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The longest names still fit a card on a smaller iPad. */
+.catalogue-name {
+  font-size: min(20px, 7cqi);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.catalogue-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.catalogue-chip {
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: #e6e2d9;
+  color: #1d2742;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A food type's tag: meat in terracotta, plants in green and both in
+   amber, each with its symbols. White words on terracotta take the shade
+   the catalogue's tile has, to keep text contrast. */
+.diet-tag {
+  display: flex;
+  width: fit-content;
+  overflow: hidden;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.diet-tag-face {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.diet-tag[data-diet="meat"] .diet-tag-face {
+  background: #00000026;
+}
+
+.diet-tag[data-diet="meat"] {
+  background: #c9583d;
+}
+
+.diet-tag[data-diet="plants"] {
+  background: #2e7d4f;
+}
+
+.diet-tag[data-diet="both"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.diet-tag-symbols {
+  display: flex;
+  align-items: center;
+}
+
+.diet-tag[data-size="small"] {
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.diet-tag[data-size="small"] .diet-tag-face {
+  height: 32px;
+  padding: 0 10px 0 8px;
+  gap: 5px;
+}
+
+.diet-tag[data-size="small"] .diet-tag-symbols {
+  gap: 2px;
+}
+
+.diet-tag[data-size="medium"] {
+  border-radius: 28px;
+  font-size: 24px;
+}
+
+.diet-tag[data-size="medium"] .diet-tag-face {
+  height: 56px;
+  padding: 0 22px 0 8px;
+  gap: 10px;
+}
+
+.diet-tag[data-size="medium"] .diet-tag-symbols {
+  min-width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 9px;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 20px;
+  background: #ffffff33;
+}
+
+/* A dinosaur's page: its picture on the navy stage, with the arrows to
+   the previous and next, and its words beside it. */
+.dinosaur-page {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.dinosaur-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dinosaur-position {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #5c647a;
+}
+
+.dinosaur-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 40px;
+}
+
+.dinosaur-stage {
+  position: relative;
+  isolation: isolate;
+  flex: 760 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #1f2b4d;
+}
+
+.dinosaur-glow {
+  position: absolute;
+  z-index: -1;
+  top: 6%;
+  left: 17%;
+  width: 66%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #a9bcd6;
+  opacity: 0.12;
+}
+
+.dinosaur-stage-art {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+
+.dinosaur-stage-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.dinosaur-steps {
+  display: flex;
+  justify-content: space-between;
+}
+
+.dinosaur-step {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: none;
+  border-radius: 36px;
+  outline: 1px solid #ffffff40;
+  outline-offset: -0.5px;
+  background: #ffffff1a;
+  color: #f6f2e9;
+}
+
+.dinosaur-info {
+  flex: 528 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  container-type: inline-size;
+}
+
+.dinosaur-about {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* A name is large, and the longest still fits on one line. */
+.dinosaur-page-name {
+  margin: 0;
+  font-size: min(46px, 8cqi);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dinosaur-description {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 41px;
+}
+
+.dinosaur-facts {
+  display: flex;
+  gap: 16px;
+}
+
+.dinosaur-fact {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 22px;
+  container-type: inline-size;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.dinosaur-fact-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #5c647a;
+}
+
+/* The longest values, like 440 KG, still fit their box. */
+.dinosaur-fact-value {
+  font-size: min(44px, 26cqi);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* For parents: small, in the soft ink, which keeps it readable where the
+   design's further fading would not. */
+.source-note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #5c647a;
 }
 
 .turn-sideways {
@@ -721,6 +1407,8 @@ body:has(.result) footer[aria-label="Version"] {
   height: 10px;
   border-radius: 3px;
   transform-origin: top left;
+  animation: drift-down var(--motion-screen) var(--ease-out) both;
+  animation-delay: calc(var(--piece) * var(--motion-stagger) / 2);
 }
 
 .confetti-square {
@@ -772,27 +1460,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #1d2742;
   font-size: 26px;
   font-weight: 700;
-  animation: celebrate 600ms ease-out both;
-}
-
-@keyframes celebrate {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .celebration {
-    animation: none;
-  }
+  animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
 }
 
 .result-score {
@@ -803,9 +1471,37 @@ body:has(.result) footer[aria-label="Version"] {
   line-height: 1;
 }
 
+/* The score counts up from 0, drawn over its own digits. */
+@property --count {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes count-up {
+  from {
+    --count: 0;
+  }
+}
+
 .result-score-value {
+  --count: var(--score);
+  display: inline-grid;
+  justify-items: end;
+  counter-reset: score var(--count);
   font-size: min(220px, 24vh);
   font-weight: 700;
+  animation: count-up var(--motion-count) var(--ease-out) both;
+}
+
+.result-score-value::before {
+  content: counter(score);
+  grid-area: 1 / 1;
+}
+
+.result-score-digits {
+  grid-area: 1 / 1;
+  visibility: hidden;
 }
 
 .result-score-total {
@@ -826,8 +1522,11 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ffffff33;
 }
 
+/* The stars won pop in one by one. */
 .star-won {
   color: #e39b2d;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+  animation-delay: calc(var(--star) * var(--motion-stagger) * 1.5);
 }
 
 .result-title {
@@ -930,6 +1629,9 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .locked-row,
 [data-theme="dark"] .progress,
+[data-theme="dark"] .dinosaur-position,
+[data-theme="dark"] .dinosaur-fact-label,
+[data-theme="dark"] .source-note,
 [data-theme="dark"] .dinosaur-value-chip svg,
 [data-theme="dark"] footer[aria-label="Version"] {
   color: #9ca3b6;
@@ -949,6 +1651,8 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .locked-symbol,
+[data-theme="dark"] .catalogue-count,
+[data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
 [data-theme="dark"] .dinosaur-art,
 [data-theme="dark"] .dinosaur-value-chip {
@@ -961,7 +1665,8 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .prompt-symbol,
 [data-theme="dark"] .confetti-amber,
 [data-theme="dark"] .celebration,
-[data-theme="dark"] .play-again-button {
+[data-theme="dark"] .play-again-button,
+[data-theme="dark"] .diet-tag[data-diet="both"] {
   background: #f2b24b;
 }
 
@@ -991,14 +1696,51 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .step[data-step="done"],
 [data-theme="dark"] .next-button,
+[data-theme="dark"] .dinosaur-stage,
 [data-theme="dark"] .dinosaur-card[data-mark="correct"] .dinosaur-value-chip,
 [data-theme="dark"] .result {
   background: #2c3b66;
 }
 
-[data-theme="dark"] .dinosaur-card {
+[data-theme="dark"] .dinosaur-card,
+[data-theme="dark"] .catalogue-card,
+[data-theme="dark"] .dinosaur-fact {
   outline-color: #ece8de1f;
   background: #181e2e;
+}
+
+[data-theme="dark"] .catalogue-chip {
+  background: #222a3d;
+  color: #ece8de;
+}
+
+/* White words would fade on the dark theme's lighter terracotta and
+   green, so the tiles and tags there take the dark page's ink, as the
+   marks do. */
+[data-theme="dark"] .catalogue-tile,
+[data-theme="dark"] .catalogue-mark,
+[data-theme="dark"] .diet-tag {
+  color: #0f1320;
+}
+
+[data-theme="dark"] .catalogue-tile,
+[data-theme="dark"] .catalogue-mark,
+[data-theme="dark"] .diet-tag[data-diet="meat"] {
+  background: #e57a5d;
+}
+
+[data-theme="dark"] .catalogue-tile {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .diet-tag[data-diet="plants"] {
+  background: #63c98c;
+}
+
+/* The dark page's ink needs no shade under it. */
+[data-theme="dark"] .catalogue-tile-row,
+[data-theme="dark"] .diet-tag[data-diet="meat"] .diet-tag-face {
+  background: none;
 }
 
 [data-theme="dark"] .dinosaur-card[data-mark="correct"][data-chosen] {
@@ -1030,6 +1772,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .glow-mid,
 [data-theme="dark"] .glow-inner,
+[data-theme="dark"] .dinosaur-glow,
 [data-theme="dark"] .confetti-sky {
   background: #34466e;
 }

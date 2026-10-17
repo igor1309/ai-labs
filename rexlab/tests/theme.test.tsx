@@ -11,10 +11,12 @@ import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
   OVERLAYS,
   PALETTE,
+  SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   contrast,
   emptyProgress,
   fakeBodyPicture,
+  loadedPictures,
   manualAppearance,
   manualOrientation,
   memoryStorage,
@@ -68,6 +70,7 @@ function openApp({
   const view = render(
     <App
       dinosaurs={SHIPPED_DINOSAURS}
+      catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(41)}
       orientation={orientation}
@@ -76,6 +79,7 @@ function openApp({
       languageStore={localLanguage(() => languages)}
       appearance={device}
       themeStore={localTheme(() => storage)}
+      {...loadedPictures()}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -120,7 +124,8 @@ function expectScreenIn(theme: Theme) {
 // Checks every screen in every state: the home page with each menu closed
 // and open, the portrait gate, a whole round, each question before and
 // after its answer, the first one wrong so both marks show, the result with
-// its celebration, and the home page again.
+// its celebration, the home page again, the catalogue with a card of each
+// food type, and a page of each.
 async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: ManualOrientation) {
   expectScreenIn(theme);
   for (const menu of ["Theme", "Language"]) {
@@ -145,6 +150,15 @@ async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: M
 
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expectScreenIn(theme);
+
+  await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  expectScreenIn(theme);
+  for (const name of ["Tyrannosaurus", "Triceratops", "Gallimimus"]) {
+    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name }));
+    expectScreenIn(theme);
+    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  }
+  await user.click(screen.getByRole("button", { name: "HOME" }));
 }
 
 describe("the System theme", () => {
