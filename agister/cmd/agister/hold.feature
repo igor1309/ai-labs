@@ -20,7 +20,7 @@ Feature: The composition holds a worktree for each call
   Scenario: The lock file is the archive's
     When a hold is taken of "/r"
     Then it is the file named by the SHA-256 of "/r", links resolved,
-      with ".lock", under home's "locks"
+      with ".lock", under home's "locks/in-place"
 
   Scenario: A hold released can be taken again
     Given the worktree "/r" held alone, then released

@@ -17,6 +17,8 @@ Feature: A turn is watched for staleness
       | tool_command 15m      | "Bash" with "go test", then nothing for 15m                | the tool command "Bash" ran over 15m  |
       | tool_command 15m      | "Bash", then a line within 15m, then nothing               | nothing                               |
       | no_event 21m          | a line, then nothing for 21m                               | no event for 21m                      |
+      | repeated_tool_calls 3 | "Bash" with "ls", a line, three times                      | the tool call "Bash" repeated 3 times |
+      | repeated_tool_calls 3 | "Write" thrice, inputs alike in their first 300 bytes only | nothing                               |
       | none                  | nothing for 1h                                             | nothing                               |
 
   Scenario: Each report restarts the quiet limits

@@ -433,26 +433,32 @@ released when the call ends, however it ends. The worktree's facts and
 the hold are ports, the composition answers them.
 
 **`core/watch`** observes a turn (ADR-006, rule 1), best effort, over
-what its wrapper reports: each tool call, as before, and every other
-line it reads, which the progress lines skip. It reports the turn stale
-when the same tool call, its name and what it was given, comes the
-process's `repeated_tool_calls` times in a row; when nothing follows a
-tool call for its `tool_command`; or when nothing comes at all for its
-`no_event`. A limit not set is not watched. Its time is a clock and a
-timer (ADR-009, rule 5).
+what its wrapper reports. The runtime protocol's report grows: besides
+each tool call, whole, as before, a model's wrapper reports every other
+line it reads, which the progress lines skip; a tool call's text is cut
+only where it is printed. The watch reports the turn stale when the
+same tool call, its name and all it was given, comes the process's
+`repeated_tool_calls` times in a row, the other lines between them not
+counted; when nothing follows a tool call for its `tool_command`; or
+when nothing comes at all, from the turn's start, for its `no_event`. A
+limit not set is not watched. Its time is a clock and a timer (ADR-009,
+rule 5).
 
-**`core/call`** ends a stale turn, its program's group with it (ADR-006,
-rule 2); the turn's work stays in the worktree. A repeated tool call
-ends the call failed, `budget_exhausted`, a class core adds; a quiet
+**`core/call`** declares its staleness port (ADR-001): given a turn's
+limits and its reports, it tells when the turn went stale and what went
+stale; the composition answers it with `core/watch`. Core/call ends a
+stale turn, its program's group with it (ADR-006, rule 2); the turn's
+work stays in the worktree. A repeated tool call ends the call failed,
+`budget_exhausted`, which joins core's closed set of classes; a quiet
 turn or a hung tool command ends it interrupted, `timeout`. Its reason
 says what went stale.
 
 **The composition** chains `inputs`, `admit` and `call` for each step
-(ADR-001). The hold is a lock file under home's `locks`, named by the
+(ADR-001). The hold is a lock file under home's `locks/in-place`, named by the
 SHA-256 of the worktree root's path, links resolved, taken with `flock`
 without waiting, shared or alone: the archive's, so the two Agisters
 exclude each other on a worktree. A hold ends with the process that
-took it, so a dead owner leaves none. It no longer refuses a
+took it. It no longer refuses a
 workspace's revision, clean or read-write access, or a staleness limit
 on a model; on bash, which reports nothing to watch, a staleness limit
 is still refused.
@@ -465,5 +471,13 @@ Decisions, each with its reason:
   caller reruns; resuming waits with sessions.
 - Staleness is best effort: what a wrapper does not report is not
   watched, and a limit is kept to within a timer's tick.
+- A dead owner's hold ends with it, though its programs may run on
+  (ADR-001, "Reaping", asks them ended first): `flock` frees the hold
+  when Agister dies, and Agister ends its programs on every signal it
+  can catch. Only a kill it cannot catch leaves them; reaping is next
+  (`backlog/run-path.md`).
+- A tool command is timed from its call to the next line, not to its
+  own result: best effort, as the wrappers report no tool's end; one
+  command at a time is how both runtimes work in practice.
 - Untracked files make a worktree not clean, as the archive held: an
   untracked file is content HEAD does not have.

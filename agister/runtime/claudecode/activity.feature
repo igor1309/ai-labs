@@ -19,3 +19,10 @@ Feature: The claude-code wrapper reports each tool call as it reads it
       then a result
     When claude-code runs a turn
     Then it reports nothing
+
+  Scenario: Every other line is reported as a line, a tool call whole
+    Given the supervisor's lines: a system event, a tool_use "Write"
+      given 500 bytes of JSON, a user event, then a result
+    When claude-code runs a turn
+    Then it reports a line, the tool call "Write" with all 500 bytes, a
+      line, and a line

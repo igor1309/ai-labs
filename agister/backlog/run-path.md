@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first three slices: records, holds, staleness, the rest of the model runtimes, the other operators, sources and continuation"
+description: "Backlog: the run path after its first four slices: records, reaping, recovery, the rest of the model runtimes, the other operators, sources and continuation"
 ---
 
 # The run path
@@ -24,6 +24,8 @@ order it is needed:
   turn on pi; a resumed session, a continuation and recovery; skills
   given to a turn; codex's cost through `ccusage`; the version warning
   (ADR-003, rule 8), from the version the turn reports; a cost limit.
+- **Staleness on bash**: the no-event limit on every runtime (ADR-012,
+  rule 6), bash's lines reported as the models' are.
 - **Recovery**: a recovery turn resuming a stale call's session
   (ADR-006, rule 3); the worktree's changes recorded at a call's end
   (ADR-004, rule 4), with the record.
