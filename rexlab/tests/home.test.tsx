@@ -36,6 +36,12 @@ const record = (bestScore: number | null) =>
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
+const moreComing = () => {
+  const card = document.querySelector<HTMLElement>(".more-coming");
+  if (!card) throw new Error("No MORE COMING card on the page");
+  return card;
+};
+
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -52,24 +58,85 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("shows the catalogue's tile and, under it, the CARE tile beside the quiz card, and no game locked", () => {
+  it("lays the games out in three columns, 5 : 3 : 2 of the width: COMPARE, ALL DINOSAURS over CARE, then MORE COMING as tall as them", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
     expect(games?.classList.contains("games")).toBe(true);
     const catalogue = screen.getByRole("button", { name: "ALL DINOSAURS" });
     const care = screen.getByRole("button", { name: "CARE" });
-    expect(games?.contains(catalogue)).toBe(true);
-    expect([...(catalogue.parentElement?.children ?? [])]).toEqual([catalogue, care]);
-    expect(document.querySelector(".locked-tile")).toBeNull();
-    expect(symbolsOf(document.body)).not.toContain("lock");
+    const tiles = catalogue.parentElement;
+    expect([...(tiles?.children ?? [])]).toEqual([catalogue, care]);
+    expect([...(games?.children ?? [])]).toEqual([card, tiles, moreComing()]);
+    expect(
+      [card, tiles, moreComing()].map((column) => {
+        const style = getComputedStyle(column ?? card);
+        return [style.flexGrow, style.flexBasis, style.alignSelf];
+      })
+    ).toEqual([
+      ["5", "0px", "auto"],
+      ["3", "0px", "auto"],
+      ["2", "0px", "auto"]
+    ]);
+    expect(getComputedStyle(games ?? card).alignItems).toBe("normal");
   });
 
-  it("shows the best score on the quiz card beside a trophy", () => {
+  it("keeps the titles of the quiz card and the tiles on one line, the tiles' sized by their own width", () => {
+    openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })));
+
+    const words = document.querySelectorAll(".quiz-card-title, .catalogue-tile-title, .care-tile-title");
+    expect([...words].map((title) => [title.textContent, getComputedStyle(title).whiteSpace])).toEqual([
+      ["COMPARE", "nowrap"],
+      ["ALL DINOSAURS", "nowrap"],
+      ["CARE", "nowrap"]
+    ]);
+    expect([".catalogue-tile", ".care-tile"].map((tile) => getComputedStyle(document.querySelector(tile) ?? document.body).getPropertyValue("container-type"))).toEqual([
+      "inline-size",
+      "inline-size"
+    ]);
+  });
+
+  it("shows MORE COMING beside the tiles as a picture, not a button: a faded Triceratops over a lock", () => {
+    openHomePage();
+
+    const card = moreComing();
+    expect(card.textContent).toBe("MORE COMING");
+    expect(symbolsOf(card)).toEqual(["lock"]);
+    const picture = card.querySelector("img");
+    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(Number(getComputedStyle(picture ?? card).opacity)).toBeLessThan(1);
+    expect(card.closest("button")).toBeNull();
+    expect(within(card).queryAllByRole("button")).toEqual([]);
+    expect([card, ...card.querySelectorAll("*")].filter((element) => element instanceof HTMLElement && element.tabIndex >= 0)).toEqual([]);
+  });
+
+  it("does nothing on a tap or a press of MORE COMING, and it neither brightens nor presses in", async () => {
+    const { user } = openHomePage();
+    const card = moreComing();
+    const before = document.body.innerHTML;
+
+    await user.hover(card);
+    expect(brightness(card)).toBe(1);
+    await user.pointer({ keys: "[TouchA>]", target: card });
+    expect([brightness(card), getComputedStyle(card).transform]).toEqual([1, "none"]);
+    await user.pointer({ keys: "[/TouchA]", target: card });
+    await user.click(card);
+    await user.unhover(card);
+
+    expect(document.body.innerHTML).toBe(before);
+    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
+  });
+
+  it("shows the best score in the quiz card's corner, over the face-off, beside a trophy", () => {
     const { card } = openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })));
 
     const best = card.querySelector(".quiz-card-best");
     expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "7"]);
+    expect(best?.parentElement).toBe(card);
+    expect(card.querySelector(".quiz-card-footer")?.contains(best)).toBe(false);
+    const [cardStyle, style] = [getComputedStyle(card), getComputedStyle(best ?? card)];
+    expect([cardStyle.position, style.position]).toEqual(["relative", "absolute"]);
+    expect([style.top, style.right]).toEqual(["24px", "24px"]);
   });
 
   it.each([

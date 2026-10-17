@@ -79,6 +79,9 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on dinosaur care's tile.
 const CARE_TILE = "parasaurolophus";
 
+// The dinosaur on the home page's card of the games still to come.
+const MORE_COMING = "triceratops";
+
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
 
@@ -301,6 +304,7 @@ export function App({
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
+            moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}

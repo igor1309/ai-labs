@@ -4,6 +4,7 @@ export const ru: Texts = {
   greeting: "ВЫБЕРИ ИГРУ",
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
+  moreComing: "СКОРО ЕЩЁ",
   languageMenu: "Язык",
   themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },

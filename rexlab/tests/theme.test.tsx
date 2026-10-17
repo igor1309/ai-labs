@@ -398,3 +398,24 @@ describe("marks", () => {
     }
   });
 });
+
+describe("the MORE COMING card", () => {
+  it.each(["light", "dark"] as const)("is on the %s theme's paper, its lock and words in the soft ink at text contrast", (theme) => {
+    openApp({ device: manualAppearance(theme) });
+
+    expectScreenIn(theme);
+    const card = document.querySelector(".more-coming") ?? document.body;
+    const symbol = card.querySelector(".more-coming-symbol") ?? card;
+    const title = card.querySelector(".more-coming-title") ?? card;
+    const colours = PALETTE[theme];
+    const parts = {
+      card: [getComputedStyle(card).backgroundColor, colours.surface],
+      symbol: [getComputedStyle(symbol).backgroundColor, colours["surface-2"]],
+      lock: [getComputedStyle(symbol).color, colours["ink-soft"]],
+      words: [getComputedStyle(title).color, colours["ink-soft"]]
+    };
+    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
+    expect(title.textContent).toBe("MORE COMING");
+    expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+  });
+});

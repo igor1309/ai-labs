@@ -1,4 +1,4 @@
-import { BookOpen, Footprints, Globe, Heart, Monitor, Moon, Scale, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { BookOpen, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -26,6 +26,8 @@ export type HomePageProps = {
   // Dinosaur care's tile: the picture on it and its best score,
   // undefined while there is none to show.
   care: { picture: string; best: number | undefined };
+  // The dinosaur pictured on the card of the games still to come.
+  moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
@@ -33,7 +35,7 @@ export type HomePageProps = {
 
 type Menu = "language" | "theme";
 
-export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, onCompareDinosaurs, onCatalogue, onCare }: HomePageProps) {
+export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, moreComing, onCompareDinosaurs, onCatalogue, onCare }: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
   const cataloguePointer = usePointerState();
@@ -110,24 +112,26 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
               <Scale size={30} />
             </span>
             <span className="quiz-card-title">{text.quizCard}</span>
-            {best !== undefined && (
-              <span className="quiz-card-best">
-                <Trophy size={22} />
-                {best}
-              </span>
-            )}
           </span>
+          {/* The best score sits in the card's corner, over the face-off:
+              beside the title it would not fit the card's column. */}
+          {best !== undefined && (
+            <span className="quiz-card-best">
+              <Trophy size={22} />
+              {best}
+            </span>
+          )}
         </button>
         <div className="side-games">
           <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
             <span className="catalogue-tile-row">
               <span className="catalogue-tile-symbol" aria-hidden="true">
-                <BookOpen size={24} />
+                <BookOpen size={20} />
               </span>
               <span className="catalogue-tile-title">{text.catalogue}</span>
               <span className="catalogue-tile-count">
-                <Footprints size={18} aria-hidden="true" />
+                <Footprints size={14} aria-hidden="true" />
                 {catalogue.count}
               </span>
             </span>
@@ -136,17 +140,28 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             <img className="care-tile-picture" src={care.picture} alt="" draggable={false} />
             <span className="care-tile-row">
               <span className="care-tile-symbol" aria-hidden="true">
-                <Heart size={24} />
+                <Heart size={20} />
               </span>
               <span className="care-tile-title">{text.care}</span>
               {care.best !== undefined && (
                 <span className="care-tile-best">
-                  <Trophy size={18} aria-hidden="true" />
+                  <Trophy size={14} aria-hidden="true" />
                   {care.best}
                 </span>
               )}
             </span>
           </button>
+        </div>
+        {/* The games still to come are a picture, not a button: a tap on
+            it does nothing, and nothing on it invites one. */}
+        <div className="more-coming">
+          <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
+          <span className="more-coming-label">
+            <span className="more-coming-symbol" aria-hidden="true">
+              <Lock size={24} />
+            </span>
+            <span className="more-coming-title">{text.moreComing}</span>
+          </span>
         </div>
       </div>
     </main>

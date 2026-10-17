@@ -4,6 +4,7 @@ export const en: Texts = {
   greeting: "PICK A GAME",
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
+  moreComing: "MORE COMING",
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },

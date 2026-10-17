@@ -201,3 +201,17 @@ describe("care's motion", () => {
     expect(declarationsOf(need?.body ?? "")).toEqual([{ property: "transition-property", value: "background-color" }]);
   });
 });
+
+describe("the home page's motion", () => {
+  it("keeps the MORE COMING card still, with motion or without: nothing on it animates, brightens or moves", () => {
+    const rules = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.includes("more-coming"));
+    const moving = rules.flatMap(({ prelude, body }) =>
+      declarationsOf(body)
+        .filter(({ property }) => /^(animation|transition)(-|$)|^(filter|transform|translate|scale)$/.test(property))
+        .map(({ property }) => `${prelude} ${property}`)
+    );
+
+    expect(rules.length).toBeGreaterThan(0);
+    expect(moving).toEqual([]);
+  });
+});

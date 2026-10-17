@@ -10,6 +10,8 @@ export type Texts = {
   greeting: string;
   quizCard: string;
   quizCardPicture: string;
+  // The home page's card of the games still to come.
+  moreComing: string;
   // The language menu is for parents, so its label is in normal case.
   languageMenu: string;
   // So is the theme menu, with its label and its choices.

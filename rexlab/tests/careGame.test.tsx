@@ -31,15 +31,14 @@ const reaction = () => stage()?.getAttribute("data-reaction") ?? undefined;
 const visitorName = () => document.querySelector(".visitor-name");
 
 describe("the CARE tile", () => {
-  it("is the last tile beside the COMPARE card, under ALL DINOSAURS, with a heart and a dinosaur", () => {
+  it("is beside the COMPARE card, under ALL DINOSAURS, with a heart and a dinosaur", () => {
     openCareApp();
 
     const tile = button("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
     expect(button("ALL DINOSAURS").nextElementSibling).toBe(tile);
-    expect(tile.nextElementSibling).toBeNull();
-    expect(tile.closest(".games")?.contains(button("COMPARE"))).toBe(true);
+    expect(tile.parentElement?.previousElementSibling).toBe(button("COMPARE"));
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
