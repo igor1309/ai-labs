@@ -92,7 +92,8 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 		return nil, err
 	}
 	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
-	return build(user, f, fs, roots, wrappers, schemaValidator{}, machine, stdout, stderr)
+	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, machine, stdout, stderr)
 }
 
 // newRuntimes is the runtime wrappers over programs: bash, claude-code and
@@ -183,9 +184,10 @@ type piWrapper interface {
 
 // build is the command line over links, fs and roots and every runtime
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
-// runs on machine, a call's output checked by validator, for the user
-// whose home directory is user: home's folder is homeFolder's.
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+// runs on machine, a call's output checked by validator and its inputs read
+// through inputsFrom, for the user whose home directory is user: home's
+// folder is homeFolder's.
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
 		return nil, errors.New("build: a runtime wrapper is missing")
 	}
@@ -214,7 +216,7 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
 	}
 	home := homeFolder(user, machine.environ)
-	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, machine)
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, machine)
 	if err != nil {
 		return nil, err
 	}

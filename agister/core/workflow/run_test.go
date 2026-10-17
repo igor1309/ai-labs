@@ -380,7 +380,8 @@ func TestAParamNotGivenTakesItsDefault(t *testing.T) {
 
 // A run whose inputs, a step's bindings or its output mapping cannot be
 // resolved is refused: failed, class "refused", with no output, and no
-// later step is called.
+// later step is called; one refused at its boundary has the resolver's
+// words as its reason.
 func TestWhatCannotBeResolvedRefusesTheRun(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -425,6 +426,13 @@ func TestWhatCannotBeResolvedRefusesTheRun(t *testing.T) {
 			}
 			if !slices.Equal(f.trail, c.called) {
 				t.Errorf("asked %q, want %q", f.trail, c.called)
+			}
+			var reason string
+			if c.refuse != nil {
+				reason = c.refuse.Error()
+			}
+			if got.Reason != reason {
+				t.Errorf("reason %q, want %q", got.Reason, reason)
 			}
 		})
 	}

@@ -85,7 +85,7 @@ type Boundary struct {
 
 // Resolver resolves the workflow's boundary over the params given: what
 // the workflow declares of its params and inputs is the resolver's. An
-// error refuses the run.
+// error refuses the run, its words the run's reason.
 type Resolver interface {
 	Resolve(ctx context.Context, given map[string]string) (Boundary, error)
 }
@@ -194,6 +194,7 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 
 	boundary, err := r.resolver.Resolve(ctx, given)
 	if err != nil {
+		result.Reason = err.Error()
 		return refuse()
 	}
 	read := reader{boundary: boundary, outputs: map[string]map[string]any{}}

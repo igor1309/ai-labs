@@ -364,3 +364,77 @@ func endedContext() context.Context {
 	cancel()
 	return ctx
 }
+
+// sourcesSpy is a spy of what a run's inputs are read from: the files its
+// test gives, by path, which exist, as do the paths it gives besides; the
+// commit git names for each revision in its root, and the files changed
+// for each "base..head" there; and gitErr, where its test gives one, as
+// git's answer to everything. A file it does not hold is fs.ErrNotExist,
+// a revision it does not name an error. It keeps what it is asked. It is
+// safe for concurrent use.
+type sourcesSpy struct {
+	root    string
+	files   map[string]string
+	exist   []string
+	commits map[string]string
+	changed map[string][]string
+	gitErr  error
+	mu      sync.Mutex
+	asked   []string
+}
+
+func (s *sourcesSpy) ask(what string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, what)
+}
+
+func (s *sourcesSpy) Bytes(path string) ([]byte, error) {
+	s.ask("bytes " + path)
+	text, ok := s.files[path]
+	if !ok {
+		return nil, &fs.PathError{Op: "open", Path: path, Err: fs.ErrNotExist}
+	}
+	return []byte(text), nil
+}
+
+func (s *sourcesSpy) Exists(path string) (bool, error) {
+	s.ask("exists " + path)
+	_, held := s.files[path]
+	return held || slices.Contains(s.exist, path), nil
+}
+
+func (s *sourcesSpy) Commit(_ context.Context, dir, rev string) (string, error) {
+	s.ask("commit " + rev + " in " + dir)
+	commit, ok := s.commits[rev]
+	switch {
+	case s.gitErr != nil:
+		return "", s.gitErr
+	case dir != s.root || !ok:
+		return "", errors.New("git spy: no commit " + rev + " in " + dir)
+	}
+	return commit, nil
+}
+
+func (s *sourcesSpy) Changed(_ context.Context, dir, base, head string) ([]string, error) {
+	s.ask("changed " + base + ".." + head + " in " + dir)
+	switch {
+	case s.gitErr != nil:
+		return nil, s.gitErr
+	case dir != s.root:
+		return nil, errors.New("git spy: no worktree " + dir)
+	}
+	return slices.Clone(s.changed[base+".."+head]), nil
+}
+
+// askedOf is what the spy was asked, in order.
+func (s *sourcesSpy) askedOf() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.asked)
+}
+
+// sourcing is the spy as build takes it.
+func (s *sourcesSpy) sourcing() sourcing {
+	return sourcing{texts: s, paths: s, commits: s, changes: s}
+}

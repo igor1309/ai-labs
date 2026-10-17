@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/git"
@@ -156,5 +158,126 @@ func TestNewFailsWithNoProgram(t *testing.T) {
 	t.Parallel()
 	if _, err := git.New(""); err == nil {
 		t.Error("New with no program gave no error")
+	}
+}
+
+// commitFiles writes each of names in r, holding its name, and commits
+// them with the message message.
+func commitFiles(t *testing.T, r, message string, names ...string) {
+	t.Helper()
+	for _, name := range names {
+		path := filepath.Join(r, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run(t, r, "add", "--all")
+	run(t, r, "commit", "-q", "--allow-empty", "-m", message)
+}
+
+// head is the full id of r's HEAD, as the real git gives it.
+func head(t *testing.T, r string) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", r, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// newGit is a Git over the real git.
+func newGit(t *testing.T) *git.Git {
+	t.Helper()
+	g, err := git.New("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return g
+}
+
+// sources.feature, "A revision names its commit".
+//
+// Contract test: git.
+func TestARevisionNamesItsCommit(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	run(t, r, "checkout", "-q", "-b", "main")
+	commitFiles(t, r, "c1")
+	got, err := newGit(t).Commit(context.Background(), r, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := head(t, r); got != want || len(got) < 40 {
+		t.Errorf("the commit of main is %q, want the full id %q", got, want)
+	}
+}
+
+// sources.feature, "A revision that names no commit is an error".
+//
+// Contract test: git.
+func TestARevisionThatNamesNoCommitIsAnError(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	commitFiles(t, r, "first")
+	got, err := newGit(t).Commit(context.Background(), r, "nope")
+	if err == nil {
+		t.Fatalf("the commit of nope is %q, want an error", got)
+	}
+	// git's words for a name that is no revision.
+	for _, want := range []string{`"nope"`, "Needed a single revision"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q, want it to say %s", err, want)
+		}
+	}
+}
+
+// sources.feature, "The files changed from the merge base to the second
+// revision".
+//
+// Contract test: git.
+func TestTheFilesChangedFromTheMergeBaseToTheSecondRevision(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	run(t, r, "checkout", "-q", "-b", "main")
+	commitFiles(t, r, "c1", "base.txt")
+	run(t, r, "checkout", "-q", "-b", "b")
+	commitFiles(t, r, "on b", "a b.txt", filepath.Join("x", "y.go"))
+	run(t, r, "checkout", "-q", "main")
+	commitFiles(t, r, "on main", "m.txt")
+	got, err := newGit(t).Changed(context.Background(), r, "main", "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a b.txt", "x/y.go"}; !slices.Equal(got, want) {
+		t.Errorf("changed %q, want %q", got, want)
+	}
+}
+
+// Two revisions of the same commit changed nothing: none, and no error.
+//
+// Contract test: git.
+func TestRevisionsOfOneCommitChangedNothing(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	commitFiles(t, r, "first", "a.txt")
+	got, err := newGit(t).Changed(context.Background(), r, "HEAD", "HEAD")
+	if err != nil || len(got) != 0 {
+		t.Errorf("changed %q, %v; want none, and no error", got, err)
+	}
+}
+
+// A revision git cannot read is Changed's error, naming both.
+//
+// Contract test: git.
+func TestChangedFromARevisionThatNamesNoCommitIsAnError(t *testing.T) {
+	t.Parallel()
+	r := repository(t, t.TempDir(), "r", "")
+	commitFiles(t, r, "first")
+	got, err := newGit(t).Changed(context.Background(), r, "nope", "HEAD")
+	if err == nil || !strings.Contains(err.Error(), "nope...HEAD") {
+		t.Errorf("changed %q, %v; want an error naming nope...HEAD", got, err)
 	}
 }

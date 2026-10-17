@@ -6,27 +6,48 @@ import (
 	"encoding/hex"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 )
 
-// sourceSpy answers a source with the value its test gives, and keeps the
-// arguments and params it is asked with.
+// sourceSpy answers a source with the value and the identity its test
+// gives, and keeps the params it is asked with.
 type sourceSpy struct {
-	value  string
-	params []map[string]string
+	value, identity string
+	params          []map[string]string
 }
 
-func (s *sourceSpy) Value(_ context.Context, _, params map[string]string) (string, error) {
+func (s *sourceSpy) Value(_ context.Context, _, params map[string]string) (inputs.Fixed, error) {
 	s.params = append(s.params, params)
-	return s.value, nil
+	return inputs.Fixed{Value: s.value, Identity: s.identity}, nil
 }
 
-// resolver is a resolver over sources.
+// pathsSpy answers whether a path exists: those its test gives do, as
+// written, and no other; err, where its test gives one, is its answer for
+// every path. It keeps the paths it is asked.
+type pathsSpy struct {
+	exist []string
+	err   error
+	asked []string
+}
+
+func (s *pathsSpy) Exists(_ context.Context, path string) (bool, error) {
+	s.asked = append(s.asked, path)
+	return slices.Contains(s.exist, path), s.err
+}
+
+// resolver is a resolver over sources, and paths of which none exists.
 func resolver(t *testing.T, sources map[string]inputs.Source) *inputs.Resolver {
 	t.Helper()
-	r, err := inputs.New(sources)
+	return resolverOver(t, sources, &pathsSpy{})
+}
+
+// resolverOver is a resolver over sources and paths.
+func resolverOver(t *testing.T, sources map[string]inputs.Source, paths inputs.Paths) *inputs.Resolver {
+	t.Helper()
+	r, err := inputs.New(sources, paths)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,12 +69,16 @@ func input(name string) inputs.Value {
 	return inputs.Value{Reads: &inputs.Reference{Of: inputs.Inputs, Name: name}}
 }
 
-// A resolver is given a source for each name it plugs in.
-func TestNewFailsOnANameWithNoSource(t *testing.T) {
+// A resolver is given a source for each name it plugs in, and paths.
+func TestNewFailsOnAMissingCollaborator(t *testing.T) {
 	t.Parallel()
-	_, err := inputs.New(map[string]inputs.Source{"param": nil})
+	_, err := inputs.New(map[string]inputs.Source{"param": nil}, &pathsSpy{})
 	if err == nil || err.Error() != `inputs: no source "param"` {
 		t.Errorf("New with no source for param: %v", err)
+	}
+	_, err = inputs.New(nil, nil)
+	if err == nil || err.Error() != "inputs: no paths" {
+		t.Errorf("New with no paths: %v", err)
 	}
 }
 
@@ -178,5 +203,20 @@ func TestAVariableReadingWhatIsNotResolvedRefusesTheCall(t *testing.T) {
 	var refusal *inputs.Refusal
 	if want := `environment "C": no input "i" is resolved`; !errors.As(err, &refusal) || refusal.Reason != want {
 		t.Errorf("resolved: %v, want the refusal %q", err, want)
+	}
+}
+
+// inputs.feature, "A source that gives an identity gives the input's".
+func TestASourceThatGivesAnIdentityGivesTheInputs(t *testing.T) {
+	t.Parallel()
+	r := resolver(t, map[string]inputs.Source{"s": &sourceSpy{value: "c1", identity: "c1"}})
+	got, err := r.Resolve(context.Background(), inputs.Declared{
+		Inputs: []inputs.Input{{Name: "rev", Source: "s"}},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]inputs.Fixed{"rev": {Value: "c1", Identity: "c1"}}; !reflect.DeepEqual(got.Inputs, want) {
+		t.Errorf("inputs %+v, want %+v", got.Inputs, want)
 	}
 }

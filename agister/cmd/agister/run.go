@@ -57,13 +57,13 @@ type turn struct {
 }
 
 // runs answers cli's run from resolve and core (docs/run-implementation.md,
-// "The first run" and "A step on a model runtime"): a request resolves over
+// "The first run", "A step on a model runtime" and "Inputs and progress"): a request resolves over
 // the settings of home's folder and its launch directory, read once; what
 // this slice does not run is refused before anything runs; and the
 // workflow runs in the root of the git worktree that holds the launch
 // directory, a signal cancelling it, each step on the turn of the contract
 // its agent's runtime names. A call's output is checked against its schema
-// by the validator.
+// by the validator, and its inputs are read through sourcing.
 type runs struct {
 	home      string
 	links     links
@@ -72,10 +72,11 @@ type runs struct {
 	wrappers  resolve.Wrappers
 	turns     []turn
 	validator call.Validator
+	sourcing  sourcing
 	host      host
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, host host) (*runs, error) {
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turns []turn, validator call.Validator, sourcing sourcing, host host) (*runs, error) {
 	contracts := map[string]bool{}
 	for _, t := range turns {
 		switch {
@@ -103,6 +104,8 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 		return nil, errors.New("runs: no turn")
 	case validator == nil:
 		return nil, errors.New("runs: no validator")
+	case sourcing.check() != nil:
+		return nil, fmt.Errorf("runs: %w", sourcing.check())
 	case host.ctx == nil:
 		return nil, errors.New("runs: no context")
 	case host.clock == nil:
@@ -112,7 +115,7 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 	case host.signals == nil:
 		return nil, errors.New("runs: no signals")
 	}
-	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, host: host}, nil
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turns: slices.Clone(turns), validator: validator, sourcing: sourcing, host: host}, nil
 }
 
 // takes is how each turn takes a call's inputs, by its contract.
@@ -154,7 +157,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if len(unrun) > 0 {
 		return cli.Result{}, refused(unrun)
 	}
-	runner, err := r.runner(built, root)
+	runner, err := r.runner(built, launch, root)
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -163,9 +166,11 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	return cliResult(runner.Run(ctx, built.workflow, request.Params)), nil
 }
 
-// runner is core's runner of built, its calls' turns taken in dir over
-// Agister's environment, each by the caller of its turn's contract.
-func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
+// runner is core's runner of built, its calls' turns taken in dir, the
+// worktree's root, over Agister's environment, each by the caller of its
+// turn's contract; its inputs read by the sources, a path relative to
+// launch, as the person gave it.
+func (r *runs) runner(built plan, launch, dir string) (*workflow.Runner, error) {
 	callers := map[string]turnCaller{}
 	for _, t := range r.turns {
 		caller, err := call.New(t.runtime, t.inputs, r.validator, r.host.clock, r.host.timer, dir, r.host.environ)
@@ -174,7 +179,7 @@ func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
 		}
 		callers[t.contract] = caller
 	}
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	resolver, err := inputs.New(r.sourcing.sources(launch, dir), briefPaths{paths: r.sourcing.paths, launch: launch})
 	if err != nil {
 		return nil, err
 	}
@@ -281,11 +286,12 @@ func (k *knownRoots) Root(dir string) (string, error) {
 }
 
 // runDocuments is what a run's plan asks of documents: what resolve does
-// not hold, a param's default, an input's source, a time limit, a
-// prompt's text, and what this slice does not run.
+// not hold, a param's default, an input's source, a brief form's parts, a
+// time limit, a prompt's text, and what this slice does not run.
 type runDocuments interface {
 	Workflow(name string) (documents.WorkflowDefinition, []documents.Problem)
 	Process(name string) (documents.ProcessDefinition, []documents.Problem)
+	Brief(name string) (documents.BriefDefinition, []documents.Problem)
 	Blob(kind documents.Kind, name string) (documents.Blob, []documents.Problem)
 }
 
@@ -359,7 +365,11 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		if err != nil {
 			return plan{}, nil, err
 		}
-		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
+		forms, err := formsOf(input.Forms, docs)
+		if err != nil {
+			return plan{}, nil, err
+		}
+		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments, Forms: forms})
 	}
 	for _, item := range w.Steps {
 		planned, err := plannedCallOf(name, item, resolved, docs, takes)
@@ -513,7 +523,11 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 		if err != nil {
 			return plannedCall{}, err
 		}
-		planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
+		forms, err := formsOf(input.Forms, docs)
+		if err != nil {
+			return plannedCall{}, err
+		}
+		planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments, Forms: forms})
 	}
 	for _, variable := range process.Environment {
 		value, err := inputsValue(variable)
@@ -588,13 +602,10 @@ func (n *notRun) add(owner, what string) {
 }
 
 // input names what this slice does not run of the input of owner: a source
-// other than "param", and a brief form.
+// a run does not plug in.
 func (n *notRun) input(owner string, input documents.Input) {
-	if source := input.Source.Value; source != "param" {
+	if source := input.Source.Value; !pluggedIn(source) {
 		n.add(owner, fmt.Sprintf("the input %q from the source %q", input.Name, source))
-	}
-	if len(input.Form.Value) > 0 {
-		n.add(owner, fmt.Sprintf("the brief form of %q", input.Name))
 	}
 }
 
@@ -611,6 +622,26 @@ func itemKind(item resolve.Item) string {
 		return "a workflow"
 	}
 	return ""
+}
+
+// formsOf is each brief form of names in core/inputs' words: the brief
+// document of its name in docs, the snapshot resolve checked.
+func formsOf(names []resolve.Name, docs runDocuments) ([]inputs.Form, error) {
+	var forms []inputs.Form
+	for _, name := range names {
+		brief, problems := docs.Brief(name.Value)
+		if len(problems) > 0 {
+			return nil, documentProblems(problems)
+		}
+		form := inputs.Form{Name: name.Value}
+		for _, field := range brief.Parts.Value {
+			part := field.Value
+			form.Parts = append(form.Parts, inputs.Part{Heading: part.Heading.Value, Required: part.Required.Value,
+				Reads: part.Reads.Value, RefersToFile: part.Reference.Value == "file"})
+		}
+		forms = append(forms, form)
+	}
+	return forms, nil
 }
 
 // declaredParams is each param's default, by its name, of those that
@@ -756,7 +787,7 @@ type turnCaller interface {
 // a step's process's inputs and environment are resolved over the params
 // its bindings give before its call starts, the inputs given in the order
 // its process declares them, and one that cannot be resolved refuses the
-// call, its turn not taken. Each call is made by the caller of its turn's
+// call, its turn not taken, its reason why. Each call is made by the caller of its turn's
 // contract. A call with no usage, as on bash, has every count of it
 // unknown.
 type stepCalls struct {
@@ -784,11 +815,11 @@ func newStepCalls(inputs declaredResolver, callers map[string]turnCaller, clock 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
-		return s.refused(nil)
+		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
 	}
 	resolved, err := s.inputs.Resolve(ctx, planned.declared, params)
 	if err != nil {
-		return s.refused(planned.step.Warnings)
+		return s.refused(err.Error(), planned.step.Warnings)
 	}
 	step := planned.step
 	step.Environment = resolved.Environment
@@ -813,11 +844,12 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 	}
 }
 
-// refused is a call refused before it started, given its plan's warnings.
-func (s *stepCalls) refused(warnings []string) workflow.Result {
+// refused is a call refused before it started, for reason, given its
+// plan's warnings.
+func (s *stepCalls) refused(reason string, warnings []string) workflow.Result {
 	now := s.clock.Now()
 	return workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: now, Ended: now},
-		Warnings: slices.Clone(warnings)}
+		Reason: reason, Warnings: slices.Clone(warnings)}
 }
 
 // cliResult is a run's result in cli's words.

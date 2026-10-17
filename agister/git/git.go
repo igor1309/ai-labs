@@ -1,5 +1,6 @@
 // Package git is a wrapper over git, in its own types (ADR-001): the root
-// of the git worktree that holds a directory.
+// of the git worktree that holds a directory, a revision's commit, and the
+// files changed between two revisions.
 package git
 
 import (
@@ -33,21 +34,15 @@ func New(program string) (*Git, error) {
 // folder is, as for a dir reached by a link from outside the worktree, is
 // given as git spells it.
 func (g *Git) Root(ctx context.Context, dir string) (string, error) {
-	command := exec.CommandContext(ctx, g.program, "rev-parse", "--show-toplevel")
-	command.Dir = dir
-	// Git's messages in the C locale: "not a git repository" tells no
-	// worktree from a failure, in every user's language.
-	command.Env = append(os.Environ(), "LC_ALL=C")
-	var stdout, stderr bytes.Buffer
-	command.Stdout, command.Stderr = &stdout, &stderr
-	if err := command.Run(); err != nil {
+	stdout, stderr, err := g.run(ctx, dir, "rev-parse", "--show-toplevel")
+	if err != nil {
 		var exit *exec.ExitError
-		if errors.As(err, &exit) && strings.Contains(stderr.String(), "not a git repository") {
+		if errors.As(err, &exit) && strings.Contains(stderr, "not a git repository") {
 			return "", nil
 		}
-		return "", fmt.Errorf("git rev-parse --show-toplevel in %s: %w: %s", dir, err, strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("git rev-parse --show-toplevel in %s: %w: %s", dir, err, strings.TrimSpace(stderr))
 	}
-	named := strings.TrimSuffix(stdout.String(), "\n")
+	named := strings.TrimSuffix(stdout, "\n")
 	root, err := os.Stat(named)
 	if err != nil {
 		return "", fmt.Errorf("git: the worktree root of %s: %w", dir, err)
@@ -60,4 +55,39 @@ func (g *Git) Root(ctx context.Context, dir string) (string, error) {
 			return named, nil
 		}
 	}
+}
+
+// Commit gives the full id of the commit rev names in dir, as git
+// rev-parse --verify <rev>^{commit} gives it, or an error naming rev, with
+// git's words, where it names none.
+func (g *Git) Commit(ctx context.Context, dir, rev string) (string, error) {
+	stdout, stderr, err := g.run(ctx, dir, "rev-parse", "--verify", rev+"^{commit}")
+	if err != nil {
+		return "", fmt.Errorf("git names no commit %q in %s: %w: %s", rev, dir, err, strings.TrimSpace(stderr))
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+// Changed gives the paths of the files changed in dir from the merge base
+// of base and head to head, as git diff --name-only -z lists them: each
+// path as it is, spaces and all, in git's order.
+func (g *Git) Changed(ctx context.Context, dir, base, head string) ([]string, error) {
+	stdout, stderr, err := g.run(ctx, dir, "diff", "--name-only", "-z", base+"..."+head, "--")
+	if err != nil {
+		return nil, fmt.Errorf("git diff --name-only %s...%s in %s: %w: %s", base, head, dir, err, strings.TrimSpace(stderr))
+	}
+	return strings.FieldsFunc(stdout, func(r rune) bool { return r == 0 }), nil
+}
+
+// run runs git with args in dir, and gives its stdout and stderr. Git's
+// messages are in the C locale: a caller that reads them, or a person,
+// gets the same words in every user's language.
+func (g *Git) run(ctx context.Context, dir string, args ...string) (string, string, error) {
+	command := exec.CommandContext(ctx, g.program, args...)
+	command.Dir = dir
+	command.Env = append(os.Environ(), "LC_ALL=C")
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	err := command.Run()
+	return stdout.String(), stderr.String(), err
 }

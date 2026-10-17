@@ -211,7 +211,7 @@ func TestCoreTakesTheInputsOnAModelAsItsFactsSay(t *testing.T) {
 // calls are built with a caller for every step's.
 func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 	t.Parallel()
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
 	if err != nil {
 		t.Fatal(err)
 	}
