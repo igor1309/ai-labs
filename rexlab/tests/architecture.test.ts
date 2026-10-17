@@ -68,6 +68,7 @@ const ADAPTERS = [
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
+  "documentVisibility.ts",
   "itemPictures.ts",
   "localLanguage.ts",
   "localProgress.ts",

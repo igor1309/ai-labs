@@ -1,13 +1,20 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Language } from "./language/language.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
-import { presentPuzzle, presentSkeletonChoices, type SkeletonPicture } from "./presentation.ts";
+import { droppedPiece, presentPuzzle, presentSkeletonChoices, type SkeletonPicture } from "./presentation.ts";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
-import { PIECES, startPuzzle, type Puzzle, type Skeleton } from "./skeletons/index.ts";
-import { SkeletonPuzzleScreen } from "./SkeletonPuzzleScreen.tsx";
+import { awaitsHelp, drop, PIECES, startPuzzle, wait, type Puzzle, type Skeleton } from "./skeletons/index.ts";
+import { SkeletonPuzzleScreen, type FramePoint, type ShownPiece } from "./SkeletonPuzzleScreen.tsx";
 
 export type { SkeletonPicture } from "./presentation.ts";
+
+// Whether the child is away from the game, as when the app is hidden or
+// the iPad is in portrait, and its changes.
+export type Presence = {
+  isAway(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
 
 export type SkeletonGameProps = {
   // Every skeleton that can be built, in the order the child chooses from.
@@ -16,19 +23,26 @@ export type SkeletonGameProps = {
   bodyPicture: (dinosaurId: string) => string;
   loadPicture: LoadPicture;
   startTimer: StartTimer;
+  presence: Presence;
 };
 
 // The longest a puzzle waits for its pictures, in milliseconds, as a
 // question does for its pictures.
 const PICTURE_WAIT = 1000;
 
+// How often the time spent at a puzzle is counted towards help, in
+// milliseconds: a second away is lost at most, as the child leaves.
+const HELP_TICK = 1000;
+
 type SkeletonScreen = { kind: "choice" } | { kind: "puzzle"; puzzle: Puzzle };
 
 // The skeleton game, kept by the app above its orientation gate, so
 // turning the iPad pauses a puzzle without losing it. `onHome` takes the
 // child back to the home page.
-export function useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer }: SkeletonGameProps, onHome: () => void) {
+export function useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer, presence }: SkeletonGameProps, onHome: () => void) {
   const [screen, setScreen] = useState<SkeletonScreen>({ kind: "choice" });
+  const away = useSyncExternalStore(presence.subscribe, presence.isAway);
+  const puzzle = screen.kind === "puzzle" ? screen.puzzle : undefined;
   // A puzzle being started while its pictures load: a second tap
   // meanwhile, on the same dinosaur or another, starts nothing more.
   const starting = useRef(false);
@@ -59,10 +73,37 @@ export function useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadP
     );
   };
 
+  // A puzzle left is dropped with the screen it was on, so its wait for
+  // help stops, and the game opens again on its choice of dinosaurs.
   const home = () => {
     leave();
-    onHome();
+    changeScreen(SCREEN_CHANGE, () => {
+      setScreen({ kind: "choice" });
+      onHome();
+    });
   };
+
+  // Each change moves from the puzzle as it is, not as last rendered, so a
+  // drop or a tick that lands after the child has left changes nothing.
+  const play = (move: (puzzle: Puzzle) => Puzzle) =>
+    setScreen((current) => {
+      if (current.kind !== "puzzle") return current;
+      const moved = move(current.puzzle);
+      return moved === current.puzzle ? current : { ...current, puzzle: moved };
+    });
+
+  // The board listens for drags with it, so it stays the same function.
+  const onDrop = useCallback(
+    (piece: ShownPiece, centre: FramePoint, reach: number) => play((current) => drop(current, droppedPiece(piece), centre, reach)),
+    []
+  );
+
+  // Only time at the puzzle counts towards help: the count pauses while
+  // the child is away, and starts again from nothing as a piece fits.
+  useEffect(() => {
+    if (puzzle === undefined || away || !awaitsHelp(puzzle)) return;
+    return startTimer(HELP_TICK, () => play((current) => (current === puzzle ? wait(current, HELP_TICK) : current)));
+  }, [puzzle, away, startTimer]);
 
   // The museum has no screen of its own yet, so MUSEUM keeps the child
   // where they are.
@@ -81,7 +122,15 @@ export function useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadP
           />
         );
       case "puzzle":
-        return <SkeletonPuzzleScreen language={language} {...presentPuzzle(screen.puzzle, language, skeletonPicture)} onMuseum={museum} onHome={home} />;
+        return (
+          <SkeletonPuzzleScreen
+            language={language}
+            {...presentPuzzle(screen.puzzle, language, skeletonPicture)}
+            onDrop={onDrop}
+            onMuseum={museum}
+            onHome={home}
+          />
+        );
     }
   };
 

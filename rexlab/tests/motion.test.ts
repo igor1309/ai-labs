@@ -308,3 +308,23 @@ describe("the sorting board's motion", () => {
     expect(declarationsOf(bodyOf(".sort-card", REDUCED))).toEqual([{ property: "transition-property", value: "filter, opacity, box-shadow, outline" }]);
   });
 });
+
+describe("the skeleton puzzle's motion", () => {
+  const animations = animationsOf(PLAIN);
+
+  it("lifts a piece in, floats one let go back to the tray and slides one that fits into its slot, each from where it was let go", () => {
+    expect([".skeleton-lifted", ".skeleton-piece[data-returning]", ".skeleton-fitted[data-snapped]"].map((selector) => animations.get(selector))).toEqual([
+      "grow-in",
+      "settle-in",
+      "settle-in"
+    ]);
+    const settle = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes settle-in")?.body ?? "";
+    expect(settle).toMatch(/translate: calc\(var\(--from-x\) \* var\(--motion-amount\)\) calc\(var\(--from-y\) \* var\(--motion-amount\)\)/);
+    // With reduced motion the piece only fades in where it ends.
+    expect(settle).toMatch(/opacity: calc\(1 - 0\.6 \* \(1 - var\(--motion-amount\)\)\)/);
+  });
+
+  it("fades help's glow in", () => {
+    expect(animations.get(".skeleton-glow")).toBe("fade-in");
+  });
+});

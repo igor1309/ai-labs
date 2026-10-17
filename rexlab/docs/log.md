@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Built building a skeleton on its board (LAB-270): a child drags each piece from the tray, one finger at a time; it snaps into its own place within reach and floats back from anywhere else, in any order, and a cancelled drag or turning to portrait returns it. After ten seconds at the puzzle with no fit, the next piece and its slot glow amber, counted only while the app is visible and in landscape. HOME leaves the puzzle and starts the next visit at the choice of dinosaurs.
 - Built the skeleton game's choice screen (LAB-270): three dinosaurs with their pictures and large capital names, MUSEUM and HOME; a card opens its board, with the faint outline, four slots and the four pieces in the tray, once the pictures load, one puzzle per double tap and none after leaving. No home tile leads there yet, so tests open the app on the game through `App`'s `opening`. The skeletons and their pieces are checked at startup.
 - Corrected `AGENTS.md` on the design file: `design/rexlab.pen` is JSON, not encrypted, so branches that add frames merge by appending them to trunk's file, and only a change to an existing frame waits for another branch's.
 - Added the skeleton game's pictures (LAB-270): each of the three skeletons in `src/assets/skeletons/<id>/skeleton.webp`, traced from its body picture in the same 800×600 framing, and its skull, spine, legs and tail cut along the bones as pictures with alpha beside it; `src/data/skeletons.json` gives each piece's place in that frame.

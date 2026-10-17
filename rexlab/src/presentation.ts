@@ -14,7 +14,7 @@ import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionSc
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
 import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
-import { PIECES, type Piece, type Puzzle, type Skeleton } from "./skeletons/index.ts";
+import { help, isComplete, PIECES, type Piece, type Puzzle, type Skeleton } from "./skeletons/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
@@ -241,15 +241,24 @@ export function presentSkeletonChoices(skeletons: readonly Skeleton[], language:
 
 const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots">;
+const DROPPED_PIECES: Record<ShownPiece, Piece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+
+// The piece the child dropped on the puzzle's board.
+export function droppedPiece(piece: ShownPiece): Piece {
+  return DROPPED_PIECES[piece];
+}
+
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots" | "hint" | "complete">;
 
 // The pictures of a skeleton: the whole of it, or one of its pieces.
 export type SkeletonPicture = (dinosaurId: string, part: "skeleton" | Piece) => string;
 
 // Each slot is placed as a fraction of the frame, so the outline and its
 // pieces scale together to any board.
-export function presentPuzzle({ skeleton, fitted }: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
+export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
+  const { skeleton, fitted } = puzzle;
   const { id, name, frame, places } = skeleton;
+  const helped = help(puzzle);
   return {
     name: name[language],
     outline: skeletonPicture(id, "skeleton"),
@@ -265,6 +274,8 @@ export function presentPuzzle({ skeleton, fitted }: Puzzle, language: Language, 
         height: height / frame.height,
         fitted: fitted.includes(piece)
       };
-    })
+    }),
+    hint: helped && SHOWN_PIECES[helped],
+    complete: isComplete(puzzle)
   };
 }

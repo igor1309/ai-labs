@@ -3,21 +3,31 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps } from "../src/root.ts";
-import { mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const DARK = "(prefers-color-scheme: dark)";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
 // A browser whose local and session storage the test reads apart.
-function browser({ local = memoryStorage(), language = "en-GB", portrait = false, dark = false, reduced = false } = {}) {
+function browser({
+  local = memoryStorage(),
+  language = "en-GB",
+  portrait = false,
+  dark = false,
+  reduced = false,
+  visibility = "visible" as DocumentVisibilityState
+} = {}) {
   const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark, [REDUCED_MOTION]: reduced });
+  const page = browserDocument(visibility);
   return {
     localStorage: local,
     sessionStorage: memoryStorage(),
     matchMedia: media.matchMedia,
     navigator: { language },
+    document: page.document,
     media,
+    page,
     ...pictureBrowser()
   };
 }
@@ -115,6 +125,21 @@ describe("the app in a browser", () => {
     given.media.change(PORTRAIT, true);
 
     expect(seen).toEqual([false]);
+  });
+
+  it("follows the document's visibility", () => {
+    const given = browser({ visibility: "hidden" });
+    const { pageVisibility } = appProps(given);
+    const seen: boolean[] = [];
+    expect(pageVisibility.isHidden()).toBe(true);
+
+    const unsubscribe = pageVisibility.subscribe(() => seen.push(pageVisibility.isHidden()));
+    given.page.switchTo("visible");
+    given.page.switchTo("hidden");
+    unsubscribe();
+    given.page.switchTo("visible");
+
+    expect(seen).toEqual([false, true]);
   });
 
   it("follows the dark colour scheme media query", () => {

@@ -7,8 +7,8 @@ import { skeletonPictures } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
-import { PIECES, startPuzzle, type Skeleton } from "../src/skeletons/index.ts";
-import { SHIPPED_SKELETONS, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
+import { HELP_AFTER, PIECES, startPuzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { SHIPPED_SKELETONS, browserDocument, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -124,8 +124,28 @@ describe("presenting the skeleton game", () => {
         width: places[piece].width / frame.width,
         height: places[piece].height / frame.height,
         fitted: false
-      }))
+      })),
+      hint: undefined,
+      complete: false
     });
+  });
+
+  it("points help at the first piece in the tray still to fit, once help is due, and at none before", () => {
+    const due = { ...startPuzzle(skeletonOf("tyrannosaurus")), fitted: ["skull", "legs"] as const, waited: HELP_AFTER };
+
+    expect([presentPuzzle(due, "en", fakeSkeletonPicture).hint, presentPuzzle({ ...due, waited: HELP_AFTER - 1 }, "en", fakeSkeletonPicture).hint]).toEqual([
+      "spine",
+      undefined
+    ]);
+  });
+
+  it("reports the skeleton complete once every piece is fitted, and not before", () => {
+    const puzzle = { ...startPuzzle(skeletonOf("stegosaurus")), fitted: ["tail", "skull", "legs"] as const };
+
+    expect([presentPuzzle(puzzle, "en", fakeSkeletonPicture).complete, presentPuzzle({ ...puzzle, fitted: [...puzzle.fitted, "spine"] }, "en", fakeSkeletonPicture).complete]).toEqual([
+      false,
+      true
+    ]);
   });
 
   it("marks the slots of fitted pieces, and only those", () => {
@@ -142,7 +162,7 @@ describe("presenting the skeleton game", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedApp() {
-  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, ...pictureBrowser() });
+  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() });
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

@@ -2,6 +2,7 @@ import type { AppProps } from "./App.tsx";
 import records from "./data/dinosaurs.json";
 import skeletonPlaces from "./data/skeletons.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
+import { documentVisibility } from "./documentVisibility.ts";
 import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { itemPictures } from "./itemPictures.ts";
@@ -32,6 +33,7 @@ export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
   navigator: { language: string };
+  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">;
   Image: new () => DecodingImage;
   setTimeout(fire: () => void, ms: number): number;
   clearTimeout(id: number): void;
@@ -44,6 +46,7 @@ export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
   const media = mediaOrientation((query) => browser.matchMedia(query));
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
+  const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);
   const skeletons = readSkeletons(records, skeletonPlaces);
   return {
@@ -52,6 +55,7 @@ export function appProps(browser: Browser): AppProps {
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     orientation: { isPortrait: media.portrait, subscribe: media.watch },
+    pageVisibility: { isHidden: visibility.hidden, subscribe: visibility.watch },
     progress: localProgress(storage),
     deviceLanguage: browser.navigator.language,
     languageStore: localLanguage(storage),

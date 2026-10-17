@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
@@ -26,7 +26,7 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
-import { useSkeletonGame, type SkeletonGameProps } from "./skeletonGame.tsx";
+import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
@@ -54,6 +54,13 @@ export type Appearance = {
   subscribe(onChange: () => void): () => void;
 };
 
+// Whether the app is hidden, as when the iPad shows another app or is
+// locked, and its changes.
+export type PageVisibility = {
+  isHidden(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
+
 export type { CareProgressStore } from "./careGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 export type { SkeletonPicture } from "./skeletonGame.tsx";
@@ -73,6 +80,7 @@ export type AppProps = CareGameProps &
     bodyPicture: (dinosaurId: string) => string;
     random: Random;
     orientation: Orientation;
+    pageVisibility: PageVisibility;
     progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
@@ -133,6 +141,7 @@ export function App({
   bodyPicture,
   random,
   orientation,
+  pageVisibility,
   progress,
   deviceLanguage,
   languageStore,
@@ -244,7 +253,24 @@ export function App({
     });
   };
 
-  const skeletonGame = useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer }, home);
+  // The child is away from a game while the app is hidden, or while the
+  // iPad is in portrait and the orientation gate covers it.
+  const presence = useMemo<Presence>(
+    () => ({
+      isAway: () => orientation.isPortrait() || pageVisibility.isHidden(),
+      subscribe: (onChange) => {
+        const stopOrientation = orientation.subscribe(onChange);
+        const stopVisibility = pageVisibility.subscribe(onChange);
+        return () => {
+          stopOrientation();
+          stopVisibility();
+        };
+      }
+    }),
+    [orientation, pageVisibility]
+  );
+
+  const skeletonGame = useSkeletonGame({ skeletons, skeletonPicture, bodyPicture, loadPicture, startTimer, presence }, home);
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or

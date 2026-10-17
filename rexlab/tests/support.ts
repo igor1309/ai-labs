@@ -1,6 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
-import type { AppProps, Appearance } from "../src/App.tsx";
+import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
@@ -189,6 +189,39 @@ export function manualOrientation(initial: "portrait" | "landscape"): ManualOrie
   };
 }
 
+export type ManualVisibility = PageVisibility & { switchTo(to: "hidden" | "visible"): void };
+
+// The app's visibility, switched only when the test switches it.
+export function manualVisibility(initial: "hidden" | "visible"): ManualVisibility {
+  let hidden = initial === "hidden";
+  const listeners = new Set<() => void>();
+  return {
+    isHidden: () => hidden,
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    switchTo: (to) => {
+      hidden = to === "hidden";
+      listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+// A browser's document, whose visibility the test sets and which reports
+// each change as a browser does.
+export function browserDocument(initial: DocumentVisibilityState = "visible") {
+  const target = new EventTarget();
+  const document = Object.assign(target, { visibilityState: initial });
+  return {
+    document,
+    switchTo: (to: DocumentVisibilityState) => {
+      document.visibilityState = to;
+      target.dispatchEvent(new Event("visibilitychange"));
+    }
+  };
+}
+
 export type ManualAppearance = Appearance & { switchTo(to: Theme): void };
 
 // The device appearance, switched only when the test switches it.
@@ -260,9 +293,9 @@ export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
 }
 
 // The skeleton game for tests that are not about it: every shipped
-// skeleton may be built.
-export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"> {
-  return { skeletons: SHIPPED_SKELETONS, skeletonPicture: fakeSkeletonPicture };
+// skeleton may be built, and the app is never hidden.
+export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture" | "pageVisibility"> {
+  return { skeletons: SHIPPED_SKELETONS, skeletonPicture: fakeSkeletonPicture, pageVisibility: manualVisibility("visible") };
 }
 
 // The language for tests that are not about it: an English device, and no
