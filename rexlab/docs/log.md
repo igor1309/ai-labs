@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- Added a Midnight edition of the Field Guide design, with an ink-navy base instead of forest green, to `design/rexlab.pen`.
 - Saved the app's designs in `design/rexlab.pen`, opened with Pencil: the original home and parent menus, the Lagoon redesign (LAB-267) and the calmer Field Guide redesign, with their pictures in `design/images/`.
 - Replaced the placeholder dinosaur pictures with generated artwork in one picture-book style, credited in `CREDITS.md`; the style prompt now asks for a pose turned slightly toward the viewer.
 - Redesigned the home page to the owner's design: a large COMPARE card with two dinosaurs facing off over rolling hills, a RexLab wordmark, and the language and theme switches as small menus for parents (Fredoka, Nunito and Lucide icons, bundled with the app).
