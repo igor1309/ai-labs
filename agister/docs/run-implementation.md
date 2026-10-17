@@ -577,11 +577,11 @@ the result. The record, schema `agister.record/v1alpha1`:
 ```json
 {"schema": "agister.record/v1alpha1", "id": "<run id>",
  "request": {"workflow": "", "process": "", "agent": "",
-   "params": {}, "dir": ""},
+   "params": {}, "dir": "", "continue": null},
  "started": "<RFC 3339>", "ended": null, "status": "lost",
  "calls": [{"id": "<run id>/<step>", "step": "", "process": "",
    "agent": "", "root": "", "head": "", "content": "",
-   "result": {}}],
+   "continues": null, "result": {}}],
  "result": null}
 ```
 
@@ -629,7 +629,8 @@ request carries it.
 **`runstore`** gives the ids of the runs it keeps, in name order.
 
 **`core/call`** takes a step's session and gives it to the turn, which
-resumes it.
+resumes it. A turn that reports another session fails the call,
+`runtime_error`.
 
 **claude-code** resumes a turn's session with `--resume <session>`.
 **codex** runs `exec resume`, then the options it runs `exec` with,
@@ -650,26 +651,25 @@ exit 1, nothing run and nothing recorded:
 3. The session's latest call: of the runs runstore keeps, read newest
    first (their ids in name order are oldest first), the first holding
    a call whose session is that one.
-4. The request's agent is that call's; its launch directory is in that
-   call's root; the root's HEAD is that call's, and its content is the
-   content that call recorded, not empty.
+4. The agent of the request's one step is that call's; the root of the
+   worktree holding the launch directory is that call's root; the
+   root's HEAD is that call's, and its content is the content that
+   call recorded, not empty.
 5. The prompt `continuation` resolves.
 
 In its mapping to core, the composition gives the step's call the
-session and the prompt `continuation` as its first document; in its
-mapping to admission, it drops the process's request for a clean
-worktree: the checks take its place (ADR-004, rule 5). The record
-gains, beside the shape in "Records", the request's `"continue"` and
-the call's `"continues"`, each `null` in a run that continues nothing:
-
-```json
-{"request": {"continue": "<run id>"},
- "calls": [{"continues": "<the latest call's id>"}]}
-```
+session and the prompt `continuation` as its first document, its
+inputs and other documents as for any call; in its mapping to
+admission, it drops the process's request for a clean
+worktree: the checks take its place (ADR-004, rule 5). The record's
+request names the run continued, `"continue"`, and the call the latest
+call's id, `"continues"` ("Records" gives the shape).
 
 Decisions, each with its reason:
 
-- The worktree is checked before the hold is taken. Another writer
+- The worktree is checked by the composition, as ADR-001's rule 5 and
+  "Starting a run" say, not by admission, as its table of parts says,
+  and before the hold is taken. Another writer
   ending between the check and the hold is a risk taken: the caller
   does not run two writers in one worktree (ADR-004, rule 6).
 - The agent is the earlier call's: a session belongs to its runtime,
@@ -678,8 +678,13 @@ Decisions, each with its reason:
   identity is kept besides.
 - The latest call is found by reading the records newest first: there
   are few, and no index is kept.
-- A resumed turn that reports another session is not checked: both
-  runtimes keep the session's id, and the end-to-end run proves it.
 - A resumed codex turn's usage is the thread's, as codex reports it
   (ADR-001, invariant 3), its earlier turns counted.
-- Not run yet: a binding continuing a session inside a run.
+- A continued call is given its process's inputs and documents as any
+  call is: the step is the same one, the session knows the rest.
+- Run ids sort by time to the second: two runs of one session in one
+  second are not met.
+- The agent's runtime is not checked again for sessions: one that no
+  longer resumes them is a settings change a later run meets.
+- A name an input shares with `continuation` is not refused: no
+  process names one so.

@@ -80,3 +80,10 @@ Feature: A call on a model takes its inputs in its message
     When the call is made
     Then the turn is given the session "s1", and the message as it is
       for a step that continues none
+
+  Scenario: A turn that reports another session fails the call
+    Given a model step continuing the session "s1", and the turn exits
+      0 with a reply of the text "t" and the session "s2"
+    When the call is made
+    Then it ends failed, class "runtime_error", the reason that the
+      turn reported the session "s2", not "s1"

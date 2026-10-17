@@ -27,7 +27,7 @@ order it is needed:
   what left a program's group, which the supervisor reads no longer
   than the grace and does not yet end.
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
-  turn on pi; a resumed session, a continuation and recovery; skills
+  turn on pi; recovery; skills
   given to a turn; codex's cost through `ccusage`; the version warning
   (ADR-003, rule 8), from the version the turn reports; a cost limit.
 - **Staleness on bash**: the no-event limit on every runtime (ADR-012,

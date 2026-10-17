@@ -11,8 +11,9 @@ Feature: The composition continues an earlier run's call
   Scenario: A continuation resumes its call's session
     When "agister run --process ask --agent claude-opus --param q=more
       --continue R1" runs in "/r"
-    Then claude-code's turn is given the session "s1", and its message
-      starts with the section "continuation", home's prompt
+    Then claude-code's turn is given the session "s1", and the message
+      "## q", "more", then "## continuation", home's prompt, then the
+      process's prompt, each as model.feature gives sections
     And the record's request continues "R1", and its call continues
       "R1/ask"
 

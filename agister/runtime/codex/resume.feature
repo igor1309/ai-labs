@@ -12,4 +12,5 @@ Feature: The codex wrapper resumes a session
       "--skip-git-repo-check", "--config", "sandbox_mode=\"workspace-write\"",
       "--config", "approval_policy=\"never\"", "--ignore-user-config",
       "--ignore-rules", "--model", "gpt-6.1-sol", "--output-schema", a
-      file holding "{}", "s1" and "-"
+      file holding "{}", "s1" and "-"; it is given the text "m"
+    And the file is gone once the turn has returned
