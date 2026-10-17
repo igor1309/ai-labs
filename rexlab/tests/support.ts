@@ -1,8 +1,8 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readSortables, readVisitors } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -17,6 +17,7 @@ export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
 export const SHIPPED_SORTABLES = readSortables(records);
+export const SHIPPED_PALS = readPals(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -230,6 +231,13 @@ export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemP
 export function emptySorting(): Pick<AppProps, "sortables" | "sortingProgress"> {
   const storage = memoryStorage();
   return { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage) };
+}
+
+// Find the pair for tests that are not about it: every shipped dinosaur
+// may be dealt, no progress kept yet, and saving works.
+export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
+  const storage = memoryStorage();
+  return { pals: SHIPPED_PALS, pairsProgress: localPairsProgress(() => storage) };
 }
 
 // The language for tests that are not about it: an English device, and no

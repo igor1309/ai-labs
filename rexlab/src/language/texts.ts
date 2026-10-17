@@ -10,8 +10,6 @@ export type Texts = {
   greeting: string;
   quizCard: string;
   quizCardPicture: string;
-  // The home page's card of the games still to come.
-  moreComing: string;
   // The language menu is for parents, so its label is in normal case.
   languageMenu: string;
   // So is the theme menu, with its label and its choices.
@@ -83,6 +81,25 @@ export type Texts = {
     feathers: string;
     "no-feathers": string;
   };
+  // Find the pair: its title, also on its home tile.
+  pairs: string;
+  play: string;
+  // The level played, read out on its chip.
+  level: string;
+  // The stars earned, read out on their chip.
+  starsEarned: string;
+  // Each two cards turned on a board, read out on their chip.
+  tries: string;
+  // The board's cards, and a face-down card by its place, such as "CARD 3".
+  cards: string;
+  card: (place: number) => string;
+  // The level a finished board moved the child up to, such as "NEW LEVEL 2".
+  newLevel: (level: number) => string;
+  // The badge of a dinosaur found for the first time.
+  newlyFound: string;
+  // The dinosaurs found in find the pair, read out on the catalogue's
+  // count and stamps.
+  found: string;
 };
 
 // A celebration's label, read out, and its text, shown.

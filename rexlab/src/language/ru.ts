@@ -4,7 +4,6 @@ export const ru: Texts = {
   greeting: "ВЫБЕРИ ИГРУ",
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
-  moreComing: "СКОРО ЕЩЁ",
   languageMenu: "Язык",
   themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
@@ -67,5 +66,15 @@ export const ru: Texts = {
     "no-horns": "БЕЗ РОГОВ",
     feathers: "С ПЕРЬЯМИ",
     "no-feathers": "БЕЗ ПЕРЬЕВ"
-  }
+  },
+  pairs: "НАЙДИ ПАРУ",
+  play: "ИГРАТЬ",
+  level: "УРОВЕНЬ",
+  starsEarned: "ЗВЁЗДЫ",
+  tries: "ПОПЫТКИ",
+  cards: "КАРТОЧКИ",
+  card: (place) => `КАРТОЧКА ${place}`,
+  newLevel: (level) => `НОВЫЙ УРОВЕНЬ ${level}`,
+  newlyFound: "НОВЫЙ",
+  found: "НАЙДЕНО"
 };

@@ -12,8 +12,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: The other games sit beside the quiz card
     When I open the home page
     Then I see the "ALL DINOSAURS" tile and, under it, the "CARE" tile beside the "COMPARE" card
-    And beside them, in a third column, the "SORT" card and, under it, a "MORE COMING" card with a dinosaur and a 🔒 symbol
-    And tapping the "MORE COMING" card does nothing
+    And beside them, in a third column, the "SORT" card and, under it, the "FIND THE PAIR" tile
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page

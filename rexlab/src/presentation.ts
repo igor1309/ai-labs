@@ -6,6 +6,9 @@ import type { Diet as ShownDiet } from "./DietTag.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
+import { LEVELS, type Board, type Celebration as PairsCelebration, type PairsResult } from "./pairs/index.ts";
+import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
+import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
@@ -13,10 +16,11 @@ import type { BoardState, CardState, Basket as SortBasket, Celebration as Sortin
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
-// How the app shows the quiz, the catalogue, dinosaur care and the
-// sorting game: the composition root's translation from their APIs to what
-// each screen renders. A new attribute, celebration, food type, need, item
-// or basket fails the typecheck here until it is given a presentation.
+// How the app shows the quiz, the catalogue, dinosaur care, find the pair
+// and the sorting game: the composition root's translation from their
+// APIs to what each screen renders. A new attribute, celebration, food
+// type, need, item or basket fails the typecheck here until it is given a
+// presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -65,19 +69,31 @@ export function presentResult({ score, total, progress, previousBest, celebratio
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
 
-export function presentCatalogueCard(entry: CatalogueEntry, language: Language, bodyPicture: (dinosaurId: string) => string): CatalogueCardView {
+// `found` is the ids of the dinosaurs found in find the pair.
+export function presentCatalogueCard(
+  entry: CatalogueEntry,
+  language: Language,
+  bodyPicture: (dinosaurId: string) => string,
+  found: readonly string[]
+): CatalogueCardView {
   return {
     id: entry.id,
     name: entry.name[language],
     picture: bodyPicture(entry.id),
     height: formatHeight(entry.height, language),
     mass: formatMass(entry.mass, language),
-    diet: DIETS[entry.diet]
+    diet: DIETS[entry.diet],
+    found: found.includes(entry.id)
   };
 }
 
-export function presentDinosaurPage(entry: CatalogueEntry, language: Language, bodyPicture: (dinosaurId: string) => string): DinosaurPageView {
-  return { ...presentCatalogueCard(entry, language, bodyPicture), description: entry.description[language] };
+export function presentDinosaurPage(
+  entry: CatalogueEntry,
+  language: Language,
+  bodyPicture: (dinosaurId: string) => string,
+  found: readonly string[]
+): DinosaurPageView {
+  return { ...presentCatalogueCard(entry, language, bodyPicture, found), description: entry.description[language] };
 }
 
 const ITEMS: Record<Item, CareItem> = { plants: "plants", meat: "meat", water: "water", bath: "bath", nest: "nest" };
@@ -171,4 +187,45 @@ const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "fi
 // A finished board shows on the quiz's result screen, a star for each card.
 export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
   return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
+}
+
+const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };
+
+export type PairsBoardView = Pick<PairsBoardScreenProps, "level" | "tries" | "rows" | "columns" | "cards">;
+
+// A card is found once its pair is, open while turned over, and face down
+// otherwise.
+export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string): PairsBoardView {
+  const { rows, columns } = LEVELS[board.level];
+  return {
+    level: board.level,
+    tries: board.tries,
+    rows,
+    columns,
+    cards: board.cards.map(
+      ({ pal, face }, place): PairCardView => ({
+        id: pal.id,
+        name: pal.name[language],
+        picture: bodyPicture(pal.id),
+        face,
+        state: board.found.includes(pal.id) ? "found" : board.open.includes(place) ? "open" : "down"
+      })
+    )
+  };
+}
+
+export type PairsResultView = Pick<PairsResultScreenProps, "pals" | "tries" | "stars" | "best" | "beaten" | "celebration" | "levelUp">;
+
+export function presentPairsResult(result: PairsResult, language: Language, bodyPicture: (dinosaurId: string) => string): PairsResultView {
+  const { pals, tries, stars, best, previousBest, celebration, levelUp, newlyFound } = result;
+  return {
+    pals: pals.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), newlyFound: newlyFound.includes(id) })),
+    tries,
+    stars,
+    best,
+    // Only a new best shows the best it beat: a first best beat none.
+    beaten: celebration === "new-best" ? previousBest : undefined,
+    celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
+    levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+  };
 }

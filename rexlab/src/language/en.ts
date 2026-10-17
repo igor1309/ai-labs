@@ -4,7 +4,6 @@ export const en: Texts = {
   greeting: "PICK A GAME",
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
-  moreComing: "MORE COMING",
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },
@@ -63,5 +62,15 @@ export const en: Texts = {
     "no-horns": "NO HORNS",
     feathers: "FEATHERS",
     "no-feathers": "NO FEATHERS"
-  }
+  },
+  pairs: "FIND THE PAIR",
+  play: "PLAY",
+  level: "LEVEL",
+  starsEarned: "STARS",
+  tries: "TRIES",
+  cards: "CARDS",
+  card: (place) => `CARD ${place}`,
+  newLevel: (level) => `NEW LEVEL ${level}`,
+  newlyFound: "NEW",
+  found: "FOUND"
 };

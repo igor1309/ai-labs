@@ -10,6 +10,7 @@ import {
   SHIPPED_DINOSAURS,
   emptyCare,
   emptySorting,
+  emptyPairs,
   englishDevice,
   fakeBodyPicture,
   lightDevice,
@@ -68,6 +69,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...lightDevice()}
       {...emptyCare()}
       {...emptySorting()}
+      {...emptyPairs()}
       {...loadedPictures()}
     />
   );

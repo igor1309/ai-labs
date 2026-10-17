@@ -12,6 +12,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
   emptySorting,
   englishDevice,
@@ -27,7 +28,7 @@ import {
 } from "./support.ts";
 
 function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), care = emptyCare(), sorting = emptySorting()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pictures} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...emptyPairs()} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
@@ -58,11 +59,12 @@ function renderHomePage(taps: number[]) {
       catalogue={{ picture: fakeBodyPicture("stegosaurus"), count: SHIPPED_CATALOGUE.length }}
       care={{ picture: fakeBodyPicture("parasaurolophus"), best: undefined }}
       sort={{ picture: fakeBodyPicture("triceratops"), best: undefined }}
-      moreComing={fakeBodyPicture("stegosaurus")}
+      pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
       onCare={nothing}
       onSort={() => taps.push(1)}
+      onPairs={nothing}
     />
   );
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "SORT" }) };
@@ -72,11 +74,7 @@ function renderHomePage(taps: number[]) {
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
-const moreComing = () => {
-  const card = document.querySelector<HTMLElement>(".more-coming");
-  if (!card) throw new Error("No MORE COMING card on the page");
-  return card;
-};
+const pairsTile = () => screen.getByRole("button", { name: "FIND THE PAIR" });
 
 // jsdom lays nothing out, so the width of each title in every language
 // is given here in ems of its bold face, rounded up: Lexend's for the
@@ -91,7 +89,17 @@ const TITLE_EMS: Record<string, number> = {
   CARE: 2.8,
   ПОЗАБОТЬСЯ: 6.9,
   SORT: 2.9,
-  РАЗЛОЖИ: 5.2
+  РАЗЛОЖИ: 5.2,
+  // FIND THE PAIR's title may wrap, so each line it may take is here.
+  "FIND THE PAIR": 8.1,
+  "FIND THE": 5.2,
+  "THE PAIR": 5.1,
+  FIND: 2.8,
+  THE: 2.1,
+  PAIR: 2.7,
+  "НАЙДИ ПАРУ": 6.6,
+  НАЙДИ: 3.7,
+  ПАРУ: 2.7
 };
 
 // The words each title on the home page shows.
@@ -141,6 +149,22 @@ function roomFor(title: Element, width: number) {
   );
 }
 
+// The lines `words` wrap onto in `room` at `size`, a word at a time, or
+// the line whose width in ems is missing here.
+function linesOf(words: string, size: number, room: number): string[] | { missing: string } {
+  const lines: string[] = [];
+  for (const word of words.split(" ")) {
+    const last = lines.at(-1);
+    const joined = last === undefined ? word : `${last} ${word}`;
+    const ems = TITLE_EMS[joined];
+    if (ems === undefined) return { missing: joined };
+    if (last !== undefined && ems * size <= room) lines[lines.length - 1] = joined;
+    else lines.push(word);
+  }
+  const missing = lines.find((line) => TITLE_EMS[line] === undefined);
+  return missing === undefined ? lines : { missing };
+}
+
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -157,7 +181,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("lays the games out in three columns, 3 : 2 : 2 of the width: COMPARE, ALL DINOSAURS over CARE, then SORT over MORE COMING", () => {
+  it("lays the games out in three columns, 3 : 2 : 2 of the width: COMPARE, ALL DINOSAURS over CARE, then SORT over FIND THE PAIR", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -168,7 +192,7 @@ describe("the home page", () => {
     const tiles = catalogue.parentElement;
     const third = sort.parentElement;
     expect([...(tiles?.children ?? [])]).toEqual([catalogue, care]);
-    expect([...(third?.children ?? [])]).toEqual([sort, moreComing()]);
+    expect([...(third?.children ?? [])]).toEqual([sort, pairsTile()]);
     expect([...(games?.children ?? [])]).toEqual([card, tiles, third]);
     expect(
       [card, tiles, third].map((column) => {
@@ -183,7 +207,7 @@ describe("the home page", () => {
     expect(getComputedStyle(games ?? card).alignItems).toBe("normal");
     // Each column's two cards share its height.
     expect(
-      [catalogue, care, sort, moreComing()].map((tile) => {
+      [catalogue, care, sort, pairsTile()].map((tile) => {
         const style = getComputedStyle(tile);
         return [style.flexGrow, style.flexBasis, style.minHeight];
       })
@@ -192,7 +216,7 @@ describe("the home page", () => {
   });
 
   it.each([1024, 1180, 1366])(
-    "keeps the title of every game on one line in every language at %ipx wide, the tiles' at least 24px and their counts at least 20px in the pictures' corners",
+    "keeps the title of every game on one line in every language at %ipx wide, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px and their counts at least 20px in the pictures' corners",
     (width) => {
       const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 7, visitsFinished: 1, friends: [] }) });
       openHomePage(
@@ -235,38 +259,38 @@ describe("the home page", () => {
       ]);
       expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true]);
       expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative"]);
+
+      const title = pairsTile().querySelector(".pairs-tile-title");
+      if (!title) throw new Error("No FIND THE PAIR title");
+      expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", "pairs-tile-symbol"]);
+      const size = px(getComputedStyle(title).fontSize);
+      expect(size).toBeGreaterThanOrEqual(24);
+      const room = roomFor(title, width);
+      expect(LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, room)).filter((lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => (TITLE_EMS[line] ?? 0) * size > room))).toEqual([]);
     }
   );
 
-  it("shows MORE COMING under SORT as a picture, not a button: a faded Stegosaurus over a lock", () => {
+  it("offers find the pair as a tile under SORT: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
-    const card = moreComing();
-    expect(card.textContent).toBe("MORE COMING");
-    expect(symbolsOf(card)).toEqual(["lock"]);
-    const picture = card.querySelector("img");
-    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
-    expect(Number(getComputedStyle(picture ?? card).opacity)).toBeLessThan(1);
-    expect(card.closest("button")).toBeNull();
-    expect(within(card).queryAllByRole("button")).toEqual([]);
-    expect([card, ...card.querySelectorAll("*")].filter((element) => element instanceof HTMLElement && element.tabIndex >= 0)).toEqual([]);
+    const tile = pairsTile();
+    expect(tile.textContent).toBe("FIND THE PAIR");
+    expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
+    expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 
-  it("does nothing on a tap or a press of MORE COMING, and it neither brightens nor presses in", async () => {
+  it("brightens find the pair's tile under a pointer, and presses it in", async () => {
     const { user } = openHomePage();
-    const card = moreComing();
-    const before = document.body.innerHTML;
+    const tile = pairsTile();
 
-    await user.hover(card);
-    expect(brightness(card)).toBe(1);
-    await user.pointer({ keys: "[TouchA>]", target: card });
-    expect([brightness(card), getComputedStyle(card).transform]).toEqual([1, "none"]);
-    await user.pointer({ keys: "[/TouchA]", target: card });
-    await user.click(card);
-    await user.unhover(card);
+    await user.hover(tile);
+    expect(brightness(tile)).toBeGreaterThan(1);
+    await user.pointer({ keys: "[TouchA>]", target: tile });
+    expect(getComputedStyle(tile).transform).toMatch(/^scale\(0\.\d+\)$/);
+    await user.pointer({ keys: "[/TouchA]", target: tile });
 
-    expect(document.body.innerHTML).toBe(before);
-    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
+    expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
   });
 
   it("shows the best score in the quiz card's corner, over the face-off, beside a trophy", () => {

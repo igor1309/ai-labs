@@ -29,6 +29,7 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 
 const inQuiz = (file: string) => file.startsWith("quiz/");
 const inCare = (file: string) => file.startsWith("care/");
+const inPairs = (file: string) => file.startsWith("pairs/");
 const inSorting = (file: string) => file.startsWith("sorting/");
 const SCREENS = [
   "CareResultScreen.tsx",
@@ -38,6 +39,9 @@ const SCREENS = [
   "FriendsScreen.tsx",
   "HomePage.tsx",
   "OrientationGate.tsx",
+  "PairsBoardScreen.tsx",
+  "PairsResultScreen.tsx",
+  "PairsWelcomeScreen.tsx",
   "QuestionScreen.tsx",
   "ResultScreen.tsx",
   "SortScreen.tsx",
@@ -67,7 +71,7 @@ const ADAPTERS = [
   "mediaMotion.ts",
   "mediaOrientation.ts"
 ];
-const COMPOSITION = ["App.tsx", "careGame.tsx", "main.tsx", "presentation.ts", "root.ts", "screenChange.ts", "sortingGame.tsx"];
+const COMPOSITION = ["App.tsx", "careGame.tsx", "main.tsx", "pairsGame.tsx", "presentation.ts", "root.ts", "screenChange.ts", "sortingGame.tsx"];
 // The best-score rule every game keeps.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
@@ -128,6 +132,20 @@ describe("the import graph", () => {
     expect(["quiz/progress.ts", "care/progress.ts", "sorting/progress.ts"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
     expect(edges((file) => file === BEST_SCORE, () => true)).toEqual([]);
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target === BEST_SCORE)).toEqual([]);
+  });
+
+  it("reaches find the pair only through its entrypoint", () => {
+    expect(GRAPH.get("pairsGame.tsx")).toContain("pairs/index.ts");
+    expect(edges((file) => !inPairs(file), (target) => inPairs(target) && target !== "pairs/index.ts")).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of find the pair", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inPairs)).toEqual([]);
+  });
+
+  it("keeps find the pair free of all but the languages", () => {
+    expect(GRAPH.get("pairs/index.ts")).toBeDefined();
+    expect(edges(inPairs, (target) => !inPairs(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {

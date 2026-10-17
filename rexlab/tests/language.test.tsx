@@ -14,12 +14,14 @@ import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { MISS, endWave, playBoard, showMiss, turnCard } from "./pairsApp.tsx";
 import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
   emptySorting,
   fakeBodyPicture,
@@ -83,6 +85,7 @@ function openApp({
       {...lightDevice()}
       {...emptyCare()}
       {...emptySorting()}
+      {...emptyPairs()}
       {...timers}
     />
   );
@@ -664,6 +667,38 @@ async function sortingRounds(language: Language): Promise<Seen> {
   return play.seen;
 }
 
+// Find the pair: its welcome, a board with a card open, a miss, found
+// pairs and the cards waving, its result with a first best, the home page
+// again, and the catalogue and a page with the dinosaurs found stamped.
+async function findThePair(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, timers, look } = play;
+  const text = TEXTS[language];
+  await user.click(screen.getByRole("button", { name: text.pairs }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.play }));
+  look();
+  await turnCard(user, 0);
+  look();
+  await showMiss(user);
+  look();
+  act(() => timers.fire(MISS));
+  await playBoard(user, timers);
+  look();
+  endWave(timers);
+  look();
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.catalogue }));
+  look();
+  const stamped = screen.getAllByRole("img", { name: text.found })[0]?.closest("button");
+  if (!stamped) throw new Error("No dinosaur found in the catalogue");
+  await user.click(stamped);
+  look();
+  return play.seen;
+}
+
 // What a part shows for parents: its words, the language menu's codes
 // aside, and the labels read out.
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
@@ -677,9 +712,9 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // each menu for parents closed and open, the portrait gate, two rounds,
 // one with mistakes and one without, and both results, the catalogue, and
 // care: its welcome, its friends with none yet, a visit with each need
-// refused once and one without, both results and the friends made, and
+// refused once and one without, both results and the friends made,
 // the sorting game: a board with wrong drops, its result and the next
-// board.
+// board, and find the pair from its welcome to the dinosaurs found.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -696,7 +731,12 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   ["care's welcome and its friends", careWelcome, NOTHING_FOR_PARENTS],
   ["a visit with each need refused once and its result", visitWithRefusals, NOTHING_FOR_PARENTS],
   ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE],
-  ["a sorting board with wrong drops, its result, the next board and the home page again", sortingRounds, HOME_PAGE]
+  ["a sorting board with wrong drops, its result, the next board and the home page again", sortingRounds, HOME_PAGE],
+  [
+    "find the pair, its result, and the dinosaurs found in the catalogue",
+    findThePair,
+    (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
+  ]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));

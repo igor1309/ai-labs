@@ -10,6 +10,7 @@ import {
   SHIPPED_DINOSAURS,
   SHIPPED_SORTABLES,
   emptyCare,
+  emptyPairs,
   englishDevice,
   fakeBodyPicture,
   lightDevice,
@@ -46,6 +47,7 @@ function openApp({
       {...englishDevice()}
       {...lightDevice()}
       {...emptyCare()}
+      {...emptyPairs()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       {...pictures}

@@ -1,4 +1,5 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
+import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
 
@@ -32,6 +33,22 @@ export function localSortingProgress(storage: () => KeyValueStorage) {
 // The best score and finished rounds of a game that keeps only those.
 function readRounds({ bestScore, roundsPlayed }: Entry) {
   return (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined;
+}
+
+// Find the pair's progress, beside the others in the same record. Each
+// level's best is kept under the level's number.
+export function localPairsProgress(storage: () => KeyValueStorage) {
+  return gameProgress<PairsProgress>(storage, "find-the-pair", NO_PAIRS, ({ stars, level, boardsOnLevel, best, found }) =>
+    isCount(stars) &&
+    isLevel(level) &&
+    isCount(boardsOnLevel) &&
+    isObject(best) &&
+    Object.entries(best).every(([key, tries]) => isLevel(Number(key)) && isCount(tries) && tries > 0) &&
+    Array.isArray(found) &&
+    found.every((id) => typeof id === "string")
+      ? { stars, level, boardsOnLevel, best: { ...best }, found: [...found] }
+      : undefined
+  );
 }
 
 // One game's progress kept in browser storage, in the versioned record of
@@ -96,6 +113,10 @@ function parse(raw: string | null): Entry | undefined {
 
 function isObject(value: unknown): value is Entry {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isLevel(value: unknown): value is Level {
+  return Object.hasOwn(LEVELS, String(value)) && Number.isInteger(value);
 }
 
 function isCount(value: unknown): value is number {

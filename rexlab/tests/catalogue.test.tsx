@@ -15,6 +15,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
   emptySorting,
   fakeBodyPicture,
@@ -52,6 +53,7 @@ function openApp({
       {...pictures}
       {...emptyCare()}
       {...emptySorting()}
+      {...emptyPairs()}
     />
   );
   return userEvent.setup();

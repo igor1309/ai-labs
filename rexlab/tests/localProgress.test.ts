@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { NO_PAIRS } from "../src/pairs/index.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { NO_PROGRESS } from "../src/quiz/progress.ts";
 import { NO_SORTING } from "../src/sorting/index.ts";
 import { memoryStorage } from "./support.ts";
@@ -253,5 +254,91 @@ describe("localSortingProgress", () => {
 
     expect(progress.load()).toBeUndefined();
     expect(() => progress.save({ bestScore: 3, roundsPlayed: 1 })).not.toThrow();
+  });
+});
+
+const pairs = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "find-the-pair": entry } });
+
+const PAIRS = { stars: 5, level: 3, boardsOnLevel: 1, best: { 1: 4, 2: 6 }, found: ["triceratops"] } as const;
+
+describe("localPairsProgress", () => {
+  it("reads no find-the-pair progress from empty storage", () => {
+    const storage = memoryStorage();
+
+    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+  });
+
+  it.each([
+    [PAIRS, PAIRS],
+    [{ ...PAIRS, best: {}, achievements: ["first-board"] }, { ...PAIRS, best: {} }]
+  ])("reads stars, level, boards on it, bests and found dinosaurs from %j", (entry, progress) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs(entry) });
+
+    expect(localPairsProgress(() => storage).load()).toEqual(progress);
+  });
+
+  it("saves its progress and reads it back after a reload", () => {
+    const storage = memoryStorage();
+
+    localPairsProgress(() => storage).save(PAIRS);
+
+    expect(localPairsProgress(() => storage).load()).toEqual(PAIRS);
+  });
+
+  it.each([
+    ["stars in text", { ...PAIRS, stars: "5" }],
+    ["no level", { ...PAIRS, level: undefined }],
+    ["a level past the top", { ...PAIRS, level: 5 }],
+    ["level 0", { ...PAIRS, level: 0 }],
+    ["a fractional level", { ...PAIRS, level: 1.5 }],
+    ["no boards on the level", { ...PAIRS, boardsOnLevel: undefined }],
+    ["bests that are not a record", { ...PAIRS, best: [4, 6] }],
+    ["a best of an unknown level", { ...PAIRS, best: { 5: 4 } }],
+    ["a best of no tries", { ...PAIRS, best: { 1: 0 } }],
+    ["a best in text", { ...PAIRS, best: { 1: "4" } }],
+    ["found dinosaurs that are not a list", { ...PAIRS, found: "triceratops" }],
+    ["a found dinosaur that is not an id", { ...PAIRS, found: [3] }],
+    ["an entry that is not a record", 6]
+  ])("reads %s as no find-the-pair progress, and keeps the other games'", (_, entry) => {
+    const storage = memoryStorage({
+      [PROGRESS_KEY]: pairs(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 6, visitsFinished: 1, friends: [] } })
+    });
+
+    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+    expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
+    expect(localCareProgress(() => storage).load()).toEqual({ bestScore: 6, visitsFinished: 1, friends: [] });
+  });
+
+  it("reads progress of an unknown schema version as none", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 2, games: { "find-the-pair": PAIRS } }) });
+
+    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+  });
+
+  it("keeps the other games in one record, each saved without touching the others", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
+
+    localPairsProgress(() => storage).save(PAIRS);
+    localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: [] });
+    localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 9, roundsPlayed: 4 },
+        "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: [] },
+        "find-the-pair": PAIRS
+      }
+    });
+  });
+
+  it.each([
+    ["the storage cannot be reached", blocked],
+    ["the storage cannot be read", () => memoryStorage({ [PROGRESS_KEY]: pairs(PAIRS) }, { read: false })]
+  ])("loads nothing and saves nothing when %s", (_, storage) => {
+    const progress = localPairsProgress(storage);
+
+    expect(progress.load()).toBeUndefined();
+    expect(() => progress.save(PAIRS)).not.toThrow();
   });
 });
