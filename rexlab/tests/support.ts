@@ -1,6 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readVisitors } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -10,11 +10,13 @@ import { presentQuestion } from "../src/presentation.ts";
 import { choose, questionState, type Random } from "../src/quiz/index.ts";
 import { startPlay } from "../src/quiz/play.ts";
 import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
+export const SHIPPED_SORTABLES = readSortables(records);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -135,6 +137,17 @@ export function seededRandom(seed: number): Random {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+// A new board sorting by `property`. A board sorts by any property, so
+// boards are started until one does.
+export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1): Sorting {
+  const random = seededRandom(seed);
+  for (let tries = 0; tries < 100; tries++) {
+    const sorting = startBoard(dinosaurs, random);
+    if (boardState(sorting).property === property) return sorting;
+  }
+  throw new Error(`No board sorted by ${property}`);
 }
 
 export type ManualOrientation = Orientation & { turn(to: "portrait" | "landscape"): void };

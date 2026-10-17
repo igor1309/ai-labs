@@ -53,5 +53,18 @@ export const ru: Texts = {
   heartsOf: (hearts, total) => `${hearts} ИЗ ${total} СЕРДЕЧЕК`,
   newFriend: "НОВЫЙ ДРУГ!",
   friend: "ДРУГ",
-  noFriends: "ПОКА НЕТ ДРУЗЕЙ. ПРИГЛАСИ ДИНОЗАВРА!"
+  noFriends: "ПОКА НЕТ ДРУЗЕЙ. ПРИГЛАСИ ДИНОЗАВРА!",
+  sortPrompt: "РАЗЛОЖИ ДИНОЗАВРОВ",
+  baskets: {
+    "two-legs": "ДВЕ НОГИ",
+    "four-legs": "ЧЕТЫРЕ НОГИ",
+    plants: "РАСТЕНИЯ",
+    meat: "МЯСО",
+    big: "БОЛЬШИЕ",
+    small: "МАЛЕНЬКИЕ",
+    horns: "С РОГАМИ",
+    "no-horns": "БЕЗ РОГОВ",
+    feathers: "С ПЕРЬЯМИ",
+    "no-feathers": "БЕЗ ПЕРЬЕВ"
+  }
 };

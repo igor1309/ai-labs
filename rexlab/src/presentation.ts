@@ -9,12 +9,14 @@ import type { Language } from "./language/language.ts";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
+import type { Basket as SortBasket, BoardState, CardState } from "./sorting/index.ts";
+import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
 
-// How the app shows the quiz, the catalogue and dinosaur care: the
-// composition root's translation from their APIs to what each screen
-// renders. A new attribute, celebration, food type, need or item fails the
-// typecheck here until it is given a presentation.
+// How the app shows the quiz, the catalogue, dinosaur care and the
+// sorting game: the composition root's translation from their APIs to what
+// each screen renders. A new attribute, celebration, food type, need, item
+// or basket fails the typecheck here until it is given a presentation.
 
 const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
@@ -127,4 +129,45 @@ export function presentCareResult(result: CareResult, language: Language, bodyPi
 
 export function presentFriend(visitor: Visitor, language: Language, bodyPicture: (dinosaurId: string) => string) {
   return { id: visitor.id, name: visitor.name[language], picture: bodyPicture(visitor.id) };
+}
+
+const BASKETS: Record<SortBasket, ShownBasket> = {
+  "two-legs": "two-legs",
+  "four-legs": "four-legs",
+  plants: "plants",
+  meat: "meat",
+  big: "big",
+  small: "small",
+  horns: "horns",
+  "no-horns": "no-horns",
+  feathers: "feathers",
+  "no-feathers": "no-feathers"
+};
+
+const DROPPED = Object.fromEntries(Object.entries(BASKETS).map(([basket, shown]) => [shown, basket])) as Record<ShownBasket, SortBasket>;
+
+// The sorting game's basket a card was dropped on, from the board's.
+export function droppedOn(basket: ShownBasket): SortBasket {
+  return DROPPED[basket];
+}
+
+export type BoardView = Pick<SortScreenProps, "tray" | "baskets" | "sorted" | "total" | "glow">;
+
+// The board as the child sees it: a card on the tray carries its right
+// basket's symbol from its first miss until it lands.
+export function presentBoard(board: BoardState, language: Language, bodyPicture: (dinosaurId: string) => string): BoardView {
+  const { cards, landed, lastMiss } = board;
+  const card = ({ dinosaur }: CardState) => ({ id: dinosaur.id, name: dinosaur.name[language], picture: bodyPicture(dinosaur.id) });
+  const [first, second] = board.baskets.map((basket) => ({
+    basket: BASKETS[basket],
+    cards: landed.filter((each) => each.basket === basket).map(card)
+  }));
+  if (!first || !second) throw new Error("A board has two baskets");
+  return {
+    tray: cards.map((each) => (each.landed ? null : { ...card(each), hint: each.missed ? BASKETS[each.basket] : undefined })),
+    baskets: [first, second],
+    sorted: landed.length,
+    total: cards.length,
+    glow: lastMiss && { basket: BASKETS[lastMiss.basket], count: lastMiss.misses }
+  };
 }

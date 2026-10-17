@@ -49,5 +49,18 @@ export const en: Texts = {
   heartsOf: (hearts, total) => `${hearts} OF ${total} HEARTS`,
   newFriend: "NEW FRIEND!",
   friend: "FRIEND",
-  noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!"
+  noFriends: "NO FRIENDS YET. WELCOME A DINOSAUR!",
+  sortPrompt: "SORT THE DINOSAURS",
+  baskets: {
+    "two-legs": "TWO LEGS",
+    "four-legs": "FOUR LEGS",
+    plants: "PLANTS",
+    meat: "MEAT",
+    big: "BIG",
+    small: "SMALL",
+    horns: "HORNS",
+    "no-horns": "NO HORNS",
+    feathers: "FEATHERS",
+    "no-feathers": "NO FEATHERS"
+  }
 };

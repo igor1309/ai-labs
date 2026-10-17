@@ -29,6 +29,7 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 
 const inQuiz = (file: string) => file.startsWith("quiz/");
 const inCare = (file: string) => file.startsWith("care/");
+const inSorting = (file: string) => file.startsWith("sorting/");
 const SCREENS = [
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
@@ -39,6 +40,7 @@ const SCREENS = [
   "OrientationGate.tsx",
   "QuestionScreen.tsx",
   "ResultScreen.tsx",
+  "SortScreen.tsx",
   "VisitScreen.tsx"
 ];
 const PRESENTATION = [...SCREENS, "DietTag.tsx", "Festivity.tsx", "ParentMenu.tsx", "SharedPicture.tsx", "formatValue.ts", "usePointerState.ts"];
@@ -94,6 +96,20 @@ describe("the import graph", () => {
 
   it("keeps dinosaur care free of all but the languages", () => {
     expect(edges(inCare, (target) => !inCare(target) && !target.startsWith("language/"))).toEqual([]);
+  });
+
+  it("reaches the sorting game only through its entrypoint", () => {
+    expect(GRAPH.get("presentation.ts")).toContain("sorting/index.ts");
+    expect(GRAPH.get("dinosaurs.ts")).toContain("sorting/index.ts");
+    expect(edges((file) => !inSorting(file), (target) => inSorting(target) && target !== "sorting/index.ts")).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of the sorting game", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inSorting)).toEqual([]);
+  });
+
+  it("keeps the sorting game free of all but the languages", () => {
+    expect(edges(inSorting, (target) => !inSorting(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {

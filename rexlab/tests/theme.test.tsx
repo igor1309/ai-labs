@@ -8,8 +8,11 @@ import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
+import type { Basket } from "../src/SortScreen.tsx";
+import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { basketButton, centreOf, dragTo, layOutBaskets, openBoard, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -26,6 +29,7 @@ import {
   sameColour,
   seededRandom,
   seenOn,
+  sortingBy,
   surfaceOf,
   surfacesIn,
   symbolOf,
@@ -459,6 +463,80 @@ describe("the theme menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(symbolOf(screen.getByRole("button", { name: "Theme" }))).toBe(symbol);
     expect(choicesIn(await openMenu(user, "Theme")).filter(({ tick }) => tick)).toEqual([{ name, checked: true, tick: true }]);
+  });
+});
+
+// The board is shown through the sorting game and the screen's props, in
+// the theme the app sets on the page.
+describe("the sorting board", () => {
+  const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
+
+  it.each(["light", "dark"] as const)("is in the %s theme in every state, with every basket's symbol", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const property of PROPERTIES) {
+        const user = userEvent.setup();
+        const sorting = sortingBy(property);
+        const { unmount } = openBoard(sorting);
+        layOutBaskets(sorting);
+        const [missed, ...rest] = boardState(sorting).cards;
+        if (!missed) throw new Error("The board has no cards");
+        const right = missed.basket as Basket;
+        expectScreenIn(theme);
+
+        await user.click(trayCard(missed));
+        expectScreenIn(theme);
+        await user.click(trayCard(missed));
+        await user.pointer([
+          { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
+          { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
+        ]);
+        expectScreenIn(theme);
+        await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
+        // The hint on the card and the right basket's glow.
+        expect(document.querySelector(".sort-hint")).not.toBeNull();
+        expect(document.querySelector(".basket-glow")).not.toBeNull();
+        expectScreenIn(theme);
+
+        await dragTo(user, trayCard(missed), centreOf(sorting, right));
+        for (const card of rest) {
+          await user.click(trayCard(card));
+          await user.click(basketButton(card.basket as Basket));
+        }
+        expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
+        expectScreenIn(theme);
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
+  it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      const user = userEvent.setup();
+      const sorting = sortingBy("diet");
+      const { unmount } = openBoard(sorting);
+      const [first, second] = boardState(sorting).cards;
+      if (!first || !second) throw new Error("The board has no cards");
+      await user.click(trayCard(first));
+      await user.click(basketButton(first.basket as Basket));
+      await user.click(trayCard(second));
+      await user.click(basketButton(otherBasket(sorting, second.basket as Basket)));
+
+      const check = screen.getByRole("img", { name: "RIGHT" });
+      const hint = within(trayCard(second)).getByRole("img", { name: (second.basket as string).toUpperCase() });
+      for (const mark of [check, hint]) {
+        const colour = getComputedStyle(mark).backgroundColor;
+        expect(contrast(colour, surfaceOf(mark.parentElement ?? mark))).toBeGreaterThanOrEqual(3);
+        expect(contrast(getComputedStyle(mark).color, colour)).toBeGreaterThanOrEqual(3);
+      }
+      expect(sameColour(getComputedStyle(check).backgroundColor, PALETTE[theme].good ?? "")).toBe(true);
+      unmount();
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
   });
 });
 

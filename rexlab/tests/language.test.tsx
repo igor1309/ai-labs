@@ -10,8 +10,11 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import type { Basket } from "../src/SortScreen.tsx";
+import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { basketButton, openBoard, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -27,6 +30,7 @@ import {
   questionView,
   sameColour,
   seededRandom,
+  sortingBy,
   symbolOf,
   words,
   type ManualOrientation,
@@ -317,6 +321,72 @@ describe("Russian text", () => {
 
     expect(words(screen.getByRole("button", { name: "ДОМОЙ" }))).toBe("ДОМОЙ");
   });
+});
+
+// The board is shown through the sorting game and the screen's props: a
+// whole board of each property, to SEE RESULT.
+describe("the sorting board", () => {
+  const BASKET_NAMES: Record<Language, Record<Property, [string, string]>> = {
+    en: {
+      legs: ["TWO LEGS", "FOUR LEGS"],
+      diet: ["PLANTS", "MEAT"],
+      size: ["BIG", "SMALL"],
+      horns: ["HORNS", "NO HORNS"],
+      feathers: ["FEATHERS", "NO FEATHERS"]
+    },
+    ru: {
+      legs: ["ДВЕ НОГИ", "ЧЕТЫРЕ НОГИ"],
+      diet: ["РАСТЕНИЯ", "МЯСО"],
+      size: ["БОЛЬШИЕ", "МАЛЕНЬКИЕ"],
+      horns: ["С РОГАМИ", "БЕЗ РОГОВ"],
+      feathers: ["С ПЕРЬЯМИ", "БЕЗ ПЕРЬЕВ"]
+    }
+  };
+  const PROMPT: Record<Language, string> = { en: "SORT THE DINOSAURS", ru: "РАЗЛОЖИ ДИНОЗАВРОВ" };
+  const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
+
+  // Every text in the document and every name read out, as now shown.
+  const shown = () => [
+    ...[...document.body.querySelectorAll("*")].flatMap((element) =>
+      [...element.childNodes].flatMap((node) => (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() ? [node.textContent.trim()] : []))
+    ),
+    ...[...document.body.querySelectorAll("[aria-label]"), ...document.body.querySelectorAll("img[alt]")].map(
+      (element) => element.getAttribute("aria-label") ?? element.getAttribute("alt") ?? ""
+    )
+  ];
+
+  it.each(LANGUAGES.flatMap((language) => (Object.keys(BASKET_NAMES[language]) as Property[]).map((property) => [language, property] as const)))(
+    "reads in %s, sorting by %s, every text for children in capitals",
+    async (language, property) => {
+      const user = userEvent.setup();
+      const sorting = sortingBy(property);
+      openBoard(sorting, language);
+      const [missed, ...rest] = boardState(sorting).cards;
+      if (!missed) throw new Error("The board has no cards");
+      const [first, second] = boardState(sorting).baskets;
+      const seen = [...shown()];
+
+      expect(words(screen.getByRole("heading"))).toBe(PROMPT[language]);
+      expect([first, second].map((basket) => words(basketButton(basket, language)))).toEqual(BASKET_NAMES[language][property]);
+      expect(words(screen.getByRole("button", { name: BUTTONS[language].home }))).toBe(BUTTONS[language].home);
+      await user.click(trayCard(missed, language));
+      await user.click(basketButton(missed.basket === first ? second : first, language));
+      seen.push(...shown());
+      for (const card of [missed, ...rest]) {
+        await user.click(trayCard(card, language));
+        await user.click(basketButton(card.basket as Basket, language));
+      }
+      expect(words(screen.getByRole("button", { name: BUTTONS[language].seeResult }))).toBe(BUTTONS[language].seeResult);
+      seen.push(...shown());
+
+      const texts = seen.filter((text) => !/^\d+$/.test(text));
+      expect(texts.length).toBeGreaterThan(0);
+      expect(texts.filter((text) => FOREIGN[language].test(text))).toEqual([]);
+      // Names are read out as written; every text shown is in capitals.
+      const names = boardState(sorting).cards.map(({ dinosaur }) => dinosaur.name[language]);
+      expect(texts.filter((text) => !names.includes(text) && text !== text.toLocaleUpperCase(language))).toEqual([]);
+    }
+  );
 });
 
 describe("revealed values", () => {
