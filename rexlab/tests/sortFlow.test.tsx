@@ -2,6 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
+import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import type { Random } from "../src/sorting/index.ts";
 import { basketsShown, sortByTrying, storedRecord, tray } from "./sorting.tsx";
@@ -26,7 +27,6 @@ import {
   words,
   type ManualPictures,
   type MemoryStorage,
-  homeTile,
   unsetAgeLevel
 } from "./support.ts";
 
@@ -168,120 +168,60 @@ const TAPS = [
   ["twice quickly", (user: UserEvent, element: HTMLElement) => user.dblClick(element)]
 ] as const;
 
-// Each screen the child may open from the home page while a board's
-// pictures load, and whether it is on screen.
-const ELSEWHERE = [
-  ["CARE", () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
-  ["ALL DINOSAURS", () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
-  ["FIND THE PAIR", () => screen.queryByRole("heading", { name: "FIND THE PAIR" }) !== null],
-  ["MUSEUM", () => screen.queryByRole("group", { name: "STANDS" }) !== null]
-] as const;
-
-// Each way a board's wait for its pictures ends.
-const ENDS = [
-  ["its pictures load", (pictures: ManualPictures, asked: readonly string[]) => asked.forEach(pictures.finish)],
-  ["its second runs out", (pictures: ManualPictures) => pictures.fire(1000)]
-] as const;
+// Each card's picture on the tray, as its place looks.
+const looksShown = () => within(tray()).getAllByRole("img").map((picture) => picture.dataset.picture);
 
 describe("a new board", () => {
   it.each(STARTS.flatMap((start) => TAPS.map((taps) => [...start, ...taps] as const)))(
-    "waits on %s for its six pictures after %s is tapped %s, then starts one board with them",
-    async (_, start, name, stillThere, __, tap) => {
+    "starts at once on %s after %s is tapped %s, one board, its six cards named over their pictures' shimmer, then fading them in",
+    async (_, start, name, __, ___, tap) => {
       const pictures = manualPictures();
       const { user } = await openOn(start, pictures);
 
       await tap(user, button(name));
 
+      // A dinosaur of the board before has its picture loaded already.
+      const cards = within(tray()).getAllByRole("button");
+      const urls = cards.map((card) => fakeBodyPicture(SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id ?? ""));
       const asked = pictures.loading();
-      expect(asked).toHaveLength(6);
-      expect(pictures.timers()).toEqual([1000]);
-      act(() => asked.slice(0, 5).forEach(pictures.finish));
-      expect([stillThere(), onBoard()]).toEqual([true, false]);
-
-      act(() => pictures.finish(asked[5] ?? ""));
-
-      expect(onBoard()).toBe(true);
-      expect(picturesShown()).toEqual(asked);
-      expect([pictures.loading(), pictures.timers()]).toEqual([[], []]);
+      const loading = urls.map((url) => asked.includes(url));
+      expect([onBoard(), cards.map((card) => card.getAttribute("aria-pressed")), looksShown()]).toEqual([true, Array<string>(6).fill("false"), loading.map((still) => (still ? "loading" : "shown"))]);
+      expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+      act(() => asked.forEach(pictures.finish));
+      expect([looksShown(), picturesShown()]).toEqual([loading.map((still) => (still ? "appearing" : "shown")), urls]);
     }
   );
 
-  it.each(STARTS)("starts on %s after a second when its pictures are slow, and not again when they arrive", async (_, start, name) => {
-    const pictures = manualPictures();
-    const { user } = await openOn(start, pictures);
-    await user.click(button(name));
-    const asked = pictures.loading();
-
-    act(() => pictures.fire(1000));
-
-    expect(onBoard()).toBe(true);
-    expect(picturesShown()).toEqual(asked);
-    const first = document.body.innerHTML;
-    act(() => asked.forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(first);
-  });
-
-  it("is not shown when the child goes home while its pictures load, and SORT starts another at once", async () => {
-    const pictures = manualPictures();
-    const { user } = await openOn("result", pictures);
-    await user.click(button("PLAY AGAIN"));
-    const left = pictures.loading();
-    await user.click(button("HOME"));
-
-    await user.click(button("SORT"));
-
-    const asked = pictures.loading().slice(left.length);
-    expect(asked).toHaveLength(6);
-    act(() => asked.forEach(pictures.finish));
-    expect(picturesShown()).toEqual(asked);
-    const shown = document.body.innerHTML;
-    act(() => {
-      left.forEach(pictures.finish);
-      pictures.fire(1000);
-    });
-    expect(document.body.innerHTML).toBe(shown);
-  });
-
-  it.each(ELSEWHERE.flatMap(([name, there]) => ENDS.map(([end, ending]) => [name, end, there, ending] as const)))(
-    "is not shown over %s, tapped while its pictures load, when %s, and SORT starts another later",
-    async (name, _, there, ending) => {
-      const pictures = manualPictures();
-      const { user } = await openOn("home", pictures);
-      await user.click(button("SORT"));
-      const asked = pictures.loading();
-      await user.click(button(name));
-
-      act(() => ending(pictures, asked));
-
-      expect([there(), onBoard()]).toEqual([true, false]);
-      await user.click(button("HOME"));
-      await user.click(button("SORT"));
-      act(() => pictures.loading().forEach(pictures.finish));
-      expect(onBoard()).toBe(true);
-    }
-  );
-
-  it("is not shown when the child taps COMPARE while its pictures load, and the question opens at once", async () => {
+  it("is sorted to its result while its pictures load, each sorted card's place shimmering too", async () => {
     const pictures = manualPictures();
     const { user } = await openOn("home", pictures);
     await user.click(button("SORT"));
-    const asked = pictures.loading();
-    await user.click(homeTile("COMPARE"));
 
-    expect(screen.getByRole("heading").textContent).toMatch(/^WHO IS (HEAVIER|TALLER)\?$/);
-    act(() => pictures.finishAll());
-    expect([screen.getByRole("heading").textContent, onBoard(), asked.length]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false, 6]);
+    await sortByTrying(user);
+
+    expect([...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture)).toEqual(Array<string>(6).fill("loading"));
+    await user.click(button("SEE RESULT"));
+    expect(onResult()).toBe(true);
   });
 
-  it("is not shown on the home page when the child goes home while its pictures load", async () => {
+  it("shows each card's failure look once its pictures are still loading after 8 seconds, named, and sorted all the same, each sorted card shimmering for 8 seconds of its own", async () => {
     const pictures = manualPictures();
-    const { user } = await openOn("result", pictures);
-    await user.click(button("PLAY AGAIN"));
-    await user.click(button("HOME"));
+    const { user } = await openOn("home", pictures);
+    await user.click(button("SORT"));
 
-    act(() => pictures.loading().forEach(pictures.finish));
+    act(() => pictures.fire(PICTURE_LIMIT));
 
-    expect([onHomePage(), onBoard()]).toEqual([true, false]);
+    expect(looksShown()).toEqual(Array<string>(6).fill("failed"));
+    const cards = within(tray()).getAllByRole("button");
+    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+    await sortByTrying(user);
+    // Each sorted card is a place of its own, with 8 seconds of its own.
+    const sortedLooks = () => [...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture);
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("loading"));
+    act(() => pictures.fire(PICTURE_LIMIT));
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("failed"));
+    await user.click(button("SEE RESULT"));
+    expect(onResult()).toBe(true);
   });
 });
 

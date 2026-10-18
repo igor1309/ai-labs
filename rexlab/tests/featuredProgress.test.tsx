@@ -260,7 +260,6 @@ describe("starting a game", () => {
 type Start = [start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement];
 
 const WAITING: Start[] = [
-  ["a sorting round", "sort", [], () => homeTile("SORT")],
   ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
   ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
 ];
@@ -292,7 +291,8 @@ describe("a start that waits for its pictures", () => {
 const AT_ONCE: Start[] = [
   ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
-  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")]
+  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
+  ["a sorting round", "sort", [], () => homeTile("SORT")]
 ];
 
 describe("a start that does not wait for its pictures", () => {

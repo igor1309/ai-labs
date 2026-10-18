@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Sorting no longer waits for pictures: a round starts at once, each card named over its picture's shimmer until it fades in, and sorted the same while its picture loads or is missing (LAB-307).
 - Care and find the pair no longer wait for pictures: a visit and a board start at once, each picture shimmering until it fades in; a turned card shows its dinosaur's name until its picture shows, and a missing picture shows footprints (LAB-306).
 - The catalogue, the compare game and the home page no longer wait for pictures: a screen opens at once, each picture shimmering in its place until it fades in, and a picture that fails or takes over 8 seconds shows footprints instead (LAB-304).
 - A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
