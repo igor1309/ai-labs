@@ -249,6 +249,7 @@ describe("the language menu", () => {
         expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
 
         await chooseFrom(user, menu, choice);
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
         await user.click(screen.getByRole("button", { name: tile }));
         await screen.findByRole("button", { name: home });
         expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
