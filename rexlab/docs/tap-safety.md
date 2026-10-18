@@ -55,11 +55,13 @@ takes the cautious end of the platforms' range for children less sure of
 their fingers. It is provisional and one constant: if a child's deliberate
 taps are lost on an iPad, lower it toward 350 ms.
 
-Sources: Nacher et al., "Multi-touch gestures for pre-kindergarten
-children", IJHCS 2015 (the 300 ms pass mark); Oliveira et al.,
-arXiv:1402.1036 (double taps fit a window from about 400 ms); the
-CSS Working Group's issues #7797 and #12629 on input during a view
-transition.
+Sources: Nácher, Jaén, Navarro, Catalá and González, "Multi-touch
+gestures for pre-kindergarten children", IJHCS 73:37–51, 2015, with
+children of 2–3 (the 300 ms pass mark); Guerreiro, "User-Sensitive Mobile
+Interfaces: Accounting for Individual Differences amongst the Blind", PhD
+thesis, 2014, arXiv:1402.1036 (blind adults' double taps fit a window from
+about 400 ms); the CSS Working Group's issues #7797 and #12629 on input
+during a view transition.
 
 ## Forbidden
 
