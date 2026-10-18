@@ -79,8 +79,8 @@ func completesReview(t *testing.T, settings map[string]string, turn codex.Turn) 
 	return codex.Result{Reply: &codex.Reply{Output: output}}, nil
 }
 
-// judged is the judge's input "reviews", as its message gives it, decoded.
-func judged(t *testing.T, f *runFixture) []any {
+// judgedText is the judge's input "reviews", as its message gives it.
+func judgedText(t *testing.T, f *runFixture) string {
 	t.Helper()
 	ran := f.runtimes.claude.ran()
 	if len(ran) != 1 {
@@ -91,6 +91,13 @@ func judged(t *testing.T, f *runFixture) []any {
 		t.Fatalf("the judge's message %q, want its input reviews", ran[0].Message)
 	}
 	section, _, _ = strings.Cut(section, "\n")
+	return section
+}
+
+// judged is the judge's input "reviews", as its message gives it, decoded.
+func judged(t *testing.T, f *runFixture) []any {
+	t.Helper()
+	section := judgedText(t, f)
 	var got []any
 	if err := json.Unmarshal([]byte(section), &got); err != nil {
 		t.Fatalf("the judge's input reviews %q: %v", section, err)

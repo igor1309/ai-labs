@@ -11,13 +11,15 @@ import (
 )
 
 // request is one request made on a port: its operation, the launch
-// directory, and the kind listed, the document shown or the run asked.
+// directory, and the kind listed, the document shown, the run asked or the
+// run exported and its folder.
 type request struct {
 	op       string
 	launch   string
 	kind     cli.Kind
 	document cli.Document
 	run      cli.Request
+	id, to   string
 }
 
 // portSpy is a spy of cli's ports: it keeps each request and gives what
@@ -51,6 +53,11 @@ func (s *portSpy) Run(launch string, run cli.Request) (cli.Result, error) {
 	return s.result, s.err
 }
 
+func (s *portSpy) Export(id, to string) error {
+	s.requests = append(s.requests, request{op: "export", id: id, to: to})
+	return s.err
+}
+
 // ran is what a command printed and its exit code.
 type ran struct {
 	stdout, stderr string
@@ -61,7 +68,7 @@ type ran struct {
 func run(t *testing.T, spy *portSpy, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	c, err := cli.New(spy, spy, &stdout, &stderr)
+	c, err := cli.New(spy, spy, spy, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +259,7 @@ func TestOutputThatCannotBeWrittenIsAnError(t *testing.T) {
 			}
 			stdout := &failingWriter{err: errors.New("write /dev/stdout: broken pipe")}
 			var stderr strings.Builder
-			c, err := cli.New(spy, spy, stdout, &stderr)
+			c, err := cli.New(spy, spy, spy, stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -383,17 +390,19 @@ func TestNewFailsWithoutACollaborator(t *testing.T) {
 		name           string
 		settings       cli.Settings
 		runner         cli.Runner
+		runs           cli.Runs
 		stdout, stderr io.Writer
 	}{
-		{"no settings", nil, &portSpy{}, &out, &out},
-		{"no runner", &portSpy{}, nil, &out, &out},
-		{"no stdout", &portSpy{}, &portSpy{}, nil, &out},
-		{"no stderr", &portSpy{}, &portSpy{}, &out, nil},
+		{"no settings", nil, &portSpy{}, &portSpy{}, &out, &out},
+		{"no runner", &portSpy{}, nil, &portSpy{}, &out, &out},
+		{"no runs", &portSpy{}, &portSpy{}, nil, &out, &out},
+		{"no stdout", &portSpy{}, &portSpy{}, &portSpy{}, nil, &out},
+		{"no stderr", &portSpy{}, &portSpy{}, &portSpy{}, &out, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := cli.New(c.settings, c.runner, c.stdout, c.stderr); err == nil {
+			if _, err := cli.New(c.settings, c.runner, c.runs, c.stdout, c.stderr); err == nil {
 				t.Error("built, want an error")
 			}
 		})

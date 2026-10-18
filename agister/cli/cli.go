@@ -1,8 +1,8 @@
 // Package cli is the command line (ADR-001): it turns "agister check",
-// "agister inspect" and "agister run" into requests on the ports it
-// declares, and prints what the ports give. It is given its arguments, its
-// working directory and its output streams (ADR-009, rule 2); a write that
-// fails is its error. The composition answers its ports, over home's
+// "agister inspect", "agister run" and "agister runs" into requests on the
+// ports it declares, and prints what the ports give. It is given its
+// arguments, its working directory and its output streams (ADR-009, rule
+// 2); a write that fails is its error. The composition answers its ports, over home's
 // folder, which is the composition's.
 package cli
 
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -184,25 +185,30 @@ const usage = `usage:
   agister inspect process|workflow|agent <name> [--dir <directory>]
   agister run <workflow> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
   agister run --process <name> --agent <name> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
+  agister runs export <run id> --to <directory>
 `
 
-// CLI runs commands against its settings and its runner, printing to its
-// streams.
+// CLI runs commands against its settings, its runner and its runs,
+// printing to its streams.
 type CLI struct {
 	settings Settings
 	runner   Runner
+	runs     Runs
 	stdout   io.Writer
 	stderr   io.Writer
 }
 
-// New gives a command line asking settings and runner, printing what they
-// give to stdout, and a bad command's usage and a failure to stderr.
-func New(settings Settings, runner Runner, stdout, stderr io.Writer) (*CLI, error) {
+// New gives a command line asking settings, runner and runs, printing what
+// they give to stdout, and a bad command's usage and a failure to stderr.
+func New(settings Settings, runner Runner, runs Runs, stdout, stderr io.Writer) (*CLI, error) {
 	if settings == nil {
 		return nil, errors.New("cli: no settings")
 	}
 	if runner == nil {
 		return nil, errors.New("cli: no runner")
+	}
+	if runs == nil {
+		return nil, errors.New("cli: no runs")
 	}
 	if stdout == nil {
 		return nil, errors.New("cli: no stdout")
@@ -210,7 +216,7 @@ func New(settings Settings, runner Runner, stdout, stderr io.Writer) (*CLI, erro
 	if stderr == nil {
 		return nil, errors.New("cli: no stderr")
 	}
-	return &CLI{settings: settings, runner: runner, stdout: stdout, stderr: stderr}, nil
+	return &CLI{settings: settings, runner: runner, runs: runs, stdout: stdout, stderr: stderr}, nil
 }
 
 // Run runs the command args, the program's name left out, in the working
@@ -290,12 +296,28 @@ func inspected(word string) (list, show Kind) {
 }
 
 // flags are the flags of a command: --dir; run's --process, --agent,
-// --continue and each --param, in the order given; and ofRun, the first of
-// run's flags as it was given, "" for none.
+// --continue and each --param, in the order given; runs' --to; and each
+// flag by its name, as it was given, in order.
 type flags struct {
-	dir, process, agent, continued string
-	params                         []string
-	ofRun                          string
+	dir, process, agent, continued, to string
+	params                             []string
+	given                              []givenFlag
+}
+
+// givenFlag is a flag by its name, and as it was given.
+type givenFlag struct {
+	name, arg string
+}
+
+// only is the error of the first flag given that is not one of names, nil
+// where there is none.
+func (f flags) only(names ...string) error {
+	for _, g := range f.given {
+		if !slices.Contains(names, g.name) {
+			return fmt.Errorf("unknown flag %s", g.arg)
+		}
+	}
+	return nil
 }
 
 // needs is what flag takes as its value, "" for a flag no command takes.
@@ -311,6 +333,8 @@ func needs(flag string) string {
 		return "a param"
 	case "continue":
 		return "a run id"
+	case "to":
+		return "a directory"
 	}
 	return ""
 }
@@ -342,9 +366,7 @@ func parse(args []string) (command, error) {
 		if value == "" {
 			return command{}, fmt.Errorf("%s needs %s", arg, need)
 		}
-		if flag != "dir" && f.ofRun == "" {
-			f.ofRun = arg
-		}
+		f.given = append(f.given, givenFlag{name: flag, arg: arg})
 		switch flag {
 		case "dir":
 			f.dir = value
@@ -356,6 +378,8 @@ func parse(args []string) (command, error) {
 			f.params = append(f.params, value)
 		case "continue":
 			f.continued = value
+		case "to":
+			f.to = value
 		}
 	}
 	if len(words) == 0 {
@@ -363,16 +387,22 @@ func parse(args []string) (command, error) {
 	}
 	verb, rest := words[0], words[1:]
 	cmd := command{dir: f.dir}
-	if verb == "run" {
+	switch verb {
+	case "run":
+		if err := f.only("dir", "process", "agent", "param", "continue"); err != nil {
+			return command{}, err
+		}
 		request, err := parseRun(rest, f)
 		if err != nil {
 			return command{}, err
 		}
 		cmd.run = func(c *CLI, out io.Writer, launch string) (int, error) { return c.runRequest(out, launch, request) }
 		return cmd, nil
+	case "runs":
+		return parseRuns(rest, f)
 	}
-	if f.ofRun != "" {
-		return command{}, fmt.Errorf("unknown flag %s", f.ofRun)
+	if err := f.only("dir"); err != nil {
+		return command{}, err
 	}
 	var list, show Kind
 	if verb == "inspect" && len(rest) > 0 {
