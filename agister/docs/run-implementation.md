@@ -971,3 +971,59 @@ Decisions, each with its reason:
   ones in its entry, which a sum over records skips.
 - One run is reused, not a chain: a run that reused gives its calls,
   taken ones included, as recorded.
+
+## Capacity
+
+A turn that fails because the runtime's model is at capacity is retried
+in the call, no longer the call's end (ADR-004, rule 8; LAB-249): a
+review loses no node to it, and an implement run keeps its session.
+
+**claude-code and codex** class it `capacity`, which joins core's
+closed set of classes (ADR-001, invariant 3): claude-code a failed
+result of the status 529, or "overloaded" in its words, before its
+other classes; codex a `turn.failed` whose message says "at capacity",
+before its other classes.
+
+**`core/call`** retries a turn that ends by a reply of the class
+`capacity`, while the call has made fewer than three turns of that end,
+and neither its context nor its time limit has ended: it waits on its
+timer, 30 seconds after the first such turn, 60 after the second, then
+makes the turn as the step gives it, resuming the session the failed
+turn reported, where it reported one and no other than the one it
+resumed; else as the step gives it, its session the step's. A wait the
+time limit ends ends the call interrupted, `timeout`; one the caller's
+context ends, interrupted, `cancelled`. A retry spends none of the
+step's recovery, and what follows it follows it as it would any turn, a
+recovery turn included. The call's cost, usage and session are its
+turns', as a recovered call's are. A call whose last capacity turn is
+not retried ends failed, `capacity`, its reason the turn's, after
+"<n> turns at capacity: ". Its report grows a turn at capacity: its
+reason, and the wait before its retry, none where none follows.
+
+**`core/workflow`** gives a call's capacity report to its events port,
+which grows a capacity event, by the step's name, as it gives a stale
+one. **`runstore`**'s event grows the kind `capacity`, with `reason`
+and `retrying`.
+
+**The composition** prints a turn at capacity as a progress line,
+`· <step>: at capacity; retrying in 30s`, or `· <step>: at capacity`
+where no retry follows, and records an event:
+
+```json
+{"at": "", "step": "a", "kind": "capacity", "reason": "", "retrying": true}
+```
+
+Decisions, each with its reason:
+
+- The policy is core's, not a setting: the owner chose one policy for
+  every runtime, on by default; a process's own attempts and backoff
+  wait until one needs them.
+- A retry resumes with the step's own message, not a message of its
+  own: the session holds the work done, and the task given again is
+  what a message telling it to go on would say, from settings Agister
+  already has.
+- The wait is fixed, not drawn at random: calls side by side that hit
+  capacity together are few, and a fixed wait is tested on a timer.
+- Each turn at capacity is an event, not an entry in `record.json`, as
+  a stale turn is: events are the run's history.
+- No cost limit bounds the retries: none is run yet (`run-path.md`).

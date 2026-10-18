@@ -88,6 +88,17 @@ run's budgets cover all its descendants. A cost budget limits reported
 cost: a call whose runtime reports no cost spends none of it. A caller
 may tighten the limits, never loosen them.
 
+### 8. A turn failed on capacity is retried
+
+A runtime's model at capacity is transient: the wrapper, which alone
+knows the provider's words, classes it `capacity`, and core retries it,
+one policy for every runtime, on by default: three turns in all, a wait
+of 30 seconds, then 60, between them, within the call's limits. A turn
+that reported its session resumes it, keeping the work done; else the
+turn runs again. Each failed turn is recorded. In a workflow, the call
+that failed is retried alone. No other agent takes over unless the
+settings declare one (the owner's decisions on LAB-249, 2026-10-13).
+
 ## Consequences
 
 - A call sees the caller's environment as it is: its bindings, its build
