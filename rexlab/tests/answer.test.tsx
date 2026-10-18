@@ -259,6 +259,23 @@ describe("Next", () => {
     expect(picturesShown()).toEqual(cards().map((card) => fakeBodyPicture(byName(card.getAttribute("aria-label") ?? "").id)));
   });
 
+  it.each([14, 15, 21])("loads each next question's pictures ahead from question 1, and none on question 10 (round %i)", async (seed) => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(seed, pictures);
+    await start();
+    const shown: Array<Array<string | undefined>> = [];
+    for (let number = 1; number < 10; number++) {
+      await user.click(cardOf(largerOf(shownQuestion())));
+      await user.click(screen.getByRole("button", { name: "NEXT" }));
+      // A question's pictures show at once only if they were asked for
+      // before it opened.
+      shown.push(looks());
+      if (number < 9) act(() => pictures.loading().forEach(pictures.finish));
+    }
+
+    expect([progress(), shown, pictures.loading()]).toEqual(["10/10", Array.from({ length: 9 }, () => ["shown", "shown"]), []]);
+  });
+
   it("opens question 4 at once while its pictures still load, and fades them in as they arrive", async () => {
     const pictures = manualPictures();
     const { user, start } = startRound(14, pictures);

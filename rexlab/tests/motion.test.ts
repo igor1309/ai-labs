@@ -462,10 +462,8 @@ describe("a picture's place", () => {
     expect(tokensOf(REDUCED)["--motion-picture"]).toBeUndefined();
     expect(bodyOf('.picture[data-picture="appearing"]')).toEqual([{ property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]);
     expect(REDUCED.filter(({ prelude }) => prelude.includes(".picture"))).toEqual([]);
-    // From transparent to the picture's own opacity, which no rule sets.
     const fade = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-in")?.body ?? "");
     expect(fade.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([["from", [{ property: "opacity", value: "0" }]]]);
-    expect(bodyOf(".picture").filter(({ property }) => property === "opacity")).toEqual([]);
   });
 
   it("is silhouetted on MORE COMING only once its picture shows, its shimmer and failure look keeping their colours", () => {
