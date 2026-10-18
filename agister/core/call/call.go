@@ -1,8 +1,10 @@
-// Package call makes a call (ADR-001, "Core"; ADR-012, rule 7): one turn
-// on the runtime, through the runtime protocol it declares, ended at its
-// time limit or when its staleness port says it went stale (ADR-006, rule
-// 2), and given in the result shape (ADR-001, invariant 3); on a model,
-// its inputs in its message and its output checked against its schema.
+// Package call makes a call (ADR-001, "Core"; ADR-012, rule 7): a turn on
+// the runtime, through the runtime protocol it declares, ended at the
+// call's time limit or when its staleness port says it went stale (ADR-006,
+// rule 2), a stale turn followed by a recovery turn in its session while
+// the step's recovery allows (ADR-006, rules 3 to 5); and given in the
+// result shape (ADR-001, invariant 3); on a model, its inputs in its
+// message and its output checked against its schema.
 package call
 
 import (
@@ -105,12 +107,14 @@ type Turn struct {
 }
 
 // Ended is how a turn's program ended and what it wrote: the code it
-// exited with, or the name of the signal that ended it; and the reply of a
-// model's turn, nil on bash.
+// exited with, or the name of the signal that ended it; the session its
+// runtime reported, outside the reply, so that a turn a signal ended gives
+// it too, "" for none; and the reply of a model's turn, nil on bash.
 type Ended struct {
 	Code           int
 	Signal         string
 	Stdout, Stderr Stream
+	Session        string
 	Reply          *Reply
 }
 
@@ -142,9 +146,18 @@ type Stream struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; else another line.
+// nil; else another line. A call reports besides each turn that went stale,
+// where Stale is not nil; a runtime reports none.
 type Report struct {
-	Tool *Tool
+	Tool  *Tool
+	Stale *StaleTurn
+}
+
+// StaleTurn is a turn that went stale, as a call reports it: what went
+// stale, and whether a recovery turn follows.
+type StaleTurn struct {
+	What       string
+	Recovering bool
 }
 
 // Tool is a tool call a turn reports: the tool's name and all it was
@@ -214,8 +227,8 @@ type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // the order its process declares them, and its documents, in order, which
 // a model takes in its message; the instruction, the model, the effort,
 // the options and the schema the turn is given; the session it continues,
-// "" for none; its time limit, none when zero; its staleness limits; and
-// the warnings of its plan.
+// "" for none; its time limit, none when zero; its staleness limits; its
+// recovery; and the warnings of its plan.
 type Step struct {
 	Prompt      string
 	Environment map[string]string
@@ -229,7 +242,15 @@ type Step struct {
 	Session     string
 	TimeLimit   time.Duration
 	Staleness   Limits
+	Recovery    Recovery
 	Warnings    []string
+}
+
+// Recovery is how many recovery turns a call may make, none when zero, and
+// the instruction each is given (ADR-006, rule 3).
+type Recovery struct {
+	Resumes     int
+	Instruction string
 }
 
 // Named is a text by its name.
@@ -298,6 +319,7 @@ func New(runtime Runtime, inputs Inputs, validator Validator, staleness Stalenes
 var (
 	errTimeout    = errors.New("the call's time limit has passed")
 	errTurnReturn = errors.New("the turn has returned")
+	errCallReturn = errors.New("the call has returned")
 )
 
 // staleCause is the cause of a turn ended for going stale.
@@ -307,18 +329,25 @@ type staleCause struct {
 
 func (s staleCause) Error() string { return s.What }
 
-// Call makes step's one turn, each line it reports given to report, its
+// Call makes step's turns, each line they report given to report, each's
 // environment the caller's, then the process's, then, where the runtime
-// takes them there, each input by its name; and ends it at the step's time
-// limit, when it goes stale, or when ctx ends. A turn is watched for
+// takes them there, each input by its name; and ends a turn at the step's
+// time limit, when it goes stale, or when ctx ends. A turn is watched for
 // staleness only where its step sets a limit, each line it reports given
 // to the watch after report. A runtime that takes the inputs in its
 // message is given the message of the step's inputs and documents in
-// place of its prompt. A turn whose context the call ended ends
-// interrupted, however its program then exited, and a stale one as what
-// went stale says; a model's turn that ended otherwise ends by its reply.
-// A call whose ctx has already ended makes no turn: its program would
-// start, and act, only to be ended.
+// place of its prompt. A turn that goes stale is reported, then followed
+// by a recovery turn where the step's recovery has a resume left, the
+// turn reported its session, the same words have not gone stale before in
+// this call, and neither ctx nor the time limit has ended: the turn as the
+// step gives it, but resuming that session, its message the recovery's
+// instruction, a blank line and what went stale, watched anew; the time
+// limit is the call's, over all its turns. A turn whose context the call
+// ended ends the call interrupted, however its program then exited; a
+// stale one, not recovered, as what went stale says, unless ctx has ended
+// meanwhile; a model's turn that ended otherwise ends by its reply. A call
+// whose ctx has already ended makes no turn: its program would start, and
+// act, only to be ended.
 func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Result {
 	started := c.clock.Now()
 	timed := func() Result {
@@ -333,29 +362,133 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 		result.Status, result.Class = Interrupted, Cancelled
 		return result
 	}
-	turnCtx, cancel := context.WithCancelCause(ctx)
-	watched := c.watch(turnCtx, cancel, step.TimeLimit)
-	reported, unwatch := report, func() {}
-	if step.Staleness != (Limits{}) {
-		watching, stop := c.staleness.Watch(step.Staleness, func(s Stale) { cancel(staleCause{s}) })
-		reported, unwatch = func(r Report) { report(r); watching(r) }, stop
+	callCtx, cancel := context.WithCancelCause(ctx)
+	watched := c.watch(callCtx, cancel, step.TimeLimit)
+	turn := c.turn(step)
+	resumes, went := step.Recovery.Resumes, map[string]bool{}
+	var turns []turned
+	for {
+		last := c.take(callCtx, turn, step.Staleness, report)
+		turns = append(turns, last)
+		var stale staleCause
+		if !errors.As(last.cause, &stale) || ctx.Err() != nil {
+			break
+		}
+		session := last.session()
+		recovering := resumes > 0 && session != "" && !went[stale.What] && callCtx.Err() == nil
+		report(Report{Stale: &StaleTurn{What: stale.What, Recovering: recovering}})
+		if !recovering {
+			break
+		}
+		resumes--
+		went[stale.What] = true
+		turn = c.turn(step)
+		turn.Prompt, turn.Session = step.Recovery.Instruction+"\n\n"+stale.What, session
 	}
-	ended, err := c.runtime.Turn(turnCtx, c.turn(step), reported)
-	// The cause is fixed once the turn has returned: a limit that passes
+	// The cause is fixed once the call has returned: a limit that passes
 	// later ends nothing.
-	cancel(errTurnReturn)
-	unwatch()
+	cancel(errCallReturn)
 	<-watched
 
 	result := timed()
-	if reply := ended.Reply; err == nil && reply != nil {
-		usage := reply.Usage
-		result.Usage, result.Session, result.Cost = &usage, reply.Session, reply.Cost
+	counted(&result, turns)
+	c.end(&result, step, turn, turns[len(turns)-1], ctx.Err() != nil)
+	return result
+}
+
+// turned is how one of a call's turns ended: what its runtime gave, and
+// the cause its context ended with.
+type turned struct {
+	ended Ended
+	err   error
+	cause error
+}
+
+// session is the session the turn reported, its end's, else its reply's;
+// "" for none.
+func (t turned) session() string {
+	if t.ended.Session != "" {
+		return t.ended.Session
 	}
+	if reply := t.ended.Reply; t.err == nil && reply != nil {
+		return reply.Session
+	}
+	return ""
+}
+
+// take takes turn within ctx, watched against limits where any is set,
+// each line it reports given to report, then to the watch.
+func (c *Caller) take(ctx context.Context, turn Turn, limits Limits, report func(Report)) turned {
+	turnCtx, cancel := context.WithCancelCause(ctx)
+	reported, unwatch := report, func() {}
+	if limits != (Limits{}) {
+		watching, stop := c.staleness.Watch(limits, func(s Stale) { cancel(staleCause{s}) })
+		reported, unwatch = func(r Report) { report(r); watching(r) }, stop
+	}
+	ended, err := c.runtime.Turn(turnCtx, turn, reported)
+	// The cause is fixed once the turn has returned: a watch that tells
+	// later ends nothing.
+	cancel(errTurnReturn)
+	unwatch()
+	return turned{ended: ended, err: err, cause: context.Cause(turnCtx)}
+}
+
+// counted gives result what its turns reported: the session the last that
+// reported one reported; and, where any gave a reply, its cost and each
+// count of its usage, the sum of its turns', unknown where any turn
+// reported none (ADR-001, invariant 3), as a turn with no reply does.
+func counted(result *Result, turns []turned) {
+	replied := false
+	costs, usages := make([]*float64, len(turns)), make([]Usage, len(turns))
+	for i, t := range turns {
+		if session := t.session(); session != "" {
+			result.Session = session
+		}
+		if reply := t.ended.Reply; t.err == nil && reply != nil {
+			replied, costs[i], usages[i] = true, reply.Cost, reply.Usage
+		}
+	}
+	if !replied {
+		return
+	}
+	count := func(of func(Usage) *int64) *int64 {
+		counts := make([]*int64, len(usages))
+		for i, usage := range usages {
+			counts[i] = of(usage)
+		}
+		return total(counts)
+	}
+	result.Cost = total(costs)
+	result.Usage = &Usage{
+		Input:      count(func(u Usage) *int64 { return u.Input }),
+		Output:     count(func(u Usage) *int64 { return u.Output }),
+		CacheRead:  count(func(u Usage) *int64 { return u.CacheRead }),
+		CacheWrite: count(func(u Usage) *int64 { return u.CacheWrite }),
+		Reasoning:  count(func(u Usage) *int64 { return u.Reasoning }),
+	}
+}
+
+// total is the sum of values, nil where any is.
+func total[T int64 | float64](values []*T) *T {
+	var sum T
+	for _, value := range values {
+		if value == nil {
+			return nil
+		}
+		sum += *value
+	}
+	return &sum
+}
+
+// end ends result as the call's last turn, last, given turn, ended it,
+// the call's ctx ended where cancelled.
+func (c *Caller) end(result *Result, step Step, turn Turn, last turned, cancelled bool) {
 	var stale staleCause
-	switch cause := context.Cause(turnCtx); {
+	switch cause, err, ended := last.cause, last.err, last.ended; {
 	case errors.Is(cause, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout
+	case errors.As(cause, &stale) && cancelled:
+		result.Status, result.Class = Interrupted, Cancelled
 	case errors.As(cause, &stale):
 		result.Status, result.Class, result.Reason = Interrupted, Timeout, cut(stale.What)
 		// A turn that repeats itself makes no progress, whatever time is
@@ -372,11 +505,10 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	case ended.Signal != "":
 		result.Status, result.Class = Failed, Killed
 	case ended.Reply != nil:
-		c.replied(&result, step, *ended.Reply)
+		c.replied(result, step, turn.Session, *ended.Reply)
 	default:
 		result.Status, result.Output = Completed, output(ended)
 	}
-	return result
 }
 
 // turn is what step's turn is given: its prompt, or, where the runtime
@@ -400,16 +532,17 @@ func (c *Caller) turn(step Step) Turn {
 	}
 }
 
-// replied ends result by reply: a session reported other than the one
-// step continues first, since the turn's work went elsewhere; then its
-// failure, a turn that failed not checked; then, where step gives a
-// schema, its structured output checked against it by the validator, and
-// decoded as the call's output; else its text the output.
-func (c *Caller) replied(result *Result, step Step, reply Reply) {
+// replied ends result by reply, of a turn that resumed the session
+// resumed, "" for none: a session reported other than that one first,
+// since the turn's work went elsewhere; then its failure, a turn that
+// failed not checked; then, where step gives a schema, its structured
+// output checked against it by the validator, and decoded as the call's
+// output; else its text the output.
+func (c *Caller) replied(result *Result, step Step, resumed string, reply Reply) {
 	switch failure := reply.Failure; {
-	case step.Session != "" && reply.Session != "" && reply.Session != step.Session:
+	case resumed != "" && reply.Session != "" && reply.Session != resumed:
 		result.Status, result.Class = Failed, RuntimeError
-		result.Reason = cut(fmt.Sprintf("the turn reported the session %q, not %q", reply.Session, step.Session))
+		result.Reason = cut(fmt.Sprintf("the turn reported the session %q, not %q", reply.Session, resumed))
 	case failure == NoResult:
 		result.Status, result.Class, result.Reason = Lost, NoResult, cut(reply.Reason)
 	case known(failure):

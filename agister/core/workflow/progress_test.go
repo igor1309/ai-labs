@@ -2,6 +2,7 @@ package workflow_test
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -66,6 +67,31 @@ func TestAStepThatIsNotCalledReportsNothing(t *testing.T) {
 			}
 			if len(f.events.told) == 0 {
 				t.Error("told nothing, want the start and end of a")
+			}
+		})
+	}
+}
+
+// progress.feature, "A step's stale turn is an event": by the step's name,
+// between its start and its end, recovering or not, a tool call before it
+// kept before it.
+func TestAStepsStaleTurnIsAnEvent(t *testing.T) {
+	t.Parallel()
+	for _, recovering := range []bool{true, false} {
+		t.Run(fmt.Sprintf("recovering %t", recovering), func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": ends(workflow.Completed, "", time.Second)})
+			f.caller.tools = map[string][]workflow.Tool{"a": {{Name: "Bash", Input: "ls"}}}
+			f.caller.stale = map[string][]workflow.Stale{"a": {{What: "no event for 1m", Recovering: recovering}}}
+			f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a", Agent: "claude-opus"}}}, nil)
+			want := []string{
+				"a started on claude-opus",
+				"a Bash ls",
+				fmt.Sprintf(`a stale "no event for 1m" recovering %t`, recovering),
+				`a ended completed "" in 1s`,
+			}
+			if !reflect.DeepEqual(f.events.told, want) {
+				t.Errorf("told\n%q\nwant\n%q", f.events.told, want)
 			}
 		})
 	}

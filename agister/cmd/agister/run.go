@@ -952,8 +952,8 @@ type admission interface {
 // git.revision input gives, and made through admit, which holds the
 // worktree while it is made; a call not admitted is refused as well. Each
 // call is made by the caller of its turn's contract, each tool call its
-// turn reports given on to core/workflow's report, and no other line, which
-// the progress skips. A call with no usage,
+// turns report and each stale turn given on to core/workflow's report, and
+// no other line, which the progress skips. A call with no usage,
 // as on bash, has every count of it unknown. Each call, refused or made,
 // is told to records as it ends, with the worktree's facts admit told of
 // it.
@@ -991,7 +991,7 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records}, nil
 }
 
-func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Tool)) workflow.Result {
+func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Report)) workflow.Result {
 	planned := s.calls[name]
 	var facts admit.Facts
 	result := s.call(ctx, name, params, report, &facts)
@@ -1002,7 +1002,7 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 
 // call is the result of the step name's call, its worktree's facts told
 // to facts where admit tells them.
-func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Tool), facts *admit.Facts) workflow.Result {
+func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Report), facts *admit.Facts) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
 		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
@@ -1027,8 +1027,11 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	var called call.Result
 	err = s.admits.Make(ctx, request, func(ctx context.Context) {
 		called = s.callers[planned.contract].Call(ctx, step, func(r call.Report) {
-			if tool := r.Tool; tool != nil {
-				report(workflow.Tool{Name: tool.Name, Input: tool.Input})
+			switch {
+			case r.Tool != nil:
+				report(workflow.Report{Tool: &workflow.Tool{Name: r.Tool.Name, Input: r.Tool.Input}})
+			case r.Stale != nil:
+				report(workflow.Report{Stale: &workflow.Stale{What: r.Stale.What, Recovering: r.Stale.Recovering}})
 			}
 		})
 	}, func(told admit.Facts) { *facts = told })
@@ -1140,9 +1143,9 @@ func claudeCodeInputs(inputs claudecode.Inputs) call.Inputs {
 }
 
 // claudeCodeTurns answers core/call's runtime from the claude-code wrapper:
-// the turn's prompt is its message, each line it reports core's, and its
-// reply core's, its failure class by its name. A program that could not
-// start is core's ErrNotStarted.
+// the turn's prompt is its message, each line it reports core's, the
+// session it read core's, and its reply core's, its failure class by its
+// name. A program that could not start is core's ErrNotStarted.
 type claudeCodeTurns struct {
 	claude claudeCodeRuns
 }
@@ -1173,7 +1176,8 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 	stream := func(s claudecode.Stream) call.Stream {
 		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
 	}
-	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr)}
+	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr),
+		Session: result.Session}
 	if r := result.Reply; r != nil {
 		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost,
 			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, CacheWrite: r.Usage.CacheWrite},
@@ -1200,9 +1204,9 @@ func codexInputs(inputs codex.Inputs) call.Inputs {
 }
 
 // codexTurns answers core/call's runtime from the codex wrapper: the turn's
-// prompt is its message, each line it reports core's, and its reply
-// core's, its failure class by its name, its cost unknown, codex reporting
-// none. A program that could not start is core's ErrNotStarted.
+// prompt is its message, each line it reports core's, the session it read
+// core's, and its reply core's, its failure class by its name, its cost
+// unknown, codex reporting none. A program that could not start is core's ErrNotStarted.
 type codexTurns struct {
 	codex codexRuns
 }
@@ -1233,7 +1237,8 @@ func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.
 	stream := func(s codex.Stream) call.Stream {
 		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
 	}
-	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr)}
+	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr),
+		Session: result.Session}
 	if r := result.Reply; r != nil {
 		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session,
 			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, Reasoning: r.Usage.Reasoning},

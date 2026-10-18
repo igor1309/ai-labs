@@ -317,7 +317,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (claudecode.Result{Ended: given}); !reflect.DeepEqual(got, want) {
+	if want := (claudecode.Result{Ended: given, Session: "s1"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("turn gave %+v, want %+v", got, want)
 	}
 }

@@ -107,11 +107,13 @@ type Tool struct {
 	Name, Input string
 }
 
-// Result is how a turn's program ended, and its reply: none where a signal
-// ended it.
+// Result is how a turn's program ended; the session its stream named, read
+// as it came, so that a turn a signal ended gives it too, "" for none; and
+// its reply: none where a signal ended it.
 type Result struct {
-	Ended Ended
-	Reply *Reply
+	Ended   Ended
+	Session string
+	Reply   *Reply
 }
 
 // Reply is what the runtime reported of a turn: its text, its structured
@@ -181,7 +183,8 @@ func (*Wrapper) Facts() Facts {
 // the message on stdin, through the supervisor, and gives how the program
 // ended and the reply its stream-json gives; each line is given to report
 // as it is read: each tool_use block of it, or the line where it has none.
-// A turn given no report is an error before
+// The session is the one the first line naming one names, the reply's
+// too. A turn given no report is an error before
 // anything starts. A supervisor's error is the turn's, its error that the
 // program could not start included.
 func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Result, error) {
@@ -196,9 +199,9 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 		return Result{}, err
 	}
 	if ended.Signal != "" {
-		return Result{Ended: ended}, nil
+		return Result{Ended: ended, Session: read.session}, nil
 	}
-	return Result{Ended: ended, Reply: read.reply(ended, len(turn.Schema) > 0)}, nil
+	return Result{Ended: ended, Session: read.session, Reply: read.reply(ended, len(turn.Schema) > 0)}, nil
 }
 
 // arguments are claude's for turn, contract claude-code/3: the tools are

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -157,6 +159,26 @@ func TestEachEventReachesRunstoreInOrder(t *testing.T) {
 			storedEvent{id: recordID, event: runstore.Event{At: recordStart, Step: step, Kind: runstore.Ended, Status: "completed"}})
 	}
 	if _, _, events := f.store.given(); !reflect.DeepEqual(events, want) {
+		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
+	}
+}
+
+// A stale turn is appended as runstore's stale event, at the clock's time:
+// what went stale, and whether a recovery turn follows.
+func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Stale("ask", workflow.Stale{What: "no event for 1m", Recovering: true})
+	record.Stale("ask", workflow.Stale{What: "no event for 1m"})
+	want := []storedEvent{
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Stale, What: "no event for 1m", Recovering: true}},
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Stale, What: "no event for 1m"}},
+	}
+	if _, _, events := store.given(); !reflect.DeepEqual(events, want) {
 		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
 	}
 }

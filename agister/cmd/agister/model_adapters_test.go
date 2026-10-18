@@ -60,9 +60,10 @@ var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruct
 
 // A turn on claude-code runs its prompt as the message, in its context,
 // with its directory, environment, instruction, model, effort, options,
-// schema and session, and gives each line it reports, how the program ended and
-// its reply in core's words, its failure class by its name; a program
-// ended by a signal gives no reply; a program that could not start is
+// schema and session, and gives each line it reports, how the program
+// ended, the session it read and its reply in core's words, its failure
+// class by its name; a program ended by a signal gives no reply, its
+// session still; a program that could not start is
 // core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
@@ -78,15 +79,16 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 		wantErr    error
 	}{
 		{name: "a reply", result: claudecode.Result{
-			Ended: claudecode.Ended{Code: 1, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: claudecode.Stream{Head: "eh"}},
+			Ended:   claudecode.Ended{Code: 1, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: claudecode.Stream{Head: "eh"}},
+			Session: "s1",
 			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
 				Usage:   claudecode.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 				Failure: claudecode.RateLimited, Reason: "429"}},
-			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"},
+			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"}, Session: "s1",
 				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
 					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 					Failure: call.RateLimited, Reason: "429"}}},
-		{name: "a signal", result: claudecode.Result{Ended: claudecode.Ended{Signal: "killed"}}, want: call.Ended{Signal: "killed"}},
+		{name: "a signal", result: claudecode.Result{Ended: claudecode.Ended{Signal: "killed"}, Session: "s1"}, want: call.Ended{Signal: "killed", Session: "s1"}},
 		{name: "no start", err: fmt.Errorf("claude: %w", claudecode.ErrNotStarted), notStarted: true, wantErr: claudecode.ErrNotStarted},
 		{name: "another error", err: other, wantErr: other},
 	}
@@ -121,9 +123,10 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 
 // A turn on codex runs its prompt as the message, in its context, with its
 // directory, environment, instruction, model, effort, options, schema and
-// session, and gives each line it reports, how the program ended and its reply
-// in core's words, its failure class by its name and its cost unknown; a
-// program ended by a signal gives no reply; a program that could not start
+// session, and gives each line it reports, how the program ended, the
+// session it read and its reply in core's words, its failure class by its
+// name and its cost unknown; a program ended by a signal gives no reply,
+// its session still; a program that could not start
 // is core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
@@ -138,15 +141,16 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 		wantErr    error
 	}{
 		{name: "a reply", result: codex.Result{
-			Ended: codex.Ended{Code: 1, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: codex.Stream{Head: "eh"}},
+			Ended:   codex.Ended{Code: 1, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: codex.Stream{Head: "eh"}},
+			Session: "t1",
 			Reply: &codex.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
 				Usage:   codex.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
 				Failure: codex.NoResult, Reason: "none"}},
-			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"},
+			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"}, Session: "t1",
 				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
 					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
 					Failure: call.NoResult, Reason: "none"}}},
-		{name: "a signal", result: codex.Result{Ended: codex.Ended{Signal: "killed"}}, want: call.Ended{Signal: "killed"}},
+		{name: "a signal", result: codex.Result{Ended: codex.Ended{Signal: "killed"}, Session: "t1"}, want: call.Ended{Signal: "killed", Session: "t1"}},
 		{name: "no start", err: fmt.Errorf("codex: %w", codex.ErrNotStarted), notStarted: true, wantErr: codex.ErrNotStarted},
 		{name: "another error", err: other, wantErr: other},
 	}

@@ -37,9 +37,9 @@ type event struct {
 	} `json:"usage"`
 }
 
-// stream is what a turn's stream-json lines told: the session, the last
-// assistant text, whether a rate limit was rejected, and the result event;
-// and the report each line is given to.
+// stream is what a turn's stream-json lines told: the session the first
+// line naming one names, the last assistant text, whether a rate limit was
+// rejected, and the result event; and the report each line is given to.
 type stream struct {
 	report   func(Report)
 	session  string
@@ -65,11 +65,10 @@ func (s *stream) read(line string) (reported int) {
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		return 0
 	}
+	if s.session == "" {
+		s.session = e.SessionID
+	}
 	switch e.Type {
-	case "system":
-		if e.Subtype == "init" {
-			s.session = e.SessionID
-		}
 	case "assistant":
 		for _, block := range e.Message.Content {
 			switch {
@@ -86,9 +85,6 @@ func (s *stream) read(line string) (reported int) {
 		}
 	case "result":
 		s.result = &e
-		if s.session == "" {
-			s.session = e.SessionID
-		}
 	}
 	return reported
 }
