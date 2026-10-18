@@ -91,10 +91,10 @@ Feature: English and Russian
       | Russian  | the sorting game |
 
   Scenario Outline: The version footer is named in the chosen language
-    Given the app is in <language>
-    Then a screen reader names the version footer "<label>", in normal case
+    When I switch the language from <from> to <to> on the home page
+    Then on every screen a screen reader names the version footer "<label>"
 
     Examples:
-      | language | label   |
-      | English  | Version |
-      | Russian  | Версия  |
+      | from    | to      | label   |
+      | Russian | English | Version |
+      | English | Russian | Версия  |
