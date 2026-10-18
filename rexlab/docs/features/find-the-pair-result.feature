@@ -2,10 +2,12 @@ Feature: Find the pair: stars, levels and the best score
   Every finished board earns a star. Fewer tries is better: each level
   keeps its fewest tries as the best score to beat. Two finished boards
   move the child up a level.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
-    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: A finished board shows its result
     Given I am on level 2

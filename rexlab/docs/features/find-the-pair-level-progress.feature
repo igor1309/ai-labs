@@ -27,11 +27,17 @@ Feature: Find the pair: progress at each age level
       | Explorer       |
       | Paleontologist |
 
-  Scenario: A choice that cannot be saved holds while the app is open
-    Given the browser can read progress but cannot save it
+  Scenario Outline: A choice that cannot be saved holds while the app is open
+    Given the age level is Explorer and <saved>
+    And the browser can read progress but cannot save it
     When I choose Paleontologist on the level switch and go home and back
     Then the level switch shows Paleontologist chosen
-    But after reloading it shows the age level
+    But after reloading it shows <reloaded> chosen
+
+    Examples:
+      | saved                                      | reloaded  |
+      | I have never used the level switch         | Explorer  |
+      | my saved choice on the switch is Hatchling | Hatchling |
 
   Scenario Outline: Every level earns a star and finds dinosaurs alike
     Given the level switch shows <level> chosen
@@ -68,7 +74,8 @@ Feature: Find the pair: progress at each age level
     Given I have just finished a <before> board
     When a <next> board is dealt
     Then no two of its dinosaurs are from the same look-alike group
-    And it deals as few of the board before's dinosaurs as the look-alike rule allows
+    And it deals as few of the dinosaurs of the board before it as the look-alike rule allows
+    And so a Paleontologist board may repeat a few, and an Explorer or Hatchling board none
 
     Examples:
       | before         | next           |
@@ -78,6 +85,9 @@ Feature: Find the pair: progress at each age level
 
   Scenario: Progress saved before levels reads as Hatchling's
     Given find-the-pair progress saved before the game had levels
+    And it is on climb level 2 with 1 board finished on it
     When I open find the pair
-    Then my stars, climb level, climb level 1 to 4 bests and found dinosaurs are as saved
+    Then my stars, climb level 1 to 4 bests and found dinosaurs are as saved
     And I have no Explorer or Paleontologist best and no level choice
+    When I choose Hatchling and finish a board
+    Then I see a level-up celebration showing level 3

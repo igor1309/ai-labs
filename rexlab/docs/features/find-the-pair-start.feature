@@ -4,10 +4,12 @@ Feature: Find the pair: starting a board
   its climb levels grow from a few pairs of the same picture to more
   pairs where a picture matches its dinosaur's silhouette; Explorer and
   Paleontologist are in find-the-pair-levels.feature.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
-    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: The home page offers the game
     When I open the home page
@@ -18,7 +20,7 @@ Feature: Find the pair: starting a board
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
     And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
-    And my climb level as a number with a ladder symbol
+    And at Hatchling, my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
@@ -41,8 +43,7 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And it deals none of the board before it's dinosaurs, whatever that board's level,
-    unless the look-alike rule leaves too few others (find-the-pair-level-progress.feature)
+    And it deals as few of the dinosaurs of the board before it as find-the-pair-level-progress.feature allows
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt
