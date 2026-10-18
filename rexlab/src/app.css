@@ -1729,7 +1729,7 @@ body:has(.result) #version {
   color: #5c647a;
 }
 
-/* The longest values, like 440 KG, still fit their box. */
+/* The longest values, like 490 KG, still fit their box. */
 .dinosaur-fact-value {
   font-size: min(44px, 26cqi);
   font-weight: 700;

@@ -56,8 +56,10 @@ against these sources only.
 
 ## References
 
-What each value rests on, for the dinosaurs added from LAB-282 on. NHM is the
+What each value rests on, for the dinosaurs added from LAB-282 on and for
+the masses and heights the science check of LAB-288 weighed. NHM is the
 Dino Directory page of the dinosaur; Britannica includes Britannica Kids.
+Britannica's tons are short tons of 907 kg.
 
 | Dinosaur | Height | Mass | References |
 | --- | --- | --- | --- |
@@ -73,3 +75,13 @@ Dino Directory page of the dinosaur; Britannica includes Britannica Kids.
 | `maiasaura` | 2.5 m, from its length | 3 t | NHM: 9 m, 2,500 kg; UCMP: 3–4 short tons; Britannica: 9 m |
 | `corythosaurus` | 2.8 m with the crest, from its length | 4 t | Britannica: 9 m, 3–5 t; NHM: 10 m |
 | `chasmosaurus` | 1.8 m, from its length | 2.5 t | NHM: 5 m, 2,500 kg; AMNH: about 5.2 m |
+| `protoceratops` | 0.7 m | 180 kg | NHM: 1.8 m, 400 kg; Britannica: 1.8 m, about 180 kg (400 lb), so NHM's figure is likely the pounds |
+| `stegosaurus` | 4 m | 2.7 t | AMNH: 8.5 m, 2,720 kg; Britannica: about 2 tons; NHM gives no mass |
+| `parasaurolophus` | 2.8 m | 3.5 t | NHM: 9 m, 5,000 kg; Britannica: 10 m, 3–4 tons |
+| `brachiosaurus` | 12.5 m | 50 t | NHM: 22 m, 46,900 kg; Britannica: 55–66 tons, and close to 80 t |
+| `psittacosaurus` | 0.6 m | 50 kg | AMNH: 60 cm tall, 130 cm long, 23–80 kg; NHM: 2 m, 50 kg |
+| `coelophysis` | 0.6 m | 20 kg | Britannica: about 2 m, 18–23 kg, and 23–45 kg; NHM: 2 m, 27 kg |
+| `iguanodon` | 2.7 m | 4 t | NHM: 10 m, 4,000 kg; Britannica: 9 m, four to five tons |
+| `oviraptor` | 0.8 m | 30 kg | NHM: 2 m, 20 kg; Britannica: 1.8 m, about 32 kg (70 lb) |
+| `edmontosaurus` | 3 m | 3.4 t | NHM: 13 m, 3,400 kg; no other trusted source gives a mass |
+| `gallimimus` | 1.9 m | 490 kg | NHM: 6 m, 490 kg; no other trusted source gives a mass |

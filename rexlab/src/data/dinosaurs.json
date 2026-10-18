@@ -76,7 +76,7 @@
     },
     "attributes": {
       "heightMeters": 12.5,
-      "massKg": 40000
+      "massKg": 50000
     },
     "diet": "plants",
     "traits": {
@@ -99,7 +99,7 @@
     },
     "attributes": {
       "heightMeters": 4,
-      "massKg": 5000
+      "massKg": 2700
     },
     "diet": "plants",
     "traits": {
@@ -191,7 +191,7 @@
     },
     "attributes": {
       "heightMeters": 2.8,
-      "massKg": 2500
+      "massKg": 3500
     },
     "diet": "plants",
     "traits": {
@@ -237,7 +237,7 @@
     },
     "attributes": {
       "heightMeters": 2.7,
-      "massKg": 3500
+      "massKg": 4000
     },
     "diet": "plants",
     "traits": {
@@ -283,7 +283,7 @@
     },
     "attributes": {
       "heightMeters": 1.9,
-      "massKg": 440
+      "massKg": 490
     },
     "diet": "both",
     "traits": {
@@ -375,7 +375,7 @@
     },
     "attributes": {
       "heightMeters": 0.7,
-      "massKg": 85
+      "massKg": 180
     },
     "diet": "plants",
     "traits": {
@@ -490,7 +490,7 @@
     },
     "attributes": {
       "heightMeters": 3,
-      "massKg": 4000
+      "massKg": 3400
     },
     "diet": "plants",
     "traits": {
@@ -536,7 +536,7 @@
     },
     "attributes": {
       "heightMeters": 0.8,
-      "massKg": 35
+      "massKg": 30
     },
     "diet": "both",
     "traits": {
@@ -581,8 +581,8 @@
       "ru": "Пситтакозавр"
     },
     "attributes": {
-      "heightMeters": 0.5,
-      "massKg": 20
+      "heightMeters": 0.6,
+      "massKg": 50
     },
     "diet": "plants",
     "traits": {

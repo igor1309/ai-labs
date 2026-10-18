@@ -205,6 +205,27 @@ describe("the shipped dinosaur list", () => {
     }
   );
 
+  // The range the trusted sources give for a measure, as the References
+  // table of docs/sources.md records it.
+  it.each([
+    ["protoceratops", "massKg", 180, 400],
+    ["stegosaurus", "massKg", 1800, 2720],
+    ["parasaurolophus", "massKg", 2700, 5000],
+    ["brachiosaurus", "massKg", 46900, 80000],
+    ["psittacosaurus", "massKg", 23, 80],
+    ["psittacosaurus", "heightMeters", 0.6, 0.6],
+    ["coelophysis", "massKg", 18, 45],
+    ["iguanodon", "massKg", 3600, 5000],
+    ["oviraptor", "massKg", 20, 32],
+    ["edmontosaurus", "massKg", 3400, 3400],
+    ["gallimimus", "massKg", 490, 490]
+  ] as const)("keeps the %s's %s within the sources' range, %d to %d", (id, measure, low, high) => {
+    const value = records.find((record) => record.id === id)?.attributes[measure];
+
+    expect(value).toBeGreaterThanOrEqual(low);
+    expect(value).toBeLessThanOrEqual(high);
+  });
+
   // Names are stored as words and shown in capitals, so each is written
   // like the English ones: a capital, then lower case, in its own script.
   it.each([
