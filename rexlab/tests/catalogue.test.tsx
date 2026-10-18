@@ -150,7 +150,7 @@ describe("the list of every dinosaur", () => {
     }
     expect(chipsOf(cardOf("tyrannosaurus")).map(({ words }) => words)).toEqual(["3.7 M", "8 T", "MEAT"]);
     expect(chipsOf(cardOf("velociraptor")).map(({ words }) => words)).toEqual(["0.5 M", "15 KG", "MEAT"]);
-    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["12.5 M", "40 T", "PLANTS"]);
+    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["12.5 M", "50 T", "PLANTS"]);
   });
 
   it.each([
