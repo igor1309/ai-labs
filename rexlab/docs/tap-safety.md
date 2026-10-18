@@ -12,10 +12,10 @@ a button of the museum.
 1. **Screen changes go through one place.** Every screen change goes
    through one guarded entry point, never a direct write of the screen
    state. It does nothing when asked for the screen already showing, or
-   for any screen while a screen change is in progress. A change is in
-   progress from the tap that asks for it, through any wait for its
-   pictures, until the new screen has finished appearing; the new screen
-   takes no taps until then.
+   for the screen already on its way. While a change waits for its
+   pictures, a request for another screen replaces it: the waiting change
+   is dropped and never opens. Once a new screen begins to appear, no
+   screen takes a tap until it has finished appearing.
 2. **Actions inside a screen are idempotent.** An action that has started
    (an answer chosen, a card turned, a round or board started, a bone
    dropped, a care action, a skeleton chosen) holds an explicit state, and
