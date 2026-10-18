@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -56,6 +56,8 @@ export type HomePageProps = {
   onSort: () => void;
   onPairs: () => void;
   onSkeletons: () => void;
+  // The skeleton game's museum, opened straight from the home page.
+  onMuseum: () => void;
 };
 
 type Menu = "language" | "theme";
@@ -79,7 +81,8 @@ export function HomePage({
   onCare,
   onSort,
   onPairs,
-  onSkeletons
+  onSkeletons,
+  onMuseum
 }: HomePageProps) {
   const text = TEXTS[language];
   const featuredPointer = usePointerState();
@@ -89,6 +92,7 @@ export function HomePage({
   const sortPointer = usePointerState();
   const pairsPointer = usePointerState();
   const skeletonsPointer = usePointerState();
+  const museumPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -151,51 +155,61 @@ export function HomePage({
         <div className="stratum stratum-2" />
         <div className="stratum stratum-3" />
       </div>
-      {/* An open menu is closed by a tap anywhere outside it, and that tap
-          does nothing else: a parent closing a menu never starts a round. */}
-      {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
       <p className="wordmark">
         <span className="wordmark-mark" aria-hidden="true">
           <Footprints size={18} />
         </span>
         {BRAND}
       </p>
-      {/* Both menus are for parents: small, in the soft ink and out of the
-          way in the top-right corner, and only here, never during a round. */}
-      <div className="parent-menus">
-        <ParentMenu
-          label={text.languageMenu}
-          button={
-            <>
-              <Globe size={18} />
-              <span className="parent-menu-code">{language.toUpperCase()}</span>
-            </>
-          }
-          choices={LANGUAGES.map((option) => ({
-            value: option,
-            name: LANGUAGE_NAMES[option],
-            lang: option,
-            symbol: (
-              <span className="parent-menu-choice-code" aria-hidden="true">
-                {option.toUpperCase()}
-              </span>
-            )
-          }))}
-          chosen={language}
-          onChoose={onLanguage}
-          {...menu("language")}
-        />
-        <ParentMenu
-          label={text.themeMenu}
-          button={<ThemeSymbol size={18} />}
-          choices={THEME_CHOICES.map((choice) => {
-            const ChoiceSymbol = THEME_SYMBOLS[choice];
-            return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
-          })}
-          chosen={theme}
-          onChoose={onTheme}
-          {...menu("theme")}
-        />
+      {/* The corner holds the museum, for the child, beside the menus for
+          parents. An open menu's backdrop is stacked here too, over the
+          museum and under the menus, so a tap on the museum then only
+          closes the menu. */}
+      <div className="home-corner">
+        {/* An open menu is closed by a tap anywhere outside it, and that tap
+            does nothing else: a parent closing a menu never starts a round. */}
+        {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
+        <button type="button" className="card home-museum" onClick={onMuseum} {...museumPointer}>
+          <Landmark size={24} aria-hidden="true" />
+          {text.museum}
+        </button>
+        {/* Both menus are for parents: small, in the soft ink and out of the
+            way in the top-right corner, and only here, never during a round. */}
+        <div className="parent-menus">
+          <ParentMenu
+            label={text.languageMenu}
+            button={
+              <>
+                <Globe size={18} />
+                <span className="parent-menu-code">{language.toUpperCase()}</span>
+              </>
+            }
+            choices={LANGUAGES.map((option) => ({
+              value: option,
+              name: LANGUAGE_NAMES[option],
+              lang: option,
+              symbol: (
+                <span className="parent-menu-choice-code" aria-hidden="true">
+                  {option.toUpperCase()}
+                </span>
+              )
+            }))}
+            chosen={language}
+            onChoose={onLanguage}
+            {...menu("language")}
+          />
+          <ParentMenu
+            label={text.themeMenu}
+            button={<ThemeSymbol size={18} />}
+            choices={THEME_CHOICES.map((choice) => {
+              const ChoiceSymbol = THEME_SYMBOLS[choice];
+              return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
+            })}
+            chosen={theme}
+            onChoose={onTheme}
+            {...menu("theme")}
+          />
+        </div>
       </div>
       <h1 className="greeting">{text.greeting}</h1>
       <div className="games">

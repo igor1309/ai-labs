@@ -100,7 +100,7 @@ const picturesShown = () => cards().map((card) => within(card).getByRole("img").
 describe("answering a question", () => {
   const examples: Array<[string, Attribute, string, string, string, string]> = [
     ["WHO IS HEAVIER?", "mass", "Triceratops", "Velociraptor", "7 T", "15 KG"],
-    ["WHO IS TALLER?", "height", "Brachiosaurus", "Triceratops", "12.5 M", "3 M"]
+    ["WHO IS TALLER?", "height", "Brachiosaurus", "Stegosaurus", "3.4 M", "1.5 M"]
   ];
   const cases = examples.flatMap(([prompt, attribute, larger, smaller, largerValue, smallerValue]) =>
     (["right answer", "wrong answer"] as const).flatMap((answer) =>

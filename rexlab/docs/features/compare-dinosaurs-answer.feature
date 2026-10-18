@@ -17,7 +17,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Examples:
       | prompt          | attribute | larger        | smaller      |
       | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
-      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Stegosaurus  |
 
   Scenario Outline: A wrong answer shows the right one
     Given the question "<prompt>" about <larger> and <smaller>
@@ -31,7 +31,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Examples:
       | prompt          | attribute | larger        | smaller      |
       | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
-      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Stegosaurus  |
 
   Scenario: A dinosaur card shows it is pressed
     When I press a dinosaur card

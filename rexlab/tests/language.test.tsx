@@ -172,7 +172,7 @@ describe("the language menu", () => {
 
       expect(button.textContent).toBe(code);
       expect(symbolOf(button)).toBe("globe");
-      const corner = getComputedStyle(button.closest(".parent-menus") ?? button);
+      const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("fixed");
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
@@ -484,8 +484,8 @@ describe("revealed values", () => {
   it.each<[Language, Question, string, string]>([
     ["en", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 T", "15 KG"],
     ["ru", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 Т", "15 КГ"],
-    ["en", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12.5 M", "3 M"],
-    ["ru", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12,5 М", "3 М"]
+    ["en", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3.4 M", "1.5 M"],
+    ["ru", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3,4 М", "1,5 М"]
   ])("are written in %s", (language, question, leftValue, rightValue) => {
     renderQuestion(language, { question, choice: question.left.id });
 

@@ -58,6 +58,13 @@
 - Before building a large issue, present a top-level plan, including any
   restructuring of its issues, and wait for the owner's answer.
 
+## Logs
+
+- A project's `docs/log.md` records what changed for the product, newest
+  first: one or two lines per change worth knowing, with its issue. Leave
+  out how it was done, steps, reviews and test changes; the commits and
+  docs hold those.
+
 ## Long waits
 
 - Run anything that waits for minutes (a Codex review, a CI watch, a long

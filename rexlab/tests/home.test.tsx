@@ -88,6 +88,7 @@ function renderHomePage(taps: number[]) {
       onSort={() => taps.push(1)}
       onPairs={nothing}
       onSkeletons={nothing}
+      onMuseum={nothing}
     />
   );
   return { user: userEvent.setup(), card: homeTile("SORT") };

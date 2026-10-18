@@ -348,12 +348,45 @@ img {
   color: #f6f2e9;
 }
 
-.parent-menus {
+/* The top-right corner: the museum, then the parents' menus, centred on
+   the wordmark's line. It stacks over the page, and inside it an open
+   menu's backdrop lies over the museum and under the menus. */
+.home-corner {
   position: fixed;
   z-index: 2;
-  top: 36px;
+  top: 32px;
   right: 56px;
   display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The museum is for the child: its word in capitals beside its symbol,
+   in a button sized for a child's tap, in the ink, so it stands out from
+   the page in either theme. */
+.home-museum {
+  min-width: 60px;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 0 22px 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-radius: 18px;
+  background: #1d2742;
+  color: #f2efe8;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.parent-menus {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
   gap: 8px;
   padding: 4px;
   border-radius: 26px;
@@ -4675,6 +4708,11 @@ body:has(.result) #version {
 
 [data-theme="dark"] .parent-menus {
   background: #222a3d;
+}
+
+[data-theme="dark"] .home-museum {
+  background: #ece8de;
+  color: #0f1320;
 }
 
 [data-theme="dark"] .parent-menu-button,

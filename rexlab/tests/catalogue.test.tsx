@@ -150,9 +150,9 @@ describe("the list of every dinosaur", () => {
       expect(chipsOf(card).map(({ symbols }) => symbols[0])).toEqual(["ruler", "weight", dinosaur.diet === "plants" ? "leaf" : "beef"]);
       expect(chipsOf(card)[2]?.words).toBe(TEXTS.en.diets[dinosaur.diet]);
     }
-    expect(chipsOf(cardOf("tyrannosaurus")).map(({ words }) => words)).toEqual(["3.7 M", "8 T", "MEAT"]);
-    expect(chipsOf(cardOf("velociraptor")).map(({ words }) => words)).toEqual(["0.5 M", "15 KG", "MEAT"]);
-    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["12.5 M", "50 T", "PLANTS"]);
+    expect(chipsOf(cardOf("tyrannosaurus")).map(({ words }) => words)).toEqual(["3.1 M", "8 T", "MEAT"]);
+    expect(chipsOf(cardOf("velociraptor")).map(({ words }) => words)).toEqual(["0.6 M", "15 KG", "MEAT"]);
+    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["3.4 M", "50 T", "PLANTS"]);
   });
 
   it.each([
@@ -194,7 +194,7 @@ describe("a dinosaur's page", () => {
         value: fact.querySelector(".dinosaur-fact-value")?.textContent
       }))
     ).toEqual([
-      { symbol: "ruler", label: "TALL", value: "3.7 M" },
+      { symbol: "ruler", label: "TALL", value: "3.1 M" },
       { symbol: "weight", label: "HEAVY", value: "8 T" }
     ]);
     const back = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -360,7 +360,7 @@ describe("the catalogue in Russian", () => {
     expect(document.querySelector(".dinosaur-description")?.textContent).toBe(entry("gallimimus").description.ru);
     expect(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" })).toBeDefined();
     await user.click(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }));
-    expect(chipsOf(cardOf("tyrannosaurus", "ru")).map(({ words }) => words)).toEqual(["3,7 М", "8 Т", "МЯСО"]);
+    expect(chipsOf(cardOf("tyrannosaurus", "ru")).map(({ words }) => words)).toEqual(["3,1 М", "8 Т", "МЯСО"]);
     expect(chipsOf(cardOf("triceratops", "ru"))[2]?.words).toBe("РАСТЕНИЯ");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("ВСЕ ДИНОЗАВРЫ");
   });
