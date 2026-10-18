@@ -11,8 +11,8 @@ https://rexlab.enoa.ai from the Cloudflare Pages project `rexlab`.
 Architecture: `docs/mvp-infrastructure.md`. Every dinosaur fact (names,
 height, which is hip height, mass, diet, traits) follows the rules and
 sources of `docs/sources.md`.
-Every tap is safe to repeat: screen changes and actions follow
-`docs/tap-safety.md`.
+A double tap counts as one tap: screens, their animation, timers, taps and
+pictures follow `docs/tap-safety.md`.
 
 ## Product principles
 
@@ -61,6 +61,11 @@ one pull request.
 - Review cycles are costly. Code review is the pull request's gate
   only: run it once the branch is complete, never for a small change or
   a single step.
+- A review, spec or code, takes three rounds at most. A major finding
+  (a contradiction, an undecided case, or something that would mislead
+  the implementer or break a test) left after the third round means the
+  approach is wrong: stop reviewing and rework it. Minor findings left
+  then are fixed without another round.
 - Commit every design, in the one design file `design/rexlab.pen`. It is
   JSON, one document whose top-level frames are the screens, but git's
   line merge cannot join two branches' changes to it. Add new frames
@@ -79,22 +84,24 @@ Commit the spec first, then from the worktree's root run
 `rexlab/scripts/spec-review.sh /tmp/<branch> <feature files>`. It
 gives the same prompt to Codex and Claude, both read-only, and writes
 `spec-review-<n>-codex.md` and `-claude.md`. Fix what holds up, commit
-and run another round until no findings are left.
+and run another round until no findings are left, within the three
+rounds.
 
 ### Implementation with agister
 
-1. Write a goal file in the format of `~/.agister/briefs/goal.yaml`:
+1. Write a goal file in the format of `~/.agister/brief-forms/goal.yaml`:
    `## Intent` (referencing the issue, specs and design), `## Done when`
    (numbered, observable criteria), `## Out of scope`, `## Sources`,
    `## Decisions` (the owner's rulings, dated) and `## Open` ("None.").
-2. Write a step brief in the format of `~/.agister/briefs/step.yaml`:
+2. Write a step brief in the format of `~/.agister/brief-forms/step.yaml`:
    `# <branch> step <n>: <what>, at <short sha>`, `## Goal` (the goal
    file's path in backticks), `## Covers` (criterion numbers),
    `## Acts on` (the findings it answers), `## Constraints` and `## Open`.
 3. From the worktree's root, not inside `rexlab/`:
-   `agister run implement_opus --dir rexlab --param brief=/tmp/<branch>/step-<n>.md --json > /tmp/<branch>/implement-<n>.json 2> /tmp/<branch>/implement-<n>.log`.
-4. Read `.status`, `.output.checks`, `.output.summary`, `.output.notes`
-   and `.output.open`; a failed run names its cause in `.error.class`.
+   `agister run --process implement --agent claude-opus --dir rexlab --param brief=/tmp/<branch>/step-<n>.md > /tmp/<branch>/implement-<n>.json 2> /tmp/<branch>/implement-<n>.log`.
+4. Read `.status`, `.output.output.checks`, `.output.output.summary`,
+   `.output.output.notes` and `.output.output.open`; a failed run names
+   its cause in `.class` and `.reason`.
    The implementer leaves its changes uncommitted: read the diff, run
    `rexlab/scripts/test.sh`, update `docs/log.md` and commit yourself.
 
@@ -102,13 +109,14 @@ and run another round until no findings are left.
 
 The gate before the pull request. Commit first: the review reads the
 committed diff. From the worktree's root, run
-`agister run code_review --dir rexlab --param goal=/tmp/<branch>/goal.md --json > /tmp/<branch>/review-<n>.json`.
+`agister run code_review --dir rexlab --param goal=/tmp/<branch>/goal.md > /tmp/<branch>/review-<n>.json`.
 Five Codex reviewers (architecture, tests, adversarial, clarity, intent)
-report and a Claude Opus judge joins their findings; the base defaults to
+report and a Claude Opus judge joins their findings in
+`.output.judgement`; the base defaults to
 `origin/trunk` and the candidate to `HEAD`. Answer the judge's items in
 one more step brief's `## Acts on`, and fix small items yourself; run
 the gate again only when the fixes change the design.
-`agister workflow show code_review --dir rexlab` shows the output shape.
+`agister inspect workflow code_review --dir rexlab` shows the output shape.
 
 ## Commands
 
@@ -129,6 +137,8 @@ Vite reloads the page on every save; nothing is deployed.
   device language again.
 - A chosen theme lives under `rexlab-theme`; delete it to follow the device
   appearance again.
+- A chosen age level lives under `rexlab-age-level`, apart from progress;
+  delete it to start at Explorer again.
 
 ## Shipping a release
 

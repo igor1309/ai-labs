@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
+import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { droppedPiece, presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
-import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
 import { SkeletonMuseumScreen } from "./SkeletonMuseumScreen.tsx";
 import {
@@ -78,6 +79,12 @@ type SkeletonScreen =
   | { kind: "result"; result: SkeletonResult }
   | { kind: "museum" };
 
+// A piece fitted, or time towards help, changes the puzzle at once; every
+// other change is the plain screen change.
+export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string | undefined {
+  return from.kind === to.kind ? undefined : SCREEN_CHANGE;
+}
+
 // The skeleton game, kept by the app above its orientation gate, so
 // turning the iPad pauses a puzzle without losing it. `onHome` takes the
 // child back to the home page; `onStart` is told as each puzzle begins, a
@@ -87,7 +94,7 @@ export function useSkeletonGame(
   onHome: () => void,
   onStart: () => void
 ) {
-  const [screen, setScreen] = useState<SkeletonScreen>({ kind: "choice" });
+  const { screen, go, set } = useScreens<SkeletonScreen>({ kind: "choice" }, transitionFor);
   const away = useSyncExternalStore(presence.subscribe, presence.isAway);
   const puzzle = screen.kind === "puzzle" ? screen.puzzle : undefined;
   // Progress is read once, as the app opens. When it cannot be read there
@@ -98,6 +105,9 @@ export function useSkeletonGame(
   // The puzzle in play, ahead of the screen: a drop, or a tick, acts on the
   // puzzle as it is, not as last rendered. Null once the child leaves it.
   const live = useRef<Puzzle | null>(null);
+  // The reveal and help timers of the puzzle in play, all stopped as the
+  // child leaves it, and null from then on.
+  const puzzleTimers = useRef<OwnedTimers | null>(null);
   // A puzzle being started while its pictures load: a second tap
   // meanwhile, on the same dinosaur or another, starts nothing more.
   const starting = useRef(false);
@@ -111,11 +121,11 @@ export function useSkeletonGame(
   // progress cannot be read.
   const best = kept.readable ? (kept.progress.bestScore ?? undefined) : undefined;
 
-  const show = (next: SkeletonScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
-
   const leave = () => {
     stay.current++;
     live.current = null;
+    puzzleTimers.current?.stopAll();
+    puzzleTimers.current = null;
     starting.current = false;
   };
 
@@ -147,8 +157,9 @@ export function useSkeletonGame(
         if (rebuild) keep(knockDown(keptNow.current, id));
         const started = startPuzzle(skeleton);
         live.current = started;
+        puzzleTimers.current = ownedTimers(startTimer);
         onStart();
-        show({ kind: "puzzle", puzzle: started, scatter: rebuild });
+        go({ kind: "puzzle", puzzle: started, scatter: rebuild });
       }
     );
   };
@@ -161,10 +172,7 @@ export function useSkeletonGame(
   // help stops, and the game opens again on its choice of dinosaurs.
   const home = () => {
     leave();
-    changeScreen(SCREEN_CHANGE, () => {
-      setScreen({ kind: "choice" });
-      onHome();
-    });
+    go({ kind: "choice" }, { also: onHome });
   };
 
   // Each update moves from the puzzle it is given, so a drop or a tick
@@ -172,7 +180,7 @@ export function useSkeletonGame(
   // on, changes nothing.
   const showPuzzle = (from: Puzzle, to: Puzzle) => {
     live.current = to;
-    setScreen((current) => (current.kind === "puzzle" && current.puzzle === from ? { ...current, puzzle: to } : current));
+    go((current) => (current.kind === "puzzle" && current.puzzle === from ? { ...current, puzzle: to } : current));
   };
 
   // A skeleton is recorded the moment its last piece fits, before the
@@ -187,22 +195,23 @@ export function useSkeletonGame(
   // The finished skeleton shows whole for a moment, then the dinosaur is
   // revealed once its body picture is ready, or the wait runs out, so a
   // missing picture holds nothing back; only if the child is still here.
-  const reveal = (finished: Puzzle, result: SkeletonResult) => {
+  // The pause and the picture wait's limit are the puzzle's timers.
+  const reveal = (finished: Puzzle, result: SkeletonResult, timers: OwnedTimers) => {
     const revealing = stay.current;
     let pictured = false;
     let held = false;
-    const go = () => {
+    const showResult = () => {
       if (!pictured || !held || stay.current !== revealing || live.current !== finished) return;
       live.current = null;
-      show({ kind: "result", result });
+      go({ kind: "result", result });
     };
-    waitForPictures([bodyPicture(finished.skeleton.id)], { loadPicture, startTimer, limit: PICTURE_WAIT }, () => {
+    waitForPictures([bodyPicture(finished.skeleton.id)], { loadPicture, startTimer: timers.start, limit: PICTURE_WAIT }, () => {
       pictured = true;
-      go();
+      showResult();
     });
-    startTimer(REVEAL[reducedMotion() ? "reduced" : "motion"], () => {
+    timers.start(REVEAL[reducedMotion() ? "reduced" : "motion"], () => {
       held = true;
-      go();
+      showResult();
     });
   };
 
@@ -210,42 +219,46 @@ export function useSkeletonGame(
   // through this one.
   const onDrop = (piece: ShownPiece, centre: FramePoint, reach: number) => {
     const from = live.current;
-    if (from === null) return;
+    const timers = puzzleTimers.current;
+    if (from === null || timers === null) return;
     const to = drop(from, droppedPiece(piece), centre, reach);
     if (to === from) return;
     showPuzzle(from, to);
-    if (isComplete(to)) reveal(to, record(to));
+    if (isComplete(to)) reveal(to, record(to), timers);
   };
 
   // Only time at the puzzle counts towards help: the count pauses while
-  // the child is away, and starts again from nothing as a piece fits.
+  // the child is away, and starts again from nothing as a piece fits. Its
+  // timer is the puzzle's, so leaving stops it at once, not once the
+  // screen it left has rendered.
   useEffect(() => {
-    if (puzzle === undefined || away || !awaitsHelp(puzzle)) return;
-    return startTimer(HELP_TICK, () => {
+    const timers = puzzleTimers.current;
+    if (puzzle === undefined || away || !awaitsHelp(puzzle) || timers === null) return;
+    return timers.start(HELP_TICK, () => {
       if (live.current === puzzle) showPuzzle(puzzle, wait(puzzle, HELP_TICK));
     });
-  }, [puzzle, away, startTimer]);
+  }, [puzzle, away]);
 
   // BUILD ANOTHER goes back to the choice of dinosaurs, leaving a rebuild
   // still loading unstarted and its skeleton on its stand; a second tap
   // meanwhile changes nothing more.
   const buildAnother = () => {
     leave();
-    changeScreen(SCREEN_CHANGE, () => setScreen((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current)));
+    go((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current));
   };
 
   // MUSEUM leaves whatever the child was doing: an unfinished puzzle is
   // dropped, earning nothing, and a puzzle still loading never starts.
   const museum = () => {
     leave();
-    show({ kind: "museum" });
+    go({ kind: "museum" });
   };
 
   // The museum opened from the home page, as the app changes to the game:
   // the game shows it, not its choice of dinosaurs.
   const openMuseum = () => {
     leave();
-    setScreen({ kind: "museum" });
+    set({ kind: "museum" });
   };
 
   const content = (language: Language) => {

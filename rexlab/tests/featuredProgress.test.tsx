@@ -29,7 +29,8 @@ import {
   manualVisibility,
   memoryStorage,
   type ManualTimers,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 
 // home-featured-progress.feature
@@ -67,6 +68,7 @@ function openApp<C extends Pick<AppProps, "loadPicture" | "startTimer"> = Manual
       languageStore={localLanguage(() => storage)}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       visitors={SHIPPED_VISITORS}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}

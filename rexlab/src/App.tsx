@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
@@ -26,7 +27,7 @@ import {
   type RoundResult
 } from "./quiz/index.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
-import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
@@ -48,6 +49,12 @@ export type ThemeStore = {
   // The theme a parent chose, or undefined when none can be read.
   load(): ThemeChoice | undefined;
   save(choice: ThemeChoice): void;
+};
+
+export type AgeLevelStore = {
+  // The age level a parent picked, or undefined when none can be read.
+  load(): AgeLevelSetting | undefined;
+  save(setting: AgeLevelSetting): void;
 };
 
 export type StartCounter = {
@@ -93,6 +100,7 @@ export type AppProps = CareGameProps &
     nameVersion: (label: string) => void;
     appearance: Appearance;
     themeStore: ThemeStore;
+    ageLevelStore: AgeLevelStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
     // The device's clock: the time now.
@@ -157,6 +165,19 @@ type Screen =
   // And the skeleton game.
   | { kind: "skeletons" };
 
+// A new question animates only its pair of cards, and an answer chosen,
+// or a food, changes the screen at once. A dinosaur's page opens from its
+// card and closes back to it, and a step slides the next page in the
+// arrow's direction, which `step` gives: on a short or wrapping list the
+// two places alone cannot tell previous from next.
+export function transitionFor(from: Screen, to: Screen, step: Step | undefined): string | undefined {
+  if (from.kind === "question" && to.kind === "question") return from.play.index === to.play.index ? undefined : NEXT_QUESTION;
+  if (from.kind === "dinosaur" && to.kind === "dinosaur") return step === undefined ? undefined : STEPS[step];
+  if (from.kind === "catalogue" && to.kind === "dinosaur") return OPEN_DINOSAUR;
+  if (from.kind === "dinosaur" && to.kind === "catalogue") return CLOSE_DINOSAUR;
+  return from.kind === to.kind ? undefined : SCREEN_CHANGE;
+}
+
 export function App({
   dinosaurs,
   catalogue,
@@ -170,6 +191,7 @@ export function App({
   nameVersion,
   appearance,
   themeStore,
+  ageLevelStore,
   loadPicture,
   startTimer,
   now,
@@ -184,11 +206,11 @@ export function App({
   skeletonProgress,
   ...careProps
 }: AppProps) {
-  const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
-  const [featured] = useState(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
+  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
@@ -226,6 +248,17 @@ export function App({
     themeStore.save(chosen);
   };
 
+  // The age level a parent picked, held for the visit even when it cannot
+  // be saved.
+  const [ageLevel, setAgeLevel] = useState<AgeLevelSetting>(() => ageLevelStore.load() ?? DEFAULT_AGE_LEVEL);
+
+  const chooseAgeLevel = (level: AgeLevel) => {
+    const picked = pickAgeLevel(ageLevel, level, random);
+    if (picked === ageLevel) return;
+    setAgeLevel(picked);
+    ageLevelStore.save(picked);
+  };
+
   // The pictures of the question `play` is on, once they are ready or the
   // wait runs out.
   const whenPicturesReady = (play: Play, ready: () => void) => {
@@ -256,7 +289,7 @@ export function App({
       starting.current = false;
       setLastPlay(started);
       startCounter.countStart("compare");
-      changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "question", play: started }));
+      go({ kind: "question", play: started });
     });
   };
 
@@ -264,10 +297,10 @@ export function App({
   // rendered, so a tap that lands after the screen has already moved on
   // changes nothing.
   const play = (move: (play: Play) => Play) =>
-    setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
+    go((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => {
     leaveRound();
-    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
+    go({ kind: "home" });
   };
 
   // Each game counts a start where it begins, wherever the child began it
@@ -278,17 +311,14 @@ export function App({
 
   const openCare = () => {
     leaveHome();
-    changeScreen(SCREEN_CHANGE, () => {
-      care.open();
-      setScreen({ kind: "care" });
-    });
+    go({ kind: "care" }, { also: care.open });
   };
 
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
 
   const openSorting = () => {
     leaveRound();
-    sorting.start(() => setScreen({ kind: "sorting" }));
+    sorting.start(() => set({ kind: "sorting" }));
   };
 
   // A board SORT started, or a round COMPARE started, still waiting for
@@ -307,10 +337,7 @@ export function App({
 
   const openPairs = () => {
     leaveHome();
-    changeScreen(SCREEN_CHANGE, () => {
-      pairs.open();
-      setScreen({ kind: "pairs" });
-    });
+    go({ kind: "pairs" }, { also: pairs.open });
   };
 
   // The child is away from a game while the app is hidden, or while the
@@ -338,22 +365,26 @@ export function App({
 
   const openSkeletons = () => {
     leaveHome();
-    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "skeletons" }));
+    go({ kind: "skeletons" });
   };
 
   // The museum opens from the home page straight into the skeleton game,
   // as a screen change and not a start: only building there starts one.
   // It opens at once, so the rest of a double tap would land on the
   // museum's own buttons: taps do nothing until it has settled.
-  const [museumSettling, setMuseumSettling] = useState(false);
+  const [museumSettling, setMuseumSettling] = useState<boolean>(false);
 
   const openMuseum = () => {
     leaveHome();
-    changeScreen(SCREEN_CHANGE, () => {
-      skeletonGame.openMuseum();
-      setScreen({ kind: "skeletons" });
-      setMuseumSettling(true);
-    });
+    go(
+      { kind: "skeletons" },
+      {
+        also: () => {
+          skeletonGame.openMuseum();
+          setMuseumSettling(true);
+        }
+      }
+    );
   };
 
   useEffect(() => {
@@ -375,9 +406,7 @@ export function App({
   // Home, while the pictures load changes nothing more.
   const goOn = (from: Play) => {
     const to = next(from);
-    whenPicturesReady(to, () =>
-      changeScreen(NEXT_QUESTION, () => setScreen((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current)))
-    );
+    whenPicturesReady(to, () => go((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current)));
   };
 
   // A round is recorded only here, when its result is shown, so a round
@@ -387,7 +416,7 @@ export function App({
     if (result.progress) {
       progress.save(result.progress);
     }
-    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
+    go({ kind: "result", result });
   };
 
   // The food chosen is kept going to a page and back, but the catalogue
@@ -411,17 +440,13 @@ export function App({
     if (openingCatalogue.current) return;
     openingCatalogue.current = true;
     startCounter.countStart("catalogue");
-    changeScreen(SCREEN_CHANGE, () => {
-      setFood("all");
-      setScreen({ kind: "catalogue", returning: undefined });
-    });
+    go({ kind: "catalogue", returning: undefined }, { also: () => setFood("all") });
   };
 
   // A food newly chosen shows its dinosaurs from the top, rising in.
   const chooseFood = (chosen: Food) => {
     if (chosen === food) return;
-    setFood(chosen);
-    setScreen({ kind: "catalogue", returning: undefined });
+    go({ kind: "catalogue", returning: undefined }, { also: () => setFood(chosen) });
   };
 
   const pictureOf = (index: number) => bodyPicture(shown[index]?.id ?? "");
@@ -430,11 +455,9 @@ export function App({
   // does, and only if the screen is still where the child tapped: a
   // second tap meanwhile changes nothing more. The pictures either side
   // are loaded ahead, so a step to them does not wait.
-  const showDinosaur = (index: number, type: string, still: (current: Screen) => boolean) => {
+  const showDinosaur = (index: number, still: (current: Screen) => boolean, step?: Step) => {
     const wait = { loadPicture, startTimer, limit: PICTURE_WAIT };
-    waitForPictures([pictureOf(index)], wait, () =>
-      changeScreen(type, () => setScreen((current) => (still(current) ? { kind: "dinosaur", index } : current)))
-    );
+    waitForPictures([pictureOf(index)], wait, () => go((current) => (still(current) ? { kind: "dinosaur", index } : current), { intent: step }));
     const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, shown.length)));
     waitForPictures(neighbours, wait, () => {});
   };
@@ -442,14 +465,13 @@ export function App({
   const openDinosaur = (id: string) =>
     showDinosaur(
       shown.findIndex((entry) => entry.id === id),
-      OPEN_DINOSAUR,
       (current) => current.kind === "catalogue"
     );
 
   const step = (from: number, way: Step) =>
-    showDinosaur(stepFrom(from, way, shown.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
+    showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, way);
 
-  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: shown[index]?.id }));
+  const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id });
 
   const content = () => {
     switch (screen.kind) {
@@ -520,6 +542,9 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            ageLevel={ageLevel.level}
+            onAgeLevel={chooseAgeLevel}
+            startTimer={startTimer}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}

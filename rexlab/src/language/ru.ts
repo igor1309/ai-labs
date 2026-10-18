@@ -7,6 +7,12 @@ export const ru: Texts = {
   languageMenu: "Язык",
   themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
+  ageLevelMenu: "Возрастной уровень",
+  ageLevels: {
+    hatchling: { name: "ДЕТЁНЫШ", age: "около 4 лет" },
+    explorer: { name: "ИССЛЕДОВАТЕЛЬ", age: "около 5 лет" },
+    paleontologist: { name: "ПАЛЕОНТОЛОГ", age: "6 лет и старше" }
+  },
   versionLabel: "Версия",
   turnSideways: "ПОВЕРНИ ПЛАНШЕТ БОКОМ",
   home: "ДОМОЙ",

@@ -10,7 +10,9 @@ import {
   finishLoading,
   fit,
   fitAll,
+  fittedPieces,
   hints,
+  layOutPuzzle,
   openPuzzle,
   openSkeletonsApp,
   release,
@@ -174,6 +176,34 @@ describe("earning a star", () => {
     expect(reveal()).toBeNull();
     expect(homeTile("COMPARE")).toBeDefined();
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
+  });
+
+  // The tap and the timers read in one act, before React renders the home
+  // page: the puzzle's timers stop as the child leaves, not as the game is
+  // taken off the screen.
+  it("stops the reveal's pause and its wait for the body picture as the child goes home, and the next puzzle is not revealed by them, delivered all the same", async () => {
+    const { user, pictures } = await finish("tyrannosaurus");
+    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
+
+    let running: number[] = [];
+    act(() => {
+      fireEvent.click(button("HOME"));
+      running = pictures.timers();
+    });
+    fireEvent.click(homeTile("SKELETONS"));
+    await user.click(button("TYRANNOSAURUS"));
+    act(() => finishLoading(pictures));
+    layOutPuzzle();
+    act(() => {
+      pictures.deliverStopped(REVEAL.motion);
+      pictures.deliverStopped(PICTURE_WAIT);
+    });
+
+    expect(running).toEqual([]);
+    expect([reveal(), fittedPieces(), board().hasAttribute("data-complete")]).toEqual([null, [], false]);
+    fitAll(skeletonOf("tyrannosaurus"));
+    revealNow(pictures, "tyrannosaurus");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
   });
 
   it("keeps the star when the app is reloaded during the reveal", async () => {

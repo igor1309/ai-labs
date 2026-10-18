@@ -25,7 +25,8 @@ import {
   words,
   type ManualPictures,
   type MemoryStorage,
-  homeTile
+  homeTile,
+  unsetAgeLevel
 } from "./support.ts";
 
 // The app on its home page, the sorting game's progress kept in
@@ -49,7 +50,7 @@ function openApp({
       orientation={manualOrientation("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
-      {...lightDevice()}
+      {...lightDevice()} {...unsetAgeLevel()}
       {...emptyCare()}
       {...emptyPairs()}
       {...emptySkeletons()}

@@ -100,6 +100,13 @@
   }
 }
 
+@keyframes shrink-out {
+  to {
+    opacity: 0;
+    scale: calc(1 - 0.08 * var(--motion-amount));
+  }
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -416,6 +423,30 @@ img {
   color: #1d2742;
 }
 
+/* What a button shows, which grows in anew as the choice changes. */
+.parent-menu-face {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.parent-menu-face[data-changed] {
+  animation: grow-in var(--motion-small) var(--ease-out) both;
+}
+
+/* An age level's picture, at the size of a symbol beside it. */
+.parent-menu-picture {
+  width: 24px;
+  font-size: 24px;
+  line-height: 1;
+  text-align: center;
+}
+
+.parent-menu-button .parent-menu-picture {
+  width: 22px;
+  font-size: 20px;
+}
+
 /* A menu hangs under the pair of buttons, its right edge on theirs. */
 .parent-menu-list {
   position: absolute;
@@ -434,6 +465,18 @@ img {
   box-shadow: 0 16px 40px #1d274224;
   transform-origin: top right;
   animation: grow-in var(--motion-small) var(--ease-out) both;
+}
+
+/* However a menu closes, it shrinks back the way it came, still catching
+   the taps that land on it, which do nothing. */
+.parent-menu-list[data-leaving] {
+  animation: shrink-out var(--motion-small) var(--ease-out) both;
+}
+
+/* A menu whose choices carry a footnote, the age level's, is wider, with
+   taller rows for the name over its note. */
+.parent-menu-list[data-notes] {
+  width: 300px;
 }
 
 .parent-menu-choice {
@@ -472,12 +515,45 @@ img {
   color: #1d2742;
 }
 
-.parent-menu-name {
-  flex: 1 1 0;
+.parent-menu-list[data-notes] .parent-menu-choice {
+  height: 60px;
 }
 
+.parent-menu-words {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.parent-menu-name,
+.parent-menu-note {
+  display: block;
+  white-space: nowrap;
+}
+
+/* The age levels' names are the children's words, in capitals and bolder. */
+.parent-menu-list[data-notes] .parent-menu-name {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.parent-menu-list[data-notes] .parent-menu-choice[aria-checked="true"] .parent-menu-name {
+  font-weight: 700;
+}
+
+/* The age under a level's name is a parents' footnote: small, in the soft
+   ink. */
+.parent-menu-note {
+  font-size: 13px;
+  font-weight: 400;
+  color: #5c647a;
+}
+
+/* The ✓ keeps 3:1 with the chosen row's shade: the terracotta, where the
+   amber would fade into it. */
 .parent-menu-tick {
-  color: #e39b2d;
+  color: #c9583d;
 }
 
 /* Covers the page under an open menu, to catch a tap outside it. */
@@ -4717,6 +4793,7 @@ body:has(.result) #version {
 
 [data-theme="dark"] .parent-menu-button,
 [data-theme="dark"] .parent-menu-choice-code,
+[data-theme="dark"] .parent-menu-note,
 [data-theme="dark"] .progress,
 [data-theme="dark"] .dinosaur-position,
 [data-theme="dark"] .dinosaur-fact-label,
