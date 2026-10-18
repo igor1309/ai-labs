@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HOME_GAMES } from "../src/HomePage.tsx";
+import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
@@ -38,25 +39,37 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
-  it("reads progress, the chosen language and the chosen theme from local storage", () => {
-    const props = appProps(browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3), [LANGUAGE_KEY]: "ru", [THEME_KEY]: "dark" }) }));
+  it("reads progress, the chosen language, the chosen theme and the chosen age level from local storage", () => {
+    const props = appProps(
+      browser({
+        local: memoryStorage({
+          [PROGRESS_KEY]: record(6, 3),
+          [LANGUAGE_KEY]: "ru",
+          [THEME_KEY]: "dark",
+          [AGE_LEVEL_KEY]: JSON.stringify({ level: "hatchling", revision: "r1" })
+        })
+      })
+    );
 
     expect(props.progress.load()).toEqual({ bestScore: 6, roundsPlayed: 3 });
     expect(props.languageStore.load()).toBe("ru");
     expect(props.themeStore.load()).toBe("dark");
+    expect(props.ageLevelStore.load()).toEqual({ level: "hatchling", revision: "r1" });
   });
 
-  it("keeps progress, the chosen language and the chosen theme in local storage, and nothing in session storage", () => {
+  it("keeps progress, the chosen language, the chosen theme and the chosen age level in local storage, and nothing in session storage", () => {
     const given = browser();
     const props = appProps(given);
 
     props.progress.save({ bestScore: 4, roundsPlayed: 1 });
     props.languageStore.save("ru");
     props.themeStore.save("light");
+    props.ageLevelStore.save({ level: "paleontologist", revision: "r2" });
 
     expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual(JSON.parse(record(4, 1)));
     expect(given.localStorage.items.get(LANGUAGE_KEY)).toBe("ru");
     expect(given.localStorage.items.get(THEME_KEY)).toBe("light");
+    expect(JSON.parse(given.localStorage.items.get(AGE_LEVEL_KEY) ?? "")).toEqual({ level: "paleontologist", revision: "r2" });
     expect([...given.sessionStorage.items]).toEqual([]);
   });
 

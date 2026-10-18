@@ -7,6 +7,7 @@ import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
+import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
 import { localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
@@ -53,7 +54,7 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 }
 
 // The app's collaborators in a browser. Progress, start counts and the
-// day's featured game, the chosen language and the chosen theme outlive
+// day's featured game, the chosen language, theme and age level outlive
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
@@ -76,6 +77,7 @@ export function appProps(browser: Browser): AppProps {
     nameVersion: versionFooter(browser.document),
     appearance: { isDark: appearance.dark, subscribe: appearance.watch },
     themeStore: localTheme(storage),
+    ageLevelStore: localAgeLevel(storage),
     visitors: readVisitors(records),
     careProgress: localCareProgress(storage),
     sortables: readSortables(records),

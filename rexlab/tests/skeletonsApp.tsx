@@ -27,7 +27,8 @@ import {
   type ManualOrientation,
   type ManualPictures,
   type ManualVisibility,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
@@ -70,6 +71,7 @@ export function openHomeApp({
     nameVersion: unreadVersion,
     appearance: manualAppearance(appearance),
     themeStore: localTheme(() => storage),
+    ...unsetAgeLevel(),
     visitors: SHIPPED_VISITORS,
     careProgress: localCareProgress(() => storage),
     itemPicture: fakeItemPicture,

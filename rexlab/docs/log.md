@@ -2,6 +2,8 @@
 
 ## 2026-10-18
 
+- A parents' menu picks the age level, Hatchling, Explorer or Paleontologist, kept on this device; a new install starts at Explorer, and no game reads it yet (LAB-291).
+- The language, theme and age level menus animate in and out, and their ✓ reads in the light theme (LAB-291).
 - The tap safety rule is written down in `docs/tap-safety.md`: a double tap does what one tap does, and never presses anything on the next screen (LAB-297).
 - MUSEUM on the home page opens the skeleton museum (LAB-290).
 - Heights are hip heights, worked out from peer-reviewed leg-bone measurements, and masses are live body mass (LAB-263); the rules and each dinosaur's working are in `docs/sources.md`.
