@@ -27,8 +27,8 @@ Feature: Home page: the featured card and the tiles
     And its tile shows <badge>
     When I open the home page
     Then the large card shows <badge> too
-    When its progress changes and I come back home
-    Then the large card and the tile show the same, updated value
+    When I play it and come back home
+    Then the large card and the tile show the same value, updated if playing changed it
 
     Examples:
       | game          | badge                                       |
@@ -41,12 +41,12 @@ Feature: Home page: the featured card and the tiles
       | SKELETONS     | a collection best of 2 with a trophy symbol |
 
 
-  Scenario Outline: The featured card starts its game as its tile does
+  Scenario Outline: The featured card starts its game
     Given <game> is today's featured game
     And I am on the home page
     When I tap the large card twice quickly
     Then I see <destination>, opened once
-    And it counts as one start of <game>
+    And <game> counts one more start
 
     Examples:
       | game          | destination                                    |
@@ -55,14 +55,14 @@ Feature: Home page: the featured card and the tiles
       | SORT          | a sorting round, once its pictures have loaded |
 
 
-  Scenario Outline: The featured card opens a game's first screen as its tile does
+  Scenario Outline: The featured card opens a game's first screen
     Given <game> is today's featured game
     And I am on the home page
     When I tap the large card twice quickly
     Then I see <destination>, opened once
     And no start of <game> is counted yet
     When I <begin>
-    Then it counts as one start of <game>
+    Then <game> counts one more start
 
     Examples:
       | game          | destination                      | begin                 |
