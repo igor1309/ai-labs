@@ -819,7 +819,8 @@ Decisions, each with its reason:
   record is written whole, so it reads as the record then; an event
   line may be cut. Best effort.
 - `scripts/agister-gate` stays on the archive: moving it is its own
-  slice, which reads this record.
+  slice, which reads this record. (Since "Retiring the archive": the
+  gate is deleted; `runs export` is a person's.)
 
 ## Retiring the archive
 
@@ -837,44 +838,58 @@ row in `.github/workflows/README.md`, and its entry in
 `agister/home/brief-forms`, and its commands: `agister run --process
 implement --agent claude-opus --dir rexlab --param brief=<step>`, and
 `agister run code_review --dir rexlab --param goal=<goal>`, with no
-`--json`; it reads the result's `.status`, `.class`, `.reason` and
-`.output.output`, and shows a workflow with `agister inspect workflow`.
+`--json`; it reads the result's `.status`, `.class` and `.reason`, an
+implementation's `.output.output.checks`, `.summary`, `.notes` and
+`.open`, a review's `.output.judgement`, and shows the workflow with
+`agister inspect workflow code_review --dir rexlab`.
 
 **`scripts/loop/install.sh`** builds the binary to
 `~/.local/bin/agister` and writes home's settings, as shipped, into
-`~/.agister`: each folder and file `agister/home` has replaced whole;
+`~/.agister`: each folder and file `agister/home` has replaced whole,
+what it replaces first moved under `~/.agister/backups/<UTC time>/`;
 what home has besides, `runs` and `locks` among it, untouched. It
 refuses, changing nothing, while `~/.agister/briefs`, the archive's,
-is there. The loop's scripts run `agister`, with no `AGISTER_HOME`.
+is there. It stands in for `settings/home` (ADR-008), not yet built.
+A Go test runs it with `HOME` a temporary folder: refused with
+`briefs` there; settings replaced, the old kept under `backups`, and
+`runs` and `locks` kept. The loop's scripts run `agister`, with no
+`AGISTER_HOME`; this branch's own rounds run trunk's scripts, on
+`agister-next`, until the merge.
 
 **The hold's lock** stays under `~/.agister/locks`, whatever
-`AGISTER_HOME` says: runs on any home share the user's worktrees. Its
-comment says so, no longer naming two Agisters.
+`AGISTER_HOME` says: runs on any home share the user's worktrees.
+`hold.go`'s comments and `hold.feature`'s scenario say so, no longer
+naming the archive.
 
 **Once, after the merge**, before the first install: `~/.agister` is
-moved to `~/.agister-archive`; `~/.local/bin/agister`,
-`~/.local/bin/agister-next` and `~/.agister-next` are removed. The
+moved to `~/.agister-archive`; `~/.agister-next`'s runs, where any,
+to the new `~/.agister/runs` after the first install;
+`~/.local/bin/agister`, `~/.local/bin/agister-next` and
+`~/.agister-next` are removed. The
 archive is rebuilt from `agister/archive` where ever needed, run with
 `AGISTER_HOME=~/.agister-archive`.
 
-The README, `AGENTS.md` and `docs/process.md` say so, keep "edit
-`agister/home`, not home's copy", and no longer name `agister-next`.
+`agister/README.md`, `agister/AGENTS.md` and `docs/process.md` say
+so, keep "edit `agister/home`, not home's copy", and no longer name
+`agister-next` or the archive's home.
 
 Decisions, each with its reason:
 
 - The gate is deleted, not moved: the loop's scripts implement and
   review on this Agister; its advisor step and unattended fix rounds
   are given up. `runs export` stays, for a person to copy a run.
+- rexlab's implement loses the archive's verification, its tests run
+  with up to 3 repairs: rexlab's agent runs `rexlab/scripts/test.sh`
+  itself, as its AGENTS.md already says. The `.agister/verifies`
+  files stay, unread, the archive's settings.
 - The archive's home is moved aside, not installed over: its 4,000
   runs share this Agister's id and file names in another schema, and
   a continuation reads every run kept.
 - The archive's binary is removed, not renamed: on the path, run
   without `AGISTER_HOME`, it would read this home.
-- `~/.agister-next`'s runs go with it: each install wiped them.
-- install.sh keeps no backup of the settings it replaces, not as
-  ADR-008, rule 2 asks of `settings/home`: home's settings are
-  `agister/home`, and going back is git; a hand edit to home's copy is
-  lost, as the docs warn. `settings/home` is not built yet.
+- install.sh, not `settings/home`, writes home's settings until that
+  is built (ADR-008, rule 1); its backups keep each write undoable
+  (rule 2), by moving them back.
 - A folder or file `agister/home` drops stays in `~/.agister` until
   removed by hand: a rename is rare.
 - `agister/archive` stays, as reference, unbuilt.
