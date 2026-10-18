@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first eight slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first ten slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
