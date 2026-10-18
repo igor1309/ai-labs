@@ -34,7 +34,8 @@ import {
   seededRandom,
   symbolOf,
   tilesRow,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 
 function openHomePage(
@@ -45,7 +46,7 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons()
 ) {
-  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
+  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard(), tile: homeTile("COMPARE") };
 }
 
@@ -73,6 +74,9 @@ function renderHomePage(taps: number[]) {
       onLanguage={nothing}
       theme="light"
       onTheme={nothing}
+      ageLevel="explorer"
+      onAgeLevel={nothing}
+      startTimer={() => nothing}
       featured="compare"
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={undefined}
@@ -761,7 +765,7 @@ describe("the large card", () => {
   async function openedBy(game: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
     );
     await tap(userEvent.setup());
     const asked: string[] = [];

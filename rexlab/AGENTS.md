@@ -130,6 +130,8 @@ Vite reloads the page on every save; nothing is deployed.
   device language again.
 - A chosen theme lives under `rexlab-theme`; delete it to follow the device
   appearance again.
+- A chosen age level lives under `rexlab-age-level`, apart from progress;
+  delete it to start at Explorer again.
 
 ## Shipping a release
 

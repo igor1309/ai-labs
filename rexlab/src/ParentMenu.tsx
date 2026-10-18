@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export type MenuChoice<Value extends string> = {
   value: Value;
@@ -7,11 +7,22 @@ export type MenuChoice<Value extends string> = {
   // The language the name is written in, where it is not the page's.
   lang?: string;
   symbol?: ReactNode;
+  // A footnote in small text under the name.
+  note?: string;
 };
+
+// Calls `fire` after `ms` milliseconds, unless the returned stop is
+// called first.
+type StartTimer = (ms: number, fire: () => void) => () => void;
+
+// How long a menu takes to animate out, in milliseconds: app.css's
+// --motion-small, which reduced motion keeps for its fade.
+export const MENU_EXIT = 160;
 
 export type ParentMenuProps<Value extends string> = {
   label: string;
-  // What the button shows: a small symbol, and at most a short code.
+  // What the button shows: a small symbol or picture, and at most a short
+  // code.
   button: ReactNode;
   choices: readonly MenuChoice<Value>[];
   chosen: Value;
@@ -19,15 +30,33 @@ export type ParentMenuProps<Value extends string> = {
   onOpen: () => void;
   onClose: () => void;
   onChoose: (value: Value) => void;
+  // Times the menu's way out, so it stays until it has animated away.
+  startTimer: StartTimer;
 };
 
 // A small button that opens a menu of choices, one of them ticked. The
 // page that holds it decides which menu is open, so only one ever is, and
 // closes it on a tap outside.
-export function ParentMenu<Value extends string>({ label, button, choices, chosen, open, onOpen, onClose, onChoose }: ParentMenuProps<Value>) {
+export function ParentMenu<Value extends string>({ label, button, choices, chosen, open, onOpen, onClose, onChoose, startTimer }: ParentMenuProps<Value>) {
   const id = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // However the menu closes, it stays on screen while it animates out,
+  // hidden from reading and taps, and comes back at once if it is opened
+  // again meanwhile.
+  const [shown, setShown] = useState(open);
+  if (open && !shown) setShown(true);
+  const leaving = shown && !open;
+  useEffect(() => {
+    if (!leaving) return;
+    return startTimer(MENU_EXIT, () => setShown(false));
+  }, [leaving, startTimer]);
+
+  // Each change of the choice shows the button's new face animating in;
+  // the face it opens with stands still.
+  const [face, setFace] = useState({ chosen, changes: 0 });
+  if (face.chosen !== chosen) setFace({ chosen, changes: face.changes + 1 });
 
   // An opened menu takes the focus on its ticked choice, so a keyboard
   // starts where the parent left it.
@@ -65,11 +94,24 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
         aria-controls={open ? id : undefined}
         onClick={open ? onClose : onOpen}
       >
-        {button}
+        <span key={face.changes} className="parent-menu-face" data-changed={face.changes > 0 ? "" : undefined}>
+          {button}
+        </span>
       </button>
-      {open && (
-        <div ref={menuRef} id={id} role="menu" aria-label={label} className="parent-menu-list" onKeyDown={moveFocus}>
-          {choices.map(({ value, name, lang, symbol }) => (
+      {shown && (
+        <div
+          ref={menuRef}
+          id={id}
+          role="menu"
+          aria-label={label}
+          aria-hidden={leaving || undefined}
+          inert={leaving}
+          className="parent-menu-list"
+          data-leaving={leaving ? "" : undefined}
+          data-notes={choices.some(({ note }) => note) ? "" : undefined}
+          onKeyDown={moveFocus}
+        >
+          {choices.map(({ value, name, lang, symbol, note }) => (
             <button
               key={value}
               type="button"
@@ -83,8 +125,11 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
               }}
             >
               {symbol}
-              <span className="parent-menu-name" lang={lang}>
-                {name}
+              <span className="parent-menu-words">
+                <span className="parent-menu-name" lang={lang}>
+                  {name}
+                </span>
+                {note && <span className="parent-menu-note">{note}</span>}
               </span>
               {value === chosen && <Check className="parent-menu-tick" size={18} />}
             </button>

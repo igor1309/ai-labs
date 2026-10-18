@@ -72,6 +72,7 @@ const ADAPTERS = [
   "dinosaurs.ts",
   "documentVisibility.ts",
   "itemPictures.ts",
+  "localAgeLevel.ts",
   "localLanguage.ts",
   "localProgress.ts",
   "localTheme.ts",
@@ -92,6 +93,8 @@ const COMPOSITION = [
 ];
 // The choice of the day's featured game.
 const FEATURED = "featured.ts";
+// The age levels and how a parent's pick of one is kept.
+const AGE_LEVEL = "ageLevel.ts";
 // The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
@@ -202,6 +205,11 @@ describe("the import graph", () => {
   it("keeps the featured choice free of the rest of the app", () => {
     expect(GRAPH.get("App.tsx")).toContain(FEATURED);
     expect(edges((file) => file === FEATURED, () => true)).toEqual([]);
+  });
+
+  it("keeps the age levels free of the rest of the app", () => {
+    expect(GRAPH.get("App.tsx")).toContain(AGE_LEVEL);
+    expect(edges((file) => file === AGE_LEVEL, () => true)).toEqual([]);
   });
 
   it("keeps screens, formatting, texts and themes free of the featured choice", () => {
