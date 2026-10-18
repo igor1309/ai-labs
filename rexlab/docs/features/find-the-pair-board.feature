@@ -76,15 +76,16 @@ Feature: Find the pair: turning cards
     And each time a card is turned over, its 8 seconds count afresh
 
     Examples:
-      | ends             | when                                       |
-      | fails to load    | once the picture, loaded again, has failed |
-      | is still loading | once the card has been open 8 seconds      |
+      | ends                                         | when                                       |
+      | failed to load while the cards lay face down | once the picture, loaded again, has failed |
+      | is still loading                             | once the card has been open 8 seconds      |
 
   Scenario: A card's name fades out as its picture fades in
     Given the picture of Stegosaurus is still loading
     When I turn over a Stegosaurus card
     And the picture loads while the card is open
     Then the picture fades in over 200 ms and "STEGOSAURUS" fades out with it
+    But a card whose pair is found keeps its name
 
   Scenario: A silhouette darkens only its picture
     Given a board at the level of silhouettes, its pictures still loading

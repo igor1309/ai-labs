@@ -371,6 +371,20 @@ describe("turning cards", () => {
     expect([face(first), name()]).toEqual([["appearing", url, names[0]], "true"]);
   });
 
+  it("keeps the names of a pair found while its picture loads, as the picture fades in", async () => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 1 }), clock: pictures });
+    await playPairs(user);
+    const names = namesOf(dealt(1, { pals: UNSEEN }));
+    const pair = placesOf(names, names[0] ?? "");
+    const url = fakeBodyPicture(dealt(1, { pals: UNSEEN }).cards[pair[0] ?? 0]?.pal.id ?? "");
+
+    for (const place of pair) await turnCard(user, place);
+    act(() => pictures.finish(url));
+
+    expect(pair.map((place) => [face(place), pairCards()[place]?.querySelector<HTMLElement>(".pair-card-name")?.dataset.fading])).toEqual(pair.map(() => [["appearing", url, names[0]], undefined]));
+  });
+
   it("shimmers a silhouette card's place while its picture loads, the silhouette only its picture's", async () => {
     const pictures = manualPictures();
     const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });

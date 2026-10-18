@@ -1,5 +1,5 @@
 Feature: Screens never wait for their pictures
-  These screens change at once, whatever their pictures are doing
+  The screens below change at once, whatever their pictures are doing
   (docs/tap-safety.md, part 5); the other games follow. While a picture
   loads, its place keeps the picture's own size and shimmers: its colour
   pulses slowly in place, in the colours of the theme shown. Once the

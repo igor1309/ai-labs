@@ -12,7 +12,7 @@ Feature: Dinosaur care: pictures that load
     When I tap "NEW VISITOR"
     Then the visit starts at once, its visitor walking in as a shimmer at its picture's size
     And I see its name and its need, and I can give it an item
-    And while the picture loads, the visitor's reactions and dance move its shimmer
+    And while the picture loads, the visitor's reactions and dance move its place, shimmering or showing the failure look
     When the picture has loaded
     Then it fades in over 200 ms
 
@@ -35,12 +35,12 @@ Feature: Dinosaur care: pictures that load
     And the picture's place shimmers, then fades the picture in
 
     Examples:
-      | place                         | screen                         |
-      | the visitor at the door       | the care welcome screen        |
-      | my friend Triceratops's face  | the care welcome screen        |
-      | the plants button             | a visit                        |
-      | the bowl in the need's bubble | a visit, its visitor hungry    |
-      | the item given                | a visit, as I give it the item |
-      | the finished visitor          | the result of a visit          |
-      | my friend Triceratops's card  | my friends                     |
-      | the nest                      | my friends, with no friend yet |
+      | place                         | screen                                         |
+      | the visitor at the door       | the care welcome screen                        |
+      | my friend Triceratops's face  | the care welcome screen, Triceratops my friend |
+      | the plants button             | a visit                                        |
+      | the bowl in the need's bubble | a visit, its visitor hungry                    |
+      | the item given                | a visit, after I give an item                  |
+      | the finished visitor          | the result of a visit                          |
+      | my friend Triceratops's card  | my friends                                     |
+      | the nest                      | my friends, with no friend yet                 |
