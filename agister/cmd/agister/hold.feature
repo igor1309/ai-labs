@@ -1,10 +1,11 @@
 # cmd/agister, the hold and the chain (docs/run-implementation.md, "A step
-# in a held worktree"; ADR-004, rule 3): admit's hold port answered by
-# files' lock, with spies in place of the wrappers (ADR-009, rule 1).
+# in a held worktree", "Retiring the archive"; ADR-004, rule 3): admit's
+# hold port answered by files' lock, with spies in place of the wrappers
+# (ADR-009, rule 1).
 
 Feature: The composition holds a worktree for each call
 
-  Scenario: The lock file is the archive's, whatever home is
+  Scenario: The lock file is the user's, whatever home is
     Given AGISTER_HOME "/h" and the user's home "/u"
     When a hold alone is taken of "/r"
     Then files is asked to lock, alone, the file named by the SHA-256

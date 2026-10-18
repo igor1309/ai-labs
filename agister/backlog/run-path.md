@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first eight slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first ten slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -14,14 +14,13 @@ on stderr; the fourth ("A step in a held worktree") admission, holds
 and staleness; the fifth ("Parallel steps and a join") a parallel of
 steps and the join after it; the sixth ("Records") a run's record; the seventh
 ("Continuation") `--continue`; the eighth ("Recovery") a stale turn
-resumed; the ninth ("Runs") inputs recorded and `runs export`.
+resumed; the ninth ("Runs") inputs recorded and `runs export`; the
+tenth ("Retiring the archive") this Agister installed as `agister`.
 What it leaves out, roughly in the
 order it is needed:
 
 - **A binding continuing a session**: a step inside a run continuing an
   earlier step's session, checked by `core/admit` (ADR-001, rule 5).
-- **The gate on this Agister**: `scripts/agister-gate` run on this
-  Agister, reading its record; the archive retired.
 - **The rest of the record**: definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch (ADR-001, invariant 6;
   ADR-004, rule 4); other commands on runs.
