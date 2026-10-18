@@ -67,6 +67,7 @@ Notes:
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
 - Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
+- `local-wait` (`scripts/local-wait.js`) cancels a run once a `local-mac` job has waited queued 15 minutes, naming it: the run ends red, not pending for GitHub's 24 hours.
 
 ## Keeping it regular
 
