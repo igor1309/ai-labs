@@ -7,15 +7,21 @@ home page (LAB-290): a double tap opened the museum once, but its second
 tap could have landed on a button of the museum.
 
 It is built from parts that do not know of each other, each landing in its
-own issue. Until the click filter lands, today's picture waits and one-off
-guards (`MUSEUM_SETTLE` among them) keep double taps safe, and they stay.
+own issue, in this order: LAB-298, LAB-303, LAB-304. Until the double-tap
+filter lands, today's picture waits and one-off guards keep double taps
+safe, and they stay; LAB-304 removes the waits only after it. Each issue
+brings the Gherkin of its own behaviour; LAB-298 changes none.
 
 ## The parts
 
 1. **Screen state (LAB-298).** App and each game module keep their
    screens with `useScreens(first, transitionFor)` from `src/screens.ts`,
-   which gives the screen showing and `go(next)`, the only way to change
-   it. `go` knows nothing of pictures or input.
+   which gives the screen showing and `go(next, intent?)`, the only way to
+   change it. `next` is a screen, or a function of the screen showing that
+   returns the next one, or the screen showing itself to change nothing:
+   so work that finishes later (a picture wait) changes the screen only if
+   it is still the one the tap came from. `go` knows nothing of pictures
+   or input.
 2. **Animation (LAB-298).** Each module's `transitionFor(from, to,
    intent)` is a pure function that gives each change's view transition
    type; `go` applies it in the same React transition as the change. A
@@ -28,14 +34,21 @@ guards (`MUSEUM_SETTLE` among them) keep double taps safe, and they stay.
    puzzle, and is stopped when that occurrence ends, the game left
    included. Updates inside the occurrence (a bone fitted, a card turned)
    do not stop it.
-4. **Double taps (LAB-303).** One filter at the root of the app drops a
-   pointer click less than 500 ms and less than 100 px after the last
-   click that counted, timed by each event's own time, which `src/root.ts`
-   reads and hands it. It knows nothing of screens. Presses, drags and
-   scrolling are untouched; keyboard and assistive activation are not
-   filtered. Accepted cost: two controls closer than 100 px, such as
-   neighbouring find-the-pair cards tapped near their shared edge, count
-   once if tapped within 500 ms.
+4. **Double taps (LAB-303).** One filter at the root of the app watches
+   pointer input, timed by each event's own time, which `src/root.ts`
+   reads and hands it. A tap that counted and ended without a drag opens
+   a window; a press less than 500 ms after that tap and less than 100 px
+   from where it landed is its second tap, and the filter swallows that
+   press's whole sequence (press, moves, release and click), so nothing
+   acts on it, whether the screen acts on press (a sort card, a bone) or
+   on click. A drag opens no window; a swallowed press opens none.
+   Keyboard activation, which has no pointer sequence, is not filtered.
+   The filter knows nothing of screens. Accepted cost: two controls
+   closer than 100 px, such as neighbouring find-the-pair cards tapped
+   near their shared edge, count once if tapped within 500 ms. LAB-303
+   removes the guards that exist only for double taps (`MUSEUM_SETTLE`,
+   `starting`, `openingCatalogue`) and keeps those that guard a wait the
+   child leaves (`roundsLeft`, the `still` checks) for LAB-304.
 5. **Pictures (LAB-304).** One `<Picture>` component holds a picture's
    place with a shimmer while it loads and fades it in once decoded, so
    no screen waits for its pictures before it changes. Each game's
@@ -57,7 +70,8 @@ arXiv:1402.1036, section 6 (about 400 ms, some up to 750 ms).
 Each item lands with its part, and an architecture test searches for it.
 
 - `startTransition` or `addTransitionType` outside `src/screens.ts`, and
-  a `useState` holding a module's screen type outside it (LAB-298).
+  a `useState` or `useReducer` of a screen type, a type whose name ends
+  in `Screen`, outside it (LAB-298).
 - `setTimeout`, `setInterval`, `Date.now()`, `performance.now()` or an
   event's `timeStamp` outside `src/root.ts` (LAB-303).
 - Calling `waitForPictures`, or taking a `LoadPicture`, outside
