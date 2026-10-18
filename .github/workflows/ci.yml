@@ -188,7 +188,6 @@ jobs:
               - ".agister/**"
               - "agister/.agister/**"
               - "agister/home/**"
-              - "scripts/agister-gate/**"
               - "agister/docs/**"
               - "agister/skills/**"
               - "agister/README.md"
