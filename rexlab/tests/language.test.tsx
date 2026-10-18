@@ -1,8 +1,8 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { AGE_LEVEL_PICTURES } from "../src/ageLevelPictures.ts";
 import { App } from "../src/App.tsx";
-import { AGE_LEVEL_PICTURES } from "../src/HomePage.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";

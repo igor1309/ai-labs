@@ -67,6 +67,18 @@
     transition-property: background-color;
   }
 
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+  .pairs-level-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
   /* A card on the sorting board lifts and puts down in place, and slides
      back only by fading in where it belongs. */
   .sort-card {
@@ -3656,7 +3668,10 @@ body:has(.result) #version {
 }
 
 /* The welcome: a face-down card, and a dinosaur's picture matched to its
-   silhouette, beside the title, the level and stars, and PLAY. */
+   silhouette, beside the title, the climb level and stars, the level
+   switch and PLAY. The column beside the cards is as wide as the switch
+   needs for every level's name on one line, so the cards take what is
+   left. */
 .pairs-welcome-body {
   flex: 1 1 0;
   min-height: 0;
@@ -3714,12 +3729,12 @@ body:has(.result) #version {
 }
 
 .pairs-start {
-  flex: 528 1 0;
-  min-width: 0;
+  flex-shrink: 0;
+  width: 648px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 32px;
+  gap: 28px;
 }
 
 .pairs-title {
@@ -3774,6 +3789,98 @@ body:has(.result) #version {
 
 .pairs-stars svg {
   color: #e39b2d;
+}
+
+/* The climb level is Hatchling's alone: at the other levels its chip folds
+   away beside the stars, the gap before them with it, and unfolds again at
+   Hatchling. */
+.pairs-climb {
+  display: grid;
+  grid-template-columns: 0fr;
+  overflow: hidden;
+  margin-right: -16px;
+  opacity: 0;
+  transition:
+    grid-template-columns var(--motion-standard) var(--ease-out),
+    margin-right var(--motion-standard) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out);
+}
+
+.pairs-climb[data-shown] {
+  grid-template-columns: 1fr;
+  margin-right: 0;
+  opacity: 1;
+}
+
+.pairs-climb .pairs-chip {
+  min-width: 0;
+}
+
+/* The level switch: the age levels side by side, youngest first, across
+   the column. The chosen level is filled in ink, bolder and raised, and a
+   mark of the same ink slides to it from the level chosen before. */
+.pairs-levels {
+  position: relative;
+  isolation: isolate;
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border: 1px solid #1d27421f;
+  border-radius: 36px;
+  background: #e6e2d9;
+}
+
+.pairs-level-mark {
+  position: absolute;
+  z-index: -1;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 20px) / 3);
+  border-radius: 30px;
+  background: #1d2742;
+  translate: calc(var(--chosen) * (100% + 4px)) 0;
+  transition: translate var(--motion-standard) var(--ease-out);
+}
+
+.pairs-level {
+  height: 58px;
+  min-width: 0;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 30px;
+  background-color: transparent;
+  color: #1d2742;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  transition:
+    color var(--motion-standard) var(--ease-out),
+    background-color var(--motion-standard) var(--ease-out);
+}
+
+.pairs-level[aria-pressed="true"] {
+  background-color: #1d2742;
+  color: #fffdf8;
+  font-weight: 700;
+  box-shadow: 0 4px 10px #1d274224;
+}
+
+/* An age level's picture, as in the age level menu. */
+.pairs-level-picture {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 22px;
+  line-height: 1;
+  text-align: center;
 }
 
 .pairs-play-button {
@@ -5271,6 +5378,25 @@ body:has(.result) #version {
 
 [data-theme="dark"] .pairs-play-button {
   box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .pairs-levels {
+  border-color: #ece8de1f;
+  background: #222a3d;
+}
+
+[data-theme="dark"] .pairs-level {
+  color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-level-mark,
+[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+  background-color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+  color: #181e2e;
+  box-shadow: 0 4px 10px #00000066;
 }
 
 [data-theme="dark"] .pairs-tile-back,

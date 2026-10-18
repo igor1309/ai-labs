@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { DIETS } from "../src/catalogue.ts";
-import { LEVELS, TOP_LEVEL } from "../src/pairs/index.ts";
+import { CLIMB_LEVELS, TOP_CLIMB_LEVEL } from "../src/pairs/index.ts";
 import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
 import type { Dinosaur as Sortable, Property } from "../src/sorting/index.ts";
 import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SORTABLES, SHIPPED_VISITORS } from "./support.ts";
@@ -181,7 +181,7 @@ describe("the shipped dinosaur list", () => {
   // has taken its dinosaurs away.
   it("puts every dinosaur in one look-alike group, enough for two silhouette boards in a row", () => {
     const groups = new Set(SHIPPED_PALS.map(({ lookAlike }) => lookAlike));
-    const { pairs } = LEVELS[TOP_LEVEL];
+    const { pairs } = CLIMB_LEVELS[TOP_CLIMB_LEVEL];
 
     expect(SHIPPED_PALS.map(({ id }) => id)).toEqual(records.map(({ id }) => id));
     expect(groups.size - pairs).toBeGreaterThanOrEqual(pairs);

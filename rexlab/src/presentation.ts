@@ -6,7 +6,7 @@ import type { Diet as ShownDiet } from "./DietTag.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
-import { LEVELS, type Board, type Celebration as PairsCelebration, type PairsResult } from "./pairs/index.ts";
+import { CLIMB_LEVELS, type Board, type Celebration as PairsCelebration, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
@@ -213,9 +213,9 @@ export type PairsBoardView = Pick<PairsBoardScreenProps, "level" | "tries" | "ro
 // A card is found once its pair is, open while turned over, and face down
 // otherwise.
 export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string): PairsBoardView {
-  const { rows, columns } = LEVELS[board.level];
+  const { rows, columns } = CLIMB_LEVELS[board.climbLevel];
   return {
-    level: board.level,
+    level: board.climbLevel,
     tries: board.tries,
     rows,
     columns,
@@ -243,7 +243,7 @@ export function presentPairsResult(result: PairsResult, language: Language, body
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
-    levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+    levelUp: levelUp === null ? null : { level: levelUp, rows: CLIMB_LEVELS[levelUp].rows, columns: CLIMB_LEVELS[levelUp].columns }
   };
 }
 

@@ -258,6 +258,24 @@ describe("find the pair's motion", () => {
     );
   });
 
+  // A rule's declarations, by property.
+  const declared = (rules: Rule[], selector: string) =>
+    Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
+
+  it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".pairs-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".pairs-level-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
+  });
+
+  it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-climb").transition).toBe(
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+    );
+    expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
+    expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
+  });
+
   it("bumps a new count of tries in, and pops the result's NEW badges and star in", () => {
     const animations = animationsOf(PLAIN);
     expect([".pairs-tries", ".pairs-new-badge", ".pairs-result-star", ".pairs-level-up", ".pairs-found-card", ".dinosaur-found-stamp"].map((selector) => animations.get(selector))).toEqual([

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { LEVELS, type Level, type PairsProgress } from "../src/pairs/index.ts";
+import { CLIMB_LEVELS, type ClimbLevel } from "../src/pairs/index.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import {
   MISS,
@@ -25,7 +25,8 @@ import {
   stateAt,
   storedPairs,
   triesShown,
-  turnCard
+  turnCard,
+  type StoredPairs
 } from "./pairsApp.tsx";
 import { SHIPPED_PALS, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualTimers } from "./support.ts";
 
@@ -45,7 +46,7 @@ const NAMES = namesOf(dealt(1, { pals: THREE }));
 const [TRIKE, STEGO] = [placesOf(NAMES, "TRICERATOPS"), placesOf(NAMES, "STEGOSAURUS")];
 
 const button = (name: string) => screen.getByRole("button", { name });
-const stored = (progress: Partial<PairsProgress>, games: Record<string, unknown> = {}) =>
+const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress }, games) });
 // The catalogue's count of dinosaurs found.
 const foundCount = () => {
@@ -100,7 +101,7 @@ describe("a board", () => {
 
     await playPairs(user);
 
-    const { pairs, rows, columns, silhouettes } = LEVELS[level];
+    const { pairs, rows, columns, silhouettes } = CLIMB_LEVELS[level];
     expect(pairCards()).toHaveLength(pairs * 2);
     expect(pairCards().map((card) => [card.getAttribute("data-state"), symbolsOf(card)])).toEqual(pairCards().map(() => ["down", ["footprints"]]));
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
@@ -678,6 +679,6 @@ it.each([
   [2, 4, 2, 4],
   [3, 4, 2, 4],
   [4, 6, 3, 4]
-] as const)("level %i deals %i pairs in %i rows of %i", (level: Level, pairs, rows, columns) => {
-  expect(LEVELS[level]).toMatchObject({ pairs, rows, columns });
+] as const)("level %i deals %i pairs in %i rows of %i", (level: ClimbLevel, pairs, rows, columns) => {
+  expect(CLIMB_LEVELS[level]).toMatchObject({ pairs, rows, columns });
 });

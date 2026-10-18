@@ -1,7 +1,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type AppProps } from "../src/App.tsx";
-import { dealBoard, type Board, type Level, type Pal, type PairsProgress, type Random } from "../src/pairs/index.ts";
+import { dealBoard, type Board, type ClimbLevel, type Pal, type Random } from "../src/pairs/index.ts";
+import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -22,8 +24,7 @@ import {
   unreadVersion,
   type ManualOrientation,
   type ManualTimers,
-  type MemoryStorage,
-  unsetAgeLevel
+  type MemoryStorage
 } from "./support.ts";
 
 type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
@@ -41,7 +42,19 @@ export type PairsAppOptions<C extends Clock> = {
   reducedMotion?: boolean;
   orientation?: ManualOrientation;
   deviceLanguage?: string;
+  theme?: "light" | "dark";
+  // The age level a parent picked, or "unset" for none picked yet.
+  ageLevel?: AgeLevelSetting | "unset";
 };
+
+// The age level the climb is played at, so a test about the climb sees it.
+export const PICKED_HATCHLING: AgeLevelSetting = { level: "hatchling", revision: "picked-hatchling" };
+
+// The age level setting, kept apart from the storage progress is kept in,
+// so a test that blocks that storage still has the level it gives.
+function ageLevelStorage(setting: AgeLevelSetting | "unset") {
+  return memoryStorage(setting === "unset" ? {} : { [AGE_LEVEL_KEY]: JSON.stringify(setting) });
+}
 
 // The app as a child opens it to find pairs.
 export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>({
@@ -51,8 +64,11 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
   orientation = manualOrientation("landscape"),
-  deviceLanguage = "en-GB"
+  deviceLanguage = "en-GB",
+  theme = "light",
+  ageLevel = PICKED_HATCHLING
 }: PairsAppOptions<C> = {}) {
+  const ageLevels = ageLevelStorage(ageLevel);
   const view = render(
     <App
       {...featuring()}
@@ -65,9 +81,9 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
       nameVersion={unreadVersion}
-      appearance={manualAppearance("light")}
+      appearance={manualAppearance(theme)}
       themeStore={localTheme(() => storage)}
-      {...unsetAgeLevel()}
+      ageLevelStore={localAgeLevel(() => ageLevels)}
       visitors={SHIPPED_VISITORS}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
@@ -83,9 +99,20 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
 }
 
+// Find the pair's entry as it is stored, under the names it kept from
+// before the age levels.
+export type StoredPairs = {
+  stars: number;
+  level: ClimbLevel;
+  boardsOnLevel: number;
+  best: Partial<Record<ClimbLevel, number>>;
+  found: readonly string[];
+  levelChoice?: { level: string; revision: string | null };
+};
+
 // A stored record with find the pair's entry, and the other games'
 // entries given.
-export const pairsRecord = (pairs: Partial<PairsProgress> | unknown, games: Record<string, unknown> = {}) =>
+export const pairsRecord = (pairs: Partial<StoredPairs> | unknown, games: Record<string, unknown> = {}) =>
   JSON.stringify({ schemaVersion: 1, games: { ...games, "find-the-pair": pairs } });
 
 // Find the pair's entry as stored now, undefined while none is.
@@ -181,7 +208,7 @@ export function endWave(clock: Timers) {
 // The board the app deals with `random` after `previous`, so a test knows
 // which dinosaur is where. The app takes nothing else from `random` on
 // the way to a board.
-export const dealt = (level: Level, { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}) =>
+export const dealt = (level: ClimbLevel, { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}) =>
   dealBoard(pals, level, random, previous);
 
 // The names of a board's cards, place by place, as their labels read

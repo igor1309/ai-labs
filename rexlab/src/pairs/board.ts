@@ -12,14 +12,16 @@ export type Pal = {
 // A random number in [0, 1), as Math.random gives.
 export type Random = () => number;
 
-export type Level = 1 | 2 | 3 | 4;
+// The climb Hatchling plays, one level after another: its own levels, apart
+// from the age levels the game is played at.
+export type ClimbLevel = 1 | 2 | 3 | 4;
 
-export const TOP_LEVEL: Level = 4;
+export const TOP_CLIMB_LEVEL: ClimbLevel = 4;
 
-// Each level's board: how many pairs, in how many rows of how many cards,
-// and whether each picture is matched to its silhouette rather than to
-// the same picture.
-export const LEVELS: Record<Level, { pairs: number; rows: number; columns: number; silhouettes: boolean }> = {
+// Each climb level's board: how many pairs, in how many rows of how many
+// cards, and whether each picture is matched to its silhouette rather than
+// to the same picture.
+export const CLIMB_LEVELS: Record<ClimbLevel, { pairs: number; rows: number; columns: number; silhouettes: boolean }> = {
   1: { pairs: 3, rows: 2, columns: 3, silhouettes: false },
   2: { pairs: 4, rows: 2, columns: 4, silhouettes: false },
   3: { pairs: 4, rows: 2, columns: 4, silhouettes: true },
@@ -32,7 +34,7 @@ export type Face = "picture" | "silhouette";
 export type Card = { pal: Pal; face: Face };
 
 export type Board = {
-  level: Level;
+  climbLevel: ClimbLevel;
   // The board's dinosaurs, in the order they were dealt.
   pals: readonly Pal[];
   // The cards, in their places on the board, row by row.
@@ -46,11 +48,11 @@ export type Board = {
   tries: number;
 };
 
-// Deals a board of `level`: its pairs are of different dinosaurs, none of
-// them on the board before it, and on a silhouette board none from the
-// same look-alike group. Its cards are shuffled.
-export function dealBoard(pals: readonly Pal[], level: Level, random: Random, previous?: Board): Board {
-  const { pairs, silhouettes } = LEVELS[level];
+// Deals a board of `climbLevel`: its pairs are of different dinosaurs,
+// none of them on the board before it, and on a silhouette board none from
+// the same look-alike group. Its cards are shuffled.
+export function dealBoard(pals: readonly Pal[], climbLevel: ClimbLevel, random: Random, previous?: Board): Board {
+  const { pairs, silhouettes } = CLIMB_LEVELS[climbLevel];
   const dealtBefore = new Set(previous?.pals.map(({ id }) => id));
   const groups = new Set<string>();
   const dealt: Pal[] = [];
@@ -64,13 +66,13 @@ export function dealBoard(pals: readonly Pal[], level: Level, random: Random, pr
     dealt.push(pal);
   }
   if (dealt.length < pairs) {
-    throw new Error(`Too few dinosaurs for a level ${level} board`);
+    throw new Error(`Too few dinosaurs for a level ${climbLevel} board`);
   }
   const cards = dealt.flatMap((pal): Card[] => [
     { pal, face: "picture" },
     { pal, face: silhouettes ? "silhouette" : "picture" }
   ]);
-  return { level, pals: dealt, cards: shuffled(cards, random), open: [], found: [], tries: 0 };
+  return { climbLevel, pals: dealt, cards: shuffled(cards, random), open: [], found: [], tries: 0 };
 }
 
 // Two different cards are open: they stay so until turned back, and no

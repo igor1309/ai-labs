@@ -4,14 +4,14 @@ import {
   finishBoard,
   foundOf,
   isFinished,
+  CLIMB_LEVELS,
   isMiss,
-  LEVELS,
   NO_PAIRS,
   turn,
   turnBack,
   type Board,
+  type ClimbLevel,
   type KeptPairs,
-  type Level,
   type Pal
 } from "../src/pairs/index.ts";
 import { seededRandom, SHIPPED_PALS } from "./support.ts";
@@ -24,12 +24,12 @@ const STEGO = pal("stegosaurus", "plated-back");
 
 // A level 1 board of Rex, Trike and Stego, laid out in that order, each
 // pair side by side.
-const board = (pals: readonly Pal[] = [REX, TRIKE, STEGO], level: Level = 1): Board => ({
-  level,
+const board = (pals: readonly Pal[] = [REX, TRIKE, STEGO], climbLevel: ClimbLevel = 1): Board => ({
+  climbLevel,
   pals,
   cards: pals.flatMap((one) => [
     { pal: one, face: "picture" as const },
-    { pal: one, face: LEVELS[level].silhouettes ? ("silhouette" as const) : ("picture" as const) }
+    { pal: one, face: CLIMB_LEVELS[climbLevel].silhouettes ? ("silhouette" as const) : ("picture" as const) }
   ]),
   open: [],
   found: [],
@@ -54,14 +54,14 @@ describe("dealing a board", () => {
     const dealt = dealBoard(SHIPPED_PALS, level, seededRandom(level));
     const ids = dealt.cards.map(({ pal: { id } }) => id);
 
-    expect(dealt.cards).toHaveLength(LEVELS[level].pairs * 2);
-    expect(dealt.cards).toHaveLength(LEVELS[level].rows * LEVELS[level].columns);
-    expect(new Set(ids).size).toBe(LEVELS[level].pairs);
+    expect(dealt.cards).toHaveLength(CLIMB_LEVELS[level].pairs * 2);
+    expect(dealt.cards).toHaveLength(CLIMB_LEVELS[level].rows * CLIMB_LEVELS[level].columns);
+    expect(new Set(ids).size).toBe(CLIMB_LEVELS[level].pairs);
     for (const id of ids) {
       expect(ids.filter((other) => other === id)).toHaveLength(2);
       expect(ORDER).toContain(id);
     }
-    expect({ level: dealt.level, open: dealt.open, found: dealt.found, tries: dealt.tries }).toEqual({ level, open: [], found: [], tries: 0 });
+    expect({ level: dealt.climbLevel, open: dealt.open, found: dealt.found, tries: dealt.tries }).toEqual({ level, open: [], found: [], tries: 0 });
   });
 
   it.each([
@@ -177,7 +177,7 @@ describe("finishing a board", () => {
     const { result, kept } = finishBoard(readable(), finished(board(), 2), ORDER);
 
     expect(result).toEqual({
-      level: 1,
+      climbLevel: 1,
       pals: [REX, TRIKE, STEGO],
       tries: 5,
       stars: 1,
@@ -189,7 +189,7 @@ describe("finishing a board", () => {
     });
     expect(kept).toEqual({
       readable: true,
-      progress: { stars: 1, level: 1, boardsOnLevel: 1, best: { 1: 5 }, found: ["tyrannosaurus", "triceratops", "stegosaurus"] }
+      progress: { stars: 1, climbLevel: 1, boardsOnClimbLevel: 1, best: { 1: 5 }, found: ["tyrannosaurus", "triceratops", "stegosaurus"] }
     });
   });
 
@@ -208,19 +208,19 @@ describe("finishing a board", () => {
   });
 
   it("moves up a level after two boards on it", () => {
-    const { result, kept } = finishBoard(readable({ ...NO_PAIRS, stars: 1, boardsOnLevel: 1 }), finished(), ORDER);
+    const { result, kept } = finishBoard(readable({ ...NO_PAIRS, stars: 1, boardsOnClimbLevel: 1 }), finished(), ORDER);
 
     expect(result.levelUp).toBe(2);
-    expect(kept.progress).toMatchObject({ stars: 2, level: 2, boardsOnLevel: 0 });
+    expect(kept.progress).toMatchObject({ stars: 2, climbLevel: 2, boardsOnClimbLevel: 0 });
   });
 
   it("stays on the top level, a star for each board", () => {
     const top = board([REX, TRIKE, STEGO, pal("a"), pal("b"), pal("c")], 4);
-    const once = finishBoard(readable({ ...NO_PAIRS, level: 4 }), finished(top), ORDER);
+    const once = finishBoard(readable({ ...NO_PAIRS, climbLevel: 4 }), finished(top), ORDER);
     const twice = finishBoard(once.kept, finished(top), ORDER);
 
     expect([once.result.levelUp, twice.result.levelUp]).toEqual([null, null]);
-    expect(twice.kept.progress).toMatchObject({ stars: 2, level: 4 });
+    expect(twice.kept.progress).toMatchObject({ stars: 2, climbLevel: 4 });
   });
 
   it("finds each dinosaur once, in the dinosaur list's order, keeping one no longer in it", () => {

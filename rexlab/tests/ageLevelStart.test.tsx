@@ -109,7 +109,6 @@ const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]>
   ["the catalogue", "ALL DINOSAURS", []],
   ["the care game", "CARE", [() => button("NEW VISITOR")]],
   ["the sorting game", "SORT", []],
-  ["find the pair", "FIND THE PAIR", [() => button("PLAY")]],
   ["the skeleton game", "SKELETONS", [firstDinosaur]]
 ];
 

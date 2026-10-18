@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import {
   dealBoard,
@@ -22,12 +23,17 @@ import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
+
+// What find the pair keeps: its progress, and the child's last choice on
+// its level switch, none until the switch is first used.
+export type PairsSaved = { progress: PairsProgress; levelChoice: LevelChoice | undefined };
 
 export type PairsProgressStore = {
-  // The find-the-pair progress kept so far, or undefined when it cannot be
+  // What find the pair has kept so far, or undefined when it cannot be
   // read at all.
-  load(): PairsProgress | undefined;
-  save(progress: PairsProgress): void;
+  load(): PairsSaved | undefined;
+  save(saved: PairsSaved): void;
 };
 
 export type PairsGameProps = {
@@ -45,6 +51,9 @@ export type PairsGameProps = {
 // The dinosaur on the welcome screen's cards.
 const HERO = "triceratops";
 
+// Find the pair has a mode for every age level.
+const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
+
 // The longest a board waits for its pictures, in milliseconds, as a
 // question does for its pictures.
 const PICTURE_WAIT = 1000;
@@ -60,13 +69,21 @@ const TIMINGS: Record<"motion" | "reduced", { miss: number; finish: number }> = 
   reduced: { miss: 1000, finish: 320 }
 };
 
+// The progress the game goes by while the app is open, with the child's
+// choice on the level switch, which holds while the app is open even when
+// it cannot be saved.
+type Kept = KeptPairs & { levelChoice: LevelChoice | undefined };
+
 type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult };
 
 // Find the pair, kept by the app above its orientation gate, so turning
-// the iPad pauses a board without losing it. `onHome` takes the child
-// back to the home page; `onStart` is told as each board is dealt.
+// the iPad pauses a board without losing it. `ageLevel` is the age level a
+// parent picked, which the game starts at until the child chooses another
+// level on its switch. `onHome` takes the child back to the home page;
+// `onStart` is told as each board is dealt.
 export function usePairsGame(
   { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion }: PairsGameProps,
+  ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -75,9 +92,9 @@ export function usePairsGame(
   // is no best to compare with, but stars, levels and dinosaurs found
   // meanwhile are still kept while the app is open, and so is progress
   // that cannot be saved.
-  const [kept, setKept] = useState<KeptPairs>(() => {
+  const [kept, setKept] = useState<Kept>(() => {
     const stored = pairsProgress.load();
-    return { progress: stored ?? NO_PAIRS, readable: stored !== undefined };
+    return { progress: stored?.progress ?? NO_PAIRS, levelChoice: stored?.levelChoice, readable: stored !== undefined };
   });
   const keptNow = useRef(kept);
   // The board in play, ahead of the screen: a second tap, or a timer, acts
@@ -92,6 +109,27 @@ export function usePairsGame(
   const stay = useRef(0);
   // The board dealt last, so the next one deals other dinosaurs.
   const lastBoard = useRef<Board | undefined>(undefined);
+
+  // The level the game is played at: the child's choice on the switch
+  // while the age level is still the pick it was made under, otherwise the
+  // age level.
+  const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
+
+  // Kept, then saved; unreadable progress is not saved over.
+  const keep = (next: Kept) => {
+    keptNow.current = next;
+    setKept(next);
+    if (next.readable) pairsProgress.save({ progress: next.progress, levelChoice: next.levelChoice });
+  };
+
+  // A level chosen on the switch is kept under the age level it was chosen
+  // at. The switch rests once PLAY is tapped, so the board is dealt at the
+  // level shown then; the level already chosen, as on a double tap, changes
+  // nothing.
+  const chooseLevel = (chosen: AgeLevel) => {
+    if (starting.current || chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
+  };
 
   const show = (next: PairsScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
 
@@ -108,7 +146,7 @@ export function usePairsGame(
   const play = () => {
     if (starting.current) return;
     starting.current = true;
-    const board = dealBoard(pals, keptNow.current.progress.level, random, lastBoard.current);
+    const board = dealBoard(pals, keptNow.current.progress.climbLevel, random, lastBoard.current);
     const dealing = stay.current;
     waitForPictures(
       board.pals.map(({ id }) => bodyPicture(id)),
@@ -126,16 +164,14 @@ export function usePairsGame(
 
   // The board is recorded the moment its last pair is found, before the
   // cards wave: leaving, or reloading, during the wave cannot lose it or
-  // record it twice. Unreadable progress is not saved over.
+  // record it twice.
   const record = (board: Board): PairsResult => {
     const finished = finishBoard(
       keptNow.current,
       board,
       pals.map(({ id }) => id)
     );
-    keptNow.current = finished.kept;
-    setKept(finished.kept);
-    if (finished.kept.readable) pairsProgress.save(finished.kept.progress);
+    keep({ ...keptNow.current, ...finished.kept });
     return finished.result;
   };
 
@@ -180,9 +216,11 @@ export function usePairsGame(
         return (
           <PairsWelcomeScreen
             language={language}
-            level={kept.progress.level}
+            level={level}
+            climbLevel={kept.progress.climbLevel}
             stars={kept.progress.stars}
             heroPicture={bodyPicture(HERO)}
+            onLevel={chooseLevel}
             onPlay={play}
             onHome={home}
           />
