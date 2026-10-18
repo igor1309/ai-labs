@@ -67,7 +67,7 @@ Feature: Dinosaur care: welcoming a visitor
     Examples:
       | language | care        | new visitor | friends | home  | plants   | meat | water | bath     | nest   |
       | English  | CARE        | NEW VISITOR | FRIENDS | HOME  | PLANTS   | MEAT | WATER | BATH     | NEST   |
-      | Russian  | ПОЗАБОТЬСЯ | НОВЫЙ ГОСТЬ | ДРУЗЬЯ  | ДОМОЙ | РАСТЕНИЯ | МЯСО | ВОДА  | КУПАНИЕ  | ГНЕЗДО |
+      | Russian  | ЗАБОТА      | НОВЫЙ ГОСТЬ | ДРУЗЬЯ  | ДОМОЙ | РАСТЕНИЯ | МЯСО | ВОДА  | КУПАНИЕ  | ГНЕЗДО |
 
   Scenario Outline: Care stays readable in either theme
     Given the app uses the <theme> theme

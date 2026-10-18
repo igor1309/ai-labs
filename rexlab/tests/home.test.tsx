@@ -115,7 +115,7 @@ const TITLE_EMS: Record<string, number> = {
   DINOSAURS: 6.4,
   ВСЕ: 2.1,
   CARE: 2.8,
-  ПОЗАБОТЬСЯ: 6.9,
+  ЗАБОТА: 4.0,
   SORT: 2.9,
   РАЗЛОЖИ: 5.2,
   // FIND THE PAIR's title may wrap, so each line it may take is here.
@@ -600,7 +600,7 @@ describe("the home page", () => {
     expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
     expect(style.left).toMatch(/^[\d.]+(px|rem)$/);
     // Smaller than every game's name, the tiles' and the large card's: the
-    // large card's name is sized down to fit ПОЗАБОТЬСЯ at 1024 px, so half
+    // large card's name is sized down to fit DINOSAURS at 1024 px, so half
     // of it is no longer the measure of small.
     const names = [within(card).getByText("COMPARE"), ...within(tilesRow()).getAllByRole("button").map((tile) => tile.querySelector("[class$='-tile-title']"))];
     for (const name of names) {
