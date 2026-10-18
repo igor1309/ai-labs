@@ -5,6 +5,7 @@ Feature: Find the pair: keeping progress
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: Progress survives reopening the app
     Given I have 5 stars, I am on level 3, my level 2 best is 6 tries and Triceratops is found

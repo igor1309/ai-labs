@@ -4,6 +4,7 @@ Feature: Find the pair: turning cards
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
     And a board is dealt
 
   Scenario: Tapping a face-down card turns it over

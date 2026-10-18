@@ -5,6 +5,7 @@ Feature: Find the pair: stars, levels and the best score
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: A finished board shows its result
     Given I am on level 2

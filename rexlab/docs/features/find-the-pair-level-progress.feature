@@ -17,10 +17,21 @@ Feature: Find the pair: progress at each age level
     And I open find the pair
     Then the level switch shows Paleontologist chosen
 
-  Scenario: A board keeps the level it was dealt at
-    Given a board is dealt at Explorer
-    When a parent chooses Hatchling in the age level menu before I finish it
-    Then the board stays as it was dealt, and its result counts for Explorer
+  Scenario Outline: "PLAY AGAIN" plays the same level
+    Given the level switch shows <level> chosen
+    When I finish a board and tap "PLAY AGAIN"
+    Then the next board is dealt at <level>
+
+    Examples:
+      | level          |
+      | Explorer       |
+      | Paleontologist |
+
+  Scenario: A choice that cannot be saved holds while the app is open
+    Given the browser can read progress but cannot save it
+    When I choose Paleontologist on the level switch and go home and back
+    Then the level switch shows Paleontologist chosen
+    But after reloading it shows the age level
 
   Scenario Outline: Every level earns a star and finds dinosaurs alike
     Given the level switch shows <level> chosen
@@ -35,7 +46,7 @@ Feature: Find the pair: progress at each age level
       | Paleontologist |
 
   Scenario Outline: Each level keeps its own best
-    Given my Explorer best is 14 tries, my level 4 best is 8
+    Given my Explorer best is 14 tries, my climb level 4 best is 8
     And I have never finished a Paleontologist board
     When I finish a <level> board in <tries> tries
     Then I see <celebration>
@@ -53,13 +64,20 @@ Feature: Find the pair: progress at each age level
     Then I see no level-up celebration
     And I am still on climb level 2, with 1 board finished on it
 
-  Scenario: A large board deals as few of the last board's dinosaurs as it can
-    When I finish a Paleontologist board and play again
-    Then no two of the new board's dinosaurs are from the same look-alike group
-    And it deals a dinosaur from the board before only when too few others are left
+  Scenario Outline: A board deals as few of the last board's dinosaurs as it can
+    Given I have just finished a <before> board
+    When a <next> board is dealt
+    Then no two of its dinosaurs are from the same look-alike group
+    And it deals as few of the board before's dinosaurs as the look-alike rule allows
+
+    Examples:
+      | before         | next           |
+      | Paleontologist | Paleontologist |
+      | Paleontologist | Explorer       |
+      | Explorer       | Explorer       |
 
   Scenario: Progress saved before levels reads as Hatchling's
     Given find-the-pair progress saved before the game had levels
     When I open find the pair
-    Then my stars, climb level, level 1 to 4 bests and found dinosaurs are as saved
+    Then my stars, climb level, climb level 1 to 4 bests and found dinosaurs are as saved
     And I have no Explorer or Paleontologist best and no level choice

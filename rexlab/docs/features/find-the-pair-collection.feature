@@ -5,6 +5,7 @@ Feature: Find the pair: dinosaurs found in the catalogue
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: A finished board's dinosaurs become found
     Given I have found no dinosaurs

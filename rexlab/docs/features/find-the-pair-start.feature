@@ -1,11 +1,13 @@
 Feature: Find the pair: starting a board
   A memory game: the child turns over cards two at a time to find
-  matching dinosaur pairs, with no timer and no move limit. Levels grow
-  from a few pairs of the same picture to more pairs where a picture
-  matches its dinosaur's silhouette.
+  matching dinosaur pairs, with no timer and no move limit. At Hatchling
+  its climb levels grow from a few pairs of the same picture to more
+  pairs where a picture matches its dinosaur's silhouette; Explorer and
+  Paleontologist are in find-the-pair-levels.feature.
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, the climb of levels 1 to 4 (find-the-pair-levels.feature)
 
   Scenario: The home page offers the game
     When I open the home page
@@ -16,13 +18,12 @@ Feature: Find the pair: starting a board
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
     And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
-    And at Hatchling, my climb level as a number with a ladder symbol
+    And my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  Scenario Outline: Each Hatchling climb level has its own board
-    Given the level switch shows Hatchling chosen
-    And I am on level <level>
+  Scenario Outline: Each climb level has its own board
+    Given I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
     And every face-down card shows the same footprints symbol
@@ -40,7 +41,8 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And two Hatchling boards in a row do not deal the same dinosaurs
+    And it deals none of the board before it's dinosaurs, whatever that board's level,
+    unless the look-alike rule leaves too few others (find-the-pair-level-progress.feature)
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt

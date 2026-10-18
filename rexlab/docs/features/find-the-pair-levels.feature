@@ -31,15 +31,25 @@ Feature: Find the pair: age levels
   Scenario Outline: The level switch fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
     When I open find the pair on a 1024 by 768 screen
-    Then each level's name is on one line, in capitals
+    Then the switch reads <hatchling>, <explorer> and <paleontologist>, each on one line
     And each name keeps at least 4.5:1 contrast with its background
 
     Examples:
-      | language | theme |
-      | English  | light |
-      | English  | dark  |
-      | Russian  | light |
-      | Russian  | dark  |
+      | language | theme | hatchling | explorer      | paleontologist |
+      | English  | light | HATCHLING | EXPLORER      | PALEONTOLOGIST |
+      | English  | dark  | HATCHLING | EXPLORER      | PALEONTOLOGIST |
+      | Russian  | light | ДЕТЁНЫШ   | ИССЛЕДОВАТЕЛЬ | ПАЛЕОНТОЛОГ    |
+      | Russian  | dark  | ДЕТЁНЫШ   | ИССЛЕДОВАТЕЛЬ | ПАЛЕОНТОЛОГ    |
+
+  Scenario Outline: Choosing a level moves
+    Given the device <motion>
+    When I choose another level on the switch
+    Then the chosen mark moves to it, and the climb level shows or hides, <how>
+
+    Examples:
+      | motion                          | how                           |
+      | does not ask for reduced motion | with the shared motion tokens |
+      | asks for reduced motion         | with short fades              |
 
   Scenario: Hatchling plays today's climb
     Given the level switch shows Hatchling chosen
@@ -63,16 +73,18 @@ Feature: Find the pair: age levels
     When I choose Explorer
     Then I see my stars and no climb level
 
-  Scenario Outline: A large board fits the iPad
+  Scenario Outline: A large board and its result fit the iPad
     When a <level> board is dealt on a <width> by <height> screen
     Then all its cards and "HOME" are on the screen at once, with no scrolling
-    And every card is at least 120 by 120 CSS pixels, and 150 where the screen permits
+    And every card is at least <size> by <size> CSS pixels
+    When I finish it
+    Then its result shows every dinosaur's name, my tries, stars and best, "PLAY AGAIN" and "HOME" with no scrolling
 
     Examples:
-      | level          | width | height |
-      | Explorer       | 1024  | 768    |
-      | Paleontologist | 1024  | 768    |
-      | Paleontologist | 1366  | 1024   |
+      | level          | width | height | size |
+      | Explorer       | 1024  | 768    | 130  |
+      | Paleontologist | 1024  | 768    | 120  |
+      | Paleontologist | 1366  | 1024   | 150  |
 
   Scenario: A quick double tap on a level chooses it once
     When I tap EXPLORER twice quickly
