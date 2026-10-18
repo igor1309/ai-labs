@@ -217,16 +217,16 @@ describe("the app in a browser", () => {
   it("keeps start counts and the day's featured game beside the other progress in local storage, for the next visit", () => {
     const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
     const visit = appProps(given);
-    expect(visit.featuredStore.load()).toEqual({ starts: {}, featured: undefined });
+    expect(visit.featuredStore.history()).toEqual({ timesStarted: new Map(), lastFeatured: undefined });
 
-    visit.featuredStore.saveFeatured({ day: "2026-10-18", game: "care" });
+    visit.featuredStore.feature({ game: "care", on: "2026-10-18" });
     visit.startCounter.countStart("care");
 
     expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
       games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "home-featured": { starts: { care: 1 }, featured: { day: "2026-10-18", game: "care" } } }
     });
-    expect(appProps(given).featuredStore.load()).toEqual({ starts: { care: 1 }, featured: { day: "2026-10-18", game: "care" } });
+    expect(appProps(given).featuredStore.history()).toEqual({ timesStarted: new Map([["care", 1]]), lastFeatured: { game: "care", on: "2026-10-18" } });
     expect([...given.sessionStorage.items]).toEqual([]);
   });
 
@@ -236,7 +236,7 @@ describe("the app in a browser", () => {
       local: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: { ...starts, fossils: 4 }, featured: { day: "2026-10-18", game: "skeletons" } } } }) })
     });
 
-    expect(appProps(given).featuredStore.load()).toEqual({ starts, featured: { day: "2026-10-18", game: "skeletons" } });
+    expect(appProps(given).featuredStore.history()).toEqual({ timesStarted: new Map(Object.entries(starts)), lastFeatured: { game: "skeletons", on: "2026-10-18" } });
   });
 
   it("names index.html's version footer", () => {

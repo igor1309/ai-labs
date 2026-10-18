@@ -1,8 +1,8 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App, type AppProps } from "../src/App.tsx";
-import { HOME_GAMES } from "../src/HomePage.tsx";
+import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -16,6 +16,7 @@ import {
   SHIPPED_SKELETONS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  countedStarts,
   fakeBodyPicture,
   fakeItemPicture,
   fakeSkeletonPicture,
@@ -46,14 +47,14 @@ const progressWith = (starts: Record<string, number> = {}, games: Record<string,
 // moment they are asked for and timers fire only when the test says.
 function openApp<C extends Pick<AppProps, "loadPicture" | "startTimer"> = ManualTimers>(
   storage: MemoryStorage = memoryStorage({ [PROGRESS_KEY]: progressWith() }),
-  { random = () => 0, clock = manualTimers() as unknown as C }: { random?: () => number; clock?: C } = {}
+  { random = () => 0, clock = manualTimers() as unknown as C, startCounter }: { random?: () => number; clock?: C; startCounter?: AppProps["startCounter"] } = {}
 ) {
   const featured = localFeatured(() => storage, HOME_GAMES);
   render(
     <App
       now={() => NOW}
       featuredStore={featured}
-      startCounter={featured}
+      startCounter={startCounter ?? featured}
       nameVersion={unreadVersion}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -238,6 +239,39 @@ describe("starting a game", () => {
   });
 });
 
+// Each game whose start waits for its pictures, the buttons on the way to
+// its start, and the button that starts it.
+const WAITING: Array<[start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement]> = [
+  ["a quiz round", "compare", [], () => homeTile("COMPARE")],
+  ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
+  ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
+  ["a sorting round", "sort", [], () => homeTile("SORT")],
+  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
+  ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
+  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
+];
+
+describe("a start that waits for its pictures", () => {
+  it.each(WAITING)("counts one start of %s, its game %s, as the wait runs out, and none more as they arrive", async (_start, game, way, begin) => {
+    const pictures = manualPictures();
+    const { counted, startCounter } = countedStarts();
+    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
+    const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
+    for (const step of way) {
+      await user.click(step());
+      loadAll();
+    }
+
+    await user.click(begin());
+
+    expect([counted, pictures.timers()]).toEqual([[], [1000]]);
+    act(() => pictures.fire(1000));
+    expect(counted).toEqual([game]);
+    loadAll();
+    expect(counted).toEqual([game]);
+  });
+});
+
 describe("a browser that cannot keep progress", () => {
   // A draw of 0.1 falls to COMPARE only while every game has the same
   // weight: with COMPARE's 9 starts read, it would fall to ALL DINOSAURS.
@@ -245,7 +279,7 @@ describe("a browser that cannot keep progress", () => {
     const { user, featured } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({ compare: 9 }) }, { read: false }), { random: () => 0.1 });
 
     expect(featuredCard().dataset.game).toBe("compare");
-    expect(featured.load()).toEqual({ starts: {}, featured: { day: "2026-10-18", game: "compare" } });
+    expect(featured.history()).toEqual({ timesStarted: new Map(), lastFeatured: { game: "compare", on: "2026-10-18" } });
     for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"]) {
       await user.click(homeTile(name));
       expect(document.querySelector(".games-tiles")).toBeNull();
@@ -262,7 +296,7 @@ describe("a browser that cannot keep progress", () => {
     await user.click(button("HOME"));
 
     expect(featuredCard().dataset.game).toBe("skeletons");
-    expect(featured.load()).toEqual({ starts: { care: 2 }, featured: TODAY });
+    expect(featured.history()).toEqual({ timesStarted: new Map([["care", 2]]), lastFeatured: { game: "skeletons", on: "2026-10-18" } });
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   });
 });
@@ -292,5 +326,30 @@ describe("the featured card", () => {
     loadAll();
 
     expect(storedFeatured(storage).starts).toEqual({ [game]: 1 });
+  });
+
+  // In a browser the screen change commits after the transition, so the
+  // second tap of a quick double tap can land on the home page still
+  // shown: here both land in one act, before React commits.
+  it.each([
+    ["the large card", featuredCard],
+    ["its tile", () => homeTile("ALL DINOSAURS")]
+  ])("counts one start of ALL DINOSAURS for a double tap on %s landing before the list shows, and one more on the next visit", async (_where, target) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game: "catalogue" } } } }) });
+    const { user } = openApp(storage);
+    const tapped = target();
+
+    act(() => {
+      fireEvent.click(tapped);
+      fireEvent.click(tapped);
+    });
+
+    expect(document.querySelector(".games-tiles")).toBeNull();
+    expect(storedFeatured(storage).starts).toEqual({ catalogue: 1 });
+
+    await user.click(button("HOME"));
+    await user.click(target());
+
+    expect(storedFeatured(storage).starts).toEqual({ catalogue: 2 });
   });
 });

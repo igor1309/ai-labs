@@ -2,7 +2,7 @@ import { within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
-import { calendarDay, type FeaturedRecord, type FeaturedStore } from "../src/featured.ts";
+import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -323,14 +323,14 @@ export function englishDevice() {
   return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: unreadVersion };
 }
 
-// A featured record the test reads, starting from `initial`: the game
-// saved replaces the one held.
-export function featuredSpy(initial: FeaturedRecord): FeaturedStore {
-  let record = initial;
+// A featured history the test reads, starting from `initial`: the game
+// featured replaces the last one.
+export function featuredSpy(initial: FeaturedHistory): FeaturedStore {
+  let history = initial;
   return {
-    load: () => record,
-    saveFeatured: (choice) => {
-      record = { ...record, featured: choice };
+    history: () => history,
+    feature: (featuring) => {
+      history = { ...history, lastFeatured: featuring };
     }
   };
 }
@@ -346,7 +346,7 @@ export function countedStarts() {
 // the random source, and starts counted where no test reads them.
 export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore" | "startCounter"> {
   const now = new Date(2026, 9, 18, 9, 30);
-  return { now: () => now, featuredStore: featuredSpy({ starts: {}, featured: { day: calendarDay(now), game } }), startCounter: countedStarts().startCounter };
+  return { now: () => now, featuredStore: featuredSpy({ timesStarted: new Map(), lastFeatured: { game, on: calendarDay(now) } }), startCounter: countedStarts().startCounter };
 }
 
 // The version footer for tests that are not about it: its name is dropped.

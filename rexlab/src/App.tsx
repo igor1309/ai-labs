@@ -343,10 +343,21 @@ export function App({
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
 
+  // The catalogue being opened from home: the screen changes only as its
+  // transition commits, so a second tap on ALL DINOSAURS meanwhile, on its
+  // tile or the large card, counts no second start. It ends as the home
+  // page shows again.
+  const openingCatalogue = useRef(false);
+  useEffect(() => {
+    if (screen.kind === "home") openingCatalogue.current = false;
+  }, [screen.kind]);
+
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not.
   const openCatalogue = () => {
     leaveHome();
+    if (openingCatalogue.current) return;
+    openingCatalogue.current = true;
     startCounter.countStart("catalogue");
     changeScreen(SCREEN_CHANGE, () => {
       setFood("all");

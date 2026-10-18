@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { calendarDay, chooseFeatured, weightsOf, type DayChoice, type FeaturedRecord, type FeaturedStore } from "../src/featured.ts";
+import { calendarDay, chooseFeatured, weightsOf, type FeaturedHistory, type FeaturedStore, type Featuring } from "../src/featured.ts";
 import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { HOME_GAMES as TILES } from "./homePage.tsx";
 import {
@@ -44,13 +44,13 @@ function drawing(draw: number) {
   };
 }
 
-const record = (starts: Record<string, number>, featured?: DayChoice): FeaturedRecord => ({ starts, featured });
+const record = (starts: Record<string, number>, lastFeatured?: Featuring): FeaturedHistory => ({ timesStarted: new Map(Object.entries(starts)), lastFeatured });
 
 // The game each draw from 0 up to 1, in steps of a thousandth, falls to.
-function shares<Game extends string>(games: readonly Game[], starts: Record<string, number>, featured?: DayChoice) {
+function shares<Game extends string>(games: readonly Game[], starts: Record<string, number>, lastFeatured?: Featuring) {
   const count = new Map<Game, number>();
   for (let step = 0; step < 1000; step++) {
-    const game = chooseFeatured(games, { store: featuredSpy(record(starts, featured)), random: () => step / 1000, today: TODAY });
+    const game = chooseFeatured(games, { store: featuredSpy(record(starts, lastFeatured)), random: () => step / 1000, today: TODAY });
     count.set(game, (count.get(game) ?? 0) + 1);
   }
   return Object.fromEntries(count);
@@ -102,24 +102,24 @@ describe("choosing the featured game", () => {
   });
 
   it("gives yesterday's featured game its ordinary weight", () => {
-    expect(shares(HOME_GAMES, STARTS, { day: YESTERDAY, game: "care" })).toEqual(shares(HOME_GAMES, STARTS));
+    expect(shares(HOME_GAMES, STARTS, { game: "care", on: YESTERDAY })).toEqual(shares(HOME_GAMES, STARTS));
   });
 
   it("always features the only game", () => {
     expect(shares(["compare"], {})).toEqual({ compare: 1000 });
-    expect(shares(["compare"], { compare: 12 }, { day: YESTERDAY, game: "care" })).toEqual({ compare: 1000 });
+    expect(shares(["compare"], { compare: 12 }, { game: "care", on: YESTERDAY })).toEqual({ compare: 1000 });
   });
 
   it("saves the game drawn with today's date", () => {
     const store = featuredSpy(record(STARTS));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.25, today: TODAY })).toBe("care");
-    expect(store.load()).toEqual(record(STARTS, { day: TODAY, game: "care" }));
+    expect(store.history()).toEqual(record(STARTS, { game: "care", on: TODAY }));
   });
 
   it("keeps today's game, drawing nothing and saving nothing, when a new game has joined", () => {
     const saved: unknown[] = [];
-    const store: FeaturedStore = { load: () => record({ compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 }, { day: TODAY, game: "care" }), saveFeatured: (choice) => saved.push(choice) };
+    const store: FeaturedStore = { history: () => record({ compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 }, { game: "care", on: TODAY }), feature: (featuring) => saved.push(featuring) };
     const { asked, random } = drawing(0.99);
 
     expect(chooseFeatured([...HOME_GAMES, "fossils"], { store, random, today: TODAY })).toBe("care");
@@ -132,7 +132,7 @@ describe("choosing the featured game", () => {
     const games = [...HOME_GAMES, "fossils"];
 
     expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 1, 1, 2]);
-    expect(shares(games, starts, { day: YESTERDAY, game: "care" })).toEqual({ compare: 125, catalogue: 125, care: 125, sort: 125, pairs: 125, skeletons: 125, fossils: 250 });
+    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 125, catalogue: 125, care: 125, sort: 125, pairs: 125, skeletons: 125, fossils: 250 });
   });
 
   it.each([
@@ -140,17 +140,17 @@ describe("choosing the featured game", () => {
     ["later", TOMORROW],
     ["long ago", "2025-01-02"]
   ])("chooses afresh for today, and saves it, when the saved game is dated %s", (_when, day) => {
-    const store = featuredSpy(record(STARTS, { day, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { game: "skeletons", on: day }));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0, today: TODAY })).toBe("compare");
-    expect(store.load().featured).toEqual({ day: TODAY, game: "compare" });
+    expect(store.history().lastFeatured).toEqual({ game: "compare", on: TODAY });
   });
 
   it("chooses afresh when today's saved game is no longer offered", () => {
-    const store = featuredSpy(record(STARTS, { day: TODAY, game: "fossils" }));
+    const store = featuredSpy(record(STARTS, { game: "fossils", on: TODAY }));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.75, today: TODAY })).toBe("skeletons");
-    expect(store.load().featured).toEqual({ day: TODAY, game: "skeletons" });
+    expect(store.history().lastFeatured).toEqual({ game: "skeletons", on: TODAY });
   });
 
   it("takes the games in their tiles' order on the home page", () => {
@@ -170,7 +170,7 @@ describe("a calendar day", () => {
   });
 });
 
-// The app opened with `store` as the featured record, its clock reading
+// The app opened with `store` as the featured history, its clock reading
 // whatever `clock.time` holds when asked and its random source giving
 // `draw`.
 function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
@@ -205,26 +205,26 @@ describe("the featured game in the app", () => {
     openApp(store, { time: new Date(2026, 9, 18, 9, 0) }, 0.25);
 
     expect(featuredGame()).toBe("care");
-    expect(store.load().featured).toEqual({ day: TODAY, game: "care" });
+    expect(store.history().lastFeatured).toEqual({ game: "care", on: TODAY });
   });
 
   it("stays on a reload at 23:59 and is chosen for the new day on a reload at 00:00", () => {
-    const store = featuredSpy(record(STARTS, { day: TODAY, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { game: "skeletons", on: TODAY }));
     const clock = { time: new Date(2026, 9, 18, 23, 59) };
 
     openApp(store, clock, 0).unmount();
     openApp(store, clock, 0).unmount();
-    expect(store.load().featured).toEqual({ day: TODAY, game: "skeletons" });
+    expect(store.history().lastFeatured).toEqual({ game: "skeletons", on: TODAY });
 
     clock.time = new Date(2026, 9, 19, 0, 0);
     openApp(store, clock, 0);
 
     expect(featuredGame()).toBe("compare");
-    expect(store.load().featured).toEqual({ day: TOMORROW, game: "compare" });
+    expect(store.history().lastFeatured).toEqual({ game: "compare", on: TOMORROW });
   });
 
   it("never changes while the app is open, past midnight, until the app is opened again", async () => {
-    const store = featuredSpy(record(STARTS, { day: TODAY, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { game: "skeletons", on: TODAY }));
     const clock = { time: new Date(2026, 9, 18, 23, 59) };
     const view = openApp(store, clock, 0);
     const user = userEvent.setup();
@@ -235,12 +235,12 @@ describe("the featured game in the app", () => {
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
     expect(featuredGame()).toBe("skeletons");
-    expect(store.load().featured).toEqual({ day: TODAY, game: "skeletons" });
+    expect(store.history().lastFeatured).toEqual({ game: "skeletons", on: TODAY });
 
     view.unmount();
     openApp(store, clock, 0);
 
     expect(featuredGame()).toBe("compare");
-    expect(store.load().featured).toEqual({ day: TOMORROW, game: "compare" });
+    expect(store.history().lastFeatured).toEqual({ game: "compare", on: TOMORROW });
   });
 });

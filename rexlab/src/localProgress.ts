@@ -1,5 +1,5 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
-import type { DayChoice, FeaturedRecord } from "./featured.ts";
+import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
@@ -73,16 +73,19 @@ export function localSkeletonProgress(storage: () => KeyValueStorage) {
 // offered, is read as no starts and no game; the count of a game no
 // longer offered is left out.
 export function localFeatured(storage: () => KeyValueStorage, games: readonly string[]) {
-  const entry = gameProgress<FeaturedRecord>(storage, "home-featured", NO_FEATURED, (stored) => readFeatured(stored, games));
-  let visit: FeaturedRecord | undefined;
+  const entry = gameProgress<StoredFeatured>(storage, "home-featured", NO_FEATURED, (stored) => readFeatured(stored, games));
+  let visit: StoredFeatured | undefined;
   const held = () => (visit ??= entry.load() ?? NO_FEATURED);
-  const keep = (record: FeaturedRecord) => {
-    visit = record;
-    entry.save(record);
+  const keep = (stored: StoredFeatured) => {
+    visit = stored;
+    entry.save(stored);
   };
   return {
-    load: held,
-    saveFeatured: (choice: DayChoice) => keep({ ...held(), featured: choice }),
+    history: (): FeaturedHistory => {
+      const { starts, featured } = held();
+      return { timesStarted: new Map(Object.entries(starts)), lastFeatured: featured && { game: featured.game, on: featured.day } };
+    },
+    feature: ({ game, on }: Featuring) => keep({ ...held(), featured: { day: on, game } }),
     countStart: (game: string) => {
       const { starts, featured } = held();
       keep({ starts: { ...starts, [game]: (starts[game] ?? 0) + 1 }, featured });
@@ -90,9 +93,16 @@ export function localFeatured(storage: () => KeyValueStorage, games: readonly st
   };
 }
 
-const NO_FEATURED: FeaturedRecord = { starts: {}, featured: undefined };
+// The home page's entry as stored: each game's start count, by its home
+// page id, and the game featured on a day, by the day's date.
+type StoredFeatured = {
+  starts: Readonly<Record<string, number>>;
+  featured: { day: string; game: string } | undefined;
+};
 
-function readFeatured({ starts, featured }: Entry, games: readonly string[]): FeaturedRecord | undefined {
+const NO_FEATURED: StoredFeatured = { starts: {}, featured: undefined };
+
+function readFeatured({ starts, featured }: Entry, games: readonly string[]): StoredFeatured | undefined {
   if (!isObject(starts)) return undefined;
   const offered = Object.entries(starts).filter(([game]) => games.includes(game));
   const counts = offered.flatMap(([game, count]) => (isCount(count) ? [[game, count] as const] : []));

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
+import type { FeaturedHistory, Featuring } from "../src/featured.ts";
 import { NO_PAIRS } from "../src/pairs/index.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import {
@@ -426,8 +427,11 @@ describe("localSkeletonProgress", () => {
 
 describe("localFeatured", () => {
   const GAMES = ["compare", "catalogue", "care", "sort", "pairs", "skeletons"];
+  // Today's game as stored, and as the choice features it.
   const TODAY = { day: "2026-10-18", game: "care" };
-  const NONE = { starts: {}, featured: undefined };
+  const FEATURED: Featuring = { game: "care", on: "2026-10-18" };
+  const history = (starts: Record<string, number>, lastFeatured?: Featuring): FeaturedHistory => ({ timesStarted: new Map(Object.entries(starts)), lastFeatured });
+  const NONE = history({});
   const QUIZ = { bestScore: 7, roundsPlayed: 3 };
   const CARE = { bestScore: 6, visitsFinished: 2, friends: ["triceratops"] };
   const SKELETONS = { bestScore: 1, earned: ["stegosaurus"], rebuilding: [] };
@@ -438,25 +442,25 @@ describe("localFeatured", () => {
   const open = (storage: KeyValueStorage) => localFeatured(() => storage, GAMES);
 
   it("reads no starts and no featured game from empty storage", () => {
-    expect(open(memoryStorage()).load()).toEqual(NONE);
+    expect(open(memoryStorage()).history()).toEqual(NONE);
   });
 
   it("reads the start counts and the day's game it saved after a reload", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2, sort: 5 }, featured: { day: "2026-10-17", game: "sort" } }) });
 
-    expect(open(storage).load()).toEqual({ starts: { care: 2, sort: 5 }, featured: { day: "2026-10-17", game: "sort" } });
+    expect(open(storage).history()).toEqual(history({ care: 2, sort: 5 }, { game: "sort", on: "2026-10-17" }));
   });
 
   it("adds each start to the stored count, a game not yet started from none, and saves the day's game beside them", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2 }, featured: { day: "2026-10-17", game: "sort" } }) });
     const store = open(storage);
 
-    store.saveFeatured(TODAY);
+    store.feature(FEATURED);
     store.countStart("care");
     store.countStart("pairs");
 
     expect(stored(storage).games["home-featured"]).toEqual({ starts: { care: 3, pairs: 1 }, featured: TODAY });
-    expect(open(storage).load()).toEqual({ starts: { care: 3, pairs: 1 }, featured: TODAY });
+    expect(open(storage).history()).toEqual(history({ care: 3, pairs: 1 }, FEATURED));
   });
 
   it("keeps the games' progress, the language and the theme as they are, and is kept by the games' saves", () => {
@@ -467,7 +471,7 @@ describe("localFeatured", () => {
     });
     const store = open(storage);
 
-    store.saveFeatured(TODAY);
+    store.feature(FEATURED);
 
     expect(stored(storage).games).toEqual({ "compare-dinosaurs": QUIZ, "dinosaur-care": CARE, "skeleton-assembly": SKELETONS, "home-featured": { starts: {}, featured: TODAY } });
     expect([localLanguage(() => storage).load(), localTheme(() => storage).load()]).toEqual(["ru", "dark"]);
@@ -479,7 +483,7 @@ describe("localFeatured", () => {
     store.countStart("skeletons");
     localSkeletonProgress(() => storage).save({ ...SKELETONS, earned: ["stegosaurus", "triceratops"], bestScore: 2 });
 
-    expect(open(storage).load()).toEqual({ starts: { compare: 1, care: 1, skeletons: 1 }, featured: TODAY });
+    expect(open(storage).history()).toEqual(history({ compare: 1, care: 1, skeletons: 1 }, FEATURED));
     expect([localProgress(() => storage).load(), localCareProgress(() => storage).load(), localSkeletonProgress(() => storage).load()]).toEqual([
       { bestScore: 9, roundsPlayed: 4 },
       { ...CARE, visitsFinished: 3 },
@@ -502,11 +506,11 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: raw });
     const store = open(storage);
 
-    expect(store.load()).toEqual(NONE);
+    expect(store.history()).toEqual(NONE);
 
-    store.saveFeatured(TODAY);
+    store.feature(FEATURED);
 
-    expect(open(storage).load()).toEqual({ starts: {}, featured: TODAY });
+    expect(open(storage).history()).toEqual(history({}, FEATURED));
     expect(localProgress(() => storage).load()).toEqual(QUIZ);
   });
 
@@ -514,9 +518,9 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: "{not json" });
     const store = open(storage);
 
-    expect(store.load()).toEqual(NONE);
+    expect(store.history()).toEqual(NONE);
 
-    store.saveFeatured(TODAY);
+    store.feature(FEATURED);
 
     expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: TODAY } } });
   });
@@ -525,9 +529,9 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: record({ "home-featured": { starts: { care: 2 }, featured: TODAY } }, 2) });
     const store = open(storage);
 
-    expect(store.load()).toEqual(NONE);
+    expect(store.history()).toEqual(NONE);
 
-    store.saveFeatured({ day: "2026-10-19", game: "sort" });
+    store.feature({ game: "sort", on: "2026-10-19" });
 
     expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { day: "2026-10-19", game: "sort" } } } });
   });
@@ -536,7 +540,7 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2, fossils: 4, gone: -1 }, featured: TODAY }) });
     const store = open(storage);
 
-    expect(store.load()).toEqual({ starts: { care: 2 }, featured: TODAY });
+    expect(store.history()).toEqual(history({ care: 2 }, FEATURED));
 
     store.countStart("sort");
 
@@ -547,13 +551,13 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2 }, featured: TODAY }) }, { read: false });
     const store = open(storage);
 
-    expect(store.load()).toEqual(NONE);
-    expect(localFeatured(blocked, GAMES).load()).toEqual(NONE);
+    expect(store.history()).toEqual(NONE);
+    expect(localFeatured(blocked, GAMES).history()).toEqual(NONE);
 
-    store.saveFeatured({ day: "2026-10-19", game: "sort" });
+    store.feature({ game: "sort", on: "2026-10-19" });
     store.countStart("care");
 
-    expect(store.load()).toEqual({ starts: { care: 1 }, featured: { day: "2026-10-19", game: "sort" } });
+    expect(store.history()).toEqual(history({ care: 1 }, { game: "sort", on: "2026-10-19" }));
     expect(stored(storage).games["home-featured"]).toEqual({ starts: { care: 2 }, featured: TODAY });
   });
 
@@ -562,11 +566,11 @@ describe("localFeatured", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: raw }, { save: false });
     const store = open(storage);
 
-    store.saveFeatured(TODAY);
+    store.feature(FEATURED);
     store.countStart("care");
     store.countStart("care");
 
-    expect(store.load()).toEqual({ starts: { care: 4 }, featured: TODAY });
+    expect(store.history()).toEqual(history({ care: 4 }, FEATURED));
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   });
 });
