@@ -2,7 +2,8 @@ Feature: How the age level menu looks and moves
   The age level menu (age-level.feature) stands with the parents'
   language and theme menus and shares their look and motion. Today
   those menus grow in but vanish at once; with this feature all three
-  animate both ways, and their ✓ reads in both themes. The corner they
+  animate both ways, however they close (a choice, a tap outside, a
+  second tap on the button or Escape), and their ✓ reads in both themes. The corner they
   stand in fits on one line as home-museum.feature says.
 
   Background:
@@ -12,7 +13,7 @@ Feature: How the age level menu looks and moves
     Given the app is in <language> and uses the <theme> theme
     When I open the age level menu on a 1024 by 768 screen
     Then the whole menu is on the screen, each name and each age on one line
-    And each name and age keeps at least 4.5:1 contrast with the menu
+    And each name and age keeps at least 4.5:1 contrast with its row
 
     Examples:
       | language | theme |
@@ -39,7 +40,7 @@ Feature: How the age level menu looks and moves
     Given the device does not ask for reduced motion
     When I open the <menu> menu
     Then it animates in with the shared motion tokens
-    When I choose in it
+    When I choose another one in it
     Then it animates out with the shared motion tokens
     And the button's new symbol or code animates in
     When I open it again and tap outside it
@@ -55,7 +56,7 @@ Feature: How the age level menu looks and moves
     Given the device asks for reduced motion
     When I open the <menu> menu
     Then it fades in, shortly
-    When I choose in it
+    When I choose another one in it
     Then it fades out, shortly
     And the button's new symbol or code fades in, shortly
     When I open it again and tap outside it

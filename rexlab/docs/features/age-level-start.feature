@@ -2,7 +2,7 @@ Feature: The level a game starts at
   The age level (age-level.feature) picks the level every game starts at.
   A game with no mode for that level plays its nearest lower one, and a
   child's own choice in a game wins until a parent picks a different
-  level. Rewards are the same at every level (age-levels.md).
+  level. Rewards are the same at every level (docs/age-levels.md).
 
   No game has levels yet: each adopts them in its own issue, which
   removes its row from the first scenario and keeps the child's choice
@@ -15,7 +15,7 @@ Feature: The level a game starts at
 
   Scenario Outline: Today's games play as they do now at every level
     When I play <game> at each age level in turn
-    Then it starts exactly as it does at Hatchling, every time
+    Then it starts exactly as it does today, as its own feature says
 
     Examples:
       | game              |
@@ -33,7 +33,7 @@ Feature: The level a game starts at
     Then I score 10 and see the new best score celebration
     And my best score is 10
     When the age level is changed to each other level
-    Then I still see my best score 10
+    Then the COMPARE tile still shows my best score 10
 
     Examples:
       | level          |
@@ -75,6 +75,13 @@ Feature: The level a game starts at
       | setting   | choice         | next           |
       | Explorer  | Hatchling      | Paleontologist |
       | Hatchling | Paleontologist | Explorer       |
+
+  Scenario: A level changed and changed back drops the child's choice
+    Given the age level is Explorer
+    And a game with all three modes, in which the child chose Hatchling
+    When a parent chooses Paleontologist and then Explorer in the age level menu
+    And the game starts again
+    Then it plays its Explorer mode
 
   Scenario: Choosing the level already set keeps the child's choice
     Given the age level is Explorer

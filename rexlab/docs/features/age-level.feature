@@ -3,7 +3,7 @@ Feature: Age level
   picks an approximate age level in a menu beside the language and theme
   menus. Which level each game then starts at is in
   age-level-start.feature, how the menu looks and moves in
-  age-level-menu.feature, and the levels themselves in age-levels.md.
+  age-level-menu.feature, and the levels themselves in docs/age-levels.md.
   The menu is for parents, but its level names are the children's words
   too, so they are in capitals; the ages are a parents' footnote.
 
@@ -86,3 +86,4 @@ Feature: Age level
     When I choose each age level in turn
     Then every game's score, star and collection is unchanged
     And no game's start count changes
+    And the day's featured game is unchanged
