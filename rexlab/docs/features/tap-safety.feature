@@ -6,7 +6,8 @@ Feature: Every tap is safe to repeat
   examples of each kind of control; the double-tap test's registry
   (LAB-299) lists every one. A second trigger of an action inside a
   screen (an answer, a card turned, water given) is specified in each
-  game's own feature.
+  game's own feature; tap-safety-settle.feature tells how a new screen
+  settles and how a waiting change is replaced.
 
   Background:
     Given an iPad in landscape
@@ -52,45 +53,3 @@ Feature: Every tap is safe to repeat
       | a skeleton result screen                | "BUILD ANOTHER"         | the skeleton selection screen         | no start is                   |
       | the museum hall, Triceratops built      | "REBUILD"               | the Triceratops skeleton board        | one start of SKELETONS is     |
       | the museum hall                         | "HOME"                  | the home page                         | no start is                   |
-
-  @next
-  Scenario Outline: Taps wait until the new screen has settled
-    Given <device>
-    And I am on the home page
-    When I tap "MUSEUM"
-    And before 500 ms have passed since the museum began to appear, I tap where a museum button stands and where "SORT" stood
-    Then neither tap presses anything, whether the museum is still appearing or has appeared
-    When 500 ms have passed since the museum began to appear
-    Then a tap on its buttons works
-
-    Examples:
-      | device                                       |
-      | the device does not ask for reduced motion   |
-      | the device asks for reduced motion           |
-      | the browser runs no view transitions         |
-
-  @next
-  Scenario: A drag waits until the new screen has settled
-    Given I am on the home page
-    When I tap "SORT"
-    And while the sorting board is still settling I start dragging a card
-    Then the card does not move
-    When the board has settled
-    Then I can drag a card to a basket
-
-  @next
-  Scenario: Another screen chosen during a wait for pictures replaces it
-    Given I am on the home page
-    And pictures load slowly
-    When I tap "SORT"
-    And I tap "ALL DINOSAURS" before the sorting board's pictures load
-    Then I see the dinosaur list
-    And the sorting board never opens over it, nor counts a start
-
-  @next
-  Scenario: A second tap on a game's start deals no second round
-    Given I am on the home page
-    And pictures load slowly
-    When I tap "SORT" twice quickly, before the pictures load
-    Then one sorting board is dealt and loads
-    And it opens once its pictures have loaded

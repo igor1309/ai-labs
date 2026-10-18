@@ -11,20 +11,23 @@ a button of the museum.
 
 1. **Screen changes go through one place.** Every screen change goes
    through one guarded entry point in `src/screens.ts`, never a direct
-   write of the screen state. A request names the kind of screen it asks
-   for (a question, the dinosaur list, a dinosaur's page, a game's board).
-   The entry point does nothing when asked for the kind of screen already
-   showing or already on its way, so a second tap on SORT or PLAY AGAIN
-   deals no second round; a dinosaur's page asked for is the same request
-   only for the same dinosaur. While a change waits for its pictures, a
-   request for another kind of screen replaces it: the waiting change is
-   dropped and never opens. Once a new screen begins to appear, no screen
-   takes a tap or starts a drag until it has settled: its view transition
-   has ended (or, where the browser runs none, it is shown) and the settle
-   window of 500 ms from its appearing has passed, so the second tap of a
-   double tap, slower than the motion, still presses nothing. Updates inside the screen showing, such as an answer chosen or
-   a food chosen, go through the entry point's own call for updates, not
-   its screen changes: rules 2 and 3 govern them.
+   write of the screen state. A request names the screen it asks for: its
+   kind, and for a question its number, for a dinosaur's page its
+   dinosaur. A fresh round or board of a game is one request, whatever
+   it deals. The entry point does nothing when asked for the screen
+   already showing or already on its way, so a second tap on SORT or
+   PLAY AGAIN deals no second round, and a second tap on NEXT asks again
+   for the question already on its way. While a change waits for its
+   pictures, a different request replaces it: the waiting change is
+   dropped and never opens, so the child's latest choice wins. Once a new
+   screen begins to appear, no screen takes a tap or starts a drag until
+   it has settled: its view transition has ended (or, where the browser
+   runs none, it is shown) and the settle window of 500 ms from its
+   appearing has passed, so the second tap of a double tap, slower than
+   the motion, still presses nothing. Updates inside the screen showing,
+   such as an answer chosen or a food chosen, go through the entry
+   point's own call for updates, not its screen changes: rules 2 and 3
+   govern them.
 2. **Actions inside a screen are idempotent.** An action that has started
    (an answer chosen, a card turned, a round or board started, a bone
    dropped, a care action, a skeleton chosen) holds an explicit state, and
@@ -38,8 +41,10 @@ a button of the museum.
    tap of a double tap from a new tap takes time, so the entry point owns
    the one settle window of rule 1. No button, screen or game has a timed
    guard of its own: no debounce, no "ignore taps for N ms" wrapper. The
-   window's timer is injected by the composition root, `src/root.ts`, as
-   the wait for pictures' is, so tests fire it.
+   window's timer, and the end of a view transition, reach the entry
+   point through seams the composition root, `src/root.ts`, injects, as
+   the wait for pictures' timer does, so tests fire them; the end of a
+   transition is never guessed with a timer.
 
 ## Why 500 ms
 
@@ -59,8 +64,9 @@ Sources: Nácher, Jaén, Navarro, Catalá and González, "Multi-touch
 gestures for pre-kindergarten children", IJHCS 73:37–51, 2015, with
 children of 2–3 (the 300 ms pass mark); Guerreiro, "User-Sensitive Mobile
 Interfaces: Accounting for Individual Differences amongst the Blind", PhD
-thesis, 2014, arXiv:1402.1036 (blind adults' double taps fit a window from
-about 400 ms); the CSS Working Group's issues #7797 and #12629 on input
+thesis, 2014, arXiv:1402.1036, section 6 (blind adults' double taps: the
+share included levels off at a window of about 400 ms, and some need up to
+750 ms); the CSS Working Group's issues #7797 and #12629 on input
 during a view transition.
 
 ## Forbidden
@@ -79,9 +85,10 @@ Two checks keep the rule, added with its sibling issues:
 - **The double-tap test** (LAB-299): a registry lists every tappable entry
   point, such as the home tiles, the large card, MUSEUM, back and home
   buttons, result buttons, the catalogue's cards and arrows, the skeleton
-  cards, REBUILD, FRIENDS and each game's start and next buttons. Each is tapped twice quickly, and
-  exactly one screen change may follow, with nothing pressed on the next
-  screen. A screen with no registry entry fails the test.
+  cards, REBUILD, FRIENDS and each game's start and next buttons. Each is
+  tapped twice quickly, and exactly one screen change may follow, with
+  nothing pressed on the next screen. A screen with no registry entry
+  fails the test.
 - **The architecture test** (LAB-300), in `tests/architecture.test.ts`:
   it fails on a screen-state write or `changeScreen` call outside the
   guarded entry point, and on `setTimeout` or `setInterval` outside
