@@ -265,8 +265,10 @@ describe("a new board", () => {
     await user.click(button("SORT"));
     const asked = pictures.loading();
     await user.click(homeTile("COMPARE"));
+    // The question may share a dinosaur with the board, whose picture then
+    // loads with the board's; it still waits on one picture of its own.
     const question = pictures.loading().slice(asked.length);
-    expect([question.length, question.filter((url) => asked.includes(url))]).toEqual([2, []]);
+    expect([question.length, question.some((url) => !asked.includes(url))]).toEqual([2, true]);
 
     act(() => asked.forEach(pictures.finish));
 

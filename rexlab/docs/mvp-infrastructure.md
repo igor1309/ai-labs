@@ -62,6 +62,15 @@ Each dinosaur is a record with descriptive metadata, multiple image variants, an
 
 Additional views can be added to `images` without changing the hosting architecture. Standardize measurement definitions and keep estimates clearly distinguished from verified counts.
 
+**What each attribute measures** (LAB-263). The shipped list asks two; `docs/sources.md` holds the full rules and each value's references.
+
+| Attribute | Measures | Unit | Comes from |
+| --- | --- | --- | --- |
+| `heightMeters` | Hip height: ground to the top of the hip, standing; never head, neck, crest, plates or shoulder | metres | The leg bones end to end (femur, tibia, third metatarsal) in peer-reviewed tables; a missing bone, or the whole leg, in the closest relative's proportion |
+| `massKg` | Live body mass | kilograms | The trusted sources' estimates; Britannica's short tons at 907 kg |
+
+Length and horn count are not asked yet; each gets its definition here when a game asks it.
+
 ## 4. Comparison quiz engine
 
 **Round flow:**
