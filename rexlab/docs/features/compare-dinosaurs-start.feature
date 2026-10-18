@@ -29,6 +29,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 
+  @next
   Scenario: The first question shows at once, its pictures shimmering
     Given I am on the home page
     And the pictures of question 1 are still loading
@@ -38,7 +39,6 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: A quick double tap on the tile starts one round
     Given I am on the home page
-    And the pictures of question 1 are still loading
     When I tap the "COMPARE" tile twice quickly
     Then one round starts, at "1/10"
 

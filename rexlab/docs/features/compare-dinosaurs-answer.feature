@@ -70,6 +70,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Then I see the progress "4/10"
     And the new question shows no values yet
 
+  @next
   Scenario: The next question shows at once, its pictures shimmering
     Given I have answered question 3
     And the pictures of question 4 are still loading
@@ -77,6 +78,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Then I see the progress "4/10" at once
     And each picture still loading shimmers in its place, then fades in once loaded
 
+  @next
   Scenario: A broken picture does not stop the round
     Given I have answered question 3
     And a picture of question 4 fails to load

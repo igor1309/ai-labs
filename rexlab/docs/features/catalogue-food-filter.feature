@@ -46,7 +46,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     Then I see its page at "1 / 16"
     When I tap the ← button
     Then I see the page of the last meat-eater in the list, at "16 / 16"
-    When I tap the → button, and again after half a second
+    When I tap the → button, and again a second later
     Then I see the page of Velociraptor, at "2 / 16"
 
   Scenario: Back to the list keeps the chip chosen

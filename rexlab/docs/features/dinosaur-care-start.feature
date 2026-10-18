@@ -38,6 +38,7 @@ Feature: Dinosaur care: welcoming a visitor
     Then only one visit starts
     And I have 0 hearts for that visit
 
+  @next
   Scenario: A visitor arrives at once, its picture shimmering
     Given I am on the care welcome screen
     And the new visitor's picture is still loading

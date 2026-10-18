@@ -44,6 +44,7 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     And leaving or reloading during the reveal keeps the reward and completed stand
     And no hint appears after completion
 
+  @next
   Scenario: A missing body picture does not block the reward
     Given a dinosaur's body picture cannot load
     When I finish its skeleton

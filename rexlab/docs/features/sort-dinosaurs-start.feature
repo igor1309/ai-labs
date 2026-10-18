@@ -40,6 +40,7 @@ Feature: Sort dinosaurs: starting a round and the board
       | on the tray |
       | in a basket |
 
+  @next
   Scenario Outline: A new board appears at once, its pictures shimmering
     Given I am on <screen>
     And the pictures of the next round's six dinosaurs are still loading

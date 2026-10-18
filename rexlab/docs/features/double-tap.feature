@@ -1,8 +1,10 @@
 Feature: A double tap counts as one tap
-  A child of 5–7 often taps twice. A tap that lands within 500 ms and
-  100 px of the tap before it is the second tap of a double tap and does
-  nothing, whatever the screen, so it never presses anything on the
-  screen that appears next (docs/tap-safety.md, part 4).
+  A child of 5–7 often taps twice. A press less than 500 ms after the
+  last press that counted, and less than 100 px from it, is the second
+  tap of a double tap: its whole gesture does nothing, whatever the
+  screen, so it never presses anything on the screen that appears next
+  (docs/tap-safety.md, part 4). The rows are examples, one or more of
+  each kind of control; the filter covers every control.
 
   Background:
     Given an iPad in landscape
@@ -35,17 +37,35 @@ Feature: A double tap counts as one tap
       | the skeleton selection screen | the card of Triceratops     | the Triceratops puzzle        |
       | a skeleton result screen      | "BUILD ANOTHER"             | the skeleton selection screen |
       | the museum hall, Tyrannosaurus earned | its "REBUILD" button | the Tyrannosaurus puzzle      |
+      | the page of Triceratops       | the ← button                | the page at "1 / 42"          |
+      | the page of Tyrannosaurus     | "ALL DINOSAURS"             | the dinosaur list             |
+      | a sorting round               | "HOME"                      | the home page                 |
+      | the sorting result screen     | "PLAY AGAIN"                | a sorting round               |
+      | the care welcome screen       | "FRIENDS"                   | the care friends screen       |
+      | the skeleton selection screen | "MUSEUM"                    | the museum hall               |
 
   @next
-  Scenario: A press that starts a drag is one tap too
-    Given I am on the home page
-    When I tap the "SORT" tile and, within 500 ms, press the same spot and drag
-    Then nothing moves on the sorting board
+  Scenario Outline: The second press of a double tap starts no drag
+    Given I am on <from>
+    When I tap <control> and, 300 ms later, press the same spot and drag
+    Then nothing moves on <to>
+    And a press there a second later drags as usual
+
+    Examples:
+      | from                                  | control              | to                         |
+      | the home page                         | the "SORT" tile      | the sorting board          |
+      | the museum hall, Tyrannosaurus earned | its "REBUILD" button | the Tyrannosaurus puzzle   |
+
+  @next
+  Scenario: A tap that was swallowed does not start a new window
+    Given I am on the page of Tyrannosaurus, at "1 / 42"
+    When I tap the → button three times at the same spot, 300 ms apart
+    Then I see the page at "3 / 42"
 
   @next
   Scenario: Two quick taps far apart both count
     Given I am on a board of find the pair
-    When I tap two face-down cards more than 100 px apart within 500 ms
+    When I tap two face-down cards more than 100 px apart, 200 ms apart
     Then both cards turn
 
   @next
