@@ -1,8 +1,8 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { AGE_LEVEL_PICTURES } from "../src/ageLevelPictures.ts";
 import { App } from "../src/App.tsx";
-import { AGE_LEVEL_PICTURES } from "../src/HomePage.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -50,6 +50,7 @@ import {
   homeTile,
   unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
@@ -123,7 +124,8 @@ function renderQuestion(
   }: { question?: Question; choice?: string; last?: boolean } = {}
 ) {
   render(
-    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />
+    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />,
+    withPictures
   );
 }
 
@@ -364,7 +366,7 @@ describe("Russian text", () => {
     [
       "Play again button",
       () => {
-        render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
+        render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />, withPictures);
         return screen.getByRole("button", { name: "ЕЩЁ РАЗ" });
       },
       "ЕЩЁ РАЗ"
@@ -392,7 +394,7 @@ describe("Russian text", () => {
   });
 
   it("reads the Home button on the result in Russian too", () => {
-    render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
+    render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />, withPictures);
 
     expect(words(screen.getByRole("button", { name: "ДОМОЙ" }))).toBe("ДОМОЙ");
   });
@@ -746,14 +748,17 @@ async function sortingRounds(language: Language): Promise<Seen> {
   return play.seen;
 }
 
-// Find the pair: its welcome, a board with a card open, a miss, found
-// pairs and the cards waving, its result with a first best, the home page
-// again, and the catalogue and a page with the dinosaurs found stamped.
+// Find the pair: its welcome, Hatchling chosen on its switch, a board with
+// a card open, a miss, found pairs and the cards waving, its result with a
+// first best, the home page again, and the catalogue and a page with the
+// dinosaurs found stamped.
 async function findThePair(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, timers, look } = play;
   const text = TEXTS[language];
   await user.click(screen.getByRole("button", { name: text.pairs }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.ageLevels.hatchling.name }));
   look();
   await user.click(screen.getByRole("button", { name: text.play }));
   look();

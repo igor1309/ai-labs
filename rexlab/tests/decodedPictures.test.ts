@@ -20,19 +20,19 @@ function controlledImage() {
 
 describe("a decoded picture", () => {
   it.each([
-    ["decodes", true],
-    ["fails to load", false]
-  ])("is done once, when it %s", async (_, decoded) => {
+    ["decodes", true, "loaded"],
+    ["fails to load", false, "failed"]
+  ])("is done once, when it %s, saying so", async (_, decoded, outcome) => {
     const image = controlledImage();
-    let done = 0;
+    const done: string[] = [];
 
-    decodedPictures(() => image)("/pictures/stegosaurus.webp", () => done++);
+    decodedPictures(() => image)("/pictures/stegosaurus.webp", (said) => done.push(said));
     await Promise.resolve();
-    expect([image.decoded, done]).toEqual(["/pictures/stegosaurus.webp", 0]);
+    expect([image.decoded, done]).toEqual(["/pictures/stegosaurus.webp", []]);
 
     image.settle(decoded);
     await new Promise<void>((resolve) => queueMicrotask(resolve));
 
-    expect(done).toBe(1);
+    expect(done).toEqual([outcome]);
   });
 });

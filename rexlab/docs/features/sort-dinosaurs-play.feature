@@ -40,7 +40,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then the card is dropped on that basket, as if dragged there
 
   Scenario Outline: Touching the board with a card picked up, or none
-    Given <state>
+    Given <state>, the last tap half a second or more ago
     When I <action>
     Then <outcome>
 

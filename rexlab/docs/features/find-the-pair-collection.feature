@@ -2,6 +2,9 @@ Feature: Find the pair: dinosaurs found in the catalogue
   Every dinosaur matched on a finished board is found, and the
   catalogue shows which dinosaurs the child has found so far, so the
   game fills the book of all dinosaurs.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape

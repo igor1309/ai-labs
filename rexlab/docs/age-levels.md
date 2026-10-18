@@ -36,7 +36,7 @@ this table in step as they land.
 | Game | 🥚 Hatchling | 🦖 Explorer | 🦴 Paleontologist |
 | --- | --- | --- | --- |
 | Skeleton (LAB-270) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, coloured by body area | 10–20 pieces, distractor bones, mystery skeleton, odd bone out |
-| Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to skeleton |
+| Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to silhouette; to skeleton once the art covers 12 dinosaurs (LAB-301) |
 | Care (LAB-294) | today's game: need bubbles and the matching item | one-step missions | the reasoning puzzle of LAB-281 |
 | Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 3 baskets where a property allows | 3 baskets, more cards, the subtler properties |
 | Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter and shorter, then earlier or later |

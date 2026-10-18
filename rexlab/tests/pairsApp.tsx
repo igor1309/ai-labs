@@ -1,7 +1,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type AppProps } from "../src/App.tsx";
-import { dealBoard, type Board, type Level, type Pal, type PairsProgress, type Random } from "../src/pairs/index.ts";
+import { dealBoard, type Board, type BoardLevel, type ClimbLevel, type LargeLevel, type Pal, type Random } from "../src/pairs/index.ts";
+import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -23,7 +25,7 @@ import {
   type ManualOrientation,
   type ManualTimers,
   type MemoryStorage,
-  unsetAgeLevel
+  loadShownPictures
 } from "./support.ts";
 
 type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
@@ -41,7 +43,22 @@ export type PairsAppOptions<C extends Clock> = {
   reducedMotion?: boolean;
   orientation?: ManualOrientation;
   deviceLanguage?: string;
+  theme?: "light" | "dark";
+  // The age level a parent picked, or "unset" for none picked yet.
+  ageLevel?: AgeLevelSetting | "unset";
+  // Reuse the parent's saved setting across app reloads, independently
+  // of progress storage that a test may make unreadable.
+  settingsStorage?: MemoryStorage;
 };
+
+// The age level the climb is played at, so a test about the climb sees it.
+export const PICKED_HATCHLING: AgeLevelSetting = { level: "hatchling", revision: "picked-hatchling" };
+
+// The age level setting, kept apart from the storage progress is kept in,
+// so a test that blocks that storage still has the level it gives.
+function ageLevelStorage(setting: AgeLevelSetting | "unset") {
+  return memoryStorage(setting === "unset" ? {} : { [AGE_LEVEL_KEY]: JSON.stringify(setting) });
+}
 
 // The app as a child opens it to find pairs.
 export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>({
@@ -51,8 +68,12 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
   orientation = manualOrientation("landscape"),
-  deviceLanguage = "en-GB"
+  deviceLanguage = "en-GB",
+  theme = "light",
+  ageLevel = PICKED_HATCHLING,
+  settingsStorage
 }: PairsAppOptions<C> = {}) {
+  const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
     <App
       {...featuring()}
@@ -65,9 +86,9 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
       nameVersion={unreadVersion}
-      appearance={manualAppearance("light")}
+      appearance={manualAppearance(theme)}
       themeStore={localTheme(() => storage)}
-      {...unsetAgeLevel()}
+      ageLevelStore={localAgeLevel(() => ageLevels)}
       visitors={SHIPPED_VISITORS}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
@@ -80,12 +101,24 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       {...clock}
     />
   );
-  return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
+  loadShownPictures(clock);
+  return { user: userEvent.setup(), clock, storage, ageLevels, unmount: view.unmount };
 }
+
+// Find the pair's entry as it is stored, under the names it kept from
+// before the age levels.
+export type StoredPairs = {
+  stars: number;
+  level: ClimbLevel;
+  boardsOnLevel: number;
+  best: Partial<Record<ClimbLevel | LargeLevel, number>>;
+  found: readonly string[];
+  levelChoice?: { level: string; revision: string | null };
+};
 
 // A stored record with find the pair's entry, and the other games'
 // entries given.
-export const pairsRecord = (pairs: Partial<PairsProgress> | unknown, games: Record<string, unknown> = {}) =>
+export const pairsRecord = (pairs: Partial<StoredPairs> | unknown, games: Record<string, unknown> = {}) =>
   JSON.stringify({ schemaVersion: 1, games: { ...games, "find-the-pair": pairs } });
 
 // Find the pair's entry as stored now, undefined while none is.
@@ -123,9 +156,11 @@ export async function turnCard(user: UserEvent, place: number) {
   await user.click(cardAt(place));
 }
 
-// Opens the game and deals a board, its pictures loaded at once.
-export async function playPairs(user: UserEvent) {
+// Opens the game and deals a board, its pictures loaded at once: at the
+// level named on its switch, or else at the level the game starts at.
+export async function playPairs(user: UserEvent, level?: string) {
   await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  if (level !== undefined) await user.click(screen.getByRole("button", { name: level }));
   await user.click(screen.getByRole("button", { name: "PLAY" }));
 }
 
@@ -152,9 +187,7 @@ export async function playBoard(user: UserEvent, clock: Timers): Promise<number>
   };
   let tries = 0;
   for (;;) {
-    const down = pairCards()
-      .map((_, place) => place)
-      .filter((place) => stateAt(place) === "down");
+    const down = pairCards().flatMap((card, place) => (card.getAttribute("data-state") === "down" ? [place] : []));
     if (down.length === 0) return tries;
     const unseen = (but: number) => down.find((place) => place !== but && !seen.has(place));
     const known = down.find((place) => seen.has(place) && down.some((other) => other !== place && seen.get(other) === seen.get(place)));
@@ -181,8 +214,10 @@ export function endWave(clock: Timers) {
 // The board the app deals with `random` after `previous`, so a test knows
 // which dinosaur is where. The app takes nothing else from `random` on
 // the way to a board.
-export const dealt = (level: Level, { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}) =>
-  dealBoard(pals, level, random, previous);
+export const dealt = (
+  level: ClimbLevel | BoardLevel,
+  { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}
+) => dealBoard(pals, typeof level === "number" ? { climbLevel: level } : level, random, previous);
 
 // The names of a board's cards, place by place, as their labels read
 // once turned over.

@@ -66,6 +66,8 @@ describe("the motion", () => {
       "--motion-screen": "320ms",
       "--motion-count": "600ms",
       "--motion-stagger": "40ms",
+      "--motion-picture": "200ms",
+      "--motion-shimmer": "1500ms",
       "--motion-amount": "1"
     });
   });
@@ -113,6 +115,17 @@ describe("the motion", () => {
     );
     expect(moving.length).toBeGreaterThan(0);
     expect(moving.filter((selector) => MOVING.test(reducedTransitions.get(selector) ?? "transform"))).toEqual([]);
+  });
+
+  it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
+    const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
+    const overridden = new Set(REDUCED.map(({ prelude }) => prelude));
+    const later = RULES.slice(reducedAt + 1)
+      .filter(({ prelude }) => overridden.has(prelude))
+      .map(({ prelude }) => prelude);
+
+    expect(RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)")).toHaveLength(1);
+    expect(later).toEqual([]);
   });
 });
 
@@ -256,6 +269,24 @@ describe("find the pair's motion", () => {
         ["wave", "var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger))"]
       ])
     );
+  });
+
+  // A rule's declarations, by property.
+  const declared = (rules: Rule[], selector: string) =>
+    Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
+
+  it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".pairs-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".pairs-level-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
+  });
+
+  it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-climb").transition).toBe(
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+    );
+    expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
+    expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
   });
 
   it("bumps a new count of tries in, and pops the result's NEW badges and star in", () => {
@@ -426,5 +457,57 @@ describe("the parents' menus' motion", () => {
       ]
     ]);
     expect([...animationsOf(REDUCED).keys()].filter((selector) => selector.startsWith(".parent-menu"))).toEqual([]);
+  });
+});
+
+// pictures.feature: a loading picture's place pulses in the theme's
+// colours, and its picture fades in as it arrives.
+describe("a picture's place", () => {
+  const bodyOf = (selector: string) => declarationsOf(PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "");
+  const shimmer = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes picture-shimmer")?.body ?? "");
+
+  it("pulses to the lighter colour and back every 1.5 seconds, standing on the first where there is no motion", () => {
+    expect(tokensOf(PLAIN)["--motion-shimmer"]).toBe("1500ms");
+    expect(bodyOf('.picture[data-picture="loading"]')).toEqual([
+      { property: "--shimmer-from", value: "#e6e2d9" },
+      { property: "--shimmer-to", value: "#fffdf8" },
+      { property: "background-color", value: "var(--shimmer-from)" },
+      { property: "animation", value: "picture-shimmer var(--motion-shimmer) var(--ease-out) infinite" }
+    ]);
+    expect(shimmer.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([
+      ["50%", [{ property: "background-color", value: "color-mix(in srgb, var(--shimmer-to) calc(var(--motion-amount) * 100%), var(--shimmer-from))" }]]
+    ]);
+  });
+
+  it("pulses in the dark theme's colours", () => {
+    expect(bodyOf('[data-theme="dark"] .picture[data-picture="loading"]')).toEqual([
+      { property: "--shimmer-from", value: "#222a3d" },
+      { property: "--shimmer-to", value: "#181e2e" }
+    ]);
+  });
+
+  it("fades its picture in over 200 ms, with reduced motion too", () => {
+    expect(tokensOf(PLAIN)["--motion-picture"]).toBe("200ms");
+    expect(tokensOf(REDUCED)["--motion-picture"]).toBeUndefined();
+    expect(bodyOf('.picture[data-picture="appearing"]')).toEqual([{ property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]);
+    expect(REDUCED.filter(({ prelude }) => prelude.includes(".picture"))).toEqual([]);
+    const fade = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-in")?.body ?? "");
+    expect(fade.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([["from", [{ property: "opacity", value: "0" }]]]);
+  });
+
+  it("is silhouetted on MORE COMING only once its picture shows, its shimmer and failure look keeping their colours", () => {
+    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("more-coming-picture") && declarationsOf(body).some(({ property }) => property === "filter"));
+    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
+      ['.more-coming-picture[data-picture="appearing"]', '.more-coming-picture[data-picture="shown"]'],
+      ['[data-theme="dark"] .more-coming-picture[data-picture="appearing"]', '[data-theme="dark"] .more-coming-picture[data-picture="shown"]']
+    ]);
+  });
+
+  it("draws footprints on what holds it once failed, in each theme's soft ink, and never its name", () => {
+    const failed = bodyOf('.picture[data-picture="failed"]').map(({ value }) => value).join("");
+    const dark = bodyOf('[data-theme="dark"] .picture[data-picture="failed"]').map(({ value }) => value).join("");
+    expect([failed, dark]).toEqual([expect.stringMatching(/^url\("data:image\/svg\+xml,.*stroke='%235c647a'.*"\) center \/ clamp\(32px, 30%, 96px\) no-repeat$/), expect.stringMatching(/^url\(.*stroke='%239ca3b6'.*\)$/)]);
+    expect(failed.replace("%235c647a", "")).toBe(dark.replace("%239ca3b6", "") + " center / clamp(32px, 30%, 96px) no-repeat");
+    expect(bodyOf('.picture[data-picture="loading"],\n.picture[data-picture="failed"]')).toEqual([{ property: "color", value: "transparent" }]);
   });
 });

@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, MUSEUM_SETTLE } from "../src/App.tsx";
+import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import type { Random } from "../src/sorting/index.ts";
 import { basketsShown, sortByTrying, storedRecord, tray } from "./sorting.tsx";
@@ -16,6 +16,7 @@ import {
   fakeBodyPicture,
   featuring,
   lightDevice,
+  loadShownPictures,
   loadedPictures,
   manualOrientation,
   manualPictures,
@@ -147,10 +148,12 @@ describe("the sorting game from the home page", () => {
 // or the sorting game's result, reached with every picture loaded.
 async function openOn(start: "home" | "result", pictures: ManualPictures) {
   const app = openApp({ pictures });
+  loadShownPictures(pictures);
   if (start === "result") {
     await app.user.click(button("SORT"));
     act(() => pictures.loading().forEach(pictures.finish));
     await finishShownBoard(app.user);
+    loadShownPictures(pictures);
   }
   return app;
 }
@@ -251,8 +254,6 @@ describe("a new board", () => {
       act(() => ending(pictures, asked));
 
       expect([there(), onBoard()]).toEqual([true, false]);
-      // The museum takes taps once it has settled.
-      act(() => pictures.fire(MUSEUM_SETTLE));
       await user.click(button("HOME"));
       await user.click(button("SORT"));
       act(() => pictures.loading().forEach(pictures.finish));
@@ -260,22 +261,16 @@ describe("a new board", () => {
     }
   );
 
-  it("is not shown when the child taps COMPARE while its pictures load, and the question opens once its own pictures do", async () => {
+  it("is not shown when the child taps COMPARE while its pictures load, and the question opens at once", async () => {
     const pictures = manualPictures();
     const { user } = await openOn("home", pictures);
     await user.click(button("SORT"));
     const asked = pictures.loading();
     await user.click(homeTile("COMPARE"));
-    // The question may share a dinosaur with the board, whose picture then
-    // loads with the board's; it still waits on one picture of its own.
-    const question = pictures.loading().slice(asked.length);
-    expect([question.length, question.some((url) => !asked.includes(url))]).toEqual([2, true]);
 
-    act(() => asked.forEach(pictures.finish));
-
-    expect([onHomePage(), onBoard()]).toEqual([true, false]);
-    act(() => question.forEach(pictures.finish));
-    expect([screen.getByRole("heading").textContent, onBoard()]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false]);
+    expect(screen.getByRole("heading").textContent).toMatch(/^WHO IS (HEAVIER|TALLER)\?$/);
+    act(() => pictures.finishAll());
+    expect([screen.getByRole("heading").textContent, onBoard(), asked.length]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false, 6]);
   });
 
   it("is not shown on the home page when the child goes home while its pictures load", async () => {

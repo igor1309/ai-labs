@@ -1,8 +1,12 @@
 Feature: Find the pair: starting a board
   A memory game: the child turns over cards two at a time to find
-  matching dinosaur pairs, with no timer and no move limit. Levels grow
-  from a few pairs of the same picture to more pairs where a picture
-  matches its dinosaur's silhouette.
+  matching dinosaur pairs, with no timer and no move limit. At Hatchling
+  its climb levels grow from a few pairs of the same picture to more
+  pairs where a picture matches its dinosaur's silhouette; Explorer and
+  Paleontologist are in find-the-pair-levels.feature.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -15,11 +19,12 @@ Feature: Find the pair: starting a board
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
-    And I see "PLAY" with a play symbol and my level as a number with a ladder symbol
+    And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
+    And at Hatchling, my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  Scenario Outline: Each level has its own board
+  Scenario Outline: Each climb level has its own board
     Given I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
@@ -38,7 +43,7 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And two boards in a row do not deal the same dinosaurs
+    And it deals as few of the dinosaurs of the board before it as find-the-pair-level-progress.feature allows
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt

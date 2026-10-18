@@ -1,13 +1,14 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, MUSEUM_SETTLE, type AppProps } from "../src/App.tsx";
+import { App, type AppProps } from "../src/App.tsx";
 import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { endWave, playBoard } from "./pairsApp.tsx";
 import { sortByTrying } from "./sorting.tsx";
+import { filterTaps, tapAt } from "./taps.ts";
 import {
   unreadVersion,
   SHIPPED_CATALOGUE,
@@ -24,6 +25,7 @@ import {
   homeTile,
   manualAppearance,
   manualOrientation,
+  loadShownPictures,
   manualPictures,
   manualTimers,
   manualVisibility,
@@ -201,7 +203,6 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     1,
     async ({ user, clock }) => {
       await user.click(button("MUSEUM"));
-      act(() => clock.fire(MUSEUM_SETTLE));
       await user.click(within(screen.getByRole("region", { name: "STEGOSAURUS" })).getByRole("button", { name: "BUILD" }));
     }
   ]
@@ -246,7 +247,6 @@ describe("starting a game", () => {
       await user.click(button("HOME"));
     }
     await user.click(button("MUSEUM"));
-    act(() => clock.fire(MUSEUM_SETTLE));
     await user.click(button("HOME"));
 
     expect(featuredCard()).toBeDefined();
@@ -258,7 +258,6 @@ describe("starting a game", () => {
 // Each game whose start waits for its pictures, the buttons on the way to
 // its start, and the button that starts it.
 const WAITING: Array<[start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement]> = [
-  ["a quiz round", "compare", [], () => homeTile("COMPARE")],
   ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
   ["a sorting round", "sort", [], () => homeTile("SORT")],
@@ -272,6 +271,7 @@ describe("a start that waits for its pictures", () => {
     const pictures = manualPictures();
     const { counted, startCounter } = countedStarts();
     const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
+    loadShownPictures(pictures);
     const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
     for (const step of way) {
       await user.click(step());
@@ -285,72 +285,6 @@ describe("a start that waits for its pictures", () => {
     expect(counted).toEqual([game]);
     loadAll();
     expect(counted).toEqual([game]);
-  });
-});
-
-// Whether a question of the quiz is on screen.
-const questionShown = () => screen.queryByText(/^WHO IS (HEAVIER|TALLER)\?$/) !== null;
-
-// Each door off the home page, and how to tell its screen is shown.
-const DOORS: Array<[door: string, open: () => HTMLElement, shown: () => boolean]> = [
-  ["MUSEUM", () => button("MUSEUM"), () => screen.queryByRole("group", { name: "STANDS" }) !== null],
-  ["ALL DINOSAURS", () => homeTile("ALL DINOSAURS"), () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
-  ["CARE", () => homeTile("CARE"), () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
-  ["SORT", () => homeTile("SORT"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null],
-  ["FIND THE PAIR", () => homeTile("FIND THE PAIR"), () => screen.queryByRole("button", { name: "PLAY" }) !== null],
-  ["SKELETONS", () => homeTile("SKELETONS"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null]
-];
-
-describe("a round left while its pictures load", () => {
-  it.each(DOORS.flatMap(([door, open, shown]) => (["its pictures load", "its wait runs out"] as const).map((end) => [door, end, open, shown] as const)))(
-    "neither opens nor counts a start once %s is tapped, when %s",
-    async (_door, end, open, shown) => {
-      const loaded = end === "its pictures load";
-      const pictures = manualPictures();
-      const { counted, startCounter } = countedStarts();
-      const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
-      await user.click(homeTile("COMPARE"));
-      const round = pictures.loading();
-
-      await user.click(open());
-      act(() => (loaded ? round.forEach(pictures.finish) : pictures.fire(1000)));
-      act(() => pictures.loading().forEach(pictures.finish));
-
-      expect(questionShown()).toBe(false);
-      expect(shown()).toBe(true);
-      expect(counted.filter((game) => game === "compare")).toEqual([]);
-
-      // COMPARE starts a round again, back home.
-      act(() => pictures.fire(MUSEUM_SETTLE));
-      await user.click(button("HOME"));
-      await user.click(homeTile("COMPARE"));
-      act(() => pictures.loading().forEach(pictures.finish));
-      expect(questionShown()).toBe(true);
-      expect(counted.filter((game) => game === "compare")).toEqual(["compare"]);
-    }
-  );
-
-  it.each(["its pictures load", "its wait runs out"])("neither opens nor counts a start once HOME is tapped after PLAY AGAIN, when %s", async (end) => {
-    const pictures = manualPictures();
-    const { counted, startCounter } = countedStarts();
-    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith() }), { clock: pictures, startCounter });
-    const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
-    await user.click(homeTile("COMPARE"));
-    loadAll();
-    for (let number = 1; number <= 10; number++) {
-      await user.click(firstIn("DINOSAURS"));
-      await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
-      loadAll();
-    }
-    await user.click(button("PLAY AGAIN"));
-    const round = pictures.loading();
-    expect(round).toHaveLength(2);
-
-    await user.click(button("HOME"));
-    act(() => (end === "its pictures load" ? round.forEach(pictures.finish) : pictures.fire(1000)));
-
-    expect([questionShown(), featuredCard().dataset.game]).toEqual([false, "skeletons"]);
-    expect(counted).toEqual(["compare"]);
   });
 });
 
@@ -412,27 +346,32 @@ describe("the featured card", () => {
     expect(storedFeatured(storage).starts).toEqual({ [game]: 1 });
   });
 
-  // In a browser the screen change commits after the transition, so the
-  // second tap of a quick double tap can land on the home page still
-  // shown: here both land in one act, before React commits.
+  // In a browser the screen change commits after the transition, so a
+  // second activation can land on the home page still shown: here both
+  // land in one act, before React commits, with the double-tap filter in.
+  // A key's click has no pointer's detail, and is never filtered.
   it.each([
-    ["the large card", featuredCard],
-    ["its tile", () => homeTile("ALL DINOSAURS")]
-  ])("counts one start of ALL DINOSAURS for a double tap on %s landing before the list shows, and one more on the next visit", async (_where, target) => {
+    ["Enter twice on the large card", () => [featuredCard(), featuredCard()].forEach((each) => fireEvent.click(each, { detail: 0 }))],
+    ["Enter twice on its tile", () => [0, 1].forEach(() => fireEvent.click(homeTile("ALL DINOSAURS"), { detail: 0 }))],
+    [
+      "a tap on its tile and then on the large card, more than 100 CSS pixels away",
+      () => {
+        tapAt(homeTile("ALL DINOSAURS"), 0, { x: 0 });
+        tapAt(featuredCard(), 250, { x: 150 });
+      }
+    ]
+  ])("counts one start of ALL DINOSAURS for %s landing before the list shows, and one more on the next visit", (_how, open) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game: "catalogue" } } } }) });
-    const { user } = openApp(storage);
-    const tapped = target();
+    openApp(storage);
+    filterTaps();
 
-    act(() => {
-      fireEvent.click(tapped);
-      fireEvent.click(tapped);
-    });
+    act(open);
 
     expect(document.querySelector(".games-tiles")).toBeNull();
     expect(storedFeatured(storage).starts).toEqual({ catalogue: 1 });
 
-    await user.click(button("HOME"));
-    await user.click(target());
+    tapAt(button("HOME"), 1000);
+    tapAt(featuredCard(), 2000);
 
     expect(storedFeatured(storage).starts).toEqual({ catalogue: 2 });
   });

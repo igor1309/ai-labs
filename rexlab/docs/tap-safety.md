@@ -7,10 +7,16 @@ home page (LAB-290): a double tap opened the museum once, but its second
 tap could have landed on a button of the museum.
 
 It is built from parts that do not know of each other, each landing in its
-own issue, in this order: LAB-298, LAB-303, LAB-304. Until the double-tap
-filter lands, today's picture waits and one-off guards keep double taps
-safe, and they stay; LAB-304 removes the waits only after it. Each issue
-brings the Gherkin of its own behaviour; LAB-298 changes none.
+own issue, in this order: LAB-298, LAB-303, then the pictures in
+LAB-304, LAB-306, LAB-307 and LAB-308. Before the double-tap filter
+landed, the picture waits and one-off guards kept double taps safe.
+LAB-303 removed the two that only guard double
+taps, `MUSEUM_SETTLE` and `openingCatalogue`; the catalogue now counts
+its start with the screen change, as keys and far taps pass the filter.
+A leaving parent menu still catches taps while it animates out. The
+picture issues remove the waits and their guards, each for its own
+screens. Each issue brings the
+Gherkin of its own behaviour; LAB-298 changes none.
 
 ## The parts
 
@@ -26,16 +32,20 @@ brings the Gherkin of its own behaviour; LAB-298 changes none.
    the game left included.
 4. **Double taps (LAB-303).** One double-tap filter at the root of the
    app swallows the second tap of a double tap, by time and place: less
-   than 500 ms and 100 px from the tap before it, timed by each event's
-   own time, which `src/root.ts` hands it. It knows nothing of screens.
+   than 500 ms and 100 px from the release of the tap before it, timed
+   by each event's own time, which `src/root.ts` hands it. It knows nothing of screens.
    Its exact behaviour (when the window opens, drags, repeated taps,
-   keyboard) is specified in LAB-303's own feature. Accepted cost: two
-   controls closer than 100 px, tapped within 500 ms, count once.
-5. **Pictures (LAB-304).** One `<Picture>` component holds a picture's
-   place with a shimmer while it loads and fades it in once decoded, so
-   no screen waits for its pictures before it changes. LAB-304 specifies
-   each game's loading and failure behaviour, and removes the guards of
-   the picture waits with them.
+   keyboard) and its accepted costs are specified in LAB-303's own
+   feature, `docs/features/double-tap.feature`.
+5. **Pictures (LAB-304, LAB-306, LAB-307, LAB-308).** One `<Picture>`
+   component holds a picture's place with a shimmer while it loads and
+   fades it in once decoded, so no screen waits for its pictures before
+   it changes (`docs/features/pictures.feature`). LAB-304 builds it and
+   moves the catalogue, the compare game and the home page onto it;
+   LAB-306 moves care and find the pair; LAB-307 sorting; LAB-308
+   skeletons.
+   Each removes its screens' waits and the guards that existed only for
+   them, and specifies its own loading and failure behaviour.
 
 ## Why 500 ms and 100 px
 
@@ -61,6 +71,7 @@ item but the last.
   argless `new Date()` or an event's `timeStamp` outside `src/root.ts`
   (LAB-303).
 - Calling `waitForPictures`, or taking a `LoadPicture`, outside
-  `<Picture>` and `src/root.ts` (LAB-304).
-- A guard against double taps on a single button, once LAB-303 has
-  landed. No search finds it; code review does.
+  `<Picture>` and `src/root.ts` (LAB-308).
+- A new guard against double taps on a single button, once LAB-303 has
+  landed; the guards of the picture waits go with the picture issues. No search
+  finds it; code review does.

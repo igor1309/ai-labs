@@ -6,7 +6,6 @@ import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { NO_PAIRS } from "../src/pairs/progress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
@@ -27,6 +26,8 @@ import {
   homeTile,
   fakeSkeletonPicture,
   lightDevice,
+  countedStarts,
+  loadShownPictures,
   loadedPictures,
   manualPictures,
   manualOrientation,
@@ -37,6 +38,7 @@ import {
   type MemoryStorage,
   unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 function openHomePage(
   progress = emptyProgress(),
@@ -93,7 +95,8 @@ function renderHomePage(taps: number[]) {
       onPairs={nothing}
       onSkeletons={nothing}
       onMuseum={nothing}
-    />
+    />,
+    withPictures
   );
   return { user: userEvent.setup(), card: homeTile("SORT") };
 }
@@ -350,7 +353,7 @@ describe("the home page", () => {
         loadedPictures(),
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
-        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) },
+        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
         withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
       );
 
@@ -789,57 +792,61 @@ describe("the large card", () => {
 
 describe("the first question of a round", () => {
   const progressShown = () => screen.queryByLabelText("PROGRESS")?.textContent;
-  const picturesShown = () =>
-    within(screen.getByRole("group", { name: "DINOSAURS" }))
-      .getAllByRole("img")
-      .map((picture) => picture.getAttribute("src"));
+  const cardPictures = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("img");
+  const looks = () => cardPictures().map((picture) => [picture.dataset.picture, picture.getAttribute("src")]);
 
-  it("waits for its pictures, with the home page on screen until both have loaded", async () => {
+  // The home page's pictures are left loading too, as some of its
+  // dinosaurs may be in the question.
+  it("opens at once, its pictures shimmering until they load, then fading in", async () => {
     const pictures = manualPictures();
     const { user, card } = openHomePage(emptyProgress(), pictures);
 
     await user.click(card);
 
-    const asked = pictures.loading();
-    expect(asked).toHaveLength(2);
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => pictures.finish(asked[0] ?? ""));
-    expect(progressShown()).toBeUndefined();
-    expect(homeTile("COMPARE")).toBeDefined();
-
-    act(() => pictures.finish(asked[1] ?? ""));
-
     expect(progressShown()).toBe("1/10");
-    expect(picturesShown()).toEqual(asked);
-    expect(pictures.timers()).toEqual([]);
-  });
-
-  it("starts after a second when its pictures are slow, and not again when they arrive", async () => {
-    const pictures = manualPictures();
-    const { user, card } = openHomePage(emptyProgress(), pictures);
-    await user.click(card);
-    const asked = pictures.loading();
-
-    act(() => pictures.fire(1000));
-
-    expect(progressShown()).toBe("1/10");
-    expect(picturesShown()).toEqual(asked);
-    const first = document.body.innerHTML;
-    act(() => asked.forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(first);
+    expect(looks()).toEqual([
+      ["loading", null],
+      ["loading", null]
+    ]);
+    // Each card's picture, by its dinosaur's name.
+    const [left, right] = cardPictures().map((picture) => fakeBodyPicture(SHIPPED_DINOSAURS.find(({ name }) => name.en === picture.getAttribute("alt"))?.id ?? ""));
+    act(() => pictures.finish(left ?? ""));
+    expect(looks()).toEqual([
+      ["appearing", left],
+      ["loading", null]
+    ]);
+    act(() => pictures.finish(right ?? ""));
+    expect(looks()).toEqual([
+      ["appearing", left],
+      ["appearing", right]
+    ]);
   });
 
   it("starts one round on a quick double tap while its pictures load", async () => {
     const pictures = manualPictures();
     const { user, card } = openHomePage(emptyProgress(), pictures);
+    loadShownPictures(pictures);
 
     await user.dblClick(card);
 
-    const asked = pictures.loading();
-    expect(asked).toHaveLength(2);
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => asked.forEach(pictures.finish));
     expect(progressShown()).toBe("1/10");
-    expect(picturesShown()).toEqual(asked);
+    act(() => pictures.finishAll());
+    expect(progressShown()).toBe("1/10");
+  });
+
+  // docs/features/compare-dinosaurs-start.feature: two activations far
+  // apart, both before the first one's screen change is shown.
+  it("starts one round, counted once, for the COMPARE tile and the large card in one moment", () => {
+    const { counted, startCounter } = countedStarts();
+    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
+    const [tile, card] = [homeTile("COMPARE"), featuredCard()];
+
+    act(() => {
+      tile.click();
+      card.click();
+    });
+
+    expect([progressShown(), counted]).toEqual(["1/10", ["compare"]]);
   });
 });
+

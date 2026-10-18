@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
@@ -11,7 +11,8 @@ import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
+import { LoadAhead, pictureStore, PicturesProvider, type PictureStore } from "./Picture.tsx";
+import type { LoadPicture, StartTimer } from "./pictureWait.ts";
 import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
 import {
@@ -137,15 +138,6 @@ const MORE_COMING = "triceratops";
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
 
-// The longest a question waits for its pictures, in milliseconds:
-// long enough for a picture on a slow connection, short enough that a
-// broken one does not keep the child waiting.
-const PICTURE_WAIT = 1000;
-
-// How long after MUSEUM opens the museum taps do nothing, in
-// milliseconds: longer than the gap between a child's two quick taps.
-export const MUSEUM_SETTLE = 500;
-
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
 type Screen =
@@ -259,37 +251,20 @@ export function App({
     ageLevelStore.save(picked);
   };
 
-  // The pictures of the question `play` is on, once they are ready or the
-  // wait runs out.
-  const whenPicturesReady = (play: Play, ready: () => void) => {
-    const { left, right } = questionState(play);
-    waitForPictures([bodyPicture(left.dinosaur.id), bodyPicture(right.dinosaur.id)], { loadPicture, startTimer, limit: PICTURE_WAIT }, ready);
-  };
+  // Every picture the screens show, each loaded once.
+  const [pictures] = useState<PictureStore>(() => pictureStore(loadPicture));
 
-  // A round being started, while its first pictures load: a second tap on
-  // COMPARE or PLAY AGAIN meanwhile starts nothing more.
-  const starting = useRef(false);
-  // Counts each time the child goes elsewhere while a round waits for its
-  // pictures, so a round left behind never opens, nor counts a start.
-  const roundsLeft = useRef(0);
-
-  const leaveRound = () => {
-    roundsLeft.current++;
-    starting.current = false;
-  };
-
+  // A round opens at once, its pictures shimmering until they load. It is
+  // counted with the change, so a second COMPARE or PLAY AGAIN before the
+  // question shows finds a round already asked for and starts nothing.
   const playNewRound = () => {
     sorting.cancel();
-    if (starting.current) return;
-    starting.current = true;
-    const waiting = roundsLeft.current;
     const started = startRound(dinosaurs, random, lastPlay);
-    whenPicturesReady(started, () => {
-      if (roundsLeft.current !== waiting) return;
-      starting.current = false;
-      setLastPlay(started);
-      startCounter.countStart("compare");
-      go({ kind: "question", play: started });
+    go((current) => (current.kind === "question" ? current : { kind: "question", play: started }), {
+      also: () => {
+        setLastPlay(started);
+        startCounter.countStart("compare");
+      }
     });
   };
 
@@ -298,10 +273,7 @@ export function App({
   // changes nothing.
   const play = (move: (play: Play) => Play) =>
     go((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
-  const home = () => {
-    leaveRound();
-    go({ kind: "home" });
-  };
+  const home = () => go({ kind: "home" });
 
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
@@ -317,20 +289,17 @@ export function App({
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
 
   const openSorting = () => {
-    leaveRound();
     sorting.start(() => set({ kind: "sorting" }));
   };
 
-  // A board SORT started, or a round COMPARE started, still waiting for
-  // its pictures, is dropped as the child goes anywhere else, so it never
-  // opens over the screen they chose.
-  const leaveHome = () => {
-    sorting.cancel();
-    leaveRound();
-  };
+  // A board SORT started, still waiting for its pictures, is dropped as
+  // the child goes anywhere else, so it never opens over the screen they
+  // chose.
+  const leaveHome = () => sorting.cancel();
 
   const pairs = usePairsGame(
     { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    ageLevel,
     home,
     counting("pairs")
   );
@@ -370,43 +339,16 @@ export function App({
 
   // The museum opens from the home page straight into the skeleton game,
   // as a screen change and not a start: only building there starts one.
-  // It opens at once, so the rest of a double tap would land on the
-  // museum's own buttons: taps do nothing until it has settled.
-  const [museumSettling, setMuseumSettling] = useState<boolean>(false);
-
   const openMuseum = () => {
     leaveHome();
-    go(
-      { kind: "skeletons" },
-      {
-        also: () => {
-          skeletonGame.openMuseum();
-          setMuseumSettling(true);
-        }
-      }
-    );
+    go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
 
-  useEffect(() => {
-    if (!museumSettling) return;
-    const swallow = (event: Event) => {
-      event.stopPropagation();
-      event.preventDefault();
-    };
-    document.addEventListener("click", swallow, true);
-    const stop = startTimer(MUSEUM_SETTLE, () => setMuseumSettling(false));
-    return () => {
-      stop();
-      document.removeEventListener("click", swallow, true);
-    };
-  }, [museumSettling, startTimer]);
-
-  // The next question shows once its pictures are ready, so none pops in,
-  // and only if the round is still where Next was tapped: a second tap, or
-  // Home, while the pictures load changes nothing more.
+  // The next question shows at once, and only if the round is still where
+  // Next was tapped: a second tap changes nothing more.
   const goOn = (from: Play) => {
     const to = next(from);
-    whenPicturesReady(to, () => go((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current)));
+    go((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current));
   };
 
   // A round is recorded only here, when its result is shown, so a round
@@ -424,23 +366,18 @@ export function App({
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
 
-  // The catalogue being opened from home: the screen changes only as its
-  // transition commits, so a second tap on ALL DINOSAURS meanwhile, on its
-  // tile or the large card, counts no second start. It ends as the home
-  // page shows again.
-  const openingCatalogue = useRef(false);
-  useEffect(() => {
-    if (screen.kind === "home") openingCatalogue.current = false;
-  }, [screen.kind]);
-
   // The list opened from home is the catalogue's start; a food chosen or a
-  // dinosaur's page left is not.
+  // dinosaur's page left is not. It is counted with the change, so a
+  // second ALL DINOSAURS, on its tile or the large card, before the
+  // catalogue shows finds it already asked for and counts nothing.
   const openCatalogue = () => {
     leaveHome();
-    if (openingCatalogue.current) return;
-    openingCatalogue.current = true;
-    startCounter.countStart("catalogue");
-    go({ kind: "catalogue", returning: undefined }, { also: () => setFood("all") });
+    go((current) => (current.kind === "home" ? { kind: "catalogue", returning: undefined } : current), {
+      also: () => {
+        startCounter.countStart("catalogue");
+        setFood("all");
+      }
+    });
   };
 
   // A food newly chosen shows its dinosaurs from the top, rising in.
@@ -451,16 +388,14 @@ export function App({
 
   const pictureOf = (index: number) => bodyPicture(shown[index]?.id ?? "");
 
-  // A dinosaur's page shows once its picture is ready, as a question
-  // does, and only if the screen is still where the child tapped: a
-  // second tap meanwhile changes nothing more. The pictures either side
-  // are loaded ahead, so a step to them does not wait.
-  const showDinosaur = (index: number, still: (current: Screen) => boolean, step?: Step) => {
-    const wait = { loadPicture, startTimer, limit: PICTURE_WAIT };
-    waitForPictures([pictureOf(index)], wait, () => go((current) => (still(current) ? { kind: "dinosaur", index } : current), { intent: step }));
-    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, shown.length)));
-    waitForPictures(neighbours, wait, () => {});
-  };
+  // A dinosaur's page shows at once, and only if the screen is still
+  // where the child tapped: a second tap meanwhile changes nothing more.
+  const showDinosaur = (index: number, still: (current: Screen) => boolean, step?: Step) =>
+    go((current) => (still(current) ? { kind: "dinosaur", index } : current), { intent: step });
+
+  // The pictures either side of a page, loaded ahead so a step to them
+  // shows its picture at once.
+  const neighboursOf = (index: number) => (["previous", "next"] as const).map((way) => pictureOf(stepFrom(index, way, shown.length)));
 
   const openDinosaur = (id: string) =>
     showDinosaur(
@@ -478,14 +413,19 @@ export function App({
       case "question": {
         const current = screen.play;
         const question = questionState(current);
+        // The next question's pictures load while this one is answered.
+        const coming = current.round[current.index + 1];
         return (
-          <QuestionScreen
-            language={language}
-            {...presentQuestion(question, language, bodyPicture)}
-            onChoose={(id) => play((state) => choose(state, id))}
-            onNext={question.last ? () => seeResult(current) : () => goOn(current)}
-            onHome={home}
-          />
+          <>
+            {coming && <LoadAhead urls={[bodyPicture(coming.left.id), bodyPicture(coming.right.id)]} />}
+            <QuestionScreen
+              language={language}
+              {...presentQuestion(question, language, bodyPicture)}
+              onChoose={(id) => play((state) => choose(state, id))}
+              onNext={question.last ? () => seeResult(current) : () => goOn(current)}
+              onHome={home}
+            />
+          </>
         );
       }
       case "result":
@@ -516,15 +456,18 @@ export function App({
         const entry = shown[index];
         if (!entry) throw new Error(`No dinosaur at ${index} among those shown`);
         return (
-          <DinosaurPage
-            language={language}
-            dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
-            number={index + 1}
-            total={shown.length}
-            onPrevious={() => step(index, "previous")}
-            onNext={() => step(index, "next")}
-            onBack={() => closeDinosaur(index)}
-          />
+          <>
+            <LoadAhead urls={neighboursOf(index)} />
+            <DinosaurPage
+              language={language}
+              dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
+              number={index + 1}
+              total={shown.length}
+              onPrevious={() => step(index, "previous")}
+              onNext={() => step(index, "next")}
+              onBack={() => closeDinosaur(index)}
+            />
+          </>
         );
       }
       case "care":
@@ -571,13 +514,15 @@ export function App({
   // dinosaur inside its page. As a dinosaur's page opens or closes, the
   // rest of the screen fades while its picture moves.
   return (
-    <OrientationGate orientation={orientation} language={language}>
-      <ViewTransition
-        default="none"
-        update={{ [SCREEN_CHANGE]: "screen", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}
-      >
-        {content()}
-      </ViewTransition>
-    </OrientationGate>
+    <PicturesProvider store={pictures} startTimer={startTimer}>
+      <OrientationGate orientation={orientation} language={language}>
+        <ViewTransition
+          default="none"
+          update={{ [SCREEN_CHANGE]: "screen", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}
+        >
+          {content()}
+        </ViewTransition>
+      </OrientationGate>
+    </PicturesProvider>
   );
 }

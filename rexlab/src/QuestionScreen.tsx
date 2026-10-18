@@ -2,6 +2,7 @@ import { ArrowRight, Check, House, Ruler, Scale, Trophy, Weight, X, type LucideI
 import { ViewTransition } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 // What the prompt asks about.
@@ -152,7 +153,7 @@ function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, langua
       <span className="dinosaur-art">
         {/* Every picture is shown at the same size, whatever the dinosaur's
             real size: a picture must not hint at which one is larger. */}
-        <img className="dinosaur-picture" src={picture} alt={name} width={800} height={600} draggable={false} />
+        <Picture className="dinosaur-picture" src={picture} alt={name} width={800} height={600} />
         {mark && MarkSymbol && (
           <span className="mark" role="img" aria-label={text.marks[mark]}>
             <MarkSymbol size={24} strokeWidth={3} />
