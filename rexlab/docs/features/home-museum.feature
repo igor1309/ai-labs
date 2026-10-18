@@ -3,7 +3,8 @@ Feature: The museum from the home page
   collection, so the home page opens it directly, from a button in the
   top-right corner just left of the parents' language and theme menus.
   Unlike those menus it is for the child: its word is in capitals beside
-  the museum symbol, and it is sized for a child's tap.
+  the museum symbol, and it is sized for a child's tap. It carries no
+  count: the collection score is the museum's own, shown inside it.
 
   Background:
     Given an iPad in landscape
@@ -35,9 +36,10 @@ Feature: The museum from the home page
     Then I see the skeleton game's choice of dinosaurs
 
   Scenario: Opening the museum is not a start
+    Given the Stegosaurus stand is unearned
     When I open the museum from the home page and go back home
     Then no start count changes
-    When I open the museum from the home page and build from an empty stand
+    When I open the museum from the home page and build the Stegosaurus from its empty stand
     Then SKELETONS counts one more start
 
   Scenario: A quick double tap opens the museum once
@@ -46,11 +48,16 @@ Feature: The museum from the home page
     And the second tap pressed nothing on the museum screen
     And one tap on "HOME" brings me back to the home page
 
-  Scenario: A tap that closes a menu opens nothing
-    Given the language menu is open on the home page
+  Scenario Outline: A tap that closes a menu opens nothing
+    Given the <menu> menu is open on the home page
     When I tap "MUSEUM"
     Then the menu closes
     And I am still on the home page
+
+    Examples:
+      | menu     |
+      | language |
+      | theme    |
 
   Scenario Outline: The corner fits on one line
     Given the app is in <language>
