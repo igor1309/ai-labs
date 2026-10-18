@@ -252,64 +252,59 @@ describe("a dinosaur's page", () => {
     expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "42 / 42"]);
   });
 
-  it("waits for its picture with the list on screen, and loads the pictures either side of it ahead", async () => {
+  // The picture on Velociraptor's page: its look and its source.
+  const pagePicture = () => {
+    const picture = screen.getByRole("img", { name: "Velociraptor" });
+    return [picture.dataset.picture, picture.getAttribute("src")];
+  };
+
+  it("opens at once while its picture loads, the picture shimmering, then fading in", async () => {
     const pictures = manualPictures();
     const user = openApp({ pictures });
     await openCatalogue(user);
 
     await user.click(cardOf("velociraptor"));
-
-    expect(pictures.loading()).toEqual(["velociraptor", "triceratops", "brachiosaurus"].map(fakeBodyPicture));
-    expect(pictures.timers()).toEqual([1000, 1000]);
-    expect(position()).toBeUndefined();
-    act(() => pictures.finish(fakeBodyPicture("triceratops")));
-    act(() => pictures.finish(fakeBodyPicture("brachiosaurus")));
-    expect(position()).toBeUndefined();
-    expect(cards()).toHaveLength(42);
-
-    act(() => pictures.finish(fakeBodyPicture("velociraptor")));
 
     expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
-    expect(pictures.timers()).toEqual([]);
-  });
-
-  it("opens after a second when its picture is slow, and not again when it arrives", async () => {
-    const pictures = manualPictures();
-    const user = openApp({ pictures });
-    await openCatalogue(user);
-    await user.click(cardOf("velociraptor"));
-
-    act(() => pictures.fire(1000));
-
-    expect(position()).toBe("3 / 42");
-    const page = document.body.innerHTML;
-    act(() => pictures.loading().forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(page);
-  });
-
-  it("goes one dinosaur on for a quick double tap on an arrow while the picture loads", async () => {
-    const pictures = manualPictures();
-    const user = openApp({ pictures });
-    await openCatalogue(user);
-    await user.click(cardOf("tyrannosaurus"));
-    act(() => pictures.loading().forEach(pictures.finish));
-    expect(position()).toBe("1 / 42");
-
-    await user.dblClick(screen.getByRole("button", { name: "NEXT" }));
-    act(() => pictures.loading().forEach(pictures.finish));
-
-    expect([pageName(), position()]).toEqual(["TRICERATOPS", "2 / 42"]);
-  });
-
-  it("opens one page when two cards are tapped while the first picture loads", async () => {
-    const pictures = manualPictures();
-    const user = openApp({ pictures });
-    await openCatalogue(user);
-
-    await user.click(cardOf("velociraptor"));
-    await user.click(cardOf("stegosaurus"));
+    expect(pagePicture()).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
-    act(() => pictures.loading().forEach(pictures.finish));
+    expect(pagePicture()).toEqual(["appearing", fakeBodyPicture("velociraptor")]);
+  });
+
+  it("shows a picture its card has loaded at once", async () => {
+    const pictures = manualPictures();
+    const user = openApp({ pictures });
+    await openCatalogue(user);
+    act(() => pictures.finish(fakeBodyPicture("velociraptor")));
+
+    await user.click(cardOf("velociraptor"));
+
+    expect(pagePicture()).toEqual(["shown", fakeBodyPicture("velociraptor")]);
+  });
+
+  it("loads again a picture that failed on its card, and the pictures either side that failed", async () => {
+    const pictures = manualPictures();
+    const user = openApp({ pictures });
+    await openCatalogue(user);
+    const failed = ["velociraptor", "triceratops", "brachiosaurus"].map(fakeBodyPicture);
+    act(() => failed.forEach(pictures.fail));
+    expect(failed.filter((url) => pictures.loading().includes(url))).toEqual([]);
+
+    await user.click(cardOf("velociraptor"));
+
+    expect(failed.filter((url) => pictures.loading().includes(url))).toEqual(failed);
+    expect(pagePicture()).toEqual(["loading", null]);
+  });
+
+  it("opens one page when two cards are tapped in one moment", async () => {
+    const user = openApp({ pictures: manualPictures() });
+    await openCatalogue(user);
+    const [first, second] = [cardOf("velociraptor"), cardOf("stegosaurus")];
+
+    act(() => {
+      first.click();
+      second.click();
+    });
 
     expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
   });

@@ -26,6 +26,7 @@ import {
   homeTile,
   unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -60,7 +61,8 @@ describe("a question", () => {
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}
-      />
+      />,
+      withPictures
     );
 
     const heading = screen.getByRole("heading", { name: prompt });
@@ -101,7 +103,8 @@ describe("a dinosaur card's picture", () => {
     const nothing = () => {};
     for (const [left, right] of pairs) {
       const { unmount } = render(
-        <QuestionScreen language={language} {...questionView({ attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />
+        <QuestionScreen language={language} {...questionView({ attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />,
+        withPictures
       );
 
       const shown = within(screen.getByRole("group")).getAllByRole("button").map((card) => {

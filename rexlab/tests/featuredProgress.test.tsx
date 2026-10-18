@@ -25,6 +25,7 @@ import {
   homeTile,
   manualAppearance,
   manualOrientation,
+  loadShownPictures,
   manualPictures,
   manualTimers,
   manualVisibility,
@@ -257,7 +258,6 @@ describe("starting a game", () => {
 // Each game whose start waits for its pictures, the buttons on the way to
 // its start, and the button that starts it.
 const WAITING: Array<[start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement]> = [
-  ["a quiz round", "compare", [], () => homeTile("COMPARE")],
   ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
   ["a sorting round", "sort", [], () => homeTile("SORT")],
@@ -271,6 +271,7 @@ describe("a start that waits for its pictures", () => {
     const pictures = manualPictures();
     const { counted, startCounter } = countedStarts();
     const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
+    loadShownPictures(pictures);
     const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
     for (const step of way) {
       await user.click(step());
@@ -284,71 +285,6 @@ describe("a start that waits for its pictures", () => {
     expect(counted).toEqual([game]);
     loadAll();
     expect(counted).toEqual([game]);
-  });
-});
-
-// Whether a question of the quiz is on screen.
-const questionShown = () => screen.queryByText(/^WHO IS (HEAVIER|TALLER)\?$/) !== null;
-
-// Each door off the home page, and how to tell its screen is shown.
-const DOORS: Array<[door: string, open: () => HTMLElement, shown: () => boolean]> = [
-  ["MUSEUM", () => button("MUSEUM"), () => screen.queryByRole("group", { name: "STANDS" }) !== null],
-  ["ALL DINOSAURS", () => homeTile("ALL DINOSAURS"), () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
-  ["CARE", () => homeTile("CARE"), () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
-  ["SORT", () => homeTile("SORT"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null],
-  ["FIND THE PAIR", () => homeTile("FIND THE PAIR"), () => screen.queryByRole("button", { name: "PLAY" }) !== null],
-  ["SKELETONS", () => homeTile("SKELETONS"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null]
-];
-
-describe("a round left while its pictures load", () => {
-  it.each(DOORS.flatMap(([door, open, shown]) => (["its pictures load", "its wait runs out"] as const).map((end) => [door, end, open, shown] as const)))(
-    "neither opens nor counts a start once %s is tapped, when %s",
-    async (_door, end, open, shown) => {
-      const loaded = end === "its pictures load";
-      const pictures = manualPictures();
-      const { counted, startCounter } = countedStarts();
-      const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
-      await user.click(homeTile("COMPARE"));
-      const round = pictures.loading();
-
-      await user.click(open());
-      act(() => (loaded ? round.forEach(pictures.finish) : pictures.fire(1000)));
-      act(() => pictures.loading().forEach(pictures.finish));
-
-      expect(questionShown()).toBe(false);
-      expect(shown()).toBe(true);
-      expect(counted.filter((game) => game === "compare")).toEqual([]);
-
-      // COMPARE starts a round again, back home.
-      await user.click(button("HOME"));
-      await user.click(homeTile("COMPARE"));
-      act(() => pictures.loading().forEach(pictures.finish));
-      expect(questionShown()).toBe(true);
-      expect(counted.filter((game) => game === "compare")).toEqual(["compare"]);
-    }
-  );
-
-  it.each(["its pictures load", "its wait runs out"])("neither opens nor counts a start once HOME is tapped after PLAY AGAIN, when %s", async (end) => {
-    const pictures = manualPictures();
-    const { counted, startCounter } = countedStarts();
-    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith() }), { clock: pictures, startCounter });
-    const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
-    await user.click(homeTile("COMPARE"));
-    loadAll();
-    for (let number = 1; number <= 10; number++) {
-      await user.click(firstIn("DINOSAURS"));
-      await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
-      loadAll();
-    }
-    await user.click(button("PLAY AGAIN"));
-    const round = pictures.loading();
-    expect(round).toHaveLength(2);
-
-    await user.click(button("HOME"));
-    act(() => (end === "its pictures load" ? round.forEach(pictures.finish) : pictures.fire(1000)));
-
-    expect([questionShown(), featuredCard().dataset.game]).toEqual([false, "skeletons"]);
-    expect(counted).toEqual(["compare"]);
   });
 });
 

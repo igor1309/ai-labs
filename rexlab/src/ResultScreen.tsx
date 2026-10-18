@@ -2,6 +2,7 @@ import { House, RotateCcw } from "lucide-react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { BestScore, CelebrationChip, motion, ScoreCount, type Celebration } from "./ResultParts.tsx";
 
 export type { Celebration };
@@ -30,7 +31,7 @@ export function ResultScreen({ language, score, total, best, beaten, celebration
     <main className="result">
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
-      <img className="result-hero" src={hero} alt="" draggable={false} />
+      <Picture className="result-hero" src={hero} alt="" width={800} height={600} />
       <div className="result-content">
         {celebration && <CelebrationChip language={language} celebration={celebration} />}
         <ScoreCount language={language} score={score} total={total} />

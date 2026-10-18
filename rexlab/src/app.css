@@ -41,6 +41,8 @@
   --motion-screen: 320ms;
   --motion-count: 600ms;
   --motion-stagger: 40ms;
+  --motion-picture: 200ms;
+  --motion-shimmer: 1500ms;
   --motion-amount: 1;
 }
 
@@ -152,6 +154,38 @@
   from {
     opacity: 0;
   }
+}
+
+/* A loading picture's place sweeps to the lighter colour and back; with
+   no motion it stays on the first. */
+@keyframes picture-shimmer {
+  50% {
+    background-color: color-mix(in srgb, var(--shimmer-to) calc(var(--motion-amount) * 100%), var(--shimmer-from));
+  }
+}
+
+/* A picture's place (src/Picture.tsx): its shimmer while loading, its
+   footprints on the colour of what holds it once failed, and the picture
+   fading in as it arrives. A missing picture's name is never drawn over
+   its place. */
+.picture[data-picture="loading"],
+.picture[data-picture="failed"] {
+  color: transparent;
+}
+
+.picture[data-picture="loading"] {
+  --shimmer-from: #e6e2d9;
+  --shimmer-to: #fffdf8;
+  background-color: var(--shimmer-from);
+  animation: picture-shimmer var(--motion-shimmer) var(--ease-out) infinite;
+}
+
+.picture[data-picture="failed"] {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c647a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z'/%3E%3Cpath d='M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z'/%3E%3Cpath d='M16 17h4'/%3E%3Cpath d='M4 13h4'/%3E%3C/svg%3E") center / clamp(32px, 30%, 96px) no-repeat;
+}
+
+.picture[data-picture="appearing"] {
+  animation: fade-in var(--motion-picture) var(--ease-out) both;
 }
 
 @keyframes slide-in-back {
@@ -5412,4 +5446,13 @@ body:has(.result) #version {
 
 [data-theme="dark"] .more-coming-picture {
   filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .picture[data-picture="loading"] {
+  --shimmer-from: #222a3d;
+  --shimmer-to: #181e2e;
+}
+
+[data-theme="dark"] .picture[data-picture="failed"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3b6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z'/%3E%3Cpath d='M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z'/%3E%3Cpath d='M16 17h4'/%3E%3Cpath d='M4 13h4'/%3E%3C/svg%3E");
 }

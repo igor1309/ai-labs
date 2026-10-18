@@ -16,6 +16,7 @@ import {
   fakeBodyPicture,
   featuring,
   lightDevice,
+  loadShownPictures,
   loadedPictures,
   manualOrientation,
   manualPictures,
@@ -147,10 +148,12 @@ describe("the sorting game from the home page", () => {
 // or the sorting game's result, reached with every picture loaded.
 async function openOn(start: "home" | "result", pictures: ManualPictures) {
   const app = openApp({ pictures });
+  loadShownPictures(pictures);
   if (start === "result") {
     await app.user.click(button("SORT"));
     act(() => pictures.loading().forEach(pictures.finish));
     await finishShownBoard(app.user);
+    loadShownPictures(pictures);
   }
   return app;
 }
@@ -258,22 +261,16 @@ describe("a new board", () => {
     }
   );
 
-  it("is not shown when the child taps COMPARE while its pictures load, and the question opens once its own pictures do", async () => {
+  it("is not shown when the child taps COMPARE while its pictures load, and the question opens at once", async () => {
     const pictures = manualPictures();
     const { user } = await openOn("home", pictures);
     await user.click(button("SORT"));
     const asked = pictures.loading();
     await user.click(homeTile("COMPARE"));
-    // The question may share a dinosaur with the board, whose picture then
-    // loads with the board's; it still waits on one picture of its own.
-    const question = pictures.loading().slice(asked.length);
-    expect([question.length, question.some((url) => !asked.includes(url))]).toEqual([2, true]);
 
-    act(() => asked.forEach(pictures.finish));
-
-    expect([onHomePage(), onBoard()]).toEqual([true, false]);
-    act(() => question.forEach(pictures.finish));
-    expect([screen.getByRole("heading").textContent, onBoard()]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false]);
+    expect(screen.getByRole("heading").textContent).toMatch(/^WHO IS (HEAVIER|TALLER)\?$/);
+    act(() => pictures.finishAll());
+    expect([screen.getByRole("heading").textContent, onBoard(), asked.length]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false, 6]);
   });
 
   it("is not shown on the home page when the child goes home while its pictures load", async () => {
