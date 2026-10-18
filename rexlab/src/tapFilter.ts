@@ -55,7 +55,10 @@ export function tapFilter(limits: TapLimits = TAP_LIMITS): (input: TapInput) => 
         last = { x: input.x, y: input.y, time };
         swallowTap = true;
       }
-      if (kind === "cancel") swallowed.delete(pointer);
+      if (kind === "cancel") {
+        swallowed.delete(pointer);
+        last = undefined;
+      }
       return false;
     }
     const press = pressed.get(pointer);

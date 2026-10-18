@@ -77,8 +77,11 @@ describe("the double-tap filter", () => {
     expect(through([press(0), release(40, { x: 9 }), TAP, press(100, { x: 9 })]).at(-1)).toBe(true);
   });
 
-  it("opens no window for a cancelled touch", () => {
-    expect(through([...tap(0), press(600), cancel(650), press(700)]).at(-1)).toBe(true);
+  it.each([
+    ["a touch let through", [...tap(0), press(600), cancel(650), press(700)]],
+    ["a swallowed touch", [...tap(0), press(200), cancel(250), press(300)]]
+  ])("opens no window for %s that is cancelled, and closes an open one", (_touch, inputs) => {
+    expect(through(inputs).at(-1)).toBe(true);
   });
 
   it("lets two taps far apart through", () => {
