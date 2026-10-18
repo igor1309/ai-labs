@@ -15,15 +15,22 @@ a button of the museum.
    for the screen already on its way. While a change waits for its
    pictures, a request for another screen replaces it: the waiting change
    is dropped and never opens. Once a new screen begins to appear, no
-   screen takes a tap until it has finished appearing.
+   screen takes a tap or starts a drag until it has finished appearing:
+   when its view transition ends, or, where the browser runs none, when
+   it is shown. A screen is the same screen when it is of the same kind
+   and shows the same thing (the same question, the same dinosaur).
+   Updates inside the screen showing, such as an answer chosen or a food
+   chosen, also pass through the entry point but are not screen changes:
+   rules 2 and 3 govern them, not this one.
 2. **Actions inside a screen are idempotent.** An action that has started
    (an answer chosen, a card turned, a round or board started, a bone
    dropped, a care action, a skeleton chosen) holds an explicit state, and
    a second trigger while that state holds does nothing.
 3. **Stale taps are dropped.** A tap takes effect only if the screen is
-   still the one the child tapped on. Work a tap started and that finishes
-   later, such as a wait for pictures, checks this before it changes the
-   screen, and does nothing if the child has gone elsewhere meanwhile.
+   still the one the child tapped on, showing the same thing. Work a tap
+   started and that finishes later, such as a wait for pictures, checks
+   this before it changes the screen, and does nothing if the child has
+   gone elsewhere, or changed what the screen shows, meanwhile.
 4. **No time-based delays as the fix.** A tap is never made safe by
    ignoring taps for a number of milliseconds. Such a wrapper may stay as
    a safety net behind the rule, never as what makes a tap safe. Timers

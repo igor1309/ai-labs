@@ -46,16 +46,16 @@ Feature: Home page: the featured card and the tiles
     And I am on the home page
     When I tap the large card twice quickly
     Then I see <destination>, opened once
-    And it counts as one start of <game>
+    And <starts> counted, as for its tile
 
     Examples:
-      | game          | destination                                    |
-      | COMPARE       | question "1/10", once its pictures have loaded |
-      | ALL DINOSAURS | the dinosaur list                              |
-      | CARE          | the care welcome screen                        |
-      | SORT          | a sorting round, once its pictures have loaded |
-      | FIND THE PAIR | the find-the-pair welcome screen               |
-      | SKELETONS     | the skeleton selection screen                  |
+      | game          | destination                                    | starts                        |
+      | COMPARE       | question "1/10", once its pictures have loaded | one start of COMPARE is       |
+      | ALL DINOSAURS | the dinosaur list                              | one start of ALL DINOSAURS is |
+      | CARE          | the care welcome screen                        | no start is                   |
+      | SORT          | a sorting round, once its pictures have loaded | one start of SORT is          |
+      | FIND THE PAIR | the find-the-pair welcome screen               | no start is                   |
+      | SKELETONS     | the skeleton selection screen                  | no start is                   |
 
 
   Scenario: The large card stays while the tiles scroll
