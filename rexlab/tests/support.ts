@@ -51,12 +51,16 @@ export type ManualPictures = Pick<AppProps, "loadPicture" | "startTimer"> & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  // Fires every timer of `ms` stopped before it fired, as one whose stop
+  // came too late.
+  deliverStopped(ms: number): void;
 };
 
 // Pictures that load and a timer that fires only when the test says.
 export function manualPictures(): ManualPictures {
   const loading: Array<{ url: string; done: () => void }> = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
+  const stopped: Array<{ ms: number; fire: () => void }> = [];
   const drop = <T>(list: T[], item: T) => list.splice(list.indexOf(item), 1);
   return {
     loadPicture: (url, done) => {
@@ -66,7 +70,9 @@ export function manualPictures(): ManualPictures {
       const timer = { ms, fire };
       timers.push(timer);
       return () => {
-        if (timers.includes(timer)) drop(timers, timer);
+        if (!timers.includes(timer)) return;
+        drop(timers, timer);
+        stopped.push(timer);
       };
     },
     loading: () => loading.map(({ url }) => url),
@@ -80,6 +86,12 @@ export function manualPictures(): ManualPictures {
     fire: (ms) => {
       for (const timer of timers.filter((timer) => timer.ms === ms)) {
         drop(timers, timer);
+        timer.fire();
+      }
+    },
+    deliverStopped: (ms) => {
+      for (const timer of stopped.filter((timer) => timer.ms === ms)) {
+        drop(stopped, timer);
         timer.fire();
       }
     }
@@ -119,6 +131,9 @@ export type ManualTimers = Pick<AppProps, "loadPicture" | "startTimer"> & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  // Fires every timer of `ms` stopped before it fired, as one whose stop
+  // came too late.
+  deliverStopped(ms: number): void;
   // Fires the running timers, and those they start, until none is left.
   settle(): void;
 };
@@ -132,6 +147,7 @@ export function manualTimers(): ManualTimers {
     startTimer: pictures.startTimer,
     timers: pictures.timers,
     fire: pictures.fire,
+    deliverStopped: pictures.deliverStopped,
     settle: () => {
       for (let ms = pictures.timers()[0]; ms !== undefined; ms = pictures.timers()[0]) pictures.fire(ms);
     }

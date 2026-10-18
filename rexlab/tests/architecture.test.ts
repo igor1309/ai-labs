@@ -98,6 +98,8 @@ const BEST_SCORE = "bestScore.ts";
 const WAITING = ["pictureWait.ts"];
 // Where screens are kept and their transitions started.
 const SCREEN_STATE = "screens.ts";
+// The timers of a visit, a board or a puzzle, stopped together as it ends.
+const OWNED_TIMERS = "ownedTimers.ts";
 
 describe("the import graph", () => {
   it("is read from the source", () => {
@@ -221,6 +223,11 @@ describe("the import graph", () => {
   it("keeps the screen state free of the rest of the app", () => {
     expect(GRAPH.get("App.tsx")).toContain(SCREEN_STATE);
     expect(edges((file) => file === SCREEN_STATE, () => true)).toEqual([]);
+  });
+
+  it("keeps the timers a game's occurrence owns free of the rest of the app", () => {
+    expect(["careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(OWNED_TIMERS))).toEqual([]);
+    expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
   });
 
   it("leaves the composition root to the composition root", () => {

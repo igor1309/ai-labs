@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { Language } from "./language/language.ts";
+import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
 import {
   dealBoard,
   finishBoard,
@@ -90,6 +91,9 @@ export function usePairsGame(
   // on the board as it is, not as last rendered. Null once the child
   // leaves it.
   const live = useRef<Board | null>(null);
+  // The miss and celebration timers of the board in play, all stopped as
+  // the child leaves it, and null from then on.
+  const boardTimers = useRef<OwnedTimers | null>(null);
   // A board being dealt while its pictures load: a second tap meanwhile
   // deals nothing more.
   const starting = useRef(false);
@@ -104,6 +108,8 @@ export function usePairsGame(
   const leave = () => {
     stay.current++;
     live.current = null;
+    boardTimers.current?.stopAll();
+    boardTimers.current = null;
     starting.current = false;
   };
 
@@ -122,6 +128,7 @@ export function usePairsGame(
         starting.current = false;
         lastBoard.current = board;
         live.current = board;
+        boardTimers.current = ownedTimers(startTimer);
         onStart();
         go({ kind: "board", board, finished: false });
       }
@@ -153,19 +160,20 @@ export function usePairsGame(
 
   const turnCard = (place: number) => {
     const from = live.current;
-    if (from === null) return;
+    const timers = boardTimers.current;
+    if (from === null || timers === null) return;
     const to = turn(from, place);
     if (to === from) return;
     const result = isFinished(to) ? record(to) : undefined;
     showBoard(from, to, result !== undefined);
     const timing = timings();
     if (isMiss(to)) {
-      startTimer(timing.miss, () => {
+      timers.start(timing.miss, () => {
         if (live.current === to) showBoard(to, turnBack(to));
       });
     }
     if (result !== undefined) {
-      startTimer(timing.finish, () => {
+      timers.start(timing.finish, () => {
         if (live.current !== to) return;
         live.current = null;
         go({ kind: "result", result });

@@ -23,6 +23,7 @@ import { CareResultScreen } from "./CareResultScreen.tsx";
 import { CareWelcomeScreen } from "./CareWelcomeScreen.tsx";
 import { FriendsScreen } from "./FriendsScreen.tsx";
 import type { Language } from "./language/language.ts";
+import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentCareResult, presentFriend, presentVisit } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -105,6 +106,9 @@ export function useCareGame(
   // timer, acts on the visit as it is, not as last rendered. Null once the
   // child leaves it.
   const live = useRef<Visit | null>(null);
+  // The reaction and departure timers of the visit in play, all stopped as
+  // the child leaves it, and null from then on.
+  const visitTimers = useRef<OwnedTimers | null>(null);
   // A visit being started while its visitor's picture loads: a second tap
   // meanwhile starts nothing more.
   const starting = useRef(false);
@@ -119,6 +123,8 @@ export function useCareGame(
   const leave = () => {
     stay.current++;
     live.current = null;
+    visitTimers.current?.stopAll();
+    visitTimers.current = null;
     starting.current = false;
   };
 
@@ -133,6 +139,7 @@ export function useCareGame(
       starting.current = false;
       const visit = startVisit(visitor);
       live.current = visit;
+      visitTimers.current = ownedTimers(startTimer);
       lastVisitor.current = visitor.id;
       onStart();
       go({ kind: "visit", visit, leaving: false });
@@ -171,18 +178,19 @@ export function useCareGame(
 
   const giveItem = (item: Item) => {
     const from = live.current;
-    if (from === null) return;
+    const timers = visitTimers.current;
+    if (from === null || timers === null) return;
     const given = give(from, item);
     if (given === from || given.reacting === null) return;
     const result = isFinished(given) ? record(given) : undefined;
     showVisit(from, given);
     const timing = timings();
-    startTimer(timing[given.reacting.reaction], () => {
+    timers.start(timing[given.reacting.reaction], () => {
       if (live.current !== given) return;
       const settled = settle(given);
       showVisit(given, settled, result !== undefined);
       if (result === undefined) return;
-      startTimer(timing.departure, () => {
+      timers.start(timing.departure, () => {
         if (live.current !== settled) return;
         live.current = null;
         go({ kind: "result", result });
