@@ -32,6 +32,10 @@ func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
 	s.told = append(s.told, step+" "+tool.Name+" "+tool.Input)
 }
 
+func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
+	s.told = append(s.told, fmt.Sprintf("%s stale %s recovering %t", step, stale.What, stale.Recovering))
+}
+
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
 }
@@ -85,8 +89,9 @@ func TestALineIsNotPrintedALongToolCallIsCutWherePrinted(t *testing.T) {
 	}
 }
 
-// A step's call gives each tool call its turn reports on to core/workflow's
-// report, in core/workflow's words, in order, and no other line.
+// A step's call gives each tool call its turns report and each stale turn
+// on to core/workflow's report, in core/workflow's words, in order, and no
+// other line, a tool's result among them.
 func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	t.Parallel()
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
@@ -94,21 +99,26 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	spy := &turnSpy{result: call.Result{Status: call.Completed}, reports: []call.Report{
-		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}}}
+		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Stale: &call.StaleTurn{What: "no event for 1m", Recovering: true}},
+		{Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}, {Stale: &call.StaleTurn{What: "no event for 1m"}}}}
 	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var reported []workflow.Tool
-	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, func(tool workflow.Tool) { reported = append(reported, tool) })
-	if want := []workflow.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}; !reflect.DeepEqual(reported, want) {
+	var reported []workflow.Report
+	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, func(r workflow.Report) { reported = append(reported, r) })
+	want := []workflow.Report{
+		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
+		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}}}
+	if !reflect.DeepEqual(reported, want) {
 		t.Errorf("reported %+v, want %+v", reported, want)
 	}
 }
 
 // Each event is printed as a line: "· ", the step's name, and what it
 // tells; a status with its class where it has one; a tool call's name, then
-// its input where it has one; a duration to the second from a second on,
+// its input where it has one; what went stale of a turn, then whether a
+// recovery turn follows; a duration to the second from a second on,
 // to the millisecond below; and a text that would break the line quoted.
 func TestEachEventIsPrintedAsALine(t *testing.T) {
 	t.Parallel()
@@ -121,6 +131,10 @@ func TestEachEventIsPrintedAsALine(t *testing.T) {
 		{"a tool call", func(p *progress) { p.Tool("a", workflow.Tool{Name: "Bash", Input: `{"command":"ls"}`}) }, "· a: Bash {\"command\":\"ls\"}\n"},
 		{"a tool call with no input", func(p *progress) { p.Tool("a", workflow.Tool{Name: "Glob"}) }, "· a: Glob\n"},
 		{"an input of two lines", func(p *progress) { p.Tool("a", workflow.Tool{Name: "command", Input: "a\nb"}) }, "· a: command \"a\\nb\"\n"},
+		{"stale, recovering", func(p *progress) { p.Stale("a", workflow.Stale{What: "no event for 1m", Recovering: true}) },
+			"· a: stale: no event for 1m; recovering\n"},
+		{"stale", func(p *progress) { p.Stale("a", workflow.Stale{What: `the tool command "Bash" ran over 1m`}) },
+			"· a: stale: the tool command \"Bash\" ran over 1m\n"},
 		{"completed", func(p *progress) {
 			p.Ended("a", workflow.Ended{Status: workflow.Completed, Duration: 3*time.Minute + 2*time.Second + 400*time.Millisecond})
 		}, "· a: ended completed in 3m2s\n"},

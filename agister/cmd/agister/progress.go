@@ -60,6 +60,16 @@ func short(text string) string {
 	return text[:end] + "…"
 }
 
+// Stale prints what went stale, and "; recovering" where a recovery turn
+// follows.
+func (p *progress) Stale(step string, stale workflow.Stale) {
+	what := "stale: " + inLine(stale.What)
+	if stale.Recovering {
+		what += "; recovering"
+	}
+	p.line(step, what)
+}
+
 func (p *progress) Ended(step string, ended workflow.Ended) {
 	how := string(ended.Status)
 	if ended.Class != "" {

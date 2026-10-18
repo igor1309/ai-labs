@@ -114,23 +114,27 @@ type Kind string
 const (
 	Started Kind = "started" // the step started, on its agent
 	Tool    Kind = "tool"    // the step called a tool
+	Stale   Kind = "stale"   // the step's turn went stale
 	Ended   Kind = "ended"   // the step ended
 )
 
 // Event is what a step did, at a time. Of the rest, each kind has its
 // own: a step started its agent; a tool call the tool's name and its
-// input; a step ended its status, its class, "" for none, and how long it
-// took.
+// input; a stale turn what went stale and whether a recovery turn
+// follows; a step ended its status, its class, "" for none, and how long
+// it took.
 type Event struct {
-	At       time.Time
-	Step     string
-	Kind     Kind
-	Agent    string
-	Name     string
-	Input    string
-	Status   string
-	Class    string
-	Duration time.Duration
+	At         time.Time
+	Step       string
+	Kind       Kind
+	Agent      string
+	Name       string
+	Input      string
+	What       string
+	Recovering bool
+	Status     string
+	Class      string
+	Duration   time.Duration
 }
 
 // MarshalJSON writes e as events.jsonl holds it: the fields of its kind
@@ -152,6 +156,14 @@ func (e Event) MarshalJSON() ([]byte, error) {
 			Name  string    `json:"name"`
 			Input string    `json:"input"`
 		}{e.At, e.Step, e.Kind, e.Name, e.Input})
+	case Stale:
+		return json.Marshal(struct {
+			At         time.Time `json:"at"`
+			Step       string    `json:"step"`
+			Kind       Kind      `json:"kind"`
+			What       string    `json:"what"`
+			Recovering bool      `json:"recovering"`
+		}{e.At, e.Step, e.Kind, e.What, e.Recovering})
 	case Ended:
 		var class *string
 		if e.Class != "" {
