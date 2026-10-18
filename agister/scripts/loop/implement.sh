@@ -13,7 +13,7 @@ n=$("$bin/next-round.sh" "$dir" implement)
 out="$dir/implement-$n"
 echo "round $n at $(git -C "$WT" rev-parse --short HEAD), brief $1"
 status=0
-(cd "$WT" && AGISTER_HOME="$HOME/.agister-next" agister-next run --process implement \
+(cd "$WT" && agister run --process implement \
   --agent "${2:-claude-opus}" --param brief="$1" --dir "$TEST_DIR") > "$out.json" 2> "$out.log" || status=$?
 echo "result: $out.json"
 exit "$status"

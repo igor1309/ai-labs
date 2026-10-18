@@ -5,6 +5,7 @@ import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
+import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -373,6 +374,13 @@ export const unreadVersion = () => {};
 export function lightDevice() {
   const storage = memoryStorage();
   return { appearance: manualAppearance("light"), themeStore: localTheme(() => storage) };
+}
+
+// The age level for tests that are not about it: none picked yet, and
+// saving works.
+export function unsetAgeLevel(): Pick<AppProps, "ageLevelStore"> {
+  const storage = memoryStorage();
+  return { ageLevelStore: localAgeLevel(() => storage) };
 }
 
 // What the question screen shows of `question`, asked first in a round of

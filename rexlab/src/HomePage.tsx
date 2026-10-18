@@ -1,12 +1,16 @@
 import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { ParentMenu } from "./ParentMenu.tsx";
+import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { usePointerState } from "./usePointerState.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
+
+// Each age level's picture, on its choice and on the menu's button.
+export const AGE_LEVEL_PICTURES: Record<AgeLevel, string> = { hatchling: "🥚", explorer: "🦖", paleontologist: "🦴" };
 
 // The app's name, the same in every language.
 const BRAND = "RexLab";
@@ -26,6 +30,10 @@ export type HomePageProps = {
   onLanguage: (language: Language) => void;
   theme: ThemeChoice;
   onTheme: (theme: ThemeChoice) => void;
+  ageLevel: AgeLevel;
+  onAgeLevel: (level: AgeLevel) => void;
+  // Times each menu's way out.
+  startTimer: ParentMenuProps<string>["startTimer"];
   // The game the large card features today, beside its own tile.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
@@ -60,13 +68,16 @@ export type HomePageProps = {
   onMuseum: () => void;
 };
 
-type Menu = "language" | "theme";
+type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
   language,
   onLanguage,
   theme,
   onTheme,
+  ageLevel,
+  onAgeLevel,
+  startTimer,
   featured,
   faceOff,
   best,
@@ -97,7 +108,8 @@ export function HomePage({
   const menu = (name: Menu) => ({
     open: openMenu === name,
     onOpen: () => setOpenMenu(name),
-    onClose: () => setOpenMenu(undefined)
+    onClose: () => setOpenMenu(undefined),
+    startTimer
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
   // Each game's own parts, which its tile and the large card both show,
@@ -173,7 +185,7 @@ export function HomePage({
           <Landmark size={24} aria-hidden="true" />
           {text.museum}
         </button>
-        {/* Both menus are for parents: small, in the soft ink and out of the
+        {/* The menus are for parents: small, in the soft ink and out of the
             way in the top-right corner, and only here, never during a round. */}
         <div className="parent-menus">
           <ParentMenu
@@ -208,6 +220,19 @@ export function HomePage({
             chosen={theme}
             onChoose={onTheme}
             {...menu("theme")}
+          />
+          <ParentMenu
+            label={text.ageLevelMenu}
+            button={<AgeLevelPicture level={ageLevel} />}
+            choices={AGE_LEVELS.map((level) => ({
+              value: level,
+              name: text.ageLevels[level].name,
+              note: text.ageLevels[level].age,
+              symbol: <AgeLevelPicture level={level} />
+            }))}
+            chosen={ageLevel}
+            onChoose={onAgeLevel}
+            {...menu("ageLevel")}
           />
         </div>
       </div>
@@ -315,6 +340,15 @@ export function HomePage({
         </div>
       </div>
     </main>
+  );
+}
+
+// An age level's picture, beside its name or standing for it.
+function AgeLevelPicture({ level }: { level: AgeLevel }) {
+  return (
+    <span className="parent-menu-picture" aria-hidden="true">
+      {AGE_LEVEL_PICTURES[level]}
+    </span>
   );
 }
 

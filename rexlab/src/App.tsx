@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
@@ -50,6 +51,12 @@ export type ThemeStore = {
   save(choice: ThemeChoice): void;
 };
 
+export type AgeLevelStore = {
+  // The age level a parent picked, or undefined when none can be read.
+  load(): AgeLevelSetting | undefined;
+  save(setting: AgeLevelSetting): void;
+};
+
 export type StartCounter = {
   // Counts one more start of `game`, as it begins.
   countStart(game: HomeGame): void;
@@ -93,6 +100,7 @@ export type AppProps = CareGameProps &
     nameVersion: (label: string) => void;
     appearance: Appearance;
     themeStore: ThemeStore;
+    ageLevelStore: AgeLevelStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
     // The device's clock: the time now.
@@ -183,6 +191,7 @@ export function App({
   nameVersion,
   appearance,
   themeStore,
+  ageLevelStore,
   loadPicture,
   startTimer,
   now,
@@ -237,6 +246,17 @@ export function App({
   const chooseTheme = (chosen: ThemeChoice) => {
     setThemeChoice(chosen);
     themeStore.save(chosen);
+  };
+
+  // The age level a parent picked, held for the visit even when it cannot
+  // be saved.
+  const [ageLevel, setAgeLevel] = useState<AgeLevelSetting>(() => ageLevelStore.load() ?? DEFAULT_AGE_LEVEL);
+
+  const chooseAgeLevel = (level: AgeLevel) => {
+    const picked = pickAgeLevel(ageLevel, level, random);
+    if (picked === ageLevel) return;
+    setAgeLevel(picked);
+    ageLevelStore.save(picked);
   };
 
   // The pictures of the question `play` is on, once they are ready or the
@@ -522,6 +542,9 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            ageLevel={ageLevel.level}
+            onAgeLevel={chooseAgeLevel}
+            startTimer={startTimer}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}

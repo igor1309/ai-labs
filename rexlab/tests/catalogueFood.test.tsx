@@ -28,7 +28,8 @@ import {
   sameColour,
   seededRandom,
   unreadVersion,
-  words
+  words,
+  unsetAgeLevel
 } from "./support.ts";
 
 function openApp({ language = "en", theme = "light", found = [] }: { language?: Language; theme?: Theme; found?: string[] } = {}) {
@@ -47,6 +48,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => memoryStorage())}
+      {...unsetAgeLevel()}
       {...loadedPictures()}
       {...emptyCare()}
       {...emptySorting()}

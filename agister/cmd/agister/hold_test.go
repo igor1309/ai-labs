@@ -29,12 +29,12 @@ func lockOf(folder, resolved string) string {
 	return folder + "/" + hex.EncodeToString(sum[:]) + ".lock"
 }
 
-// hold.feature, "The lock file is the archive's, whatever home is". A
+// hold.feature, "The lock file is the user's, whatever home is". A
 // writer, "say" declaring read-write access, holds alone; home's folder is
 // "/h", and the settings are read there.
 //
 // Contract test: the files home holds, as Agister ships them.
-func TestTheLockFileIsTheArchivesWhateverHomeIs(t *testing.T) {
+func TestTheLockFileIsTheUsersWhateverHomeIs(t *testing.T) {
 	t.Parallel()
 	settings := map[string]string{}
 	for name, content := range runSettings(t, map[string]string{

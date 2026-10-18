@@ -819,4 +819,77 @@ Decisions, each with its reason:
   record is written whole, so it reads as the record then; an event
   line may be cut. Best effort.
 - `scripts/agister-gate` stays on the archive: moving it is its own
-  slice, which reads this record.
+  slice, which reads this record. (Since "Retiring the archive": the
+  gate is deleted; `runs export` is a person's.)
+
+## Retiring the archive
+
+This Agister becomes the installed `agister`, its home `~/.agister`;
+the archive's binary and home are set aside. Its users move:
+`rexlab/AGENTS.md` to this Agister's commands, and
+`scripts/agister-gate` is removed, the loop's scripts doing its work.
+
+**`scripts/agister-gate`** is deleted, with what names it: the step
+`Gate` of `agister-core`, its path in `ci.yml`'s `agister` filter, its
+row in `.github/workflows/README.md`, and its entry in
+`scripts/tests/ci-workflow-paths.test.js`.
+
+**`rexlab/AGENTS.md`** names this Agister's forms,
+`agister/home/brief-forms`, and its commands: `agister run --process
+implement --agent claude-opus --dir rexlab --param brief=<step>`, and
+`agister run code_review --dir rexlab --param goal=<goal>`, with no
+`--json`; it reads the result's `.status`, `.class` and `.reason`, an
+implementation's `.output.output.checks`, `.summary`, `.notes` and
+`.open`, a review's `.output.judgement`, and shows the workflow with
+`agister inspect workflow code_review --dir rexlab`.
+
+**`scripts/loop/install.sh`** builds the binary to
+`~/.local/bin/agister` and writes home's settings, as shipped, into
+`~/.agister`: each folder and file `agister/home` has replaced whole,
+what it replaces first moved under `~/.agister/backups/<UTC time>/`;
+what home has besides, `runs` and `locks` among it, untouched. It
+refuses, changing nothing, while `~/.agister/briefs`, the archive's,
+is there. It stands in for `settings/home` (ADR-008), not yet built.
+A Go test runs it with `HOME` a temporary folder: refused with
+`briefs` there; settings replaced, the old kept under `backups`, and
+`runs` and `locks` kept. The loop's scripts run `agister`, with no
+`AGISTER_HOME`; this branch's own rounds run trunk's scripts, on
+`agister-next`, until the merge.
+
+**The hold's lock** stays under `~/.agister/locks`, whatever
+`AGISTER_HOME` says: runs on any home share the user's worktrees.
+`hold.go`'s comments and `hold.feature`'s scenario say so, no longer
+naming the archive.
+
+**Once, after the merge**, before the first install: `~/.agister` is
+moved to `~/.agister-archive`; `~/.agister-next`'s runs, where any,
+to the new `~/.agister/runs` after the first install;
+`~/.local/bin/agister`, `~/.local/bin/agister-next` and
+`~/.agister-next` are removed. The
+archive is rebuilt from `agister/archive` where ever needed, run with
+`AGISTER_HOME=~/.agister-archive`.
+
+`agister/README.md`, `agister/AGENTS.md` and `docs/process.md` say
+so, keep "edit `agister/home`, not home's copy", and no longer name
+`agister-next` or the archive's home.
+
+Decisions, each with its reason:
+
+- The gate is deleted, not moved: the loop's scripts implement and
+  review on this Agister; its advisor step and unattended fix rounds
+  are given up. `runs export` stays, for a person to copy a run.
+- rexlab's implement loses the archive's verification, its tests run
+  with up to 3 repairs: rexlab's agent runs `rexlab/scripts/test.sh`
+  itself, as its AGENTS.md already says. The `.agister/verifies`
+  files stay, unread, the archive's settings.
+- The archive's home is moved aside, not installed over: its 4,000
+  runs share this Agister's id and file names in another schema, and
+  a continuation reads every run kept.
+- The archive's binary is removed, not renamed: on the path, run
+  without `AGISTER_HOME`, it would read this home.
+- install.sh, not `settings/home`, writes home's settings until that
+  is built (ADR-008, rule 1); its backups keep each write undoable
+  (rule 2), by moving them back.
+- A folder or file `agister/home` drops stays in `~/.agister` until
+  removed by hand: a rename is rare.
+- `agister/archive` stays, as reference, unbuilt.

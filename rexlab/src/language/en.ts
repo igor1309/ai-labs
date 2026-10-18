@@ -7,6 +7,12 @@ export const en: Texts = {
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },
+  ageLevelMenu: "Age level",
+  ageLevels: {
+    hatchling: { name: "HATCHLING", age: "about 4" },
+    explorer: { name: "EXPLORER", age: "about 5" },
+    paleontologist: { name: "PALEONTOLOGIST", age: "6 and up" }
+  },
   versionLabel: "Version",
   turnSideways: "TURN THE IPAD SIDEWAYS",
   home: "HOME",
