@@ -176,3 +176,49 @@ describe("the pictures of the app", () => {
     expect([pictures.loading(), container.innerHTML]).toEqual([[TRICERATOPS, T_REX], ""]);
   });
 });
+
+// A timer as a clock keeps it: each fires once its own length has passed
+// since it started, however often a place renders meanwhile.
+function elapsedTimer() {
+  let now = 0;
+  const timers: Array<{ at: number; fire: () => void }> = [];
+  return {
+    startTimer: (ms: number, fire: () => void) => {
+      const timer = { at: now + ms, fire };
+      timers.push(timer);
+      return () => {
+        if (timers.includes(timer)) timers.splice(timers.indexOf(timer), 1);
+      };
+    },
+    pass: (ms: number) => {
+      now += ms;
+      for (const timer of timers.filter(({ at }) => at <= now)) {
+        timers.splice(timers.indexOf(timer), 1);
+        timer.fire();
+      }
+    }
+  };
+}
+
+describe("a place shown again with the same picture while it loads", () => {
+  it.each([[[7000]], [[2000, 2000, 2000]], [[1, 6000, 1998]]])("keeps its limit from when it first showed it, shown again after %j ms", (gaps) => {
+    const pictures = manualPictures();
+    const clock = elapsedTimer();
+    const store = pictureStore(pictures.loadPicture);
+    const place = () => (
+      <PicturesProvider store={store} startTimer={clock.startTimer}>
+        <Picture className="dinosaur-picture" src={T_REX} alt="Tyrannosaurus" width={800} height={600} />
+      </PicturesProvider>
+    );
+    const { rerender } = render(place());
+    for (const gap of gaps) {
+      act(() => clock.pass(gap));
+      rerender(place());
+    }
+
+    act(() => clock.pass(PICTURE_LIMIT - 1 - gaps.reduce((sum, gap) => sum + gap, 0)));
+    expect(look()[0]).toBe("loading");
+    act(() => clock.pass(1));
+    expect(look()[0]).toBe("failed");
+  });
+});
