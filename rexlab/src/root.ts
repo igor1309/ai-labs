@@ -15,6 +15,7 @@ import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
 import { PIECES } from "./skeletons/index.ts";
+import { tapFilter, type TapInput } from "./tapFilter.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
 // hash. Never inlined, so a picture is cached as a file of its own.
@@ -43,6 +44,37 @@ export type Browser = {
   clearTimeout(id: number): void;
   Date: { now(): number };
 };
+
+// Each pointer event the double-tap filter reads, and the step of a touch
+// it is.
+const TOUCH_STEPS = { pointerdown: "press", pointermove: "move", pointerup: "release", pointercancel: "cancel" } as const;
+
+// Puts the double-tap filter before every handler of the app: it listens
+// on `target`, the window in a browser, as events go down, so what it
+// swallows reaches no handler. Each input is timed by its event's own
+// time, never by when it is handled. A click with no detail was made by a
+// key or assistive technology. Returns how to take the filter away.
+export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()): () => void {
+  const listen = (type: string, input: (event: Event) => TapInput) => {
+    const listener = (event: Event) => {
+      if (filter(input(event))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    target.addEventListener(type, listener, { capture: true });
+    return () => target.removeEventListener(type, listener, { capture: true });
+  };
+  const stops = [
+    ...Object.entries(TOUCH_STEPS).map(([type, kind]) =>
+      listen(type, (event) => {
+        const { pointerId, clientX, clientY, timeStamp } = event as PointerEvent;
+        return { kind, pointer: pointerId, x: clientX, y: clientY, time: timeStamp };
+      })
+    ),
+    listen("click", (event) => ({ kind: "tap", byKey: (event as MouseEvent).detail === 0 }))
+  ];
+  return () => stops.forEach((stop) => stop());
+}
 
 // Names index.html's version footer, which stands outside the app.
 export function versionFooter(document: Browser["document"]): (label: string) => void {

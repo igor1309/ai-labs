@@ -142,10 +142,6 @@ const HERO = "tyrannosaurus";
 // broken one does not keep the child waiting.
 const PICTURE_WAIT = 1000;
 
-// How long after MUSEUM opens the museum taps do nothing, in
-// milliseconds: longer than the gap between a child's two quick taps.
-export const MUSEUM_SETTLE = 500;
-
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
 type Screen =
@@ -370,36 +366,10 @@ export function App({
 
   // The museum opens from the home page straight into the skeleton game,
   // as a screen change and not a start: only building there starts one.
-  // It opens at once, so the rest of a double tap would land on the
-  // museum's own buttons: taps do nothing until it has settled.
-  const [museumSettling, setMuseumSettling] = useState<boolean>(false);
-
   const openMuseum = () => {
     leaveHome();
-    go(
-      { kind: "skeletons" },
-      {
-        also: () => {
-          skeletonGame.openMuseum();
-          setMuseumSettling(true);
-        }
-      }
-    );
+    go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
-
-  useEffect(() => {
-    if (!museumSettling) return;
-    const swallow = (event: Event) => {
-      event.stopPropagation();
-      event.preventDefault();
-    };
-    document.addEventListener("click", swallow, true);
-    const stop = startTimer(MUSEUM_SETTLE, () => setMuseumSettling(false));
-    return () => {
-      stop();
-      document.removeEventListener("click", swallow, true);
-    };
-  }, [museumSettling, startTimer]);
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -424,23 +394,18 @@ export function App({
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
 
-  // The catalogue being opened from home: the screen changes only as its
-  // transition commits, so a second tap on ALL DINOSAURS meanwhile, on its
-  // tile or the large card, counts no second start. It ends as the home
-  // page shows again.
-  const openingCatalogue = useRef(false);
-  useEffect(() => {
-    if (screen.kind === "home") openingCatalogue.current = false;
-  }, [screen.kind]);
-
   // The list opened from home is the catalogue's start; a food chosen or a
-  // dinosaur's page left is not.
+  // dinosaur's page left is not. It is counted with the change, so a
+  // second ALL DINOSAURS, on its tile or the large card, before the
+  // catalogue shows finds it already asked for and counts nothing.
   const openCatalogue = () => {
     leaveHome();
-    if (openingCatalogue.current) return;
-    openingCatalogue.current = true;
-    startCounter.countStart("catalogue");
-    go({ kind: "catalogue", returning: undefined }, { also: () => setFood("all") });
+    go((current) => (current.kind === "home" ? { kind: "catalogue", returning: undefined } : current), {
+      also: () => {
+        startCounter.countStart("catalogue");
+        setFood("all");
+      }
+    });
   };
 
   // A food newly chosen shows its dinosaurs from the top, rising in.

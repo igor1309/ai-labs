@@ -255,10 +255,17 @@ const TAP_SAFETY = "docs/tap-safety.md";
 // The modules that keep screens, each with useScreens.
 const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
 
+// The module that alone reads the browser's clock and timers.
+const ROOT = "root.ts";
+
+// Each way of reading the clock or starting a timer.
+const CLOCKS = /\b(setTimeout|setInterval|Date\.now\(\)|performance\.now\(\)|new Date\(\s*\)|timeStamp)/g;
+
 // Each break, in the modules under `root`, of the Forbidden rules of
-// docs/tap-safety.md that LAB-298 brought: a transition started outside
-// the screen state, and state kept in a module that keeps screens without
-// its type written or with a screen's.
+// docs/tap-safety.md that LAB-298 and LAB-303 brought: a transition
+// started outside the screen state, state kept in a module that keeps
+// screens without its type written or with a screen's, and the clock or
+// a timer read outside the composition root.
 function tapSafetyBreaks(root: string): string[] {
   const files = readdirSync(root, { recursive: true, encoding: "utf8" })
     .filter((file) => /\.tsx?$/.test(file))
@@ -276,7 +283,8 @@ function tapSafetyBreaks(root: string): string[] {
           return [];
         })
       : [];
-    return [...transitions, ...states];
+    const clocks = file === ROOT ? [] : [...source.matchAll(CLOCKS)].map(([name]) => `${file}: ${name} outside src/${ROOT}, see ${TAP_SAFETY}`);
+    return [...transitions, ...states, ...clocks];
   });
 }
 
@@ -304,13 +312,21 @@ describe("tap safety in the source", () => {
     ["sortingGame.tsx", "const [board, send] = useReducer(play, first);", `sortingGame.tsx: useReducer without its type written, see ${TAP_SAFETY}`],
     ["careGame.tsx", 'const [screen, setScreen] = useState<CareScreen>({ kind: "welcome" });', `careGame.tsx: useState<CareScreen> keeps a screen outside useScreens, see ${TAP_SAFETY}`],
     ["pairsGame.tsx", "const [screen, setScreen] = useState<PairsScreen | undefined>();", `pairsGame.tsx: useState<PairsScreen | undefined> keeps a screen outside useScreens, see ${TAP_SAFETY}`],
-    ["skeletonGame.tsx", "const [screen, send] = useReducer<Reducer<SkeletonScreen, Move>>(move, first);", `skeletonGame.tsx: useReducer<Reducer<SkeletonScreen, Move>> keeps a screen outside useScreens, see ${TAP_SAFETY}`]
+    ["skeletonGame.tsx", "const [screen, send] = useReducer<Reducer<SkeletonScreen, Move>>(move, first);", `skeletonGame.tsx: useReducer<Reducer<SkeletonScreen, Move>> keeps a screen outside useScreens, see ${TAP_SAFETY}`],
+    ["App.tsx", "const id = setTimeout(settle, 500);", `App.tsx: setTimeout outside src/root.ts, see ${TAP_SAFETY}`],
+    ["pairsGame.tsx", "window.setInterval(tick, 100);", `pairsGame.tsx: setInterval outside src/root.ts, see ${TAP_SAFETY}`],
+    ["SortScreen.tsx", "const pressedAt = Date.now();", `SortScreen.tsx: Date.now() outside src/root.ts, see ${TAP_SAFETY}`],
+    ["tapFilter.ts", "const at = performance.now();", `tapFilter.ts: performance.now() outside src/root.ts, see ${TAP_SAFETY}`],
+    ["HomePage.tsx", "const today = new Date();", `HomePage.tsx: new Date() outside src/root.ts, see ${TAP_SAFETY}`],
+    ["skeletons/drag.ts", "const time = event.timeStamp;", `skeletons/drag.ts: timeStamp outside src/root.ts, see ${TAP_SAFETY}`]
   ])("fails %s holding `%s`", (file, source, broken) => {
     expect(tapSafetyBreaks(sourceTree({ [file]: source }))).toEqual([broken]);
   });
 
-  it("allows transitions in the screen state, typed state in the modules that keep screens, and any state elsewhere", () => {
+  it("allows transitions in the screen state, typed state in the modules that keep screens, any state elsewhere, the clock and timers in the composition root, and a date made from a time", () => {
     const root = sourceTree({
+      "root.ts": "setTimeout(fire, ms);\nconst now = () => new Date(Date.now());\nconst time = event.timeStamp;",
+      "featured.ts": "const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());",
       "screens.ts": 'import { addTransitionType, startTransition } from "react";\nstartTransition(() => addTransitionType(type));',
       "App.tsx": "const [settling, setSettling] = useState<boolean>(false);\nconst [play, setPlay] = useState<Play>();",
       "HomePage.tsx": "const [open, setOpen] = useState(false);"
