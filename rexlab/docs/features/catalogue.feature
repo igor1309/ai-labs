@@ -46,7 +46,7 @@ Feature: The dinosaur catalogue
     Given I am on the list of every dinosaur
     And the picture of Velociraptor is still loading
     When I tap the card of Velociraptor
-    Then I see the page of Velociraptor at once, its picture shimmering (pictures.feature)
+    Then I see the page of Velociraptor at once, its picture shimmering
     And the pictures of Triceratops and Brachiosaurus start loading
 
   Scenario: Next and previous go round the whole list

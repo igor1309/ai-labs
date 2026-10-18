@@ -74,7 +74,8 @@ Feature: Compare dinosaurs quiz: answering a question
     Given I have answered question 3
     And the pictures of question 4 are still loading
     When I tap "NEXT"
-    Then I see the progress "4/10" at once, its pictures shimmering (pictures.feature)
+    Then I see the progress "4/10" at once, its pictures shimmering
+    And the pictures of question 5 start loading
 
   Scenario: A quick double tap on Next skips nothing
     Given I have answered question 3

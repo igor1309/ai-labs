@@ -33,12 +33,18 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Given I am on the home page
     And the pictures of question 1 are still loading
     When I tap the "COMPARE" tile
-    Then I see the progress "1/10" at once, its pictures shimmering (pictures.feature)
+    Then I see the progress "1/10" at once, its pictures shimmering
 
   Scenario: A quick double tap on the tile starts one round
     Given I am on the home page
     When I tap the "COMPARE" tile twice quickly
     Then one round starts, at "1/10"
+
+  Scenario: A round starts once for two activations from home
+    Given the large card features COMPARE
+    When I tap the "COMPARE" tile and then the large card, more than 100 CSS pixels away, before the screen has changed
+    Then one round starts, at "1/10"
+    And COMPARE counts one more start
 
   Scenario: Portrait asks to turn the iPad
     Given I am on question 3 of a round

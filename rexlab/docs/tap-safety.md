@@ -8,10 +8,10 @@ tap could have landed on a button of the museum.
 
 It is built from parts that do not know of each other, each landing in its
 own issue, in this order: LAB-298, LAB-303, then the pictures in
-LAB-304, LAB-306, LAB-307 and LAB-308. Until the double-tap
-filter lands, today's picture waits and one-off guards keep double taps
-safe, and they stay. LAB-303 removes the two that only guard double
-taps, `MUSEUM_SETTLE` and `openingCatalogue`; the catalogue then counts
+LAB-304, LAB-306, LAB-307 and LAB-308. Before the double-tap filter
+landed, the picture waits and one-off guards kept double taps safe.
+LAB-303 removed the two that only guard double
+taps, `MUSEUM_SETTLE` and `openingCatalogue`; the catalogue now counts
 its start with the screen change, as keys and far taps pass the filter.
 A leaving parent menu still catches taps while it animates out. The
 picture issues remove the waits and their guards, each for its own
@@ -42,7 +42,8 @@ Gherkin of its own behaviour; LAB-298 changes none.
    fades it in once decoded, so no screen waits for its pictures before
    it changes (`docs/features/pictures.feature`). LAB-304 builds it and
    moves the catalogue, the compare game and the home page onto it;
-   LAB-306 care and find the pair; LAB-307 sorting; LAB-308 skeletons.
+   LAB-306 moves care and find the pair; LAB-307 sorting; LAB-308
+   skeletons.
    Each removes its screens' waits and the guards that existed only for
    them, and specifies its own loading and failure behaviour.
 
@@ -69,8 +70,9 @@ item but the last.
 - `setTimeout`, `setInterval`, `Date.now()`, `performance.now()`, an
   argless `new Date()` or an event's `timeStamp` outside `src/root.ts`
   (LAB-303).
-- Calling `waitForPictures`, or taking a `LoadPicture`, outside
-  `<Picture>` and `src/root.ts` (LAB-308, once the last wait is gone).
+- `waitForPictures` at all, or a `LoadPicture` taken anywhere but by
+  `pictureStore` and `src/root.ts` (LAB-308, once the last wait is
+  gone).
 - A new guard against double taps on a single button, once LAB-303 has
   landed; the guards of the picture waits go with the picture issues. No search
   finds it; code review does.

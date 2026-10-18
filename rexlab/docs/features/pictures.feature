@@ -3,16 +3,20 @@ Feature: A screen never waits for its pictures
   (docs/tap-safety.md, part 5). While a picture loads, its place keeps
   the picture's own size and shimmers: a slow sweep in the colours of
   the theme shown. Once the picture has loaded and decoded, it fades in
-  over 200 ms. A picture already loaded in this visit shows at once.
+  over the --motion-picture token, 200 ms. A picture already loaded
+  since the app was opened shows at once.
 
-  A picture that fails, or is still loading after 8 seconds, shows the
-  failure look: its place keeps its size, in its card's own colour, and
-  the card or tile around it still shows its name. A picture that loads
-  after that still fades in. A picture with a name keeps it for screen
-  readers, loading, failed or shown.
+  A picture that fails, or is still loading 8 seconds after its place
+  first showed it, shows the failure look: its place keeps its size, in
+  the colour of what holds it, with a footprints symbol at its centre,
+  and a card or tile around it still shows its name. A picture that
+  loads after that still fades in. A picture that failed is loaded again
+  when a screen shown later asks for it. A picture with a name keeps it
+  for screen readers, loading, failed or shown.
 
-  This feature covers the catalogue, the compare game and the home page;
-  each other game's features bring their own when its pictures move.
+  It covers every picture of the catalogue, the compare game, the home
+  page and a round's result, which sorting shares; each other game's
+  features bring their own when its pictures move.
 
   Background:
     Given an iPad in landscape
@@ -33,18 +37,31 @@ Feature: A screen never waits for its pictures
       | the compare result's dinosaur  | the result of a compare round   |
       | the ALL DINOSAURS tile         | the home page                   |
 
-  Scenario: A picture that fails shows the failure look
-    Given I am on question 1 of a compare round, its pictures loading
-    When a picture of question 1 fails to load
-    Then its place stops shimmering and shows its card's own colour, at the picture's size
-    And the card still shows its dinosaur's name and can be tapped
+  Scenario Outline: A picture that fails shows the failure look
+    Given the picture of <place> fails to load
+    When I open <screen>
+    Then its place shows a footprints symbol on <colour>, at the picture's size
+    And every control of the screen still works
+
+    Examples:
+      | place                         | screen                        | colour              |
+      | a card of question 1          | question 1 of a compare round | the card's colour   |
+      | Velociraptor's page           | the page of Velociraptor      | the page's colour   |
+      | the compare result's dinosaur | the result of a compare round | the screen's colour |
 
   Scenario: A picture still loading after 8 seconds shows the failure look, and fades in if it loads after
     Given I am on question 1 of a compare round, its pictures loading
     When 8 seconds pass
     Then each picture's place shows the failure look
+    And each card still shows its dinosaur's name and can be tapped
     When a picture of question 1 loads
     Then it fades in over 200 ms
+
+  Scenario: A picture that failed is loaded again on a later screen
+    Given the picture of Velociraptor failed to load on its catalogue card
+    When I tap the card of Velociraptor
+    Then the picture of Velociraptor starts loading again
+    And its page's picture shimmers until it loads, then fades in
 
   Scenario: A picture already loaded shows at once
     Given the list of every dinosaur shows Velociraptor's picture
@@ -52,31 +69,25 @@ Feature: A screen never waits for its pictures
     Then the page of Velociraptor shows its picture at once, without a shimmer
     And the card's picture grows into the page's picture
 
-  Scenario: A place whose picture changes shows the new one's shimmer
-    Given I am on the page of Tyrannosaurus, its picture shown
+  Scenario Outline: A place whose picture changes shows only the new one
+    Given I am on the page of Tyrannosaurus, its picture <before>
     And the picture of Triceratops is still loading
     When I tap the → button
     Then the page of Triceratops shows its picture's shimmer, not Tyrannosaurus's picture
-    And if Tyrannosaurus's picture is loaded again meanwhile, nothing changes
+    When Tyrannosaurus's picture <after>
+    Then the page of Triceratops still shows its picture's shimmer
 
-  Scenario: The next pictures load ahead
-    Given I am on the page of Velociraptor
-    Then the pictures of Triceratops and Brachiosaurus have started loading
-    Given I am on question 3 of a compare round
-    Then the pictures of question 4 have started loading
-
-  Scenario: A round starts once for two activations from home
-    Given the large card features COMPARE
-    When I tap the "COMPARE" tile and then the large card, more than 100 CSS pixels away, before the question shows
-    Then one round starts, at "1/10"
-    And COMPARE counts one more start
+    Examples:
+      | before        | after                      |
+      | shown         | is asked for again         |
+      | still loading | finishes loading           |
 
   Scenario: Reduced motion
     Given the iPad asks for reduced motion
     And the picture of Velociraptor's page is still loading
     When I open the page of Velociraptor
-    Then its picture's place is a still placeholder in the theme's colours
-    And when the picture has loaded it appears at once
+    Then its picture's place stands still in the first colour of its sweep
+    And when the picture has loaded it fades in over 200 ms
 
   Scenario Outline: The shimmer in each theme
     Given the <theme> theme
