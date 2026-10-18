@@ -47,6 +47,12 @@ Feature: Skeleton assembly: the museum and rebuilding
     And it is counted as one puzzle started
     And its star and stand stay earned exactly once
 
+  Scenario: Two stands tapped at the same moment start one puzzle
+    Given Tyrannosaurus is displayed on its earned stand and Stegosaurus's stand is empty
+    When I tap Tyrannosaurus's "REBUILD" and Stegosaurus's "BUILD" at the same moment
+    Then one fresh Tyrannosaurus puzzle starts at once, counted as one puzzle started
+    And only Tyrannosaurus's stand changes, as a stand awaiting rebuilding
+
   Scenario: A stand awaiting rebuilding keeps its earned identity
     Given I have started rebuilding Triceratops but have not finished it
     When I open the museum

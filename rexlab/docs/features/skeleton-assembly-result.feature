@@ -47,19 +47,31 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
   Scenario Outline: The result waits for neither of its pictures
     Given a dinosaur's skeleton picture <skeleton> and its body picture <body>
     When I finish its skeleton
-    Then the result appears when its reveal ends, waiting for no picture
+    Then the result appears once the complete skeleton has held, waiting for no picture
     And I see its name, fact and reward, and can open the museum or build another dinosaur
     And the skeleton's place shows <shows>, as pictures.feature has it
     And the body picture adds no shimmer and no failure look of its own
     And <then>
-    And a body picture that loads late fades in as the reveal does, from when it loads, twice the screen motion after one screen motion, shorter with reduced motion
 
     Examples:
-      | skeleton         | body             | shows                    | then                                                                                  |
-      | has loaded       | cannot load      | the whole skeleton       | the skeleton stays whole                                                              |
-      | has loaded       | is still loading | the whole skeleton       | once the body picture loads, it fades in over the skeleton as the skeleton fades back, as in the reveal |
-      | is still loading | is still loading | a shimmer at its size    | once the skeleton picture loads, it fades in whole                                    |
-      | cannot load      | cannot load      | the failure look         | the failure look stays, the reward still shown                                        |
+      | skeleton         | body             | shows                                           | then                                                                         |
+      | has loaded       | cannot load      | the whole skeleton                              | it stays whole                                                               |
+      | has loaded       | is still loading | the whole skeleton                              | once the body loads, it fades in over the skeleton as the skeleton fades back |
+      | is still loading | has loaded       | its shimmer, faded back under the body          | once the skeleton picture loads, it fades in, faded back under the body      |
+      | is still loading | is still loading | its shimmer                                     | each picture, once loaded, shows as in the rows above                        |
+      | cannot load      | has loaded       | the failure look, faded back under the body     | it stays so                                                                  |
+      | cannot load      | cannot load      | the failure look                                | it stays so, the reward still shown                                          |
+
+  Scenario: A body picture fades in as the reveal does, however late it loads
+    Given the device <asks> reduced motion
+    When the result shows a body picture, as it appears or once the picture loads
+    Then from then the body waits one --motion-screen, then fades in over two, as the skeleton fades back
+    And --motion-screen is <screen>
+
+    Examples:
+      | asks         | screen |
+      | does not ask | 320 ms |
+      | asks for     | 160 ms |
 
   Scenario: Build another returns to dinosaur selection
     Given I am on a skeleton result screen

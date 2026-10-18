@@ -4,7 +4,10 @@ Feature: Skeleton assembly: pictures that load
   outline, a bone or an exhibit, shimmers in its place until it has
   loaded, then fades in. A bone is fitted the same way whatever its
   picture is doing. A bone's shimmer fills its spot, and the outline
-  shimmers faint, coming in with the screen as it does today.
+  shimmers faint, coming in with the screen as it does today. A bone
+  lifted, fitted in its slot or floated back to its spot is a new place
+  for its picture, as a sorted card is: a failed picture is loaded again
+  there, and each place counts its own 8 seconds.
 
   Background:
     Given an iPad in landscape
@@ -36,10 +39,16 @@ Feature: Skeleton assembly: pictures that load
       | is still loading           | shimmering                                           | shimmering, then fading the picture in once it loads           |
       | failed to load in the tray | shimmering while its picture is loaded again         | shimmering, then the failure look once, loaded again, it fails |
 
-  Scenario: A bone let go away from its home floats back while its picture loads
-    Given a puzzle whose pictures are still loading
+  Scenario Outline: A bone whose picture is not shown floats back all the same
+    Given a puzzle whose picture of the skull <ends>
     When I let the skull go away from its home
     Then it floats back to its spot, shimmering, and nothing fits
+    And its spot shows <look>
+
+    Examples:
+      | ends                       | look                                                 |
+      | is still loading           | the picture fading in once it loads                  |
+      | failed to load in the tray | the failure look once the picture, loaded again, fails |
 
   Scenario Outline: Every picture of the skeleton game shimmers until it has loaded
     Given the picture of <place> is still loading
@@ -54,11 +63,11 @@ Feature: Skeleton assembly: pictures that load
       | Tyrannosaurus's silhouette     | the museum, its stand empty |
       | Tyrannosaurus's whole skeleton | the result of its skeleton  |
 
-  Scenario Outline: A silhouette darkens only its picture
+  Scenario Outline: A silhouette turns only its picture
     Given the picture of <stand>'s skeleton <ends>
     When I open the museum
-    Then the stand's place shows <look> in the theme's colours, not darkened
-    And once a picture shows, it is darkened into its silhouette
+    Then the stand's place shows <look> in the theme's colours, faint as the stand is, not turned into a silhouette
+    And once a picture shows, it is turned into its silhouette, dark in the light theme and light in the dark
 
     Examples:
       | stand                         | ends             | look                              |
