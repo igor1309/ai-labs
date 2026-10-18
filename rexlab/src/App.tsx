@@ -134,6 +134,10 @@ const HERO = "tyrannosaurus";
 // broken one does not keep the child waiting.
 const PICTURE_WAIT = 1000;
 
+// How long after MUSEUM opens the museum taps do nothing, in
+// milliseconds: longer than the gap between a child's two quick taps.
+export const MUSEUM_SETTLE = 500;
+
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
 type Screen =
@@ -232,13 +236,23 @@ export function App({
   // A round being started, while its first pictures load: a second tap on
   // COMPARE or PLAY AGAIN meanwhile starts nothing more.
   const starting = useRef(false);
+  // Counts each time the child goes elsewhere while a round waits for its
+  // pictures, so a round left behind never opens, nor counts a start.
+  const roundsLeft = useRef(0);
+
+  const leaveRound = () => {
+    roundsLeft.current++;
+    starting.current = false;
+  };
 
   const playNewRound = () => {
-    leaveHome();
+    sorting.cancel();
     if (starting.current) return;
     starting.current = true;
+    const waiting = roundsLeft.current;
     const started = startRound(dinosaurs, random, lastPlay);
     whenPicturesReady(started, () => {
+      if (roundsLeft.current !== waiting) return;
       starting.current = false;
       setLastPlay(started);
       startCounter.countStart("compare");
@@ -251,7 +265,10 @@ export function App({
   // changes nothing.
   const play = (move: (play: Play) => Play) =>
     setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
-  const home = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
+  const home = () => {
+    leaveRound();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
+  };
 
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
@@ -269,12 +286,18 @@ export function App({
 
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
 
-  const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
+  const openSorting = () => {
+    leaveRound();
+    sorting.start(() => setScreen({ kind: "sorting" }));
+  };
 
-  // A board SORT started, still waiting for its pictures, is dropped as
-  // the child goes anywhere else, so it never opens over the screen they
-  // chose.
-  const leaveHome = () => sorting.cancel();
+  // A board SORT started, or a round COMPARE started, still waiting for
+  // its pictures, is dropped as the child goes anywhere else, so it never
+  // opens over the screen they chose.
+  const leaveHome = () => {
+    sorting.cancel();
+    leaveRound();
+  };
 
   const pairs = usePairsGame(
     { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
@@ -320,13 +343,32 @@ export function App({
 
   // The museum opens from the home page straight into the skeleton game,
   // as a screen change and not a start: only building there starts one.
+  // It opens at once, so the rest of a double tap would land on the
+  // museum's own buttons: taps do nothing until it has settled.
+  const [museumSettling, setMuseumSettling] = useState(false);
+
   const openMuseum = () => {
     leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       skeletonGame.openMuseum();
       setScreen({ kind: "skeletons" });
+      setMuseumSettling(true);
     });
   };
+
+  useEffect(() => {
+    if (!museumSettling) return;
+    const swallow = (event: Event) => {
+      event.stopPropagation();
+      event.preventDefault();
+    };
+    document.addEventListener("click", swallow, true);
+    const stop = startTimer(MUSEUM_SETTLE, () => setMuseumSettling(false));
+    return () => {
+      stop();
+      document.removeEventListener("click", swallow, true);
+    };
+  }, [museumSettling, startTimer]);
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or

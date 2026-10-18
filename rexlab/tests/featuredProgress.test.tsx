@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, type AppProps } from "../src/App.tsx";
+import { App, MUSEUM_SETTLE, type AppProps } from "../src/App.tsx";
 import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -197,8 +197,9 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "a skeleton is built from an empty stand in the museum opened on the home page",
     "skeletons",
     1,
-    async ({ user }) => {
+    async ({ user, clock }) => {
       await user.click(button("MUSEUM"));
+      act(() => clock.fire(MUSEUM_SETTLE));
       await user.click(within(screen.getByRole("region", { name: "STEGOSAURUS" })).getByRole("button", { name: "BUILD" }));
     }
   ]
@@ -231,7 +232,7 @@ describe("starting a game", () => {
   });
 
   it("counts nothing on the care, find-the-pair and skeleton screens before a game, nor in the museum opened on the home page, nor on a dinosaur's page and back", async () => {
-    const { user, storage } = openApp();
+    const { user, storage, clock } = openApp();
     await user.click(homeTile("ALL DINOSAURS"));
     const opened = storedFeatured(storage);
 
@@ -243,8 +244,10 @@ describe("starting a game", () => {
       await user.click(button("HOME"));
     }
     await user.click(button("MUSEUM"));
+    act(() => clock.fire(MUSEUM_SETTLE));
     await user.click(button("HOME"));
 
+    expect(featuredCard()).toBeDefined();
     expect(storedFeatured(storage)).toEqual(opened);
     expect(opened.starts).toEqual({ catalogue: 1 });
   });
@@ -281,6 +284,38 @@ describe("a start that waits for its pictures", () => {
     loadAll();
     expect(counted).toEqual([game]);
   });
+});
+
+// Each door off the home page, and how to tell its screen is shown.
+const DOORS: Array<[door: string, open: () => HTMLElement, shown: () => boolean]> = [
+  ["MUSEUM", () => button("MUSEUM"), () => screen.queryByRole("group", { name: "STANDS" }) !== null],
+  ["ALL DINOSAURS", () => homeTile("ALL DINOSAURS"), () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
+  ["CARE", () => homeTile("CARE"), () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
+  ["SORT", () => homeTile("SORT"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null],
+  ["FIND THE PAIR", () => homeTile("FIND THE PAIR"), () => screen.queryByRole("button", { name: "PLAY" }) !== null],
+  ["SKELETONS", () => homeTile("SKELETONS"), () => screen.queryByRole("group", { name: "DINOSAURS" }) !== null]
+];
+
+describe("a round left while its pictures load", () => {
+  it.each(DOORS.flatMap(([door, open, shown]) => (["its pictures load", "its wait runs out"] as const).map((end) => [door, end, open, shown] as const)))(
+    "neither opens nor counts a start once %s is tapped, when %s",
+    async (_door, end, open, shown) => {
+      const loaded = end === "its pictures load";
+      const pictures = manualPictures();
+      const { counted, startCounter } = countedStarts();
+      const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
+      await user.click(homeTile("COMPARE"));
+      const round = pictures.loading();
+
+      await user.click(open());
+      act(() => (loaded ? round.forEach(pictures.finish) : pictures.fire(1000)));
+      act(() => pictures.loading().forEach(pictures.finish));
+
+      expect(screen.queryByText(/^WHO IS (HEAVIER|TALLER)\?$/)).toBeNull();
+      expect(shown()).toBe(true);
+      expect(counted.filter((game) => game === "compare")).toEqual([]);
+    }
+  );
 });
 
 describe("a browser that cannot keep progress", () => {

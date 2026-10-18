@@ -1,12 +1,13 @@
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { addTransitionType } from "react";
+import { MUSEUM_SETTLE } from "../src/App.tsx";
 import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { SCREEN_CHANGE } from "../src/screenChange.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
-import { choices, finishLoading, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
-import { PALETTE, contrast, homeTile, symbolOf } from "./support.ts";
+import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
+import { PALETTE, contrast, homeTile, symbolOf, type ManualPictures } from "./support.ts";
 
 // home-museum.feature
 
@@ -23,6 +24,11 @@ const museumButton = (language: Language = "en") => screen.getByRole("button", {
 const hall = () => screen.queryByRole("group", { name: "STANDS" });
 
 const onHomePage = () => document.querySelector(".games-tiles") !== null;
+
+const button = (name: string) => screen.getByRole("button", { name });
+
+// The museum, opened from the home page, settled for taps.
+const settle = (pictures: ManualPictures) => act(() => pictures.fire(MUSEUM_SETTLE));
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
@@ -75,9 +81,10 @@ describe("the museum on the home page", () => {
   });
 
   it("opens the museum hall, HOME comes back, and SKELETONS and BUILD ANOTHER both show the choice of dinosaurs", async () => {
-    const { user } = openHomeApp({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
+    const { user, pictures } = openHomeApp({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
 
     await user.click(museumButton());
+    settle(pictures);
     expect(within(hall() ?? document.body).getByRole("region", { name: "TRICERATOPS" }).getAttribute("data-state")).toBe("built");
     expect(screen.getByLabelText("STARS").textContent).toBe("1/3");
 
@@ -89,24 +96,24 @@ describe("the museum on the home page", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
     await user.click(museumButton());
+    settle(pictures);
     await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
     expect([hall(), choices().length]).toEqual([null, 3]);
   });
 
-  it("opens once on a quick double tap: the second tap presses nothing in the museum, and one HOME comes back", async () => {
-    const once = openHomeApp();
-    await once.user.click(museumButton());
-    finishLoading(once.pictures);
-    const shown = document.body.innerHTML;
-    cleanup();
+  // The museum opens at once, so a double tap's second tap lands on what
+  // stands under MUSEUM there, BUILD ANOTHER on a 1024px iPad.
+  it("opens once on a quick double tap: the second tap presses nothing in the museum, and one HOME comes back once it settles", async () => {
+    const { user, pictures } = openHomeApp();
 
-    const twice = openHomeApp();
-    await twice.user.dblClick(museumButton());
-    finishLoading(twice.pictures);
+    await user.click(museumButton());
+    await user.click(button("BUILD ANOTHER"));
+    await user.click(button("HOME"));
 
-    expect(document.body.innerHTML).toBe(shown);
     expect(hall()).not.toBeNull();
-    await twice.user.click(screen.getByRole("button", { name: "HOME" }));
+    expect(pictures.timers()).toEqual([MUSEUM_SETTLE]);
+    settle(pictures);
+    await user.click(button("HOME"));
     expect(onHomePage()).toBe(true);
   });
 
@@ -122,6 +129,11 @@ describe("the museum on the home page", () => {
     expect([backdrop.parentElement, button.parentElement]).toEqual([button.parentElement, partOf(".home-corner")]);
     const [over, under, menus] = [backdrop, button, partOf(".parent-menus")].map((element) => getComputedStyle(element));
     expect([over?.position, over?.zIndex, under?.position, under?.zIndex, menus?.position, menus?.zIndex]).toEqual(["fixed", "1", "static", "auto", "relative", "2"]);
+    // Fixed to the whole screen: the corner it stands in has no transform
+    // or filter, which would pin it to the corner instead.
+    expect([over?.top, over?.right, over?.bottom, over?.left]).toEqual(["0px", "0px", "0px", "0px"]);
+    const corner = getComputedStyle(partOf(".home-corner"));
+    expect([corner.transform || "none", corner.filter || "none"]).toEqual(["none", "none"]);
     fireEvent.click(backdrop);
 
     expect(screen.queryByRole("menu")).toBeNull();
@@ -148,6 +160,11 @@ describe("the museum on the home page", () => {
       return Math.max(px(style.minWidth), rowWidth(menuButton, parts));
     });
     const corner = partOf(".home-corner");
+    // The widths add up along one row, every part centred on it.
+    for (const row of [corner, partOf(".parent-menus"), button, partOf(".wordmark")]) {
+      const style = getComputedStyle(row);
+      expect([style.display, style.flexDirection || "row", style.flexWrap || "nowrap", style.alignItems]).toEqual(["flex", "row", "nowrap", "center"]);
+    }
     const cornerWidth = rowWidth(corner, [museum, rowWidth(partOf(".parent-menus"), menuButtons)]);
     const wordmark = partOf(".wordmark");
     const wordmarkStyle = getComputedStyle(wordmark);
@@ -157,7 +174,9 @@ describe("the museum on the home page", () => {
     expect(cornerLeft - (px(wordmarkStyle.left) + wordmarkWidth)).toBeGreaterThanOrEqual(px(getComputedStyle(corner).gap));
     // The corner and the wordmark end above where the greeting begins.
     const greetingTop = px(getComputedStyle(partOf(".home")).paddingTop);
-    const cornerHeight = Math.max(px(museumStyle.height), 52);
+    const menusStyle = getComputedStyle(partOf(".parent-menus"));
+    const menuHeight = Math.max(...[...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => px(getComputedStyle(menuButton).minHeight)));
+    const cornerHeight = Math.max(px(museumStyle.height), px(menusStyle.paddingTop) + menuHeight + px(menusStyle.paddingBottom));
     expect(px(getComputedStyle(corner).top) + cornerHeight).toBeLessThanOrEqual(greetingTop);
     expect(px(wordmarkStyle.top) + px(wordmarkStyle.height)).toBeLessThanOrEqual(greetingTop);
   });
