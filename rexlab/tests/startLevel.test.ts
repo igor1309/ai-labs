@@ -45,10 +45,9 @@ describe("the level a game starts at", () => {
 
 // One iPad: the storage the setting is kept in, and the setting the app
 // holds while it is open.
-function iPad() {
+function iPad(random: () => number = seededRandom(31)) {
   const storage = memoryStorage();
   const store = localAgeLevel(() => storage);
-  const random = seededRandom(31);
   let setting: AgeLevelSetting = store.load() ?? DEFAULT_AGE_LEVEL;
   return {
     storage,
@@ -112,8 +111,12 @@ describe("a child's own level choice in a game", () => {
     expect(startLevel(device.setting, ALL_THREE, chosen)).toBe(setting);
   });
 
-  it.each(WAYS)("is dropped by a level changed and changed back, set by %s", (way) => {
-    const device = iPad();
+  // A source that draws the same every time draws the same digits for
+  // each pick; the revision still changes.
+  const SOURCES = { "a random source": () => seededRandom(31), "a source that draws the same every time": () => () => 0 };
+
+  it.each(WAYS.flatMap((way) => Object.keys(SOURCES).map((source) => [way, source as keyof typeof SOURCES] as const)))("is dropped by a level changed and changed back, set by %s, from %s", (way, source) => {
+    const device = iPad(SOURCES[source]());
     SET_BY[way](device, "explorer");
     const chosen = device.childChooses("hatchling");
 

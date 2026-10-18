@@ -467,10 +467,9 @@ img {
   animation: grow-in var(--motion-small) var(--ease-out) both;
 }
 
-/* However a menu closes, it shrinks back the way it came, out of reach of
-   taps. */
+/* However a menu closes, it shrinks back the way it came, still catching
+   the taps that land on it, which do nothing. */
 .parent-menu-list[data-leaving] {
-  pointer-events: none;
   animation: shrink-out var(--motion-small) var(--ease-out) both;
 }
 

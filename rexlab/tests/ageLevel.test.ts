@@ -32,7 +32,7 @@ describe("a level a parent picks", () => {
       const picked = pickAgeLevel({ level: from, revision: "earlier" }, to, counted);
 
       expect(picked.level).toBe(to);
-      expect(picked.revision).toMatch(/^[0-9a-z]{16}$/);
+      expect(picked.revision).toMatch(/^1-[0-9a-z]{16}$/);
       expect(draws).toHaveLength(16);
       expect(pickAgeLevel({ level: from, revision: "earlier" }, to, seededRandom(5))).toEqual(picked);
     }
@@ -56,5 +56,13 @@ describe("a level a parent picks", () => {
     }
 
     expect(revisions.size).toBe(3000);
+  });
+
+  it("never draws the same revision twice, even from a source that draws the same every time", () => {
+    const same = () => 0;
+    const revisions = [DEFAULT_AGE_LEVEL];
+    for (const level of ["paleontologist", "explorer", "hatchling", "explorer"] as const) revisions.push(pickAgeLevel(revisions.at(-1) ?? DEFAULT_AGE_LEVEL, level, same));
+
+    expect(new Set(revisions.map((setting) => setting.revision)).size).toBe(revisions.length);
   });
 });

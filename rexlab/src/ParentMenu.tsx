@@ -43,8 +43,10 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
   const menuRef = useRef<HTMLDivElement>(null);
 
   // However the menu closes, it stays on screen while it animates out,
-  // hidden from reading and taps, and comes back at once if it is opened
-  // again meanwhile.
+  // hidden from reading, and comes back at once if it is opened again
+  // meanwhile. It still catches taps, which do nothing: the rest of a
+  // double tap on a choice lands on the leaving menu, never on the page
+  // beneath it (docs/tap-safety.md).
   const [shown, setShown] = useState(open);
   if (open && !shown) setShown(true);
   const leaving = shown && !open;
@@ -105,7 +107,6 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
           role="menu"
           aria-label={label}
           aria-hidden={leaving || undefined}
-          inert={leaving}
           className="parent-menu-list"
           data-leaving={leaving ? "" : undefined}
           data-notes={choices.some(({ note }) => note) ? "" : undefined}
@@ -120,6 +121,7 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
               tabIndex={-1}
               className="parent-menu-choice"
               onClick={() => {
+                if (leaving) return;
                 onChoose(value);
                 close();
               }}

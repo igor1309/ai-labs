@@ -186,6 +186,23 @@ describe.each([false, true])("the parents' menus, with reduced motion %s", (redu
     expect(list()).toBeNull();
   });
 
+  it.each(Object.values(MENUS))("take the rest of a double tap on a %s choice on the leaving menu, pressing nothing", async (label) => {
+    const pictures = manualPictures();
+    const { user } = openHomeApp({ pictures, reducedMotion });
+    const opened = await openMenu(user, label);
+    const [another] = within(opened).getAllByRole("menuitemradio", { checked: false });
+    if (!another) throw new Error(`The ${label} menu offers nothing else`);
+    await user.click(another);
+    const chosen = document.querySelector(".parent-menus")?.innerHTML;
+
+    // The leaving menu stands over the page and catches the tap.
+    expect([leaving(), list()?.hasAttribute("inert"), getComputedStyle(list() ?? document.body).pointerEvents]).toEqual([true, false, "auto"]);
+    await user.click(another);
+
+    expect([document.querySelector(".games-tiles") !== null, screen.queryByRole("menu")]).toEqual([true, null]);
+    expect(document.querySelector(".parent-menus")?.innerHTML).toBe(chosen);
+  });
+
   it.each(Object.values(MENUS))("bring the %s menu back at once when it is opened again while it animates out", async (label) => {
     const pictures = manualPictures();
     const { user } = openHomeApp({ pictures, reducedMotion });

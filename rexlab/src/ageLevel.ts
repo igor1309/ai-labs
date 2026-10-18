@@ -21,15 +21,24 @@ export const DEFAULT_AGE_LEVEL: AgeLevelSetting = { level: "explorer", revision:
 // A number drawn at random, at least 0 and below 1.
 export type Random = () => number;
 
-// How many base-36 digits a revision has: enough that two drawn on one
-// device never meet.
+// How many base-36 digits a revision draws: enough that two drawn on one
+// device never meet, even once the saved setting is lost and its count
+// starts again.
 const REVISION_DIGITS = 16;
+
+// How many picks came before the setting's: the count a revision opens
+// with, so the next pick's revision differs from it whatever is drawn.
+function picksBefore(revision: string | null): number {
+  const count = Number.parseInt(revision?.split("-")[0] ?? "", 10);
+  return Number.isNaN(count) ? 0 : count;
+}
 
 // The setting once a parent picks `level`. The level already set is kept
 // as it is, revision and all, so a child's choice made under it still
-// wins.
+// wins. A different level takes a fresh revision: the count of picks
+// before it, one more than its predecessor's, then digits drawn at random.
 export function pickAgeLevel(setting: AgeLevelSetting, level: AgeLevel, random: Random): AgeLevelSetting {
   if (level === setting.level) return setting;
-  const revision = Array.from({ length: REVISION_DIGITS }, () => Math.floor(random() * 36).toString(36)).join("");
-  return { level, revision };
+  const drawn = Array.from({ length: REVISION_DIGITS }, () => Math.floor(random() * 36).toString(36)).join("");
+  return { level, revision: `${picksBefore(setting.revision) + 1}-${drawn}` };
 }
