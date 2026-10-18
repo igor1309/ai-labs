@@ -308,16 +308,21 @@ describe("a card whose picture is not shown", () => {
     expect(lookIn(trayCard(card))).toBe(looks[1]);
   });
 
-  it("slides back to its place when let go away from the baskets, its picture still loading, its place shimmering, and nothing counts", async () => {
+  it.each(NOT_SHOWN)("slides back to its place when let go away from the baskets, its picture %s, its place shimmering, and nothing counts", async (_, before, after, looks) => {
     const user = userEvent.setup();
+    const pictures = manualPictures();
     const sorting = sortingBy("diet");
-    const opened = openBoard(sorting, "en", manualPictures());
+    const opened = openBoard(sorting, "en", pictures);
     layOutBaskets(sorting);
     const card = nthCard(sorting, 1);
+    const url = fakeBodyPicture(card.dinosaur.id);
+    act(() => before(pictures, url));
 
     await dragTo(user, trayCard(card), AWAY);
 
-    expect([trayCard(card).hasAttribute("data-returning"), lookIn(trayCard(card)), opened.seen]).toEqual([true, "loading", [sorting]]);
+    expect([trayCard(card).hasAttribute("data-returning"), lookIn(trayCard(card)), opened.seen]).toEqual([true, looks[0], [sorting]]);
+    act(() => after(pictures, url));
+    expect(lookIn(trayCard(card))).toBe(looks[1]);
   });
 });
 

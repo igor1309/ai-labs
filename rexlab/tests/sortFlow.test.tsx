@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
+import type { HomeGame } from "../src/HomePage.tsx";
 import type { Random } from "../src/sorting/index.ts";
 import { basketsShown, sortByTrying, storedRecord, tray } from "./sorting.tsx";
 import {
@@ -15,6 +16,7 @@ import {
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuredCard,
   featuring,
   lightDevice,
   loadShownPictures,
@@ -35,15 +37,17 @@ import {
 function openApp({
   storage = memoryStorage(),
   random = seededRandom(11),
-  pictures = loadedPictures()
+  pictures = loadedPictures(),
+  featured = "compare"
 }: {
   storage?: MemoryStorage;
   random?: Random;
   pictures?: ReturnType<typeof loadedPictures>;
+  featured?: HomeGame;
 } = {}) {
   const view = render(
     <App
-      {...featuring()}
+      {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -146,8 +150,8 @@ describe("the sorting game from the home page", () => {
 
 // Opens the app on the screen a new board is started from: the home page,
 // or the sorting game's result, reached with every picture loaded.
-async function openOn(start: "home" | "result", pictures: ManualPictures) {
-  const app = openApp({ pictures });
+async function openOn(start: "home" | "result", pictures: ManualPictures, featured?: HomeGame) {
+  const app = openApp({ pictures, ...(featured && { featured }) });
   loadShownPictures(pictures);
   if (start === "result") {
     await app.user.click(button("SORT"));
@@ -158,9 +162,12 @@ async function openOn(start: "home" | "result", pictures: ManualPictures) {
   return app;
 }
 
+// Each screen a round starts from, the button that starts it, and the
+// game featured on the home page meanwhile.
 const STARTS = [
-  ["the home page", "home", "SORT", onHomePage],
-  ["the result", "result", "PLAY AGAIN", onResult]
+  ["the home page", "home", "SORT", () => button("SORT"), undefined],
+  ["the home page", "home", "its featured card", () => featuredCard(), "sort"],
+  ["the result", "result", "PLAY AGAIN", () => button("PLAY AGAIN"), undefined]
 ] as const;
 
 const TAPS = [
@@ -174,11 +181,11 @@ const looksShown = () => within(tray()).getAllByRole("img").map((picture) => pic
 describe("a new board", () => {
   it.each(STARTS.flatMap((start) => TAPS.map((taps) => [...start, ...taps] as const)))(
     "starts at once on %s after %s is tapped %s, one board, its six cards named over their pictures' shimmer, then fading them in",
-    async (_, start, name, __, ___, tap) => {
+    async (_, start, __, control, featured, ___, tap) => {
       const pictures = manualPictures();
-      const { user } = await openOn(start, pictures);
+      const { user } = await openOn(start, pictures, featured);
 
-      await tap(user, button(name));
+      await tap(user, control());
 
       // A dinosaur of the board before has its picture loaded already.
       const cards = within(tray()).getAllByRole("button");
