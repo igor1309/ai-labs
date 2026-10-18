@@ -919,20 +919,20 @@ first written, checks a reuse, each failure a refusal on stderr, exit
 2. Its request is this one's: the same workflow, or the same process
    and agent.
 
-Each step's call, once its inputs resolve and before it is admitted,
-is taken from the earlier run when that run holds a call of the same
-step that completed, of the same process and agent, given inputs of
-the same names, in the same order, with the same identities, and the
-worktree is as that call left it: the root of the worktree holding the
-launch directory is its root, the root's HEAD its HEAD and its content
-its content, not empty. A call taken is not admitted and not made: it
+Each step's call, once its inputs resolve and before it is admitted, is
+taken from the earlier run when that run holds a call of the same step
+that completed, of the same process and agent, given inputs of the same
+names, in the same order, with the same identities, and the worktree is
+as that call left it: the root of the worktree holding the launch
+directory is its root, the root's HEAD its HEAD and its content its
+content, not empty. A call taken is not admitted and not made: it
 reports `Reused`, and its result to core is the earlier call's as
 recorded, but for its cost, zero, and its usage, every count unknown,
 which a sum skips: this run spent none. Any other call reports
-`Started`, its inputs refused or not, and is made as it would be. The record's request names
-the run reused, `"reuse"`; a call taken is recorded as its earlier
-entry, cost and usage included, its id this run's, its `"continues"`
-null, with `"reuses"`, the earlier call's id:
+`Started`, its inputs refused or not, and is made as it would be. The
+record's request names the run reused, `"reuse"`; a call taken is
+recorded as its earlier entry, cost and usage included, its id this
+run's, its `"continues"` null, with `"reuses"`, the earlier call's id:
 
 ```json
 {"request": {"reuse": "<run id>"},
