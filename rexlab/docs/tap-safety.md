@@ -9,8 +9,9 @@ tap could have landed on a button of the museum.
 It is built from parts that do not know of each other, each landing in its
 own issue, in this order: LAB-298, LAB-303, LAB-304. Until the double-tap
 filter lands, today's picture waits and one-off guards keep double taps
-safe, and they stay; LAB-304 removes the waits only after it. Each issue
-brings the Gherkin of its own behaviour; LAB-298 changes none.
+safe, and they stay; LAB-303 removes the two that only guard double
+taps, and LAB-304 removes the waits and theirs. Each issue brings the
+Gherkin of its own behaviour; LAB-298 changes none.
 
 ## The parts
 
@@ -26,8 +27,8 @@ brings the Gherkin of its own behaviour; LAB-298 changes none.
    the game left included.
 4. **Double taps (LAB-303).** One double-tap filter at the root of the
    app swallows the second tap of a double tap, by time and place: less
-   than 500 ms and 100 px from the tap before it, timed by each event's
-   own time, which `src/root.ts` hands it. It knows nothing of screens.
+   than 500 ms and 100 px from the release of the tap before it, timed
+   by each event's own time, which `src/root.ts` hands it. It knows nothing of screens.
    Its exact behaviour (when the window opens, drags, repeated taps,
    keyboard) is specified in LAB-303's own feature. Accepted cost: two
    controls closer than 100 px, tapped within 500 ms, count once.
@@ -62,5 +63,6 @@ item but the last.
   (LAB-303).
 - Calling `waitForPictures`, or taking a `LoadPicture`, outside
   `<Picture>` and `src/root.ts` (LAB-304).
-- A guard against double taps on a single button, once LAB-303 has
-  landed. No search finds it; code review does.
+- A new guard against double taps on a single button, once LAB-303 has
+  landed; the guards of the picture waits go with LAB-304. No search
+  finds it; code review does.

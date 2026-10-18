@@ -46,7 +46,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
 
     Examples:
       | state                | action                                                | outcome                                               |
-      | a card is picked up  | tap the same card                                     | the card is put down and nothing counts               |
+      | a card is picked up  | tap the same card, half a second or more later        | the card is put down and nothing counts               |
       | a card is picked up  | tap another card                                      | the other card is picked up instead                   |
       | a card is picked up  | tap a sorted card, an empty slot or the space between | the card is put down and nothing counts               |
       | a card is picked up  | drag another card                                     | the picked card is put down and the dragged one moves |
