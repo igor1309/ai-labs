@@ -24,25 +24,33 @@ Feature: Sort dinosaurs: pictures that load
   Scenario Outline: A card whose picture is not shown is sorted all the same
     Given a round whose picture of Stegosaurus <ends>
     When I <move> the Stegosaurus card to its right basket
-    Then it lands in that basket, named, its picture's place <look>
+    Then it lands in that basket, named, its picture's place there shimmering
+    And the place shows <look>
 
     Examples:
-      | ends             | move            | look                                                       |
-      | is still loading | drag            | shimmering until the picture loads, then fading it in      |
-      | is still loading | pick up and tap | shimmering until the picture loads, then fading it in      |
-      | fails to load    | drag            | showing the failure look once, loaded again, it has failed |
-      | fails to load    | pick up and tap | showing the failure look once, loaded again, it has failed |
+      | ends                       | move            | look                                                   |
+      | is still loading           | drag            | the picture fading in once it loads                    |
+      | is still loading           | pick up and tap | the picture fading in once it loads                    |
+      | failed to load on the tray | drag            | the failure look once the picture, loaded again, fails |
+      | failed to load on the tray | pick up and tap | the failure look once the picture, loaded again, fails |
 
-  Scenario: A card whose picture is not shown goes back to the tray on a miss
-    Given a round whose picture of Stegosaurus is still loading
-    When I drag the Stegosaurus card to the wrong basket
+  Scenario Outline: A card whose picture is not shown goes back to the tray
+    Given a round whose picture of Stegosaurus <ends>
+    When I <let go of> the Stegosaurus card
     Then it slides back to its place, named, its picture's place shimmering as it goes
-    And the right basket glows, as for any card
+    And <also>
+
+    Examples:
+      | ends                       | let go of                    | also                                                         |
+      | is still loading           | drag to the wrong basket     | it shows its hint, and its right basket glows, as any card's |
+      | failed to load on the tray | drag to the wrong basket     | it shows its hint, and its right basket glows, as any card's |
+      | is still loading           | let go away from the baskets | nothing is counted, as for any card                          |
 
   Scenario: Cards still loading after 8 seconds show the failure look
     Given a round whose six pictures are still loading
     When 8 seconds pass
     Then each card's picture's place shows the failure look, its name still shown
     And each card can still be dragged, picked up and sorted
+    And a card sorted or slid back is a new place for its picture: it shimmers again for up to 8 seconds of its own
     When a card's picture loads
     Then it fades in over 200 ms
