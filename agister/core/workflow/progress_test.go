@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/core/workflow"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // ends is a call that ended in status, of class, after took.
@@ -92,6 +94,67 @@ func TestAStepsStaleTurnIsAnEvent(t *testing.T) {
 			}
 			if !reflect.DeepEqual(f.events.told, want) {
 				t.Errorf("told\n%q\nwant\n%q", f.events.told, want)
+			}
+		})
+	}
+}
+
+// startingCaller is a caller that keeps the events told by the time it is
+// asked, then reports its call's start and completes it.
+type startingCaller struct {
+	events *eventsSpy
+	before []string
+}
+
+func (c *startingCaller) Call(_ context.Context, _ string, _ map[string]string, report func(workflow.Report)) workflow.Result {
+	c.events.mu.Lock()
+	c.before = slices.Clone(c.events.told)
+	c.events.mu.Unlock()
+	report(workflow.Report{Started: true})
+	return workflow.Result{Status: workflow.Completed, Output: map[string]any{}}
+}
+
+// progress.feature, "A step's start is told when its call reports it".
+func TestAStepsStartIsToldWhenItsCallReportsIt(t *testing.T) {
+	t.Parallel()
+	events := &eventsSpy{}
+	caller := &startingCaller{events: events}
+	runner, err := workflow.New(&resolverSpy{trail: &trail{}}, caller, events, clocktest.NewClock(start))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a", Agent: "bash"}}}, nil)
+	if len(caller.before) > 0 {
+		t.Errorf("told %q before the call port was asked, want nothing", caller.before)
+	}
+	if want := []string{"a started on bash", `a ended completed "" in 0s`}; !reflect.DeepEqual(events.told, want) {
+		t.Errorf("told %q, want %q", events.told, want)
+	}
+}
+
+// progress.feature, "A step whose call reports no start tells no end":
+// the step after it is called and told as any.
+func TestAStepWhoseCallReportsNoStartTellsNoEnd(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name   string
+		given  func(*callerSpy)
+		events []string
+	}{
+		{"nothing", func(s *callerSpy) { s.silent = []string{"a"} }, nil},
+		{"it reused R1/a", func(s *callerSpy) { s.reused = map[string]string{"a": "R1/a"} }, []string{"a reused R1/a"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": completes(0), "b": completes(0)})
+			c.given(f.caller)
+			got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b", Agent: "bash"}}}, nil)
+			want := append(slices.Clone(c.events), "b started on bash", `b ended completed "" in 0s`)
+			if !reflect.DeepEqual(f.events.told, want) {
+				t.Errorf("told %q, want %q", f.events.told, want)
+			}
+			if got.Status != workflow.Completed {
+				t.Errorf("the run ended %q, want completed", got.Status)
 			}
 		})
 	}

@@ -100,8 +100,10 @@ export type Texts = {
   // Find the pair: its title, also on its home tile.
   pairs: string;
   play: string;
-  // The level played, read out on its chip.
+  // The climb level reached, read out on its chip.
   level: string;
+  // A game's own switch of the age level it is played at, read out on it.
+  ageLevelSwitch: string;
   // The stars earned, read out on their chip.
   starsEarned: string;
   // Each two cards turned on a board, read out on their chip.

@@ -1,6 +1,9 @@
 Feature: Find the pair: turning cards
   Two cards are open at most. A match stays open; a miss turns back
   with no "wrong" mark, so trying is never punished.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -66,32 +69,6 @@ Feature: Find the pair: turning cards
     And I cannot turn a card behind that picture
     When I turn the iPad back to landscape
     Then I see the same cards, open and face down as before, and the same tries
-
-  Scenario Outline: A card whose picture is not shown still lets the board be played
-    Given the picture of Stegosaurus <ends>
-    When I turn over a Stegosaurus card
-    Then I see "STEGOSAURUS" on the card at once, over its picture's shimmer
-    And its place shows the failure look <when>
-    And the other card of its pair, turned over, is named and shown the same way
-    And each time a card is turned over, its 8 seconds count afresh
-
-    Examples:
-      | ends                                         | when                                       |
-      | failed to load while the cards lay face down | once the picture, loaded again, has failed |
-      | is still loading                             | once the card has been open 8 seconds      |
-
-  Scenario: A card's name fades out as its picture fades in
-    Given the picture of Stegosaurus is still loading
-    When I turn over a Stegosaurus card
-    And the picture loads while the card is open
-    Then the picture fades in over 200 ms and "STEGOSAURUS" fades out with it
-    But a card whose pair is found keeps its name
-
-  Scenario: A silhouette darkens only its picture
-    Given a board at the level of silhouettes, its pictures still loading
-    When I turn over a silhouette card
-    Then its place shimmers in the theme's colours, not darkened
-    And once the picture shows, it is darkened into its silhouette
 
   Scenario: Cards turn smoothly or fade
     When I turn over cards, find a pair and miss a pair

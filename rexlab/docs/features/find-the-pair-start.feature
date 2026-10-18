@@ -1,8 +1,12 @@
 Feature: Find the pair: starting a board
   A memory game: the child turns over cards two at a time to find
-  matching dinosaur pairs, with no timer and no move limit. Levels grow
-  from a few pairs of the same picture to more pairs where a picture
-  matches its dinosaur's silhouette.
+  matching dinosaur pairs, with no timer and no move limit. At Hatchling
+  its climb levels grow from a few pairs of the same picture to more
+  pairs where a picture matches its dinosaur's silhouette; Explorer and
+  Paleontologist are in find-the-pair-levels.feature.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -15,11 +19,12 @@ Feature: Find the pair: starting a board
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
-    And I see "PLAY" with a play symbol and my level as a number with a ladder symbol
+    And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
+    And at Hatchling, my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  Scenario Outline: Each level has its own board
+  Scenario Outline: Each climb level has its own board
     Given I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
@@ -38,31 +43,12 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And two boards in a row do not deal the same dinosaurs
+    And it deals as few of the dinosaurs of the board before it as find-the-pair-level-progress.feature allows
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt
     Then no two of its dinosaurs are from the same look-alike group
     And every dinosaur in the shared list belongs to exactly one look-alike group
-
-  Scenario: A board is dealt at once while its pictures load
-    Given the pictures of the next board are still loading
-    When I tap "PLAY"
-    Then the board appears at once, its cards dealt one after the other
-    And its pictures go on loading while the cards lie face down
-    When I turn over a card whose picture is still loading
-    Then its face shimmers at the picture's size, then fades the picture in
-
-  Scenario Outline: The pictures of the welcome and result screens shimmer until they have loaded
-    Given the picture of <place> is still loading
-    When I open <screen>
-    Then I see <screen> at once, its controls working
-    And the picture's place shimmers, then fades the picture in
-
-    Examples:
-      | place                               | screen                           |
-      | the welcome card and its silhouette | the find-the-pair welcome screen |
-      | a dinosaur found                    | the result of a board            |
 
   Scenario: A quick double tap deals one board
     Given I am on the find-the-pair welcome screen

@@ -1,8 +1,8 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { AGE_LEVEL_PICTURES } from "../src/ageLevelPictures.ts";
 import { App } from "../src/App.tsx";
-import { AGE_LEVEL_PICTURES } from "../src/HomePage.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -748,14 +748,17 @@ async function sortingRounds(language: Language): Promise<Seen> {
   return play.seen;
 }
 
-// Find the pair: its welcome, a board with a card open, a miss, found
-// pairs and the cards waving, its result with a first best, the home page
-// again, and the catalogue and a page with the dinosaurs found stamped.
+// Find the pair: its welcome, Hatchling chosen on its switch, a board with
+// a card open, a miss, found pairs and the cards waving, its result with a
+// first best, the home page again, and the catalogue and a page with the
+// dinosaurs found stamped.
 async function findThePair(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, timers, look } = play;
   const text = TEXTS[language];
   await user.click(screen.getByRole("button", { name: text.pairs }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.ageLevels.hatchling.name }));
   look();
   await user.click(screen.getByRole("button", { name: text.play }));
   look();

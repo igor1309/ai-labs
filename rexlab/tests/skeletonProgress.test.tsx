@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSortingProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import type { PairsProgress } from "../src/pairs/index.ts";
+import type { PairsSaved } from "../src/pairsGame.tsx";
 import {
   choices,
   finishLoading,
@@ -82,7 +82,9 @@ async function visitMuseum({ user }: Opened) {
 const QUIZ = { bestScore: 7, roundsPlayed: 3 };
 const CARE = { bestScore: 6, visitsFinished: 2, friends: ["triceratops"] };
 const SORTING = { bestScore: 9, roundsPlayed: 4 };
-const PAIRS: PairsProgress = { stars: 5, level: 2, boardsOnLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] };
+// Find the pair's entry as stored, and as the game reads it.
+const PAIRS = { stars: 5, level: 2, boardsOnLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] };
+const PAIRS_SAVED: PairsSaved = { progress: { stars: 5, climbLevel: 2, boardsOnClimbLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] }, levelChoice: undefined };
 
 // Storage holding every other game's progress, a language and a theme,
 // and the skeleton game's own entry when there is one.
@@ -112,7 +114,7 @@ const others = (storage: MemoryStorage) => [
   storage.items.get(THEME_KEY)
 ];
 
-const OTHERS = [QUIZ, CARE, SORTING, PAIRS, "en", "dark"];
+const OTHERS = [QUIZ, CARE, SORTING, PAIRS_SAVED, "en", "dark"];
 
 describe("keeping the collection", () => {
   it("keeps the stars and the skeletons on their stands once the app is closed and reopened", async () => {
@@ -201,7 +203,7 @@ describe("keeping the collection", () => {
     localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 4 });
     localCareProgress(() => storage).save({ ...CARE, visitsFinished: 3 });
     localSortingProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
-    localPairsProgress(() => storage).save({ ...PAIRS, stars: 6 });
+    localPairsProgress(() => storage).save({ ...PAIRS_SAVED, progress: { ...PAIRS_SAVED.progress, stars: 6 } });
     expect(savedSkeletons(storage)).toEqual(saved);
   });
 
