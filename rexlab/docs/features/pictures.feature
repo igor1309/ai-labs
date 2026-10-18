@@ -1,6 +1,6 @@
 Feature: Screens never wait for their pictures
-  The screens below change at once, whatever their pictures are doing
-  (docs/tap-safety.md, part 5); the other games follow. While a picture
+  Every screen changes at once, whatever its pictures are doing
+  (docs/tap-safety.md, part 5), and nothing waits for a picture. While a picture
   loads, its place keeps the picture's own size and shimmers: its colour
   pulses slowly in place, in the colours of the theme shown. Once the
   picture has loaded and decoded, it fades in over the --motion-picture
@@ -14,8 +14,8 @@ Feature: Screens never wait for their pictures
   when a place shows it again or a screen loads it ahead. A picture with
   a name keeps it for screen readers, loading, failed or shown.
 
-  It covers every picture of the catalogue, the compare game, the home
-  page, care, find the pair, sorting and a round's result.
+  It covers every picture of the app, but the skeleton result's body
+  picture (skeleton-assembly-result.feature).
 
   Background:
     Given an iPad in landscape

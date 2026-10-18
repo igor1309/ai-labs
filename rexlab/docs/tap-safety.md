@@ -70,8 +70,8 @@ item but the last.
 - `setTimeout`, `setInterval`, `Date.now()`, `performance.now()`, an
   argless `new Date()` or an event's `timeStamp` outside `src/root.ts`
   (LAB-303).
-- Calling `waitForPictures`, or taking a `LoadPicture`, outside
-  `<Picture>` and `src/root.ts` (LAB-308).
+- `waitForPictures` anywhere, or a `LoadPicture` named outside
+  `src/Picture.tsx`, whose store alone loads pictures (LAB-308).
 - A new guard against double taps on a single button, once LAB-303 has
   landed; the guards of the picture waits go with the picture issues. No search
   finds it; code review does.

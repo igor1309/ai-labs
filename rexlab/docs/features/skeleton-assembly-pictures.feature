@@ -1,0 +1,60 @@
+Feature: Skeleton assembly: pictures that load
+  Skeletons never wait for their pictures (pictures.feature): a puzzle
+  starts at once, and each picture of the game, a choice's dinosaur, the
+  outline, a bone or an exhibit, shimmers in its place until it has
+  loaded, then fades in. A bone is fitted the same way whatever its
+  picture is doing.
+
+  Background:
+    Given an iPad in landscape
+
+  Scenario Outline: A puzzle starts at once while its pictures load
+    Given I am on <screen>
+    And the pictures of Tyrannosaurus's skeleton are still loading
+    When I tap <control>
+    Then the puzzle starts at once, its outline and four bones shimmering at their pictures' sizes
+    And <scatter>
+    When a bone's picture has loaded
+    Then it fades in over 200 ms, wherever the bone is
+
+    Examples:
+      | screen                      | control                   | scatter                                                               |
+      | the skeleton selection      | Tyrannosaurus             | each bone shimmers in its spot in the tray                            |
+      | the museum, its stand empty | Tyrannosaurus's "BUILD"   | each bone shimmers in its spot in the tray                            |
+      | the museum, its stand built | Tyrannosaurus's "REBUILD" | each bone's shimmer scatters from its home on the outline to the tray |
+
+  Scenario Outline: A bone whose picture is not shown is fitted all the same
+    Given a puzzle whose picture of the skull <ends>
+    When I drag the skull
+    Then it is lifted at the size it fits on the board, shimmering or in the failure look as in the tray
+    When I let it go on its home
+    Then it fits, its place in its slot <look>
+
+    Examples:
+      | ends                       | look                                                           |
+      | is still loading           | shimmering, then fading the picture in once it loads           |
+      | failed to load in the tray | shimmering, then the failure look once, loaded again, it fails |
+
+  Scenario: A bone let go away from its home floats back while its picture loads
+    Given a puzzle whose pictures are still loading
+    When I let the skull go away from its home
+    Then it floats back to its spot, shimmering, and nothing fits
+
+  Scenario Outline: Every picture of the skeleton game shimmers until it has loaded
+    Given the picture of <place> is still loading
+    When I open <screen>
+    Then I see <screen> at once, its controls working
+    And the picture's place shimmers, then fades the picture in
+
+    Examples:
+      | place                          | screen                      |
+      | the Tyrannosaurus choice       | the skeleton selection      |
+      | Tyrannosaurus's built skeleton | the museum, its stand built |
+      | Tyrannosaurus's silhouette     | the museum, its stand empty |
+      | Tyrannosaurus's whole skeleton | the result of its skeleton  |
+
+  Scenario: A silhouette darkens only its picture
+    Given the picture of an empty stand's skeleton is still loading
+    When I open the museum
+    Then the stand's place shimmers in the theme's colours, not darkened
+    And once the picture shows, it is darkened into its silhouette
