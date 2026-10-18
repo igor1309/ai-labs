@@ -42,7 +42,7 @@ Feature: agister runs a step on the real model runtimes
   Scenario Outline: A stale turn on a real runtime is recovered
     Given the scratch repository's process "stall", as "ask" but
       requiring process.execute, whose prompt asks to run the shell
-      command "sleep 60", then to answer "done"; its
+      command "sh -c 'sleep 60'", then to answer "done"; its
       staleness limit tool_command 5s; its recovery 1 resume, its
       instruction to answer "done" without running a command
     When "agister run --process stall --agent <agent>" runs there

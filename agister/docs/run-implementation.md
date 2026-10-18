@@ -718,6 +718,16 @@ call interrupted, `cancelled`, with no recovery turn. Its report grows:
 besides a tool call, a stale turn, what went stale and whether a
 recovery turn follows.
 
+**A tool command is timed until its result**, no longer until the next
+line: claude-code prints lines while a command runs, a rate limit event
+and a task started, so its `tool_command` limit never fired. Each
+wrapper reports a tool's result as it reads it: claude-code's a user
+event carrying a `tool_result`, codex's an `item.completed` of a tool
+item it reports, a search reported only as it completes reported
+called and done. The report port, from wrapper to core/call to the
+watch, grows that kind. The watch ends a command's wait at a result
+or at the next tool call; any line still restarts `no_event`.
+
 **`core/workflow`** gives a call's stale report to its events port,
 which grows a stale event, by the step's name, as it gives a tool
 call. **`runstore`**'s event grows the kind `stale`, with `what` and
@@ -750,3 +760,6 @@ Decisions, each with its reason:
 - End to end, a turn made stale in seconds, by a tool command limit
   of a few seconds and a prompt that sleeps, proves that each runtime
   resumes a session whose program was ended mid-tool.
+- A command's wait ends at the first result, not its own by id: one
+  command at a time is how both runtimes run in practice; claude-code's
+  parallel calls end it early, best effort.
