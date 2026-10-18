@@ -25,9 +25,9 @@ a button of the museum.
    later, such as a wait for pictures, checks this before it changes the
    screen, and does nothing if the child has gone elsewhere meanwhile.
 4. **No time-based delays as the fix.** A tap is never made safe by
-   ignoring taps for a number of milliseconds. Timers are injected by the
-   composition root, `src/root.ts`, and serve waits and motion, not tap
-   guards.
+   ignoring taps for a number of milliseconds. Such a wrapper may stay as
+   a safety net behind the rule, never as what makes a tap safe. Timers
+   are injected by the composition root, `src/root.ts`.
 
 ## Forbidden
 
@@ -36,7 +36,7 @@ a button of the museum.
   module or a screen.
 - A one-off guard on a single button in place of the entry point or an
   action's state.
-- A timer that drops taps, as a debounce or any other wrapper.
+- A timer that drops taps as the only thing keeping a tap safe.
 
 ## How it is checked
 
