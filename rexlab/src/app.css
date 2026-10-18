@@ -3971,6 +3971,11 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The name shown while the picture loaded goes as the picture fades in. */
+.pair-card-name[data-fading] {
+  animation: fade-out var(--motion-picture) var(--ease-out) forwards;
+}
+
 /* A found pair is outlined in green over the picture, and named, and
    bounces once it has flipped. The outline is the face's: the turning
    face would cover the card's. */

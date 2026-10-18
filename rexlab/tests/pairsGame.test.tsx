@@ -154,7 +154,7 @@ describe("a board", () => {
 
     await user.dblClick(button("PLAY"));
 
-    expect([pairCards().length, screen.getByLabelText("TRIES").textContent]).toEqual([6, "0"]);
+    expect([pairCards().length, screen.getByLabelText("TRIES").textContent, pairCards().map((card) => card.dataset.state)]).toEqual([6, "0", Array<string>(6).fill("down")]);
   });
 });
 
@@ -355,7 +355,7 @@ describe("turning cards", () => {
     return [picture?.dataset.picture, picture?.getAttribute("src"), card?.querySelector(".pair-card-name")?.textContent];
   };
 
-  it("names a card while its picture loads, then fades the picture in, the name going", async () => {
+  it("names a card while its picture loads, then fades the picture in, the name fading out with it", async () => {
     const pictures = manualPictures();
     const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });
     await playPairs(user);
@@ -365,9 +365,22 @@ describe("turning cards", () => {
 
     await turnCard(user, first);
 
-    expect(face(first)).toEqual(["loading", null, names[0]]);
+    const name = () => pairCards()[first]?.querySelector<HTMLElement>(".pair-card-name")?.dataset.fading;
+    expect([face(first), name()]).toEqual([["loading", null, names[0]], undefined]);
     act(() => pictures.finish(url));
-    expect(face(first)).toEqual(["appearing", url, undefined]);
+    expect([face(first), name()]).toEqual([["appearing", url, names[0]], "true"]);
+  });
+
+  it("shimmers a silhouette card's place while its picture loads, the silhouette only its picture's", async () => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });
+    await playPairs(user);
+    const silhouette = dealt(3, { pals: UNSEEN }).cards.findIndex(({ face }) => face === "silhouette");
+
+    await turnCard(user, silhouette);
+
+    const picture = pairCards()[silhouette]?.querySelector<HTMLElement>("img");
+    expect([picture?.classList.contains("pair-silhouette"), picture?.dataset.picture]).toEqual([true, "loading"]);
   });
 
   it.each([

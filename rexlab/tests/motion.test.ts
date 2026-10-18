@@ -479,6 +479,10 @@ describe("a picture's place", () => {
     ]);
   });
 
+  it("fades a pair card's name out over the picture's fade-in", () => {
+    expect(bodyOf(".pair-card-name[data-fading]")).toEqual([{ property: "animation", value: "fade-out var(--motion-picture) var(--ease-out) forwards" }]);
+  });
+
   it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
     const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
     expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
