@@ -233,28 +233,34 @@ describe("the language menu", () => {
   });
 
   it.each([
-    ["ru-RU", "Версия", "Язык", "English", "Version"],
-    ["en-GB", "Version", "Language", "Русский", "Версия"]
-  ])("names the version footer of the static page in the language chosen, on %s from %s, in normal case, and keeps its look", async (device, first, menu, choice, then) => {
-    // index.html's footer, which the test page does not have.
-    const footer = document.createElement("footer");
-    footer.id = "version";
-    footer.setAttribute("aria-label", "Version");
-    footer.textContent = "v1.2.3";
-    document.body.append(footer);
-    try {
-      const { user } = openApp({ device });
-      expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
-      expect(getComputedStyle(footer).position).toBe("fixed");
+    ["ru-RU", "Версия", "Язык", "English", "ALL DINOSAURS", "Version", "HOME", "Language", "Русский"],
+    ["en-GB", "Version", "Language", "Русский", "ВСЕ", "Версия", "ДОМОЙ", "Язык", "English"]
+  ])(
+    "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
+    async (device, first, menu, choice, tile, then, home, menuBack, choiceBack) => {
+      // index.html's footer, which the test page does not have.
+      const footer = document.createElement("footer");
+      footer.id = "version";
+      footer.setAttribute("aria-label", "Version");
+      footer.textContent = "v1.2.3";
+      document.body.append(footer);
+      try {
+        const { user } = openApp({ device });
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
 
-      await chooseFrom(user, menu, choice);
+        await chooseFrom(user, menu, choice);
+        await user.click(screen.getByRole("button", { name: tile }));
+        await screen.findByRole("button", { name: home });
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
 
-      expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
-      expect(getComputedStyle(footer).position).toBe("fixed");
-    } finally {
-      footer.remove();
+        await user.click(screen.getByRole("button", { name: home }));
+        await chooseFrom(user, menuBack, choiceBack);
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+      } finally {
+        footer.remove();
+      }
     }
-  });
+  );
 
   // The footer is styled by its id, so its look holds under either name:
   // the soft ink on the page, the dark theme's soft ink, and the faded
