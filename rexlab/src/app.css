@@ -458,7 +458,7 @@ img {
 }
 
 /* The version footer is part of the static page, outside the app. */
-footer[aria-label="Version"] {
+#version {
   position: fixed;
   right: 56px;
   bottom: 17px;
@@ -469,7 +469,7 @@ footer[aria-label="Version"] {
 
 /* The result screen is ink navy in both themes, so the footer takes the
    faded paper of the words on it. */
-body:has(.result) footer[aria-label="Version"] {
+body:has(.result) #version {
   color: #f6f1e699;
 }
 
@@ -4683,7 +4683,7 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .dinosaur-fact-label,
 [data-theme="dark"] .source-note,
 [data-theme="dark"] .dinosaur-value-chip svg,
-[data-theme="dark"] footer[aria-label="Version"] {
+[data-theme="dark"] #version {
   color: #9ca3b6;
 }
 

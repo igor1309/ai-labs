@@ -9,6 +9,7 @@ import { localTheme } from "../src/localTheme.ts";
 import { endWave, playBoard } from "./pairsApp.tsx";
 import { sortByTrying } from "./sorting.tsx";
 import {
+  unreadVersion,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   SHIPPED_PALS,
@@ -53,6 +54,7 @@ function openApp<C extends Pick<AppProps, "loadPicture" | "startTimer"> = Manual
       now={() => NOW}
       featuredStore={featured}
       startCounter={featured}
+      nameVersion={unreadVersion}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

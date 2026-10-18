@@ -197,6 +197,14 @@ describe("the shipped dinosaur list", () => {
     }
   });
 
+  // Copy whose wording is settled, written out in full.
+  it.each([["apatosaurus", "ru", "ОГРОМНЫЙ ДИНОЗАВР С ДЛИННОЙ, ОЧЕНЬ ТОЛСТОЙ И КРЕПКОЙ ШЕЕЙ."]] as const)(
+    "keeps the corrected description of %s in %s",
+    (id, language, text) => {
+      expect(records.find((record) => record.id === id)?.description[language]).toBe(text);
+    }
+  );
+
   // Names are stored as words and shown in capitals, so each is written
   // like the English ones: a capital, then lower case, in its own script.
   it.each([

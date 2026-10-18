@@ -44,6 +44,7 @@ import {
   surfaceOf,
   surfacesIn,
   symbolOf,
+  unreadVersion,
   type ManualAppearance,
   type ManualOrientation,
   type ManualTimers,
@@ -106,6 +107,7 @@ function openApp({
       progress={emptyProgress()}
       deviceLanguage={language}
       languageStore={localLanguage(() => languages)}
+      nameVersion={unreadVersion}
       appearance={device}
       themeStore={localTheme(() => storage)}
       {...emptyCare()}

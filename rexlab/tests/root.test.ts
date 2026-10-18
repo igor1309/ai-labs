@@ -17,10 +17,11 @@ function browser({
   portrait = false,
   dark = false,
   reduced = false,
-  visibility = "visible" as DocumentVisibilityState
+  visibility = "visible" as DocumentVisibilityState,
+  versionFooter = true
 } = {}) {
   const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark, [REDUCED_MOTION]: reduced });
-  const page = browserDocument(visibility);
+  const page = browserDocument(visibility, { versionFooter });
   return {
     localStorage: local,
     sessionStorage: memoryStorage(),
@@ -236,5 +237,17 @@ describe("the app in a browser", () => {
     });
 
     expect(appProps(given).featuredStore.load()).toEqual({ starts, featured: { day: "2026-10-18", game: "skeletons" } });
+  });
+
+  it("names index.html's version footer", () => {
+    const given = browser();
+
+    appProps(given).nameVersion("Версия");
+
+    expect(given.page.footer).toEqual({ "aria-label": "Версия" });
+  });
+
+  it("does not start on a page without its version footer", () => {
+    expect(() => appProps(browser({ versionFooter: false }))).toThrow("index.html has no #version element");
   });
 });
