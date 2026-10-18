@@ -25,7 +25,7 @@ import { FriendsScreen } from "./FriendsScreen.tsx";
 import type { Language } from "./language/language.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentCareResult, presentFriend, presentVisit } from "./presentation.ts";
-import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { VisitScreen, type CareItem } from "./VisitScreen.tsx";
 
 export type CareProgressStore = {
@@ -77,6 +77,12 @@ type CareScreen =
   | { kind: "result"; result: CareResult }
   | { kind: "friends" };
 
+// A reaction plays inside the visit, which changes at once; every other
+// change is the plain screen change.
+export function transitionFor(from: CareScreen, to: CareScreen): string | undefined {
+  return from.kind === to.kind ? undefined : SCREEN_CHANGE;
+}
+
 // Dinosaur care, kept by the app above its orientation gate, so turning
 // the iPad pauses a visit without losing it. `onHome` takes the child
 // back to the home page; `onStart` is told as each visit begins.
@@ -85,7 +91,7 @@ export function useCareGame(
   onHome: () => void,
   onStart: () => void
 ) {
-  const [screen, setScreen] = useState<CareScreen>({ kind: "welcome" });
+  const { screen, go, set } = useScreens<CareScreen>({ kind: "welcome" }, transitionFor);
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but friends made meanwhile are still kept
   // while the app is open, and so are progress and friends that cannot be
@@ -108,8 +114,6 @@ export function useCareGame(
   // The visitor of the last visit started, so the next one is another.
   const lastVisitor = useRef<string | undefined>(undefined);
 
-  const show = (next: CareScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
-
   const timings = () => REACTIONS[reducedMotion() ? "reduced" : "motion"];
 
   const leave = () => {
@@ -131,7 +135,7 @@ export function useCareGame(
       live.current = visit;
       lastVisitor.current = visitor.id;
       onStart();
-      show({ kind: "visit", visit, leaving: false });
+      go({ kind: "visit", visit, leaving: false });
     });
   };
 
@@ -162,7 +166,7 @@ export function useCareGame(
   // nothing.
   const showVisit = (from: Visit, to: Visit, leaving = false) => {
     live.current = to;
-    setScreen((current) => (current.kind === "visit" && current.visit === from ? { kind: "visit", visit: to, leaving } : current));
+    go((current) => (current.kind === "visit" && current.visit === from ? { kind: "visit", visit: to, leaving } : current));
   };
 
   const giveItem = (item: Item) => {
@@ -181,7 +185,7 @@ export function useCareGame(
       startTimer(timing.departure, () => {
         if (live.current !== settled) return;
         live.current = null;
-        show({ kind: "result", result });
+        go({ kind: "result", result });
       });
     });
   };
@@ -210,7 +214,7 @@ export function useCareGame(
             friendCount={friends.length}
             friendPictures={friends.map(({ id }) => bodyPicture(id))}
             onNewVisitor={newVisitor}
-            onFriends={() => show({ kind: "friends" })}
+            onFriends={() => go({ kind: "friends" })}
             onHome={home}
           />
         );
@@ -230,7 +234,7 @@ export function useCareGame(
             language={language}
             {...presentCareResult(screen.result, language, bodyPicture)}
             onNewVisitor={newVisitor}
-            onFriends={() => show({ kind: "friends" })}
+            onFriends={() => go({ kind: "friends" })}
             onHome={home}
           />
         );
@@ -242,7 +246,7 @@ export function useCareGame(
             nestPicture={itemPicture("nest")}
             onFriend={callBack}
             onNewVisitor={newVisitor}
-            onBack={() => show({ kind: "welcome" })}
+            onBack={() => go({ kind: "welcome" })}
             onHome={home}
           />
         );
@@ -256,7 +260,7 @@ export function useCareGame(
     // Care opens on its welcome screen, whatever screen it was left on.
     open: () => {
       leave();
-      setScreen({ kind: "welcome" });
+      set({ kind: "welcome" });
     },
     content
   };
