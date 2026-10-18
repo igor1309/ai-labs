@@ -75,3 +75,31 @@ func TestAResumedTurnLeavesOutWhatIsNotGiven(t *testing.T) {
 		})
 	}
 }
+
+// resume.feature, "A turn a signal ended gives the session it read": the
+// thread thread.started gives, whatever follows it; none where no line
+// gives one.
+func TestATurnASignalEndedGivesTheSessionItRead(t *testing.T) {
+	t.Parallel()
+	terminated := codex.Ended{Signal: "terminated"}
+	for _, c := range []struct {
+		name    string
+		lines   []string
+		session string
+	}{
+		{"thread.started", []string{threadLine, turnLine, commandLine}, "t1"},
+		{"no thread.started", []string{turnLine, notJSONLine}, ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			turn := codex.Turn{Message: "m", Options: []string{"read-only"}}
+			got, err := wrapper(t, &supervisorSpy{lines: c.lines, result: terminated}, t.TempDir()).Run(context.Background(), turn, discard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := (codex.Result{Ended: terminated, Session: c.session}); !reflect.DeepEqual(got, want) {
+				t.Errorf("turn gave %+v, want %+v", got, want)
+			}
+		})
+	}
+}

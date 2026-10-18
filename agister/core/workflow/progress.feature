@@ -18,6 +18,12 @@ Feature: A workflow reports what each step is doing
     When the workflow runs
     Then no event names "b"
 
+  Scenario: A step's stale turn is an event
+    Given the step "a", its call reporting a stale turn, "no event for
+      1m", recovering
+    When the workflow runs
+    Then the events hold "a" stale, "no event for 1m", recovering
+
   Scenario: Each step's report reaches the call port
     Given the step "a", its call reporting "Bash" with "ls"
     When the workflow runs

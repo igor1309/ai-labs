@@ -49,6 +49,9 @@ func call(name, input string) watch.Report {
 // line is the report of a line that makes no tool call.
 var line = watch.Report{}
 
+// result is the report of a tool's result.
+var result = watch.Report{Result: true}
+
 // watch.feature, "A limit reached reports the turn stale": what the turn
 // reports, and when, decides what the watch tells; a watch stopped holds
 // no wait.
@@ -81,6 +84,13 @@ func TestALimitReachedReportsTheTurnStale(t *testing.T) {
 			clock.Started(15 * time.Minute)
 			clock.Advance(10 * time.Minute)
 			report(line)
+			clock.Advance(5 * time.Minute)
+		}, &watch.Stale{Limit: watch.ToolCommand, What: `the tool command "Bash" ran over 15m`}},
+		{"a result after a call", watch.Limits{ToolCommand: 15 * time.Minute}, func(clock *clocktest.Clock, report func(watch.Report)) {
+			report(call("Bash", "go test"))
+			clock.Started(15 * time.Minute)
+			clock.Advance(10 * time.Minute)
+			report(result)
 			clock.Advance(time.Hour)
 		}, nil},
 		{"nothing after a line", watch.Limits{NoEvent: 21 * time.Minute}, func(clock *clocktest.Clock, report func(watch.Report)) {

@@ -341,7 +341,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (codex.Result{Ended: given}); !reflect.DeepEqual(got, want) {
+	if want := (codex.Result{Ended: given, Session: "t1"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("turn gave %+v, want %+v", got, want)
 	}
 }

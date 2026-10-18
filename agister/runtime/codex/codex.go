@@ -97,9 +97,10 @@ type Turn struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; else another line.
+// nil; a tool's result, where Result is set; else another line.
 type Report struct {
-	Tool *Tool
+	Tool   *Tool
+	Result bool
 }
 
 // Tool is a tool call a turn reports: the tool's name and all it was
@@ -108,11 +109,13 @@ type Tool struct {
 	Name, Input string
 }
 
-// Result is how a turn's program ended, and its reply: none where a signal
-// ended it.
+// Result is how a turn's program ended; the session its thread.started
+// event gave, read as it came, so that a turn a signal ended gives it too,
+// "" for none; and its reply: none where a signal ended it.
 type Result struct {
-	Ended Ended
-	Reply *Reply
+	Ended   Ended
+	Session string
+	Reply   *Reply
 }
 
 // Reply is what the runtime reported of a turn: its text, its structured
@@ -210,9 +213,9 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 		return Result{}, err
 	}
 	if ended.Signal != "" {
-		return Result{Ended: ended}, nil
+		return Result{Ended: ended, Session: read.thread}, nil
 	}
-	return Result{Ended: ended, Reply: read.reply(ended, schema != "")}, nil
+	return Result{Ended: ended, Session: read.thread, Reply: read.reply(ended, schema != "")}, nil
 }
 
 // write writes schema, where one is given, to a file in a folder of its

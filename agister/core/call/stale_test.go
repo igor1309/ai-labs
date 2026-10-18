@@ -65,7 +65,7 @@ func TestTheCallEndsAsWhatWentStaleSays(t *testing.T) {
 func TestTheWatchIsGivenTheLimitsAndEachReport(t *testing.T) {
 	t.Parallel()
 	staleness := &stalenessSpy{}
-	reports := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}}
+	reports := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}}
 	spy := &runtimeSpy{turn: replies(call.Reply{Text: "t"}), reports: reports}
 	var seen []int
 	got := watchedCaller(t, spy, staleness).Call(context.Background(), call.Step{Staleness: limits}, func(call.Report) {
@@ -77,7 +77,7 @@ func TestTheWatchIsGivenTheLimitsAndEachReport(t *testing.T) {
 	if want := []call.Limits{limits}; !reflect.DeepEqual(staleness.limits, want) {
 		t.Errorf("watched against %+v, want %+v", staleness.limits, want)
 	}
-	if !reflect.DeepEqual(staleness.reports, reports) || !reflect.DeepEqual(seen, []int{0, 1}) {
+	if !reflect.DeepEqual(staleness.reports, reports) || !reflect.DeepEqual(seen, []int{0, 1, 2}) {
 		t.Errorf("the watch was given %+v, the call's report seeing %v of it; want %+v, each after the report", staleness.reports, seen, reports)
 	}
 }
