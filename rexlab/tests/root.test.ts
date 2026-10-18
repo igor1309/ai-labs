@@ -205,4 +205,23 @@ describe("the app in a browser", () => {
     expect(given.stopped).toEqual([1]);
     expect(fired).toEqual([1000]);
   });
+
+  it("reads the time from the browser's own clock", () => {
+    const now = new Date(2026, 9, 18, 23, 59);
+
+    expect(appProps({ ...browser(), ...pictureBrowser(now) }).now()).toEqual(now);
+  });
+
+  it("starts each visit with no start counted and no featured game kept, and keeps the day's game for the visit", () => {
+    const given = browser();
+    const visit = appProps(given);
+    expect(visit.featuredStore.load()).toEqual({ starts: {}, featured: undefined });
+
+    visit.featuredStore.saveFeatured({ day: "2026-10-18", game: "care" });
+
+    expect(visit.featuredStore.load().featured).toEqual({ day: "2026-10-18", game: "care" });
+    expect(appProps(given).featuredStore.load()).toEqual({ starts: {}, featured: undefined });
+    expect([...given.localStorage.items]).toEqual([]);
+    expect([...given.sessionStorage.items]).toEqual([]);
+  });
 });

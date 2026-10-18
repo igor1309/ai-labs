@@ -12,6 +12,7 @@ import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
+import { memoryFeatured } from "./memoryFeatured.ts";
 import { PIECES } from "./skeletons/index.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -37,6 +38,7 @@ export type Browser = {
   Image: new () => DecodingImage;
   setTimeout(fire: () => void, ms: number): number;
   clearTimeout(id: number): void;
+  Date: { now(): number };
 };
 
 // The app's collaborators in a browser. Progress, the chosen language and
@@ -76,8 +78,10 @@ export function appProps(browser: Browser): AppProps {
     ),
     skeletonProgress: localSkeletonProgress(storage),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
-    // COMPARE until the featured game is chosen each day.
-    featured: "compare",
+    now: () => new Date(browser.Date.now()),
+    // Start counts and the day's featured game are held for this visit
+    // alone, apart from the progress in local storage.
+    featuredStore: memoryFeatured(),
     loadPicture: decodedPictures(() => new browser.Image()),
     startTimer: (ms, fire) => {
       const id = browser.setTimeout(fire, ms);

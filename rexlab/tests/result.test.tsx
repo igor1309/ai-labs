@@ -14,6 +14,7 @@ import {
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -61,7 +62,7 @@ const storedGame = (storage: MemoryStorage) => stored(storage)?.games["compare-d
 function openApp(storage: MemoryStorage, seed = 21) {
   render(
     <App
-      featured="compare"
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

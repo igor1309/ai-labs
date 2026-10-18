@@ -32,6 +32,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   manualAppearance,
   manualOrientation,
   manualTimers,
@@ -96,7 +97,7 @@ function openApp({
   const languages = memoryStorage();
   const view = render(
     <App
-      featured="compare"
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

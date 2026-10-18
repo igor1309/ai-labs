@@ -28,6 +28,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -79,7 +80,7 @@ function openApp({
 }) {
   const view = render(
     <App
-      featured="compare"
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

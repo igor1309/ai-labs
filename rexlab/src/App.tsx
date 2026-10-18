@@ -4,7 +4,8 @@ import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
-import { HomePage, type HomeGame } from "./HomePage.tsx";
+import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
+import { HOME_GAMES, HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
@@ -85,8 +86,11 @@ export type AppProps = CareGameProps &
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
-    // The game the home page's large card features.
-    featured: HomeGame;
+    // The device's clock: the time now.
+    now: () => Date;
+    // The start counts and the day's featured game the large card's
+    // choice reads, and where it keeps the day's game.
+    featuredStore: FeaturedStore;
   };
 
 // The two dinosaurs facing off in the quiz's picture on the home page.
@@ -152,7 +156,8 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
-  featured,
+  now,
+  featuredStore,
   sortables,
   sortingProgress,
   pals,
@@ -163,6 +168,10 @@ export function App({
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  // The game the large card features, chosen once as the app starts: it
+  // stays while the app is open, past midnight too, and the next day's is
+  // chosen when the app is opened again.
+  const [featured] = useState(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.

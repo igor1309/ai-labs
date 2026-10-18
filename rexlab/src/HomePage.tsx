@@ -14,6 +14,9 @@ const BRAND = "RexLab";
 // The games the home page offers, each on a tile of its own.
 export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons";
 
+// The games in their tiles' order, which never changes.
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons"];
+
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
 type Badge = { symbol: LucideIcon; value: number };

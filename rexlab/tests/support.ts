@@ -2,6 +2,9 @@ import { within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
+import { calendarDay } from "../src/featured.ts";
+import type { HomeGame } from "../src/HomePage.tsx";
+import { memoryFeatured } from "../src/memoryFeatured.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
@@ -87,8 +90,8 @@ export function manualPictures(): ManualPictures {
 // What the app takes from a browser to load pictures and keep time, as
 // spies: the source of each image it decodes, the timers it started, by
 // their id, and the ids of those it stopped. No image ever finishes
-// decoding and no timer ever fires.
-export function pictureBrowser() {
+// decoding, no timer ever fires and the clock stands at `now`.
+export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
   const decoding: string[] = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
   const stopped: number[] = [];
@@ -105,6 +108,7 @@ export function pictureBrowser() {
     clearTimeout: (id: number) => {
       stopped.push(id);
     },
+    Date: { now: () => now.getTime() },
     decoding,
     timers,
     stopped
@@ -311,6 +315,14 @@ export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"
 export function englishDevice() {
   const storage = memoryStorage();
   return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
+}
+
+// The featured game for tests that are not about its choice: `game`,
+// already chosen for the clock's day, so the choice draws nothing from
+// the random source.
+export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore"> {
+  const now = new Date(2026, 9, 18, 9, 30);
+  return { now: () => now, featuredStore: memoryFeatured({ starts: {}, featured: { day: calendarDay(now), game } }) };
 }
 
 // The theme for tests that are not about it: a device in its light

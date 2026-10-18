@@ -23,6 +23,7 @@ import {
   englishDevice,
   fakeBodyPicture,
   featuredCard,
+  featuring,
   homeTile,
   fakeSkeletonPicture,
   lightDevice,
@@ -44,7 +45,7 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons()
 ) {
-  render(<App featured="compare" dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
+  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard(), tile: homeTile("COMPARE") };
 }
 
@@ -759,7 +760,7 @@ describe("the large card", () => {
   async function openedBy(game: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App featured={game} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
     );
     await tap(userEvent.setup());
     const asked: string[] = [];

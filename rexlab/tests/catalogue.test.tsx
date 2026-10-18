@@ -20,6 +20,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   loadedPictures,
   manualAppearance,
   manualOrientation,
@@ -42,7 +43,7 @@ function openApp({
   const themes = memoryStorage();
   render(
     <App
-      featured="compare"
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
