@@ -43,9 +43,11 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
     throw new Error(`Cannot budget ${value}`);
   }
 
+  // jsdom keeps a gap only as the shorthand, row gap first; a gap may be
+  // a clamp() or min() with spaces of its own.
   const gap = (s: CSSStyleDeclaration, axis: "row" | "column" = "column") => {
-    const expanded = axis === "column" ? s.columnGap : s.rowGap;
-    return pixels(expanded === "normal" ? s.gap : expanded);
+    const [row, column = row] = s.gap.match(/(?:[^\s()]+|\([^()]*\))+/g) ?? [];
+    return pixels((axis === "column" ? column : row) ?? "");
   };
   const sides = (s: CSSStyleDeclaration) => pixels(s.paddingLeft) + pixels(s.paddingRight);
   const vertical = (s: CSSStyleDeclaration) => pixels(s.paddingTop) + pixels(s.paddingBottom);

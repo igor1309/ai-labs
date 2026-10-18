@@ -34,6 +34,9 @@ const chosen = () =>
 const climbChip = () => screen.getByLabelText("LEVEL");
 
 const px = (value: string) => Number.parseFloat(value) || 0;
+// jsdom keeps a gap only as the shorthand, row gap first.
+const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
+const rowGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ")[0] ?? "");
 
 // The names of the result's dinosaurs, in the order shown.
 const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent);
@@ -99,10 +102,16 @@ describe("the level switch", () => {
     const { user } = await openPairs({ ageLevel: picked(from) });
     const mark = levelSwitch().querySelector(".pairs-level-mark");
     if (!mark) throw new Error("No chosen mark on the switch");
-    // The mark stands a third of the switch and its gap further along for
-    // each level before the chosen one.
+    // The mark is as wide as a level, a third of the switch inside its
+    // padding and two gaps, and stands one level and one gap further along
+    // for each level before the chosen one.
     const place = () => getComputedStyle(levelSwitch()).getPropertyValue("--chosen");
-    expect([getComputedStyle(mark).translate, place()]).toEqual(["calc(var(--chosen) * (100% + 4px)) 0", String(AGE_LEVELS.indexOf(from))]);
+    const [switchStyle, markStyle] = [getComputedStyle(levelSwitch()), getComputedStyle(mark)];
+    const width = /^calc\(0\.3333333333333333 \* \(100% - (\d+)px\)\)$/.exec(markStyle.width);
+    const step = /^calc\(var\(--chosen\) \* \(100% \+ (\d+)px\)\) 0$/.exec(markStyle.translate);
+    if (!width || !step) throw new Error(`Unknown mark: ${markStyle.width}, ${markStyle.translate}`);
+    expect([Number(width[1]), Number(step[1])]).toEqual([px(switchStyle.paddingLeft) + px(switchStyle.paddingRight) + 2 * columnGapOf(switchStyle), columnGapOf(switchStyle)]);
+    expect([markStyle.left, place()]).toEqual([switchStyle.paddingLeft, String(AGE_LEVELS.indexOf(from))]);
 
     await user.click(button(TEXTS.en.ageLevels[to].name));
 
@@ -115,7 +124,7 @@ describe("the level switch", () => {
     const style = getComputedStyle(levelSwitch());
     const room = px(getComputedStyle(levelSwitch().parentElement ?? document.body).width) - px(style.borderLeftWidth) - px(style.borderRightWidth) - px(style.paddingLeft) - px(style.paddingRight);
     expect([style.display, style.gridTemplateColumns]).toEqual(["grid", "repeat(3, 1fr)"]);
-    const width = (room - px(style.columnGap) * 2) / 3;
+    const width = (room - columnGapOf(style) * 2) / 3;
     expect(width).toBeGreaterThanOrEqual(48);
     for (const level of within(levelSwitch()).getAllByRole("button")) expect(px(getComputedStyle(level).height)).toBeGreaterThanOrEqual(48);
   });
@@ -134,11 +143,11 @@ describe("the level switch", () => {
       if (!column) throw new Error("The switch stands in no column");
       expect(getComputedStyle(column).flexShrink).toBe("0");
       const row = SCREEN.width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight);
-      expect(px(getComputedStyle(column).width) + px(body.columnGap)).toBeLessThanOrEqual(row);
+      expect(px(getComputedStyle(column).width) + columnGapOf(body)).toBeLessThanOrEqual(row);
 
       const style = getComputedStyle(levelSwitch(language));
       const room = px(getComputedStyle(column).width) - px(style.borderLeftWidth) - px(style.borderRightWidth) - px(style.paddingLeft) - px(style.paddingRight);
-      const segment = (room - px(style.columnGap) * 2) / 3;
+      const segment = (room - columnGapOf(style) * 2) / 3;
       const levels = within(levelSwitch(language)).getAllByRole("button");
       expect(levels.map((level) => level.querySelector(".pairs-level-name")?.textContent)).toEqual(AGE_LEVELS.map((level) => TEXTS[language].ageLevels[level].name));
       for (const level of levels) {
@@ -149,7 +158,7 @@ describe("the level switch", () => {
         const words = name.textContent ?? "";
         // The name takes the level's face and colour.
         const needed = (LEVEL_EMS[words] ?? Number.NaN) * px(levelStyle.fontSize) + px(levelStyle.letterSpacing) * words.length;
-        const nameRoom = segment - px(levelStyle.paddingLeft) - px(levelStyle.paddingRight) - px(getComputedStyle(picture).width) - px(levelStyle.columnGap);
+        const nameRoom = segment - px(levelStyle.paddingLeft) - px(levelStyle.paddingRight) - px(getComputedStyle(picture).width) - columnGapOf(levelStyle);
         expect(levelStyle.whiteSpace).toBe("nowrap");
         expect([words, needed <= nameRoom]).toEqual([words, true]);
         const surface = surfaceOf(name);
@@ -339,7 +348,7 @@ describe("a board at each level", () => {
     expect([roomStyle.flexGrow, roomStyle.flexShrink, roomStyle.flexBasis, roomStyle.minHeight, roomStyle.getPropertyValue("container-type")]).toEqual(["1", "1", "0px", "0px", "size"]);
     const room = {
       width: width - px(page.paddingLeft) - px(page.paddingRight),
-      height: height - px(page.paddingTop) - px(page.paddingBottom) - barHeight - px(page.rowGap)
+      height: height - px(page.paddingTop) - px(page.paddingBottom) - barHeight - rowGapOf(page)
     };
 
     const style = getComputedStyle(board());
@@ -349,7 +358,7 @@ describe("a board at each level", () => {
     const shape = (columns * 3) / (rows * 3.2);
     const boardWidth = Math.min(room.width, room.height * shape);
     const boardHeight = boardWidth / shape;
-    const [rowGap, columnGap] = [px(style.rowGap), px(style.columnGap)];
+    const [rowGap, columnGap] = [rowGapOf(style), columnGapOf(style)];
     const card = { width: (boardWidth - (columns - 1) * columnGap) / columns, height: (boardHeight - (rows - 1) * rowGap) / rows };
 
     expect(boardHeight).toBeLessThanOrEqual(room.height + 0.01);
