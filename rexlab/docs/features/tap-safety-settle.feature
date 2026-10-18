@@ -1,8 +1,6 @@
 Feature: Every tap is safe to repeat: settling and replacing
-  A new screen takes no tap or drag until it has settled: its view
-  transition has ended, or it is shown where the browser runs none, and
-  500 ms have passed since it began to appear (docs/tap-safety.md, rules
-  1 and 4). While a change waits for its pictures, the child's latest
+  A new screen takes no tap or drag until it has settled: 500 ms have
+  passed since it began to appear (docs/tap-safety.md, rules 1 and 4). While a change waits for its pictures, the child's latest
   different request replaces it.
 
   Background:
@@ -13,16 +11,17 @@ Feature: Every tap is safe to repeat: settling and replacing
     Given <device>
     And I am on the home page
     When I tap "MUSEUM"
-    And before 500 ms have passed since the museum began to appear, I tap where a museum button stands and where "SORT" stood
-    Then neither tap presses anything, whether the museum is still appearing or has appeared
+    And <while> I tap where a museum button stands and where "SORT" stood
+    And after it has appeared but before 500 ms have passed since it began to, I tap them again
+    Then none of those taps presses anything
     When 500 ms have passed since the museum began to appear
     Then a tap on its buttons works
 
     Examples:
-      | device                                     |
-      | the device does not ask for reduced motion |
-      | the device asks for reduced motion         |
-      | the browser runs no view transitions       |
+      | device                                     | while                           |
+      | the device does not ask for reduced motion | while the museum still appears, |
+      | the device asks for reduced motion         | while the museum still appears, |
+      | the browser runs no view transitions       | as the museum is shown,         |
 
   @next
   Scenario Outline: A drag waits until the new screen has settled
@@ -35,18 +34,18 @@ Feature: Every tap is safe to repeat: settling and replacing
     Then I can drag <piece> to its place
 
     Examples:
-      | device                                     | from                               | control    | board               | piece  |
-      | the device does not ask for reduced motion | the home page                      | "SORT"     | the sorting board   | a card |
-      | the device asks for reduced motion         | the home page                      | "SORT"     | the sorting board   | a card |
-      | the browser runs no view transitions       | the home page                      | "SORT"     | the sorting board   | a card |
-      | the device does not ask for reduced motion | the museum hall, Triceratops built | "REBUILD"  | the skeleton board  | a bone |
+      | device                                     | from                               | control   | board              | piece  |
+      | the device does not ask for reduced motion | the home page                      | "SORT"    | the sorting board  | a card |
+      | the device asks for reduced motion         | the home page                      | "SORT"    | the sorting board  | a card |
+      | the browser runs no view transitions       | the home page                      | "SORT"    | the sorting board  | a card |
+      | the device does not ask for reduced motion | the museum hall, Triceratops built | "REBUILD" | the skeleton board | a bone |
 
   @next
   Scenario: NEXT tapped twice goes one question on, and NEXT works again later
     Given I am on question "3/10", answered
     When I tap "NEXT" twice quickly
     Then I see question "4/10"
-    When I answer it and 500 ms have passed since it began to appear
+    When 500 ms have passed since it began to appear and I answer it
     And I tap "NEXT"
     Then I see question "5/10"
 
@@ -64,14 +63,20 @@ Feature: Every tap is safe to repeat: settling and replacing
     Given I am on the list of every dinosaur
     And pictures load slowly
     When I tap the card of Velociraptor
-    And I tap the card of Stegosaurus before its picture loads
+    And I tap the card of Stegosaurus before Velociraptor's picture loads
     Then I see the page of Stegosaurus once its picture has loaded
     And the page of Velociraptor never opens
 
   @next
-  Scenario: A second tap on a game's start deals no second round
-    Given I am on the home page
+  Scenario Outline: The latest dinosaur chosen in a game wins
+    Given I am on <screen>
     And pictures load slowly
-    When I tap "SORT" twice quickly, before the pictures load
-    Then one sorting board is dealt and loads
-    And it opens once its pictures have loaded
+    When I tap <first> and then <second> before the pictures of <first> load
+    Then <opened> opens once its pictures have loaded
+    And nothing of <first> opens
+    And one start of <game> is counted
+
+    Examples:
+      | screen                                    | first                   | second                  | opened                            | game      |
+      | the skeleton selection screen             | the card of Triceratops | the card of Stegosaurus | the Stegosaurus skeleton board    | SKELETONS |
+      | the care friends screen, with two friends | the first friend        | the second friend       | a care visit of the second friend | CARE      |

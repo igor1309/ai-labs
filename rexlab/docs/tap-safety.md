@@ -12,19 +12,19 @@ a button of the museum.
 1. **Screen changes go through one place.** Every screen change goes
    through one guarded entry point in `src/screens.ts`, never a direct
    write of the screen state. A request names the screen it asks for: its
-   kind, and for a question its number, for a dinosaur's page its
-   dinosaur. A fresh round or board of a game is one request, whatever
-   it deals. The entry point does nothing when asked for the screen
+   kind, and for a question its number, for a dinosaur's page, a skeleton
+   chosen or a friend called back its dinosaur. A fresh round or board of
+   a game is one request, whatever it deals. The entry point does nothing when asked for the screen
    already showing or already on its way, so a second tap on SORT or
    PLAY AGAIN deals no second round, and a second tap on NEXT asks again
    for the question already on its way. While a change waits for its
    pictures, a different request replaces it: the waiting change is
    dropped and never opens, so the child's latest choice wins. Once a new
    screen begins to appear, no screen takes a tap or starts a drag until
-   it has settled: its view transition has ended (or, where the browser
-   runs none, it is shown) and the settle window of 500 ms from its
-   appearing has passed, so the second tap of a double tap, slower than
-   the motion, still presses nothing. Updates inside the screen showing,
+   it has settled: 500 ms have passed since it began to appear. The window
+   outlasts every screen's view transition (320 ms, 160 ms with reduced
+   motion), so the second tap of a double tap, slower than the motion,
+   still presses nothing. Updates inside the screen showing,
    such as an answer chosen or a food chosen, go through the entry
    point's own call for updates, not its screen changes: rules 2 and 3
    govern them.
@@ -36,15 +36,14 @@ a button of the museum.
    still the one the child tapped on, showing the same thing. Work a tap
    started and that finishes later, such as a wait for pictures, checks
    this before it changes the screen, and does nothing if the child has
-   gone elsewhere, or changed what the screen shows, meanwhile.
+   gone elsewhere, or made an update to the screen through the entry
+   point's call for updates, meanwhile.
 4. **One settle window, and no other timed guard.** Telling the second
    tap of a double tap from a new tap takes time, so the entry point owns
    the one settle window of rule 1. No button, screen or game has a timed
    guard of its own: no debounce, no "ignore taps for N ms" wrapper. The
-   window's timer, and the end of a view transition, reach the entry
-   point through seams the composition root, `src/root.ts`, injects, as
-   the wait for pictures' timer does, so tests fire them; the end of a
-   transition is never guessed with a timer.
+   window's timer is injected by the composition root, `src/root.ts`, as
+   the wait for pictures' is, so tests fire it.
 
 ## Why 500 ms
 
