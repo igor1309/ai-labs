@@ -84,6 +84,6 @@ Feature: Age level
   Scenario: Choosing a level changes no score
     Given I have a score in every game that keeps one
     When I choose each age level in turn
-    Then every game's score, star and collection is unchanged
+    Then every game's saved scores, stars and collection are unchanged
     And no game's start count changes
     And the day's featured game is unchanged

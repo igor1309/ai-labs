@@ -3,14 +3,17 @@ Feature: The level a game starts at
   A game with no mode for that level plays its nearest lower one, and a
   child's own choice in a game wins until a parent picks a different
   level. Rewards are the same at every level, and each level keeps its
-  own best score (docs/age-levels.md).
+  own best score (docs/age-levels.md); a best saved before a game had
+  levels is its Hatchling best, shown on its tile and, when it is
+  featured, on the large card.
 
   No game has levels yet: each adopts them in its own issue, which
   removes its row from the first scenario and keeps the child's choice
   in its own progress; the catalogue has no levels and keeps its row.
   Until then the rules below are checked on the shared rule, which is
   given the level, a game's modes and the child's choice in it, made
-  under the level as it then stood.
+  under the level as it then stood; the child's choice is in
+  age-level-choice.feature.
 
   Background:
     Given an iPad in landscape
@@ -56,37 +59,3 @@ Feature: The level a game starts at
       | all three                    | Hatchling      | Hatchling      |
       | all three                    | Explorer       | Explorer       |
       | all three                    | Paleontologist | Paleontologist |
-
-  Scenario Outline: The child's own choice in a game wins until the setting changes
-    Given the age level is <setting>
-    And a game with all three modes, in which the child chose <choice>
-    When I close and reopen the app
-    And the game starts again
-    Then it plays its <choice> mode
-    When a parent chooses <next> in the age level menu
-    And I close and reopen the app
-    And the game starts again
-    Then it plays its <next> mode
-    When a parent chooses <setting> in the age level menu
-    And the game starts again
-    Then it plays its <setting> mode
-
-    Examples:
-      | setting   | choice         | next           |
-      | Explorer  | Hatchling      | Paleontologist |
-      | Hatchling | Paleontologist | Explorer       |
-
-  Scenario: A level changed and changed back drops the child's choice
-    Given the age level is Explorer
-    And a game with all three modes, in which the child chose Hatchling
-    When a parent chooses Paleontologist and then Explorer in the age level menu
-    And the game starts again
-    Then it plays its Explorer mode
-
-  Scenario: Choosing the level already set keeps the child's choice
-    Given the age level is Explorer
-    And a game with all three modes, in which the child chose Hatchling
-    When a parent chooses Explorer in the age level menu
-    And I close and reopen the app
-    And the game starts again
-    Then it plays its Hatchling mode

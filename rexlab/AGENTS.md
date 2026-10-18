@@ -77,7 +77,9 @@ Commit the spec first, then from the worktree's root run
 `rexlab/scripts/spec-review.sh /tmp/<branch> <feature files>`. It
 gives the same prompt to Codex and Claude, both read-only, and writes
 `spec-review-<n>-codex.md` and `-claude.md`. Fix what holds up, commit
-and run another round until no findings are left.
+and run another round until no findings are left, at most three rounds
+in all (owner, 2026-10-18); after the third, fix what holds up and go
+on.
 
 ### Implementation with agister
 
@@ -105,7 +107,8 @@ Five Codex reviewers (architecture, tests, adversarial, clarity, intent)
 report and a Claude Opus judge joins their findings; the base defaults to
 `origin/trunk` and the candidate to `HEAD`. Answer the judge's items in
 one more step brief's `## Acts on`, and fix small items yourself; run
-the gate again only when the fixes change the design.
+the gate again only when the fixes change the design, and at most three
+rounds in all (owner, 2026-10-18).
 `agister workflow show code_review --dir rexlab` shows the output shape.
 
 ## Commands
