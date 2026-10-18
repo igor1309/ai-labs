@@ -35,7 +35,6 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | --- | --- | --- | --- |
 | The archived Agister (`agister/archive/`): Go, Pages and script tests | nothing | — | excluded: archived, reference only |
 | gokit's Go tests (`gokit/`) | `agister-core`: `agister/scripts/test.sh` calls `gokit/scripts/test.sh` | `gokit/**` | runs |
-| The gate's Go tests (`scripts/agister-gate/`) | `agister-core`, step Gate | `scripts/agister-gate/**` | runs |
 | warder's Go tests (`warder/`), gofmt, vet, race | `warder-core`: `warder/scripts/test.sh` | the `warder` filter | runs |
 | The repository scripts' tests (`scripts/tests/*.test.js`) | `repo-scripts` | every push and pull request | runs |
 | The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | runs |
@@ -66,7 +65,7 @@ Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
-- Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
+- Agister, gokit and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
 
 ## Keeping it regular
 

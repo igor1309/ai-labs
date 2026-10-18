@@ -29,7 +29,8 @@ import {
   manualVisibility,
   memoryStorage,
   type ManualTimers,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 
 // home-featured-progress.feature
@@ -67,6 +68,7 @@ function openApp<C extends Pick<AppProps, "loadPicture" | "startTimer"> = Manual
       languageStore={localLanguage(() => storage)}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       visitors={SHIPPED_VISITORS}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
@@ -402,6 +404,8 @@ describe("the featured card", () => {
 
     await user.dblClick(featuredCard());
     loadAll();
+    // A welcome or selection screen is not yet a start.
+    if (game === "care" || game === "pairs" || game === "skeletons") expect(storedFeatured(storage)?.starts?.[game]).toBeUndefined();
     await begin(user);
     loadAll();
 

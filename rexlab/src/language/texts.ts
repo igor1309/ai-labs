@@ -15,6 +15,11 @@ export type Texts = {
   // So is the theme menu, with its label and its choices.
   themeMenu: string;
   themes: { system: string; light: string; dark: string };
+  // The age level menu is for parents too, with its label and each
+  // level's age, but each level's name is the children's word for it, in
+  // capitals.
+  ageLevelMenu: string;
+  ageLevels: { hatchling: AgeLevelWords; explorer: AgeLevelWords; paleontologist: AgeLevelWords };
   // The version footer's name, read out by a screen reader, for parents
   // too.
   versionLabel: string;
@@ -137,5 +142,9 @@ export type Texts = {
 
 // A celebration's label, read out, and its text, shown.
 type Celebrated = { label: string; text: string };
+
+// An age level's name, in capitals, and the age it suits, a parents'
+// footnote in normal case.
+type AgeLevelWords = { name: string; age: string };
 
 export const TEXTS: Record<Language, Texts> = { en, ru };
