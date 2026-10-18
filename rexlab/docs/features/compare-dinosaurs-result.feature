@@ -16,7 +16,7 @@ Feature: Compare dinosaurs quiz: the result and the best score
     Given I am on the result screen
     When I tap "PLAY AGAIN"
     Then a new round of 10 questions starts
-    And I see the progress "1/10"
+    And I see the progress "1/10" at once, its pictures shimmering
 
   Scenario: Home returns to the home page
     Given I am on the result screen

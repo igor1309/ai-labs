@@ -28,7 +28,8 @@ import {
   type ManualPictures,
   type ManualVisibility,
   type MemoryStorage,
-  unsetAgeLevel
+  unsetAgeLevel,
+  loadShownPictures
 } from "./support.ts";
 import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
@@ -47,8 +48,8 @@ export type SkeletonsAppOptions = {
   appearance?: Theme;
 };
 
-// The app opened on the home page, its pictures loading only when the
-// test finishes them.
+// The app opened on the home page, its own pictures loaded and those
+// asked for after loading only when the test finishes them.
 export function openHomeApp({
   storage = memoryStorage(),
   pictures = manualPictures(),
@@ -87,6 +88,7 @@ export function openHomeApp({
     ...pictures
   };
   render(<App {...props} />);
+  loadShownPictures(pictures);
   return { user: userEvent.setup(), storage, pictures, orientation, visibility };
 }
 

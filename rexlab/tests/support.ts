@@ -1,4 +1,4 @@
-import { within } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
@@ -40,14 +40,19 @@ export const fakeSkeletonPicture = (dinosaurId: string, part: string) => `/skele
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
 export function loadedPictures(): Pick<AppProps, "loadPicture" | "startTimer"> {
-  return { loadPicture: (_url, done) => done(), startTimer: () => () => {} };
+  return { loadPicture: (_url, done) => done("loaded"), startTimer: () => () => {} };
 }
 
 export type ManualPictures = Pick<AppProps, "loadPicture" | "startTimer"> & {
   // The URL of every picture asked for and not yet finished, in order.
   loading(): string[];
-  // Ends the loading of `url`: from then on it is loaded or has failed.
+  // Ends the loading of `url`: from then on it is loaded.
   finish(url: string): void;
+  // Ends the loading of `url` as failed.
+  fail(url: string): void;
+  // Ends the loading of every picture asked for so far: from then on
+  // they are loaded.
+  finishAll(): void;
   // The length of every timer started and not yet fired or stopped.
   timers(): number[];
   // Fires every running timer of `ms`.
@@ -59,10 +64,16 @@ export type ManualPictures = Pick<AppProps, "loadPicture" | "startTimer"> & {
 
 // Pictures that load and a timer that fires only when the test says.
 export function manualPictures(): ManualPictures {
-  const loading: Array<{ url: string; done: () => void }> = [];
+  const loading: Array<{ url: string; done: (outcome: "loaded" | "failed") => void }> = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
   const stopped: Array<{ ms: number; fire: () => void }> = [];
   const drop = <T>(list: T[], item: T) => list.splice(list.indexOf(item), 1);
+  const end = (url: string, outcome: "loaded" | "failed") => {
+    for (const picture of loading.filter((picture) => picture.url === url)) {
+      drop(loading, picture);
+      picture.done(outcome);
+    }
+  };
   return {
     loadPicture: (url, done) => {
       loading.push({ url, done });
@@ -77,11 +88,10 @@ export function manualPictures(): ManualPictures {
       };
     },
     loading: () => loading.map(({ url }) => url),
-    finish: (url) => {
-      for (const picture of loading.filter((picture) => picture.url === url)) {
-        drop(loading, picture);
-        picture.done();
-      }
+    finish: (url) => end(url, "loaded"),
+    fail: (url) => end(url, "failed"),
+    finishAll: () => {
+      for (const url of new Set(loading.map(({ url }) => url))) end(url, "loaded");
     },
     timers: () => timers.map(({ ms }) => ms),
     fire: (ms) => {
@@ -144,7 +154,7 @@ export type ManualTimers = Pick<AppProps, "loadPicture" | "startTimer"> & {
 export function manualTimers(): ManualTimers {
   const pictures = manualPictures();
   return {
-    loadPicture: (_url, done) => done(),
+    loadPicture: (_url, done) => done("loaded"),
     startTimer: pictures.startTimer,
     timers: pictures.timers,
     fire: pictures.fire,
@@ -153,6 +163,12 @@ export function manualTimers(): ManualTimers {
       for (let ms = pictures.timers()[0]; ms !== undefined; ms = pictures.timers()[0]) pictures.fire(ms);
     }
   };
+}
+
+// The pictures on screen loaded, when the test loads pictures by hand,
+// so it sees only those asked for from then on.
+export function loadShownPictures(clock: Pick<AppProps, "loadPicture" | "startTimer">) {
+  if ("finishAll" in clock) act(() => (clock as ManualPictures).finishAll());
 }
 
 // A seeded random source (mulberry32): each seed is one repeatable run.

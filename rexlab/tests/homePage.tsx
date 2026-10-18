@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
 // that names it.
@@ -48,7 +49,8 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onPairs={() => opened.push("pairs")}
       onSkeletons={() => opened.push("skeletons")}
       onMuseum={nothing}
-    />
+    />,
+    withPictures
   );
   return { user: userEvent.setup(), opened, unmount: view.unmount };
 }

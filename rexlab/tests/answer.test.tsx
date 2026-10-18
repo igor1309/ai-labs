@@ -32,6 +32,7 @@ import {
   homeTile,
   unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
   mass: (value) => formatMass(value, "en"),
@@ -97,6 +98,7 @@ async function answerUpTo(user: UserEvent, number: number, pictures?: ManualPict
 }
 
 const picturesShown = () => cards().map((card) => within(card).getByRole("img").getAttribute("src"));
+const looks = () => cards().map((card) => within(card).getByRole("img").dataset.picture);
 
 describe("answering a question", () => {
   const examples: Array<[string, Attribute, string, string, string, string]> = [
@@ -118,7 +120,7 @@ describe("answering a question", () => {
       const chosen: string[] = [];
       const nothing = () => {};
       const handlers = { onChoose: (id: string) => chosen.push(id), onNext: nothing, onHome: nothing };
-      const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
+      const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />, withPictures);
       expect(screen.getByRole("heading").textContent).toContain(prompt);
 
       await userEvent.setup().click(cardOf(tapped));
@@ -188,7 +190,8 @@ describe("answering a question", () => {
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}
-      />
+      />,
+      withPictures
     );
 
     const marks = [cardOf(big), cardOf(small)].map((card) => {
@@ -243,44 +246,56 @@ describe("Next", () => {
     expect(progress()).toBe("4/10");
   });
 
-  it("waits for the next question's pictures, with question 3 on screen until both have loaded", async () => {
+  it("loads question 4's pictures ahead on question 3, so question 4 shows them at once", async () => {
     const pictures = manualPictures();
     const { user, start } = startRound(14, pictures);
     await start();
     await answerUpTo(user, 3, pictures);
-    const third = { question: shownQuestion(), html: document.body.innerHTML };
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
 
-    const asked = pictures.loading();
-    expect(asked).toHaveLength(2);
-    expect(pictures.timers()).toEqual([1000]);
-    const [first, second] = asked;
-    act(() => pictures.finish(first ?? ""));
-    expect([shownQuestion(), document.body.innerHTML]).toEqual([third.question, third.html]);
-
-    act(() => pictures.finish(second ?? ""));
-
     expect(progress()).toBe("4/10");
-    expect(picturesShown()).toEqual(asked);
-    expect(pictures.timers()).toEqual([]);
+    expect(looks()).toEqual(["shown", "shown"]);
+    expect(picturesShown()).toEqual(cards().map((card) => fakeBodyPicture(byName(card.getAttribute("aria-label") ?? "").id)));
   });
 
-  it("goes on to question 4 when its pictures take a second, and not again when they arrive", async () => {
+  it.each([14, 15, 21])("loads each next question's pictures ahead from question 1, and none on question 10 (round %i)", async (seed) => {
+    const pictures = manualPictures();
+    const { user, start } = startRound(seed, pictures);
+    await start();
+    const shown: Array<Array<string | undefined>> = [];
+    for (let number = 1; number < 10; number++) {
+      await user.click(cardOf(largerOf(shownQuestion())));
+      await user.click(screen.getByRole("button", { name: "NEXT" }));
+      // A question's pictures show at once only if they were asked for
+      // before it opened.
+      shown.push(looks());
+      if (number < 9) act(() => pictures.loading().forEach(pictures.finish));
+    }
+
+    expect([progress(), shown, pictures.loading()]).toEqual(["10/10", Array.from({ length: 9 }, () => ["shown", "shown"]), []]);
+  });
+
+  it("opens question 4 at once while its pictures still load, and fades them in as they arrive", async () => {
     const pictures = manualPictures();
     const { user, start } = startRound(14, pictures);
     await start();
-    await answerUpTo(user, 3, pictures);
+    await answerUpTo(user, 2, pictures);
+    // Question 3 opens and asks for question 4's pictures, which stay
+    // loading.
     await user.click(screen.getByRole("button", { name: "NEXT" }));
-    const asked = pictures.loading();
+    await user.click(cardOf(largerOf(shownQuestion())));
 
-    act(() => pictures.fire(1000));
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
 
     expect(progress()).toBe("4/10");
-    expect(picturesShown()).toEqual(asked);
-    const fourth = document.body.innerHTML;
-    act(() => asked.forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(fourth);
+    // A dinosaur already shown earlier in the round shows at once.
+    const fourth = cards().map((card) => fakeBodyPicture(byName(card.getAttribute("aria-label") ?? "").id));
+    const loading = fourth.map((url) => pictures.loading().includes(url));
+    expect(loading).toContain(true);
+    expect([looks(), picturesShown()]).toEqual([loading.map((still) => (still ? "loading" : "shown")), fourth.map((url, at) => (loading[at] ? null : url))]);
+    act(() => pictures.finishAll());
+    expect([looks(), picturesShown()]).toEqual([loading.map((still) => (still ? "appearing" : "shown")), fourth]);
   });
 
   it("skips nothing on a quick double tap while the pictures load", async () => {
