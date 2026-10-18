@@ -1,13 +1,14 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, MUSEUM_SETTLE, type AppProps } from "../src/App.tsx";
+import { App, type AppProps } from "../src/App.tsx";
 import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { endWave, playBoard } from "./pairsApp.tsx";
 import { sortByTrying } from "./sorting.tsx";
+import { filterTaps, tapAt } from "./taps.ts";
 import {
   unreadVersion,
   SHIPPED_CATALOGUE,
@@ -201,7 +202,6 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     1,
     async ({ user, clock }) => {
       await user.click(button("MUSEUM"));
-      act(() => clock.fire(MUSEUM_SETTLE));
       await user.click(within(screen.getByRole("region", { name: "STEGOSAURUS" })).getByRole("button", { name: "BUILD" }));
     }
   ]
@@ -246,7 +246,6 @@ describe("starting a game", () => {
       await user.click(button("HOME"));
     }
     await user.click(button("MUSEUM"));
-    act(() => clock.fire(MUSEUM_SETTLE));
     await user.click(button("HOME"));
 
     expect(featuredCard()).toBeDefined();
@@ -321,7 +320,6 @@ describe("a round left while its pictures load", () => {
       expect(counted.filter((game) => game === "compare")).toEqual([]);
 
       // COMPARE starts a round again, back home.
-      act(() => pictures.fire(MUSEUM_SETTLE));
       await user.click(button("HOME"));
       await user.click(homeTile("COMPARE"));
       act(() => pictures.loading().forEach(pictures.finish));
@@ -412,27 +410,32 @@ describe("the featured card", () => {
     expect(storedFeatured(storage).starts).toEqual({ [game]: 1 });
   });
 
-  // In a browser the screen change commits after the transition, so the
-  // second tap of a quick double tap can land on the home page still
-  // shown: here both land in one act, before React commits.
+  // In a browser the screen change commits after the transition, so a
+  // second activation can land on the home page still shown: here both
+  // land in one act, before React commits, with the double-tap filter in.
+  // A key's click has no pointer's detail, and is never filtered.
   it.each([
-    ["the large card", featuredCard],
-    ["its tile", () => homeTile("ALL DINOSAURS")]
-  ])("counts one start of ALL DINOSAURS for a double tap on %s landing before the list shows, and one more on the next visit", async (_where, target) => {
+    ["Enter twice on the large card", () => [featuredCard(), featuredCard()].forEach((each) => fireEvent.click(each, { detail: 0 }))],
+    ["Enter twice on its tile", () => [0, 1].forEach(() => fireEvent.click(homeTile("ALL DINOSAURS"), { detail: 0 }))],
+    [
+      "a tap on its tile and then on the large card, more than 100 CSS pixels away",
+      () => {
+        tapAt(homeTile("ALL DINOSAURS"), 0, { x: 0 });
+        tapAt(featuredCard(), 250, { x: 150 });
+      }
+    ]
+  ])("counts one start of ALL DINOSAURS for %s landing before the list shows, and one more on the next visit", (_how, open) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game: "catalogue" } } } }) });
-    const { user } = openApp(storage);
-    const tapped = target();
+    openApp(storage);
+    filterTaps();
 
-    act(() => {
-      fireEvent.click(tapped);
-      fireEvent.click(tapped);
-    });
+    act(open);
 
     expect(document.querySelector(".games-tiles")).toBeNull();
     expect(storedFeatured(storage).starts).toEqual({ catalogue: 1 });
 
-    await user.click(button("HOME"));
-    await user.click(target());
+    tapAt(button("HOME"), 1000);
+    tapAt(featuredCard(), 2000);
 
     expect(storedFeatured(storage).starts).toEqual({ catalogue: 2 });
   });

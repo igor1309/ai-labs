@@ -4,7 +4,7 @@ import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { appProps } from "../src/root.ts";
+import { appProps, filterDoubleTaps } from "../src/root.ts";
 import { browserDocument, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -262,5 +262,55 @@ describe("the app in a browser", () => {
 
   it("does not start on a page without its version footer", () => {
     expect(() => appProps(browser({ versionFooter: false }))).toThrow("index.html has no #version element");
+  });
+});
+
+// An event as a browser makes it: its own fields, and its own time.
+function browserEvent(type: string, fields: Record<string, number>) {
+  const event = new Event(type, { cancelable: true });
+  for (const [name, value] of Object.entries(fields)) Object.defineProperty(event, name, { value });
+  return event;
+}
+
+const touch = (type: string, timeStamp: number, clientX = 0) => browserEvent(type, { pointerId: 1, clientX, clientY: 0, timeStamp });
+
+describe("the double-tap filter in a browser", () => {
+  // The window, with a handler of the app's registered after the filter.
+  function page() {
+    const target = new EventTarget();
+    const stop = filterDoubleTaps(target);
+    const handled: string[] = [];
+    for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"]) target.addEventListener(type, () => handled.push(type));
+    const send = (event: Event) => {
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    return { stop, handled, send };
+  }
+
+  it("reads each touch by its event's own time and place, and keeps what it swallows from every handler", () => {
+    const { handled, send } = page();
+    const first = [touch("pointerdown", 0), touch("pointerup", 50), browserEvent("click", { detail: 1 })].map(send);
+    const second = [touch("pointerdown", 250), touch("pointermove", 260), touch("pointerup", 300), browserEvent("click", { detail: 1 })].map(send);
+    const far = send(touch("pointerdown", 400, 150));
+
+    expect([first, second, far]).toEqual([[false, false, false], [true, true, true, true], false]);
+    expect(handled).toEqual(["pointerdown", "pointerup", "click", "pointerdown"]);
+  });
+
+  it("lets a click with no detail through, as a key makes it", () => {
+    const { handled, send } = page();
+    [touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250), touch("pointercancel", 260)].forEach(send);
+
+    expect(send(browserEvent("click", { detail: 0 }))).toBe(false);
+    expect(handled.at(-1)).toBe("click");
+  });
+
+  it("filters nothing once taken away", () => {
+    const { stop, handled, send } = page();
+    stop();
+    [touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250)].forEach(send);
+
+    expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
   });
 });

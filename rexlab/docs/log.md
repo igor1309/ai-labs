@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
 - Tap safety is split into parts that land one by one, screen state and animation first; leaving a game now stops its pending timers at once (LAB-298).
 - A parents' menu picks the age level, Hatchling, Explorer or Paleontologist, kept on this device; a new install starts at Explorer, and no game reads it yet (LAB-291).
 - The language, theme and age level menus animate in and out, and their ✓ reads in the light theme (LAB-291).

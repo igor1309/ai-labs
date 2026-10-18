@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, MUSEUM_SETTLE } from "../src/App.tsx";
+import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import type { Random } from "../src/sorting/index.ts";
 import { basketsShown, sortByTrying, storedRecord, tray } from "./sorting.tsx";
@@ -251,8 +251,6 @@ describe("a new board", () => {
       act(() => ending(pictures, asked));
 
       expect([there(), onBoard()]).toEqual([true, false]);
-      // The museum takes taps once it has settled.
-      act(() => pictures.fire(MUSEUM_SETTLE));
       await user.click(button("HOME"));
       await user.click(button("SORT"));
       act(() => pictures.loading().forEach(pictures.finish));

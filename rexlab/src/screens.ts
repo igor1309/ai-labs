@@ -13,7 +13,8 @@ export type TransitionFor<Screen, Intent> = (from: Screen, to: Screen, intent: I
 
 export type GoOptions<Intent> = {
   intent?: Intent | undefined;
-  // Companion updates, made in the same change, after the screen's.
+  // Companion updates, made in the same change, after the screen's, and
+  // only if the change changes the screen asked for.
   also?: (() => void) | undefined;
 };
 
@@ -43,7 +44,7 @@ export function useScreens<Screen, Intent = never>(first: Screen, transitionFor:
       const type = transitionFor(from, to, intent);
       const change = () => {
         setScreen(update);
-        also?.();
+        if (to !== from) also?.();
       };
       if (type === undefined) {
         change();
