@@ -21,7 +21,8 @@ Feature: A stale turn is followed by a recovery turn
       stale <turns>
     When the call is made
     Then it makes <made>, and ends as the last stale turn ends it, its
-      last report of a stale turn not recovering
+      session the last a turn reported, its last report of a stale turn
+      not recovering
 
     Examples:
       | recovery  | turns                                                                      | made     |
@@ -30,17 +31,18 @@ Feature: A stale turn is followed by a recovery turn
       | 2 resumes | twice, each on "no event for 21m"                                          | 2 turns  |
       | 1 resume  | once, its turn having reported no session                                  | one turn |
 
-  Scenario Outline: A recovered call's cost and usage are its turns'
-    Given a model step whose first turn goes stale, its cost <first> and
-      input tokens 4, and whose recovery turn completes, its cost 0.5
-      and input tokens 10
+  Scenario: A recovered call's cost and usage are unknown where a turn
+    reported none
+    Given a model step whose first turn goes stale, reporting no cost
+      and no usage, and whose recovery turn completes, its cost 0.5 and
+      input tokens 10
     When the call is made
-    Then the call's cost is <cost>, and its input tokens 14
+    Then the call's cost and its input tokens are unknown
 
-    Examples:
-      | first   | cost    |
-      | 0.25    | 0.75    |
-      | unknown | unknown |
+  Scenario: A call cancelled as its turn goes stale is not recovered
+    Given a model step whose turn goes stale as the caller cancels
+    When the call is made
+    Then it makes one turn, and ends interrupted, class "cancelled"
 
   Scenario: A recovery turn that reports another session fails the call
     Given a model step whose first turn reports the session "s1", then

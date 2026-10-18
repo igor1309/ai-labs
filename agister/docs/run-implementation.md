@@ -710,10 +710,12 @@ call's one time limit. Otherwise the call ends as a stale turn ends it
 (rule 2). What follows a recovery turn follows it as it would any turn,
 another recovery included. A recovery turn that reports a session other
 than the one it resumed fails the call, `runtime_error`, as a
-continuation's does. The call's usage is its turns', summed, as
-reported; its cost the same, but unknown where any turn reported none
-(ADR-001, invariant 3), as a turn a stale end cut short does. Its report
-grows: besides a tool call, a stale turn, what went stale and whether a
+continuation's does. The call's cost and usage are its turns', summed,
+each unknown where any turn reported none (ADR-001, invariant 3), as a
+turn a stale end cut short does; its session the last a turn reported,
+however it ended. A caller that cancels as a turn goes stale ends the
+call interrupted, `cancelled`, with no recovery turn. Its report grows:
+besides a tool call, a stale turn, what went stale and whether a
 recovery turn follows.
 
 **`core/workflow`** gives a call's stale report to its events port,

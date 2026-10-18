@@ -1,6 +1,6 @@
 # The end-to-end check (docs/run-implementation.md, "A step on a model
 # runtime", "Continuation" and "Recovery"): the built agister on real
-# programs, claude- code and codex on the owner's logins. Opt-in: run only
+# programs, claude-code and codex on the owner's logins. Opt-in: run only
 # with AGISTER_E2E=1, by scripts/e2e.sh; skipped otherwise, saying so. A
 # scratch git repository holds a process "ask", its input "q" from the param
 # "q", its output schema an object of a string "answer"; AGISTER_HOME is a
@@ -40,8 +40,9 @@ Feature: agister runs a step on the real model runtimes
       | e2e-codex |
 
   Scenario Outline: A stale turn on a real runtime is recovered
-    Given the scratch repository's process "stall", whose prompt asks to
-      run the shell command "sleep 60", then to answer "done"; its
+    Given the scratch repository's process "stall", as "ask" but
+      requiring process.execute, whose prompt asks to run the shell
+      command "sleep 60", then to answer "done"; its
       staleness limit tool_command 5s; its recovery 1 resume, its
       instruction to answer "done" without running a command
     When "agister run --process stall --agent <agent>" runs there
