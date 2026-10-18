@@ -1,6 +1,7 @@
 Feature: Find the pair: keeping progress
-  Stars, levels, best scores and found dinosaurs are kept on this
-  browser, best effort, and never disturb the other games or the
+  Stars, levels, best scores, found dinosaurs and the strong boards
+  toward a level offer (find-the-pair-level-offer.feature) are kept on
+  this browser, best effort, and never disturb the other games or the
   settings.
   Its rules hold at every age level. A scenario that names a climb
   level or a number of tries plays Hatchling, whose climb levels 1 to 4
@@ -24,6 +25,7 @@ Feature: Find the pair: keeping progress
     Given the stored find-the-pair progress is <state>
     When I open find the pair
     Then I am on level 1 with no stars, no best scores and no found dinosaurs
+    And no strong boards toward an offer and no offer turned down
     And the level switch shows the age level
     When I finish a board
     Then I see a first best score celebration

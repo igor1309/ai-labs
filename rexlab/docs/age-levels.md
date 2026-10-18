@@ -26,14 +26,15 @@ an approximate age level next to the theme and language controls
   best of the level it plays, so moving up never caps the celebrations
   (owner, 2026-10-18).
 - **Offer up, never down.** After 3 strong rounds in a row at one level,
-  the result of the third offers the next level in one card, with that
-  level's picture and a one-tap "YES" or "NOT NOW" (LAB-293). "YES" sets
-  the game's own choice, never the setting. "NOT NOW", or leaving a shown
-  offer unanswered, turns the offer down at that level: from then on it
-  takes 5 strong rounds in a row there, not 3; other levels keep 3. An
-  offer the child left before it appeared stays due for the next strong
-  round. A round that is not strong, or one at another level, starts the
-  count again. Each game says what a strong round is in its own offer
+  a result offers the next level in one card: the third's, or, if the
+  child left that result before the card began to rise in, the next
+  strong round's. The card has that level's picture and a one-tap "YES"
+  or "NOT NOW" (LAB-293). "YES" sets the game's own choice, never the
+  setting. "NOT NOW", or leaving a shown offer unanswered, turns the
+  offer down at that level: from then on it takes 5 strong rounds in a
+  row there, not 3, until "YES" is tapped there; other levels keep 3.
+  Showing the card, a round that is not strong, or a round at another
+  level starts the count again. Each game says what a strong round is in its own offer
   feature. Nothing moves a child down, and no words say a round went
   badly; a game's top level offers nothing.
 - **Demote, never delete.** A game made harder keeps its current behaviour

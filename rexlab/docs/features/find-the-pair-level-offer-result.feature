@@ -3,7 +3,8 @@ Feature: Find the pair: the level offer on the result
   card that rises in over the result once the result's own rewards have
   played. It shows the next level's picture from the age level menu, a
   question, "YES" with a tick symbol and "NOT NOW" with a cross symbol;
-  while it shows, the result under it cannot be tapped.
+  it counts as shown once it begins to rise in, and from then until it
+  is answered the result under it cannot be tapped.
 
   Background:
     Given an iPad in landscape
@@ -49,7 +50,7 @@ Feature: Find the pair: the level offer on the result
   Scenario Outline: Leaving before the offer rises in keeps it due
     Given I have finished 2 strong Explorer boards in a row
     And I finish an Explorer board in 12 tries
-    When I <leave> before the offer rises in
+    When I <leave> before the offer begins to rise in
     Then the offer was not shown and does not count as unanswered
     And my next Explorer board in 18 tries offers the Paleontologist level
     But an Explorer board in 19 tries instead offers nothing
