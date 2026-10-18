@@ -77,8 +77,9 @@ func TestTheStalenessNeedsAWatcher(t *testing.T) {
 }
 
 // home's implement on claude-code is watched against its staleness
-// limits, as it ships them: a turn that goes stale is ended, the call
-// ending as what went stale says, and its hold is released.
+// limits, as it ships them: a turn that goes stale, its session unread,
+// so that no recovery turn can resume it, is ended, the call ending as
+// what went stale says, and its hold is released.
 //
 // Contract test: the files home holds, as Agister ships them.
 func TestHomesImplementEndsAStaleTurn(t *testing.T) {

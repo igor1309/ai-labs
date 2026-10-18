@@ -573,9 +573,6 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		if inEnvironment && definition.Limits.Value.Stale.Given {
 			unrun.add(owner, fmt.Sprintf("the staleness limit on %s", runtime))
 		}
-		if definition.Recovery.Given {
-			unrun.add(owner, "the recovery")
-		}
 	}
 	return unrun.lines, nil
 }
@@ -643,9 +640,9 @@ func documentNamesOf(definition documents.ProcessDefinition) []string {
 // takes them in its message, its documents, the prompt as "prompt" where
 // its process names one, then each guidance by its name, its process's
 // instruction, its agent's model and effort, its plan's options and the
-// bytes of its process's output schema; its process's time limit and
-// staleness limits; and its plan's warnings, those resolve gives at the
-// step.
+// bytes of its process's output schema; its process's time limit,
+// staleness limits and recovery; and its plan's warnings, those resolve
+// gives at the step.
 func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) (plannedCall, error) {
 	process := resolved.Processes[item.Process.Value]
 	agent := resolved.Agents[item.Agent.Value]
@@ -735,6 +732,8 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 	stale := definition.Limits.Value.Stale.Value
 	planned.step.Staleness = call.Limits{RepeatedToolCalls: stale.RepeatedToolCalls.Value,
 		ToolCommand: stale.ToolCommand.Value, NoEvent: stale.NoEvent.Value}
+	recovery := definition.Recovery.Value
+	planned.step.Recovery = call.Recovery{Resumes: recovery.Resumes.Value, Instruction: recovery.Instruction.Value}
 	for _, warning := range resolved.Warnings {
 		if warning.Origin == item.Origin {
 			planned.step.Warnings = append(planned.step.Warnings, problemLine(warning.Origin, warning.Message))

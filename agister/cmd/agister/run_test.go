@@ -323,8 +323,6 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 		what     string
 	}{
 		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn`},
-		{declares: "a recovery of 1 resume", more: "recovery: {resumes: 1, instruction: resume}\n",
-			agent: "claude-opus", what: `the process "say": the recovery`},
 		{declares: "the cost limit 1", more: "limits: {cost: 1}\n",
 			agent: "claude-opus", what: `the process "say": the cost limit`},
 		{declares: `an input "prompt" from the param "what"`, more: "  prompt: {source: param, name: what}\n",
