@@ -1,10 +1,10 @@
 Feature: A child's own level choice in a game
   A game that offers its own level switch remembers the child's choice
   there, and it wins over the age level (age-level.feature) until a
-  parent picks a different level (docs/age-levels.md). No game has a
-  switch yet, so these rules are checked on the shared rule of
-  age-level-start.feature, given the child's choice and the level it
-  was made under.
+  parent picks a different level (docs/age-levels.md). Find the pair has
+  a switch (find-the-pair-level-progress.feature); these rules are
+  checked on the shared rule of age-level-start.feature, given the
+  child's choice and the level it was made under.
 
   Background:
     Given an iPad in landscape

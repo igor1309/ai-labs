@@ -15,12 +15,14 @@ Feature: Find the pair: starting a board
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
-    And I see "PLAY" with a play symbol and my level as a number with a ladder symbol
+    And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
+    And at Hatchling, my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  Scenario Outline: Each level has its own board
-    Given I am on level <level>
+  Scenario Outline: Each Hatchling climb level has its own board
+    Given the level switch shows Hatchling chosen
+    And I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
     And every face-down card shows the same footprints symbol
@@ -38,7 +40,7 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And two boards in a row do not deal the same dinosaurs
+    And two Hatchling boards in a row do not deal the same dinosaurs
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt
