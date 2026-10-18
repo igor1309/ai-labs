@@ -1,0 +1,40 @@
+# Age levels
+
+The same games serve a child of about 4 and one of about 6. A parent picks
+an approximate age level next to the theme and language controls
+(LAB-291); each game maps its modes to the three levels.
+
+| Level | Picture | Age |
+| --- | --- | --- |
+| Hatchling | 🥚 | about 4 |
+| Explorer | 🦖 | about 5 |
+| Paleontologist | 🦴 | about 6 and up |
+
+## Rules
+
+- **Default.** A new install starts at Explorer.
+- **Global default, per-game override.** The setting picks the level every
+  game starts at. A game that offers its own level switch remembers the
+  child's choice there, and that choice wins until the setting changes
+  again.
+- **Nearest lower level.** A game with no mode for the chosen level plays
+  its nearest lower one. Today's games, which have only Hatchling, play as
+  they do now at every level.
+- **Same rewards.** A star is a star at every level; the museum, the
+  collection and achievements fill up whatever the level.
+- **Demote, never delete.** A game made harder keeps its current behaviour
+  as its easiest level; the rule is in `../AGENTS.md`.
+
+## Each game's levels
+
+The starting point for each game's own issue, which refines its row; keep
+this table in step as they land.
+
+| Game | 🥚 Hatchling | 🦖 Explorer | 🦴 Paleontologist |
+| --- | --- | --- | --- |
+| Skeleton (LAB-270) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, coloured by body area | 10–20 pieces, distractor bones, mystery skeleton, odd bone out |
+| Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to skeleton |
+| Care (LAB-294) | today's game: need bubbles and the matching item | one-step missions | the reasoning puzzle of LAB-281 |
+| Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 3 baskets where a property allows | 3 baskets, more cards, the subtler properties |
+| Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter and shorter, then earlier or later |
+| Reading (LAB-273) | the first letter, with a picture cue | the missing letter, from 3 tiles | the name built from shuffled letters |
