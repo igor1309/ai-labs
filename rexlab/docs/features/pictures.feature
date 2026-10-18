@@ -15,7 +15,7 @@ Feature: Screens never wait for their pictures
   a name keeps it for screen readers, loading, failed or shown.
 
   It covers every picture of the catalogue, the compare game, the home
-  page, care, find the pair and a round's result, which sorting shares.
+  page, care, find the pair, sorting and a round's result.
 
   Background:
     Given an iPad in landscape

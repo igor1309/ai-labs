@@ -40,19 +40,16 @@ Feature: Sort dinosaurs: starting a round and the board
       | on the tray |
       | in a basket |
 
-  Scenario Outline: A new board waits for its pictures
+  Scenario Outline: A quick double tap starts one round
     Given I am on <screen>
-    And the pictures of the next round's six dinosaurs are still loading
-    When I tap "<button>" <taps>
-    Then <screen> stays on screen
-    And when the pictures have loaded, or after a second at most, one round starts
+    When I tap "<button>" twice quickly
+    Then one round starts at once, whatever its pictures are doing
+    And it is counted as one round started, no card picked up
 
     Examples:
-      | screen                                | button     | taps          |
-      | the home page                         | SORT       | once          |
-      | the home page                         | SORT       | twice quickly |
-      | the result screen of the sorting game | PLAY AGAIN | once          |
-      | the result screen of the sorting game | PLAY AGAIN | twice quickly |
+      | screen                                | button     |
+      | the home page                         | SORT       |
+      | the result screen of the sorting game | PLAY AGAIN |
 
   Scenario Outline: A round sorts by one property
     When a round sorts by <property>
