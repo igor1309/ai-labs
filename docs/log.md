@@ -3,7 +3,8 @@
 ## 2026-10-18
 
 - `scripts/watch-pr.sh` no longer waits forever: it stops on a check queued 15
-  minutes with no runner, and on checks still pending after 90 minutes (LAB-305).
+  minutes with no runner, and on checks still pending after 90 minutes. Right
+  after a push it no longer passes on the previous commit's checks (LAB-305).
 
 ## 2026-09-20
 

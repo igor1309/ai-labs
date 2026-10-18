@@ -28,32 +28,51 @@ finish() {
     exit "$1"
 }
 
-# Right after a push GitHub may not have registered the checks yet; gh then
-# fails with "no checks reported". That case is retried for up to a minute.
+# Right after a push GitHub may not have registered the head commit's
+# workflow runs yet: gh then fails with "no checks reported", or still shows
+# the checks of the commit before. Either case is retried for up to a
+# minute, and the checks pass only once the head commit's own runs have
+# all completed.
 unregistered=0
+not_registered() {
+    echo "$1" >> "$log"
+    if ((++unregistered < 12)); then
+        sleep "${WATCH_PR_RETRY_DELAY:-5}"
+        return
+    fi
+    finish 1
+}
 while true; do
     checks=$(gh pr checks "$pr" --json name,state,bucket,startedAt "$@" 2>&1) || true
     if ! jq -e 'type == "array"' > /dev/null 2>&1 <<< "$checks"; then
-        echo "$checks" >> "$log"
-        if grep -q "no checks reported" <<< "$checks" && ((++unregistered < 12)); then
-            sleep "${WATCH_PR_RETRY_DELAY:-5}"
-            continue
-        fi
-        finish 1
+        grep -q "no checks reported" <<< "$checks" || {
+            echo "$checks" >> "$log"
+            finish 1
+        }
+        not_registered "$checks"
+        continue
     fi
+    head=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
+    runs=$(gh run list --commit "$head" --json status --limit 100)
+    if ! jq -e 'length > 0' > /dev/null <<< "$runs"; then
+        not_registered "no workflow runs for $head yet"
+        continue
+    fi
+    runs_done=$(jq 'all(.[]; .status == "completed")' <<< "$runs")
 
     now=$(date +%s)
     # A queued check's startedAt is when it was queued; a commit status
     # that has not started has none.
-    verdict=$(jq -r --argjson now "$now" --argjson limit "$queue_limit" '
+    verdict=$(jq -r --argjson now "$now" --argjson limit "$queue_limit" --argjson runs_done "$runs_done" '
         def waited: (.startedAt // "") | if startswith("20") then $now - fromdateiso8601 else 0 end;
         def names(f): [.[] | select(f) | .name] | join(", ");
         if any(.[]; .bucket == "fail" or .bucket == "cancel") then
             "fail\t" + names(.bucket == "fail" or .bucket == "cancel")
-        elif all(.[]; .bucket == "pass" or .bucket == "skipping") then "pass\t"
+        elif $runs_done and all(.[]; .bucket == "pass" or .bucket == "skipping") then "pass\t"
         elif any(.[]; .state == "QUEUED" and waited > $limit) then
             "stuck\t" + names(.state == "QUEUED" and waited > $limit)
-        else "pending\t" + names(.bucket == "pending")
+        elif any(.[]; .bucket == "pending") then "pending\t" + names(.bucket == "pending")
+        else "pending\tthe head commit'"'"'s workflow runs"
         end' <<< "$checks")
     state="${verdict%%$'\t'*}"
     names="${verdict#*$'\t'}"

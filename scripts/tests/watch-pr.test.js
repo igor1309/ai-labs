@@ -15,13 +15,16 @@ function check(name, bucket, state, ago = 60) {
   return { name, bucket, state, startedAt: new Date(Date.now() - ago * 1000).toISOString().replace(/\.\d+Z$/, 'Z') };
 }
 
-function polled(...checks) {
-  return { exit: 0, stdout: JSON.stringify(checks) };
+// One poll's answers: gh pr checks' JSON, and the head commit's workflow
+// runs, all completed unless given.
+function polled(checks, runs = [{ status: 'completed' }]) {
+  return { exit: 0, stdout: JSON.stringify(checks), runs };
 }
 
 // withFakeGh runs watch-pr.sh in a temp git repository with a fake gh first
-// on PATH. The fake answers its nth call with answers[n], and the last
-// answer from then on.
+// on PATH. The fake answers its nth `pr checks` with answers[n], and the
+// last answer from then on; `run list` gives that answer's runs. `fn` gets
+// the `pr checks` calls.
 function withFakeGh(answers, env, fn) {
   const dir = mkdtempSync(join(tmpdir(), 'watch-pr-test-'));
   try {
@@ -30,17 +33,25 @@ function withFakeGh(answers, env, fn) {
     mkdirSync(bin);
     const calls = join(dir, 'calls');
     writeFileSync(calls, '');
-    answers.forEach(({ exit, stdout = '', stderr = '' }, n) => {
+    answers.forEach(({ exit, stdout = '', stderr = '', runs = [] }, n) => {
       writeFileSync(join(dir, `out-${n + 1}`), stdout);
       writeFileSync(join(dir, `err-${n + 1}`), stderr);
       writeFileSync(join(dir, `exit-${n + 1}`), String(exit));
+      writeFileSync(join(dir, `runs-${n + 1}`), JSON.stringify(runs));
     });
     writeFileSync(
       join(bin, 'gh'),
       `#!/usr/bin/env bash
+case "$1 $2" in
+  "pr view") echo 0123abcd; exit 0 ;;
+  "run list")
+    [ "$4" = 0123abcd ] || exit 9
+    cat "${dir}/runs-$(cat "${dir}/n")"; exit 0 ;;
+esac
 echo "$*" >> "${calls}"
 n=$(wc -l < "${calls}" | tr -d ' ')
 [ "$n" -gt ${answers.length} ] && n=${answers.length}
+echo "$n" > "${dir}/n"
 cat "${dir}/out-$n"
 cat "${dir}/err-$n" >&2
 exit "$(cat "${dir}/exit-$n")"
@@ -59,7 +70,7 @@ exit "$(cat "${dir}/exit-$n")"
 }
 
 it('waits for checks GitHub has not registered yet', () => {
-  withFakeGh([NOT_REGISTERED, NOT_REGISTERED, polled(check('core', 'pass', 'SUCCESS'))], {}, (result, calls) => {
+  withFakeGh([NOT_REGISTERED, NOT_REGISTERED, polled([check('core', 'pass', 'SUCCESS')])], {}, (result, calls) => {
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.equal(calls.length, 3);
   });
@@ -68,8 +79,8 @@ it('waits for checks GitHub has not registered yet', () => {
 it('waits while checks run, and passes once all pass or are skipped', () => {
   withFakeGh(
     [
-      polled(check('core', 'pending', 'IN_PROGRESS'), check('lint', 'pass', 'SUCCESS')),
-      polled(check('core', 'pass', 'SUCCESS'), check('lint', 'pass', 'SUCCESS'), check('other', 'skipping', 'SKIPPED')),
+      polled([check('core', 'pending', 'IN_PROGRESS'), check('lint', 'pass', 'SUCCESS')]),
+      polled([check('core', 'pass', 'SUCCESS'), check('lint', 'pass', 'SUCCESS'), check('other', 'skipping', 'SKIPPED')]),
     ],
     {},
     (result, calls) => {
@@ -80,7 +91,7 @@ it('waits while checks run, and passes once all pass or are skipped', () => {
 });
 
 it('reports a failing check at once, by name', () => {
-  withFakeGh([polled(check('core', 'fail', 'FAILURE'), check('lint', 'pending', 'IN_PROGRESS'))], {}, (result, calls) => {
+  withFakeGh([polled([check('core', 'fail', 'FAILURE'), check('lint', 'pending', 'IN_PROGRESS')])], {}, (result, calls) => {
     assert.equal(result.status, 1);
     assert.equal(calls.length, 1);
     assert.match(result.stderr, /failed: core/);
@@ -88,7 +99,7 @@ it('reports a failing check at once, by name', () => {
 });
 
 it('asks gh for the checks as JSON', () => {
-  withFakeGh([polled(check('core', 'pass', 'SUCCESS'))], {}, (result, calls) => {
+  withFakeGh([polled([check('core', 'pass', 'SUCCESS')])], {}, (result, calls) => {
     assert.equal(result.status, 0);
     assert.equal(calls[0], 'pr checks 7 --json name,state,bucket,startedAt');
   });
@@ -103,7 +114,7 @@ it('gives up when no checks appear', () => {
 
 it('stops on a check no runner has picked up within the queue limit, naming it', () => {
   withFakeGh(
-    [polled(check('agister-core / core', 'pending', 'QUEUED', 3600), check('core', 'pass', 'SUCCESS', 3600))],
+    [polled([check('agister-core / core', 'pending', 'QUEUED', 3600), check('core', 'pass', 'SUCCESS', 3600)])],
     { WATCH_PR_QUEUE_LIMIT: '900' },
     (result, calls) => {
       assert.equal(result.status, 3);
@@ -116,8 +127,8 @@ it('stops on a check no runner has picked up within the queue limit, naming it',
 it('keeps waiting on a check queued for less than the queue limit, and on one running past it', () => {
   withFakeGh(
     [
-      polled(check('queued', 'pending', 'QUEUED', 60), check('running', 'pending', 'IN_PROGRESS', 3600)),
-      polled(check('queued', 'pass', 'SUCCESS'), check('running', 'pass', 'SUCCESS')),
+      polled([check('queued', 'pending', 'QUEUED', 60), check('running', 'pending', 'IN_PROGRESS', 3600)]),
+      polled([check('queued', 'pass', 'SUCCESS'), check('running', 'pass', 'SUCCESS')]),
     ],
     { WATCH_PR_QUEUE_LIMIT: '900' },
     (result, calls) => {
@@ -127,8 +138,30 @@ it('keeps waiting on a check queued for less than the queue limit, and on one ru
   );
 });
 
+it('waits for the head commit\'s own runs, not the checks of the commit before', () => {
+  withFakeGh(
+    [
+      polled([check('GitGuardian', 'pass', 'SUCCESS')], []),
+      polled([check('GitGuardian', 'pass', 'SUCCESS')], [{ status: 'queued' }]),
+      polled([check('GitGuardian', 'pass', 'SUCCESS'), check('core', 'pass', 'SUCCESS')]),
+    ],
+    {},
+    (result, calls) => {
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.equal(calls.length, 3);
+    },
+  );
+});
+
+it('gives up when the head commit gets no workflow runs', () => {
+  withFakeGh([polled([check('GitGuardian', 'pass', 'SUCCESS')], [])], {}, (result, calls) => {
+    assert.equal(result.status, 1);
+    assert.equal(calls.length, 12);
+  });
+});
+
 it('stops when checks are still pending at the overall limit', () => {
-  withFakeGh([polled(check('core', 'pending', 'IN_PROGRESS'))], { WATCH_PR_LIMIT: '0' }, (result, calls) => {
+  withFakeGh([polled([check('core', 'pending', 'IN_PROGRESS')])], { WATCH_PR_LIMIT: '0' }, (result, calls) => {
     assert.equal(result.status, 4);
     assert.equal(calls.length, 1);
     assert.match(result.stderr, /still pending after 0s: core/);
