@@ -1,6 +1,7 @@
 Feature: A double tap counts as one tap
   A child of 5–7 often taps twice. A press less than 500 ms after the
-  last press that counted, and less than 100 px from it, is the second
+  release of the last tap that counted, and less than 100 px from where
+  it was released, is the second
   tap of a double tap: its whole gesture does nothing, whatever the
   screen, so it never presses anything on the screen that appears next
   (docs/tap-safety.md, part 4). The rows are examples, one or more of
@@ -25,7 +26,7 @@ Feature: A double tap counts as one tap
       | the home page                 | the "FIND THE PAIR" tile    | the find-the-pair welcome screen |
       | the home page                 | the "SKELETONS" tile        | the skeleton selection screen |
       | the home page                 | "MUSEUM"                    | the museum hall               |
-      | the home page                 | the large card              | its game, as its tile opens it |
+      | the home page                 | the large card              | the game its tile opens         |
       | an answered question 3        | "NEXT"                      | question "4/10"               |
       | an answered question 10       | "SEE RESULT"                | the result screen             |
       | the compare result screen     | "PLAY AGAIN"                | question "1/10"               |
@@ -34,7 +35,7 @@ Feature: A double tap counts as one tap
       | the page of Tyrannosaurus     | the → button                | the page at "2 / 42"          |
       | the care welcome screen       | "NEW VISITOR"               | a care visit                  |
       | the find-the-pair welcome screen | "PLAY"                   | a board                       |
-      | the skeleton selection screen | the card of Triceratops     | the Triceratops puzzle        |
+      | the skeleton selection screen | Triceratops                 | the Triceratops puzzle        |
       | a skeleton result screen      | "BUILD ANOTHER"             | the skeleton selection screen |
       | the museum hall, Tyrannosaurus earned | its "REBUILD" button | the Tyrannosaurus puzzle      |
       | the page of Triceratops       | the ← button                | the page at "1 / 42"          |
@@ -47,31 +48,33 @@ Feature: A double tap counts as one tap
   @next
   Scenario Outline: The second press of a double tap starts no drag
     Given I am on <from>
-    When I tap <control> and, 300 ms later, press the same spot and drag
-    Then nothing moves on <to>
-    And a press there a second later drags as usual
+    And <piece> of <to> will lie less than 100 px from where I tap <control>
+    When I tap <control> and, 300 ms after its release, press <piece> and drag it
+    Then <piece> does not move
+    When I press <piece> a second later and drag it
+    Then it moves with my finger
 
     Examples:
-      | from                                  | control              | to                         |
-      | the home page                         | the "SORT" tile      | the sorting board          |
-      | the museum hall, Tyrannosaurus earned | its "REBUILD" button | the Tyrannosaurus puzzle   |
+      | from                                  | control              | to                       | piece        |
+      | the home page                         | the "SORT" tile      | the sorting board        | a card       |
+      | the museum hall, Tyrannosaurus earned | its "REBUILD" button | the Tyrannosaurus puzzle | a bone piece |
 
   @next
   Scenario: A tap that was swallowed does not start a new window
     Given I am on the page of Tyrannosaurus, at "1 / 42"
-    When I tap the → button three times at the same spot, 300 ms apart
+    When I tap the → button three times at the same spot, each press 300 ms after the release before it
     Then I see the page at "3 / 42"
 
   @next
   Scenario: Two quick taps far apart both count
     Given I am on a board of find the pair
-    When I tap two face-down cards more than 100 px apart, 200 ms apart
+    When I tap two face-down cards more than 100 px apart, the second pressed 200 ms after the first's release
     Then both cards turn
 
   @next
   Scenario Outline: The window ends at 500 ms
     Given I am on the page of Tyrannosaurus, at "1 / 42"
-    When I tap the → button twice at the same spot, <gap> apart
+    When I tap the → button twice at the same spot, the second pressed <gap> after the first's release
     Then I see the page at "<position>"
 
     Examples:
