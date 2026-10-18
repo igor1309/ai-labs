@@ -18,6 +18,7 @@ import {
   featuring,
   homeTile,
   lightDevice,
+  unsetAgeLevel,
   manualOrientation,
   manualPictures,
   seededRandom
@@ -142,7 +143,7 @@ describe("the screen changes of the app", () => {
     const shown: Array<string | null> = [];
     render(
       <Profiler id="app" onRender={() => shown.push(screen.queryByLabelText("PROGRESS")?.textContent ?? null)}>
-        <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+        <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
       </Profiler>
     );
     const user = userEvent.setup();
