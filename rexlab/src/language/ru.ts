@@ -7,6 +7,7 @@ export const ru: Texts = {
   languageMenu: "Язык",
   themeMenu: "Тема",
   themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
+  versionLabel: "Версия",
   turnSideways: "ПОВЕРНИ ПЛАНШЕТ БОКОМ",
   home: "ДОМОЙ",
   progress: "ПРОГРЕСС",

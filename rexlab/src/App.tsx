@@ -6,6 +6,7 @@ import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
@@ -165,8 +166,11 @@ export function App({
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
 
+  // The version footer is part of the static page, outside the app, so
+  // its name follows the language here, with the page's.
   useEffect(() => {
     document.documentElement.lang = language;
+    document.getElementById("version")?.setAttribute("aria-label", TEXTS[language].versionLabel);
   }, [language]);
 
   const chooseLanguage = (chosen: Language) => {

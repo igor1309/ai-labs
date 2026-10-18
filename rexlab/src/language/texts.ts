@@ -15,6 +15,9 @@ export type Texts = {
   // So is the theme menu, with its label and its choices.
   themeMenu: string;
   themes: { system: string; light: string; dark: string };
+  // The version footer's name, read out by a screen reader, for parents
+  // too.
+  versionLabel: string;
   turnSideways: string;
   home: string;
   progress: string;

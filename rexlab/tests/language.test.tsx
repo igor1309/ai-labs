@@ -232,6 +232,27 @@ describe("the language menu", () => {
     expectShownIn("ru");
   });
 
+  it("names the version footer of the static page in the chosen language, in normal case, and keeps its look", async () => {
+    // index.html's footer, which the test page does not have.
+    const footer = document.createElement("footer");
+    footer.id = "version";
+    footer.setAttribute("aria-label", "Version");
+    footer.textContent = "v1.2.3";
+    document.body.append(footer);
+    try {
+      const { user } = openApp({ device: "ru-RU" });
+      expect(screen.getByRole("contentinfo", { name: "Версия" })).toBe(footer);
+      expect(getComputedStyle(footer).position).toBe("fixed");
+
+      await chooseFrom(user, "Язык", "English");
+
+      expect(screen.getByRole("contentinfo", { name: "Version" })).toBe(footer);
+      expect(getComputedStyle(footer).position).toBe("fixed");
+    } finally {
+      footer.remove();
+    }
+  });
+
   it("switches back, and the later choice is the one kept", async () => {
     const storage = memoryStorage();
     const { user, unmount } = openApp({ device: "ru-RU", storage });
@@ -808,7 +829,9 @@ describe("every string shown", () => {
 });
 
 // The version footer, also for parents, is part of the static page, not
-// the app: release.test.ts proves it reads the version as stamped.
+// the app: release.test.ts proves it reads the version as stamped, and
+// the test of its name above that the app names it in the chosen
+// language.
 describe("text for children", () => {
   it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents", async (language, _, walk, forParents) => {
     const { texts, parentTexts, parentLabels } = await walk(language);
@@ -825,13 +848,13 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });
