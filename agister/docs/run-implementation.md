@@ -763,3 +763,51 @@ Decisions, each with its reason:
 - A command's wait ends at the first result, not its own by id: one
   command at a time is how both runtimes run in practice; claude-code's
   parallel calls end it early, best effort.
+
+## Runs
+
+A run's record holds what its calls were given, and `agister runs
+export` copies a run out (ADR-001, invariant 6 and "Runs"; ADR-010,
+rule 4): what `scripts/agister-gate` reads of a review run, the
+archive's last user's need of it.
+
+**The composition** records the inputs it resolves. The record's
+`inputs` are the workflow's, as resolved at its boundary; a request
+naming a step has none. Each call's `inputs` are its process's, as
+resolved for its call, in the order the process declares them; a call
+whose inputs were refused has none. Each input is its name, its value
+whole, and its identity:
+
+```json
+{"inputs": [{"name": "goal", "value": "", "identity": "<sha-256>"}],
+ "calls": [{"id": "", "inputs": [{"name": "", "value": "",
+   "identity": ""}]}]}
+```
+
+The join's input is its call's like any other: the judge's `reviews`,
+the reviews' outputs as it was given them.
+
+**`runstore`** exports a run: its folder copied, file by file, into a
+folder of the run's id under the folder it is given. A run not kept,
+or a folder of its id already there, is an error, and nothing is
+copied.
+
+**`cli`** gets `agister runs export <run id> --to <dir>`, on a port of
+its own, the composition's from runstore under home's `runs`. It prints
+nothing and exits 0; a failure goes to stderr, exit 1; a command not
+whole prints its usage, exit 2.
+
+Decisions, each with its reason:
+
+- Values are kept in `record.json`, however long: ADR-010, rule 4
+  asks the bytes kept, and one file keeps them; no artifact folder.
+- Not yet in the record: the definitions with their digests, the
+  permission plan, a pinned call's patch (ADR-004, rule 4). No reader
+  needs them yet.
+- No `runs list` or `runs show`: the gate exports, and the record is a
+  file to read.
+- A run still being written exports as its files are at the copy: a
+  record is written whole, so it reads as the record then; an event
+  line may be cut. Best effort.
+- `scripts/agister-gate` stays on the archive: moving it is its own
+  slice, which reads this record.

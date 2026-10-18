@@ -14,15 +14,17 @@ on stderr; the fourth ("A step in a held worktree") admission, holds
 and staleness; the fifth ("Parallel steps and a join") a parallel of
 steps and the join after it; the sixth ("Records") a run's record; the seventh
 ("Continuation") `--continue`; the eighth ("Recovery") a stale turn
-resumed.
+resumed; the ninth ("Runs") inputs recorded and `runs export`.
 What it leaves out, roughly in the
 order it is needed:
 
 - **A binding continuing a session**: a step inside a run continuing an
   earlier step's session, checked by `core/admit` (ADR-001, rule 5).
-- **The rest of the record**: definitions with their digests, inputs,
-  the permission plan, a pinned call's patch (ADR-001, invariant 6;
-  ADR-004, rule 4); commands on runs.
+- **The gate on this Agister**: `scripts/agister-gate` run on this
+  Agister, reading its record; the archive retired.
+- **The rest of the record**: definitions with their digests, the
+  permission plan, a pinned call's patch (ADR-001, invariant 6;
+  ADR-004, rule 4); other commands on runs.
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending
   what left a program's group, which the supervisor reads no longer
