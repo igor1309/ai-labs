@@ -8,8 +8,8 @@ import { MENU_EXIT } from "../src/ParentMenu.tsx";
 import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
-import { board, endWave, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, homeTile, manualPictures, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
+import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualPictures, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -37,9 +37,6 @@ const px = (value: string) => Number.parseFloat(value) || 0;
 // jsdom keeps a gap only as the shorthand, row gap first.
 const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
 const rowGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ")[0] ?? "");
-
-// The names of the result's dinosaurs, in the order shown.
-const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent);
 
 const pals = (...ids: string[]) =>
   ids.map((id) => {
@@ -386,36 +383,35 @@ describe("a board at each level", () => {
   });
 
   it.each([
-    ["Paleontologist", "paleontologist", "Paleontologist", "paleontologist"],
-    ["Paleontologist", "paleontologist", "Explorer", "explorer"],
-    ["Explorer", "explorer", "Explorer", "explorer"],
-    ["Hatchling", "hatchling", "Paleontologist", "paleontologist"]
-  ] as const)("deals after a %s board a %s board, as few of the board before's dinosaurs as the look-alike rule allows", async (_, before, __, next) => {
-    const { user, clock } = await openPairs({ ageLevel: picked(before), random: seededRandom(296) });
-    await user.click(button("PLAY"));
-    await playBoard(user, clock);
-    endWave(clock);
-    const first = resultNames();
+    ["Paleontologist", "Paleontologist", "paleontologist", "paleontologist"],
+    ["Paleontologist", "Explorer", "paleontologist", "explorer"],
+    ["Explorer", "Explorer", "explorer", "explorer"],
+    ["Hatchling", "Paleontologist", "hatchling", "paleontologist"]
+  ] as const)("deals after a %s board a %s board, as few of the board before's dinosaurs as the look-alike rule allows", async (_, __, before, next) => {
+    // A board is the board before once it is shown, played or not, so each
+    // board's dinosaurs are read from the pictures it waits for.
+    const pictures = manualPictures();
+    const { user } = await openPairs({ ageLevel: picked(before), random: seededRandom(296), clock: pictures });
+    act(() => pictures.finishAll());
+    const deal = async (...taps: string[]) => {
+      for (const tap of taps) await user.click(button(tap));
+      const ids = pictures.loading().map((url) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url)?.id);
+      act(() => pictures.finishAll());
+      return ids;
+    };
 
-    if (before === next) {
-      await user.click(button("PLAY AGAIN"));
-    } else {
-      await user.click(button("HOME"));
-      await user.click(button("FIND THE PAIR"));
-      await user.click(button(TEXTS.en.ageLevels[next].name));
-      await user.click(button("PLAY"));
-    }
+    const first = await deal("PLAY");
+    expect([pairCards().length, first.includes(undefined)]).toEqual([first.length * 2, false]);
+    const second = await deal("HOME", "FIND THE PAIR", TEXTS.en.ageLevels[next].name, "PLAY");
 
     expect(pairCards()).toHaveLength(next === "explorer" ? 18 : 24);
-    await playBoard(user, clock);
-    endWave(clock);
-    const second = resultNames();
-    const repeated = second.filter((name) => first.includes(name));
-    const availableGroups = new Set(SHIPPED_PALS.filter(({ name }) => !first.includes(name.en.toLocaleUpperCase("en"))).map(({ lookAlike }) => lookAlike));
+    expect(second).toHaveLength(pairCards().length / 2);
+    const repeated = second.filter((id) => first.includes(id));
+    const availableGroups = new Set(SHIPPED_PALS.filter(({ id }) => !first.includes(id)).map(({ lookAlike }) => lookAlike));
     // Every group with an unplayed dinosaur can supply a fresh pair;
     // only pairs beyond those groups must repeat a dinosaur.
     expect(repeated).toHaveLength(Math.max(0, second.length - availableGroups.size));
-    const groups = second.map((name) => SHIPPED_PALS.find((pal) => pal.name.en.toLocaleUpperCase("en") === name)?.lookAlike);
+    const groups = second.map((id) => SHIPPED_PALS.find((pal) => pal.id === id)?.lookAlike);
     expect(groups).not.toContain(undefined);
     expect(new Set(groups).size).toBe(second.length);
   });
