@@ -24,11 +24,6 @@ Feature: Find the pair: the offer of the next age level
       | Hatchling | 12    | TRY THE EXPLORER LEVEL?       | 🦖      |
       | Explorer  | 18    | TRY THE PALEONTOLOGIST LEVEL? | 🦴      |
 
-  Scenario: A board that is not strong starts the count again
-    Given I have finished 2 strong Explorer boards in a row
-    When I finish an Explorer board in 19 tries
-    Then I see no offer, and I need 3 strong Explorer boards in a row for it
-
   Scenario: Hatchling's boards below climb level 4 do not count
     Given the level switch shows Hatchling chosen
     And I am on climb level 3 and have finished 1 board on it
@@ -36,22 +31,28 @@ Feature: Find the pair: the offer of the next age level
     Then the first moves me up to climb level 4 and does not count
     And I see no offer, and I need 1 strong board in a row for the offer
 
-  Scenario: Playing another level starts the count again
+  Scenario Outline: A weak board, or a board at another level, starts the count again
     Given I have finished 2 strong Explorer boards in a row
-    When I choose Hatchling on the level switch and finish a board in 6 tries
-    And I choose Explorer and finish a board in 10 tries
-    Then I see no offer, and I need 2 strong Explorer boards for the offer
+    When I <do>
+    Then I see no offer, and I need <n> strong Explorer boards in a row for it
+
+    Examples:
+      | do                                                                   | n |
+      | finish an Explorer board in 19 tries                                 | 3 |
+      | finish a Hatchling board in 6 tries and choose Explorer again        | 3 |
+      | finish a Hatchling board on climb level 2 and choose Explorer again  | 3 |
+      | choose Hatchling and then Explorer again without finishing a board   | 1 |
 
   Scenario: "YES" plays the next level from then on
     Given the age level a parent picked is Hatchling
-    And I see the offer of the Explorer level on a Hatchling result
+    And I see the offer of the Explorer level again after turning it down
     When I tap "YES"
     Then the offer goes and "PLAY AGAIN" and "HOME" can be tapped again
     And "PLAY AGAIN" deals an Explorer board
     And when I open find the pair again the level switch shows Explorer chosen
     And the age level menu still shows Hatchling chosen
     And I need 3 strong Explorer boards in a row for the Paleontologist offer
-    But if I choose Hatchling again, I need 3 strong Hatchling boards for Explorer's
+    But if I choose Hatchling again, I need 3, not 5, strong boards for Explorer's
 
   Scenario Outline: A level whose offer was turned down waits for 5
     Given I see the offer of the Explorer level on a Hatchling result
@@ -83,7 +84,7 @@ Feature: Find the pair: the offer of the next age level
       | Explorer       | 40    |
 
   Scenario: The offer works when progress cannot be saved
-    Given the age level is Explorer and I have never used the level switch
+    Given the age level is Explorer, and the level switch was never used
     And my saved progress has 1 strong Explorer board in a row
     And the browser can read progress but cannot save it
     When I finish 2 Explorer boards in 12 tries each and tap "YES" on the offer
@@ -91,7 +92,8 @@ Feature: Find the pair: the offer of the next age level
     But after reloading the level switch shows Explorer chosen
     And I need 2 strong Explorer boards in a row for the offer
 
-  Scenario: Progress saved before the offer reads as no strong boards yet
-    Given find-the-pair progress saved before the game offered levels
-    When I choose Explorer
-    Then I need 3 strong Explorer boards in a row for the Paleontologist offer
+  Scenario: Progress saved before the level offer reads as no offer yet
+    Given find-the-pair progress saved before the level offer
+    When I open find the pair
+    Then its stars, climb level, bests, found dinosaurs and level choice are as saved
+    And I need 3 strong boards in a row for either level's offer

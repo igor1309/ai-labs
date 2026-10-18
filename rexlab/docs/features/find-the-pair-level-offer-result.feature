@@ -53,7 +53,6 @@ Feature: Find the pair: the level offer on the result
     When I <leave> before the offer begins to rise in
     Then the offer was not shown and does not count as unanswered
     And my next Explorer board in 18 tries offers the Paleontologist level
-    But an Explorer board in 19 tries instead offers nothing
 
     Examples:
       | leave            |
@@ -61,9 +60,14 @@ Feature: Find the pair: the level offer on the result
       | tap "HOME"       |
       | reload the app   |
 
-  Scenario: A quick double tap answers once
+  Scenario Outline: A quick double tap answers once
     Given I see the offer of the Explorer level on a Hatchling result
-    When I double tap "YES" quickly
-    Then the offer is answered once
+    When I double tap "<answer>" quickly
+    Then the offer is answered "<answer>" once and goes
     And the second tap presses nothing on the result under it
+    And "PLAY AGAIN" and "HOME" can be tapped again
 
+    Examples:
+      | answer  |
+      | YES     |
+      | NOT NOW |

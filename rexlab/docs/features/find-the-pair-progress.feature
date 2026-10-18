@@ -1,8 +1,8 @@
 Feature: Find the pair: keeping progress
-  Stars, levels, best scores, found dinosaurs and the strong boards
-  toward a level offer (find-the-pair-level-offer.feature) are kept on
-  this browser, best effort, and never disturb the other games or the
-  settings.
+  Stars, levels, best scores, found dinosaurs, the strong boards toward a
+  level offer and the offers turned down
+  (find-the-pair-level-offer.feature) are kept on this browser, best
+  effort, and never disturb the other games or the settings.
   Its rules hold at every age level. A scenario that names a climb
   level or a number of tries plays Hatchling, whose climb levels 1 to 4
   these are (find-the-pair-levels.feature).
