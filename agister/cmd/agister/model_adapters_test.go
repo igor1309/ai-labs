@@ -60,9 +60,9 @@ var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruct
 
 // A turn on claude-code runs its prompt as the message, in its context,
 // with its directory, environment, instruction, model, effort, options,
-// schema and session, and gives each line it reports, how the program
-// ended, the session it read and its reply in core's words, its failure
-// class by its name; a program ended by a signal gives no reply, its
+// schema and session, and gives each line it reports, a tool's result
+// among them, how the program ended, the session it read and its reply in
+// core's words, its failure class by its name; a program ended by a signal gives no reply, its
 // session still; a program that could not start is
 // core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
@@ -96,14 +96,14 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &claudeCodeRunSpy{result: c.result, err: c.err, reports: []claudecode.Report{
-				{Tool: &claudecode.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &claudecode.Tool{Name: "Read", Input: "a.go"}}}}
+				{Tool: &claudecode.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &claudecode.Tool{Name: "Read", Input: "a.go"}}}}
 			turns, err := newClaudeCodeTurns(spy)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var reported []call.Report
 			got, err := turns.Turn(endedContext(), modelTurn, func(r call.Report) { reported = append(reported, r) })
-			if want := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}; !reflect.DeepEqual(reported, want) {
+			if want := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}; !reflect.DeepEqual(reported, want) {
 				t.Errorf("reported %+v, want %+v", reported, want)
 			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
@@ -123,9 +123,9 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 
 // A turn on codex runs its prompt as the message, in its context, with its
 // directory, environment, instruction, model, effort, options, schema and
-// session, and gives each line it reports, how the program ended, the
-// session it read and its reply in core's words, its failure class by its
-// name and its cost unknown; a program ended by a signal gives no reply,
+// session, and gives each line it reports, a tool's result among them, how
+// the program ended, the session it read and its reply in core's words,
+// its failure class by its name and its cost unknown; a program ended by a signal gives no reply,
 // its session still; a program that could not start
 // is core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
@@ -158,14 +158,14 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &codexRunSpy{result: c.result, err: c.err, reports: []codex.Report{
-				{Tool: &codex.Tool{Name: "command", Input: "go test"}}, {}, {Tool: &codex.Tool{Name: "web_search", Input: "q"}}}}
+				{Tool: &codex.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &codex.Tool{Name: "web_search", Input: "q"}}}}
 			turns, err := newCodexTurns(spy)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var reported []call.Report
 			got, err := turns.Turn(endedContext(), modelTurn, func(r call.Report) { reported = append(reported, r) })
-			if want := []call.Report{{Tool: &call.Tool{Name: "command", Input: "go test"}}, {}, {Tool: &call.Tool{Name: "web_search", Input: "q"}}}; !reflect.DeepEqual(reported, want) {
+			if want := []call.Report{{Tool: &call.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "web_search", Input: "q"}}}; !reflect.DeepEqual(reported, want) {
 				t.Errorf("reported %+v, want %+v", reported, want)
 			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {

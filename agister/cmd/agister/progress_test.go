@@ -91,7 +91,7 @@ func TestALineIsNotPrintedALongToolCallIsCutWherePrinted(t *testing.T) {
 
 // A step's call gives each tool call its turns report and each stale turn
 // on to core/workflow's report, in core/workflow's words, in order, and no
-// other line.
+// other line, a tool's result among them.
 func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	t.Parallel()
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
@@ -99,7 +99,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	spy := &turnSpy{result: call.Result{Status: call.Completed}, reports: []call.Report{
-		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Stale: &call.StaleTurn{What: "no event for 1m", Recovering: true}},
+		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Stale: &call.StaleTurn{What: "no event for 1m", Recovering: true}},
 		{Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}, {Stale: &call.StaleTurn{What: "no event for 1m"}}}}
 	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
 	if err != nil {

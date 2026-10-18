@@ -146,11 +146,13 @@ type Stream struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; else another line. A call reports besides each turn that went stale,
-// where Stale is not nil; a runtime reports none.
+// nil; a tool's result, where Result is set; else another line. A call
+// reports besides each turn that went stale, where Stale is not nil; a
+// runtime reports none.
 type Report struct {
-	Tool  *Tool
-	Stale *StaleTurn
+	Tool   *Tool
+	Result bool
+	Stale  *StaleTurn
 }
 
 // StaleTurn is a turn that went stale, as a call reports it: what went
@@ -174,9 +176,9 @@ type Runtime interface {
 }
 
 // Limits are a turn's staleness limits (ADR-006, rule 1), each none where
-// zero: the same tool call made so many times in a row; nothing following
-// a tool call, its command running, for so long; and nothing at all for so
-// long.
+// zero: the same tool call made so many times in a row; no result
+// following a tool call, its command running, for so long; and nothing at
+// all for so long.
 type Limits struct {
 	RepeatedToolCalls int
 	ToolCommand       time.Duration

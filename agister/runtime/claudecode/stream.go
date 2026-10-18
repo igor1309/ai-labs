@@ -48,8 +48,8 @@ type stream struct {
 	result   *event
 }
 
-// line reads one line of stream-json, and reports each tool call it makes,
-// or the line where it makes none. A line that is not an event the
+// line reads one line of stream-json, and reports each tool call it makes
+// and each tool's result it carries, or the line where it has neither. A line that is not an event the
 // wrapper reads tells nothing more: the result event decides, and what
 // precedes it only adds to it.
 func (s *stream) line(line string) {
@@ -58,8 +58,8 @@ func (s *stream) line(line string) {
 	}
 }
 
-// read reads one line, reports each tool call it makes, and gives how
-// many it reported.
+// read reads one line, reports each tool call it makes and each tool's
+// result it carries, and gives how many it reported.
 func (s *stream) read(line string) (reported int) {
 	var e event
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
@@ -76,6 +76,13 @@ func (s *stream) read(line string) (reported int) {
 				s.lastText = block.Text
 			case block.Type == "tool_use":
 				s.report(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
+				reported++
+			}
+		}
+	case "user":
+		for _, block := range e.Message.Content {
+			if block.Type == "tool_result" {
+				s.report(Report{Result: true})
 				reported++
 			}
 		}

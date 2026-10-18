@@ -102,13 +102,13 @@ limits:
   stale: {tool_command: 5s}
 recovery:
   resumes: 1
-  instruction: Do not run any command. Reply with the answer "done", in lowercase, as the prompt says.
+  instruction: Do not run any command. Reply with the answer "done", in lowercase, and nothing else in it, as the prompt says.
 output:
   schema: answer
 `,
 	".agister/prompts/ask.md": "Reply in one short sentence, without reading any file.\n",
 	".agister/prompts/stall.md": "Run the shell command `sh -c 'sleep 60'` in the foreground, not in the background, and wait for it to end. " +
-		"Then reply with the answer \"done\", in lowercase, without reading any file.\n",
+		"Then reply with the answer \"done\", in lowercase, and nothing else in it, without reading any file.\n",
 	".agister/schemas/answer.json": `{"type":"object","required":["answer"],"additionalProperties":false,` +
 		`"properties":{"answer":{"type":"string"}}}`,
 }

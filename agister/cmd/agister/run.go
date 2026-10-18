@@ -1164,7 +1164,7 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 			if t := r.Tool; t != nil {
 				tool = &call.Tool{Name: t.Name, Input: t.Input}
 			}
-			report(call.Report{Tool: tool})
+			report(call.Report{Tool: tool, Result: r.Result})
 		})
 	if errors.Is(err, claudecode.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
@@ -1225,7 +1225,7 @@ func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.
 			if t := r.Tool; t != nil {
 				tool = &call.Tool{Name: t.Name, Input: t.Input}
 			}
-			report(call.Report{Tool: tool})
+			report(call.Report{Tool: tool, Result: r.Result})
 		})
 	if errors.Is(err, codex.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
