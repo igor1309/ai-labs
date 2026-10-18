@@ -95,6 +95,8 @@ const COMPOSITION = [
 const FEATURED = "featured.ts";
 // The age levels and how a parent's pick of one is kept.
 const AGE_LEVEL = "ageLevel.ts";
+// The rule for the level a game starts at, on the age levels alone.
+const START_LEVEL = "startLevel.ts";
 // The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
@@ -210,6 +212,10 @@ describe("the import graph", () => {
   it("keeps the age levels free of the rest of the app", () => {
     expect(GRAPH.get("App.tsx")).toContain(AGE_LEVEL);
     expect(edges((file) => file === AGE_LEVEL, () => true)).toEqual([]);
+  });
+
+  it("keeps the start level rule free of all but the age levels", () => {
+    expect(GRAPH.get(START_LEVEL)).toEqual([AGE_LEVEL]);
   });
 
   it("keeps screens, formatting, texts and themes free of the featured choice", () => {
