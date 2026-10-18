@@ -22,7 +22,8 @@ import {
   unreadVersion,
   type ManualOrientation,
   type ManualTimers,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 
 type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
@@ -66,6 +67,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       visitors={SHIPPED_VISITORS}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}

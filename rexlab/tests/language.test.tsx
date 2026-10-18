@@ -2,6 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
+import { AGE_LEVEL_PICTURES } from "../src/HomePage.tsx";
 import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -46,7 +47,8 @@ import {
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
-  homeTile
+  homeTile,
+  unsetAgeLevel
 } from "./support.ts";
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
@@ -94,7 +96,7 @@ function openApp({
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
       nameVersion={nameVersion}
-      {...lightDevice()}
+      {...lightDevice()} {...unsetAgeLevel()}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
@@ -495,7 +497,12 @@ describe("revealed values", () => {
 });
 
 // The labels of the home page's menus for parents.
-const PARENT_CONTROLS: Record<Language, string[]> = { en: ["Language", "Theme"], ru: ["Язык", "Тема"] };
+const PARENT_CONTROLS: Record<Language, string[]> = { en: ["Language", "Theme", "Age level"], ru: ["Язык", "Тема", "Возрастной уровень"] };
+
+// The age levels' names, the children's words in the menu for parents,
+// in capitals, and their ages, a parents' footnote, in normal case.
+const levelNames = (language: Language) => Object.values(TEXTS[language].ageLevels).map(({ name }) => name);
+const levelAges = (language: Language) => Object.values(TEXTS[language].ageLevels).map(({ age }) => age);
 
 // The app's name, a wordmark for parents, written the same in every
 // language.
@@ -544,7 +551,10 @@ function openPlay(language: Language, progressStorage = memoryStorage()): Play {
 
   const look = () => {
     const controls = [
-      ...PARENT_CONTROLS[language].flatMap((name) => [...screen.queryAllByRole("button", { name }), ...screen.queryAllByRole("menu", { name })]),
+      ...PARENT_CONTROLS[language].flatMap((name) => screen.queryAllByRole("button", { name })),
+      // Each menu by its label, a closed one too as it animates out,
+      // hidden and so unnamed for a screen reader.
+      ...[...document.querySelectorAll('[role="menu"]')].filter((menu) => PARENT_CONTROLS[language].includes(menu.getAttribute("aria-label") ?? "")),
       ...screen.queryAllByText(BRAND),
       ...screen.queryAllByText(TEXTS[language].sourceNote)
     ];
@@ -827,7 +837,10 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   [
     "the home page and its menus",
     homeAndMenus,
-    (language) => ({ words: [BRAND, ...OWN_NAMES, ...Object.values(TEXTS[language].themes)], labels: PARENT_CONTROLS[language] })
+    (language) => ({
+      words: [BRAND, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), ...levelNames(language), ...levelAges(language)],
+      labels: PARENT_CONTROLS[language]
+    })
   ],
   ["a round with mistakes and its result", roundWithMistakes, NOTHING_FOR_PARENTS],
   ["a round without mistakes, its result and the home page again", roundWithoutMistakes, HOME_PAGE],
@@ -855,6 +868,10 @@ const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents
 const CODES = new Set(LANGUAGES.map((code) => code.toUpperCase()));
 const OWN_NAMES = new Set(Object.values(LANGUAGE_NAMES));
 
+// The age levels' pictures, on the age level menu's button and choices,
+// have no letters and no case.
+const PICTURES = new Set(Object.values(AGE_LEVEL_PICTURES));
+
 // The app's strings are checked by script: a text left in English shows up
 // as Latin letters in Russian, and the other way round. Only the language
 // menu's codes and names and the wordmark read the same in both.
@@ -876,28 +893,29 @@ describe("every string shown", () => {
 // the test of its name above that the app names it in the chosen
 // language.
 describe("text for children", () => {
-  it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents", async (language, _, walk, forParents) => {
+  it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents, save the age levels' names", async (language, _, walk, forParents) => {
     const { texts, parentTexts, parentLabels } = await walk(language);
     const shown = forParents(language);
 
     expect(texts.length).toBeGreaterThan(0);
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect(new Set(parentLabels)).toEqual(new Set(shown.labels));
-    const words = parentTexts.filter((text) => !CODES.has(text));
+    const words = parentTexts.filter((text) => !CODES.has(text) && !PICTURES.has(text));
     expect(new Set(words)).toEqual(new Set(shown.words));
-    expect(words.filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    const names = levelNames(language);
+    expect(words.filter((text) => names.includes(text) !== (text === text.toLocaleUpperCase(language)))).toEqual([]);
   });
 
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
-  it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
+  it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents, save the age levels' names", (language) => {
+    const { languageMenu, themeMenu, themes, ageLevelMenu, ageLevels, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
-    const texts = [...strings(forChildren), stars(7, 10), heartsOf(6, 8)];
+    const texts = [...strings(forChildren), ...levelNames(language), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
-    expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([languageMenu, themeMenu, ageLevelMenu]).toEqual(PARENT_CONTROLS[language]);
+    expect([...Object.values(themes), ...levelAges(language), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });

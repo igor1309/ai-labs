@@ -32,7 +32,8 @@ import {
   unreadVersion,
   words,
   type ManualPictures,
-  homeTile
+  homeTile,
+  unsetAgeLevel
 } from "./support.ts";
 
 function openApp({
@@ -56,6 +57,7 @@ function openApp({
       nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
+      {...unsetAgeLevel()}
       {...pictures}
       {...emptyCare()}
       {...emptySorting()}

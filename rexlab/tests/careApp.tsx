@@ -21,7 +21,8 @@ import {
   memoryStorage,
   unreadVersion,
   type ManualOrientation,
-  type MemoryStorage
+  type MemoryStorage,
+  unsetAgeLevel
 } from "./support.ts";
 
 type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
@@ -63,6 +64,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       visitors={visitors}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}

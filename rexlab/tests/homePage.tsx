@@ -29,6 +29,9 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onLanguage={nothing}
       theme="light"
       onTheme={nothing}
+      ageLevel="explorer"
+      onAgeLevel={nothing}
+      startTimer={() => nothing}
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={score(7)}

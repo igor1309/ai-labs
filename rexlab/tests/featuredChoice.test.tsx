@@ -21,7 +21,8 @@ import {
   lightDevice,
   loadedPictures,
   manualOrientation,
-  tilesRow
+  tilesRow,
+  unsetAgeLevel
 } from "./support.ts";
 
 // The start counts of the feature's draw: COMPARE 9, ALL DINOSAURS 4,
@@ -186,7 +187,7 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
       orientation={manualOrientation("landscape")}
       progress={emptyProgress()}
       {...englishDevice()}
-      {...lightDevice()}
+      {...lightDevice()} {...unsetAgeLevel()}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
