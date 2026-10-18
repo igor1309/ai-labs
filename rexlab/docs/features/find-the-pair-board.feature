@@ -67,16 +67,17 @@ Feature: Find the pair: turning cards
     When I turn the iPad back to landscape
     Then I see the same cards, open and face down as before, and the same tries
 
-  Scenario Outline: A missing picture still lets the board be played
+  Scenario Outline: A card whose picture is not shown still lets the board be played
     Given the picture of Stegosaurus <ends>
     When I turn over a Stegosaurus card
-    Then I see the failure look and "STEGOSAURUS" on the card <when>
-    And so does its silhouette card, if any, once turned over, <when>
+    Then I see "STEGOSAURUS" on the card at once, over its picture's shimmer
+    And its place shows the failure look <when>
+    And the other card of its pair, turned over, is named and shown the same way
 
     Examples:
-      | ends             | when                            |
-      | fails to load    | at once                         |
-      | is still loading | once it has shown for 8 seconds |
+      | ends             | when                                       |
+      | fails to load    | once the picture, loaded again, has failed |
+      | is still loading | once the card has been open 8 seconds      |
 
   Scenario: Cards turn smoothly or fade
     When I turn over cards, find a pair and miss a pair
