@@ -5,7 +5,7 @@ import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } fr
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
-import { HOME_GAMES, HomePage } from "./HomePage.tsx";
+import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
@@ -47,6 +47,11 @@ export type ThemeStore = {
   // The theme a parent chose, or undefined when none can be read.
   load(): ThemeChoice | undefined;
   save(choice: ThemeChoice): void;
+};
+
+export type StartCounter = {
+  // Counts one more start of `game`, as it begins.
+  countStart(game: HomeGame): void;
 };
 
 // Whether the device is set to its dark appearance, and its changes.
@@ -91,6 +96,8 @@ export type AppProps = CareGameProps &
     // The start counts and the day's featured game the large card's
     // choice reads, and where it keeps the day's game.
     featuredStore: FeaturedStore;
+    // Where each game's starts are counted, for the next days' choices.
+    startCounter: StartCounter;
   };
 
 // The two dinosaurs facing off in the quiz's picture on the home page.
@@ -158,6 +165,7 @@ export function App({
   startTimer,
   now,
   featuredStore,
+  startCounter,
   sortables,
   sortingProgress,
   pals,
@@ -226,6 +234,7 @@ export function App({
     whenPicturesReady(started, () => {
       starting.current = false;
       setLastPlay(started);
+      startCounter.countStart("compare");
       changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "question", play: started }));
     });
   };
@@ -237,7 +246,11 @@ export function App({
     setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
 
-  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
+  // Each game counts a start where it begins, wherever the child began it
+  // from, and not as it opens on a welcome or choice screen.
+  const counting = (game: HomeGame) => () => startCounter.countStart(game);
+
+  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home, counting("care"));
 
   const openCare = () => {
     leaveHome();
@@ -247,7 +260,7 @@ export function App({
     });
   };
 
-  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
 
   const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
 
@@ -256,7 +269,11 @@ export function App({
   // chose.
   const leaveHome = () => sorting.cancel();
 
-  const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
+  const pairs = usePairsGame(
+    { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    home,
+    counting("pairs")
+  );
 
   const openPairs = () => {
     leaveHome();
@@ -285,7 +302,8 @@ export function App({
 
   const skeletonGame = useSkeletonGame(
     { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
-    home
+    home,
+    counting("skeletons")
   );
 
   const openSkeletons = () => {
@@ -318,8 +336,11 @@ export function App({
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
 
+  // The list opened from home is the catalogue's start; a food chosen or a
+  // dinosaur's page left is not.
   const openCatalogue = () => {
     leaveHome();
+    startCounter.countStart("catalogue");
     changeScreen(SCREEN_CHANGE, () => {
       setFood("all");
       setScreen({ kind: "catalogue", returning: undefined });

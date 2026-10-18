@@ -2,9 +2,8 @@ import { within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
-import { calendarDay } from "../src/featured.ts";
+import { calendarDay, type FeaturedRecord, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
-import { memoryFeatured } from "../src/memoryFeatured.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
@@ -317,12 +316,30 @@ export function englishDevice() {
   return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
 }
 
+// A featured record the test reads, starting from `initial`: the game
+// saved replaces the one held.
+export function featuredSpy(initial: FeaturedRecord): FeaturedStore {
+  let record = initial;
+  return {
+    load: () => record,
+    saveFeatured: (choice) => {
+      record = { ...record, featured: choice };
+    }
+  };
+}
+
+// Each game whose start the app counted, in order.
+export function countedStarts() {
+  const counted: HomeGame[] = [];
+  return { counted, startCounter: { countStart: (game: HomeGame) => void counted.push(game) } };
+}
+
 // The featured game for tests that are not about its choice: `game`,
 // already chosen for the clock's day, so the choice draws nothing from
-// the random source.
-export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore"> {
+// the random source, and starts counted where no test reads them.
+export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore" | "startCounter"> {
   const now = new Date(2026, 9, 18, 9, 30);
-  return { now: () => now, featuredStore: memoryFeatured({ starts: {}, featured: { day: calendarDay(now), game } }) };
+  return { now: () => now, featuredStore: featuredSpy({ starts: {}, featured: { day: calendarDay(now), game } }), startCounter: countedStarts().startCounter };
 }
 
 // The theme for tests that are not about it: a device in its light

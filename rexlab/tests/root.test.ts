@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HOME_GAMES } from "../src/HomePage.tsx";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
@@ -212,16 +213,28 @@ describe("the app in a browser", () => {
     expect(appProps({ ...browser(), ...pictureBrowser(now) }).now()).toEqual(now);
   });
 
-  it("starts each visit with no start counted and no featured game kept, and keeps the day's game for the visit", () => {
-    const given = browser();
+  it("keeps start counts and the day's featured game beside the other progress in local storage, for the next visit", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
     const visit = appProps(given);
     expect(visit.featuredStore.load()).toEqual({ starts: {}, featured: undefined });
 
     visit.featuredStore.saveFeatured({ day: "2026-10-18", game: "care" });
+    visit.startCounter.countStart("care");
 
-    expect(visit.featuredStore.load().featured).toEqual({ day: "2026-10-18", game: "care" });
-    expect(appProps(given).featuredStore.load()).toEqual({ starts: {}, featured: undefined });
-    expect([...given.localStorage.items]).toEqual([]);
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "home-featured": { starts: { care: 1 }, featured: { day: "2026-10-18", game: "care" } } }
+    });
+    expect(appProps(given).featuredStore.load()).toEqual({ starts: { care: 1 }, featured: { day: "2026-10-18", game: "care" } });
     expect([...given.sessionStorage.items]).toEqual([]);
+  });
+
+  it("reads the start counts of the home page's games and drops any other's", () => {
+    const starts = Object.fromEntries(HOME_GAMES.map((game, at) => [game, at]));
+    const given = browser({
+      local: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: { ...starts, fossils: 4 }, featured: { day: "2026-10-18", game: "skeletons" } } } }) })
+    });
+
+    expect(appProps(given).featuredStore.load()).toEqual({ starts, featured: { day: "2026-10-18", game: "skeletons" } });
   });
 });

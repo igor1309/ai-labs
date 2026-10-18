@@ -64,8 +64,12 @@ type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished
 
 // Find the pair, kept by the app above its orientation gate, so turning
 // the iPad pauses a board without losing it. `onHome` takes the child
-// back to the home page.
-export function usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion }: PairsGameProps, onHome: () => void) {
+// back to the home page; `onStart` is told as each board is dealt.
+export function usePairsGame(
+  { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion }: PairsGameProps,
+  onHome: () => void,
+  onStart: () => void
+) {
   const [screen, setScreen] = useState<PairsScreen>({ kind: "welcome" });
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but stars, levels and dinosaurs found
@@ -114,6 +118,7 @@ export function usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPic
         starting.current = false;
         lastBoard.current = board;
         live.current = board;
+        onStart();
         show({ kind: "board", board, finished: false });
       }
     );

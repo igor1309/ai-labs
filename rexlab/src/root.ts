@@ -5,14 +5,14 @@ import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { documentVisibility } from "./documentVisibility.ts";
 import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
+import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
-import { memoryFeatured } from "./memoryFeatured.ts";
 import { PIECES } from "./skeletons/index.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -41,9 +41,9 @@ export type Browser = {
   Date: { now(): number };
 };
 
-// The app's collaborators in a browser. Progress, the chosen language and
-// the chosen theme outlive the visit, so all of them are kept in local
-// storage.
+// The app's collaborators in a browser. Progress, start counts and the
+// day's featured game, the chosen language and the chosen theme outlive
+// the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
   const media = mediaOrientation((query) => browser.matchMedia(query));
@@ -51,6 +51,7 @@ export function appProps(browser: Browser): AppProps {
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);
   const skeletons = readSkeletons(records, skeletonPlaces);
+  const featured = localFeatured(storage, HOME_GAMES);
   return {
     dinosaurs,
     catalogue: readCatalogue(records),
@@ -79,9 +80,8 @@ export function appProps(browser: Browser): AppProps {
     skeletonProgress: localSkeletonProgress(storage),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
     now: () => new Date(browser.Date.now()),
-    // Start counts and the day's featured game are held for this visit
-    // alone, apart from the progress in local storage.
-    featuredStore: memoryFeatured(),
+    featuredStore: featured,
+    startCounter: featured,
     loadPicture: decodedPictures(() => new browser.Image()),
     startTimer: (ms, fire) => {
       const id = browser.setTimeout(fire, ms);

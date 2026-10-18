@@ -1,4 +1,5 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
+import type { DayChoice, FeaturedRecord } from "./featured.ts";
 import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
@@ -61,6 +62,44 @@ export function localSkeletonProgress(storage: () => KeyValueStorage) {
       ? { bestScore, earned: [...earned], rebuilding: [...rebuilding] }
       : undefined
   );
+}
+
+// The home page's start counts and the day's featured game, beside the
+// games' entries in the same record; `games` are those the home page
+// offers. Read once, on first use, and held for the visit, so a start
+// counted or a game chosen stays for the visit even when it cannot be
+// saved. The choice takes the counts as they come, so an entry with a
+// count that is not a whole number of starts, or a featured game no longer
+// offered, is read as no starts and no game; the count of a game no
+// longer offered is left out.
+export function localFeatured(storage: () => KeyValueStorage, games: readonly string[]) {
+  const entry = gameProgress<FeaturedRecord>(storage, "home-featured", NO_FEATURED, (stored) => readFeatured(stored, games));
+  let visit: FeaturedRecord | undefined;
+  const held = () => (visit ??= entry.load() ?? NO_FEATURED);
+  const keep = (record: FeaturedRecord) => {
+    visit = record;
+    entry.save(record);
+  };
+  return {
+    load: held,
+    saveFeatured: (choice: DayChoice) => keep({ ...held(), featured: choice }),
+    countStart: (game: string) => {
+      const { starts, featured } = held();
+      keep({ starts: { ...starts, [game]: (starts[game] ?? 0) + 1 }, featured });
+    }
+  };
+}
+
+const NO_FEATURED: FeaturedRecord = { starts: {}, featured: undefined };
+
+function readFeatured({ starts, featured }: Entry, games: readonly string[]): FeaturedRecord | undefined {
+  if (!isObject(starts)) return undefined;
+  const offered = Object.entries(starts).filter(([game]) => games.includes(game));
+  const counts = offered.flatMap(([game, count]) => (isCount(count) ? [[game, count] as const] : []));
+  if (counts.length < offered.length) return undefined;
+  if (featured === undefined) return { starts: Object.fromEntries(counts), featured: undefined };
+  if (!isObject(featured) || typeof featured.day !== "string" || typeof featured.game !== "string" || !games.includes(featured.game)) return undefined;
+  return { starts: Object.fromEntries(counts), featured: { day: featured.day, game: featured.game } };
 }
 
 // One game's progress kept in browser storage, in the versioned record of

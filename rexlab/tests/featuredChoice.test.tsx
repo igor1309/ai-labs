@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { calendarDay, chooseFeatured, weightsOf, type DayChoice, type FeaturedRecord, type FeaturedStore } from "../src/featured.ts";
 import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
-import { memoryFeatured } from "../src/memoryFeatured.ts";
 import { HOME_GAMES as TILES } from "./homePage.tsx";
 import {
   SHIPPED_CATALOGUE,
@@ -14,9 +13,11 @@ import {
   emptyProgress,
   emptySkeletons,
   emptySorting,
+  countedStarts,
   englishDevice,
   fakeBodyPicture,
   featuredCard,
+  featuredSpy,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -49,7 +50,7 @@ const record = (starts: Record<string, number>, featured?: DayChoice): FeaturedR
 function shares<Game extends string>(games: readonly Game[], starts: Record<string, number>, featured?: DayChoice) {
   const count = new Map<Game, number>();
   for (let step = 0; step < 1000; step++) {
-    const game = chooseFeatured(games, { store: memoryFeatured(record(starts, featured)), random: () => step / 1000, today: TODAY });
+    const game = chooseFeatured(games, { store: featuredSpy(record(starts, featured)), random: () => step / 1000, today: TODAY });
     count.set(game, (count.get(game) ?? 0) + 1);
   }
   return Object.fromEntries(count);
@@ -77,7 +78,7 @@ describe("choosing the featured game", () => {
     [0.75, "skeletons"],
     [0.999, "skeletons"]
   ] as const)("maps the draw %s to %s, in tile order", (draw, game) => {
-    expect(chooseFeatured(HOME_GAMES, { store: memoryFeatured(record(STARTS)), random: () => draw, today: TODAY })).toBe(game);
+    expect(chooseFeatured(HOME_GAMES, { store: featuredSpy(record(STARTS)), random: () => draw, today: TODAY })).toBe(game);
   });
 
   it.each([
@@ -110,7 +111,7 @@ describe("choosing the featured game", () => {
   });
 
   it("saves the game drawn with today's date", () => {
-    const store = memoryFeatured(record(STARTS));
+    const store = featuredSpy(record(STARTS));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.25, today: TODAY })).toBe("care");
     expect(store.load()).toEqual(record(STARTS, { day: TODAY, game: "care" }));
@@ -139,14 +140,14 @@ describe("choosing the featured game", () => {
     ["later", TOMORROW],
     ["long ago", "2025-01-02"]
   ])("chooses afresh for today, and saves it, when the saved game is dated %s", (_when, day) => {
-    const store = memoryFeatured(record(STARTS, { day, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { day, game: "skeletons" }));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0, today: TODAY })).toBe("compare");
     expect(store.load().featured).toEqual({ day: TODAY, game: "compare" });
   });
 
   it("chooses afresh when today's saved game is no longer offered", () => {
-    const store = memoryFeatured(record(STARTS, { day: TODAY, game: "fossils" }));
+    const store = featuredSpy(record(STARTS, { day: TODAY, game: "fossils" }));
 
     expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.75, today: TODAY })).toBe("skeletons");
     expect(store.load().featured).toEqual({ day: TODAY, game: "skeletons" });
@@ -177,6 +178,7 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
     <App
       now={() => clock.time}
       featuredStore={store}
+      startCounter={countedStarts().startCounter}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -198,7 +200,7 @@ const featuredGame = () => featuredCard().dataset.game;
 
 describe("the featured game in the app", () => {
   it("is drawn at start from the start counts with the random source", () => {
-    const store = memoryFeatured(record(STARTS));
+    const store = featuredSpy(record(STARTS));
 
     openApp(store, { time: new Date(2026, 9, 18, 9, 0) }, 0.25);
 
@@ -207,7 +209,7 @@ describe("the featured game in the app", () => {
   });
 
   it("stays on a reload at 23:59 and is chosen for the new day on a reload at 00:00", () => {
-    const store = memoryFeatured(record(STARTS, { day: TODAY, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { day: TODAY, game: "skeletons" }));
     const clock = { time: new Date(2026, 9, 18, 23, 59) };
 
     openApp(store, clock, 0).unmount();
@@ -222,7 +224,7 @@ describe("the featured game in the app", () => {
   });
 
   it("never changes while the app is open, past midnight, until the app is opened again", async () => {
-    const store = memoryFeatured(record(STARTS, { day: TODAY, game: "skeletons" }));
+    const store = featuredSpy(record(STARTS, { day: TODAY, game: "skeletons" }));
     const clock = { time: new Date(2026, 9, 18, 23, 59) };
     const view = openApp(store, clock, 0);
     const user = userEvent.setup();
