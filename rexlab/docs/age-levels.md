@@ -25,6 +25,14 @@ an approximate age level next to the theme and language controls
   belongs to the level it was set at: a game shows and celebrates the
   best of the level it plays, so moving up never caps the celebrations
   (owner, 2026-10-18).
+- **Offer up, never down.** After 3 strong rounds in a row at one level,
+  a game offers its next level once, with that level's picture and a
+  one-tap "YES" or "NOT NOW" (LAB-293). "YES" sets the game's own choice,
+  never the setting; "NOT NOW", or leaving the offer unanswered, waits
+  for 5 more strong rounds in a row. A round that is not strong, or one
+  at another level, starts the count again. Each game says what a strong
+  round is in its own offer feature. Nothing moves a child down, and no
+  words say a round went badly; a game's top level offers nothing.
 - **Demote, never delete.** A game made harder keeps its current behaviour
   as its easiest level; the rule is in `../AGENTS.md`.
 
