@@ -2,9 +2,9 @@ Feature: How the age level menu looks and moves
   The age level menu (age-level.feature) stands with the parents'
   language and theme menus and shares their look and motion. Today
   those menus grow in but vanish at once; with this feature all three
-  animate both ways, however they close (a choice, a tap outside, a
-  second tap on the button or Escape), and their ✓ reads in both themes. The corner they
-  stand in fits on one line as home-museum.feature says.
+  animate both ways, however they close, and their ✓ reads in both
+  themes. The corner they stand in fits on one line as
+  home-museum.feature says.
 
   Background:
     Given an iPad in landscape
@@ -43,14 +43,15 @@ Feature: How the age level menu looks and moves
     When I choose another one in it
     Then it animates out with the shared motion tokens
     And the button's new symbol or code animates in
-    When I open it again and tap outside it
+    When I open it again and close it by <closing>
     Then it animates out with the shared motion tokens
 
     Examples:
-      | menu      |
-      | language  |
-      | theme     |
-      | age level |
+      | menu      | closing                  |
+      | language  | tapping outside it       |
+      | theme     | tapping its button again |
+      | age level | pressing Escape          |
+      | age level | tapping outside it       |
 
   Scenario Outline: With reduced motion the parents' menus fade
     Given the device asks for reduced motion
@@ -59,11 +60,12 @@ Feature: How the age level menu looks and moves
     When I choose another one in it
     Then it fades out, shortly
     And the button's new symbol or code fades in, shortly
-    When I open it again and tap outside it
+    When I open it again and close it by <closing>
     Then it fades out, shortly
 
     Examples:
-      | menu      |
-      | language  |
-      | theme     |
-      | age level |
+      | menu      | closing                  |
+      | language  | tapping outside it       |
+      | theme     | tapping its button again |
+      | age level | pressing Escape          |
+      | age level | tapping outside it       |

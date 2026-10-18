@@ -2,13 +2,15 @@ Feature: The level a game starts at
   The age level (age-level.feature) picks the level every game starts at.
   A game with no mode for that level plays its nearest lower one, and a
   child's own choice in a game wins until a parent picks a different
-  level. Rewards are the same at every level (docs/age-levels.md).
+  level. Rewards are the same at every level, and each level keeps its
+  own best score (docs/age-levels.md).
 
   No game has levels yet: each adopts them in its own issue, which
   removes its row from the first scenario and keeps the child's choice
   in its own progress; the catalogue has no levels and keeps its row.
   Until then the rules below are checked on the shared rule, which is
-  given a game's modes.
+  given the level, a game's modes and the child's choice in it, made
+  under the level as it then stood.
 
   Background:
     Given an iPad in landscape
@@ -31,9 +33,7 @@ Feature: The level a game starts at
     And the age level is <level>
     When I answer every question of a compare quiz round right
     Then I score 10 and see the new best score celebration
-    And my best score is 10
-    When the age level is changed to each other level
-    Then the COMPARE tile still shows my best score 10
+    And the COMPARE tile shows my best score 10, the best of the level the quiz plays
 
     Examples:
       | level          |
