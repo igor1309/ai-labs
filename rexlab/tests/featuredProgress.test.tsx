@@ -286,6 +286,9 @@ describe("a start that waits for its pictures", () => {
   });
 });
 
+// Whether a question of the quiz is on screen.
+const questionShown = () => screen.queryByText(/^WHO IS (HEAVIER|TALLER)\?$/) !== null;
+
 // Each door off the home page, and how to tell its screen is shown.
 const DOORS: Array<[door: string, open: () => HTMLElement, shown: () => boolean]> = [
   ["MUSEUM", () => button("MUSEUM"), () => screen.queryByRole("group", { name: "STANDS" }) !== null],
@@ -311,11 +314,42 @@ describe("a round left while its pictures load", () => {
       act(() => (loaded ? round.forEach(pictures.finish) : pictures.fire(1000)));
       act(() => pictures.loading().forEach(pictures.finish));
 
-      expect(screen.queryByText(/^WHO IS (HEAVIER|TALLER)\?$/)).toBeNull();
+      expect(questionShown()).toBe(false);
       expect(shown()).toBe(true);
       expect(counted.filter((game) => game === "compare")).toEqual([]);
+
+      // COMPARE starts a round again, back home.
+      act(() => pictures.fire(MUSEUM_SETTLE));
+      await user.click(button("HOME"));
+      await user.click(homeTile("COMPARE"));
+      act(() => pictures.loading().forEach(pictures.finish));
+      expect(questionShown()).toBe(true);
+      expect(counted.filter((game) => game === "compare")).toEqual(["compare"]);
     }
   );
+
+  it.each(["its pictures load", "its wait runs out"])("neither opens nor counts a start once HOME is tapped after PLAY AGAIN, when %s", async (end) => {
+    const pictures = manualPictures();
+    const { counted, startCounter } = countedStarts();
+    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith() }), { clock: pictures, startCounter });
+    const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
+    await user.click(homeTile("COMPARE"));
+    loadAll();
+    for (let number = 1; number <= 10; number++) {
+      await user.click(firstIn("DINOSAURS"));
+      await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
+      loadAll();
+    }
+    await user.click(button("PLAY AGAIN"));
+    const round = pictures.loading();
+    expect(round).toHaveLength(2);
+
+    await user.click(button("HOME"));
+    act(() => (end === "its pictures load" ? round.forEach(pictures.finish) : pictures.fire(1000)));
+
+    expect([questionShown(), featuredCard().dataset.game]).toEqual([false, "skeletons"]);
+    expect(counted).toEqual(["compare"]);
+  });
 });
 
 describe("a browser that cannot keep progress", () => {

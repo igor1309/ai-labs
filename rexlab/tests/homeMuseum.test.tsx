@@ -1,6 +1,5 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { addTransitionType } from "react";
-import { MUSEUM_SETTLE } from "../src/App.tsx";
 import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -27,8 +26,11 @@ const onHomePage = () => document.querySelector(".games-tiles") !== null;
 
 const button = (name: string) => screen.getByRole("button", { name });
 
-// The museum, opened from the home page, settled for taps.
-const settle = (pictures: ManualPictures) => act(() => pictures.fire(MUSEUM_SETTLE));
+// How long the museum, opened from the home page, takes no taps: half a
+// second, longer than the gap between a child's two quick taps.
+const SETTLE = 500;
+
+const settle = (pictures: ManualPictures) => act(() => pictures.fire(SETTLE));
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
@@ -111,7 +113,7 @@ describe("the museum on the home page", () => {
     await user.click(button("HOME"));
 
     expect(hall()).not.toBeNull();
-    expect(pictures.timers()).toEqual([MUSEUM_SETTLE]);
+    expect(pictures.timers()).toEqual([SETTLE]);
     settle(pictures);
     await user.click(button("HOME"));
     expect(onHomePage()).toBe(true);
