@@ -775,8 +775,10 @@ archive's last user's need of it.
 `inputs` are the workflow's, as resolved at its boundary; a request
 naming a step has none. Each call's `inputs` are its process's, as
 resolved for its call, in the order the process declares them; a call
-whose inputs were refused has none. Each input is its name, its value
-whole, and its identity:
+whose inputs were refused has none, and so has a run whose workflow's
+were; none is `[]`. Each input is its name, its value whole, and its
+identity. The run's inputs are in every write after they are resolved,
+a call's in the write as it ends:
 
 ```json
 {"inputs": [{"name": "goal", "value": "", "identity": "<sha-256>"}],
@@ -787,10 +789,10 @@ whole, and its identity:
 The join's input is its call's like any other: the judge's `reviews`,
 the reviews' outputs as it was given them.
 
-**`runstore`** exports a run: its folder copied, file by file, into a
-folder of the run's id under the folder it is given. A run not kept,
-or a folder of its id already there, is an error, and nothing is
-copied.
+**`runstore`** exports a run: its `record.json` and `events.jsonl`
+copied into a folder of the run's id under the folder it is given,
+which is made where missing. A run not kept, or a folder of its id
+already there, is an error, and nothing is copied.
 
 **`cli`** gets `agister runs export <run id> --to <dir>`, on a port of
 its own, the composition's from runstore under home's `runs`. It prints
@@ -800,7 +802,10 @@ whole prints its usage, exit 2.
 Decisions, each with its reason:
 
 - Values are kept in `record.json`, however long: ADR-010, rule 4
-  asks the bytes kept, and one file keeps them; no artifact folder.
+  asks the bytes kept, and one file keeps them; no artifact folder,
+  not as ADR-001's table of parts gives `core/inputs` one. A value
+  that is not UTF-8 is kept changed, its identity the original's: a
+  risk taken, inputs are text.
 - Not yet in the record: the definitions with their digests, the
   permission plan, a pinned call's patch (ADR-004, rule 4). No reader
   needs them yet.
@@ -809,5 +814,7 @@ Decisions, each with its reason:
 - A run still being written exports as its files are at the copy: a
   record is written whole, so it reads as the record then; an event
   line may be cut. Best effort.
+- A relative `--to` is taken as the process's working directory reads
+  it: cli is run where it is launched.
 - `scripts/agister-gate` stays on the archive: moving it is its own
   slice, which reads this record.

@@ -34,9 +34,9 @@ Feature: runstore keeps runs
     Then they are "20261016T090000Z-0a0b0c", then
       "20261017T071618Z-55fd36"
 
-  Scenario: A run is exported, its folder copied under its id
+  Scenario: A run is exported, its files copied under its id
     Given the run "x" kept, its record and events written
-    When "x" is exported to "out"
+    When "x" is exported to "out", not yet made
     Then "out/x" holds "record.json" and "events.jsonl", each as kept
 
   Scenario Outline: An export that cannot be made copies nothing
