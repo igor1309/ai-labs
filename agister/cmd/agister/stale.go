@@ -34,7 +34,7 @@ func (s *staleness) Watch(limits call.Limits, stale func(call.Stale)) (func(call
 		if t := r.Tool; t != nil {
 			tool = &watch.Tool{Name: t.Name, Input: t.Input}
 		}
-		report(watch.Report{Tool: tool})
+		report(watch.Report{Tool: tool, Result: r.Result})
 	}, stop
 }
 

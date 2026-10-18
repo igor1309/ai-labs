@@ -104,10 +104,18 @@ type Resolver interface {
 }
 
 // Caller calls the step named step, its process's params given by name,
-// and gives each tool call its turn reports to report. It is called from
-// many goroutines at once, one for each step of a parallel.
+// and gives report each tool call its turns report and each turn that went
+// stale. It is called from many goroutines at once, one for each step of a
+// parallel.
 type Caller interface {
-	Call(ctx context.Context, step string, params map[string]string, report func(Tool)) Result
+	Call(ctx context.Context, step string, params map[string]string, report func(Report)) Result
+}
+
+// Report is what a step's call reports: a tool call, where Tool is not
+// nil; else a stale turn, where Stale is not nil.
+type Report struct {
+	Tool  *Tool
+	Stale *Stale
 }
 
 // Tool is a tool call a step's turn reports: the tool's name and what it
@@ -116,13 +124,21 @@ type Tool struct {
 	Name, Input string
 }
 
+// Stale is a step's turn that went stale: what went stale, and whether a
+// recovery turn follows.
+type Stale struct {
+	What       string
+	Recovering bool
+}
+
 // Events is told what each step of a run is doing, by the step's name: that
-// it started, on its agent; each tool call its turn reports; and how it
-// ended. It is told from many goroutines at once, one for each step of a
-// parallel.
+// it started, on its agent; each tool call its turns report, and each turn
+// that went stale; and how it ended. It is told from many goroutines at
+// once, one for each step of a parallel.
 type Events interface {
 	Started(step, agent string)
 	Tool(step string, tool Tool)
+	Stale(step string, stale Stale)
 	Ended(step string, ended Ended)
 }
 
@@ -217,8 +233,8 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 
 // Run runs w over the params given: its inputs resolved once, then each
 // item in order, until a step in sequence does not complete or the run is
-// cancelled, each step's start on its agent, tool calls and end told to
-// the events as they come. A parallel calls its steps at once and ends once
+// cancelled, each step's start on its agent, tool calls, stale turns and
+// end told to the events as they come. A parallel calls its steps at once and ends once
 // all have ended: completed, its outputs each step's end, in declaration
 // order, whatever each ended as; a run cancelled meanwhile ends with it,
 // interrupted, cancelled. The run's status, class and reason are its last
@@ -330,11 +346,18 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 	return calls, true
 }
 
-// call calls step with params, its start, tool calls and end told to the
-// events by its name.
+// call calls step with params, its start, tool calls, stale turns and end
+// told to the events by its name.
 func (r *Runner) call(ctx context.Context, step Step, params map[string]string) Result {
 	r.events.Started(step.Name, step.Agent)
-	called := r.caller.Call(ctx, step.Name, params, func(tool Tool) { r.events.Tool(step.Name, tool) })
+	called := r.caller.Call(ctx, step.Name, params, func(report Report) {
+		switch {
+		case report.Tool != nil:
+			r.events.Tool(step.Name, *report.Tool)
+		case report.Stale != nil:
+			r.events.Stale(step.Name, *report.Stale)
+		}
+	})
 	r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
 	return called
 }

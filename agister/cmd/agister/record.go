@@ -51,8 +51,8 @@ type endedCall struct {
 // runRecord keeps a run's record as the run goes (docs/run-implementation.md,
 // "Records"; ADR-001, invariants 6 and 7): written lost before anything
 // runs, then again as each call ends, holding every call ended so far, and
-// at the run's end as the run ended; each step's start, tool call and end
-// appended as an event, at the clock's time. The record is written one
+// at the run's end as the run ended; each step's start, tool call, stale
+// turn and end appended as an event, at the clock's time. The record is written one
 // write at a time. A write after the first, or an append, that fails is a
 // warning in the run's result, each once.
 type runRecord struct {
@@ -158,14 +158,18 @@ func (r *runRecord) warn(warning string) {
 	}
 }
 
-// Started, Tool and Ended answer core/workflow's events: each is appended
-// to the run's events at the clock's time.
+// Started, Tool, Stale and Ended answer core/workflow's events: each is
+// appended to the run's events at the clock's time.
 func (r *runRecord) Started(step, agent string) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Started, Agent: agent})
 }
 
 func (r *runRecord) Tool(step string, tool workflow.Tool) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Tool, Name: tool.Name, Input: tool.Input})
+}
+
+func (r *runRecord) Stale(step string, stale workflow.Stale) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Stale, What: stale.What, Recovering: stale.Recovering})
 }
 
 func (r *runRecord) Ended(step string, ended workflow.Ended) {
@@ -214,6 +218,12 @@ func (b bothEvents) Started(step, agent string) {
 func (b bothEvents) Tool(step string, tool workflow.Tool) {
 	for _, events := range b {
 		events.Tool(step, tool)
+	}
+}
+
+func (b bothEvents) Stale(step string, stale workflow.Stale) {
+	for _, events := range b {
+		events.Stale(step, stale)
 	}
 }
 

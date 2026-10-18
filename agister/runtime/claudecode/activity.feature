@@ -1,7 +1,7 @@
 # runtime/claudecode, the tool calls a turn reports
-# (docs/run-implementation.md, "Inputs and progress"): read from
-# stream-json as the lines come. A spy answers in place of the
-# supervisor, fed recorded lines (ADR-009, rule 3).
+# (docs/run-implementation.md, "Inputs and progress", "Recovery"): read from
+# stream-json as the lines come. A spy answers in place of the supervisor,
+# fed recorded lines (ADR-009, rule 3).
 
 Feature: The claude-code wrapper reports each tool call as it reads it
 
@@ -26,3 +26,11 @@ Feature: The claude-code wrapper reports each tool call as it reads it
     When claude-code runs a turn
     Then it reports a line, the tool call "Write" with all 500 bytes, a
       line, and a line
+
+  Scenario: A user event carrying a tool_result reports a tool's result
+    Given the supervisor's lines: a tool_use "Bash" given
+      {"command":"ls"}, a rate_limit_event, a user event carrying a
+      tool_result, then a result
+    When claude-code runs a turn
+    Then it reports the tool call "Bash", a line, a tool's result, and
+      a line

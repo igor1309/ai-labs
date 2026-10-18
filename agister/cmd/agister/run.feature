@@ -46,7 +46,6 @@ Feature: The composition runs a request
     Examples:
       | declares                                     | agent       | what                                  |
       | as it is                                     | pi-m3       | the runtime "pi"'s turn               |
-      | a recovery of 1 resume                       | claude-opus | the recovery                          |
       | the cost limit 1                             | claude-opus | the cost limit                        |
       | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name |
       | an input "b" from the source "git.diff"      | bash        | the source "git.diff"                 |

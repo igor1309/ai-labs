@@ -68,6 +68,7 @@ const (
 	allowedLine         = `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"session_id":"s1"}`
 	toolUseLine         = `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/r/a"}}]},"session_id":"s1"}`
 	toolDoneLine        = `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"a"}]},"session_id":"s1"}`
+	userLine            = `{"type":"user","message":{"content":[{"type":"text","text":"a"}]},"session_id":"s1"}`
 	notJSONLine         = `{broken`
 	duringExecutionLine = `{"type":"result","subtype":"error_during_execution","is_error":true,"session_id":"s1","errors":["the request was rejected"]}`
 )
@@ -317,7 +318,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (claudecode.Result{Ended: given}); !reflect.DeepEqual(got, want) {
+	if want := (claudecode.Result{Ended: given, Session: "s1"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("turn gave %+v, want %+v", got, want)
 	}
 }

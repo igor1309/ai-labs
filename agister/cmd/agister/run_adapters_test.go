@@ -97,8 +97,8 @@ func (s *turnSpy) Call(_ context.Context, step call.Step, report func(call.Repor
 }
 
 // discard is a report that keeps nothing, for a call whose test is not
-// about its tool calls.
-func discard(workflow.Tool) {}
+// about what it reports.
+func discard(workflow.Report) {}
 
 // A step's call is given its process's environment and inputs, resolved
 // over the params its bindings give, the inputs in the order its process

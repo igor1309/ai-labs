@@ -1,7 +1,7 @@
 // Package e2e_test is the end-to-end check (docs/run-implementation.md, "A
-// step on a model runtime" and "Continuation"): the built agister runs a
-// step on real claude-code and codex, on the owner's logins, and continues
-// it. It costs a few cents, so
+// step on a model runtime", "Continuation" and "Recovery"): the built
+// agister runs a step on real claude-code and codex, on the owner's logins,
+// continues it, and recovers a stale turn. It costs a few cents, so
 // it is opt-in: its tests run only where AGISTER_E2E is 1, by
 // scripts/e2e.sh, and are skipped otherwise, saying so.
 package e2e_test
@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -72,7 +73,10 @@ var agents = map[string]string{
 // repository is the scratch repository's settings, by path: the process
 // "ask", its input "q" from the param "q", its output an object of a
 // string "answer"; it allows what codex's read-only sandbox grants, so its
-// plan warns of nothing.
+// plan warns of nothing. The process "stall", as "ask" but requiring
+// process.execute, asks to run "sh -c 'sleep 60'" in the foreground, then
+// to answer "done"; a tool command of 5s is stale, and its one recovery
+// turn is told to answer "done" without running any command.
 var repository = map[string]string{
 	".agister/processes/ask.yaml": `schema: agister.process/v1alpha1
 prompt: ask
@@ -87,7 +91,23 @@ permissions:
 output:
   schema: answer
 `,
+	".agister/processes/stall.yaml": `schema: agister.process/v1alpha1
+prompt: stall
+instruction: Do as the prompt says.
+permissions:
+  require: [repository.read, process.execute]
+  allow: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
+limits:
+  stale: {tool_command: 5s}
+recovery:
+  resumes: 1
+  instruction: Do not run any command. Reply with the answer "done", in lowercase, and nothing else in it, as the prompt says.
+output:
+  schema: answer
+`,
 	".agister/prompts/ask.md": "Reply in one short sentence, without reading any file.\n",
+	".agister/prompts/stall.md": "Run the shell command `sh -c 'sleep 60'` in the foreground, not in the background, and wait for it to end. " +
+		"Then reply with the answer \"done\", in lowercase, and nothing else in it, without reading any file.\n",
 	".agister/schemas/answer.json": `{"type":"object","required":["answer"],"additionalProperties":false,` +
 		`"properties":{"answer":{"type":"string"}}}`,
 }
@@ -266,6 +286,44 @@ func TestARunOnARealRuntimeIsContinued(t *testing.T) {
 			}
 			if got.Sessions["ask"] != first.Sessions["ask"] {
 				t.Errorf("sessions %v, want the first's, %v", got.Sessions, first.Sessions)
+			}
+			if t.Failed() {
+				t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
+			}
+		})
+	}
+}
+
+// e2e.feature, "A stale turn on a real runtime is recovered": the turn,
+// its shell command running past the limit, is ended mid-tool, and the
+// recovery turn resumes its session and answers.
+//
+// Contract test: the built agister, on real claude-code and codex and the
+// owner's logins, in a real git repository, a turn's program ended by a
+// signal and its session resumed.
+func TestAStaleTurnOnARealRuntimeIsRecovered(t *testing.T) {
+	t.Parallel()
+	requireOptIn(t, os.Getenv)
+	for _, agent := range []string{"e2e-haiku", "e2e-codex"} {
+		t.Run(agent, func(t *testing.T) {
+			t.Parallel()
+			home, repo := scratch(t)
+			ran := runAgister(t, home, repo, "run", "--process", "stall", "--agent", agent)
+			recovering := slices.ContainsFunc(strings.Split(string(ran.stderr), "\n"), func(line string) bool {
+				return strings.HasPrefix(line, "· stall: stale: ") && strings.HasSuffix(line, "; recovering")
+			})
+			if !recovering {
+				t.Error(`stderr has no line "· stall: stale: ...; recovering"`)
+			}
+			if ran.code != 0 {
+				t.Errorf("exit %d, want 0", ran.code)
+			}
+			got := printedOf(t, ran)
+			if got.Status != "completed" {
+				t.Errorf("status %q, want completed", got.Status)
+			}
+			if answer := answerOf(t, got); answer != "done" {
+				t.Errorf("answer %q, want done", answer)
 			}
 			if t.Failed() {
 				t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
