@@ -1,3 +1,4 @@
+import { within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
@@ -515,4 +516,22 @@ export function words(element: HTMLElement): string {
   const copy = element.cloneNode(true) as HTMLElement;
   copy.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((part) => part.remove());
   return copy.textContent?.trim() ?? "";
+}
+
+// The home page's row of tiles.
+export function tilesRow(): HTMLElement {
+  const row = document.querySelector<HTMLElement>(".games-tiles");
+  if (!row) throw new Error("No tiles on the page");
+  return row;
+}
+
+// A game's own tile on the home page, apart from the large card, which
+// may feature the same game under the same name.
+export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
+
+// The home page's large card, featuring today's game.
+export function featuredCard(): HTMLElement {
+  const card = document.querySelector<HTMLElement>(".featured-card");
+  if (!card) throw new Error("No featured card on the page");
+  return card;
 }

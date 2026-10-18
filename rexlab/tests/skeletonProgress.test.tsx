@@ -20,7 +20,7 @@ import {
   trayPieces,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { memoryStorage, type MemoryStorage } from "./support.ts";
+import { memoryStorage, type MemoryStorage, homeTile } from "./support.ts";
 
 // skeleton-assembly-progress.feature
 
@@ -133,7 +133,7 @@ describe("keeping the collection", () => {
       "taps HOME, without being asked to confirm",
       async (opened) => {
         await opened.user.click(button("HOME"));
-        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog"), button("COMPARE")]).toEqual([[], [], expect.anything()]);
+        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog"), homeTile("COMPARE")]).toEqual([[], [], expect.anything()]);
         await opened.user.click(button("SKELETONS"));
         return opened;
       }

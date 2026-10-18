@@ -9,7 +9,7 @@ Feature: Dinosaur care: welcoming a visitor
   Scenario: The home page offers the care game
     When I open the home page
     Then I see a "CARE" tile with a heart symbol and a dinosaur
-    And it is beside the "COMPARE" card, under "ALL DINOSAURS"
+    And it starts the row's second column, above the "SORT" card
     And once I have finished a visit it shows my care best score with a trophy symbol
     When I tap "CARE"
     Then I see the care welcome screen

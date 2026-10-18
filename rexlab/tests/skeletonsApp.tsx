@@ -74,6 +74,7 @@ export function openSkeletonsApp({
     skeletonPicture: fakeSkeletonPicture,
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
+    featured: "compare",
     ...pictures
   };
   render(<App {...props} />);

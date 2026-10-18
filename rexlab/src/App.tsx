@@ -4,7 +4,7 @@ import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
-import { HomePage } from "./HomePage.tsx";
+import { HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
@@ -85,9 +85,11 @@ export type AppProps = CareGameProps &
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
+    // The game the home page's large card features.
+    featured: HomeGame;
   };
 
-// The two dinosaurs facing off on the home page's quiz card.
+// The two dinosaurs facing off in the quiz's picture on the home page.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
 // The dinosaur on the catalogue's tile.
@@ -150,6 +152,7 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  featured,
   sortables,
   sortingProgress,
   pals,
@@ -417,6 +420,7 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}

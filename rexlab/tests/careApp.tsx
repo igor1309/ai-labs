@@ -49,6 +49,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
 }: CareAppOptions<C> = {}) {
   const view = render(
     <App
+      featured="compare"
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

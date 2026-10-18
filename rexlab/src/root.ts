@@ -76,6 +76,8 @@ export function appProps(browser: Browser): AppProps {
     ),
     skeletonProgress: localSkeletonProgress(storage),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
+    // COMPARE until the featured game is chosen each day.
+    featured: "compare",
     loadPicture: decodedPictures(() => new browser.Image()),
     startTimer: (ms, fire) => {
       const id = browser.setTimeout(fire, ms);

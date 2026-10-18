@@ -1,5 +1,5 @@
 import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu } from "./ParentMenu.tsx";
@@ -11,12 +11,21 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 // The app's name, the same in every language.
 const BRAND = "RexLab";
 
+// The games the home page offers, each on a tile of its own.
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons";
+
+// What a game's tile shows in its picture's corner: a number beside its
+// symbol.
+type Badge = { symbol: LucideIcon; value: number };
+
 export type HomePageProps = {
   language: Language;
   onLanguage: (language: Language) => void;
   theme: ThemeChoice;
   onTheme: (theme: ThemeChoice) => void;
-  // The pictures of the two dinosaurs facing off on the quiz card.
+  // The game the large card features today, beside its own tile.
+  featured: HomeGame;
+  // The pictures of the two dinosaurs facing off, the quiz's picture.
   faceOff: { left: string; right: string };
   // The best score of the quiz, undefined while there is none to show.
   best: number | undefined;
@@ -53,6 +62,7 @@ export function HomePage({
   onLanguage,
   theme,
   onTheme,
+  featured,
   faceOff,
   best,
   catalogue,
@@ -69,7 +79,8 @@ export function HomePage({
   onSkeletons
 }: HomePageProps) {
   const text = TEXTS[language];
-  const pointer = usePointerState();
+  const featuredPointer = usePointerState();
+  const comparePointer = usePointerState();
   const cataloguePointer = usePointerState();
   const carePointer = usePointerState();
   const sortPointer = usePointerState();
@@ -82,6 +93,54 @@ export function HomePage({
     onClose: () => setOpenMenu(undefined)
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
+  // Each game's own parts, which its tile and the large card both show,
+  // so the two never tell the child different things.
+  const games: Record<HomeGame, { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void }> = {
+    compare: {
+      name: text.quizCard,
+      symbol: Scale,
+      picture: <FaceOff label={text.quizCardPicture} {...faceOff} />,
+      badge: best === undefined ? undefined : { symbol: Trophy, value: best },
+      onOpen: onCompareDinosaurs
+    },
+    catalogue: {
+      name: text.catalogueTile,
+      symbol: BookOpen,
+      picture: <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />,
+      badge: { symbol: Footprints, value: catalogue.count },
+      onOpen: onCatalogue
+    },
+    care: {
+      name: text.care,
+      symbol: Heart,
+      picture: <img className="care-tile-picture" src={care.picture} alt="" draggable={false} />,
+      badge: care.best === undefined ? undefined : { symbol: Trophy, value: care.best },
+      onOpen: onCare
+    },
+    sort: {
+      name: text.sort,
+      symbol: Shapes,
+      picture: <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />,
+      badge: sort.best === undefined ? undefined : { symbol: Trophy, value: sort.best },
+      onOpen: onSort
+    },
+    pairs: {
+      name: text.pairs,
+      symbol: Copy,
+      picture: <PairsArt picture={pairs.picture} />,
+      badge: pairs.stars === undefined ? undefined : { symbol: Star, value: pairs.stars },
+      onOpen: onPairs
+    },
+    skeletons: {
+      name: text.skeletons,
+      symbol: Bone,
+      picture: <img className="skeletons-tile-picture" src={skeletons.picture} alt="" draggable={false} />,
+      badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
+      onOpen: onSkeletons
+    }
+  };
+  const today = games[featured];
+  const FeaturedSymbol = today.symbol;
   return (
     <main className="home">
       <div className="strata" aria-hidden="true">
@@ -137,31 +196,43 @@ export function HomePage({
       </div>
       <h1 className="greeting">{text.greeting}</h1>
       <div className="games">
-        <button type="button" className="card quiz-card" aria-label={text.quizCard} onClick={onCompareDinosaurs} {...pointer}>
-          <span className="face-off" role="img" aria-label={text.quizCardPicture}>
-            <img className="face-off-picture face-off-left" src={faceOff.left} alt="" draggable={false} />
-            <img className="face-off-picture face-off-right" src={faceOff.right} alt="" draggable={false} />
-          </span>
-          <span className="quiz-card-footer">
-            <span className="quiz-card-symbol" aria-hidden="true">
-              <Scale size={28} />
+        {/* The large card is an extra door to today's game, which keeps its
+            own tile in its place, so a child who cannot read finds every
+            game where it was. It stays as the tiles scroll. */}
+        <button
+          type="button"
+          className="card featured-card"
+          data-game={featured}
+          aria-label={today.name}
+          onClick={today.onOpen}
+          {...featuredPointer}
+        >
+          {today.picture}
+          <span className="featured-card-footer">
+            <span className="featured-card-symbol" aria-hidden="true">
+              <FeaturedSymbol size={28} />
             </span>
-            <span className="quiz-card-title">{text.quizCard}</span>
+            <span className="featured-card-title">{today.name}</span>
           </span>
-          {/* The best score sits in the card's corner, over the face-off:
-              beside the title it would not fit the card's column. */}
-          {best !== undefined && (
-            <span className="quiz-card-best">
-              <Trophy size={22} />
-              {best}
-            </span>
-          )}
+          {/* The badge sits in the card's corner, over the picture, as on
+              the tiles: the footer keeps its width for the name. */}
+          <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
         </button>
-        {/* The other games stand in columns of two, in reading order, and
-            scroll sideways beside COMPARE when they do not fit. */}
+        {/* Every game stands in columns of two, in a fixed order, and
+            scrolls sideways beside the large card when they do not fit. */}
         <div className="games-tiles">
-          <button type="button" className="card catalogue-tile" aria-label={text.catalogueTile} onClick={onCatalogue} {...cataloguePointer}>
-            <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
+          <button type="button" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen} {...comparePointer}>
+            {games.compare.picture}
+            <span className="compare-tile-row">
+              <span className="compare-tile-symbol" aria-hidden="true">
+                <Scale size={20} />
+              </span>
+              <span className="compare-tile-title">{games.compare.name}</span>
+            </span>
+            <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
+          </button>
+          <button type="button" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen} {...cataloguePointer}>
+            {games.catalogue.picture}
             {/* The book sits in the picture's other corner: beside the
                 title it would leave ALL DINOSAURS too little of the row on
                 the smallest iPad. */}
@@ -169,84 +240,51 @@ export function HomePage({
               <BookOpen size={20} />
             </span>
             <span className="catalogue-tile-row">
-              <span className="catalogue-tile-title">{text.catalogueTile}</span>
+              <span className="catalogue-tile-title">{games.catalogue.name}</span>
             </span>
             {/* The counts sit in the tiles' corners, over the pictures: the
                 rows keep their width for the titles. */}
-            <span className="catalogue-tile-count">
-              <Footprints size={18} aria-hidden="true" />
-              {catalogue.count}
-            </span>
+            <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
           </button>
-          <button type="button" className="card care-tile" aria-label={text.care} onClick={onCare} {...carePointer}>
-            <img className="care-tile-picture" src={care.picture} alt="" draggable={false} />
+          <button type="button" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen} {...carePointer}>
+            {games.care.picture}
             <span className="care-tile-row">
               <span className="care-tile-symbol" aria-hidden="true">
                 <Heart size={20} />
               </span>
-              <span className="care-tile-title">{text.care}</span>
+              <span className="care-tile-title">{games.care.name}</span>
             </span>
-            {care.best !== undefined && (
-              <span className="care-tile-best">
-                <Trophy size={18} aria-hidden="true" />
-                {care.best}
-              </span>
-            )}
+            <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
           </button>
-          <button type="button" className="card sort-tile" aria-label={text.sort} onClick={onSort} {...sortPointer}>
-            <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />
+          <button type="button" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen} {...sortPointer}>
+            {games.sort.picture}
             <span className="sort-tile-row">
               <span className="sort-tile-symbol" aria-hidden="true">
                 <Shapes size={20} />
               </span>
-              <span className="sort-tile-title">{text.sort}</span>
+              <span className="sort-tile-title">{games.sort.name}</span>
             </span>
-            {sort.best !== undefined && (
-              <span className="sort-tile-best">
-                <Trophy size={18} aria-hidden="true" />
-                {sort.best}
-              </span>
-            )}
+            <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
           </button>
-          <button type="button" className="card pairs-tile" aria-label={text.pairs} onClick={onPairs} {...pairsPointer}>
-            <span className="pairs-tile-art" aria-hidden="true">
-              <span className="pairs-tile-card pairs-tile-card-first">
-                <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
-              </span>
-              <span className="pairs-tile-card pairs-tile-back">
-                <Footprints size={44} />
-              </span>
-              <span className="pairs-tile-card pairs-tile-card-second">
-                <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
-              </span>
-            </span>
+          <button type="button" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen} {...pairsPointer}>
+            {games.pairs.picture}
             <span className="pairs-tile-row">
               <span className="pairs-tile-symbol" aria-hidden="true">
                 <Copy size={24} />
               </span>
-              <span className="pairs-tile-title">{text.pairs}</span>
+              <span className="pairs-tile-title">{games.pairs.name}</span>
             </span>
-            {pairs.stars !== undefined && (
-              <span className="pairs-tile-stars">
-                <Star size={18} aria-hidden="true" />
-                {pairs.stars}
-              </span>
-            )}
+            <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
           </button>
-          <button type="button" className="card skeletons-tile" aria-label={text.skeletons} onClick={onSkeletons} {...skeletonsPointer}>
-            <img className="skeletons-tile-picture" src={skeletons.picture} alt="" draggable={false} />
+          <button type="button" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen} {...skeletonsPointer}>
+            {games.skeletons.picture}
             <span className="skeletons-tile-row">
               <span className="skeletons-tile-symbol" aria-hidden="true">
                 <Bone size={20} />
               </span>
-              <span className="skeletons-tile-title">{text.skeletons}</span>
+              <span className="skeletons-tile-title">{games.skeletons.name}</span>
             </span>
-            {skeletons.best !== undefined && (
-              <span className="skeletons-tile-best">
-                <Trophy size={18} aria-hidden="true" />
-                {skeletons.best}
-              </span>
-            )}
+            <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
           </button>
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}
@@ -260,5 +298,45 @@ export function HomePage({
         </div>
       </div>
     </main>
+  );
+}
+
+// The quiz's picture: two dinosaurs facing off.
+function FaceOff({ label, left, right }: { label: string; left: string; right: string }) {
+  return (
+    <span className="face-off" role="img" aria-label={label}>
+      <img className="face-off-picture face-off-left" src={left} alt="" draggable={false} />
+      <img className="face-off-picture face-off-right" src={right} alt="" draggable={false} />
+    </span>
+  );
+}
+
+// Find the pair's picture: two cards of one dinosaur with a face-down
+// card between them.
+function PairsArt({ picture }: { picture: string }) {
+  return (
+    <span className="pairs-tile-art" aria-hidden="true">
+      <span className="pairs-tile-card pairs-tile-card-first">
+        <img className="pairs-tile-picture" src={picture} alt="" draggable={false} />
+      </span>
+      <span className="pairs-tile-card pairs-tile-back">
+        <Footprints size={44} />
+      </span>
+      <span className="pairs-tile-card pairs-tile-card-second">
+        <img className="pairs-tile-picture" src={picture} alt="" draggable={false} />
+      </span>
+    </span>
+  );
+}
+
+// A game's badge, while it has one to show.
+function BadgeChip({ badge, className, size }: { badge: Badge | undefined; className: string; size: number }) {
+  if (!badge) return null;
+  const Symbol = badge.symbol;
+  return (
+    <span className={className}>
+      <Symbol size={size} aria-hidden="true" />
+      {badge.value}
+    </span>
   );
 }
