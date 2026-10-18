@@ -54,28 +54,28 @@ Feature: Every tap is safe to repeat
       | the museum hall                         | "HOME"                  | the home page                         | no start is                   |
 
   @next
-  Scenario Outline: Taps wait until the new screen has appeared
-    Given the device <motion>
+  Scenario Outline: Taps wait until the new screen has settled
+    Given <device>
     And I am on the home page
     When I tap "MUSEUM"
-    And while the museum is still appearing I tap where a museum button stands
-    And while it is still appearing I tap where "SORT" stood on the home page
-    Then neither tap presses anything
-    When the museum has appeared
+    And before 500 ms have passed since the museum began to appear, I tap where a museum button stands and where "SORT" stood
+    Then neither tap presses anything, whether the museum is still appearing or has appeared
+    When 500 ms have passed since the museum began to appear
     Then a tap on its buttons works
 
     Examples:
-      | motion                          |
-      | does not ask for reduced motion |
-      | asks for reduced motion         |
+      | device                                       |
+      | the device does not ask for reduced motion   |
+      | the device asks for reduced motion           |
+      | the browser runs no view transitions         |
 
   @next
-  Scenario: A drag waits until the new screen has appeared
+  Scenario: A drag waits until the new screen has settled
     Given I am on the home page
     When I tap "SORT"
-    And while the sorting board is still appearing I start dragging a card
+    And while the sorting board is still settling I start dragging a card
     Then the card does not move
-    When the board has appeared
+    When the board has settled
     Then I can drag a card to a basket
 
   @next

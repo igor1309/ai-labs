@@ -19,9 +19,10 @@ a button of the museum.
    only for the same dinosaur. While a change waits for its pictures, a
    request for another kind of screen replaces it: the waiting change is
    dropped and never opens. Once a new screen begins to appear, no screen
-   takes a tap or starts a drag until it has finished appearing: when its
-   view transition ends, or, where the browser runs none, when it is
-   shown. Updates inside the screen showing, such as an answer chosen or
+   takes a tap or starts a drag until it has settled: its view transition
+   has ended (or, where the browser runs none, it is shown) and the settle
+   window of 500 ms from its appearing has passed, so the second tap of a
+   double tap, slower than the motion, still presses nothing. Updates inside the screen showing, such as an answer chosen or
    a food chosen, go through the entry point's own call for updates, not
    its screen changes: rules 2 and 3 govern them.
 2. **Actions inside a screen are idempotent.** An action that has started
@@ -33,11 +34,12 @@ a button of the museum.
    started and that finishes later, such as a wait for pictures, checks
    this before it changes the screen, and does nothing if the child has
    gone elsewhere, or changed what the screen shows, meanwhile.
-4. **No time-based delays as the fix.** A tap is never made safe by
-   ignoring taps for a number of milliseconds. Such a wrapper may stay as
-   a safety net behind the rule, never as what makes a tap safe. Timers
-   are injected by the composition root, `src/root.ts`, and a safety-net
-   guard takes its timer from there, as the wait for pictures does.
+4. **One settle window, and no other timed guard.** Telling the second
+   tap of a double tap from a new tap takes time, so the entry point owns
+   the one settle window of rule 1. No button, screen or game has a timed
+   guard of its own: no debounce, no "ignore taps for N ms" wrapper. The
+   window's timer is injected by the composition root, `src/root.ts`, as
+   the wait for pictures' is, so tests fire it.
 
 ## Forbidden
 
@@ -46,7 +48,7 @@ a button of the museum.
   module or a screen.
 - A one-off guard on a single button in place of the entry point or an
   action's state.
-- A timer that drops taps as the only thing keeping a tap safe.
+- A timer that drops taps anywhere but the entry point's settle window.
 
 ## How it is checked
 
