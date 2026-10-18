@@ -7,18 +7,18 @@ Feature: Home page: choosing the featured game
 
   Background:
     Given an iPad in landscape
-    And the games, in the order they were added, are COMPARE, ALL DINOSAURS, CARE and SKELETONS
+    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS
 
   Scenario: The games started least have twice the chance
-    Given I have started COMPARE 9 times, ALL DINOSAURS 4 times, CARE 2 times and SKELETONS 2 times
+    Given I have started COMPARE 9 times, ALL DINOSAURS 4, CARE 2, SORT 5, FIND THE PAIR 3 and SKELETONS 2
     When a featured game is chosen
     Then each game whose start count is the lowest has a weight of 2
     And every other game has a weight of 1
-    And COMPARE has 1 chance in 6, ALL DINOSAURS 1 in 6, CARE 2 in 6 and SKELETONS 2 in 6
+    And CARE and SKELETONS have 2 chances in 8 each, and every other game 1 in 8
 
 
   Scenario Outline: The random draw maps to a game in tile order
-    Given I have started COMPARE 9 times, ALL DINOSAURS 4 times, CARE 2 times and SKELETONS 2 times
+    Given I have started COMPARE 9 times, ALL DINOSAURS 4, CARE 2, SORT 5, FIND THE PAIR 3 and SKELETONS 2
     And the random source gives <draw>, a number from 0 up to but not including 1
     When a featured game is chosen
     Then the featured game is <game>
@@ -26,26 +26,30 @@ Feature: Home page: choosing the featured game
     Examples:
       | draw  | game          |
       | 0     | COMPARE       |
-      | 0.166 | COMPARE       |
-      | 0.167 | ALL DINOSAURS |
-      | 0.333 | ALL DINOSAURS |
-      | 0.334 | CARE          |
-      | 0.666 | CARE          |
-      | 0.667 | SKELETONS     |
+      | 0.124 | COMPARE       |
+      | 0.125 | ALL DINOSAURS |
+      | 0.249 | ALL DINOSAURS |
+      | 0.25  | CARE          |
+      | 0.499 | CARE          |
+      | 0.5   | SORT          |
+      | 0.624 | SORT          |
+      | 0.625 | FIND THE PAIR |
+      | 0.749 | FIND THE PAIR |
+      | 0.75  | SKELETONS     |
       | 0.999 | SKELETONS     |
 
 
   Scenario Outline: Ties share the lowest count
     Given my start counts are <counts>
     When a featured game is chosen
-    Then the weights are <weights> for COMPARE, ALL DINOSAURS, CARE and SKELETONS
+    Then the weights are <weights> in tile order
 
     Examples:
-      | counts              | weights    |
-      | none started        | 2, 2, 2, 2 |
-      | all started 5 times | 2, 2, 2, 2 |
-      | 3, 0, 0, 7          | 1, 2, 2, 1 |
-      | 1, 2, 3, 4          | 2, 1, 1, 1 |
+      | counts              | weights          |
+      | none started        | 2, 2, 2, 2, 2, 2 |
+      | all started 5 times | 2, 2, 2, 2, 2, 2 |
+      | 3, 0, 0, 7, 1, 4    | 1, 2, 2, 1, 1, 1 |
+      | 1, 2, 3, 4, 5, 6    | 2, 1, 1, 1, 1, 1 |
 
 
   Scenario: The same game may be featured two days running

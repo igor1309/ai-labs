@@ -5,7 +5,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
   Background:
     Given an iPad in landscape
-    And the games, in the order they were added, are COMPARE, ALL DINOSAURS, CARE and SKELETONS
+    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS
 
   Scenario Outline: What counts as starting a game
     When <action>
@@ -16,6 +16,8 @@ Feature: Home page: counting starts and keeping the featured choice
       | a quiz round starts from the home page or from PLAY AGAIN       | COMPARE       |
       | the dinosaur list opens from the home page                      | ALL DINOSAURS |
       | a care visit starts from NEW VISITOR or a friend is called back | CARE          |
+      | a sorting round starts from its card or from PLAY AGAIN         | SORT          |
+      | a board is dealt from PLAY or PLAY AGAIN                        | FIND THE PAIR |
       | a skeleton puzzle starts, a rebuild included                    | SKELETONS     |
 
 
@@ -26,7 +28,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
 
   Scenario: Browsing inside a game is not a start
-    When I open the care welcome screen, a dinosaur's catalogue page, or go back from a catalogue page to the list
+    When I open the care or find-the-pair welcome screen, a dinosaur's catalogue page, or go back from a catalogue page to the list
     Then no start count changes
 
 
