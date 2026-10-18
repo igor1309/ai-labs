@@ -849,8 +849,14 @@ body:has(.result) #version {
   min-height: 0;
   width: 100%;
   object-fit: contain;
-  filter: brightness(0);
   opacity: 0.35;
+}
+
+/* The silhouette is of the picture only: its shimmer and failure look
+   keep their own colours. */
+.more-coming-picture[data-picture="appearing"],
+.more-coming-picture[data-picture="shown"] {
+  filter: brightness(0);
 }
 
 .more-coming-row {
@@ -5444,7 +5450,8 @@ body:has(.result) #version {
   color: #9ca3b6;
 }
 
-[data-theme="dark"] .more-coming-picture {
+[data-theme="dark"] .more-coming-picture[data-picture="appearing"],
+[data-theme="dark"] .more-coming-picture[data-picture="shown"] {
   filter: brightness(0) invert(1);
 }
 

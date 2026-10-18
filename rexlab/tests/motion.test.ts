@@ -462,6 +462,18 @@ describe("a picture's place", () => {
     expect(tokensOf(REDUCED)["--motion-picture"]).toBeUndefined();
     expect(bodyOf('.picture[data-picture="appearing"]')).toEqual([{ property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]);
     expect(REDUCED.filter(({ prelude }) => prelude.includes(".picture"))).toEqual([]);
+    // From transparent to the picture's own opacity, which no rule sets.
+    const fade = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-in")?.body ?? "");
+    expect(fade.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([["from", [{ property: "opacity", value: "0" }]]]);
+    expect(bodyOf(".picture").filter(({ property }) => property === "opacity")).toEqual([]);
+  });
+
+  it("is silhouetted on MORE COMING only once its picture shows, its shimmer and failure look keeping their colours", () => {
+    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("more-coming-picture") && declarationsOf(body).some(({ property }) => property === "filter"));
+    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
+      ['.more-coming-picture[data-picture="appearing"]', '.more-coming-picture[data-picture="shown"]'],
+      ['[data-theme="dark"] .more-coming-picture[data-picture="appearing"]', '[data-theme="dark"] .more-coming-picture[data-picture="shown"]']
+    ]);
   });
 
   it("draws footprints on what holds it once failed, in each theme's soft ink, and never its name", () => {
