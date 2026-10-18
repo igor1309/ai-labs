@@ -45,6 +45,11 @@
   The topic file is the one `~/.claude/hooks/limit-hit-ntfy.sh` uses.
 - Push only for a real block or a decision that is the owner's: one ask per
   push. Keep working on whatever does not depend on the answer.
+- Ask the owner only about product behaviour, scope and how issues are
+  split. Make technical choices yourself (where a setting is stored, how
+  data is laid out) and state them in the plan with a one-line reason.
+- Before building a large issue, present a top-level plan, including any
+  restructuring of its issues, and wait for the owner's answer.
 
 ## Long waits
 
