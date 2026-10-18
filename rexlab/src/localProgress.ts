@@ -1,5 +1,8 @@
 import { NO_CARE, type CareProgress } from "./care/index.ts";
+import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
+import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
+import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
 
@@ -11,9 +14,7 @@ type Entry = Record<string, unknown>;
 
 // The quiz's progress, under its game in the shared record.
 export function localProgress(storage: () => KeyValueStorage) {
-  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, ({ bestScore, roundsPlayed }) =>
-    (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined
-  );
+  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, readRounds);
 }
 
 // Dinosaur care's progress, beside the quiz's in the same record.
@@ -21,6 +22,43 @@ export function localCareProgress(storage: () => KeyValueStorage) {
   return gameProgress<CareProgress>(storage, "dinosaur-care", NO_CARE, ({ bestScore, visitsFinished, friends }) =>
     (bestScore === null || isCount(bestScore)) && isCount(visitsFinished) && Array.isArray(friends) && friends.every((id) => typeof id === "string")
       ? { bestScore, visitsFinished, friends: [...friends] }
+      : undefined
+  );
+}
+
+// The sorting game's progress, beside the others' in the same record.
+export function localSortingProgress(storage: () => KeyValueStorage) {
+  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, readRounds);
+}
+
+// The best score and finished rounds of a game that keeps only those.
+function readRounds({ bestScore, roundsPlayed }: Entry) {
+  return (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined;
+}
+
+// Find the pair's progress, beside the others in the same record. Each
+// level's best is kept under the level's number.
+export function localPairsProgress(storage: () => KeyValueStorage) {
+  return gameProgress<PairsProgress>(storage, "find-the-pair", NO_PAIRS, ({ stars, level, boardsOnLevel, best, found }) =>
+    isCount(stars) &&
+    isLevel(level) &&
+    isCount(boardsOnLevel) &&
+    isObject(best) &&
+    Object.entries(best).every(([key, tries]) => isLevel(Number(key)) && isCount(tries) && tries > 0) &&
+    Array.isArray(found) &&
+    found.every((id) => typeof id === "string")
+      ? { stars, level, boardsOnLevel, best: { ...best }, found: [...found] }
+      : undefined
+  );
+}
+
+// The skeleton game's progress, beside the others in the same record: the
+// best collection score, the dinosaurs whose skeleton earned a star and
+// those whose stand awaits its skeleton rebuilt.
+export function localSkeletonProgress(storage: () => KeyValueStorage) {
+  return gameProgress<SkeletonProgress>(storage, "skeleton-assembly", NO_SKELETONS, ({ bestScore, earned, rebuilding }) =>
+    (bestScore === null || isCount(bestScore)) && isIds(earned) && isIds(rebuilding)
+      ? { bestScore, earned: [...earned], rebuilding: [...rebuilding] }
       : undefined
   );
 }
@@ -87,6 +125,14 @@ function parse(raw: string | null): Entry | undefined {
 
 function isObject(value: unknown): value is Entry {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((id) => typeof id === "string");
+}
+
+function isLevel(value: unknown): value is Level {
+  return Object.hasOwn(LEVELS, String(value)) && Number.isInteger(value);
 }
 
 function isCount(value: unknown): value is number {

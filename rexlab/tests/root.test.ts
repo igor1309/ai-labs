@@ -3,21 +3,32 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps } from "../src/root.ts";
-import { mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const DARK = "(prefers-color-scheme: dark)";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
 // A browser whose local and session storage the test reads apart.
-function browser({ local = memoryStorage(), language = "en-GB", portrait = false, dark = false, reduced = false } = {}) {
+function browser({
+  local = memoryStorage(),
+  language = "en-GB",
+  portrait = false,
+  dark = false,
+  reduced = false,
+  visibility = "visible" as DocumentVisibilityState,
+  versionFooter = true
+} = {}) {
   const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark, [REDUCED_MOTION]: reduced });
+  const page = browserDocument(visibility, { versionFooter });
   return {
     localStorage: local,
     sessionStorage: memoryStorage(),
     matchMedia: media.matchMedia,
     navigator: { language },
+    document: page.document,
     media,
+    page,
     ...pictureBrowser()
   };
 }
@@ -59,6 +70,44 @@ describe("the app in a browser", () => {
       games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 7, visitsFinished: 3, friends: ["triceratops"] } }
     });
     expect(appProps(given).careProgress.load()).toEqual({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
+  });
+
+  it("keeps the sorting game's progress beside the quiz's in local storage", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const props = appProps(given);
+
+    props.sortingProgress.save({ bestScore: 5, roundsPlayed: 2 });
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 } }
+    });
+    expect(appProps(given).sortingProgress.load()).toEqual({ bestScore: 5, roundsPlayed: 2 });
+  });
+
+  it("keeps the skeleton game's stars, best and stands awaiting rebuild beside the other games' progress in local storage", () => {
+    const care = { bestScore: 7, visitsFinished: 3, friends: ["triceratops"] };
+    const given = browser({
+      local: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "dinosaur-care": care } }) })
+    });
+    const props = appProps(given);
+
+    props.skeletonProgress.save({ bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] });
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 },
+        "dinosaur-care": care,
+        "skeleton-assembly": { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] }
+      }
+    });
+    const reopened = appProps(given);
+    expect([reopened.skeletonProgress.load(), reopened.progress.load(), reopened.careProgress.load()]).toEqual([
+      { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] },
+      { bestScore: 6, roundsPlayed: 3 },
+      care
+    ]);
   });
 
   it("lets every dinosaur of the shipped list visit, with its food type", () => {
@@ -104,6 +153,21 @@ describe("the app in a browser", () => {
     expect(seen).toEqual([false]);
   });
 
+  it("follows the document's visibility", () => {
+    const given = browser({ visibility: "hidden" });
+    const { pageVisibility } = appProps(given);
+    const seen: boolean[] = [];
+    expect(pageVisibility.isHidden()).toBe(true);
+
+    const unsubscribe = pageVisibility.subscribe(() => seen.push(pageVisibility.isHidden()));
+    given.page.switchTo("visible");
+    given.page.switchTo("hidden");
+    unsubscribe();
+    given.page.switchTo("visible");
+
+    expect(seen).toEqual([false, true]);
+  });
+
   it("follows the dark colour scheme media query", () => {
     const given = browser({ dark: true });
     const { appearance } = appProps(given);
@@ -141,5 +205,17 @@ describe("the app in a browser", () => {
     expect(given.timers.map(({ ms }) => ms)).toEqual([1000, 500]);
     expect(given.stopped).toEqual([1]);
     expect(fired).toEqual([1000]);
+  });
+
+  it("names index.html's version footer", () => {
+    const given = browser();
+
+    appProps(given).nameVersion("Версия");
+
+    expect(given.page.footer).toEqual({ "aria-label": "Версия" });
+  });
+
+  it("does not start on a page without its version footer", () => {
+    expect(() => appProps(browser({ versionFooter: false }))).toThrow("index.html has no #version element");
   });
 });

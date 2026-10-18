@@ -10,14 +10,24 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { versionFooter } from "../src/root.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
+import type { Basket } from "../src/SortScreen.tsx";
+import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { MISS, endWave, playBoard, showMiss, turnCard } from "./pairsApp.tsx";
+import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
+import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
+  emptySkeletons,
+  emptySorting,
   fakeBodyPicture,
   lightDevice,
   loadedPictures,
@@ -27,7 +37,9 @@ import {
   questionView,
   sameColour,
   seededRandom,
+  sortingBy,
   symbolOf,
+  unreadVersion,
   words,
   type ManualOrientation,
   type ManualTimers,
@@ -57,13 +69,15 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   progress = emptyProgress(),
-  timers = loadedPictures()
+  timers = loadedPictures(),
+  nameVersion = unreadVersion
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
+  nameVersion?: (label: string) => void;
 }) {
   const view = render(
     <App
@@ -75,8 +89,12 @@ function openApp({
       progress={progress}
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
+      nameVersion={nameVersion}
       {...lightDevice()}
       {...emptyCare()}
+      {...emptySorting()}
+      {...emptyPairs()}
+      {...emptySkeletons()}
       {...timers}
     />
   );
@@ -219,6 +237,61 @@ describe("the language menu", () => {
     expectShownIn("ru");
   });
 
+  it.each([
+    ["ru-RU", "Версия", "Язык", "English", "ALL DINOSAURS", "Version", "HOME", "Language", "Русский"],
+    ["en-GB", "Version", "Language", "Русский", "ВСЕ", "Версия", "ДОМОЙ", "Язык", "English"]
+  ])(
+    "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
+    async (device, first, menu, choice, tile, then, home, menuBack, choiceBack) => {
+      // index.html's footer, named as the app in a browser names it.
+      const footer = document.createElement("footer");
+      footer.id = "version";
+      footer.setAttribute("aria-label", "Version");
+      footer.textContent = "v1.2.3";
+      document.body.append(footer);
+      try {
+        const { user } = openApp({ device, nameVersion: versionFooter(document) });
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+
+        await chooseFrom(user, menu, choice);
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
+        await user.click(screen.getByRole("button", { name: tile }));
+        await screen.findByRole("button", { name: home });
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
+
+        await user.click(screen.getByRole("button", { name: home }));
+        await chooseFrom(user, menuBack, choiceBack);
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+      } finally {
+        footer.remove();
+      }
+    }
+  );
+
+  // The footer is styled by its id, so its look holds under either name:
+  // the soft ink on the page, the dark theme's soft ink, and the faded
+  // paper on the navy result screen.
+  it.each(["Version", "Версия"])("keeps the version footer's look in every theme and on the result screen when it is named %s", (name) => {
+    const footer = document.createElement("footer");
+    footer.id = "version";
+    footer.setAttribute("aria-label", name);
+    const result = document.createElement("div");
+    result.className = "result";
+    document.body.append(footer);
+    try {
+      expect([getComputedStyle(footer).position, sameColour(getComputedStyle(footer).color, "#5c647a")]).toEqual(["fixed", true]);
+      document.documentElement.dataset.theme = "dark";
+      expect(sameColour(getComputedStyle(footer).color, "#9ca3b6")).toBe(true);
+      delete document.documentElement.dataset.theme;
+      document.body.prepend(result);
+      expect(sameColour(getComputedStyle(footer).color, "#f6f1e699")).toBe(true);
+    } finally {
+      footer.remove();
+      result.remove();
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
   it("switches back, and the later choice is the one kept", async () => {
     const storage = memoryStorage();
     const { user, unmount } = openApp({ device: "ru-RU", storage });
@@ -319,6 +392,90 @@ describe("Russian text", () => {
   });
 });
 
+// The board is shown through the sorting game and the screen's props: a
+// whole board of each property, to SEE RESULT.
+describe("the sorting board", () => {
+  const BASKET_NAMES: Record<Language, Record<Property, [string, string]>> = {
+    en: {
+      legs: ["TWO LEGS", "FOUR LEGS"],
+      diet: ["PLANTS", "MEAT"],
+      size: ["BIG", "SMALL"],
+      horns: ["HORNS", "NO HORNS"],
+      feathers: ["FEATHERS", "NO FEATHERS"]
+    },
+    ru: {
+      legs: ["ДВЕ НОГИ", "ЧЕТЫРЕ НОГИ"],
+      diet: ["РАСТЕНИЯ", "МЯСО"],
+      size: ["БОЛЬШИЕ", "МАЛЕНЬКИЕ"],
+      horns: ["С РОГАМИ", "БЕЗ РОГОВ"],
+      feathers: ["С ПЕРЬЯМИ", "БЕЗ ПЕРЬЕВ"]
+    }
+  };
+  const PROMPT: Record<Language, string> = { en: "SORT THE DINOSAURS", ru: "РАЗЛОЖИ ДИНОЗАВРОВ" };
+  const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
+
+  // Every text in the document and every name read out, as now shown.
+  const shown = () => [
+    ...[...document.body.querySelectorAll("*")].flatMap((element) =>
+      [...element.childNodes].flatMap((node) => (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() ? [node.textContent.trim()] : []))
+    ),
+    ...[...document.body.querySelectorAll("[aria-label]"), ...document.body.querySelectorAll("img[alt]")].map(
+      (element) => element.getAttribute("aria-label") ?? element.getAttribute("alt") ?? ""
+    )
+  ];
+
+  it.each(LANGUAGES.flatMap((language) => (Object.keys(BASKET_NAMES[language]) as Property[]).map((property) => [language, property] as const)))(
+    "reads in %s, sorting by %s, every text for children in capitals",
+    async (language, property) => {
+      const user = userEvent.setup();
+      const sorting = sortingBy(property);
+      openBoard(sorting, language);
+      const [missed, ...rest] = boardState(sorting).cards;
+      if (!missed) throw new Error("The board has no cards");
+      const [first, second] = boardState(sorting).baskets;
+      const seen = [...shown()];
+
+      expect(words(screen.getByRole("heading"))).toBe(PROMPT[language]);
+      expect([first, second].map((basket) => words(basketButton(basket, language)))).toEqual(BASKET_NAMES[language][property]);
+      expect(words(screen.getByRole("button", { name: BUTTONS[language].home }))).toBe(BUTTONS[language].home);
+      await user.click(trayCard(missed, language));
+      await user.click(basketButton(missed.basket === first ? second : first, language));
+      seen.push(...shown());
+      for (const card of [missed, ...rest]) {
+        await user.click(trayCard(card, language));
+        await user.click(basketButton(card.basket as Basket, language));
+      }
+      expect(words(screen.getByRole("button", { name: BUTTONS[language].seeResult }))).toBe(BUTTONS[language].seeResult);
+      seen.push(...shown());
+
+      const texts = seen.filter((text) => !/^\d+$/.test(text));
+      expect(texts.length).toBeGreaterThan(0);
+      expect(texts.filter((text) => FOREIGN[language].test(text))).toEqual([]);
+      // Names are read out as written; every text shown is in capitals.
+      const names = boardState(sorting).cards.map(({ dinosaur }) => dinosaur.name[language]);
+      expect(texts.filter((text) => !names.includes(text) && text !== text.toLocaleUpperCase(language))).toEqual([]);
+    }
+  );
+});
+
+// The result is reached through the sorting game, its screens' props and
+// its progress store.
+describe("the sorting result", () => {
+  it("reads in Russian, every text for children in capitals", async () => {
+    const { user, nextBoard } = openSortingGame({ language: "ru" });
+
+    await finishBoard(user, nextBoard(), 4, "ru");
+
+    expect(screen.getByLabelText("СЧЁТ").textContent).toBe("4/6");
+    expect(screen.getByRole("img", { name: "4 ИЗ 6 ЗВЁЗД" })).toBeDefined();
+    expect(words(screen.getByRole("status"))).toBe("ПЕРВЫЙ РЕКОРД!");
+    expect(words(screen.getByRole("heading"))).toBe("МОЛОДЕЦ!");
+    const best = screen.getByLabelText("РЕКОРД");
+    expect([best.firstChild?.textContent, best.querySelector(".best-score-value")?.textContent]).toEqual(["РЕКОРД", "4"]);
+    expect([BUTTONS.ru.playAgain, BUTTONS.ru.home].map((name) => words(screen.getByRole("button", { name })))).toEqual(["ЕЩЁ РАЗ", "ДОМОЙ"]);
+  });
+});
+
 describe("revealed values", () => {
   it.each<[Language, Question, string, string]>([
     ["en", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 T", "15 KG"],
@@ -355,7 +512,8 @@ type Seen = {
 };
 
 // A walk over screens in `language`, on an app opened on the home page of
-// a device in it: `look` records what the screen shows now in `seen`.
+// a device in it, or on the screen it is opened on: `look` records what
+// the screen shows now in `seen`.
 type Play = {
   language: Language;
   user: UserEvent;
@@ -495,7 +653,7 @@ async function catalogue(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, look } = play;
   const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.catalogue }));
+  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
   look();
   await user.click(within(screen.getByRole("group", { name: text.catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
   look();
@@ -554,6 +712,96 @@ async function visitWithoutRefusals(language: Language): Promise<Seen> {
   return play.seen;
 }
 
+// A board of the sorting game reached from the home page, each card tried
+// on the first basket and, after a miss, the other, then its result, a
+// second board from PLAY AGAIN and the home page again.
+async function sortingRounds(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, look } = play;
+  const text = TEXTS[language];
+  await user.click(screen.getByRole("button", { name: text.sort }));
+  look();
+  await sortByTrying(user, language, look);
+  await user.click(screen.getByRole("button", { name: text.seeResult }));
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.playAgain }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+  return play.seen;
+}
+
+// Find the pair: its welcome, a board with a card open, a miss, found
+// pairs and the cards waving, its result with a first best, the home page
+// again, and the catalogue and a page with the dinosaurs found stamped.
+async function findThePair(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, timers, look } = play;
+  const text = TEXTS[language];
+  await user.click(screen.getByRole("button", { name: text.pairs }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.play }));
+  look();
+  await turnCard(user, 0);
+  look();
+  await showMiss(user);
+  look();
+  act(() => timers.fire(MISS));
+  await playBoard(user, timers);
+  look();
+  endWave(timers);
+  look();
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
+  look();
+  const stamped = screen.getAllByRole("img", { name: text.found })[0]?.closest("button");
+  if (!stamped) throw new Error("No dinosaur found in the catalogue");
+  await user.click(stamped);
+  look();
+  return play.seen;
+}
+
+// The skeleton game: its home tile, its choice of dinosaurs, a puzzle as
+// it starts, its reveal with a first best, the choice again with the star
+// earned, the museum with the skeleton on its stand, its puzzle as it is
+// knocked down, the museum with its stand awaiting it, and the home page
+// again with the best on the tile.
+async function skeletons(language: Language): Promise<Seen> {
+  const play = openPlay(language);
+  const { user, timers, look } = play;
+  const text = TEXTS[language];
+  const triceratops = skeletonOf("triceratops");
+  look();
+  await user.click(screen.getByRole("button", { name: text.skeletons }));
+  look();
+  await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.buildAnother }));
+  expect(screen.getAllByRole("img", { name: text.star })).toHaveLength(1);
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.rebuild }));
+  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.museum }));
+  expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  expect(screen.getByRole("button", { name: text.skeletons }).textContent).toBe(`${text.skeletons}1`);
+  look();
+  return play.seen;
+}
+
 // What a part shows for parents: its words, the language menu's codes
 // aside, and the labels read out.
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
@@ -567,7 +815,10 @@ const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CO
 // each menu for parents closed and open, the portrait gate, two rounds,
 // one with mistakes and one without, and both results, the catalogue, and
 // care: its welcome, its friends with none yet, a visit with each need
-// refused once and one without, both results and the friends made.
+// refused once and one without, both results and the friends made,
+// the sorting game: a board with wrong drops, its result and the next
+// board, find the pair from its welcome to the dinosaurs found, and the
+// skeleton game's choice, a puzzle, its reveal and its museum.
 const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
@@ -583,7 +834,14 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   ],
   ["care's welcome and its friends", careWelcome, NOTHING_FOR_PARENTS],
   ["a visit with each need refused once and its result", visitWithRefusals, NOTHING_FOR_PARENTS],
-  ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE]
+  ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE],
+  ["a sorting board with wrong drops, its result, the next board and the home page again", sortingRounds, HOME_PAGE],
+  [
+    "find the pair, its result, and the dinosaurs found in the catalogue",
+    findThePair,
+    (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
+  ],
+  ["the skeleton game's tile, its choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));
@@ -610,7 +868,9 @@ describe("every string shown", () => {
 });
 
 // The version footer, also for parents, is part of the static page, not
-// the app: release.test.ts proves it reads the version as stamped.
+// the app: release.test.ts proves it reads the version as stamped, and
+// the test of its name above that the app names it in the chosen
+// language.
 describe("text for children", () => {
   it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents", async (language, _, walk, forParents) => {
     const { texts, parentTexts, parentLabels } = await walk(language);
@@ -627,13 +887,13 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });

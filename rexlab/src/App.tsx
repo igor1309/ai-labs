@@ -1,11 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
-import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
+import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
+import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
@@ -24,6 +27,8 @@ import {
 import { ResultScreen } from "./ResultScreen.tsx";
 import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
+import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
@@ -50,25 +55,41 @@ export type Appearance = {
   subscribe(onChange: () => void): () => void;
 };
 
-export type { CareProgressStore } from "./careGame.tsx";
-
-export type AppProps = CareGameProps & {
-  dinosaurs: readonly Dinosaur[];
-  // Every dinosaur, in the order the catalogue shows them.
-  catalogue: readonly CatalogueEntry[];
-  // The URL of the body picture of the dinosaur with this id.
-  bodyPicture: (dinosaurId: string) => string;
-  random: Random;
-  orientation: Orientation;
-  progress: ProgressStore;
-  // The device's language tag, such as "ru-RU".
-  deviceLanguage: string;
-  languageStore: LanguageStore;
-  appearance: Appearance;
-  themeStore: ThemeStore;
-  loadPicture: LoadPicture;
-  startTimer: StartTimer;
+// Whether the app is hidden, as when the iPad shows another app or is
+// locked, and its changes.
+export type PageVisibility = {
+  isHidden(): boolean;
+  subscribe(onChange: () => void): () => void;
 };
+
+export type { CareProgressStore } from "./careGame.tsx";
+export type { PairsProgressStore } from "./pairsGame.tsx";
+export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
+
+export type AppProps = CareGameProps &
+  PairsGameProps &
+  Pick<SortingGameProps, "sortables" | "sortingProgress"> &
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> & {
+    dinosaurs: readonly Dinosaur[];
+    // Every dinosaur, in the order the catalogue shows them.
+    catalogue: readonly CatalogueEntry[];
+    // The URL of the body picture of the dinosaur with this id.
+    bodyPicture: (dinosaurId: string) => string;
+    random: Random;
+    orientation: Orientation;
+    pageVisibility: PageVisibility;
+    progress: ProgressStore;
+    // The device's language tag, such as "ru-RU".
+    deviceLanguage: string;
+    languageStore: LanguageStore;
+    // Gives the version footer, which the static page holds outside the
+    // app, its name for a screen reader.
+    nameVersion: (label: string) => void;
+    appearance: Appearance;
+    themeStore: ThemeStore;
+    loadPicture: LoadPicture;
+    startTimer: StartTimer;
+  };
 
 // The two dinosaurs facing off on the home page's quiz card.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
@@ -79,7 +100,17 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on dinosaur care's tile.
 const CARE_TILE = "parasaurolophus";
 
-// The dinosaur on the home page's card of the games still to come.
+// The dinosaur on the sorting game's card.
+const SORT_TILE = "triceratops";
+
+// The dinosaur on find the pair's tile.
+const PAIRS_TILE = "stegosaurus";
+
+// The dinosaur whose skeleton stands on the skeleton game's tile.
+const SKELETONS_TILE = "triceratops";
+
+// The dinosaur whose shape stands on the home tile of the games still to
+// come.
 const MORE_COMING = "triceratops";
 
 // The dinosaur cheering the child on at the end of a round.
@@ -98,10 +129,16 @@ type Screen =
   | { kind: "result"; result: RoundResult }
   // The id of the dinosaur whose page the child came back from, if any.
   | { kind: "catalogue"; returning: string | undefined }
-  // The dinosaur's place in the catalogue.
+  // The dinosaur's place among those of the food chosen.
   | { kind: "dinosaur"; index: number }
   // Dinosaur care, which keeps its own screens.
-  | { kind: "care" };
+  | { kind: "care" }
+  // The sorting game, which keeps its own screens.
+  | { kind: "sorting" }
+  // Find the pair, which keeps its own screens too.
+  | { kind: "pairs" }
+  // And the skeleton game.
+  | { kind: "skeletons" };
 
 export function App({
   dinosaurs,
@@ -109,13 +146,22 @@ export function App({
   bodyPicture,
   random,
   orientation,
+  pageVisibility,
   progress,
   deviceLanguage,
   languageStore,
+  nameVersion,
   appearance,
   themeStore,
   loadPicture,
   startTimer,
+  sortables,
+  sortingProgress,
+  pals,
+  pairsProgress,
+  skeletons,
+  skeletonPicture,
+  skeletonProgress,
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -124,9 +170,11 @@ export function App({
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
 
+  // The version footer's name follows the language, with the page's.
   useEffect(() => {
     document.documentElement.lang = language;
-  }, [language]);
+    nameVersion(TEXTS[language].versionLabel);
+  }, [language, nameVersion]);
 
   const chooseLanguage = (chosen: Language) => {
     setLanguage(chosen);
@@ -166,6 +214,7 @@ export function App({
   const starting = useRef(false);
 
   const playNewRound = () => {
+    leaveHome();
     if (starting.current) return;
     starting.current = true;
     const started = startRound(dinosaurs, random, lastPlay);
@@ -185,11 +234,59 @@ export function App({
 
   const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
 
-  const openCare = () =>
+  const openCare = () => {
+    leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       care.open();
       setScreen({ kind: "care" });
     });
+  };
+
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
+
+  const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
+
+  // A board SORT started, still waiting for its pictures, is dropped as
+  // the child goes anywhere else, so it never opens over the screen they
+  // chose.
+  const leaveHome = () => sorting.cancel();
+
+  const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
+
+  const openPairs = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => {
+      pairs.open();
+      setScreen({ kind: "pairs" });
+    });
+  };
+
+  // The child is away from a game while the app is hidden, or while the
+  // iPad is in portrait and the orientation gate covers it.
+  const presence = useMemo<Presence>(
+    () => ({
+      isAway: () => orientation.isPortrait() || pageVisibility.isHidden(),
+      subscribe: (onChange) => {
+        const stopOrientation = orientation.subscribe(onChange);
+        const stopVisibility = pageVisibility.subscribe(onChange);
+        return () => {
+          stopOrientation();
+          stopVisibility();
+        };
+      }
+    }),
+    [orientation, pageVisibility]
+  );
+
+  const skeletonGame = useSkeletonGame(
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
+    home
+  );
+
+  const openSkeletons = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "skeletons" }));
+  };
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -204,16 +301,34 @@ export function App({
   // A round is recorded only here, when its result is shown, so a round
   // left early changes nothing.
   const seeResult = (finished: Play) => {
-    const result = finishPlay(finished, progress.load());
+    const result = finishPlay(finished, progress.load(), beatBest);
     if (result.progress) {
       progress.save(result.progress);
     }
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
-  const openCatalogue = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  // The food chosen is kept going to a page and back, but the catalogue
+  // opens from home on every dinosaur.
+  const [food, setFood] = useState<Food>("all");
+  const shown = ofFood(catalogue, food);
 
-  const pictureOf = (index: number) => bodyPicture(catalogue[index]?.id ?? "");
+  const openCatalogue = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => {
+      setFood("all");
+      setScreen({ kind: "catalogue", returning: undefined });
+    });
+  };
+
+  // A food newly chosen shows its dinosaurs from the top, rising in.
+  const chooseFood = (chosen: Food) => {
+    if (chosen === food) return;
+    setFood(chosen);
+    setScreen({ kind: "catalogue", returning: undefined });
+  };
+
+  const pictureOf = (index: number) => bodyPicture(shown[index]?.id ?? "");
 
   // A dinosaur's page shows once its picture is ready, as a question
   // does, and only if the screen is still where the child tapped: a
@@ -224,21 +339,21 @@ export function App({
     waitForPictures([pictureOf(index)], wait, () =>
       changeScreen(type, () => setScreen((current) => (still(current) ? { kind: "dinosaur", index } : current)))
     );
-    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, catalogue.length)));
+    const neighbours = (["previous", "next"] as const).map((step) => pictureOf(stepFrom(index, step, shown.length)));
     waitForPictures(neighbours, wait, () => {});
   };
 
   const openDinosaur = (id: string) =>
     showDinosaur(
-      catalogue.findIndex((entry) => entry.id === id),
+      shown.findIndex((entry) => entry.id === id),
       OPEN_DINOSAUR,
       (current) => current.kind === "catalogue"
     );
 
   const step = (from: number, way: Step) =>
-    showDinosaur(stepFrom(from, way, catalogue.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
+    showDinosaur(stepFrom(from, way, shown.length), STEPS[way], (current) => current.kind === "dinosaur" && current.index === from);
 
-  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: catalogue[index]?.id }));
+  const closeDinosaur = (index: number) => changeScreen(CLOSE_DINOSAUR, () => setScreen({ kind: "catalogue", returning: shown[index]?.id }));
 
   const content = () => {
     switch (screen.kind) {
@@ -269,22 +384,25 @@ export function App({
         return (
           <CatalogueScreen
             language={language}
-            dinosaurs={catalogue.map((entry) => presentCatalogueCard(entry, language, bodyPicture))}
+            dinosaurs={shown.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
+            foods={FOODS.map((choice) => ({ food: choice, count: ofFood(catalogue, choice).length }))}
+            food={food}
             returning={screen.returning}
+            onFood={chooseFood}
             onOpen={openDinosaur}
             onHome={home}
           />
         );
       case "dinosaur": {
         const { index } = screen;
-        const entry = catalogue[index];
-        if (!entry) throw new Error(`No dinosaur at ${index} in the catalogue`);
+        const entry = shown[index];
+        if (!entry) throw new Error(`No dinosaur at ${index} among those shown`);
         return (
           <DinosaurPage
             language={language}
-            dinosaur={presentDinosaurPage(entry, language, bodyPicture)}
+            dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
             number={index + 1}
-            total={catalogue.length}
+            total={shown.length}
             onPrevious={() => step(index, "previous")}
             onNext={() => step(index, "next")}
             onBack={() => closeDinosaur(index)}
@@ -293,6 +411,12 @@ export function App({
       }
       case "care":
         return care.content(language);
+      case "sorting":
+        return sorting.content(language);
+      case "pairs":
+        return pairs.content(language);
+      case "skeletons":
+        return skeletonGame.content(language);
       case "home":
         return (
           <HomePage
@@ -304,10 +428,16 @@ export function App({
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
+            pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
+            sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
             onCare={openCare}
+            onSort={openSorting}
+            onPairs={openPairs}
+            onSkeletons={openSkeletons}
           />
         );
     }

@@ -4,20 +4,31 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { localLanguage } from "../src/localLanguage.ts";
+import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { REVEAL } from "../src/skeletonGame.tsx";
+import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
+import type { Basket } from "../src/SortScreen.tsx";
+import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
+import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
+import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_PALS,
   contrast,
   emptyCare,
   emptyProgress,
+  emptySkeletons,
+  emptySorting,
   fakeBodyPicture,
   manualAppearance,
   manualOrientation,
@@ -26,9 +37,11 @@ import {
   sameColour,
   seededRandom,
   seenOn,
+  sortingBy,
   surfaceOf,
   surfacesIn,
   symbolOf,
+  unreadVersion,
   type ManualAppearance,
   type ManualOrientation,
   type ManualTimers,
@@ -64,13 +77,18 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   language = "en-GB",
-  timers = manualTimers()
+  timers = manualTimers(),
+  sorting = emptySorting(),
+  pairs = memoryStorage()
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   language?: string;
   timers?: ManualTimers;
+  sorting?: ReturnType<typeof emptySorting>;
+  // Where find the pair's progress is kept.
+  pairs?: MemoryStorage;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -83,9 +101,14 @@ function openApp({
       progress={emptyProgress()}
       deviceLanguage={language}
       languageStore={localLanguage(() => languages)}
+      nameVersion={unreadVersion}
       appearance={device}
       themeStore={localTheme(() => storage)}
       {...emptyCare()}
+      {...sorting}
+      pals={SHIPPED_PALS}
+      pairsProgress={localPairsProgress(() => pairs)}
+      {...emptySkeletons()}
       {...timers}
     />
   );
@@ -185,6 +208,10 @@ async function quizResult({ theme, user }: Walk) {
 async function catalogueList({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
   expectScreenIn(theme);
+  for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
+    await user.click(within(screen.getByRole("group", { name: "FOOD" })).getByRole("button", { name: food }));
+    expectScreenIn(theme);
+  }
 }
 
 async function cataloguePages({ theme, user }: Walk) {
@@ -240,6 +267,130 @@ async function careResult({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
+async function pairsWelcome({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  expectScreenIn(theme);
+}
+
+// A board with a card open, a miss, found pairs, and its cards waving,
+// then the result, with its celebration and NEW badges.
+async function pairsBoard({ theme, user, timers }: Walk) {
+    await playPairs(user);
+    expectScreenIn(theme);
+    await turnCard(user, 0);
+    expectScreenIn(theme);
+    await showMiss(user);
+    expectScreenIn(theme);
+    act(() => timers.fire(MISS));
+    await playBoard(user, timers);
+    expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
+    expectScreenIn(theme);
+    endWave(timers);
+    expect(screen.getByRole("status")).toBeDefined();
+    expectScreenIn(theme);
+}
+
+async function pairsFound({ theme, user, timers }: Walk) {
+  await playPairs(user);
+  await playBoard(user, timers);
+  endWave(timers);
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  expect(screen.getAllByRole("img", { name: "FOUND" })).toHaveLength(3);
+  expectScreenIn(theme);
+  const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
+  const stamped = within(grid).getAllByRole("img", { name: "FOUND" })[0]?.closest("button");
+  if (!stamped) throw new Error("No stamped card");
+  await user.click(stamped);
+  expect(screen.getByRole("img", { name: "FOUND" })).toBeDefined();
+  expectScreenIn(theme);
+}
+
+async function skeletonChoice({ theme, user }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  expectScreenIn(theme);
+}
+
+// A dinosaur's puzzle as it starts: its faint outline and its pieces in
+// the tray.
+const skeletonPuzzle =
+  (name: string) =>
+  async ({ theme, user }: Walk) => {
+    await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+    await user.click(screen.getByRole("button", { name }));
+    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+    expectScreenIn(theme);
+  };
+
+// A puzzle at work: a bone fitted, another lifted from the tray, and,
+// once the child has waited, help glowing on a slot and its bone.
+async function skeletonAtWork({ theme, user, timers }: Walk) {
+  const stegosaurus = skeletonOf("stegosaurus");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
+  layOutPuzzle();
+  fit(stegosaurus, "spine");
+  const spot = spotOf("tail");
+  const { left, top } = spot.getBoundingClientRect();
+  press(spot, { clientX: left + 40, clientY: top + 40 });
+  moveTo(AWAY);
+  expect([fittedPieces(), lifted()]).toEqual([["spine"], expect.anything()]);
+  expectScreenIn(theme);
+  release(AWAY);
+  for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
+  expect(hints()).toEqual(["slot skull", "spot skull"]);
+  expectScreenIn(theme);
+}
+
+// A skeleton's reveal with a first best, the choice with its star, a
+// second skeleton's reveal with the best it beat, and the home page with
+// the best on the SKELETONS tile.
+async function skeletonReveals({ theme, user, timers }: Walk) {
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  for (const [id, celebration] of [
+    ["triceratops", "FIRST BEST SCORE"],
+    ["stegosaurus", "NEW BEST SCORE"]
+  ] as const) {
+    const skeleton = skeletonOf(id);
+    await user.click(screen.getByRole("button", { name: skeleton.name.en.toUpperCase() }));
+    layOutPuzzle();
+    fitAll(skeleton);
+    act(() => timers.fire(REVEAL.motion));
+    expect(screen.getByRole("status").getAttribute("aria-label")).toBe(celebration);
+    expectScreenIn(theme);
+    await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
+    expect(screen.getAllByRole("img", { name: "STAR" })).not.toHaveLength(0);
+    expectScreenIn(theme);
+  }
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expect(screen.getByRole("button", { name: "SKELETONS" }).querySelector(".skeletons-tile-best")?.textContent).toBe("2");
+  expectScreenIn(theme);
+}
+
+// The museum empty, then with a skeleton on its stand, its puzzle as the
+// skeleton is knocked down and its bones scatter, and the museum with that
+// stand awaiting it.
+async function skeletonMuseum({ theme, user, timers }: Walk) {
+  const triceratops = skeletonOf("triceratops");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expectScreenIn(theme);
+  await user.click(within(screen.getByRole("region", { name: "TRICERATOPS" })).getByRole("button", { name: "BUILD" }));
+  layOutPuzzle();
+  fitAll(triceratops);
+  act(() => timers.fire(REVEAL.motion));
+  await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "REBUILD" }));
+  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "MUSEUM" }));
+  expect(screen.getByRole("button", { name: "CONTINUE" })).toBeDefined();
+  expectScreenIn(theme);
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app: one walk over them all outlasts a test's time limit
 // on CI.
@@ -264,7 +415,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
   [
     "the catalogue",
     [
-      ["the list with a card of each food type", catalogueList],
+      ["the list with a card of each food type, each food chosen", catalogueList],
       ["a page of each food type", cataloguePages]
     ]
   ],
@@ -275,6 +426,26 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["a visit's first two needs, each asked, refused, suggested and met with hearts", visit(1, 2)],
       ["a visit's last two needs, each asked, refused, suggested and met with hearts, and the visitor dancing away", visit(3, NEEDS.length)],
       ["the result with its celebration, and the friend made", careResult]
+    ]
+  ],
+  [
+    "find the pair",
+    [
+      ["the welcome", pairsWelcome],
+      ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
+      ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
+    ]
+  ],
+  [
+    "the skeleton game",
+    [
+      ["the choice of dinosaurs", skeletonChoice],
+      ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
+      ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
+      ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
+      ["a puzzle with a bone fitted, one lifted and help glowing", skeletonAtWork],
+      ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
+      ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]
   ]
 ];
@@ -462,6 +633,99 @@ describe("the theme menu", () => {
   });
 });
 
+// The board is shown through the sorting game and the screen's props, in
+// the theme the app sets on the page.
+describe("the sorting board", () => {
+  const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
+
+  it.each(["light", "dark"] as const)("is in the %s theme in every state, with every basket's symbol", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const property of PROPERTIES) {
+        const user = userEvent.setup();
+        const sorting = sortingBy(property);
+        const { unmount } = openBoard(sorting);
+        layOutBaskets(sorting);
+        const [missed, ...rest] = boardState(sorting).cards;
+        if (!missed) throw new Error("The board has no cards");
+        const right = missed.basket as Basket;
+        expectScreenIn(theme);
+
+        await user.click(trayCard(missed));
+        expectScreenIn(theme);
+        await user.click(trayCard(missed));
+        await user.pointer([
+          { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
+          { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
+        ]);
+        expectScreenIn(theme);
+        await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
+        // The hint on the card and the right basket's glow.
+        expect(document.querySelector(".sort-hint")).not.toBeNull();
+        expect(document.querySelector(".basket-glow")).not.toBeNull();
+        expectScreenIn(theme);
+
+        await dragTo(user, trayCard(missed), centreOf(sorting, right));
+        for (const card of rest) {
+          await user.click(trayCard(card));
+          await user.click(basketButton(card.basket as Basket));
+        }
+        expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
+        expectScreenIn(theme);
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
+  it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      const user = userEvent.setup();
+      const sorting = sortingBy("diet");
+      const { unmount } = openBoard(sorting);
+      const [first, second] = boardState(sorting).cards;
+      if (!first || !second) throw new Error("The board has no cards");
+      await user.click(trayCard(first));
+      await user.click(basketButton(first.basket as Basket));
+      await user.click(trayCard(second));
+      await user.click(basketButton(otherBasket(sorting, second.basket as Basket)));
+
+      const check = screen.getByRole("img", { name: "RIGHT" });
+      const hint = within(trayCard(second)).getByRole("img", { name: (second.basket as string).toUpperCase() });
+      for (const mark of [check, hint]) {
+        const colour = getComputedStyle(mark).backgroundColor;
+        expect(contrast(colour, surfaceOf(mark.parentElement ?? mark))).toBeGreaterThanOrEqual(3);
+        expect(contrast(getComputedStyle(mark).color, colour)).toBeGreaterThanOrEqual(3);
+      }
+      expect(sameColour(getComputedStyle(check).backgroundColor, PALETTE[theme].good ?? "")).toBe(true);
+      unmount();
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
+// The result is reached through the sorting game, its screens' props and
+// its progress store, in the theme the app sets on the page.
+describe("the sorting result", () => {
+  it.each(["light", "dark"] as const)("is in the %s theme with its celebration, and without one", async (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const right of [4, 0]) {
+        const { user, nextBoard, unmount } = openSortingGame();
+        await finishBoard(user, nextBoard(), right);
+        expect(screen.queryAllByRole("status")).toHaveLength(right > 0 ? 1 : 0);
+        expectScreenIn(theme);
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
 describe("marks", () => {
   it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
@@ -485,23 +749,66 @@ describe("marks", () => {
   });
 });
 
-describe("the MORE COMING card", () => {
-  it.each(["light", "dark"] as const)("is on the %s theme's paper, its lock and words in the soft ink at text contrast", (theme) => {
-    openApp({ device: manualAppearance(theme) });
+describe("the SORT card", () => {
+  it.each(["light", "dark"] as const)("is on the %s theme's paper, its shapes on terracotta and its words and best score at text contrast", (theme) => {
+    const sortingStorage = memoryStorage({
+      [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, roundsPlayed: 2 } } })
+    });
+    openApp({ device: manualAppearance(theme), sorting: { ...emptySorting(), sortingProgress: localSortingProgress(() => sortingStorage) } });
 
     expectScreenIn(theme);
-    const card = document.querySelector(".more-coming") ?? document.body;
-    const symbol = card.querySelector(".more-coming-symbol") ?? card;
-    const title = card.querySelector(".more-coming-title") ?? card;
+    const card = screen.getByRole("button", { name: "SORT" });
+    const symbol = card.querySelector(".sort-tile-symbol") ?? card;
+    const title = card.querySelector(".sort-tile-title") ?? card;
+    const best = card.querySelector(".sort-tile-best") ?? card;
     const colours = PALETTE[theme];
     const parts = {
       card: [getComputedStyle(card).backgroundColor, colours.surface],
-      symbol: [getComputedStyle(symbol).backgroundColor, colours["surface-2"]],
-      lock: [getComputedStyle(symbol).color, colours["ink-soft"]],
-      words: [getComputedStyle(title).color, colours["ink-soft"]]
+      symbol: [getComputedStyle(symbol).backgroundColor, colours.terra],
+      words: [getComputedStyle(title).color, colours.ink],
+      best: [getComputedStyle(best).backgroundColor, colours["surface-2"]],
+      trophy: [getComputedStyle(best.querySelector("svg") ?? best).color, colours.amber]
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
-    expect(title.textContent).toBe("MORE COMING");
+    expect([title.textContent, best.textContent]).toEqual(["SORT", "4"]);
+    expect([title, best].map((text) => textContrast(text) >= TEXT_CONTRAST)).toEqual([true, true]);
+  });
+});
+
+describe("the FIND THE PAIR tile", () => {
+  it.each(["light", "dark"] as const)("is the %s theme's sky, its words in the ink at text contrast", (theme) => {
+    openApp({ device: manualAppearance(theme) });
+
+    expectScreenIn(theme);
+    const tile = screen.getByRole("button", { name: "FIND THE PAIR" });
+    const title = tile.querySelector(".pairs-tile-title") ?? tile;
+    const colours = PALETTE[theme];
+    const parts = {
+      tile: [getComputedStyle(tile).backgroundColor, colours.sky],
+      words: [getComputedStyle(title).color, colours.ink]
+    };
+    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+  });
+});
+
+describe("a board of silhouettes", () => {
+  it.each(["light", "dark"] as const)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
+    const timers = manualTimers();
+    const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
+    const { user } = openApp({ device: manualAppearance(theme), timers, pairs });
+    await playPairs(user);
+    expectScreenIn(theme);
+
+    await playBoard(user, timers);
+
+    expectScreenIn(theme);
+    // A silhouette is black on the light art, white on the dark, and so
+    // keeps text contrast with it.
+    const art = document.querySelector(".pair-card-art") ?? document.body;
+    const silhouette = document.querySelector(".pair-silhouette") ?? document.body;
+    expect(getComputedStyle(silhouette).filter).toBe(theme === "dark" ? "brightness(0) invert(1)" : "brightness(0)");
+    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
+    expect(contrast(theme === "dark" ? "#FFFFFF" : "#000000", PALETTE[theme]["surface-2"] ?? "")).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });

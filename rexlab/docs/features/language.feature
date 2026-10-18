@@ -40,15 +40,27 @@ Feature: English and Russian
     Then it reads "<text>"
 
     Examples:
-      | item                | text              |
-      | quiz card           | СРАВНИ            |
-      | mass prompt         | КТО ТЯЖЕЛЕЕ?      |
-      | height prompt       | КТО ВЫШЕ?         |
-      | Next button         | ДАЛЬШЕ            |
-      | See result button   | РЕЗУЛЬТАТ         |
-      | Play again button   | ЕЩЁ РАЗ           |
-      | Home button         | ДОМОЙ             |
-      | name of Triceratops | ТРИЦЕРАТОПС       |
+      | item                | text               |
+      | quiz card           | СРАВНИ             |
+      | mass prompt         | КТО ТЯЖЕЛЕЕ?       |
+      | height prompt       | КТО ВЫШЕ?          |
+      | Next button         | ДАЛЬШЕ             |
+      | See result button   | РЕЗУЛЬТАТ          |
+      | Play again button   | ЕЩЁ РАЗ            |
+      | Home button         | ДОМОЙ              |
+      | name of Triceratops | ТРИЦЕРАТОПС        |
+      | sorting game card   | РАЗЛОЖИ            |
+      | sorting prompt      | РАЗЛОЖИ ДИНОЗАВРОВ |
+      | basket TWO LEGS     | ДВЕ НОГИ           |
+      | basket FOUR LEGS    | ЧЕТЫРЕ НОГИ        |
+      | basket PLANTS       | РАСТЕНИЯ           |
+      | basket MEAT         | МЯСО               |
+      | basket BIG          | БОЛЬШИЕ            |
+      | basket SMALL        | МАЛЕНЬКИЕ          |
+      | basket HORNS        | С РОГАМИ           |
+      | basket NO HORNS     | БЕЗ РОГОВ          |
+      | basket FEATHERS     | С ПЕРЬЯМИ          |
+      | basket NO FEATHERS  | БЕЗ ПЕРЬЕВ         |
 
   Scenario Outline: Values are written in the chosen language
     Given the app is in <language>
@@ -67,11 +79,13 @@ Feature: English and Russian
 
   Scenario Outline: Text for children is in capitals
     Given the app is in <language>
-    When I play a round through to the result
+    When I play a round of <game> through to the result
     Then every text on every screen is in capitals
     But the language and theme menus and the version footer, which are for parents, are not
 
     Examples:
-      | language |
-      | English  |
-      | Russian  |
+      | language | game             |
+      | English  | the compare quiz |
+      | Russian  | the compare quiz |
+      | English  | the sorting game |
+      | Russian  | the sorting game |

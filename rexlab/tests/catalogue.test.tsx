@@ -15,7 +15,10 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
+  emptySkeletons,
+  emptySorting,
   fakeBodyPicture,
   loadedPictures,
   manualAppearance,
@@ -25,6 +28,7 @@ import {
   sameColour,
   seededRandom,
   symbolOf,
+  unreadVersion,
   words,
   type ManualPictures
 } from "./support.ts";
@@ -46,10 +50,14 @@ function openApp({
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => languages)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
       {...emptyCare()}
+      {...emptySorting()}
+      {...emptyPairs()}
+      {...emptySkeletons()}
     />
   );
   return userEvent.setup();
@@ -78,7 +86,7 @@ const chipsOf = (card: HTMLElement) =>
   [...card.querySelectorAll<HTMLElement>(".catalogue-chip, .diet-tag")].map((chip) => ({ symbols: symbolsOf(chip), words: words(chip) }));
 
 async function openCatalogue(user: ReturnType<typeof userEvent.setup>, language: Language = "en") {
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogue }));
+  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
 }
 
 async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, language: Language = "en") {
@@ -339,9 +347,9 @@ describe("a dinosaur's page", () => {
 });
 
 describe("the catalogue in Russian", () => {
-  it("reads its tile, its title, its food tags and its descriptions in Russian", async () => {
+  it("reads its tile, its title, its food tags and its descriptions in Russian, the tile's title short", async () => {
     const user = openApp({ language: "ru" });
-    expect(words(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }))).toBe("ВСЕ ДИНОЗАВРЫ42");
+    expect(words(screen.getByRole("button", { name: "ВСЕ" }))).toBe("ВСЕ42");
 
     await openPage(user, "gallimimus", "ru");
 

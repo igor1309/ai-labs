@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, Ruler, Weight } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Copy, Ruler, Weight } from "lucide-react";
 import { ViewTransition, type ReactNode } from "react";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
@@ -21,6 +21,8 @@ export type DinosaurPageView = {
   // The height and the mass, written out.
   height: string;
   mass: string;
+  // Found in find the pair.
+  found: boolean;
 };
 
 export type DinosaurPageProps = {
@@ -50,7 +52,7 @@ function Sliding({ late, children }: { late: boolean; children: ReactNode }) {
   );
 }
 
-export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, description, height, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
+export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, description, height, mass, found }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
   const text = TEXTS[language];
   return (
     <main className="dinosaur-page">
@@ -73,6 +75,11 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, de
               </SharedPicture>
             </div>
           </Sliding>
+          {found && (
+            <span key={id} className="found-stamp dinosaur-found-stamp" role="img" aria-label={text.found}>
+              <Copy size={32} aria-hidden="true" />
+            </span>
+          )}
           <nav className="dinosaur-steps">
             <button type="button" className="dinosaur-step" aria-label={text.previousDinosaur} onClick={onPrevious}>
               <ArrowLeft size={32} aria-hidden="true" />

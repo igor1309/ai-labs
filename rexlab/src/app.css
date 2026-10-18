@@ -67,6 +67,12 @@
     transition-property: background-color;
   }
 
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
   /* A dinosaur's picture does not travel between its card and its page:
      the two only cross-fade, in place. */
   ::view-transition-group(.dinosaur-share) {
@@ -452,7 +458,7 @@ img {
 }
 
 /* The version footer is part of the static page, outside the app. */
-footer[aria-label="Version"] {
+#version {
   position: fixed;
   right: 56px;
   bottom: 17px;
@@ -463,7 +469,7 @@ footer[aria-label="Version"] {
 
 /* The result screen is ink navy in both themes, so the footer takes the
    faded paper of the words on it. */
-body:has(.result) footer[aria-label="Version"] {
+body:has(.result) #version {
   color: #f6f1e699;
 }
 
@@ -475,10 +481,9 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 /* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. Three columns share the width 3 : 2 : 1:
-   COMPARE, the tiles, and the games still to come. A third is what the
-   tiles' titles need at 24px on the smallest iPad, and half is what
-   COMPARE's needs at 52px; the games still to come take the sixth left. */
+   iPad above the bands of rock. COMPARE takes three sevenths of the width
+   and the other games the rest, in columns of two. The sizes in the tiles
+   are what fits a column. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
   display: flex;
@@ -527,10 +532,10 @@ body:has(.result) footer[aria-label="Version"] {
 }
 
 .quiz-card-footer {
-  padding: 24px 32px 32px;
+  padding: 24px 24px 28px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   background: #00000026;
 }
 
@@ -538,17 +543,17 @@ body:has(.result) footer[aria-label="Version"] {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
   background: #e39b2d;
   color: #1d2742;
 }
 
 .quiz-card-title {
-  font-size: 52px;
+  font-size: 46px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -570,12 +575,65 @@ body:has(.result) footer[aria-label="Version"] {
   color: #e39b2d;
 }
 
-.side-games {
-  flex: 2 1 0;
+/* The columns that do not fit scroll sideways under the finger, and the
+   next one peeks in at the edge. The columns are narrower than the
+   design's 330px, which fill the row with two at 1366px and leave nothing
+   to peek in. The row reaches past the games above and below, so the
+   tiles' shadows are not cut off. */
+.games-tiles {
+  flex: 4 1 0;
   min-width: 0;
+  margin-block: -24px;
+  padding-block: 24px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-auto-columns: 310px;
+  gap: 28px 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+/* The games still to come: a faded dinosaur's shape over a lock, on the
+   paper's shade. It is no card, so it neither brightens nor presses in. */
+.more-coming {
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 28px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -2px;
+  background: #e6e2d9;
+  color: #5c647a;
+}
+
+.more-coming-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  filter: brightness(0);
+  opacity: 0.35;
+}
+
+.more-coming-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.more-coming-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
 }
 
 /* The catalogue's tile is terracotta. White words keep text contrast on
@@ -610,22 +668,25 @@ body:has(.result) footer[aria-label="Version"] {
   padding: 12px 12px 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
   background: #00000026;
 }
 
+/* The book sits in the picture's corner, across from the count, the
+   height of the count's chip. */
 .catalogue-tile-symbol {
-  flex-shrink: 0;
+  position: absolute;
+  top: 12px;
+  left: 12px;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: #ffffff33;
 }
 
-/* A title is never smaller than a child can read: the column is made
-   wide enough for it instead. The CARE tile's title is the same size. */
+/* A title is never smaller than a child can read: the row is left to it
+   instead. The CARE and SORT tiles' titles are no smaller. */
 .catalogue-tile-title {
   flex: 1 1 0;
   min-width: 0;
@@ -652,56 +713,268 @@ body:has(.result) footer[aria-label="Version"] {
   font-weight: 700;
 }
 
-/* The games still to come: a faded dinosaur over a lock, on paper, as
-   tall as the tiles beside it. It is no card, so it neither brightens nor
-   presses in. Its sides are padded inside it: padding of its own would
-   widen it past its share of the row. */
-.more-coming {
+/* The sorting game's tile, on paper over SORT's own terracotta symbol,
+   in the other tiles' shape. */
+.sort-tile {
+  position: relative;
   flex: 1 1 0;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 24px 0;
+  min-height: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
   border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
   background: #fffdf8;
   box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
 }
 
-.more-coming-picture {
+.sort-tile-picture {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 16px;
+  padding: 16px 20px 10px;
   object-fit: contain;
-  opacity: 0.35;
 }
 
-.more-coming-label {
-  padding: 0 16px;
+.sort-tile-row {
+  padding: 12px 12px 14px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  color: #5c647a;
-  text-align: center;
+  gap: 8px;
 }
 
-.more-coming-symbol {
+.sort-tile-symbol {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: #e6e2d9;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #c9583d;
+  color: #ffffff;
 }
 
-.more-coming-title {
-  font-size: 22px;
+.sort-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.sort-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.sort-tile-best svg {
+  color: #e39b2d;
+}
+
+/* Find the pair's tile, sky, under SORT and as tall: two cards of one
+   dinosaur with a face-down card between them, sized by the tile's
+   height. The ink keeps its contrast on sky with no shade under it. */
+.pairs-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #a9bcd6;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.pairs-tile-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.pairs-tile-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 84%;
+  aspect-ratio: 3 / 4;
+  box-sizing: border-box;
+  padding: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fffdf8;
+  box-shadow: 0 4px 12px #1d274224;
+}
+
+.pairs-tile-card-first {
+  translate: -140% -46%;
+  rotate: -10deg;
+}
+
+.pairs-tile-back {
+  translate: -50% -58%;
+  background: #1f2b4d;
+  color: #e39b2d;
+}
+
+.pairs-tile-back svg {
+  width: 60%;
+  height: auto;
+}
+
+.pairs-tile-card-second {
+  translate: 40% -40%;
+  rotate: 10deg;
+}
+
+.pairs-tile-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* Its title takes a second line where the column is too narrow for it
+   at 24px. */
+.pairs-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pairs-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff33;
+}
+
+.pairs-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.pairs-tile-stars {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #00000026;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* The skeleton game's tile, over MORE COMING, in the other tiles'
+   shape. The design's forest green is no colour of either theme,
+   so the tile takes the navy, as the skeleton screens' mark does, and the
+   bones stand out on it in both themes. */
+.skeletons-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.skeletons-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.skeletons-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeletons-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff33;
+}
+
+.skeletons-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.skeletons-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff1f;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.skeletons-tile-best svg {
+  color: #e39b2d;
 }
 
 /* The question fills the screen, and the cards take what is left of it. */
@@ -1030,6 +1303,111 @@ body:has(.result) footer[aria-label="Version"] {
   background: #e6e2d9;
   font-size: 20px;
   font-weight: 700;
+}
+
+/* The chips choosing the dinosaurs shown by their food look like the
+   food tags: each in its tag's colour, with its symbols, its word and how
+   many it shows. A chip not chosen is a card with its symbols in colour;
+   the chosen one is filled with the colour and lifted by a shadow, so it
+   stands out by more than its colour. Its count sits on a shade, darker
+   under white words and lighter under ink, to keep text contrast. */
+.food-chips {
+  display: flex;
+  gap: 12px;
+}
+
+.food-chip {
+  height: 56px;
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -2px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-standard) var(--ease-out),
+    color var(--motion-standard) var(--ease-out),
+    outline-color var(--motion-standard) var(--ease-out),
+    box-shadow var(--motion-standard) var(--ease-out);
+}
+
+.food-chip-face {
+  box-sizing: border-box;
+  padding: 0 10px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.food-chip-symbols {
+  display: flex;
+  gap: 2px;
+}
+
+.food-chip[data-food="meat"] .food-chip-symbols {
+  color: #c9583d;
+}
+
+.food-chip[data-food="plants"] .food-chip-symbols {
+  color: #2e7d4f;
+}
+
+.food-chip-count {
+  min-width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #e6e2d9;
+  font-size: 17px;
+}
+
+.food-chip[aria-pressed="true"] {
+  outline-color: transparent;
+  box-shadow: 0 6px 16px #1d274233;
+  color: #ffffff;
+}
+
+.food-chip[aria-pressed="true"] .food-chip-symbols {
+  color: inherit;
+}
+
+.food-chip[aria-pressed="true"] .food-chip-count {
+  background: #00000026;
+}
+
+.food-chip[data-food="all"][aria-pressed="true"] {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.food-chip[data-food="meat"][aria-pressed="true"] {
+  background: #c9583d;
+}
+
+.food-chip[data-food="meat"][aria-pressed="true"] .food-chip-face {
+  background: #00000026;
+}
+
+.food-chip[data-food="plants"][aria-pressed="true"] {
+  background: #2e7d4f;
+}
+
+.food-chip[data-food="both"][aria-pressed="true"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.food-chip[data-food="both"][aria-pressed="true"] .food-chip-count {
+  background: #ffffff33;
 }
 
 .catalogue-grid {
@@ -2631,6 +3009,1483 @@ body:has(.result) footer[aria-label="Version"] {
   font-size: 28px;
 }
 
+/* The sorting board: the prompt, a tray of six cards and the two
+   baskets, which take what is left of the screen. */
+.sort {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.sort .stratum-1 {
+  height: 40px;
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The tray stays above the baskets, so a card dragged down over them is
+   drawn on top. */
+.sort-tray-area {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  height: 230px;
+}
+
+.sort-tray {
+  height: 100%;
+  display: flex;
+  gap: 16px;
+}
+
+/* A sorted card leaves its slot empty, so the other cards never move. */
+.sort-slot {
+  flex: 1 1 0;
+  border-radius: 22px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -1px;
+  animation: fade-in var(--motion-standard) var(--ease-out) both;
+}
+
+/* The cards rise in one after the other as the board enters. A picked
+   card lifts in its slot with an amber outline; a dragged one follows the
+   finger at once and tilts; one let go slides back to its slot from where
+   it was let go. */
+.sort-card {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 22px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 6px 16px #1d274224;
+  text-align: left;
+  touch-action: none;
+  transition:
+    filter var(--motion-small) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out),
+    translate var(--motion-standard) var(--ease-out),
+    rotate var(--motion-standard) var(--ease-out),
+    box-shadow var(--motion-standard) var(--ease-out),
+    outline var(--motion-small) var(--ease-out);
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--slot) * var(--motion-stagger)) backwards;
+}
+
+.sort-card[data-picked],
+.sort-card[data-dragging] {
+  z-index: 1;
+  outline: 3px solid #e39b2d;
+  outline-offset: -1.5px;
+  box-shadow: 0 22px 36px #1d274259;
+}
+
+.sort-card[data-picked] {
+  translate: 0 calc(-12px * var(--motion-amount));
+  rotate: calc(3deg * var(--motion-amount));
+}
+
+.sort-card[data-dragging] {
+  rotate: calc(6deg * var(--motion-amount));
+  transition: none;
+}
+
+.sort-card[data-returning] {
+  animation: slide-back var(--motion-standard) var(--ease-out);
+}
+
+/* With reduced motion the card does not travel back: it fades in in its
+   slot. */
+@keyframes slide-back {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+    rotate: calc(6deg * var(--motion-amount));
+  }
+}
+
+.sort-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 14px;
+  display: flex;
+  background: #e6e2d9;
+}
+
+.sort-picture,
+.sorted-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name stays on one line and shrinks to fit its card: its letters are
+   at most 0.75 of its size wide in Lexend's capitals. */
+.sort-footer,
+.sorted-footer {
+  display: flex;
+  justify-content: center;
+  container-type: inline-size;
+}
+
+.sort-footer {
+  padding: 12px 14px;
+}
+
+.sort-name {
+  font-size: min(18px, calc(100cqi / (var(--letters) * 0.75)));
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* After a miss the card carries its right basket's symbol, in that
+   basket's colour, until it lands. */
+.sort-hint {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  min-width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 22px;
+  outline: 3px solid #fffdf8;
+  outline-offset: -1.5px;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.basket-mark,
+.sort-hint {
+  background: #1f2b4d;
+  color: #ffffff;
+}
+
+.basket-mark[data-basket="plants"],
+.sort-hint[data-basket="plants"] {
+  background: #2e7d4f;
+}
+
+.basket-mark[data-basket="meat"],
+.sort-hint[data-basket="meat"],
+.basket-mark[data-basket="horns"],
+.sort-hint[data-basket="horns"],
+.basket-mark[data-basket="no-horns"],
+.sort-hint[data-basket="no-horns"] {
+  background: #c9583d;
+}
+
+.legs-count {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.sort-hint .legs-count {
+  font-size: 18px;
+}
+
+.sort-finish {
+  position: absolute;
+  inset: 0;
+  width: fit-content;
+  margin: auto;
+}
+
+.baskets {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 24px;
+}
+
+/* The baskets rise in after the cards. The one under a dragged card
+   lights up in amber. */
+.basket {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 22px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  border: none;
+  border-radius: 32px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -1px;
+  background: #e6e2d9;
+  text-align: left;
+  transition: outline var(--motion-small) var(--ease-out);
+  animation: rise-in var(--motion-screen) var(--ease-out) calc((var(--basket) + 6) * var(--motion-stagger)) backwards;
+}
+
+.basket + .basket {
+  background: #fffdf8;
+}
+
+.basket[data-over] {
+  outline: 5px solid #e39b2d;
+  outline-offset: -2.5px;
+}
+
+/* The right basket of a wrong drop glows green for a moment, so the
+   card's hint points at it. */
+.basket-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  outline: 5px solid #2e7d4f;
+  outline-offset: -2.5px;
+  box-shadow: 0 0 32px #3e8e5a66;
+  opacity: 0;
+  animation: glow calc(var(--motion-screen) * 4) var(--ease-out);
+}
+
+@keyframes glow {
+  20%,
+  70% {
+    opacity: 1;
+  }
+}
+
+.basket-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.basket-mark {
+  flex-shrink: 0;
+  min-width: 56px;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 16px;
+}
+
+.basket-name {
+  font-size: 34px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.basket-cards {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+/* A card lands in its basket as a small card that pops in, and its ✓
+   stamps in after it. */
+.sorted-card {
+  flex: 0 1 170px;
+  min-width: 0;
+  height: 100%;
+  max-height: 150px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  outline: 3px solid #2e7d4f;
+  outline-offset: -1.5px;
+  background: #fffdf8;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.sorted-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  display: flex;
+}
+
+.sorted-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #2e7d4f;
+  color: #ffffff;
+  animation: stamp-in var(--motion-standard) var(--ease-overshoot) var(--motion-stagger) both;
+}
+
+.sorted-footer {
+  padding: 6px 8px;
+}
+
+.sorted-name {
+  font-size: min(14px, calc(100cqi / (var(--letters) * 0.75)));
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Find the pair's welcome and board fill the screen under a bar like the
+   catalogue's. */
+.pairs-welcome,
+.pairs-board-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.pairs-welcome .stratum-1,
+.pairs-board-screen .stratum-1 {
+  height: 40px;
+}
+
+.pairs-welcome-bar,
+.pairs-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The welcome: a face-down card, and a dinosaur's picture matched to its
+   silhouette, beside the title, the level and stars, and PLAY. */
+.pairs-welcome-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.pairs-hero {
+  flex: 760 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pairs-hero-card {
+  flex-shrink: 0;
+  width: 32%;
+  max-height: 60vh;
+  aspect-ratio: 3 / 4;
+  margin: 0 -2%;
+  box-sizing: border-box;
+  padding: 18px;
+  display: flex;
+  border-radius: 28px;
+  background: #fffdf8;
+  box-shadow: 0 18px 40px #1d274224;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.pairs-hero-back {
+  padding: 14px;
+  background: #1f2b4d;
+  rotate: -8deg;
+}
+
+.pairs-hero-silhouette {
+  z-index: 1;
+  translate: 0 -6%;
+  animation-delay: var(--motion-stagger);
+}
+
+.pairs-hero-picture-card {
+  rotate: 8deg;
+  animation-delay: calc(var(--motion-stagger) * 2);
+}
+
+.pairs-hero-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.pairs-start {
+  flex: 528 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.pairs-title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pairs-mark,
+.pairs-bar-mark {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #a9bcd6;
+  color: #1d2742;
+}
+
+.pairs-mark {
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+}
+
+.pairs-chips {
+  display: flex;
+  gap: 16px;
+}
+
+.pairs-chip,
+.pairs-bar-chip {
+  flex-shrink: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  background: #e6e2d9;
+  font-weight: 700;
+}
+
+.pairs-chip {
+  height: 64px;
+  padding: 0 24px;
+  gap: 12px;
+  border-radius: 32px;
+  font-size: 30px;
+}
+
+.pairs-stars svg {
+  color: #e39b2d;
+}
+
+.pairs-play-button {
+  height: 104px;
+  padding: 0 52px 0 44px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border: none;
+  border-radius: 30px;
+  background: #e39b2d;
+  color: #1d2742;
+  box-shadow: 0 18px 40px #1d274224;
+  font-size: 44px;
+  font-weight: 700;
+}
+
+/* The board: its bar, then the cards, row by row, as big as the screen
+   lets them be, each at least 150px. */
+.pairs-bar-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.pairs-bar-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.pairs-bar-chip {
+  height: 52px;
+  padding: 0 18px;
+  gap: 10px;
+  border-radius: 26px;
+  font-size: 26px;
+}
+
+/* A new count of tries bumps in. */
+.pairs-tries {
+  display: inline-block;
+  min-width: 1.4em;
+  animation: bump-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.pair-board {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: center;
+  max-width: 100%;
+  aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 3.2);
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(150px, 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(150px, 1fr));
+  gap: 20px;
+}
+
+/* The cards rise in one after the other; each side flips in as it is
+   turned to. */
+.pair-card {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+  border: none;
+  border-radius: 24px;
+  background: none;
+  box-shadow: 0 8px 24px #1d274224;
+  perspective: 900px;
+  container-type: inline-size;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both;
+}
+
+.pair-card-back,
+.pair-card-face {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  border-radius: inherit;
+  animation: flip-in var(--motion-standard) var(--ease-out) both;
+}
+
+.pair-card-back {
+  box-sizing: border-box;
+  padding: 10px;
+  background: #1f2b4d;
+}
+
+.pair-card-back-frame {
+  flex: 1 1 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f2b33d59;
+  border-radius: 16px;
+  color: #e39b2d;
+}
+
+.pair-card-face {
+  flex-direction: column;
+  background: #fffdf8;
+  color: #1d2742;
+}
+
+.pair-card-art {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  display: flex;
+  background: #e6e2d9;
+}
+
+.pair-card-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A silhouette is the picture's shape in ink. */
+.pair-silhouette {
+  filter: brightness(0);
+  opacity: 0.85;
+}
+
+.pair-card-missing {
+  margin: auto;
+  color: #5c647a;
+}
+
+/* The name's size is the card's width over the longest name's, in ems:
+   PACHYCEPHALOSAURUS's 12.7. */
+.pair-card-name {
+  flex-shrink: 0;
+  padding: 8px 10px 10px;
+  font-size: min(24px, (100cqi - 20px) / 12.7);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A found pair is outlined in green over the picture, and named, and
+   bounces once it has flipped. The outline is the face's: the turning
+   face would cover the card's. */
+.pair-card[data-state="found"] .pair-card-face {
+  outline: 4px solid #2e7d4f;
+  outline-offset: -4px;
+  animation:
+    flip-in var(--motion-standard) var(--ease-out) both,
+    bounce var(--motion-screen) var(--ease-overshoot) var(--motion-standard);
+}
+
+/* The last pair found, every card waves, one after the other, before the
+   result. */
+.pair-board[data-finished] .pair-card {
+  animation:
+    rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both,
+    wave var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger));
+}
+
+@keyframes flip-in {
+  from {
+    opacity: 0;
+    rotate: y calc(90deg * var(--motion-amount));
+  }
+}
+
+@keyframes bounce {
+  50% {
+    scale: calc(1 + 0.08 * var(--motion-amount));
+  }
+}
+
+@keyframes wave {
+  40% {
+    translate: 0 calc(-16px * var(--motion-amount));
+    rotate: calc(-3deg * var(--motion-amount));
+  }
+}
+
+/* The result: the board's dinosaurs on the left, those found for the
+   first time marked NEW, and the tries on the right. */
+.pairs-found {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pairs-found[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pairs-found-card {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fffdf8;
+  color: #1d2742;
+  container-type: inline-size;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+  animation-delay: calc(var(--card) * var(--motion-stagger) * 1.5);
+}
+
+.pairs-found-art {
+  aspect-ratio: 4 / 3;
+  box-sizing: border-box;
+  padding: 10px;
+  display: flex;
+  background: #e6e2d9;
+}
+
+.pairs-found-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.pairs-found-name {
+  padding: 8px 10px 10px;
+  font-size: min(18px, 9cqi);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pairs-new-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  font-size: 16px;
+  font-weight: 700;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+  animation-delay: calc(var(--motion-screen) + var(--card) * var(--motion-stagger) * 1.5);
+}
+
+.pairs-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pairs-level-up {
+  margin: 0;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 30px;
+  background: #a9bcd6;
+  color: #1d2742;
+  font-size: 26px;
+  font-weight: 700;
+  animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
+}
+
+.pairs-next-board {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 12px);
+  gap: 3px;
+}
+
+.pairs-next-card {
+  height: 15px;
+  border-radius: 3px;
+  background: #1f2b4d;
+}
+
+.pairs-result-tries {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  line-height: 1;
+}
+
+.pairs-result-tries-value {
+  font-size: min(220px, 22vh);
+  font-weight: 700;
+}
+
+.pairs-result-hand {
+  color: #e39b2d;
+}
+
+.pairs-result-stars {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* The board's star pops into the stars earned. */
+.pairs-result-star {
+  color: #e39b2d;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
+  animation-delay: var(--motion-screen);
+}
+
+/* Found dinosaurs in the catalogue: the count is of those found, on the
+   navy, and each found card and page is stamped. */
+.catalogue-count.catalogue-found {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.catalogue-found svg {
+  color: #e39b2d;
+}
+
+.catalogue-art {
+  position: relative;
+}
+
+.found-stamp {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  left: 10px;
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fffdf8;
+  border-radius: 50%;
+  background: #1f2b4d;
+  color: #e39b2d;
+}
+
+.dinosaur-found-stamp {
+  top: 24px;
+  left: 24px;
+  width: 64px;
+  height: 64px;
+  border-color: #ffffff;
+  background: #e39b2d;
+  color: #1f2b4d;
+  animation: stamp-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+/* The skeleton game's screens fill the screen under a bar like find the
+   pair's: HOME, the title beside a bone, MUSEUM and, while building, the
+   bones fitted. */
+.skeleton-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.skeleton-screen .stratum-1 {
+  height: 40px;
+}
+
+.skeleton-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.skeleton-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-mark {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.museum-button,
+.skeleton-bar-button {
+  padding: 0 22px 0 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.skeleton-chip {
+  flex-shrink: 0;
+  height: 44px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Every card and button keeps a touch target of at least 48 by 48 CSS
+   pixels, whatever its words. */
+.skeleton-bar .home-button,
+.skeleton-choice {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* A button in the bar keeps its words on one line, at its full width;
+   the title takes the room the buttons and chips leave. */
+.skeleton-bar .home-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* The three dinosaurs side by side, each a big card of its picture over
+   its name, rising in one after the other. */
+.skeleton-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: none;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.skeleton-choice-art {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+
+.skeleton-choice-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name is large, and its size is the card's width over the longest
+   name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-choice-name {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: min(30px, (100cqi - 8px) / 9.4);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A puzzle: the board, in the outline's frame, beside the tray of bones.
+   The outline is drawn faint; each slot is its piece's place on it. */
+.skeleton-puzzle {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-board {
+  position: relative;
+  flex: 920 1 0;
+  min-width: 0;
+  align-self: center;
+  max-height: 100%;
+  aspect-ratio: var(--frame-width) / var(--frame-height);
+  overflow: hidden;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.skeleton-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.28;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-slot {
+  position: absolute;
+  display: flex;
+}
+
+.skeleton-fitted,
+.skeleton-piece {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skeleton-piece {
+  object-fit: contain;
+}
+
+/* The tray keeps a spot for every piece, each piece large in its own,
+   rising in one after the other after the outline. */
+.skeleton-tray {
+  flex: 380 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-radius: 28px;
+  background: #e6e2d9;
+}
+
+.skeleton-tray-spot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  border-radius: 22px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  touch-action: none;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * (var(--piece) + 2)) both;
+}
+
+/* A piece is picked up at the size it fits on the board and follows the
+   pointer at once, the right way up, over everything else; its spot in
+   the tray stays where it is, empty while the piece is held. */
+.skeleton-lifted {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 24px #1d274259);
+  animation: grow-in var(--motion-small) var(--ease-out);
+}
+
+.skeleton-piece[data-held] {
+  opacity: 0;
+}
+
+/* While a piece is held, its slot shows faintly where it goes. */
+.skeleton-slot[data-target] {
+  border-radius: 20px;
+  outline: 2px solid #5c647a59;
+  outline-offset: -1px;
+}
+
+/* A piece let go floats back to its spot in the tray, and one that fits
+   slides into exact alignment with its slot, each from where it was let
+   go. With reduced motion it does not travel: it fades in where it
+   ends. */
+.skeleton-piece[data-returning],
+.skeleton-fitted[data-snapped] {
+  animation: settle-in var(--motion-standard) var(--ease-out);
+}
+
+@keyframes settle-in {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+  }
+}
+
+/* A skeleton knocked down to be built again shows whole on its outline as
+   the puzzle comes in, then its bones scatter playfully to the tray, one
+   after the other, each shrinking to its spot and spinning on its way.
+   The tray's spots are there already, so a bone in flight is never
+   hidden. With reduced motion a bone only fades in in its spot. */
+.skeleton-tray[data-scatter] .skeleton-tray-spot {
+  animation: none;
+}
+
+.skeleton-piece[data-scattering] {
+  animation: scatter var(--motion-screen) var(--ease-overshoot) calc(var(--motion-screen) + var(--piece) * var(--motion-stagger)) both;
+}
+
+@keyframes scatter {
+  from {
+    opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
+    translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+    scale: calc(1 + (var(--from-scale) - 1) * var(--motion-amount));
+  }
+  50% {
+    rotate: calc((var(--piece) - 1.5) * 16deg * var(--motion-amount));
+  }
+}
+
+/* Help: the slot to fill and its piece in the tray glow alike, ringed in
+   amber, so the next move needs no words. */
+.skeleton-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 24px;
+  outline: 4px solid #e39b2d;
+  outline-offset: -2px;
+  box-shadow: 0 0 24px #e39b2d80;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-tray-spot .skeleton-glow {
+  inset: 0;
+  border-radius: 22px;
+}
+
+/* A dinosaur built: its star sits on its card in the choice. */
+.skeleton-choice-art {
+  position: relative;
+}
+
+.skeleton-choice-star,
+.skeleton-star {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+}
+
+.skeleton-choice-star {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 52px;
+  height: 52px;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
+}
+
+/* The reveal: the whole skeleton on its board, then the dinosaur's body
+   fading in over it in the frame they share while the bones fade back,
+   beside the reward, the name, the fact and the ways on. A skeleton whose
+   body cannot be shown stays whole. */
+.skeleton-reveal {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 28px;
+}
+
+.skeleton-reveal-bones,
+.skeleton-reveal-body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-reveal-bones {
+  opacity: 0.25;
+  animation: fade-back calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reveal-bones[data-alone] {
+  opacity: 1;
+  animation: none;
+}
+
+.skeleton-reveal-body {
+  animation: fade-in calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes fade-back {
+  from {
+    opacity: 1;
+  }
+}
+
+/* The panel is at least as wide as its longest button needs on one line,
+   СОБРАТЬ ДРУГОЙ beside its symbol, and the name is large, its size the
+   panel's width over the longest name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-reward {
+  flex: 380 1 0;
+  min-width: 360px;
+  box-sizing: border-box;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-screen) both;
+}
+
+.skeleton-reward-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.skeleton-star {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 6px 16px #e39b2d66;
+}
+
+/* A star newly earned pops in as the body fades in. */
+.skeleton-star[data-new] {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-screen) * 2) both;
+}
+
+.skeleton-reward .celebration {
+  height: 52px;
+  padding: 0 22px 0 16px;
+  font-size: 22px;
+}
+
+.skeleton-reveal-name {
+  margin: 0;
+  font-size: min(34px, 100cqi / 9.4);
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-fact {
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  border-radius: 20px;
+  background: #e6e2d9;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.skeleton-fact svg {
+  flex-shrink: 0;
+  color: #5c647a;
+}
+
+.skeleton-best {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.skeleton-best-beaten {
+  color: #5c647a;
+}
+
+.skeleton-best-value {
+  font-weight: 700;
+}
+
+.skeleton-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeleton-build-another,
+.skeleton-actions .home-button {
+  height: 72px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: none;
+  border-radius: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.skeleton-build-another {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-actions .home-button {
+  outline-width: 2px;
+  outline-offset: -1px;
+}
+
+/* The museum: a hall of one stand for each dinosaur, rising in one after
+   the other, each its name and star over its exhibit on a plinth. A
+   skeleton not on its stand shows as its faint silhouette; one knocked
+   down to be built again keeps its star, and its exhibit and button are
+   ringed in amber, so it reads as work in progress, not as never built. */
+.skeleton-hall {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 32px 32px 0;
+  display: flex;
+  gap: 32px;
+  border-radius: 32px;
+  background: #e6e2d9;
+}
+
+.skeleton-stand {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--stand) * var(--motion-stagger)) both;
+}
+
+.skeleton-stand-top {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* A name is large, its size the stand's width, less its star's, over the
+   longest name's, in ems: TYRANNOSAURUS's 9.4. */
+.skeleton-stand-name {
+  margin: 0;
+  font-size: min(26px, (100cqi - 50px) / 9.4);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #5c647a;
+}
+
+.skeleton-stand-star {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #ffffff;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--stand) + 2)) both;
+}
+
+.skeleton-exhibit {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  border-radius: 20px;
+}
+
+.skeleton-exhibit-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.skeleton-silhouette {
+  filter: brightness(0);
+  opacity: 0.22;
+}
+
+.skeleton-plinth {
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 18px 14px 24px;
+  border-radius: 20px 20px 0 0;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+/* A button's words shrink with the room the plinth and the button's sides
+   leave beside its symbol, over the longest words', in ems: СОБРАТЬ
+   ЗАНОВО's 9.8. Unspaced, unlike the other buttons' words, they stay at
+   least as large as the bar's on the narrowest iPad. */
+.skeleton-stand-button {
+  width: 100%;
+  height: 64px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  border-radius: 18px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #e6e2d9;
+  font-size: min(22px, (100cqi - 82px) / 9.8);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skeleton-stand-button svg {
+  flex-shrink: 0;
+}
+
+.skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  outline: none;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+.skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline: 2px dashed #e39b2d;
+  outline-offset: -1px;
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -2664,13 +4519,12 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-button,
 [data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .more-coming-label,
 [data-theme="dark"] .progress,
 [data-theme="dark"] .dinosaur-position,
 [data-theme="dark"] .dinosaur-fact-label,
 [data-theme="dark"] .source-note,
 [data-theme="dark"] .dinosaur-value-chip svg,
-[data-theme="dark"] footer[aria-label="Version"] {
+[data-theme="dark"] #version {
   color: #9ca3b6;
 }
 
@@ -2687,7 +4541,7 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .more-coming-symbol,
+[data-theme="dark"] .sort-tile-best,
 [data-theme="dark"] .catalogue-count,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
@@ -2709,6 +4563,8 @@ body:has(.result) footer[aria-label="Version"] {
 
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .quiz-card-best svg,
+[data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
 [data-theme="dark"] .best-score svg,
@@ -2721,9 +4577,18 @@ body:has(.result) footer[aria-label="Version"] {
   box-shadow: 0 18px 40px #00000066;
 }
 
-[data-theme="dark"] .more-coming {
+[data-theme="dark"] .skeletons-tile {
+  background: #2c3b66;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .sort-tile {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .sort-tile {
+  outline-color: #ece8de1f;
 }
 
 [data-theme="dark"] .home-button {
@@ -2751,18 +4616,80 @@ body:has(.result) footer[aria-label="Version"] {
   color: #ece8de;
 }
 
+/* The dark theme's chips are its cards, their symbols in its lighter
+   terracotta and green; chosen, the lighter colours take the page's ink,
+   as the tags do, and need no shade under it. */
+[data-theme="dark"] .food-chip {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .food-chip-count {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"] .food-chip-symbols {
+  color: #e57a5d;
+}
+
+[data-theme="dark"] .food-chip[data-food="plants"] .food-chip-symbols {
+  color: #63c98c;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] {
+  outline-color: transparent;
+  box-shadow: 0 6px 16px #00000066;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] .food-chip-symbols {
+  color: inherit;
+}
+
+[data-theme="dark"] .food-chip[aria-pressed="true"] .food-chip-count {
+  background: #ffffff33;
+}
+
+[data-theme="dark"] .food-chip[data-food="all"][aria-pressed="true"] {
+  background: #2c3b66;
+  color: #f6f2e9;
+}
+
+[data-theme="dark"] .food-chip[data-food="all"][aria-pressed="true"] .food-chip-count {
+  background: #00000026;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"][aria-pressed="true"] {
+  background: #e57a5d;
+}
+
+[data-theme="dark"] .food-chip[data-food="meat"][aria-pressed="true"] .food-chip-face {
+  background: none;
+}
+
+[data-theme="dark"] .food-chip[data-food="plants"][aria-pressed="true"] {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .food-chip[data-food="both"][aria-pressed="true"] {
+  background: #f2b24b;
+}
+
 /* White words would fade on the dark theme's lighter terracotta and
    green, so the tiles and tags there take the dark page's ink, as the
    marks do. */
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
-[data-theme="dark"] .diet-tag {
+[data-theme="dark"] .diet-tag,
+[data-theme="dark"] .sort-tile-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
-[data-theme="dark"] .diet-tag[data-diet="meat"] {
+[data-theme="dark"] .diet-tag[data-diet="meat"],
+[data-theme="dark"] .sort-tile-symbol {
   background: #e57a5d;
 }
 
@@ -2925,4 +4852,267 @@ body:has(.result) footer[aria-label="Version"] {
 [data-theme="dark"] .friend-footer svg,
 [data-theme="dark"] .no-friends-bubble {
   color: #e57a5d;
+}
+
+/* The sorting board takes the dark values in the same shapes. White
+   would fade on the dark theme's lighter green and terracotta, so the
+   symbols there take the dark page's ink. */
+[data-theme="dark"] .sort-card,
+[data-theme="dark"] .basket + .basket,
+[data-theme="dark"] .sorted-card {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .sort-card,
+[data-theme="dark"] .sort-slot,
+[data-theme="dark"] .basket {
+  outline-color: #ece8de1f;
+}
+
+[data-theme="dark"] .sort-card {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .sort-card[data-picked],
+[data-theme="dark"] .sort-card[data-dragging] {
+  outline-color: #f2b24b;
+  box-shadow: 0 22px 36px #00000066;
+}
+
+[data-theme="dark"] .basket[data-over] {
+  outline-color: #f2b24b;
+}
+
+[data-theme="dark"] .sort-art,
+[data-theme="dark"] .basket {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .sort-hint {
+  outline-color: #181e2e;
+}
+
+[data-theme="dark"] .basket-mark,
+[data-theme="dark"] .sort-hint {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .basket-mark[data-basket="plants"],
+[data-theme="dark"] .sort-hint[data-basket="plants"],
+[data-theme="dark"] .sorted-check {
+  background: #63c98c;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .basket-mark[data-basket="meat"],
+[data-theme="dark"] .sort-hint[data-basket="meat"],
+[data-theme="dark"] .basket-mark[data-basket="horns"],
+[data-theme="dark"] .sort-hint[data-basket="horns"],
+[data-theme="dark"] .basket-mark[data-basket="no-horns"],
+[data-theme="dark"] .sort-hint[data-basket="no-horns"] {
+  background: #e57a5d;
+  color: #0f1320;
+}
+
+[data-theme="dark"] .sorted-card,
+[data-theme="dark"] .basket-glow {
+  outline-color: #63c98c;
+}
+
+[data-theme="dark"] .basket-glow {
+  box-shadow: 0 0 32px #63c98c66;
+}
+/* Find the pair takes the dark values in the same shapes. Words and
+   symbols on amber stay the light ink; a silhouette is the dark ink's
+   shape. */
+[data-theme="dark"] .pairs-tile,
+[data-theme="dark"] .pairs-mark,
+[data-theme="dark"] .pairs-bar-mark,
+[data-theme="dark"] .pairs-level-up {
+  background: #34466e;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-tile,
+[data-theme="dark"] .pairs-tile-card {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .pairs-tile-card,
+[data-theme="dark"] .pairs-hero-card,
+[data-theme="dark"] .pair-card-face,
+[data-theme="dark"] .pairs-found-card {
+  background: #181e2e;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-hero-card,
+[data-theme="dark"] .pair-card {
+  box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .pairs-tile-back,
+[data-theme="dark"] .pairs-hero-back,
+[data-theme="dark"] .pair-card-back,
+[data-theme="dark"] .catalogue-count.catalogue-found,
+[data-theme="dark"] .found-stamp {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .pairs-chip,
+[data-theme="dark"] .pairs-bar-chip,
+[data-theme="dark"] .pair-card-art,
+[data-theme="dark"] .pairs-found-art {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .pairs-play-button,
+[data-theme="dark"] .pairs-new-badge,
+[data-theme="dark"] .dinosaur-found-stamp {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .pairs-play-button {
+  box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .pairs-tile-back,
+[data-theme="dark"] .pair-card-back-frame,
+[data-theme="dark"] .pairs-stars svg,
+[data-theme="dark"] .pairs-result-hand,
+[data-theme="dark"] .pairs-result-star,
+[data-theme="dark"] .catalogue-found svg,
+[data-theme="dark"] .found-stamp {
+  color: #f2b24b;
+}
+
+[data-theme="dark"] .found-stamp {
+  border-color: #181e2e;
+}
+
+[data-theme="dark"] .dinosaur-found-stamp {
+  border-color: #ffffff;
+  color: #1f2b4d;
+}
+
+[data-theme="dark"] .pair-card-missing {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .pair-card[data-state="found"] .pair-card-face {
+  outline-color: #63c98c;
+}
+
+[data-theme="dark"] .pairs-next-card {
+  background: #f6f2e9;
+}
+
+[data-theme="dark"] .pair-silhouette {
+  filter: brightness(0) invert(1);
+}
+
+/* The skeleton game takes the dark values in the same shapes. */
+[data-theme="dark"] .skeleton-mark {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-chip,
+[data-theme="dark"] .skeleton-tray {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-choice,
+[data-theme="dark"] .skeleton-board,
+[data-theme="dark"] .skeleton-tray-spot {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-choice {
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .skeleton-lifted {
+  filter: drop-shadow(0 18px 24px #00000066);
+}
+
+[data-theme="dark"] .skeleton-slot[data-target] {
+  outline-color: #9ca3b659;
+}
+
+[data-theme="dark"] .skeleton-glow {
+  outline-color: #f2b24b;
+  box-shadow: 0 0 24px #f2b24b80;
+}
+
+[data-theme="dark"] .skeleton-reward {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-fact {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-fact svg,
+[data-theme="dark"] .skeleton-best-beaten {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-choice-star,
+[data-theme="dark"] .skeleton-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-star {
+  box-shadow: 0 6px 16px #00000066;
+}
+
+[data-theme="dark"] .skeleton-build-another {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-hall,
+[data-theme="dark"] .skeleton-stand-button {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-plinth,
+[data-theme="dark"] .skeleton-stand-button {
+  outline-color: #ece8de1f;
+}
+
+[data-theme="dark"] .skeleton-plinth {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-name {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-stand-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-silhouette {
+  filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-button {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
+[data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
+  outline-color: #f2b24b;
+}
+
+[data-theme="dark"] .more-coming {
+  outline-color: #ece8de1f;
+  background: #222a3d;
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .more-coming-picture {
+  filter: brightness(0) invert(1);
 }

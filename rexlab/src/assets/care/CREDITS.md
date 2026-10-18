@@ -1,6 +1,6 @@
 # Care item picture credits
 
-Each item picture of dinosaur care, `<item>.webp`, a 400×300 WebP with alpha, cut tight to its art, with the generator that made it and the date. They are drawn in the dinosaurs' picture-book style (`art/style.md`) and first appeared in `design/care.pen`.
+Each item picture of dinosaur care, `<item>.webp`, a 400×300 WebP with alpha, cut tight to its art, with the generator that made it and the date. They are drawn in the dinosaurs' picture-book style (`art/style.md`) and first appeared in the care designs, now in `design/rexlab.pen`.
 
 | Item | Picture | Generator | Date |
 | --- | --- | --- | --- |

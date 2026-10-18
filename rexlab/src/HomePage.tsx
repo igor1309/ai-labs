@@ -1,4 +1,4 @@
-import { BookOpen, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -26,20 +26,55 @@ export type HomePageProps = {
   // Dinosaur care's tile: the picture on it and its best score,
   // undefined while there is none to show.
   care: { picture: string; best: number | undefined };
-  // The dinosaur pictured on the card of the games still to come.
+  // The sorting game's card: the picture on it and its best score,
+  // undefined while there is none to show.
+  sort: { picture: string; best: number | undefined };
+  // Find the pair's tile: the dinosaur on its cards and the stars earned,
+  // undefined until a board is finished.
+  pairs: { picture: string; stars: number | undefined };
+  // The skeleton game's tile: the skeleton on it and the best collection
+  // score, undefined while there is none to show.
+  skeletons: { picture: string; best: number | undefined };
+  // The dinosaur whose shape stands on the tile of the games still to
+  // come.
   moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
+  onSort: () => void;
+  onPairs: () => void;
+  onSkeletons: () => void;
 };
 
 type Menu = "language" | "theme";
 
-export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, catalogue, care, moreComing, onCompareDinosaurs, onCatalogue, onCare }: HomePageProps) {
+export function HomePage({
+  language,
+  onLanguage,
+  theme,
+  onTheme,
+  faceOff,
+  best,
+  catalogue,
+  care,
+  sort,
+  pairs,
+  skeletons,
+  moreComing,
+  onCompareDinosaurs,
+  onCatalogue,
+  onCare,
+  onSort,
+  onPairs,
+  onSkeletons
+}: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
   const cataloguePointer = usePointerState();
   const carePointer = usePointerState();
+  const sortPointer = usePointerState();
+  const pairsPointer = usePointerState();
+  const skeletonsPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -109,7 +144,7 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
           </span>
           <span className="quiz-card-footer">
             <span className="quiz-card-symbol" aria-hidden="true">
-              <Scale size={30} />
+              <Scale size={28} />
             </span>
             <span className="quiz-card-title">{text.quizCard}</span>
           </span>
@@ -122,14 +157,19 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
             </span>
           )}
         </button>
-        <div className="side-games">
-          <button type="button" className="card catalogue-tile" aria-label={text.catalogue} onClick={onCatalogue} {...cataloguePointer}>
+        {/* The other games stand in columns of two, in reading order, and
+            scroll sideways beside COMPARE when they do not fit. */}
+        <div className="games-tiles">
+          <button type="button" className="card catalogue-tile" aria-label={text.catalogueTile} onClick={onCatalogue} {...cataloguePointer}>
             <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />
+            {/* The book sits in the picture's other corner: beside the
+                title it would leave ALL DINOSAURS too little of the row on
+                the smallest iPad. */}
+            <span className="catalogue-tile-symbol" aria-hidden="true">
+              <BookOpen size={20} />
+            </span>
             <span className="catalogue-tile-row">
-              <span className="catalogue-tile-symbol" aria-hidden="true">
-                <BookOpen size={20} />
-              </span>
-              <span className="catalogue-tile-title">{text.catalogue}</span>
+              <span className="catalogue-tile-title">{text.catalogueTile}</span>
             </span>
             {/* The counts sit in the tiles' corners, over the pictures: the
                 rows keep their width for the titles. */}
@@ -153,17 +193,70 @@ export function HomePage({ language, onLanguage, theme, onTheme, faceOff, best, 
               </span>
             )}
           </button>
-        </div>
-        {/* The games still to come are a picture, not a button: a tap on
-            it does nothing, and nothing on it invites one. */}
-        <div className="more-coming">
-          <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
-          <span className="more-coming-label">
-            <span className="more-coming-symbol" aria-hidden="true">
-              <Lock size={24} />
+          <button type="button" className="card sort-tile" aria-label={text.sort} onClick={onSort} {...sortPointer}>
+            <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />
+            <span className="sort-tile-row">
+              <span className="sort-tile-symbol" aria-hidden="true">
+                <Shapes size={20} />
+              </span>
+              <span className="sort-tile-title">{text.sort}</span>
             </span>
-            <span className="more-coming-title">{text.moreComing}</span>
-          </span>
+            {sort.best !== undefined && (
+              <span className="sort-tile-best">
+                <Trophy size={18} aria-hidden="true" />
+                {sort.best}
+              </span>
+            )}
+          </button>
+          <button type="button" className="card pairs-tile" aria-label={text.pairs} onClick={onPairs} {...pairsPointer}>
+            <span className="pairs-tile-art" aria-hidden="true">
+              <span className="pairs-tile-card pairs-tile-card-first">
+                <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
+              </span>
+              <span className="pairs-tile-card pairs-tile-back">
+                <Footprints size={44} />
+              </span>
+              <span className="pairs-tile-card pairs-tile-card-second">
+                <img className="pairs-tile-picture" src={pairs.picture} alt="" draggable={false} />
+              </span>
+            </span>
+            <span className="pairs-tile-row">
+              <span className="pairs-tile-symbol" aria-hidden="true">
+                <Copy size={24} />
+              </span>
+              <span className="pairs-tile-title">{text.pairs}</span>
+            </span>
+            {pairs.stars !== undefined && (
+              <span className="pairs-tile-stars">
+                <Star size={18} aria-hidden="true" />
+                {pairs.stars}
+              </span>
+            )}
+          </button>
+          <button type="button" className="card skeletons-tile" aria-label={text.skeletons} onClick={onSkeletons} {...skeletonsPointer}>
+            <img className="skeletons-tile-picture" src={skeletons.picture} alt="" draggable={false} />
+            <span className="skeletons-tile-row">
+              <span className="skeletons-tile-symbol" aria-hidden="true">
+                <Bone size={20} />
+              </span>
+              <span className="skeletons-tile-title">{text.skeletons}</span>
+            </span>
+            {skeletons.best !== undefined && (
+              <span className="skeletons-tile-best">
+                <Trophy size={18} aria-hidden="true" />
+                {skeletons.best}
+              </span>
+            )}
+          </button>
+          {/* The games still to come are a picture, not a button: a tap on
+              it does nothing, and nothing on it invites one. */}
+          <div className="more-coming">
+            <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
+            <span className="more-coming-row">
+              <Lock size={22} aria-hidden="true" />
+              <span className="more-coming-title">{text.moreComing}</span>
+            </span>
+          </div>
         </div>
       </div>
     </main>

@@ -1,19 +1,27 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
+import { HomePage } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { NO_PAIRS } from "../src/pairs/progress.ts";
 import { careRecord } from "./careApp.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
+import { pairsRecord } from "./pairsApp.tsx";
+import { keptSkeletons } from "./skeletonsApp.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
+  emptySkeletons,
+  emptySorting,
   englishDevice,
   fakeBodyPicture,
+  fakeSkeletonPicture,
   lightDevice,
   loadedPictures,
   manualPictures,
@@ -24,26 +32,68 @@ import {
   type MemoryStorage
 } from "./support.ts";
 
-function openHomePage(progress = emptyProgress(), pictures = loadedPictures(), care = emptyCare()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...pictures} />);
+function openHomePage(
+  progress = emptyProgress(),
+  pictures = loadedPictures(),
+  care = emptyCare(),
+  sorting = emptySorting(),
+  pairs = emptyPairs(),
+  skeletons = emptySkeletons()
+) {
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
 const withStorage = (storage: MemoryStorage) => localProgress(() => storage);
 
+const withSorting = (storage: MemoryStorage) => ({ ...emptySorting(), sortingProgress: localSortingProgress(() => storage) });
+
+const withSkeletons = (storage: MemoryStorage) => ({ ...emptySkeletons(), skeletonProgress: localSkeletonProgress(() => storage) });
+
 // A stored record in the section 5 format of docs/mvp-infrastructure.md.
 const record = (bestScore: number | null) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed: 3 } } });
+
+// The same record, for the sorting game.
+const sortingRecord = (bestScore: number | null) =>
+  JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore, roundsPlayed: 2 } } });
+
+const nothing = () => {};
+
+// The home page alone, its SORT card's taps counted in `taps`.
+function renderHomePage(taps: number[]) {
+  render(
+    <HomePage
+      language="en"
+      onLanguage={nothing}
+      theme="light"
+      onTheme={nothing}
+      faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
+      best={undefined}
+      catalogue={{ picture: fakeBodyPicture("stegosaurus"), count: SHIPPED_CATALOGUE.length }}
+      care={{ picture: fakeBodyPicture("parasaurolophus"), best: undefined }}
+      sort={{ picture: fakeBodyPicture("triceratops"), best: undefined }}
+      pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
+      skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
+      moreComing={fakeBodyPicture("triceratops")}
+      onCompareDinosaurs={nothing}
+      onCatalogue={nothing}
+      onCare={nothing}
+      onSort={() => taps.push(1)}
+      onPairs={nothing}
+      onSkeletons={nothing}
+    />
+  );
+  return { user: userEvent.setup(), card: screen.getByRole("button", { name: "SORT" }) };
+}
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
-const moreComing = () => {
-  const card = document.querySelector<HTMLElement>(".more-coming");
-  if (!card) throw new Error("No MORE COMING card on the page");
-  return card;
-};
+const pairsTile = () => screen.getByRole("button", { name: "FIND THE PAIR" });
+
+const skeletonsTile = () => screen.getByRole("button", { name: "SKELETONS" });
 
 // jsdom lays nothing out, so the width of each title in every language
 // is given here in ems of its bold face, rounded up: Lexend's for the
@@ -54,16 +104,35 @@ const TITLE_EMS: Record<string, number> = {
   COMPARE: 5.1,
   СРАВНИ: 4.1,
   "ALL DINOSAURS": 8.6,
-  "ВСЕ ДИНОЗАВРЫ": 8.8,
+  ВСЕ: 2.1,
   CARE: 2.8,
-  ПОЗАБОТЬСЯ: 6.9
+  ПОЗАБОТЬСЯ: 6.9,
+  SORT: 2.9,
+  РАЗЛОЖИ: 5.2,
+  // FIND THE PAIR's title may wrap, so each line it may take is here.
+  "FIND THE PAIR": 8.1,
+  "FIND THE": 5.2,
+  "THE PAIR": 5.1,
+  FIND: 2.8,
+  THE: 2.1,
+  PAIR: 2.7,
+  "НАЙДИ ПАРУ": 6.6,
+  НАЙДИ: 3.7,
+  ПАРУ: 2.7,
+  SKELETONS: 6.2,
+  СКЕЛЕТЫ: 4.8,
+  "MORE COMING": 7.9,
+  "СКОРО ЕЩЁ": 6.0
 };
 
 // The words each title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogue" | "care"> = {
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "moreComing"> = {
   "quiz-card-title": "quizCard",
-  "catalogue-tile-title": "catalogue",
-  "care-tile-title": "care"
+  "catalogue-tile-title": "catalogueTile",
+  "care-tile-title": "care",
+  "sort-tile-title": "sort",
+  "skeletons-tile-title": "skeletons",
+  "more-coming-title": "moreComing"
 };
 
 const px = (value: string) => Number.parseFloat(value) || 0;
@@ -73,36 +142,78 @@ const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-
 
 const sidesOf = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth);
 
-// The width each column of the games takes on a page `width` wide: the
-// columns grow from nothing by their shares of what the page's padding,
-// the gaps and their own sides leave.
-function columnWidths(width: number) {
+// The tiles' row of the home page, beside COMPARE.
+const tilesRow = () => {
+  const row = document.querySelector(".games-tiles");
+  if (!row) throw new Error("No tiles beside COMPARE");
+  return row;
+};
+
+// The widths COMPARE and the tiles' row take on a page `width` wide: they
+// grow from nothing by their shares of what the page's padding, the gap
+// and their own sides leave. A width set, capped or floored any other way
+// fails here, since this sum would not see it.
+function gamesWidths(width: number) {
   const home = document.querySelector(".home");
   const games = document.querySelector(".games");
   if (!home || !games) throw new Error("No games on the page");
-  const columns = [...games.children].map((column) => ({ column, style: getComputedStyle(column) }));
-  expect(columns.map(({ style }) => [style.flexBasis, style.minWidth])).toEqual(columns.map(() => ["0px", "0px"]));
-  const free = width - sidesOf(getComputedStyle(home)) - columnGapOf(getComputedStyle(games)) * (columns.length - 1) - columns.reduce((sum, { style }) => sum + sidesOf(style), 0);
-  const shares = columns.reduce((sum, { style }) => sum + Number(style.flexGrow), 0);
-  return new Map(columns.map(({ column, style }) => [column, (free * Number(style.flexGrow)) / shares + sidesOf(style)]));
+  const parts = [...games.children].map((part) => ({ part, style: getComputedStyle(part) }));
+  expect(parts.map(({ style }) => [style.flexBasis, style.minWidth, style.maxWidth, style.width])).toEqual(parts.map(() => ["0px", "0px", "none", "auto"]));
+  expect([home, games].map((element) => [getComputedStyle(element).maxWidth, getComputedStyle(element).width])).toEqual([
+    ["none", "auto"],
+    ["none", "auto"]
+  ]);
+  const free = width - sidesOf(getComputedStyle(home)) - columnGapOf(getComputedStyle(games)) * (parts.length - 1) - parts.reduce((sum, { style }) => sum + sidesOf(style), 0);
+  const shares = parts.reduce((sum, { style }) => sum + Number(style.flexGrow), 0);
+  return new Map(parts.map(({ part, style }) => [part, (free * Number(style.flexGrow)) / shares + sidesOf(style)]));
 }
 
-// The width a title has on a page `width` wide: its card's column, short
+// The width of every column of tiles, as the row writes it.
+function tileColumnWidth() {
+  const columns = getComputedStyle(tilesRow()).gridAutoColumns;
+  expect(columns).toMatch(/^[\d.]+px$/);
+  return px(columns);
+}
+
+// The width a card has on a page `width` wide: COMPARE its share of the
+// games, and a tile its column.
+function cardWidth(card: Element, width: number) {
+  const part = [...gamesWidths(width)].find(([part]) => part === card);
+  return part ? part[1] : tileColumnWidth();
+}
+
+// The width a title has on a page `width` wide: its card's width, short
 // of the sides of the card and the row, and of the row's other parts and
 // the gaps between them.
 function roomFor(title: Element, width: number) {
   const row = title.parentElement;
-  const card = title.closest("button");
-  const column = [...columnWidths(width)].find(([column]) => column.contains(card));
-  if (!row || !card || !column) throw new Error("A title outside the games");
+  const card = title.closest("button, .more-coming");
+  if (!row || !card) throw new Error("A title outside the games");
   const others = [...row.children].filter((child) => child !== title);
   return (
-    column[1] -
+    cardWidth(card, width) -
     sidesOf(getComputedStyle(card)) -
     sidesOf(getComputedStyle(row)) -
-    others.reduce((sum, other) => sum + px(getComputedStyle(other).width), 0) -
+    // A symbol drawn straight into the row is as wide as it is drawn.
+    others.reduce((sum, other) => sum + (px(getComputedStyle(other).width) || px(other.getAttribute("width") ?? "")), 0) -
     columnGapOf(getComputedStyle(row)) * others.length
   );
+}
+
+// The lines `words` wrap onto in `room` at `size`, a word at a time, or
+// the line whose width in ems is missing here.
+function linesOf(words: string, size: number, room: number): string[] | { missing: string } {
+  const lines: string[] = [];
+  for (const word of words.split(" ")) {
+    const last = lines.at(-1);
+    const joined = last === undefined ? word : `${last} ${word}`;
+    const ems = TITLE_EMS[joined];
+    if (ems === undefined) return { missing: joined };
+    if (last !== undefined && ems * size <= room) lines[lines.length - 1] = joined;
+    else lines.push(word);
+  }
+  const missing = lines.find((line) => TITLE_EMS[line] === undefined);
+  return missing === undefined ? lines : { missing };
 }
 
 const brightness = (element: Element) => {
@@ -121,40 +232,124 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("lays the games out in three columns, 3 : 2 : 1 of the width: COMPARE, ALL DINOSAURS over CARE, then MORE COMING as tall as them", () => {
+  it("stands the other games beside COMPARE in equal columns of two: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, then SKELETONS over MORE COMING", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
     expect(games?.classList.contains("games")).toBe(true);
-    const catalogue = screen.getByRole("button", { name: "ALL DINOSAURS" });
-    const care = screen.getByRole("button", { name: "CARE" });
-    const tiles = catalogue.parentElement;
-    expect([...(tiles?.children ?? [])]).toEqual([catalogue, care]);
-    expect([...(games?.children ?? [])]).toEqual([card, tiles, moreComing()]);
-    expect(
-      [card, tiles, moreComing()].map((column) => {
-        const style = getComputedStyle(column ?? card);
-        return [style.flexGrow, style.flexBasis, style.alignSelf];
-      })
-    ).toEqual([
-      ["3", "0px", "auto"],
-      ["2", "0px", "auto"],
-      ["1", "0px", "auto"]
-    ]);
-    expect(getComputedStyle(games ?? card).alignItems).toBe("normal");
+    const row = tilesRow();
+    expect([...(games?.children ?? [])]).toEqual([card, row]);
+    // COMPARE takes three sevenths of the width, the tiles the rest.
+    expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
+    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name })), document.querySelector(".more-coming")];
+    expect([...row.children]).toEqual(tiles);
+    // The tiles fill the row a column at a time, two to a column, every
+    // column as wide as the others and its two tiles sharing its height.
+    const style = getComputedStyle(row);
+    expect([style.display, style.gridAutoFlow, style.gridTemplateRows]).toEqual(["grid", "column", "minmax(0, 1fr) minmax(0, 1fr)"]);
+    expect(tileColumnWidth()).toBeGreaterThan(0);
+    expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
+  });
+
+  it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
+    openHomePage();
+    const sort = screen.getByRole("button", { name: "SORT" });
+
+    // The browser pans the row sideways only if nothing from the tile up
+    // forbids it.
+    const panning: string[] = [];
+    for (let element: Element | null = sort; element; element = element.parentElement) panning.push(getComputedStyle(element).touchAction || "auto");
+    expect(panning.filter((action) => !["auto", "manipulation"].includes(action) && !action.split(" ").includes("pan-x"))).toEqual([]);
+    expect(getComputedStyle(tilesRow()).overflowX).toBe("auto");
+
+    // A finger that pans the row gets a pointercancel and no click.
+    fireEvent.pointerDown(sort, { pointerType: "touch" });
+    expect(sort.dataset.pressed).toBe("true");
+    fireEvent.pointerCancel(sort, { pointerType: "touch" });
+
+    expect(sort.dataset.pressed).toBeUndefined();
+    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+  });
+
+  it("stands the tiles at their start again on coming home from a game", async () => {
+    const { user } = openHomePage();
+    const row = tilesRow();
+
+    await user.click(pairsTile());
+    await user.click(await screen.findByRole("button", { name: "HOME" }));
+
+    // The row is drawn anew, so it is scrolled to its start.
+    await screen.findByRole("button", { name: "FIND THE PAIR" });
+    expect(document.querySelectorAll(".games-tiles")).toHaveLength(1);
+    expect(tilesRow()).not.toBe(row);
+    expect(row.isConnected).toBe(false);
+  });
+
+  it("shows the games still to come as a faded Triceratops's shape over a lock, with nothing to tap, brighten or press in", async () => {
+    const { user } = openHomePage();
+
+    const tile = document.querySelector(".more-coming");
+    if (!tile) throw new Error("No MORE COMING tile");
+    expect(tile.tagName).toBe("DIV");
+    expect(tile.querySelector("button, a, [role=button]")).toBeNull();
+    expect(tile.classList.contains("card")).toBe(false);
+    expect(tile.textContent).toBe("MORE COMING");
+    expect(TEXTS.ru.moreComing).toBe("СКОРО ЕЩЁ");
+    expect(symbolsOf(tile)).toEqual(["lock"]);
+    const picture = tile.querySelector("img");
+    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(brightness(picture ?? tile)).toBe(0);
+    expect(Number(getComputedStyle(picture ?? tile).opacity)).toBeLessThan(0.5);
+
+    await user.hover(tile);
+    expect(brightness(tile)).toBe(1);
+    await user.pointer({ keys: "[TouchA>]", target: tile });
+    expect(getComputedStyle(tile).transform).toBe("none");
+    await user.pointer({ keys: "[/TouchA]", target: tile });
+    expect(screen.getByRole("button", { name: "COMPARE" })).toBe(tilesRow().previousElementSibling);
+  });
+
+  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a COMPARE that stays, with the next column peeking in, at %ipx wide", (width) => {
+    const { card } = openHomePage();
+
+    const row = tilesRow();
+    const style = getComputedStyle(row);
+    expect([style.overflowX, style.overflowY]).toEqual(["auto", "hidden"]);
+    // COMPARE is outside the row, so it stays as the tiles scroll.
+    expect(row.contains(card)).toBe(false);
+    const shown = (gamesWidths(width).get(row) ?? 0) - sidesOf(style);
+    const column = tileColumnWidth();
+    const gap = columnGapOf(style);
+    const columns = Math.ceil(row.children.length / 2);
+    // The columns do not all fit, and the first one that does not shows
+    // at least 24px of itself at the edge.
+    expect(columns * column + (columns - 1) * gap).toBeGreaterThan(shown);
+    const whole = Math.floor((shown + gap) / (column + gap));
+    expect(whole).toBeGreaterThanOrEqual(1);
+    expect(shown - whole * (column + gap)).toBeGreaterThanOrEqual(24);
   });
 
   it.each([1024, 1180, 1366])(
-    "keeps the title of every game on one line in every language at %ipx wide, the tiles' at least 24px and their counts at least 20px in the pictures' corners",
+    "keeps the title of every game on one line in every language at %ipx wide, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
     (width) => {
-      const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 7, visitsFinished: 1, friends: [] }) });
-      openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })), loadedPictures(), { ...emptyCare(), careProgress: localCareProgress(() => careStorage) });
+      const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
+      openHomePage(
+        withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })),
+        loadedPictures(),
+        { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
+        withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
+        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) },
+        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
+      );
 
       const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
       expect(titles.map((title) => [title.textContent, getComputedStyle(title).whiteSpace])).toEqual([
         ["COMPARE", "nowrap"],
         ["ALL DINOSAURS", "nowrap"],
-        ["CARE", "nowrap"]
+        ["CARE", "nowrap"],
+        ["SORT", "nowrap"],
+        ["SKELETONS", "nowrap"],
+        ["MORE COMING", "nowrap"]
       ]);
       const overflowing = titles.flatMap((title) => {
         const style = getComputedStyle(title);
@@ -172,47 +367,116 @@ describe("the home page", () => {
       });
       expect(overflowing).toEqual([]);
 
-      const tiles = [screen.getByRole("button", { name: "ALL DINOSAURS" }), screen.getByRole("button", { name: "CARE" })];
-      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true]);
-      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best"));
+      const tiles = ["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name }));
+      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true, true, true, true]);
+      expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
+      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
         [String(SHIPPED_CATALOGUE.length), true, "absolute"],
-        ["7", true, "absolute"]
+        ["8", true, "absolute"],
+        ["6", true, "absolute"],
+        ["120", true, "absolute"],
+        ["3", true, "absolute"]
       ]);
-      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true]);
-      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative"]);
+      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true, true, true]);
+      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative", "relative", "relative"]);
+
+      const title = pairsTile().querySelector(".pairs-tile-title");
+      if (!title) throw new Error("No FIND THE PAIR title");
+      expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", "pairs-tile-symbol"]);
+      const size = px(getComputedStyle(title).fontSize);
+      expect(size).toBeGreaterThanOrEqual(24);
+      const room = roomFor(title, width);
+      expect(LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, room)).filter((lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => (TITLE_EMS[line] ?? 0) * size > room))).toEqual([]);
     }
   );
 
-  it("shows MORE COMING beside the tiles as a picture, not a button: a faded Triceratops over a lock", () => {
+  it("offers find the pair as a tile under SORT: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
-    const card = moreComing();
-    expect(card.textContent).toBe("MORE COMING");
-    expect(symbolsOf(card)).toEqual(["lock"]);
-    const picture = card.querySelector("img");
-    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
-    expect(Number(getComputedStyle(picture ?? card).opacity)).toBeLessThan(1);
-    expect(card.closest("button")).toBeNull();
-    expect(within(card).queryAllByRole("button")).toEqual([]);
-    expect([card, ...card.querySelectorAll("*")].filter((element) => element instanceof HTMLElement && element.tabIndex >= 0)).toEqual([]);
+    const tile = pairsTile();
+    expect(tile.textContent).toBe("FIND THE PAIR");
+    expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
+    expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 
-  it("does nothing on a tap or a press of MORE COMING, and it neither brightens nor presses in", async () => {
+  it("brightens find the pair's tile under a pointer, and presses it in", async () => {
     const { user } = openHomePage();
-    const card = moreComing();
-    const before = document.body.innerHTML;
+    const tile = pairsTile();
 
-    await user.hover(card);
-    expect(brightness(card)).toBe(1);
-    await user.pointer({ keys: "[TouchA>]", target: card });
-    expect([brightness(card), getComputedStyle(card).transform]).toEqual([1, "none"]);
-    await user.pointer({ keys: "[/TouchA]", target: card });
-    await user.click(card);
-    await user.unhover(card);
+    await user.hover(tile);
+    expect(brightness(tile)).toBeGreaterThan(1);
+    await user.pointer({ keys: "[TouchA>]", target: tile });
+    expect(getComputedStyle(tile).transform).toMatch(/^scale\(0\.\d+\)$/);
+    await user.pointer({ keys: "[/TouchA]", target: tile });
 
-    expect(document.body.innerHTML).toBe(before);
-    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
+    expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
+  });
+
+  it("offers the skeleton game as a SKELETONS tile over MORE COMING: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
+    openHomePage();
+
+    const tile = skeletonsTile();
+    expect(tile.textContent).toBe("SKELETONS");
+    expect(TEXTS.ru.skeletons).toBe("СКЕЛЕТЫ");
+    expect(symbolsOf(tile)).toEqual(["bone"]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("triceratops", "skeleton")]);
+    const title = tile.querySelector(".skeletons-tile-title");
+    expect(title?.previousElementSibling?.contains(tile.querySelector("svg.lucide-bone"))).toBe(true);
+    expect(tile.nextElementSibling).toBe(document.querySelector(".more-coming"));
+    expect(tile.querySelector(".skeletons-tile-best")).toBeNull();
+  });
+
+  it("shows the best collection score in the SKELETONS tile's picture's corner, beside a trophy", () => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(keptSkeletons({ earned: ["triceratops", "stegosaurus"], bestScore: 2, rebuilding: [] })));
+
+    const tile = skeletonsTile();
+    const best = tile.querySelector(".skeletons-tile-best");
+    expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "2"]);
+    expect(best?.parentElement).toBe(tile);
+    expect(tile.querySelector(".skeletons-tile-row")?.contains(best)).toBe(false);
+    const [tileStyle, style] = [getComputedStyle(tile), getComputedStyle(best ?? tile)];
+    expect([tileStyle.position, style.position, style.top, style.right]).toEqual(["relative", "absolute", "12px", "12px"]);
+  });
+
+  it.each([
+    ["no skeleton built", keptSkeletons({ earned: [], bestScore: null, rebuilding: [] })],
+    ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "skeleton-assembly": { earned: ["triceratops"], bestScore: 1, rebuilding: [] } } }) }, { read: false })],
+    ["only the quiz's best kept", memoryStorage({ [PROGRESS_KEY]: record(7) })]
+  ])("shows no best score on the SKELETONS tile with %s", (_, storage) => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), withSkeletons(storage));
+
+    expect(skeletonsTile().querySelector(".skeletons-tile-best")).toBeNull();
+    expect(symbolsOf(skeletonsTile())).toEqual(["bone"]);
+  });
+
+  it("opens the skeleton game's choice of dinosaurs on SKELETONS, with MUSEUM beside a museum and HOME beside a house", async () => {
+    const { user } = openHomePage();
+
+    await user.click(skeletonsTile());
+
+    expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
+    expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
+      "TYRANNOSAURUS",
+      "TRICERATOPS",
+      "STEGOSAURUS"
+    ]);
+    expect([symbolOf(screen.getByRole("button", { name: "MUSEUM" })), symbolOf(screen.getByRole("button", { name: "HOME" }))]).toEqual(["landmark", "house"]);
+  });
+
+  it("brightens the SKELETONS tile under a pointer, and presses it in before the game opens", async () => {
+    const { user } = openHomePage();
+    const tile = skeletonsTile();
+
+    await user.hover(tile);
+    expect(brightness(tile)).toBeGreaterThan(1);
+    await user.pointer({ keys: "[TouchA>]", target: tile });
+    expect(getComputedStyle(tile).transform).toMatch(/^scale\(0\.\d+\)$/);
+    expect(screen.queryByRole("heading", { name: "BUILD A SKELETON" })).toBeNull();
+    await user.pointer({ keys: "[/TouchA]", target: tile });
+
+    expect(screen.getByRole("heading", { name: "BUILD A SKELETON" })).toBeDefined();
   });
 
   it("shows the best score in the quiz card's corner, over the face-off, beside a trophy", () => {
@@ -236,6 +500,80 @@ describe("the home page", () => {
 
     expect(card.querySelector(".quiz-card-best")).toBeNull();
     expect(symbolsOf(card)).toEqual(["scale"]);
+  });
+
+  it("offers the sorting game as a SORT card with a Triceratops beside a symbol of shapes, and no best score before a board is finished", () => {
+    openHomePage();
+
+    const sort = screen.getByRole("button", { name: "SORT" });
+    expect(sort.textContent).toBe("SORT");
+    expect(symbolsOf(sort)).toEqual(["shapes"]);
+    expect(sort.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    const title = sort.querySelector(".sort-tile-title");
+    expect(title?.previousElementSibling?.contains(sort.querySelector("svg.lucide-shapes"))).toBe(true);
+    expect(sort.querySelector(".sort-tile-best")).toBeNull();
+  });
+
+  it("shows the sorting game's best score in the SORT card's picture's corner, beside a trophy", () => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(4) })));
+
+    const sort = screen.getByRole("button", { name: "SORT" });
+    const best = sort.querySelector(".sort-tile-best");
+    expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "4"]);
+    expect(best?.parentElement).toBe(sort);
+    expect(sort.querySelector(".sort-tile-row")?.contains(best)).toBe(false);
+    const [cardStyle, style] = [getComputedStyle(sort), getComputedStyle(best ?? sort)];
+    expect([cardStyle.position, style.position, style.top, style.right]).toEqual(["relative", "absolute", "12px", "12px"]);
+    expect(screen.getByRole("button", { name: "COMPARE" }).querySelector(".quiz-card-best")).toBeNull();
+  });
+
+  it.each([
+    ["no best kept", memoryStorage({ [PROGRESS_KEY]: sortingRecord(null) })],
+    ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: sortingRecord(4) }, { read: false })],
+    ["only the quiz's best kept", memoryStorage({ [PROGRESS_KEY]: record(7) })]
+  ])("shows no best score on the SORT card with %s", (_, storage) => {
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), withSorting(storage));
+
+    const sort = screen.getByRole("button", { name: "SORT" });
+    expect(sort.querySelector(".sort-tile-best")).toBeNull();
+    expect(symbolsOf(sort)).toEqual(["shapes"]);
+  });
+
+  it("brightens the SORT card under a pointer", async () => {
+    const { user, card } = renderHomePage([]);
+    expect(brightness(card)).toBe(1);
+
+    await user.hover(card);
+    expect(brightness(card)).toBeGreaterThan(1);
+
+    await user.unhover(card);
+    expect(brightness(card)).toBe(1);
+  });
+
+  it("shows the SORT card pressed before the game is opened, and opens it as the press ends", async () => {
+    const taps: number[] = [];
+    const { user, card } = renderHomePage(taps);
+
+    await user.pointer({ keys: "[TouchA>]", target: card });
+
+    expect(getComputedStyle(card).transform).toMatch(/^scale\(0\.\d+\)$/);
+    expect(taps).toEqual([]);
+
+    await user.pointer({ keys: "[/TouchA]", target: card });
+
+    expect(taps).toEqual([1]);
+    expect(getComputedStyle(card).transform).toBe("none");
+  });
+
+  it("opens the sorting game once for each tap on the SORT card", async () => {
+    const taps: number[] = [];
+    const { user, card } = renderHomePage(taps);
+
+    await user.click(card);
+    expect(taps).toEqual([1]);
+
+    await user.click(card);
+    expect(taps).toEqual([1, 1]);
   });
 
   it("shows the RexLab wordmark, small, in the top-left corner", () => {

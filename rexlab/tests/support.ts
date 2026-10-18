@@ -1,8 +1,9 @@
 import records from "../src/data/dinosaurs.json";
-import type { AppProps, Appearance } from "../src/App.tsx";
-import { readCatalogue, readDinosaurs, readVisitors } from "../src/dinosaurs.ts";
+import skeletonPlaces from "../src/data/skeletons.json";
+import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
+import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -10,11 +11,15 @@ import { presentQuestion } from "../src/presentation.ts";
 import { choose, questionState, type Random } from "../src/quiz/index.ts";
 import { startPlay } from "../src/quiz/play.ts";
 import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
+export const SHIPPED_SORTABLES = readSortables(records);
+export const SHIPPED_PALS = readPals(records);
+export const SHIPPED_SKELETONS = readSkeletons(records, skeletonPlaces);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -23,6 +28,10 @@ export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.
 // A care picture URL of the item's own, for tests that are not about the
 // picture files.
 export const fakeItemPicture = (name: string) => `/care/${name}.webp`;
+
+// A skeleton picture URL of the part's own, for tests that are not about
+// the picture files.
+export const fakeSkeletonPicture = (dinosaurId: string, part: string) => `/skeletons/${dinosaurId}/${part}.webp`;
 
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
@@ -137,6 +146,30 @@ export function seededRandom(seed: number): Random {
   };
 }
 
+// A best-score rule that answers `beaten` whatever it is asked, and keeps
+// what it was asked, so a game's scoring is proved apart from the rule.
+export function scoringSpy<Beaten>(beaten: Beaten) {
+  const asked: Array<[previous: number | null, score: number]> = [];
+  return {
+    beatBest: (previous: number | null, score: number) => {
+      asked.push([previous, score]);
+      return beaten;
+    },
+    asked
+  };
+}
+
+// A new board sorting by `property`. A board sorts by any property, so
+// boards are started until one does.
+export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1): Sorting {
+  const random = seededRandom(seed);
+  for (let tries = 0; tries < 100; tries++) {
+    const sorting = startBoard(dinosaurs, random);
+    if (boardState(sorting).property === property) return sorting;
+  }
+  throw new Error(`No board sorted by ${property}`);
+}
+
 export type ManualOrientation = Orientation & { turn(to: "portrait" | "landscape"): void };
 
 // The iPad's orientation, turned only when the test turns it.
@@ -152,6 +185,46 @@ export function manualOrientation(initial: "portrait" | "landscape"): ManualOrie
     turn: (to) => {
       portrait = to === "portrait";
       listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+export type ManualVisibility = PageVisibility & { switchTo(to: "hidden" | "visible"): void };
+
+// The app's visibility, switched only when the test switches it.
+export function manualVisibility(initial: "hidden" | "visible"): ManualVisibility {
+  let hidden = initial === "hidden";
+  const listeners = new Set<() => void>();
+  return {
+    isHidden: () => hidden,
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    switchTo: (to) => {
+      hidden = to === "hidden";
+      listeners.forEach((onChange) => onChange());
+    }
+  };
+}
+
+// A browser's document, whose visibility the test sets and which reports
+// each change as a browser does, and its version footer, whose attributes
+// the test reads, unless the page has none.
+export function browserDocument(initial: DocumentVisibilityState = "visible", { versionFooter = true } = {}) {
+  const target = new EventTarget();
+  const attributes: Record<string, string> = {};
+  const footer = { setAttribute: (name: string, value: string) => void (attributes[name] = value) };
+  const document = Object.assign(target, {
+    visibilityState: initial,
+    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null)
+  });
+  return {
+    document,
+    footer: attributes,
+    switchTo: (to: DocumentVisibilityState) => {
+      document.visibilityState = to;
+      target.dispatchEvent(new Event("visibilitychange"));
     }
   };
 }
@@ -212,12 +285,42 @@ export function emptyCare(): Pick<AppProps, "visitors" | "careProgress" | "itemP
   return { visitors: SHIPPED_VISITORS, careProgress: localCareProgress(() => storage), itemPicture: fakeItemPicture, reducedMotion: () => false };
 }
 
-// The language for tests that are not about it: an English device, and no
-// language chosen yet.
+// The sorting game for tests that are not about it: every shipped
+// dinosaur may be sorted, no sorting progress kept yet, and saving works.
+export function emptySorting(): Pick<AppProps, "sortables" | "sortingProgress"> {
+  const storage = memoryStorage();
+  return { sortables: SHIPPED_SORTABLES, sortingProgress: localSortingProgress(() => storage) };
+}
+
+// Find the pair for tests that are not about it: every shipped dinosaur
+// may be dealt, no progress kept yet, and saving works.
+export function emptyPairs(): Pick<AppProps, "pals" | "pairsProgress"> {
+  const storage = memoryStorage();
+  return { pals: SHIPPED_PALS, pairsProgress: localPairsProgress(() => storage) };
+}
+
+// The skeleton game for tests that are not about it: every shipped
+// skeleton may be built, no skeleton progress kept yet, saving works, and
+// the app is never hidden.
+export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture" | "skeletonProgress" | "pageVisibility"> {
+  const storage = memoryStorage();
+  return {
+    skeletons: SHIPPED_SKELETONS,
+    skeletonPicture: fakeSkeletonPicture,
+    skeletonProgress: localSkeletonProgress(() => storage),
+    pageVisibility: manualVisibility("visible")
+  };
+}
+
+// The language for tests that are not about it: an English device, no
+// language chosen yet, and a version footer nobody reads.
 export function englishDevice() {
   const storage = memoryStorage();
-  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
+  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: unreadVersion };
 }
+
+// The version footer for tests that are not about it: its name is dropped.
+export const unreadVersion = () => {};
 
 // The theme for tests that are not about it: a device in its light
 // appearance, and no theme chosen yet.

@@ -9,7 +9,10 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyPairs,
   emptyProgress,
+  emptySkeletons,
+  emptySorting,
   englishDevice,
   fakeBodyPicture,
   lightDevice,
@@ -111,7 +114,7 @@ describe("a dinosaur card's picture", () => {
 describe("a round", () => {
   it("asks to turn the iPad sideways in portrait and resumes the same question", async () => {
     const orientation = manualOrientation("landscape");
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...loadedPictures()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "COMPARE" }));
     await answerAndGoOn(user);
@@ -131,7 +134,7 @@ describe("a round", () => {
   });
 
   it("marks the questions done, the one on screen and those to come on its steps", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...loadedPictures()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "COMPARE" }));
     await answerAndGoOn(user);
@@ -145,7 +148,7 @@ describe("a round", () => {
   // The generator's own tests cover the class of random draws; this one
   // proves the app hands each new round the one played before it.
   it("does not repeat the previous round's questions", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...loadedPictures()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
     const user = userEvent.setup();
 
     async function playRound() {

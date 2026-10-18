@@ -13,6 +13,7 @@ import {
   settle,
   startVisit,
   suitableItems,
+  type Beaten,
   type Celebration,
   type Diet,
   type Item,
@@ -21,7 +22,7 @@ import {
   type Visit,
   type Visitor
 } from "../src/care/index.ts";
-import { SHIPPED_VISITORS } from "./support.ts";
+import { SHIPPED_VISITORS, scoringSpy } from "./support.ts";
 
 const visitor = (id: string, diet: Diet): Visitor => ({ id, name: { en: id, ru: id }, diet });
 
@@ -149,32 +150,41 @@ describe("finishing a visit", () => {
   const ORDER = ["tyrannosaurus", "triceratops", "gallimimus"];
   const keptWith = (bestScore: number | null, friends: string[] = [], readable = true): KeptCare => ({ progress: { bestScore, visitsFinished: 2, friends }, readable });
 
-  it.each<[number | null, Need[], Celebration | null, number]>([
-    [null, [], "first-best", 8],
-    [null, ["hungry"], "first-best", 7],
-    [6, ["hungry"], "new-best", 7],
-    [7, ["hungry"], null, 7],
-    [8, NEEDS.slice(), null, 8]
-  ])("from a best of %s, with refusals at %o, celebrates %s and keeps a best of %i", (bestScore, retried, celebration, best) => {
-    const { result, kept } = finishVisit(keptWith(bestScore), finished(REX, retried), ORDER);
+  // Any best-score rule, for the cases that are not about the best.
+  const anyRule = () => scoringSpy<Beaten>({ best: 8, celebration: null }).beatBest;
 
-    expect(result).toMatchObject({ celebration, best, previousBest: bestScore ?? undefined, total: 8 });
-    expect(kept.progress).toMatchObject({ bestScore: best, visitsFinished: 3 });
+  it.each<[number | null, Need[], number, Celebration | null]>([
+    [null, [], 8, "first-best"],
+    [null, ["hungry"], 7, "first-best"],
+    [6, ["hungry"], 7, "new-best"],
+    [7, ["hungry"], 7, null],
+    [8, NEEDS.slice(), 4, null]
+  ])("from a best of %s, with refusals at %o, asks the best-score rule about %i hearts, and keeps the best it gives and its %s", (bestScore, retried, hearts, celebration) => {
+    const scoring = scoringSpy<Beaten>({ best: 9, celebration });
+
+    const { result, kept } = finishVisit(keptWith(bestScore), finished(REX, retried), ORDER, scoring.beatBest);
+
+    expect(scoring.asked).toEqual([[bestScore, hearts]]);
+    expect(result).toMatchObject({ score: hearts, celebration, best: 9, previousBest: bestScore ?? undefined, total: 8 });
+    expect(kept.progress).toMatchObject({ bestScore: 9, visitsFinished: 3 });
   });
 
   it("makes the visitor a friend once, kept in the dinosaur list's order, with a friend no longer listed kept after", () => {
-    const first = finishVisit(keptWith(4, ["gallimimus", "stegosaurus"]), finished(REX), ORDER);
+    const first = finishVisit(keptWith(4, ["gallimimus", "stegosaurus"]), finished(REX), ORDER, anyRule());
 
     expect(first.result.newFriend).toBe(true);
     expect(first.kept.progress.friends).toEqual(["tyrannosaurus", "gallimimus", "stegosaurus"]);
-    const again = finishVisit(first.kept, finished(REX), ORDER);
+    const again = finishVisit(first.kept, finished(REX), ORDER, anyRule());
     expect(again.result.newFriend).toBe(false);
     expect(again.kept.progress.friends).toEqual(["tyrannosaurus", "gallimimus", "stegosaurus"]);
   });
 
   it("shows no best and celebrates nothing when progress cannot be read, but still makes a friend", () => {
-    const { result, kept } = finishVisit({ progress: NO_CARE, readable: false }, finished(TRIKE), ORDER);
+    const scoring = scoringSpy<Beaten>({ best: 8, celebration: "first-best" });
 
+    const { result, kept } = finishVisit({ progress: NO_CARE, readable: false }, finished(TRIKE), ORDER, scoring.beatBest);
+
+    expect(scoring.asked).toEqual([[null, 8]]);
     expect(result).toMatchObject({ score: 8, best: undefined, previousBest: undefined, celebration: null, newFriend: true });
     expect(kept).toEqual({ progress: { bestScore: 8, visitsFinished: 1, friends: ["triceratops"] }, readable: false });
   });

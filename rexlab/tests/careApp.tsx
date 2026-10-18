@@ -3,18 +3,22 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import type { CareProgress, Item, Random, Visitor } from "../src/care/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_PALS,
+  SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptySkeletons,
   fakeBodyPicture,
   fakeItemPicture,
   manualAppearance,
   manualOrientation,
   manualTimers,
   memoryStorage,
+  unreadVersion,
   type ManualOrientation,
   type MemoryStorage
 } from "./support.ts";
@@ -54,12 +58,18 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
       visitors={visitors}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
+      pals={SHIPPED_PALS}
+      pairsProgress={localPairsProgress(() => storage)}
+      {...emptySkeletons()}
       reducedMotion={() => reducedMotion}
+      sortables={SHIPPED_SORTABLES}
+      sortingProgress={localSortingProgress(() => storage)}
       {...clock}
     />
   );
