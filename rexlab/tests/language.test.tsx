@@ -256,6 +256,30 @@ describe("the language menu", () => {
     }
   });
 
+  // The footer is styled by its id, so its look holds under either name:
+  // the soft ink on the page, the dark theme's soft ink, and the faded
+  // paper on the navy result screen.
+  it.each(["Version", "Версия"])("keeps the version footer's look in every theme and on the result screen when it is named %s", (name) => {
+    const footer = document.createElement("footer");
+    footer.id = "version";
+    footer.setAttribute("aria-label", name);
+    const result = document.createElement("div");
+    result.className = "result";
+    document.body.append(footer);
+    try {
+      expect([getComputedStyle(footer).position, sameColour(getComputedStyle(footer).color, "#5c647a")]).toEqual(["fixed", true]);
+      document.documentElement.dataset.theme = "dark";
+      expect(sameColour(getComputedStyle(footer).color, "#9ca3b6")).toBe(true);
+      delete document.documentElement.dataset.theme;
+      document.body.prepend(result);
+      expect(sameColour(getComputedStyle(footer).color, "#f6f1e699")).toBe(true);
+    } finally {
+      footer.remove();
+      result.remove();
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
   it("switches back, and the later choice is the one kept", async () => {
     const storage = memoryStorage();
     const { user, unmount } = openApp({ device: "ru-RU", storage });
