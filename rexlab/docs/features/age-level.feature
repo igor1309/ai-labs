@@ -57,18 +57,29 @@ Feature: Age level
       | Explorer       | Paleontologist | 🦴      |
       | Hatchling      | Explorer       | 🦖      |
 
-  Scenario: A level that cannot be saved still applies until the app closes
-    Given the browser's storage cannot be written
+  Scenario Outline: A level that cannot be saved still applies until the app closes
+    Given <saved>
+    And the browser's storage cannot be written
     When I choose Hatchling in the age level menu
     Then the button shows 🥚
     When I close and reopen the app
-    Then the button shows 🦖
+    Then the button shows <picture>
 
-  Scenario: The level outlives the games' progress
+    Examples:
+      | saved                   | picture |
+      | no age level is saved   | 🦖      |
+      | Paleontologist is saved | 🦴      |
+
+  Scenario Outline: The level outlives the games' progress
     Given I chose Paleontologist
-    When the games' saved progress is lost
+    When the games' saved progress is <lost>
     And I reopen the app
     Then the age level is Paleontologist
+
+    Examples:
+      | lost                    |
+      | deleted                 |
+      | there, but not readable |
 
   Scenario: Choosing a level changes no score
     Given I have a score in every game that keeps one

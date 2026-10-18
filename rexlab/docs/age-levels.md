@@ -21,7 +21,8 @@ an approximate age level next to the theme and language controls
   its nearest lower one. Today's games, which have only Hatchling, play as
   they do now at every level.
 - **Same rewards.** A star is a star at every level; the museum, the
-  collection and achievements fill up whatever the level.
+  collection and achievements fill up whatever the level. A game keeps
+  one best score for all its levels.
 - **Demote, never delete.** A game made harder keeps its current behaviour
   as its easiest level; the rule is in `../AGENTS.md`.
 
