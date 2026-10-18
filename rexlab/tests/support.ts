@@ -209,12 +209,19 @@ export function manualVisibility(initial: "hidden" | "visible"): ManualVisibilit
 }
 
 // A browser's document, whose visibility the test sets and which reports
-// each change as a browser does.
-export function browserDocument(initial: DocumentVisibilityState = "visible") {
+// each change as a browser does, and its version footer, whose attributes
+// the test reads, unless the page has none.
+export function browserDocument(initial: DocumentVisibilityState = "visible", { versionFooter = true } = {}) {
   const target = new EventTarget();
-  const document = Object.assign(target, { visibilityState: initial });
+  const attributes: Record<string, string> = {};
+  const footer = { setAttribute: (name: string, value: string) => void (attributes[name] = value) };
+  const document = Object.assign(target, {
+    visibilityState: initial,
+    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null)
+  });
   return {
     document,
+    footer: attributes,
     switchTo: (to: DocumentVisibilityState) => {
       document.visibilityState = to;
       target.dispatchEvent(new Event("visibilitychange"));
@@ -305,12 +312,15 @@ export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"
   };
 }
 
-// The language for tests that are not about it: an English device, and no
-// language chosen yet.
+// The language for tests that are not about it: an English device, no
+// language chosen yet, and a version footer nobody reads.
 export function englishDevice() {
   const storage = memoryStorage();
-  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
+  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: unreadVersion };
 }
+
+// The version footer for tests that are not about it: its name is dropped.
+export const unreadVersion = () => {};
 
 // The theme for tests that are not about it: a device in its light
 // appearance, and no theme chosen yet.

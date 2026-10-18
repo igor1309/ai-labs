@@ -18,6 +18,7 @@ import {
   manualOrientation,
   manualTimers,
   memoryStorage,
+  unreadVersion,
   type ManualOrientation,
   type ManualTimers,
   type MemoryStorage
@@ -60,6 +61,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
       visitors={SHIPPED_VISITORS}

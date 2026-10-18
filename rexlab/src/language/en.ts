@@ -7,6 +7,7 @@ export const en: Texts = {
   languageMenu: "Language",
   themeMenu: "Theme",
   themes: { system: "System", light: "Light", dark: "Dark" },
+  versionLabel: "Version",
   turnSideways: "TURN THE IPAD SIDEWAYS",
   home: "HOME",
   progress: "PROGRESS",

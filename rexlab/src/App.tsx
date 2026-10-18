@@ -6,6 +6,7 @@ import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
@@ -81,6 +82,9 @@ export type AppProps = CareGameProps &
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
     languageStore: LanguageStore;
+    // Gives the version footer, which the static page holds outside the
+    // app, its name for a screen reader.
+    nameVersion: (label: string) => void;
     appearance: Appearance;
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
@@ -146,6 +150,7 @@ export function App({
   progress,
   deviceLanguage,
   languageStore,
+  nameVersion,
   appearance,
   themeStore,
   loadPicture,
@@ -165,9 +170,11 @@ export function App({
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
 
+  // The version footer's name follows the language, with the page's.
   useEffect(() => {
     document.documentElement.lang = language;
-  }, [language]);
+    nameVersion(TEXTS[language].versionLabel);
+  }, [language, nameVersion]);
 
   const chooseLanguage = (chosen: Language) => {
     setLanguage(chosen);

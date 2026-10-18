@@ -18,6 +18,7 @@ import {
   manualOrientation,
   manualTimers,
   memoryStorage,
+  unreadVersion,
   type ManualOrientation,
   type MemoryStorage
 } from "./support.ts";
@@ -57,6 +58,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
       visitors={visitors}

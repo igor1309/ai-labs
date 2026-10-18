@@ -10,6 +10,7 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { versionFooter } from "../src/root.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
@@ -38,6 +39,7 @@ import {
   seededRandom,
   sortingBy,
   symbolOf,
+  unreadVersion,
   words,
   type ManualOrientation,
   type ManualTimers,
@@ -67,13 +69,15 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   progress = emptyProgress(),
-  timers = loadedPictures()
+  timers = loadedPictures(),
+  nameVersion = unreadVersion
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
+  nameVersion?: (label: string) => void;
 }) {
   const view = render(
     <App
@@ -85,6 +89,7 @@ function openApp({
       progress={progress}
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
+      nameVersion={nameVersion}
       {...lightDevice()}
       {...emptyCare()}
       {...emptySorting()}
@@ -230,6 +235,61 @@ describe("the language menu", () => {
     openApp({ device: "en-GB", storage });
 
     expectShownIn("ru");
+  });
+
+  it.each([
+    ["ru-RU", "Версия", "Язык", "English", "ALL DINOSAURS", "Version", "HOME", "Language", "Русский"],
+    ["en-GB", "Version", "Language", "Русский", "ВСЕ", "Версия", "ДОМОЙ", "Язык", "English"]
+  ])(
+    "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
+    async (device, first, menu, choice, tile, then, home, menuBack, choiceBack) => {
+      // index.html's footer, named as the app in a browser names it.
+      const footer = document.createElement("footer");
+      footer.id = "version";
+      footer.setAttribute("aria-label", "Version");
+      footer.textContent = "v1.2.3";
+      document.body.append(footer);
+      try {
+        const { user } = openApp({ device, nameVersion: versionFooter(document) });
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+
+        await chooseFrom(user, menu, choice);
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
+        await user.click(screen.getByRole("button", { name: tile }));
+        await screen.findByRole("button", { name: home });
+        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
+
+        await user.click(screen.getByRole("button", { name: home }));
+        await chooseFrom(user, menuBack, choiceBack);
+        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+      } finally {
+        footer.remove();
+      }
+    }
+  );
+
+  // The footer is styled by its id, so its look holds under either name:
+  // the soft ink on the page, the dark theme's soft ink, and the faded
+  // paper on the navy result screen.
+  it.each(["Version", "Версия"])("keeps the version footer's look in every theme and on the result screen when it is named %s", (name) => {
+    const footer = document.createElement("footer");
+    footer.id = "version";
+    footer.setAttribute("aria-label", name);
+    const result = document.createElement("div");
+    result.className = "result";
+    document.body.append(footer);
+    try {
+      expect([getComputedStyle(footer).position, sameColour(getComputedStyle(footer).color, "#5c647a")]).toEqual(["fixed", true]);
+      document.documentElement.dataset.theme = "dark";
+      expect(sameColour(getComputedStyle(footer).color, "#9ca3b6")).toBe(true);
+      delete document.documentElement.dataset.theme;
+      document.body.prepend(result);
+      expect(sameColour(getComputedStyle(footer).color, "#f6f1e699")).toBe(true);
+    } finally {
+      footer.remove();
+      result.remove();
+      delete document.documentElement.dataset.theme;
+    }
   });
 
   it("switches back, and the later choice is the one kept", async () => {
@@ -808,7 +868,9 @@ describe("every string shown", () => {
 });
 
 // The version footer, also for parents, is part of the static page, not
-// the app: release.test.ts proves it reads the version as stamped.
+// the app: release.test.ts proves it reads the version as stamped, and
+// the test of its name above that the app names it in the chosen
+// language.
 describe("text for children", () => {
   it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents", async (language, _, walk, forParents) => {
     const { texts, parentTexts, parentLabels } = await walk(language);
@@ -825,13 +887,13 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });
