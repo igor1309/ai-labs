@@ -37,8 +37,9 @@ type Record struct {
 }
 
 // Request is what a run was asked: a workflow, or a process on an agent;
-// its params, by name; the directory it was asked in; and the id of the
-// run it continues, nil for none.
+// its params, by name; the directory it was asked in; the id of the run it
+// continues, nil for none; and the id of the run whose calls it reuses,
+// nil for none.
 type Request struct {
 	Workflow string            `json:"workflow"`
 	Process  string            `json:"process"`
@@ -46,13 +47,14 @@ type Request struct {
 	Params   map[string]string `json:"params"`
 	Dir      string            `json:"dir"`
 	Continue *string           `json:"continue"`
+	Reuse    *string           `json:"reuse"`
 }
 
 // Call is a call of a run, as it ended: its id, its step, process and
 // agent; its worktree's root, the commit HEAD was when it was admitted and
 // its content at its end, "" where it was refused; the id of the call
-// whose session it continues, nil for none; the inputs it was given, as
-// resolved; and its result.
+// whose session it continues, nil for none; the id of the call it reuses,
+// nil for none; the inputs it was given, as resolved; and its result.
 type Call struct {
 	ID        string     `json:"id"`
 	Step      string     `json:"step"`
@@ -62,6 +64,7 @@ type Call struct {
 	Head      string     `json:"head"`
 	Content   string     `json:"content"`
 	Continues *string    `json:"continues"`
+	Reuses    *string    `json:"reuses"`
 	Inputs    []Input    `json:"inputs"`
 	Result    CallResult `json:"result"`
 }
@@ -126,21 +129,23 @@ type Kind string
 
 const (
 	Started Kind = "started" // the step started, on its agent
+	Reused  Kind = "reused"  // the step took an earlier call in place of making one
 	Tool    Kind = "tool"    // the step called a tool
 	Stale   Kind = "stale"   // the step's turn went stale
 	Ended   Kind = "ended"   // the step ended
 )
 
 // Event is what a step did, at a time. Of the rest, each kind has its
-// own: a step started its agent; a tool call the tool's name and its
-// input; a stale turn what went stale and whether a recovery turn
-// follows; a step ended its status, its class, "" for none, and how long
-// it took.
+// own: a step started its agent; a step reused the id of the call it
+// took; a tool call the tool's name and its input; a stale turn what went
+// stale and whether a recovery turn follows; a step ended its status, its
+// class, "" for none, and how long it took.
 type Event struct {
 	At         time.Time
 	Step       string
 	Kind       Kind
 	Agent      string
+	Call       string
 	Name       string
 	Input      string
 	What       string
@@ -161,6 +166,13 @@ func (e Event) MarshalJSON() ([]byte, error) {
 			Kind  Kind      `json:"kind"`
 			Agent string    `json:"agent"`
 		}{e.At, e.Step, e.Kind, e.Agent})
+	case Reused:
+		return json.Marshal(struct {
+			At   time.Time `json:"at"`
+			Step string    `json:"step"`
+			Kind Kind      `json:"kind"`
+			Call string    `json:"call"`
+		}{e.At, e.Step, e.Kind, e.Call})
 	case Tool:
 		return json.Marshal(struct {
 			At    time.Time `json:"at"`

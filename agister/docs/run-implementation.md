@@ -893,3 +893,81 @@ Decisions, each with its reason:
 - A folder or file `agister/home` drops stays in `~/.agister` until
   removed by hand: a rename is rare.
 - `agister/archive` stays, as reference, unbuilt.
+
+## Reuse
+
+`agister run ... --reuse <run id>` runs a request again, taking an
+earlier run's completed calls where nothing they were given has changed
+(ADR-001, invariant 8 and "Starting a run"; LAB-252): a review whose
+judge failed, its five reviews completed, runs the judge alone.
+
+**`cli`** takes `--reuse <run id>` with either form of request; the
+request carries it. `--reuse` with `--continue` prints the usage, exit
+2.
+
+**`core/workflow`** tells a step's start when its caller says the call
+starts, no longer before calling it: the caller's report grows
+`Started`, and `Reused`, the id of a call it took in place of making
+one. Core gives either to its events port, which grows `Reused`, and
+tells a step's end only after its start.
+
+**The composition**, once settings resolve and before the record is
+first written, checks a reuse, each failure a refusal on stderr, exit
+1, nothing run and nothing recorded:
+
+1. The run named is kept.
+2. Its request is this one's: the same workflow, or the same process
+   and agent.
+
+Each step's call, once its inputs resolve and before it is admitted, is
+taken from the earlier run when that run holds a call of the same step
+that completed, of the same process and agent, given inputs of the same
+names, in the same order, with the same identities, and the worktree is
+as that call left it: the root of the worktree holding the launch
+directory is its root, the root's HEAD its HEAD and its content its
+content, not empty. A call taken is not admitted and not made: it
+reports `Reused`, and its result to core is the earlier call's as
+recorded, but for its cost, zero, and its usage, every count unknown,
+which a sum skips: this run spent none. Any other call reports
+`Started`, its inputs refused or not, and is made as it would be. The
+record's request names the run reused, `"reuse"`; a call taken is
+recorded as its earlier entry, cost and usage included, its id this
+run's, its `"continues"` null, with `"reuses"`, the earlier call's id:
+
+```json
+{"request": {"reuse": "<run id>"},
+ "calls": [{"id": "<run id>/<step>", "reuses": "<run id>/<step>"}]}
+```
+
+A call taken is a progress line, `· <step>: reused <call id>`, and an
+event, runstore's kind `reused`, in place of its start and end:
+
+```json
+{"at": "", "step": "a", "kind": "reused", "call": "<call id>"}
+```
+
+A continuation's latest call (Continuation, check 3) is a call made,
+never one with `"reuses"`, searched for back past the run named where
+its call was reused: a session goes on from where it last ran.
+
+Decisions, each with its reason:
+
+- Not the checkpointing and resumption ADR-011 leaves out: a reuse is
+  a new run, every step run through core as any run's; it only takes
+  recorded results, and keeps no state between runs.
+- A call is matched by what it was given, not by the earlier run's
+  status: a run that failed, or was lost, gives the calls it completed.
+- The worktree is compared at each call, not once at the start: a step
+  that writes changes what the steps after it read. A writer whose
+  call moved HEAD is never taken: its HEAD is recorded as admitted.
+- A call that failed is never taken: a failure is what a run again is
+  for.
+- The settings a call ran under are not compared: the record does not
+  hold definitions or their digests yet (`run-path.md`, "The rest of
+  the record"). A prompt or schema changed since is a risk taken;
+  whoever reuses chose the run.
+- Each call's cost and usage count once (ADR-011, rule 6) in a run's
+  result: a run's are what it spent; a call taken keeps the earlier
+  ones in its entry, which a sum over records skips.
+- One run is reused, not a chain: a run that reused gives its calls,
+  taken ones included, as recorded.

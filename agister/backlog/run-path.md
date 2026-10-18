@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first ten slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first eleven slices: a binding continuing a session, the rest of the record, reaping, the worktree's changes, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -15,7 +15,8 @@ and staleness; the fifth ("Parallel steps and a join") a parallel of
 steps and the join after it; the sixth ("Records") a run's record; the seventh
 ("Continuation") `--continue`; the eighth ("Recovery") a stale turn
 resumed; the ninth ("Runs") inputs recorded and `runs export`; the
-tenth ("Retiring the archive") this Agister installed as `agister`.
+tenth ("Retiring the archive") this Agister installed as `agister`;
+the eleventh ("Reuse") an earlier run's completed calls taken.
 What it leaves out, roughly in the
 order it is needed:
 
@@ -23,7 +24,8 @@ order it is needed:
   earlier step's session, checked by `core/admit` (ADR-001, rule 5).
 - **The rest of the record**: definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch (ADR-001, invariant 6;
-  ADR-004, rule 4); other commands on runs.
+  ADR-004, rule 4); other commands on runs; a reuse comparing a
+  call's definitions' digests ("Reuse").
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending
   what left a program's group, which the supervisor reads no longer
