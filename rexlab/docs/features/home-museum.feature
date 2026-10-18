@@ -14,7 +14,7 @@ Feature: The museum from the home page
     When I open the home page
     Then I see "<museum>" in the top-right corner
     And beside it the symbol of the skeleton game's MUSEUM button
-    And it stands outside the shaded group of the language and theme menus, to its left
+    And it stands outside the shaded group of the parents' menus, to its left
     And it is at least 60 by 60 CSS pixels
     And at least 12 CSS pixels lie between it and the group
 
@@ -55,15 +55,16 @@ Feature: The museum from the home page
     And I am still on the home page
 
     Examples:
-      | menu     |
-      | language |
-      | theme    |
+      | menu      |
+      | language  |
+      | theme     |
+      | age level |
 
   Scenario Outline: The corner fits on one line
     Given the app is in <language>
     And the screen is <width> by <height> CSS pixels
     When I open the home page
-    Then "RexLab", the museum button and the two menus stand on one line
+    Then "RexLab", the museum button and the parents' menus stand on one line
     And the museum button keeps its word on one line
     And nothing in the corner overlaps the greeting or the large card
 

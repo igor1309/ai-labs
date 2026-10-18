@@ -8,7 +8,7 @@ an approximate age level next to the theme and language controls
 | --- | --- | --- |
 | Hatchling | 🥚 | about 4 |
 | Explorer | 🦖 | about 5 |
-| Paleontologist | 🦴 | about 6 and up |
+| Paleontologist | 🦴 | 6 and up |
 
 ## Rules
 
