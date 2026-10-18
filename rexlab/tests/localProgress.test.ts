@@ -297,6 +297,17 @@ describe("localPairsProgress", () => {
     expect(localPairsProgress(() => storage).load()).toEqual(saved);
   });
 
+  it("saves and reloads each large level's best beside the climb's, under the same game key", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, levelChoice: CHOICE }) });
+    const best = { ...PAIRS.best, explorer: 11, paleontologist: 14 };
+    const saved = { progress: { ...PAIRS_PROGRESS, best }, levelChoice: CHOICE };
+
+    localPairsProgress(() => storage).save(saved);
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["find-the-pair"]).toEqual({ ...PAIRS, best, levelChoice: CHOICE });
+    expect(localPairsProgress(() => storage).load()).toEqual(saved);
+  });
+
   it.each([
     ["no level choice", NO_CHOICE, PAIRS],
     ["a level choice", { ...NO_CHOICE, levelChoice: CHOICE }, { ...PAIRS, levelChoice: CHOICE }]
@@ -329,6 +340,11 @@ describe("localPairsProgress", () => {
     ["a best of an unknown level", { ...PAIRS, best: { 5: 4 } }],
     ["a best of no tries", { ...PAIRS, best: { 1: 0 } }],
     ["a best in text", { ...PAIRS, best: { 1: "4" } }],
+    ["a large level's best in text", { ...PAIRS, best: { explorer: "9" } }],
+    ["a large level's best of no tries", { ...PAIRS, best: { paleontologist: 0 } }],
+    ["a large level's negative best", { ...PAIRS, best: { explorer: -1 } }],
+    ["a large level's fractional best", { ...PAIRS, best: { paleontologist: 12.5 } }],
+    ["a best of an unknown age level", { ...PAIRS, best: { expert: 12 } }],
     ["found dinosaurs that are not a list", { ...PAIRS, found: "triceratops" }],
     ["a found dinosaur that is not an id", { ...PAIRS, found: [3] }],
     ["a level choice that is not a record", { ...PAIRS, levelChoice: "explorer" }],

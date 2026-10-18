@@ -311,8 +311,35 @@ describe("finishing a board", () => {
 
     const { result, kept } = finishBoard(readable(before), finished(board(pals, { large }), 2), ORDER);
 
-    expect(result).toMatchObject({ level: { large }, tries: pals.length + 2, stars: 3, celebration: null, levelUp: null, newlyFound: pals.map(({ id }) => id) });
-    expect(kept.progress).toEqual({ stars: 3, climbLevel: 2, boardsOnClimbLevel: 1, best: { 1: 4, 2: 6 }, found: ORDER.filter((id) => pals.some((one) => one.id === id)) });
+    // Each large level celebrates its own best, leaving the climb's bests intact.
+    expect(result).toMatchObject({ level: { large }, tries: pals.length + 2, stars: 3, best: pals.length + 2, celebration: "first-best", levelUp: null, newlyFound: pals.map(({ id }) => id) });
+    expect(kept.progress).toEqual({ stars: 3, climbLevel: 2, boardsOnClimbLevel: 1, best: { 1: 4, 2: 6, [large]: pals.length + 2 }, found: ORDER.filter((id) => pals.some((one) => one.id === id)) });
+  });
+
+  describe.each(LEVELS)("%s's best", (_, level) => {
+    const played = "climbLevel" in level ? level.climbLevel : level.large;
+    const pals = dealBoard(SHIPPED_PALS, level, seededRandom(1)).pals;
+
+    it.each([
+      ["first", undefined, "first-best"],
+      ["fewer tries", pals.length + 3, "new-best"],
+      ["equal tries", pals.length + 2, null],
+      ["more tries", pals.length + 1, null]
+    ] as const)("shows and records only the played level's best on %s", (_, previous, celebration) => {
+      const best = { 1: 4, 2: 5, 3: 6, 4: 7, explorer: 10, paleontologist: 13, [played]: previous };
+      const { result, kept } = finishBoard(readable({ ...NO_PAIRS, best }), finished(board(pals, level), 2), ORDER);
+      const expected = Math.min(previous ?? Infinity, pals.length + 2);
+
+      expect(result).toMatchObject({ best: expected, previousBest: previous, celebration });
+      expect(kept.progress.best).toEqual({ ...best, [played]: expected });
+    });
+
+    it("hides the best and its celebration when progress cannot be read", () => {
+      const { result, kept } = finishBoard({ progress: NO_PAIRS, readable: false }, finished(board(pals, level)), ORDER);
+
+      expect(result).toMatchObject({ tries: pals.length, stars: 1, best: undefined, previousBest: undefined, celebration: null });
+      expect(kept.progress.best).toEqual({ [played]: pals.length });
+    });
   });
 
   it("finds each dinosaur once, in the dinosaur list's order, keeping one no longer in it", () => {

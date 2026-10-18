@@ -1,7 +1,7 @@
 import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import type { FeaturedHistory, Featuring } from "./featured.ts";
-import { CLIMB_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
+import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
@@ -61,14 +61,15 @@ export function localPairsProgress(storage: () => KeyValueStorage) {
 // Find the pair's entry as stored. It keeps the names it had before the
 // game had levels: the climb level under `level`, the boards finished on
 // it under `boardsOnLevel`, and each climb level's best under the level's
-// number. The child's choice on the level switch is kept beside them,
+// number, with Explorer's and Paleontologist's bests under their names.
+// The child's choice on the level switch is kept beside them,
 // with the revision of the age level it was made under; an entry saved
 // before levels has none.
 type StoredPairs = {
   stars: number;
   level: ClimbLevel;
   boardsOnLevel: number;
-  best: Partial<Record<ClimbLevel, number>>;
+  best: PairsProgress["best"];
   found: readonly string[];
   levelChoice?: LevelChoice;
 };
@@ -83,7 +84,7 @@ function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice }: En
     isClimbLevel(level) &&
     isCount(boardsOnLevel) &&
     isObject(best) &&
-    Object.entries(best).every(([key, tries]) => isClimbLevel(Number(key)) && isCount(tries) && tries > 0) &&
+    Object.entries(best).every(([key, tries]) => (isClimbLevel(Number(key)) || Object.hasOwn(LARGE_LEVELS, key)) && isCount(tries) && tries > 0) &&
     Array.isArray(found) &&
     found.every((id) => typeof id === "string");
   if (!usable) return undefined;

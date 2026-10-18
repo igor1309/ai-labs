@@ -298,10 +298,10 @@ async function pairsBoard({ theme, user, timers }: Walk) {
     expectScreenIn(theme);
 }
 
-// Explorer's and Paleontologist's boards, each with a silhouette or a
-// picture open, then every pair found.
-async function pairsLargeBoards({ theme, user, timers }: Walk) {
-  for (const level of ["EXPLORER", "PALEONTOLOGIST"]) {
+// Each large level's board with a silhouette or picture open, every pair
+// found, and the result with its first best and NEW badges.
+const pairsLargeBoard = (level: string) =>
+  async ({ theme, user, timers }: Walk) => {
     await playPairs(user, level);
     await turnCard(user, 0);
     expectScreenIn(theme);
@@ -309,9 +309,11 @@ async function pairsLargeBoards({ theme, user, timers }: Walk) {
     if (stateAt(1) === "open") act(() => timers.fire(MISS));
     await playBoard(user, timers);
     expectScreenIn(theme);
+    endWave(timers);
+    expect(screen.getByRole("status", { name: "FIRST BEST SCORE" })).toBeDefined();
+    expectScreenIn(theme);
     await user.click(screen.getByRole("button", { name: "HOME" }));
-  }
-}
+  };
 
 async function pairsFound({ theme, user, timers }: Walk) {
   await playPairs(user, "HATCHLING");
@@ -456,7 +458,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     [
       ["the welcome", pairsWelcome],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
-      ["Explorer's and Paleontologist's boards of silhouettes, a card open and every pair found", pairsLargeBoards],
+      ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("EXPLORER")],
+      ["Paleontologist's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("PALEONTOLOGIST")],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
   ],

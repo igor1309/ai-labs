@@ -4104,6 +4104,44 @@ body:has(.result) #version {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* The large results keep the design's three columns and up to four rows.
+   Rows share the screen's height; the art yields room to every name. */
+.pairs-result[data-large] .pairs-found {
+  height: 100%;
+  max-height: calc(var(--found-rows) * 162px + (var(--found-rows) - 1) * 14px);
+  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pairs-result[data-large] .pairs-found-art {
+  flex: 1 1 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.pairs-result .result-content {
+  min-width: 0;
+  gap: clamp(16px, 2vh, 24px);
+}
+
+.pairs-result .result-title {
+  font-size: clamp(32px, 3.34vw, 48px);
+  line-height: 1.2;
+}
+
+.pairs-result .result-actions {
+  gap: 12px;
+}
+
+.pairs-result .result-actions button {
+  flex-shrink: 0;
+  height: clamp(64px, 8.9vh, 80px);
+  padding: 0 clamp(16px, 2vw, 32px);
+  gap: 10px;
+  font-size: clamp(20px, 1.8vw, 26px);
+  white-space: nowrap;
+}
+
 .pairs-found-card {
   position: relative;
   min-width: 0;
@@ -4135,8 +4173,11 @@ body:has(.result) #version {
 }
 
 .pairs-found-name {
-  padding: 8px 10px 10px;
-  font-size: min(18px, 9cqi);
+  flex-shrink: 0;
+  padding: 8px;
+  /* Every shipped name fits within 13 ems in either language. */
+  font-size: min(18px, calc((100cqi - 16px) / 13));
+  line-height: 1.25;
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
