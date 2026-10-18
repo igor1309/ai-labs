@@ -74,10 +74,9 @@ var agents = map[string]string{
 // "ask", its input "q" from the param "q", its output an object of a
 // string "answer"; it allows what codex's read-only sandbox grants, so its
 // plan warns of nothing. The process "stall", as "ask" but requiring
-// process.execute, asks to run "sh -c 'sleep 60'", then to answer "done":
-// claude-code refuses a command that starts with a long sleep, and runs
-// one that a shell it starts makes. A tool command of 5s is stale, and its
-// one recovery turn is told to answer without running a command.
+// process.execute, asks to run "sh -c 'sleep 60'" in the foreground, then
+// to answer "done"; a tool command of 5s is stale, and its one recovery
+// turn is told to answer "done" without running any command.
 var repository = map[string]string{
 	".agister/processes/ask.yaml": `schema: agister.process/v1alpha1
 prompt: ask

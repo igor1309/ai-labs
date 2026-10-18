@@ -247,20 +247,46 @@ func TestACallCancelledAsItsTurnGoesStaleIsNotRecovered(t *testing.T) {
 }
 
 // recovery.feature, "A recovery turn that reports another session fails
-// the call": its session the one reported.
+// the call": however it ends, its session the one reported; one that goes
+// stale is not recovered again, though it has a resume left.
 func TestARecoveryTurnThatReportsAnotherSessionFailsTheCall(t *testing.T) {
 	t.Parallel()
-	staleness := &stalenessSpy{}
-	spy := &runtimeSpy{}
-	spy.turn = inOrder(goesStale(staleness, noEvent, "s1"), replies(call.Reply{Text: "done", Session: "s2"}))
-	got := recoveringCaller(t, spy, staleness, clocktest.NewClock(start)).Call(context.Background(), call.Step{Staleness: limits, Recovery: recovery}, discard)
-	want := `the turn reported the session "s2", not "s1"`
-	if got.Status != call.Failed || got.Class != call.RuntimeError || got.Reason != want || got.Output != nil {
-		t.Errorf("ended %q, class %q, reason %q, output %v; want failed, class runtime_error, reason %q, none",
-			got.Status, got.Class, got.Reason, got.Output, want)
+	toolCommand := call.Stale{Limit: call.ToolCommand, What: `the tool command "Bash" ran over 1m`}
+	cases := []struct {
+		name     string
+		recovery func(*stalenessSpy) func(context.Context) (call.Ended, error)
+		reported staleTurns
+	}{
+		{"it replies", func(*stalenessSpy) func(context.Context) (call.Ended, error) {
+			return replies(call.Reply{Text: "done", Session: "s2"})
+		}, staleTurns{{What: noEvent.What, Recovering: true}}},
+		{"it goes stale", func(staleness *stalenessSpy) func(context.Context) (call.Ended, error) {
+			return goesStale(staleness, toolCommand, "s2")
+		}, staleTurns{{What: noEvent.What, Recovering: true}, {What: toolCommand.What}}},
 	}
-	if got.Session != "s2" {
-		t.Errorf("session %q, want the one reported, s2", got.Session)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			staleness := &stalenessSpy{}
+			spy := &runtimeSpy{turn: inOrder(goesStale(staleness, noEvent, "s1"), c.recovery(staleness))}
+			step := call.Step{Staleness: limits, Recovery: call.Recovery{Resumes: 2, Instruction: "Go on."}}
+			var stale staleTurns
+			got := recoveringCaller(t, spy, staleness, clocktest.NewClock(start)).Call(context.Background(), step, stale.report)
+			want := `the turn reported the session "s2", not "s1"`
+			if got.Status != call.Failed || got.Class != call.RuntimeError || got.Reason != want || got.Output != nil {
+				t.Errorf("ended %q, class %q, reason %q, output %v; want failed, class runtime_error, reason %q, none",
+					got.Status, got.Class, got.Reason, got.Output, want)
+			}
+			if got.Session != "s2" {
+				t.Errorf("session %q, want the one reported, s2", got.Session)
+			}
+			if len(spy.given) != 2 {
+				t.Errorf("%d turns, want 2", len(spy.given))
+			}
+			if !reflect.DeepEqual(stale, c.reported) {
+				t.Errorf("stale turns reported %+v, want %+v", stale, c.reported)
+			}
+		})
 	}
 }
 

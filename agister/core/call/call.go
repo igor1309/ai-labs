@@ -340,14 +340,17 @@ func (s staleCause) Error() string { return s.What }
 // message is given the message of the step's inputs and documents in
 // place of its prompt. A turn that goes stale is reported, then followed
 // by a recovery turn where the step's recovery has a resume left, the
-// turn reported its session, the same words have not gone stale before in
-// this call, and neither ctx nor the time limit has ended: the turn as the
-// step gives it, but resuming that session, its message the recovery's
-// instruction, a blank line and what went stale, watched anew; the time
-// limit is the call's, over all its turns. A turn whose context the call
-// ended ends the call interrupted, however its program then exited; a
-// stale one, not recovered, as what went stale says, unless ctx has ended
-// meanwhile; a model's turn that ended otherwise ends by its reply. A call
+// turn reported its session and no other than the one it resumed, the
+// same words have not gone stale before in this call, and neither ctx nor
+// the time limit has ended: the turn as the step gives it, but resuming
+// that session, its message the recovery's instruction, a blank line and
+// what went stale, watched anew; the time limit is the call's, over all
+// its turns. A turn whose context the call ended ends the call
+// interrupted, however its program then exited; one that reported a
+// session other than the one it resumed fails it, however it ended
+// otherwise, since its work went elsewhere; a stale one, not recovered, as
+// what went stale says, unless ctx has ended meanwhile; a model's turn
+// that ended otherwise ends by its reply. A call
 // whose ctx has already ended makes no turn: its program would start, and
 // act, only to be ended.
 func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Result {
@@ -377,7 +380,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 			break
 		}
 		session := last.session()
-		recovering := resumes > 0 && session != "" && !went[stale.What] && callCtx.Err() == nil
+		recovering := resumes > 0 && session != "" && last.strayed == "" && !went[stale.What] && callCtx.Err() == nil
 		report(Report{Stale: &StaleTurn{What: stale.What, Recovering: recovering}})
 		if !recovering {
 			break
@@ -394,16 +397,18 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 
 	result := timed()
 	counted(&result, turns)
-	c.end(&result, step, turn, turns[len(turns)-1], ctx.Err() != nil)
+	c.end(&result, step, turns[len(turns)-1], ctx.Err() != nil)
 	return result
 }
 
-// turned is how one of a call's turns ended: what its runtime gave, and
-// the cause its context ended with.
+// turned is how one of a call's turns ended: what its runtime gave, the
+// cause its context ended with, and why its work went elsewhere, "" where
+// it did not.
 type turned struct {
-	ended Ended
-	err   error
-	cause error
+	ended   Ended
+	err     error
+	cause   error
+	strayed string
 }
 
 // session is the session the turn reported, its end's, else its reply's;
@@ -414,6 +419,23 @@ func (t turned) session() string {
 	}
 	if reply := t.ended.Reply; t.err == nil && reply != nil {
 		return reply.Session
+	}
+	return ""
+}
+
+// strayed is why a turn that resumed the session resumed, "" for none,
+// and ended as ended and err say, did its work elsewhere: a session it
+// reported, at its end or in its reply, other than that one; "" where it
+// reported none other.
+func strayed(resumed string, ended Ended, err error) string {
+	reported := []string{ended.Session}
+	if reply := ended.Reply; err == nil && reply != nil {
+		reported = append(reported, reply.Session)
+	}
+	for _, session := range reported {
+		if resumed != "" && session != "" && session != resumed {
+			return cut(fmt.Sprintf("the turn reported the session %q, not %q", session, resumed))
+		}
 	}
 	return ""
 }
@@ -432,7 +454,7 @@ func (c *Caller) take(ctx context.Context, turn Turn, limits Limits, report func
 	// later ends nothing.
 	cancel(errTurnReturn)
 	unwatch()
-	return turned{ended: ended, err: err, cause: context.Cause(turnCtx)}
+	return turned{ended: ended, err: err, cause: context.Cause(turnCtx), strayed: strayed(turn.Session, ended, err)}
 }
 
 // counted gives result what its turns reported: the session the last that
@@ -482,24 +504,25 @@ func total[T int64 | float64](values []*T) *T {
 	return &sum
 }
 
-// end ends result as the call's last turn, last, given turn, ended it,
-// the call's ctx ended where cancelled.
-func (c *Caller) end(result *Result, step Step, turn Turn, last turned, cancelled bool) {
+// end ends result as the call's last turn, last, ended it, the call's
+// ctx ended where cancelled.
+func (c *Caller) end(result *Result, step Step, last turned, cancelled bool) {
 	var stale staleCause
+	isStale := errors.As(last.cause, &stale)
 	switch cause, err, ended := last.cause, last.err, last.ended; {
 	case errors.Is(cause, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout
-	case errors.As(cause, &stale) && cancelled:
+	case isStale && cancelled, !isStale && !errors.Is(cause, errTurnReturn):
 		result.Status, result.Class = Interrupted, Cancelled
-	case errors.As(cause, &stale):
+	case last.strayed != "":
+		result.Status, result.Class, result.Reason = Failed, RuntimeError, last.strayed
+	case isStale:
 		result.Status, result.Class, result.Reason = Interrupted, Timeout, cut(stale.What)
 		// A turn that repeats itself makes no progress, whatever time is
 		// left (ADR-006, rule 2).
 		if stale.Limit == RepeatedToolCalls {
 			result.Status, result.Class = Failed, BudgetExhausted
 		}
-	case !errors.Is(cause, errTurnReturn):
-		result.Status, result.Class = Interrupted, Cancelled
 	case errors.Is(err, ErrNotStarted):
 		result.Status, result.Class, result.Reason = Failed, RuntimeUnavailable, cut(err.Error())
 	case err != nil:
@@ -507,7 +530,7 @@ func (c *Caller) end(result *Result, step Step, turn Turn, last turned, cancelle
 	case ended.Signal != "":
 		result.Status, result.Class = Failed, Killed
 	case ended.Reply != nil:
-		c.replied(result, step, turn.Session, *ended.Reply)
+		c.replied(result, step, *ended.Reply)
 	default:
 		result.Status, result.Output = Completed, output(ended)
 	}
@@ -534,17 +557,12 @@ func (c *Caller) turn(step Step) Turn {
 	}
 }
 
-// replied ends result by reply, of a turn that resumed the session
-// resumed, "" for none: a session reported other than that one first,
-// since the turn's work went elsewhere; then its failure, a turn that
-// failed not checked; then, where step gives a schema, its structured
-// output checked against it by the validator, and decoded as the call's
-// output; else its text the output.
-func (c *Caller) replied(result *Result, step Step, resumed string, reply Reply) {
+// replied ends result by reply: its failure first, a turn that failed
+// not checked; then, where step gives a schema, its structured output
+// checked against it by the validator, and decoded as the call's output;
+// else its text the output.
+func (c *Caller) replied(result *Result, step Step, reply Reply) {
 	switch failure := reply.Failure; {
-	case resumed != "" && reply.Session != "" && reply.Session != resumed:
-		result.Status, result.Class = Failed, RuntimeError
-		result.Reason = cut(fmt.Sprintf("the turn reported the session %q, not %q", reply.Session, resumed))
 	case failure == NoResult:
 		result.Status, result.Class, result.Reason = Lost, NoResult, cut(reply.Reason)
 	case known(failure):

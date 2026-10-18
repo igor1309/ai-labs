@@ -60,17 +60,6 @@ var line = codex.Report{}
 // result is the report of a tool's result.
 var result = codex.Report{Result: true}
 
-// results is how many tools' results a turn reported.
-func results(got []reported) int {
-	n := 0
-	for _, r := range got {
-		if r.report.Result {
-			n++
-		}
-	}
-	return n
-}
-
 // activity.feature, "Commands and searches are reported, messages are
 // not": each other line is reported as a line, and the search, reported as
 // it completes, is its result too, as "A tool item's completion reports a
@@ -167,60 +156,49 @@ func shown(reports []reported) string {
 // search that starts with its query as it starts, one without as it
 // completes, its action where that says more than its query; each tool
 // item's completion is its result; a line that is no tool call reports
-// nothing.
+// nothing. Each line is one report, but a search reported as it completes,
+// two of its one line: called and done.
 func TestEachToolCallIsReportedOnceByWhatItWasGiven(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		name    string
-		lines   []string
-		want    []codex.Tool
-		results int
+		name  string
+		lines []string
+		want  []reported
 	}{
 		{"a command, as it completes too", []string{
 			commandLine, itemLine("completed", `"id":"item_1","type":"command_execution","command":"ls","exit_code":0`),
-		}, []codex.Tool{{Name: "command", Input: "ls"}}, 1},
+		}, []reported{{report: tool("command", "ls"), read: 1}, {report: result, read: 2}, {report: line, read: 3}}},
 		{"a file change", []string{
 			itemLine("started", `"id":"item_1","type":"file_change","changes":[{"path":"a.go","kind":"update"}]`),
 			itemLine("completed", `"id":"item_1","type":"file_change","changes":[{"path":"a.go","kind":"update"}],"status":"completed"`),
-		}, []codex.Tool{{Name: "file_change", Input: `[{"path":"a.go","kind":"update"}]`}}, 1},
+		}, []reported{{report: tool("file_change", `[{"path":"a.go","kind":"update"}]`), read: 1}, {report: result, read: 2}, {report: line, read: 3}}},
 		{"an MCP tool call", []string{
 			itemLine("started", `"id":"item_1","type":"mcp_tool_call","server":"docs","tool":"find","arguments":{"q":"x"}`),
 			itemLine("completed", `"id":"item_1","type":"mcp_tool_call","server":"docs","tool":"find","arguments":{"q":"x"},"status":"completed"`),
-		}, []codex.Tool{{Name: "mcp:docs/find", Input: `{"q":"x"}`}}, 1},
+		}, []reported{{report: tool("mcp:docs/find", `{"q":"x"}`), read: 1}, {report: result, read: 2}, {report: line, read: 3}}},
 		{"a search started with its query", []string{
 			itemLine("started", `"id":"item_1","type":"web_search","query":"agister"`),
 			itemLine("completed", `"id":"item_1","type":"web_search","query":"agister","action":{"type":"search","query":"agister"}`),
-		}, []codex.Tool{{Name: "web_search", Input: "agister"}}, 1},
+		}, []reported{{report: tool("web_search", "agister"), read: 1}, {report: result, read: 2}, {report: line, read: 3}}},
 		{"a search started without its query", []string{
 			itemLine("started", `"id":"item_1","type":"web_search","query":"","action":{"type":"other"}`),
 			itemLine("completed", `"id":"item_1","type":"web_search","query":"agister","action":{"type":"search","query":"agister"}`),
-		}, []codex.Tool{{Name: "web_search", Input: "agister"}}, 1},
+		}, []reported{{report: line, read: 1}, {report: tool("web_search", "agister"), read: 2}, {report: result, read: 2}, {report: line, read: 3}}},
 		{"a page opened", []string{
 			itemLine("completed", `"id":"item_1","type":"web_search","query":"https://x.dev","action":{"type":"open_page","url":"https://x.dev"}`),
-		}, []codex.Tool{{Name: "web_search", Input: `https://x.dev {"type":"open_page","url":"https://x.dev"}`}}, 1},
-		{"no tool call", []string{threadLine, turnLine, errorLine, reasoningLine, message("x"), notJSONLine}, nil, 0},
+		}, []reported{
+			{report: tool("web_search", `https://x.dev {"type":"open_page","url":"https://x.dev"}`), read: 1}, {report: result, read: 1}, {report: line, read: 2},
+		}},
+		{"no tool call", []string{threadLine, turnLine, errorLine, reasoningLine, message("x"), notJSONLine}, []reported{
+			{report: line, read: 1}, {report: line, read: 2}, {report: line, read: 3}, {report: line, read: 4},
+			{report: line, read: 5}, {report: line, read: 6}, {report: line, read: 7},
+		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			got, _ := reports(t, &supervisorSpy{lines: append(c.lines, completedLine)})
-			if !reflect.DeepEqual(tools(got), c.want) {
-				t.Errorf("reported %s, want %+v", shown(got), c.want)
-			}
-			if n := results(got); n != c.results {
-				t.Errorf("reported %s, want %d results", shown(got), c.results)
-			}
-			// Each line is reported, in order; a search reported as it
-			// completes is two reports of its one line, called and done.
-			read := 0
-			for _, r := range got {
-				if r.read != read && r.read != read+1 {
-					read = -1
-					break
-				}
-				read = r.read
-			}
-			if read != len(c.lines)+1 {
-				t.Errorf("reported %s, want each of %d lines reported", shown(got), len(c.lines)+1)
+			if !reflect.DeepEqual(got, c.want) {
+				t.Errorf("reported %s, want %s", shown(got), shown(c.want))
 			}
 		})
 	}
