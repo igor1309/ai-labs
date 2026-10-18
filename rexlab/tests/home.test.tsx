@@ -6,7 +6,6 @@ import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { NO_PAIRS } from "../src/pairs/progress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
@@ -354,7 +353,7 @@ describe("the home page", () => {
         loadedPictures(),
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
-        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ ...NO_PAIRS, stars: 120 }) })) },
+        { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
         withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
       );
 

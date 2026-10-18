@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -104,18 +105,23 @@ type Resolver interface {
 }
 
 // Caller calls the step named step, its process's params given by name,
-// and gives report each tool call its turns report and each turn that went
-// stale. It is called from many goroutines at once, one for each step of a
-// parallel.
+// and gives report that the call starts, or the id of a call it took in
+// place of making one; then each tool call its turns report and each turn
+// that went stale. It is called from many goroutines at once, one for each
+// step of a parallel.
 type Caller interface {
 	Call(ctx context.Context, step string, params map[string]string, report func(Report)) Result
 }
 
-// Report is what a step's call reports: a tool call, where Tool is not
-// nil; else a stale turn, where Stale is not nil.
+// Report is what a step's call reports: that it starts, where Started;
+// the id of the call it took in place of making one, where Reused is not
+// ""; a tool call, where Tool is not nil; else a stale turn, where Stale
+// is not nil.
 type Report struct {
-	Tool  *Tool
-	Stale *Stale
+	Started bool
+	Reused  string
+	Tool    *Tool
+	Stale   *Stale
 }
 
 // Tool is a tool call a step's turn reports: the tool's name and what it
@@ -132,11 +138,13 @@ type Stale struct {
 }
 
 // Events is told what each step of a run is doing, by the step's name: that
-// it started, on its agent; each tool call its turns report, and each turn
-// that went stale; and how it ended. It is told from many goroutines at
-// once, one for each step of a parallel.
+// it started, on its agent, or that it took the call of the id call in
+// place of making one; each tool call its turns report, and each turn
+// that went stale; and how a step that started ended. It is told from many
+// goroutines at once, one for each step of a parallel.
 type Events interface {
 	Started(step, agent string)
+	Reused(step, call string)
 	Tool(step string, tool Tool)
 	Stale(step string, stale Stale)
 	Ended(step string, ended Ended)
@@ -233,8 +241,9 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 
 // Run runs w over the params given: its inputs resolved once, then each
 // item in order, until a step in sequence does not complete or the run is
-// cancelled, each step's start on its agent, tool calls, stale turns and
-// end told to the events as they come. A parallel calls its steps at once and ends once
+// cancelled, each step's start on its agent or the call it reused, tool
+// calls, stale turns and end told to the events as its caller reports
+// them. A parallel calls its steps at once and ends once
 // all have ended: completed, its outputs each step's end, in declaration
 // order, whatever each ended as; a run cancelled meanwhile ends with it,
 // interrupted, cancelled. The run's status, class and reason are its last
@@ -346,19 +355,29 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 	return calls, true
 }
 
-// call calls step with params, its start, tool calls, stale turns and end
-// told to the events by its name.
+// call calls step with params, its start or the call it reused, its tool
+// calls and stale turns told to the events by its name as the caller
+// reports them, and its end once it has ended, where it started.
 func (r *Runner) call(ctx context.Context, step Step, params map[string]string) Result {
-	r.events.Started(step.Name, step.Agent)
+	// A caller may report from a goroutine of its own, as a turn's tool
+	// calls come from the one reading its program's output.
+	var started atomic.Bool
 	called := r.caller.Call(ctx, step.Name, params, func(report Report) {
 		switch {
+		case report.Started:
+			started.Store(true)
+			r.events.Started(step.Name, step.Agent)
+		case report.Reused != "":
+			r.events.Reused(step.Name, report.Reused)
 		case report.Tool != nil:
 			r.events.Tool(step.Name, *report.Tool)
 		case report.Stale != nil:
 			r.events.Stale(step.Name, *report.Stale)
 		}
 	})
-	r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
+	if started.Load() {
+		r.events.Ended(step.Name, Ended{Status: called.Status, Class: called.Class, Duration: called.Timing.Duration})
+	}
 	return called
 }
 

@@ -1,7 +1,10 @@
 Feature: Find the pair: stars, levels and the best score
   Every finished board earns a star. Fewer tries is better: each level
-  keeps its fewest tries as the best score to beat. Two finished boards
-  move the child up a level.
+  keeps its fewest tries as the best score to beat. At Hatchling, two
+  finished boards move the child up a climb level.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -56,5 +59,5 @@ Feature: Find the pair: stars, levels and the best score
 
   Scenario: Results and celebrations respect reduced motion
     Given the device asks for reduced motion
-    When I finish a board with a new best and a level up
+    When I finish a level 1 board with a new best and a level up
     Then the star, the celebrations and the screen change use short fades

@@ -19,10 +19,13 @@ export type PairCardView = {
 
 export type PairsBoardScreenProps = {
   language: Language;
-  level: number;
+  // The climb level of a Hatchling board; a larger level's board has none.
+  climbLevel: number | undefined;
   tries: number;
   rows: number;
   columns: number;
+  // The smallest a card may be, in CSS pixels.
+  cardFloor: number;
   // The cards in their places, row by row.
   cards: readonly PairCardView[];
   // The last pair is found: every card waves before the result.
@@ -34,7 +37,7 @@ export type PairsBoardScreenProps = {
 // A custom property the stylesheet staggers the cards by.
 const place = (index: number) => ({ "--card": index }) as CSSProperties;
 
-export function PairsBoardScreen({ language, level, tries, rows, columns, cards, finished, onTurn, onHome }: PairsBoardScreenProps) {
+export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onHome }: PairsBoardScreenProps) {
   const text = TEXTS[language];
   return (
     <main className="pairs-board-screen">
@@ -50,10 +53,12 @@ export function PairsBoardScreen({ language, level, tries, rows, columns, cards,
           </span>
           {text.pairs}
         </h1>
-        <p className="pairs-bar-chip" aria-label={text.level}>
-          <ChartNoAxesColumnIncreasing size={26} aria-hidden="true" />
-          {level}
-        </p>
+        {climbLevel !== undefined && (
+          <p className="pairs-bar-chip" aria-label={text.level}>
+            <ChartNoAxesColumnIncreasing size={26} aria-hidden="true" />
+            {climbLevel}
+          </p>
+        )}
         <p className="pairs-bar-chip" aria-label={text.tries}>
           <Hand size={26} aria-hidden="true" />
           {/* A new count bumps in. */}
@@ -62,23 +67,25 @@ export function PairsBoardScreen({ language, level, tries, rows, columns, cards,
           </span>
         </p>
       </header>
-      <div
-        className="pair-board"
-        role="group"
-        aria-label={text.cards}
-        data-finished={finished || undefined}
-        style={{ "--rows": rows, "--columns": columns } as CSSProperties}
-      >
-        {cards.map((card, index) => (
-          <PairCard
-            key={index}
-            card={card}
-            index={index}
-            label={card.state === "down" ? text.card(index + 1) : card.name.toLocaleUpperCase(language)}
-            onTurn={() => onTurn(index)}
-            language={language}
-          />
-        ))}
+      <div className="pair-board-room">
+        <div
+          className="pair-board"
+          role="group"
+          aria-label={text.cards}
+          data-finished={finished || undefined}
+          style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px` } as CSSProperties}
+        >
+          {cards.map((card, index) => (
+            <PairCard
+              key={index}
+              card={card}
+              index={index}
+              label={card.state === "down" ? text.card(index + 1) : card.name.toLocaleUpperCase(language)}
+              onTurn={() => onTurn(index)}
+              language={language}
+            />
+          ))}
+        </div>
       </div>
     </main>
   );

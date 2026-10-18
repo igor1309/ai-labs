@@ -132,7 +132,7 @@ describe("the sorting game's transition for each change", () => {
 
 describe("find the pair's transition for each change", () => {
   type PairsScreen = Parameters<typeof pairsTransitionFor>[0];
-  const board = dealBoard(SHIPPED_PALS, 1, seededRandom(1));
+  const board = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(1));
   const order = SHIPPED_PALS.map(({ id }) => id);
   // Every pair turned over, card by card, each with its match.
   const found = board.cards.reduce((turned, card, place) => {
