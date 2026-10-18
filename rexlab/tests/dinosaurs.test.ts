@@ -206,16 +206,17 @@ describe("the shipped dinosaur list", () => {
   );
 
   // The range the trusted sources give for a measure, as the References
-  // table of docs/sources.md records it.
+  // table of docs/sources.md records it, with Britannica's short tons at
+  // 907 kg.
   it.each([
     ["protoceratops", "massKg", 180, 400],
-    ["stegosaurus", "massKg", 1800, 2720],
-    ["parasaurolophus", "massKg", 2700, 5000],
+    ["stegosaurus", "massKg", 1814, 2720],
+    ["parasaurolophus", "massKg", 2721, 5000],
     ["brachiosaurus", "massKg", 46900, 80000],
     ["psittacosaurus", "massKg", 23, 80],
     ["psittacosaurus", "heightMeters", 0.6, 0.6],
     ["coelophysis", "massKg", 18, 45],
-    ["iguanodon", "massKg", 3600, 5000],
+    ["iguanodon", "massKg", 3628, 4535],
     ["oviraptor", "massKg", 20, 32],
     ["edmontosaurus", "massKg", 3400, 3400],
     ["gallimimus", "massKg", 490, 490]
@@ -224,6 +225,23 @@ describe("the shipped dinosaur list", () => {
 
     expect(value).toBeGreaterThanOrEqual(low);
     expect(value).toBeLessThanOrEqual(high);
+  });
+
+  // The size each of those dinosaurs sorts by: null where the sources'
+  // range lies between 500 kg and 3000 kg or crosses either.
+  it.each([
+    ["protoceratops", "small"],
+    ["stegosaurus", null],
+    ["parasaurolophus", null],
+    ["brachiosaurus", "big"],
+    ["psittacosaurus", "small"],
+    ["coelophysis", "small"],
+    ["iguanodon", "big"],
+    ["oviraptor", "small"],
+    ["edmontosaurus", "big"],
+    ["gallimimus", "small"]
+  ] as const)("sorts the %s by the size %s", (id, size) => {
+    expect(records.find((record) => record.id === id)?.traits.size).toBe(size);
   });
 
   // Names are stored as words and shown in capitals, so each is written
