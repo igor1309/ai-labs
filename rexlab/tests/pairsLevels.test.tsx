@@ -4,10 +4,12 @@ import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
+import { MENU_EXIT } from "../src/ParentMenu.tsx";
+import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
-import { board, dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, playBoard, playDealt, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, homeTile, manualPictures, memoryStorage, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { board, endWave, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
+import { SHIPPED_PALS, contrast, homeTile, manualPictures, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -194,9 +196,15 @@ describe("the choice on the level switch", () => {
 
     const reopened = await openPairs({ storage, ageLevel: picked("explorer", "2") });
     expect(chosen()).toEqual(["HATCHLING"]);
+    await reopened.user.click(button("HOME"));
+    const menu = await openMenu(reopened.user, "Age level");
+    await reopened.user.click(within(menu).getByRole("menuitemradio", { name: /PALEONTOLOGIST/ }));
+    act(() => reopened.clock.fire(MENU_EXIT));
+    await reopened.user.click(button("FIND THE PAIR"));
+    expect(chosen()).toEqual(["PALEONTOLOGIST"]);
     reopened.unmount();
 
-    await openPairs({ storage, ageLevel: picked("paleontologist", "3") });
+    await openPairs({ storage, settingsStorage: reopened.ageLevels });
     expect(chosen()).toEqual(["PALEONTOLOGIST"]);
   });
 
@@ -341,11 +349,11 @@ describe("a board at each level", () => {
     ["Explorer", "explorer", "Explorer", "explorer"],
     ["Hatchling", "hatchling", "Paleontologist", "paleontologist"]
   ] as const)("deals after a %s board a %s board, as few of the board before's dinosaurs as the look-alike rule allows", async (_, before, __, next) => {
-    const { user, clock } = await openPairs({ ageLevel: picked(before) });
+    const { user, clock } = await openPairs({ ageLevel: picked(before), random: seededRandom(296) });
     await user.click(button("PLAY"));
-    const first = dealt(before === "hatchling" ? 1 : { large: before });
-    await playDealt(user, clock, namesOf(first));
+    await playBoard(user, clock);
     endWave(clock);
+    const first = resultNames();
 
     if (before === next) {
       await user.click(button("PLAY AGAIN"));
@@ -356,13 +364,17 @@ describe("a board at each level", () => {
       await user.click(button("PLAY"));
     }
 
-    const second = dealt({ large: next }, { previous: first });
-    await playDealt(user, clock, namesOf(second));
+    expect(pairCards()).toHaveLength(next === "explorer" ? 18 : 24);
+    await playBoard(user, clock);
     endWave(clock);
-    expect(resultNames()).toEqual(second.pals.map(({ name }) => name.en.toLocaleUpperCase("en")));
-    const repeated = second.pals.filter(({ id }) => first.pals.some((one) => one.id === id));
-    const others = SHIPPED_PALS.filter(({ id }) => !first.pals.some((one) => one.id === id));
-    expect(repeated.filter(({ lookAlike }) => others.some((other) => other.lookAlike === lookAlike))).toEqual([]);
-    expect(new Set(second.pals.map(({ lookAlike }) => lookAlike)).size).toBe(second.pals.length);
+    const second = resultNames();
+    const repeated = second.filter((name) => first.includes(name));
+    const availableGroups = new Set(SHIPPED_PALS.filter(({ name }) => !first.includes(name.en.toLocaleUpperCase("en"))).map(({ lookAlike }) => lookAlike));
+    // Every group with an unplayed dinosaur can supply a fresh pair;
+    // only pairs beyond those groups must repeat a dinosaur.
+    expect(repeated).toHaveLength(Math.max(0, second.length - availableGroups.size));
+    const groups = second.map((name) => SHIPPED_PALS.find((pal) => pal.name.en.toLocaleUpperCase("en") === name)?.lookAlike);
+    expect(groups).not.toContain(undefined);
+    expect(new Set(groups).size).toBe(second.length);
   });
 });

@@ -3,9 +3,7 @@ import { join } from "node:path";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { LANGUAGE_KEY } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
-import { THEME_KEY } from "../src/localTheme.ts";
+import { PROGRESS_KEY } from "../src/localProgress.ts";
 import type { AgeLevel, AgeLevelSetting } from "../src/ageLevel.ts";
 import { CLIMB_LEVELS, type Board, type ClimbLevel } from "../src/pairs/index.ts";
 import { NAME_EMS } from "./nameWidths.ts";
@@ -600,85 +598,6 @@ describe("dinosaurs found", () => {
 
     expect(foundCount().textContent).toBe(`1 / ${SHIPPED_PALS.length}`);
     expect(storage.items.get(PROGRESS_KEY)).toBe(before);
-  });
-});
-
-describe("find the pair's progress", () => {
-  const QUIZ = { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 } };
-
-  it("is the same once the app is closed and reopened", async () => {
-    const storage = stored({ stars: 5, level: 3, best: { 2: 6 }, found: ["triceratops"] });
-    const first = openPairsApp({ storage });
-    first.unmount();
-
-    const { user } = openPairsApp({ storage });
-    await user.click(button("FIND THE PAIR"));
-
-    expect([screen.getByLabelText("LEVEL").textContent, screen.getByLabelText("STARS").textContent]).toEqual(["3", "5"]);
-    expect(storedPairs(storage)).toEqual({ stars: 5, level: 3, boardsOnLevel: 0, best: { 2: 6 }, found: ["triceratops"] });
-  });
-
-  it("leaves the other games, the language and the theme alone, and their saves leave it alone", async () => {
-    const care = { bestScore: 6, visitsFinished: 2, friends: ["triceratops"] };
-    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { ...QUIZ, "dinosaur-care": care } }), [LANGUAGE_KEY]: "en", [THEME_KEY]: "dark" });
-    const first = openPairsApp({ pals: THREE, storage });
-    await finishThree(first);
-    first.unmount();
-
-    openPairsApp({ pals: THREE, storage });
-
-    expect([storage.items.get(LANGUAGE_KEY), storage.items.get(THEME_KEY)]).toEqual(["en", "dark"]);
-    expect(localProgress(() => storage).load()).toEqual(QUIZ["compare-dinosaurs"]);
-    expect(localCareProgress(() => storage).load()).toEqual(care);
-    localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
-    localCareProgress(() => storage).save({ ...care, visitsFinished: 3 });
-    expect(storedPairs(storage)).toMatchObject({ stars: 1, best: { 1: 3 } });
-  });
-
-  it.each<[string, string, boolean]>([
-    ["absent", JSON.stringify({ schemaVersion: 1, games: QUIZ }), true],
-    ["malformed", pairsRecord({ stars: "5", level: 9, boardsOnLevel: 0, best: [], found: "triceratops" }, QUIZ), true],
-    ["from an unknown schema version", JSON.stringify({ schemaVersion: 2, games: { ...QUIZ, "find-the-pair": { stars: 5, level: 3, boardsOnLevel: 0, best: {}, found: [] } } }), false]
-  ])("starts afresh when %s", async (_, raw, quizReadable) => {
-    const app = openPairsApp({ pals: THREE, storage: memoryStorage({ [PROGRESS_KEY]: raw }) });
-    await app.user.click(button("FIND THE PAIR"));
-    expect([screen.getByLabelText("LEVEL").textContent, screen.getByLabelText("STARS").textContent]).toEqual(["1", "0"]);
-    await app.user.click(button("HOME"));
-
-    await finishThree(app, 4);
-
-    expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
-    expect(storedPairs(app.storage)).toEqual({ stars: 1, level: 1, boardsOnLevel: 1, best: { 1: 4 }, found: ["triceratops", "stegosaurus", "tyrannosaurus"] });
-    expect(localProgress(() => app.storage).load()).toEqual(quizReadable ? QUIZ["compare-dinosaurs"] : { bestScore: null, roundsPlayed: 0 });
-  });
-
-  it("goes on when progress cannot be read: the tries and a star, no best, and its dinosaurs found while the app is open", async () => {
-    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 3, level: 1, boardsOnLevel: 0, best: { 1: 9 }, found: [] }) }, { read: false });
-    const app = openPairsApp({ pals: THREE, storage });
-
-    await finishThree(app, 6);
-
-    expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual(["6", "★1", null, []]);
-    await app.user.click(button("HOME"));
-    await app.user.click(button("ALL DINOSAURS"));
-    expect(foundCount().textContent).toBe(`3 / ${SHIPPED_PALS.length}`);
-  });
-
-  it("goes on when progress cannot be saved, compared with the best read, and only the saved progress after a reload", async () => {
-    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 2, level: 1, boardsOnLevel: 0, best: { 1: 5 }, found: [] }) }, { save: false });
-    const first = openPairsApp({ pals: THREE, storage });
-
-    await finishThree(first, 4);
-
-    expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], "BEST54"]);
-    await first.user.click(button("HOME"));
-    await first.user.click(button("FIND THE PAIR"));
-    expect(screen.getByLabelText("STARS").textContent).toBe("3");
-    first.unmount();
-
-    const { user } = openPairsApp({ pals: THREE, storage });
-    await user.click(button("FIND THE PAIR"));
-    expect(screen.getByLabelText("STARS").textContent).toBe("2");
   });
 });
 

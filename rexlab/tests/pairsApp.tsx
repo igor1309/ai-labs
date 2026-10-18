@@ -45,6 +45,9 @@ export type PairsAppOptions<C extends Clock> = {
   theme?: "light" | "dark";
   // The age level a parent picked, or "unset" for none picked yet.
   ageLevel?: AgeLevelSetting | "unset";
+  // Reuse the parent's saved setting across app reloads, independently
+  // of progress storage that a test may make unreadable.
+  settingsStorage?: MemoryStorage;
 };
 
 // The age level the climb is played at, so a test about the climb sees it.
@@ -66,9 +69,10 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   orientation = manualOrientation("landscape"),
   deviceLanguage = "en-GB",
   theme = "light",
-  ageLevel = PICKED_HATCHLING
+  ageLevel = PICKED_HATCHLING,
+  settingsStorage
 }: PairsAppOptions<C> = {}) {
-  const ageLevels = ageLevelStorage(ageLevel);
+  const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
     <App
       {...featuring()}
@@ -96,7 +100,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       {...clock}
     />
   );
-  return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
+  return { user: userEvent.setup(), clock, storage, ageLevels, unmount: view.unmount };
 }
 
 // Find the pair's entry as it is stored, under the names it kept from
@@ -181,9 +185,7 @@ export async function playBoard(user: UserEvent, clock: Timers): Promise<number>
   };
   let tries = 0;
   for (;;) {
-    const down = pairCards()
-      .map((_, place) => place)
-      .filter((place) => stateAt(place) === "down");
+    const down = pairCards().flatMap((card, place) => (card.getAttribute("data-state") === "down" ? [place] : []));
     if (down.length === 0) return tries;
     const unseen = (but: number) => down.find((place) => place !== but && !seen.has(place));
     const known = down.find((place) => seen.has(place) && down.some((other) => other !== place && seen.get(other) === seen.get(place)));
