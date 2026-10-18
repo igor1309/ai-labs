@@ -1,46 +1,45 @@
 Feature: Compare dinosaurs quiz: starting a round and asking
   A child picks which of two dinosaurs is heavier or taller,
   ten questions per round, and tries to beat their best score.
-  home-tiles.feature tells how the other games' tiles stand and scroll.
+  home-tiles.feature tells how the games' tiles stand and scroll, and
+  home-featured-card.feature how the large card features a game.
 
   Background:
     Given an iPad in landscape
 
-  Scenario: The home page offers the quiz as a card
+  Scenario: The home page offers the quiz as a tile
     When I open the home page
-    Then I see a "COMPARE" quiz card with a picture of two dinosaurs
+    Then I see a "COMPARE" tile with a scales symbol and a picture of two dinosaurs
+    And it is the first tile of the row, above "ALL DINOSAURS"
+    And it shows my best score with a trophy symbol when there is one
 
-  Scenario: The other games sit beside the quiz card
-    When I open the home page
-    Then I see the other games' tiles beside the "COMPARE" card
-
-  Scenario: The quiz card brightens under a pointer
+  Scenario: The quiz tile brightens under a pointer
     Given I am on the home page
-    When I hover over the "COMPARE" card with a pointer
-    Then the card brightens
+    When I hover over the "COMPARE" tile with a pointer
+    Then the tile brightens
 
-  Scenario: A card shows it is pressed
+  Scenario: The tile shows it is pressed
     Given I am on the home page
-    When I press the "COMPARE" card
-    Then the card shows a pressed state before the round opens
+    When I press the "COMPARE" tile
+    Then the tile shows a pressed state before the round opens
 
-  Scenario: Tapping the card starts a round
+  Scenario: Tapping the tile starts a round
     Given I am on the home page
-    When I tap the "COMPARE" card
+    When I tap the "COMPARE" tile
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 
   Scenario: The first question waits for its pictures
     Given I am on the home page
     And the pictures of question 1 are still loading
-    When I tap the "COMPARE" card
+    When I tap the "COMPARE" tile
     Then the home page stays on screen
     And when the pictures have loaded, or after a second at most, I see the progress "1/10"
 
-  Scenario: A quick double tap on the card starts one round
+  Scenario: A quick double tap on the tile starts one round
     Given I am on the home page
     And the pictures of question 1 are still loading
-    When I tap the "COMPARE" card twice quickly
+    When I tap the "COMPARE" tile twice quickly
     Then one round starts, at "1/10"
 
   Scenario: Portrait asks to turn the iPad

@@ -20,7 +20,7 @@ import {
   visitorsFrom,
   welcomeVisitor
 } from "./careApp.tsx";
-import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf } from "./support.ts";
+import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf, homeTile, tilesRow } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -31,14 +31,15 @@ const reaction = () => stage()?.getAttribute("data-reaction") ?? undefined;
 const visitorName = () => document.querySelector(".visitor-name");
 
 describe("the CARE tile", () => {
-  it("is beside the COMPARE card, under ALL DINOSAURS, with a heart and a dinosaur", () => {
+  it("starts the row's second column, above SORT, with a heart and a dinosaur", () => {
     openCareApp();
 
-    const tile = button("CARE");
+    const tile = homeTile("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
-    expect(button("ALL DINOSAURS").nextElementSibling).toBe(tile);
-    expect(tile.parentElement?.previousElementSibling).toBe(button("COMPARE"));
+    // The row fills two tiles to a column: the third tile tops the second.
+    expect([...tilesRow().children].indexOf(tile)).toBe(2);
+    expect(tile.nextElementSibling).toBe(homeTile("SORT"));
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
@@ -215,7 +216,7 @@ describe("leaving a visit", () => {
     await user.click(button("HOME"));
     act(() => clock.settle());
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(storedCare(storage)).toBeUndefined();
     await user.click(button("CARE"));
     expect(button("NEW VISITOR")).toBeDefined();
@@ -233,7 +234,7 @@ describe("leaving a visit", () => {
     await user.click(button("HOME"));
     act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(screen.queryByLabelText("HEARTS")).toBeNull();
     await user.click(button("CARE"));
     await user.click(button("NEW VISITOR"));

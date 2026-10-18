@@ -79,10 +79,11 @@ type CareScreen =
 
 // Dinosaur care, kept by the app above its orientation gate, so turning
 // the iPad pauses a visit without losing it. `onHome` takes the child
-// back to the home page.
+// back to the home page; `onStart` is told as each visit begins.
 export function useCareGame(
   { visitors, careProgress, bodyPicture, itemPicture, random, loadPicture, startTimer, reducedMotion }: CareGameProps,
-  onHome: () => void
+  onHome: () => void,
+  onStart: () => void
 ) {
   const [screen, setScreen] = useState<CareScreen>({ kind: "welcome" });
   // Progress is read once, as the app opens. When it cannot be read there
@@ -129,6 +130,7 @@ export function useCareGame(
       const visit = startVisit(visitor);
       live.current = visit;
       lastVisitor.current = visitor.id;
+      onStart();
       show({ kind: "visit", visit, leaving: false });
     });
   };

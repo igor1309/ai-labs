@@ -38,8 +38,12 @@ type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; res
 // The sorting game, kept by its owner above the orientation gate, so
 // turning the iPad pauses a board without losing it. It shows nothing
 // until a board is started. `onHome` takes the child back to the home
-// page.
-export function useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }: SortingGameProps, onHome: () => void) {
+// page; `onStart` is told as each board begins.
+export function useSortingGame(
+  { sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }: SortingGameProps,
+  onHome: () => void,
+  onStart: () => void
+) {
   const [screen, setScreen] = useState<SortingScreen>();
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
@@ -67,6 +71,7 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
       if (stay.current !== visiting) return;
       starting.current = false;
       last.current = sorting;
+      onStart();
       changeScreen(SCREEN_CHANGE, () => {
         setScreen({ kind: "board", sorting });
         shown?.();

@@ -1,6 +1,9 @@
+import { within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
+import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
+import type { HomeGame } from "../src/HomePage.tsx";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
@@ -86,8 +89,8 @@ export function manualPictures(): ManualPictures {
 // What the app takes from a browser to load pictures and keep time, as
 // spies: the source of each image it decodes, the timers it started, by
 // their id, and the ids of those it stopped. No image ever finishes
-// decoding and no timer ever fires.
-export function pictureBrowser() {
+// decoding, no timer ever fires and the clock stands at `now`.
+export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
   const decoding: string[] = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
   const stopped: number[] = [];
@@ -104,6 +107,7 @@ export function pictureBrowser() {
     clearTimeout: (id: number) => {
       stopped.push(id);
     },
+    Date: { now: () => now.getTime() },
     decoding,
     timers,
     stopped
@@ -319,6 +323,32 @@ export function englishDevice() {
   return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: unreadVersion };
 }
 
+// A featured history the test reads, starting from `initial`: the game
+// featured replaces the last one.
+export function featuredSpy(initial: FeaturedHistory): FeaturedStore {
+  let history = initial;
+  return {
+    history: () => history,
+    feature: (featuring) => {
+      history = { ...history, lastFeatured: featuring };
+    }
+  };
+}
+
+// Each game whose start the app counted, in order.
+export function countedStarts() {
+  const counted: HomeGame[] = [];
+  return { counted, startCounter: { countStart: (game: HomeGame) => void counted.push(game) } };
+}
+
+// The featured game for tests that are not about its choice: `game`,
+// already chosen for the clock's day, so the choice draws nothing from
+// the random source, and starts counted where no test reads them.
+export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore" | "startCounter"> {
+  const now = new Date(2026, 9, 18, 9, 30);
+  return { now: () => now, featuredStore: featuredSpy({ timesStarted: new Map(), lastFeatured: { game, on: calendarDay(now) } }), startCounter: countedStarts().startCounter };
+}
+
 // The version footer for tests that are not about it: its name is dropped.
 export const unreadVersion = () => {};
 
@@ -525,4 +555,22 @@ export function words(element: HTMLElement): string {
   const copy = element.cloneNode(true) as HTMLElement;
   copy.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((part) => part.remove());
   return copy.textContent?.trim() ?? "";
+}
+
+// The home page's row of tiles.
+export function tilesRow(): HTMLElement {
+  const row = document.querySelector<HTMLElement>(".games-tiles");
+  if (!row) throw new Error("No tiles on the page");
+  return row;
+}
+
+// A game's own tile on the home page, apart from the large card, which
+// may feature the same game under the same name.
+export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
+
+// The home page's large card, featuring today's game.
+export function featuredCard(): HTMLElement {
+  const card = document.querySelector<HTMLElement>(".featured-card");
+  if (!card) throw new Error("No featured card on the page");
+  return card;
 }

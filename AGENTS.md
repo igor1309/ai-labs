@@ -45,6 +45,18 @@
   The topic file is the one `~/.claude/hooks/limit-hit-ntfy.sh` uses.
 - Push only for a real block or a decision that is the owner's: one ask per
   push. Keep working on whatever does not depend on the answer.
+- When Codex stops on its usage or quota limit (a Codex review or an
+  agister step that runs Codex), send one ntfy push at once, whether or
+  not the owner is away: `-H "Title: Codex quota limit" -H "Priority: high"
+  -H "Tags: no_entry"`, with the repo, the step that stopped and the reset
+  time Codex gives, if any. Do not retry the call in a loop; keep working
+  on whatever does not need Codex.
+- Do not put questions to the owner. For a product, scope or issue-split
+  call, weigh the options and suggest one, with its reason, for the owner
+  to accept or change. Make technical choices yourself (where a setting is
+  stored, how data is laid out) and state them in the plan.
+- Before building a large issue, present a top-level plan, including any
+  restructuring of its issues, and wait for the owner's answer.
 
 ## Long waits
 

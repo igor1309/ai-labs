@@ -22,7 +22,7 @@ import {
   tray,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS } from "./support.ts";
+import { fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, homeTile } from "./support.ts";
 import { PIECES, type Skeleton } from "../src/skeletons/index.ts";
 
 // skeleton-assembly-museum.feature
@@ -177,7 +177,7 @@ describe("opening the museum", () => {
 
     await user.click(button("MUSEUM"));
     await user.click(button("HOME"));
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its names in capitals", async (language) => {

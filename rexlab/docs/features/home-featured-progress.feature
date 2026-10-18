@@ -1,4 +1,3 @@
-@next
 Feature: Home page: counting starts and keeping the featured choice
   Start counts and the day's featured game are kept on this browser beside
   the other progress, best effort, and never disturb it.

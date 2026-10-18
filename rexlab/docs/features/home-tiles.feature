@@ -1,20 +1,22 @@
 Feature: The home page's game tiles
-  Beside the COMPARE card the other games stand in a row of columns, two
-  tiles to a column, every column as wide as the others. The columns do
-  not all fit beside COMPARE on any iPad, so the row scrolls sideways
-  under the finger, and the next column peeks in at the edge to show
-  there is more.
+  Beside the large card every game stands in a row of columns, two tiles
+  to a column, every column as wide as the others, in a fixed order
+  whichever game the large card features (home-featured-card.feature).
+  The columns do not all fit beside the large card on any iPad, so the
+  row scrolls sideways under the finger, and the next column peeks in at
+  the edge to show there is more.
 
   Background:
     Given an iPad in landscape
 
-  Scenario: The tiles stand in equal columns of two beside COMPARE
+  Scenario: The tiles stand in equal columns of two beside the large card
     When I open the home page
-    Then beside the "COMPARE" card I see "ALL DINOSAURS" over "CARE"
-    And then "SORT" over "FIND THE PAIR"
-    And then "SKELETONS" over "MORE COMING", last
+    Then beside the large card I see "COMPARE" over "ALL DINOSAURS"
+    And then "CARE" over "SORT"
+    And then "FIND THE PAIR" over "SKELETONS"
+    And then "MORE COMING", last, the whole height of its column
     And every column of tiles is as wide as the others
-    And every tile is as tall as the others, half its column
+    And every game's tile is as tall as the others, half its column
 
   Scenario: MORE COMING is a picture, not a game
     When I open the home page
@@ -26,13 +28,13 @@ Feature: The home page's game tiles
   Scenario Outline: The tiles scroll sideways
     Given the screen is <width> by <height> CSS pixels
     When I open the home page
-    Then the row shows "ALL DINOSAURS" and "CARE" at its left edge
+    Then the row shows "COMPARE" and "ALL DINOSAURS" at its left edge
     And at least 24 pixels of the first column that does not fit peek in at the right edge
     When I swipe the tiles to the left until they stop
     Then I see "MORE COMING" at the right edge
-    And the "COMPARE" card stays in place
+    And the large card stays in place
     When I swipe back to the right
-    Then I see "ALL DINOSAURS" and "CARE" again
+    Then I see "COMPARE" and "ALL DINOSAURS" again
 
     Examples:
       | width | height |
@@ -53,12 +55,12 @@ Feature: The home page's game tiles
     Given I swiped the tiles to "MORE COMING"
     When I swipe back until I can tap "FIND THE PAIR"
     And I open "FIND THE PAIR" and go back home
-    Then the row shows "ALL DINOSAURS" and "CARE" at its left edge
+    Then the row shows "COMPARE" and "ALL DINOSAURS" at its left edge
 
   Scenario Outline: Every tile's words fit it
     Given the app is in <language>
     And the screen is <width> by <height> CSS pixels
-    And I have a best score of 8 in CARE, 6 in SORT and 3 in SKELETONS, and 120 stars in FIND THE PAIR
+    And I have a best score of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, and 120 stars in FIND THE PAIR
     When I open the home page
     Then every tile keeps its title on one line, but "FIND THE PAIR" on two at most
     And every title is at least 24 pixels tall, and "MORE COMING" at least 20

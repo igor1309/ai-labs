@@ -80,10 +80,12 @@ type SkeletonScreen =
 
 // The skeleton game, kept by the app above its orientation gate, so
 // turning the iPad pauses a puzzle without losing it. `onHome` takes the
-// child back to the home page.
+// child back to the home page; `onStart` is told as each puzzle begins, a
+// rebuild's too.
 export function useSkeletonGame(
   { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion }: SkeletonGameProps,
-  onHome: () => void
+  onHome: () => void,
+  onStart: () => void
 ) {
   const [screen, setScreen] = useState<SkeletonScreen>({ kind: "choice" });
   const away = useSyncExternalStore(presence.subscribe, presence.isAway);
@@ -145,6 +147,7 @@ export function useSkeletonGame(
         if (rebuild) keep(knockDown(keptNow.current, id));
         const started = startPuzzle(skeleton);
         live.current = started;
+        onStart();
         show({ kind: "puzzle", puzzle: started, scatter: rebuild });
       }
     );

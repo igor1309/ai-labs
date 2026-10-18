@@ -22,7 +22,7 @@ import {
   savedSkeletons,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage } from "./support.ts";
+import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage, homeTile } from "./support.ts";
 
 const GAME = "skeleton-assembly";
 
@@ -172,7 +172,7 @@ describe("earning a star", () => {
     revealNow(pictures, "tyrannosaurus");
 
     expect(reveal()).toBeNull();
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
   });
 

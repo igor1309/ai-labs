@@ -3,6 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
@@ -15,6 +16,7 @@ import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
+import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
 import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
@@ -30,6 +32,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   manualAppearance,
   manualOrientation,
   manualTimers,
@@ -45,7 +48,9 @@ import {
   type ManualAppearance,
   type ManualOrientation,
   type ManualTimers,
-  type MemoryStorage
+  type MemoryStorage,
+  featuredCard,
+  homeTile
 } from "./support.ts";
 
 // The WCAG AA contrast for text, which every text read in either theme keeps.
@@ -93,6 +98,7 @@ function openApp({
   const languages = memoryStorage();
   const view = render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -190,13 +196,13 @@ async function answer(user: UserEvent, from: number, to: number, check: () => vo
 const questions =
   (from: number, to: number) =>
   async ({ theme, user }: Walk) => {
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await user.click(homeTile("COMPARE"));
     await answer(user, 1, from - 1, unchecked);
     await answer(user, from, to, () => expectScreenIn(theme));
   };
 
 async function quizResult({ theme, user }: Walk) {
-  await user.click(screen.getByRole("button", { name: "COMPARE" }));
+  await user.click(homeTile("COMPARE"));
   await answer(user, 1, 10, unchecked);
   expect(screen.getByRole("status")).toBeDefined();
   expectScreenIn(theme);
@@ -475,7 +481,7 @@ describe("the System theme", () => {
   it("follows the device while the app is open, without reloading", async () => {
     const device = manualAppearance("light");
     const { user } = openApp({ device });
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await user.click(homeTile("COMPARE"));
     await user.click(cardOf(smallerOf(shownQuestion())));
     expectScreenIn("light");
     const answered = document.body.innerHTML;
@@ -508,7 +514,7 @@ describe("a chosen theme", () => {
     act(() => device.switchTo(chosen));
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await user.click(homeTile("COMPARE"));
     expectScreenIn(chosen);
   });
 
@@ -574,7 +580,7 @@ describe("the theme menu", () => {
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
       const button = screen.getByRole("button", { name: LABELS[language].menu });
-      const card = screen.getByRole("button", { name: LABELS[language].card });
+      const card = homeTile(LABELS[language].card);
 
       expect(button.textContent).toBe("");
       expect(symbolOf(button)).toBe("monitor");
@@ -607,7 +613,7 @@ describe("the theme menu", () => {
       expect(within(menu).getAllByRole("menuitemradio").map(symbolOf)).toEqual(["monitor", "sun", "moon"]);
       expect(CHOICES[language].filter((name) => name === name.toLocaleUpperCase(language))).toEqual([]);
       expect(parseFloat(getComputedStyle(within(menu).getByText(CHOICES[language][0] ?? "")).fontSize)).toBeLessThan(
-        parseFloat(getComputedStyle(screen.getByText(LABELS[language].card)).fontSize) / 2
+        parseFloat(getComputedStyle(within(featuredCard()).getByText(LABELS[language].card)).fontSize) / 2
       );
 
       await user.click(outsideMenu());
@@ -630,6 +636,36 @@ describe("the theme menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(symbolOf(screen.getByRole("button", { name: "Theme" }))).toBe(symbol);
     expect(choicesIn(await openMenu(user, "Theme")).filter(({ tick }) => tick)).toEqual([{ name, checked: true, tick: true }]);
+  });
+});
+
+// The large card is shown through the home page's props, each game
+// featured in turn, in the theme the app sets on the page.
+describe("the large card", () => {
+  // The colours a part is drawn in: its surface, its words, and its
+  // symbol's.
+  const look = (part: Element | null) =>
+    part && [part, part.querySelector("svg") ?? part].map((element) => [getComputedStyle(element).backgroundColor, getComputedStyle(element).color]);
+
+  it.each(["light", "dark"] as const)("is in the %s theme with every game featured, in its own tile's colours", (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      for (const [game, key] of HOME_GAMES) {
+        const { unmount } = renderHomePageFeaturing(game);
+        expectScreenIn(theme);
+
+        const card = featuredCard();
+        const tile = homeTile(TEXTS.en[key]);
+        const parts = (of: Element) => [look(of), look(symbolSquareOf(of)), look(badgeOf(of)), look(of.querySelector('[class$="-title"]'))];
+        expect({ game, parts: parts(card) }).toEqual({ game, parts: parts(tile) });
+        // The shade the name stands on, the tile's row's or none.
+        const footer = getComputedStyle(nameRowOf(card) ?? card).backgroundColor;
+        expect({ game, footer }).toEqual({ game, footer: getComputedStyle(nameRowOf(tile) ?? tile).backgroundColor });
+        unmount();
+      }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
   });
 });
 
@@ -729,7 +765,7 @@ describe("the sorting result", () => {
 describe("marks", () => {
   it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    await user.click(homeTile("COMPARE"));
     const question = shownQuestion();
 
     await user.click(cardOf(smallerOf(question)));

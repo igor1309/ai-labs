@@ -25,6 +25,11 @@ Architecture: `docs/mvp-infrastructure.md`.
   question, answer, reward or menu) animates smoothly with the shared motion
   tokens, quick rather than long, and falls back to short fades when the
   device asks for reduced motion. Treat an abrupt change as a defect.
+- Demote, never delete. When a game is made harder, its current behaviour
+  becomes its easiest age level, Hatchling, rather than being replaced
+  (`docs/age-levels.md`). A redesign issue says which of its modes is
+  Hatchling, Explorer and Paleontologist; removing a mode a 4-year-old can
+  play needs an explicit decision on the issue.
 
 ## Specs
 

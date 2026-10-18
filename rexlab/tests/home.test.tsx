@@ -2,12 +2,13 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { HomePage } from "../src/HomePage.tsx";
+import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { NO_PAIRS } from "../src/pairs/progress.ts";
 import { careRecord } from "./careApp.tsx";
+import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { pairsRecord } from "./pairsApp.tsx";
 import { keptSkeletons } from "./skeletonsApp.tsx";
@@ -21,6 +22,9 @@ import {
   emptySorting,
   englishDevice,
   fakeBodyPicture,
+  featuredCard,
+  featuring,
+  homeTile,
   fakeSkeletonPicture,
   lightDevice,
   loadedPictures,
@@ -29,6 +33,7 @@ import {
   memoryStorage,
   seededRandom,
   symbolOf,
+  tilesRow,
   type MemoryStorage
 } from "./support.ts";
 
@@ -40,8 +45,8 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons()
 ) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
-  return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
+  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
+  return { user: userEvent.setup(), card: featuredCard(), tile: homeTile("COMPARE") };
 }
 
 const withStorage = (storage: MemoryStorage) => localProgress(() => storage);
@@ -68,6 +73,7 @@ function renderHomePage(taps: number[]) {
       onLanguage={nothing}
       theme="light"
       onTheme={nothing}
+      featured="compare"
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={undefined}
       catalogue={{ picture: fakeBodyPicture("stegosaurus"), count: SHIPPED_CATALOGUE.length }}
@@ -84,7 +90,7 @@ function renderHomePage(taps: number[]) {
       onSkeletons={nothing}
     />
   );
-  return { user: userEvent.setup(), card: screen.getByRole("button", { name: "SORT" }) };
+  return { user: userEvent.setup(), card: homeTile("SORT") };
 }
 
 // The name of every symbol an element shows, in order.
@@ -104,9 +110,12 @@ const TITLE_EMS: Record<string, number> = {
   COMPARE: 5.1,
   СРАВНИ: 4.1,
   "ALL DINOSAURS": 8.6,
+  // ALL DINOSAURS may wrap on the large card, so each of its words is here.
+  ALL: 2.0,
+  DINOSAURS: 6.4,
   ВСЕ: 2.1,
   CARE: 2.8,
-  ПОЗАБОТЬСЯ: 6.9,
+  ЗАБОТА: 4.0,
   SORT: 2.9,
   РАЗЛОЖИ: 5.2,
   // FIND THE PAIR's title may wrap, so each line it may take is here.
@@ -125,9 +134,9 @@ const TITLE_EMS: Record<string, number> = {
   "СКОРО ЕЩЁ": 6.0
 };
 
-// The words each title on the home page shows.
+// The words each tile's title on the home page shows.
 const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "moreComing"> = {
-  "quiz-card-title": "quizCard",
+  "compare-tile-title": "quizCard",
   "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care",
   "sort-tile-title": "sort",
@@ -142,17 +151,10 @@ const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-
 
 const sidesOf = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth);
 
-// The tiles' row of the home page, beside COMPARE.
-const tilesRow = () => {
-  const row = document.querySelector(".games-tiles");
-  if (!row) throw new Error("No tiles beside COMPARE");
-  return row;
-};
-
-// The widths COMPARE and the tiles' row take on a page `width` wide: they
-// grow from nothing by their shares of what the page's padding, the gap
-// and their own sides leave. A width set, capped or floored any other way
-// fails here, since this sum would not see it.
+// The widths the large card and the tiles' row take on a page `width`
+// wide: they grow from nothing by their shares of what the page's
+// padding, the gap and their own sides leave. A width set, capped or
+// floored any other way fails here, since this sum would not see it.
 function gamesWidths(width: number) {
   const home = document.querySelector(".home");
   const games = document.querySelector(".games");
@@ -175,8 +177,8 @@ function tileColumnWidth() {
   return px(columns);
 }
 
-// The width a card has on a page `width` wide: COMPARE its share of the
-// games, and a tile its column.
+// The width a card has on a page `width` wide: the large card its share
+// of the games, and a tile its column.
 function cardWidth(card: Element, width: number) {
   const part = [...gamesWidths(width)].find(([part]) => part === card);
   return part ? part[1] : tileColumnWidth();
@@ -200,16 +202,18 @@ function roomFor(title: Element, width: number) {
   );
 }
 
-// The lines `words` wrap onto in `room` at `size`, a word at a time, or
-// the line whose width in ems is missing here.
-function linesOf(words: string, size: number, room: number): string[] | { missing: string } {
+// The width of `words` at `size` and `spacing` between letters.
+const widthOf = (words: string, size: number, spacing: number) => (TITLE_EMS[words] ?? Number.NaN) * size + spacing * words.length;
+
+// The lines `words` wrap onto in `room` at `size` and `spacing`, a word
+// at a time, or the line whose width in ems is missing here.
+function linesOf(words: string, size: number, spacing: number, room: number): string[] | { missing: string } {
   const lines: string[] = [];
   for (const word of words.split(" ")) {
     const last = lines.at(-1);
     const joined = last === undefined ? word : `${last} ${word}`;
-    const ems = TITLE_EMS[joined];
-    if (ems === undefined) return { missing: joined };
-    if (last !== undefined && ems * size <= room) lines[lines.length - 1] = joined;
+    if (TITLE_EMS[joined] === undefined) return { missing: joined };
+    if (last !== undefined && widthOf(joined, size, spacing) <= room) lines[lines.length - 1] = joined;
     else lines.push(word);
   }
   const missing = lines.find((line) => TITLE_EMS[line] === undefined);
@@ -222,33 +226,36 @@ const brightness = (element: Element) => {
 };
 
 describe("the home page", () => {
-  it("offers the quiz as a card with the app's own Tyrannosaurus and Brachiosaurus facing off", () => {
-    const { card } = openHomePage();
+  it("offers the quiz as the first tile, with the app's own Tyrannosaurus and Brachiosaurus facing off", () => {
+    const { tile } = openHomePage();
 
-    expect(card.textContent).toBe("COMPARE");
-    expect(symbolOf(card)).toBe("scale");
-    const faceOff = within(card).getByRole("img", { name: "TWO DINOSAURS" });
+    expect(tile).toBe(tilesRow().firstElementChild);
+    expect(tile.textContent).toBe("COMPARE");
+    expect(symbolsOf(tile)).toEqual(["scale"]);
+    const faceOff = within(tile).getByRole("img", { name: "TWO DINOSAURS" });
     const pictures = [...faceOff.querySelectorAll("img")];
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands the other games beside COMPARE in equal columns of two: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, then SKELETONS over MORE COMING", () => {
+  it("stands every game in equal columns of two beside the large card: COMPARE over ALL DINOSAURS, CARE over SORT, FIND THE PAIR over SKELETONS, then MORE COMING, last, the column's whole height", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
     expect(games?.classList.contains("games")).toBe(true);
     const row = tilesRow();
     expect([...(games?.children ?? [])]).toEqual([card, row]);
-    // COMPARE takes three sevenths of the width, the tiles the rest.
+    // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name })), document.querySelector(".more-coming")];
+    const tiles = [...["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
-    // column as wide as the others and its two tiles sharing its height.
+    // column as wide as the others and its two tiles sharing its height;
+    // MORE COMING, alone in the last column, takes all of it.
     const style = getComputedStyle(row);
     expect([style.display, style.gridAutoFlow, style.gridTemplateRows]).toEqual(["grid", "column", "minmax(0, 1fr) minmax(0, 1fr)"]);
     expect(tileColumnWidth()).toBeGreaterThan(0);
     expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
+    expect(tiles.map((tile) => getComputedStyle(tile ?? row).gridRow || "auto")).toEqual([...tiles.slice(1).map(() => "auto"), "span 2"]);
   });
 
   it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
@@ -268,7 +275,7 @@ describe("the home page", () => {
     fireEvent.pointerCancel(sort, { pointerType: "touch" });
 
     expect(sort.dataset.pressed).toBeUndefined();
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
   });
 
   it("stands the tiles at their start again on coming home from a game", async () => {
@@ -306,16 +313,16 @@ describe("the home page", () => {
     await user.pointer({ keys: "[TouchA>]", target: tile });
     expect(getComputedStyle(tile).transform).toBe("none");
     await user.pointer({ keys: "[/TouchA]", target: tile });
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBe(tilesRow().previousElementSibling);
+    expect(featuredCard()).toBe(tilesRow().previousElementSibling);
   });
 
-  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a COMPARE that stays, with the next column peeking in, at %ipx wide", (width) => {
+  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, at %ipx wide", (width) => {
     const { card } = openHomePage();
 
     const row = tilesRow();
     const style = getComputedStyle(row);
     expect([style.overflowX, style.overflowY]).toEqual(["auto", "hidden"]);
-    // COMPARE is outside the row, so it stays as the tiles scroll.
+    // The large card is outside the row, so it stays as the tiles scroll.
     expect(row.contains(card)).toBe(false);
     const shown = (gamesWidths(width).get(row) ?? 0) - sidesOf(style);
     const column = tileColumnWidth();
@@ -367,19 +374,20 @@ describe("the home page", () => {
       });
       expect(overflowing).toEqual([]);
 
-      const tiles = ["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map((name) => screen.getByRole("button", { name }));
-      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual([true, true, true, true, true]);
+      const tiles = ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile);
+      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(tiles.map(() => true));
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
-      const counts = tiles.map((tile) => tile.querySelector(".catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
+      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
+        ["7", true, "absolute"],
         [String(SHIPPED_CATALOGUE.length), true, "absolute"],
         ["8", true, "absolute"],
         ["6", true, "absolute"],
         ["120", true, "absolute"],
         ["3", true, "absolute"]
       ]);
-      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual([true, true, true, true, true]);
-      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(["relative", "relative", "relative", "relative", "relative"]);
+      expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual(tiles.map(() => true));
+      expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(tiles.map(() => "relative"));
 
       const title = pairsTile().querySelector(".pairs-tile-title");
       if (!title) throw new Error("No FIND THE PAIR title");
@@ -387,14 +395,22 @@ describe("the home page", () => {
       const size = px(getComputedStyle(title).fontSize);
       expect(size).toBeGreaterThanOrEqual(24);
       const room = roomFor(title, width);
-      expect(LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, room)).filter((lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => (TITLE_EMS[line] ?? 0) * size > room))).toEqual([]);
+      const spacing = px(getComputedStyle(title).letterSpacing);
+      expect(
+        LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, spacing, room)).filter(
+          (lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => widthOf(line, size, spacing) > room)
+        )
+      ).toEqual([]);
     }
   );
 
-  it("offers find the pair as a tile under SORT: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
+  it("offers find the pair as a tile over SKELETONS, in the column after SORT's: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
+    // The row fills two tiles to a column: the fifth tile tops the third.
+    expect([...tilesRow().children].indexOf(tile)).toBe(4);
+    expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("FIND THE PAIR");
     expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
     expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
@@ -479,27 +495,26 @@ describe("the home page", () => {
     expect(screen.getByRole("heading", { name: "BUILD A SKELETON" })).toBeDefined();
   });
 
-  it("shows the best score in the quiz card's corner, over the face-off, beside a trophy", () => {
-    const { card } = openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })));
+  it("shows the best score in the COMPARE tile's corner, over the face-off, beside a trophy", () => {
+    const { tile } = openHomePage(withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })));
 
-    const best = card.querySelector(".quiz-card-best");
+    const best = tile.querySelector(".compare-tile-best");
     expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "7"]);
-    expect(best?.parentElement).toBe(card);
-    expect(card.querySelector(".quiz-card-footer")?.contains(best)).toBe(false);
-    const [cardStyle, style] = [getComputedStyle(card), getComputedStyle(best ?? card)];
-    expect([cardStyle.position, style.position]).toEqual(["relative", "absolute"]);
-    expect([style.top, style.right]).toEqual(["24px", "24px"]);
+    expect(best?.parentElement).toBe(tile);
+    expect(tile.querySelector(".compare-tile-row")?.contains(best)).toBe(false);
+    const [tileStyle, style] = [getComputedStyle(tile), getComputedStyle(best ?? tile)];
+    expect([tileStyle.position, style.position, style.top, style.right]).toEqual(["relative", "absolute", "12px", "12px"]);
   });
 
   it.each([
     ["no round finished yet", memoryStorage()],
     ["no best kept", memoryStorage({ [PROGRESS_KEY]: record(null) })],
     ["storage that cannot be read", memoryStorage({ [PROGRESS_KEY]: record(7) }, { read: false })]
-  ])("shows no best score on the quiz card with %s", (_, storage) => {
-    const { card } = openHomePage(withStorage(storage));
+  ])("shows no best score on the COMPARE tile with %s", (_, storage) => {
+    const { tile } = openHomePage(withStorage(storage));
 
-    expect(card.querySelector(".quiz-card-best")).toBeNull();
-    expect(symbolsOf(card)).toEqual(["scale"]);
+    expect(tile.querySelector(".compare-tile-best")).toBeNull();
+    expect(symbolsOf(tile)).toEqual(["scale"]);
   });
 
   it("offers the sorting game as a SORT card with a Triceratops beside a symbol of shapes, and no best score before a board is finished", () => {
@@ -524,7 +539,7 @@ describe("the home page", () => {
     expect(sort.querySelector(".sort-tile-row")?.contains(best)).toBe(false);
     const [cardStyle, style] = [getComputedStyle(sort), getComputedStyle(best ?? sort)];
     expect([cardStyle.position, style.position, style.top, style.right]).toEqual(["relative", "absolute", "12px", "12px"]);
-    expect(screen.getByRole("button", { name: "COMPARE" }).querySelector(".quiz-card-best")).toBeNull();
+    expect(homeTile("COMPARE").querySelector(".compare-tile-best")).toBeNull();
   });
 
   it.each([
@@ -584,7 +599,14 @@ describe("the home page", () => {
     expect(style.position).toBe("fixed");
     expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
     expect(style.left).toMatch(/^[\d.]+(px|rem)$/);
-    expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(card).getByText("COMPARE")).fontSize) / 2);
+    // Smaller than every game's name, the tiles' and the large card's: the
+    // large card's name is sized down to fit DINOSAURS at 1024 px, so half
+    // of it is no longer the measure of small.
+    const names = [within(card).getByText("COMPARE"), ...within(tilesRow()).getAllByRole("button").map((tile) => tile.querySelector("[class$='-tile-title']"))];
+    for (const name of names) {
+      if (!(name instanceof HTMLElement)) throw new Error("A game has no name");
+      expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(name).fontSize));
+    }
   });
 
   it("opens one menu for parents at a time, and a tap outside it does not start a round", async () => {
@@ -627,37 +649,136 @@ describe("the home page", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 
-  it("brightens the quiz card under a pointer", async () => {
-    const { user, card } = openHomePage();
+  // The quiz's two doors while it is featured: its tile and the large card.
+  const QUIZ_DOORS = [
+    ["COMPARE tile", (home: ReturnType<typeof openHomePage>) => home.tile],
+    ["large COMPARE card", (home: ReturnType<typeof openHomePage>) => home.card]
+  ] as const;
+
+  it.each(QUIZ_DOORS)("brightens the %s under a pointer", async (_, door) => {
+    const home = openHomePage();
+    const card = door(home);
     expect(brightness(card)).toBe(1);
 
-    await user.hover(card);
+    await home.user.hover(card);
     expect(brightness(card)).toBeGreaterThan(1);
 
-    await user.unhover(card);
+    await home.user.unhover(card);
     expect(brightness(card)).toBe(1);
   });
 
-  it("shows the card pressed before the round opens", async () => {
-    const { user, card } = openHomePage();
+  it.each(QUIZ_DOORS)("shows the %s pressed before the round opens", async (_, door) => {
+    const home = openHomePage();
+    const card = door(home);
 
-    await user.pointer({ keys: "[TouchA>]", target: card });
+    await home.user.pointer({ keys: "[TouchA>]", target: card });
 
     expect(getComputedStyle(card).transform).toMatch(/^scale\(0\.\d+\)$/);
     expect(screen.queryByLabelText("PROGRESS")).toBeNull();
 
-    await user.pointer({ keys: "[/TouchA]", target: card });
+    await home.user.pointer({ keys: "[/TouchA]", target: card });
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
   });
 
-  it("starts a round of 10 questions on a tap", async () => {
-    const { user, card } = openHomePage();
+  it.each(QUIZ_DOORS)("starts a round of 10 questions on a tap on the %s", async (_, door) => {
+    const home = openHomePage();
 
-    await user.click(card);
+    await home.user.click(door(home));
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
     expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")).toHaveLength(2);
+  });
+});
+
+// The large card is given its game; each game, featured in turn, is
+// shown through the home page's props, and opened through the app.
+describe("the large card", () => {
+  const sources = (element: Element) => [...element.querySelectorAll("img")].map((picture) => picture.getAttribute("src"));
+
+  it.each(HOME_GAMES.flatMap(([game, key]) => [true, false].map((scored) => [game, key, scored] as const)))(
+    "features %s with its own tile's picture, symbol, name in capitals and badge, the tiles in their order, scored: %s",
+    async (game, key, scored) => {
+      const { user, opened } = renderHomePageFeaturing(game, { scored });
+
+      const card = featuredCard();
+      const name = TEXTS.en[key];
+      const tile = homeTile(name);
+      expect([card.dataset.game, card.getAttribute("aria-label"), card.querySelector(".featured-card-title")?.textContent]).toEqual([game, name, name]);
+      expect(name).toBe(name.toLocaleUpperCase("en"));
+      // The same picture, drawn the same way, and the same symbols.
+      expect(card.firstElementChild?.outerHTML).toBe(tile.firstElementChild?.outerHTML);
+      expect(sources(card)).toEqual(sources(tile));
+      expect(symbolsOf(card)).toEqual(symbolsOf(tile));
+      // The catalogue's count is always there; every other badge only once
+      // there is a score.
+      const badges = [badgeOf(card), badgeOf(tile)].map((badge) => badge && [symbolOf(badge), badge.textContent]);
+      expect(badges[0]).toEqual(badges[1]);
+      expect(badges[0] !== null).toBe(scored || game === "catalogue");
+      expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(HOME_GAMES.map(([, other]) => TEXTS.en[other]));
+
+      await user.click(card);
+      await user.click(tile);
+      expect(opened).toEqual([game, game]);
+    }
+  );
+
+  it.each([1024, 1180, 1366])(
+    "fits every game's name on two lines at most in every language at %ipx wide, in pixels larger than every tile's name",
+    (width) => {
+      const overflowing = HOME_GAMES.flatMap(([game, key]) => {
+        const { unmount } = renderHomePageFeaturing(game);
+        const title = featuredCard().querySelector(".featured-card-title");
+        if (!title) throw new Error("No name on the large card");
+        const style = getComputedStyle(title);
+        const size = px(style.fontSize);
+        const spacing = px(style.letterSpacing);
+        const room = roomFor(title, width);
+        const tiles = [...tilesRow().querySelectorAll('[class$="-tile-title"]')].map((other) => px(getComputedStyle(other).fontSize));
+        const found = [
+          // A size worked out by the browser cannot be read here.
+          ...(/^[\d.]+px$/.test(style.fontSize) ? [] : [`${game}: a size of ${style.fontSize}`]),
+          ...(style.whiteSpace === "nowrap" ? [`${game}: kept on one line`] : []),
+          ...(tiles.length > 0 && tiles.every((other) => size > other) ? [] : [`${game}: no larger than its tile's name`]),
+          ...LANGUAGES.flatMap((language) => {
+            const lines = linesOf(TEXTS[language][key], size, spacing, room);
+            if (!Array.isArray(lines)) return [`${lines.missing}: no width in ems`];
+            const wide = lines.filter((line) => widthOf(line, size, spacing) > room);
+            return lines.length > 2 || wide.length > 0 ? [`${TEXTS[language][key]}: ${lines.join(" / ")} in ${room.toFixed(1)}px`] : [];
+          })
+        ];
+        unmount();
+        return found;
+      });
+      expect(overflowing).toEqual([]);
+    }
+  );
+
+  // Each game, featured, opened by a double tap on the large card and by
+  // a tap on its tile: what pictures it asks for and the screen it shows
+  // once they have loaded.
+  async function openedBy(game: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
+    const pictures = manualPictures();
+    const { container, unmount } = render(
+      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+    );
+    await tap(userEvent.setup());
+    const asked: string[] = [];
+    for (let loading = pictures.loading(); loading.length > 0; loading = pictures.loading()) {
+      asked.push(...loading);
+      act(() => loading.forEach(pictures.finish));
+    }
+    const shown = container.innerHTML;
+    unmount();
+    return { asked, shown };
+  }
+
+  it.each(HOME_GAMES)("opens %s once on a double tap, as a tap on its tile does", async (game, key) => {
+    const doubled = await openedBy(game, (user) => user.dblClick(featuredCard()));
+    const once = await openedBy(game, (user) => user.click(homeTile(TEXTS.en[key])));
+
+    expect(doubled).toEqual(once);
+    expect(once.shown).not.toContain("games-tiles");
   });
 });
 
@@ -679,7 +800,7 @@ describe("the first question of a round", () => {
     expect(pictures.timers()).toEqual([1000]);
     act(() => pictures.finish(asked[0] ?? ""));
     expect(progressShown()).toBeUndefined();
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
 
     act(() => pictures.finish(asked[1] ?? ""));
 

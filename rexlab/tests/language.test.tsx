@@ -29,6 +29,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -43,7 +44,9 @@ import {
   words,
   type ManualOrientation,
   type ManualTimers,
-  type MemoryStorage
+  type MemoryStorage,
+  featuredCard,
+  homeTile
 } from "./support.ts";
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
@@ -81,6 +84,7 @@ function openApp({
 }) {
   const view = render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -102,10 +106,10 @@ function openApp({
 }
 
 // The app is in a language when the page says so and the home page's quiz
-// card reads in it.
+// tile reads in it.
 function expectShownIn(language: Language) {
   expect(document.documentElement.lang).toBe(language);
-  expect(words(screen.getByRole("button", { name: QUIZ_CARD[language] }))).toBe(QUIZ_CARD[language]);
+  expect(words(homeTile(QUIZ_CARD[language]))).toBe(QUIZ_CARD[language]);
 }
 
 function renderQuestion(
@@ -175,13 +179,13 @@ describe("the language menu", () => {
       const style = getComputedStyle(button);
       // Faded as the design fades what is for parents: in its soft ink.
       expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
-      expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(screen.getByRole("button", { name: card })).getByText(card)).fontSize) / 2);
+      expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
       expect(document.documentElement.lang).toBe(language);
 
-      await user.click(screen.getByRole("button", { name: card }));
+      await user.click(featuredCard());
 
       expect(screen.queryByRole("button", { name: label })).toBeNull();
     }
@@ -316,10 +320,10 @@ describe("the language menu", () => {
 describe("Russian text", () => {
   const items: Array<[string, () => HTMLElement, string]> = [
     [
-      "quiz card",
+      "quiz tile",
       () => {
         openApp({ device: "ru-RU" });
-        return screen.getByRole("button", { name: "СРАВНИ" });
+        return homeTile("СРАВНИ");
       },
       "СРАВНИ"
     ],
@@ -628,7 +632,7 @@ async function homeAndMenus(language: Language): Promise<Seen> {
 
 async function roundWithMistakes(language: Language): Promise<Seen> {
   const play = openPlay(language);
-  await play.user.click(screen.getByRole("button", { name: QUIZ_CARD[language] }));
+  await play.user.click(homeTile(QUIZ_CARD[language]));
   await playRound(play, 5);
   expect(screen.getAllByRole("status")).toHaveLength(1);
   return play.seen;
@@ -638,7 +642,7 @@ async function roundWithMistakes(language: Language): Promise<Seen> {
 async function roundWithoutMistakes(language: Language): Promise<Seen> {
   const play = openPlay(language, memoryStorage({ [PROGRESS_KEY]: BEST_OF_5 }));
   const { user, look } = play;
-  await user.click(screen.getByRole("button", { name: QUIZ_CARD[language] }));
+  await user.click(homeTile(QUIZ_CARD[language]));
   await playRound(play, 10);
   expect(screen.getAllByRole("status")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));

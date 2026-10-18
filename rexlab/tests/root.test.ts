@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HOME_GAMES } from "../src/HomePage.tsx";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
@@ -205,6 +206,37 @@ describe("the app in a browser", () => {
     expect(given.timers.map(({ ms }) => ms)).toEqual([1000, 500]);
     expect(given.stopped).toEqual([1]);
     expect(fired).toEqual([1000]);
+  });
+
+  it("reads the time from the browser's own clock", () => {
+    const now = new Date(2026, 9, 18, 23, 59);
+
+    expect(appProps({ ...browser(), ...pictureBrowser(now) }).now()).toEqual(now);
+  });
+
+  it("keeps start counts and the day's featured game beside the other progress in local storage, for the next visit", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const visit = appProps(given);
+    expect(visit.featuredStore.history()).toEqual({ timesStarted: new Map(), lastFeatured: undefined });
+
+    visit.featuredStore.feature({ game: "care", on: "2026-10-18" });
+    visit.startCounter.countStart("care");
+
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "home-featured": { starts: { care: 1 }, featured: { day: "2026-10-18", game: "care" } } }
+    });
+    expect(appProps(given).featuredStore.history()).toEqual({ timesStarted: new Map([["care", 1]]), lastFeatured: { game: "care", on: "2026-10-18" } });
+    expect([...given.sessionStorage.items]).toEqual([]);
+  });
+
+  it("reads the start counts of the home page's games and drops any other's", () => {
+    const starts = Object.fromEntries(HOME_GAMES.map((game, at) => [game, at]));
+    const given = browser({
+      local: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: { ...starts, fossils: 4 }, featured: { day: "2026-10-18", game: "skeletons" } } } }) })
+    });
+
+    expect(appProps(given).featuredStore.history()).toEqual({ timesStarted: new Map(Object.entries(starts)), lastFeatured: { game: "skeletons", on: "2026-10-18" } });
   });
 
   it("names index.html's version footer", () => {

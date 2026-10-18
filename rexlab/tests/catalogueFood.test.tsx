@@ -20,6 +20,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   loadedPictures,
   manualAppearance,
   manualOrientation,
@@ -34,6 +35,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
   const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found }) });
   render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
