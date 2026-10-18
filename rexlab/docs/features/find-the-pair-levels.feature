@@ -3,7 +3,7 @@ Feature: Find the pair: age levels
   Hatchling mode is today's game, the climb from 3 to 6 pairs that
   find-the-pair-start.feature calls levels 1 to 4. Explorer and
   Paleontologist each deal one larger board, a picture to its
-  silhouette. The welcome screen's level switch is the child's own
+  silhouette; Paleontologist's turns to a skeleton in LAB-301. The welcome screen's level switch is the child's own
   choice in this game (age-level-choice.feature).
 
   Background:
@@ -26,7 +26,7 @@ Feature: Find the pair: age levels
     Then I see the level switch above "PLAY": HATCHLING, EXPLORER and PALEONTOLOGIST, youngest first
     And each shows its picture from the age level menu: 🥚, 🦖 and 🦴
     And the chosen level stands out from the other two by more than colour
-    And each level is at least 44 by 44 CSS pixels to tap
+    And each level is at least 48 by 48 CSS pixels to tap
 
   Scenario Outline: The level switch fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme

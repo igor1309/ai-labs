@@ -75,7 +75,6 @@ Feature: Find the pair: progress at each age level
     When a <next> board is dealt
     Then no two of its dinosaurs are from the same look-alike group
     And it deals as few of the dinosaurs of the board before it as the look-alike rule allows
-    And so a Paleontologist board may repeat a few, and an Explorer or Hatchling board none
 
     Examples:
       | before         | next           |
