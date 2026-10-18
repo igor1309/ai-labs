@@ -511,3 +511,24 @@ describe("a picture's place", () => {
     expect(bodyOf('.picture[data-picture="loading"],\n.picture[data-picture="failed"]')).toEqual([{ property: "color", value: "transparent" }]);
   });
 });
+
+
+describe("the level offer's motion", () => {
+  const animation = (rules: Rule[], selector: string) => rules
+    .filter(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector))
+    .flatMap(({ body }) => declarationsOf(body))
+    .find(({ property }) => property === "animation")?.value;
+
+  it("rises over a fading scrim and fades away with the shared tokens", () => {
+    expect(animation(PLAIN, ".pairs-offer")).toBe("rise-in var(--motion-screen) var(--ease-out) both");
+    expect(animation(PLAIN, ".pairs-offer-scrim")).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(animation(PLAIN, ".pairs-offer-scrim[data-leaving]")).toBe("fade-out var(--motion-small) var(--ease-out) both");
+  });
+
+  it("uses only short fades on arrival and dismissal under reduced motion", () => {
+    for (const selector of [".pairs-offer", ".pairs-offer-scrim"]) {
+      expect(animation(REDUCED, selector)).toBe("fade-in var(--motion-small) var(--ease-out) both");
+    }
+    expect(animation(REDUCED, ".pairs-offer-scrim[data-leaving]")).toBe("fade-out var(--motion-small) var(--ease-out) both");
+  });
+});
