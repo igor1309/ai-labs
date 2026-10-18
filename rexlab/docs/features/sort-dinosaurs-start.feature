@@ -40,17 +40,17 @@ Feature: Sort dinosaurs: starting a round and the board
       | on the tray |
       | in a basket |
 
+  # The featured card's double tap is in home-featured-card.feature.
   Scenario Outline: A quick double tap starts one round
     Given I am on <screen>
-    When I tap <button> twice quickly
+    When I tap "<button>" twice quickly
     Then one round starts at once, whatever its pictures are doing
     And it is counted as one round started, no card picked up
 
     Examples:
-      | screen                                     | button            |
-      | the home page                              | "SORT"            |
-      | the home page, sorting its featured game   | its featured card |
-      | the result screen of the sorting game      | "PLAY AGAIN"      |
+      | screen                                | button     |
+      | the home page                         | SORT       |
+      | the result screen of the sorting game | PLAY AGAIN |
 
   Scenario Outline: A round sorts by one property
     When a round sorts by <property>
