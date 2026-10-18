@@ -1,5 +1,5 @@
-# cmd/agister, a reuse (docs/run-implementation.md, "Reuse"; ADR-011,
-# rules 3 and 6): a run taking an earlier run's completed calls, with spies in
+# cmd/agister, a reuse (docs/run-implementation.md, "Reuse"; ADR-001,
+# invariant 8): a run taking an earlier run's completed calls, with spies in
 # place of the wrappers (ADR-009, rule 4). Settings as record.feature
 # gives them, with a workflow "review": a parallel "reviews" of the steps
 # "a" and "b", each of the process "ask" on "codex-sol-61" given the
@@ -18,7 +18,8 @@ Feature: The composition reuses an earlier run's completed calls
       "R1/a" and "R1/b" with their results as recorded, and "judge" is
       made
     And the progress shows "· a: reused R1/a" and "· b: reused R1/b"
-    And the result's cost and usage are the judge's alone
+    And the result's cost and usage are the judge's alone, a count it
+      does not report null
 
   Scenario: A continuation goes on from a call made, not one reused
     Given runstore keeps "R2", which continued "R1/a" as "R2/a", its

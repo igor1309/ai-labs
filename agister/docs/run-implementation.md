@@ -898,8 +898,8 @@ Decisions, each with its reason:
 
 `agister run ... --reuse <run id>` runs a request again, taking an
 earlier run's completed calls where nothing they were given has changed
-(ADR-011, rules 3 and 6; LAB-252): a review whose judge failed, its
-five reviews completed, runs the judge alone.
+(ADR-001, invariant 8 and "Starting a run"; LAB-252): a review whose
+judge failed, its five reviews completed, runs the judge alone.
 
 **`cli`** takes `--reuse <run id>` with either form of request; the
 request carries it. `--reuse` with `--continue` prints the usage, exit
@@ -927,12 +927,12 @@ worktree is as that call left it: the root of the worktree holding the
 launch directory is its root, the root's HEAD its HEAD and its content
 its content, not empty. A call taken is not admitted and not made: it
 reports `Reused`, and its result to core is the earlier call's as
-recorded, but for its cost, zero, and its usage, every count zero, as
-this run spent none. Any other call reports `Started`, its inputs
-refused or not, and is made as it would be. The record's request names
+recorded, but for its cost, zero, and its usage, every count unknown,
+which a sum skips: this run spent none. Any other call reports
+`Started`, its inputs refused or not, and is made as it would be. The record's request names
 the run reused, `"reuse"`; a call taken is recorded as its earlier
-entry, cost and usage included, its id this run's, with `"reuses"`,
-the earlier call's id:
+entry, cost and usage included, its id this run's, its `"continues"`
+null, with `"reuses"`, the earlier call's id:
 
 ```json
 {"request": {"reuse": "<run id>"},
@@ -947,7 +947,8 @@ event, runstore's kind `reused`, in place of its start and end:
 ```
 
 A continuation's latest call (Continuation, check 3) is a call made,
-never one with `"reuses"`: a session goes on from where it last ran.
+never one with `"reuses"`, searched for back past the run named where
+its call was reused: a session goes on from where it last ran.
 
 Decisions, each with its reason:
 
@@ -965,7 +966,8 @@ Decisions, each with its reason:
   hold definitions or their digests yet (`run-path.md`, "The rest of
   the record"). A prompt or schema changed since is a risk taken;
   whoever reuses chose the run.
-- Each call's cost and usage count once (ADR-011, rule 6): a run's are
-  what it spent; a call taken keeps the earlier ones in its entry.
+- Each call's cost and usage count once (ADR-011, rule 6) in a run's
+  result: a run's are what it spent; a call taken keeps the earlier
+  ones in its entry, which a sum over records skips.
 - One run is reused, not a chain: a run that reused gives its calls,
   taken ones included, as recorded.
