@@ -48,10 +48,12 @@ func runIDOf(started time.Time, random io.Reader) (string, error) {
 // endedCall is a step's call as it ended: its step, process and agent; the
 // id of the call whose session it continues, "" for none; the inputs it
 // was given, in the order its process declares them, none where they were
-// refused; its worktree's facts, none for a call refused; and its result.
+// refused; its worktree's facts, none for a call refused; the earlier call
+// it took, nil for one made; and its result.
 type endedCall struct {
 	step, process, agent string
 	continues            string
+	taken                *runstore.Call
 	inputs               []givenInput
 	facts                admit.Facts
 	result               workflow.Result
@@ -89,6 +91,9 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 		Params: maps.Clone(request.Params), Dir: launch}
 	if continues := request.Continue; continues != "" {
 		asked.Continue = &continues
+	}
+	if reuse := request.Reuse; reuse != "" {
+		asked.Reuse = &reuse
 	}
 	return &runRecord{store: store, clock: clock, root: root, record: runstore.Record{
 		Schema:  runstore.Schema,
@@ -133,6 +138,10 @@ func (r *runRecord) Called(ended endedCall) {
 	if session := ended.result.Session; session != "" {
 		call.Result.Session = &session
 	}
+	if taken := ended.taken; taken != nil {
+		call = *taken
+		call.ID, call.Continues, call.Reuses = r.record.ID+"/"+ended.step, nil, &taken.ID
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.record.Calls = append(r.record.Calls, call)
@@ -176,7 +185,7 @@ func (r *runRecord) warn(warning string) {
 	}
 }
 
-// Started, Tool, Stale and Ended answer core/workflow's events: each is
+// Started, Tool, Stale, Reused and Ended answer core/workflow's events: each is
 // appended to the run's events at the clock's time.
 func (r *runRecord) Started(step, agent string) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Started, Agent: agent})
@@ -188,6 +197,10 @@ func (r *runRecord) Tool(step string, tool workflow.Tool) {
 
 func (r *runRecord) Stale(step string, stale workflow.Stale) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Stale, What: stale.What, Recovering: stale.Recovering})
+}
+
+func (r *runRecord) Reused(step, call string) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Reused, Call: call})
 }
 
 func (r *runRecord) Ended(step string, ended workflow.Ended) {
@@ -251,6 +264,12 @@ func (b bothEvents) Tool(step string, tool workflow.Tool) {
 func (b bothEvents) Stale(step string, stale workflow.Stale) {
 	for _, events := range b {
 		events.Stale(step, stale)
+	}
+}
+
+func (b bothEvents) Reused(step, call string) {
+	for _, events := range b {
+		events.Reused(step, call)
 	}
 }
 

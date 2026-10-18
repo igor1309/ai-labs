@@ -102,17 +102,18 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	return continuation{session: session, continues: latest.ID, prompt: string(prompt.Bytes)}, nil, nil
 }
 
-// latestCall is the latest call of session, first the call of the run
-// named run that has it: of the runs kept, read newest first, the first
-// holding a call of that session, its last such. The runs before run's
-// are not read, since none of them is later.
+// latestCall is the latest call made of session, first the call of the
+// run named run that has it: of the runs kept, read newest first, the first
+// holding a call of that session not reused, its last such. The runs before
+// run's are read only where its call was reused, since none of them is
+// later than a call it made; first where no call made is kept.
 func latestCall(kept keptRuns, run string, first runstore.Call, session string) (runstore.Call, error) {
 	ids, err := kept.Runs()
 	if err != nil {
 		return runstore.Call{}, err
 	}
 	for _, id := range slices.Backward(ids) {
-		if id == run {
+		if id <= run && first.Reuses == nil {
 			break
 		}
 		record, err := kept.Record(id)
@@ -120,7 +121,7 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 			return runstore.Call{}, err
 		}
 		for _, made := range slices.Backward(record.Calls) {
-			if s := made.Result.Session; s != nil && *s == session {
+			if s := made.Result.Session; s != nil && *s == session && made.Reuses == nil {
 				return made, nil
 			}
 		}

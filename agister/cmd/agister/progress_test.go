@@ -36,6 +36,10 @@ func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
 	s.told = append(s.told, fmt.Sprintf("%s stale %s recovering %t", step, stale.What, stale.Recovering))
 }
 
+func (s *eventsSpy) Reused(step, call string) {
+	s.told = append(s.told, step+" reused "+call)
+}
+
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
 }
@@ -89,8 +93,8 @@ func TestALineIsNotPrintedALongToolCallIsCutWherePrinted(t *testing.T) {
 	}
 }
 
-// A step's call gives each tool call its turns report and each stale turn
-// on to core/workflow's report, in core/workflow's words, in order, and no
+// A step's call reports its start, then gives each tool call its turns
+// report and each stale turn on to core/workflow's report, in core/workflow's words, in order, and no
 // other line, a tool's result among them.
 func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	t.Parallel()
@@ -107,7 +111,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	}
 	var reported []workflow.Report
 	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, func(r workflow.Report) { reported = append(reported, r) })
-	want := []workflow.Report{
+	want := []workflow.Report{{Started: true},
 		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
 		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}}}
 	if !reflect.DeepEqual(reported, want) {
