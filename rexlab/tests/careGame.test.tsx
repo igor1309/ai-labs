@@ -243,6 +243,33 @@ describe("leaving a visit", () => {
     expect([visitorShown().id, heartsShown(), needStates()]).toEqual(["tyrannosaurus", "0", ["current", "pending", "pending", "pending"]]);
   });
 
+  // The tap and the timers read in one act, before React renders the home
+  // page: the visit's timers stop as the child leaves, not as care is
+  // taken off the screen.
+  it.each([
+    ["reaction", 800],
+    ["departure", 1280]
+  ] as const)("stops the %s as the child goes home, and the next visit is not moved on by it, delivered all the same", async (during, ms) => {
+    const { user, clock } = openCareApp();
+    await welcomeVisitor(user);
+    if (during === "reaction") await user.click(trayItem("meat"));
+    else for (let need = 0; need < 4; need++) await meetNeed(user, clock);
+    expect(clock.timers()).toEqual([ms]);
+
+    let running: number[] = [];
+    act(() => {
+      fireEvent.click(button("HOME"));
+      running = clock.timers();
+    });
+    await welcomeVisitor(user);
+    act(() => clock.deliverStopped(ms));
+
+    expect(running).toEqual([]);
+    expect([reaction(), heartsShown(), needStates(), screen.queryByLabelText("SCORE")]).toEqual([undefined, "0", ["current", "pending", "pending", "pending"], null]);
+    await meetNeed(user, clock);
+    expect([heartsShown(), needStates()]).toEqual(["2", ["met", "current", "pending", "pending"]]);
+  });
+
   it("is dropped on a reload, which opens care on its welcome screen", async () => {
     const storage = memoryStorage();
     const first = openCareApp({ storage });

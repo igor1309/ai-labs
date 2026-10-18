@@ -3,7 +3,7 @@ import { addTransitionType } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { SCREEN_CHANGE } from "../src/screenChange.ts";
+import { SCREEN_CHANGE } from "../src/screens.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
 import { PALETTE, contrast, homeTile, symbolOf, type ManualPictures } from "./support.ts";

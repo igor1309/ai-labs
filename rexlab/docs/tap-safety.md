@@ -1,53 +1,66 @@
 # Tap safety
 
-A child of 5–7 often taps twice, or keeps tapping while a screen changes.
-Every tap in RexLab is safe to repeat: a quick double tap does what one tap
-does, never opens a screen twice, and never presses anything on the screen
-that appears next. The rule came from MUSEUM on the home page (LAB-290): a
-double tap opened the museum once, but its second tap could have landed on
-a button of the museum.
+A child of 5–7 often taps twice. In RexLab a quick double tap does what one
+tap does: its second tap never opens a screen twice and never presses
+anything on the screen that appears next. The rule came from MUSEUM on the
+home page (LAB-290): a double tap opened the museum once, but its second
+tap could have landed on a button of the museum.
 
-## The rule
+It is built from parts that do not know of each other, each landing in its
+own issue, in this order: LAB-298, LAB-303, LAB-304. Until the double-tap
+filter lands, today's picture waits and one-off guards keep double taps
+safe, and they stay; LAB-304 removes the waits only after it. Each issue
+brings the Gherkin of its own behaviour; LAB-298 changes none.
 
-1. **Screen changes go through one place.** Every screen change goes
-   through one guarded entry point, never a direct write of the screen
-   state. It does nothing when asked for the screen already showing, or
-   for any screen while a screen change is in progress. A change is in
-   progress from the tap that asks for it, through any wait for its
-   pictures, until the new screen has finished appearing; the new screen
-   takes no taps until then.
-2. **Actions inside a screen are idempotent.** An action that has started
-   (an answer chosen, a card turned, a round or board started, a bone
-   dropped, a care action, a skeleton chosen) holds an explicit state, and
-   a second trigger while that state holds does nothing.
-3. **Stale taps are dropped.** A tap takes effect only if the screen is
-   still the one the child tapped on. Work a tap started and that finishes
-   later, such as a wait for pictures, checks this before it changes the
-   screen, and does nothing if the child has gone elsewhere meanwhile.
-4. **No time-based delays as the fix.** A tap is never made safe by
-   ignoring taps for a number of milliseconds. Such a wrapper may stay as
-   a safety net behind the rule, never as what makes a tap safe. Timers
-   are injected by the composition root, `src/root.ts`.
+## The parts
+
+1. **Screen state (LAB-298).** App and each game module keep their
+   screens with `useScreens(first, transitionFor)` from `src/screens.ts`,
+   the only place screen state is written. It changes the screen through
+   `go`, which knows nothing of pictures or input.
+2. **Animation (LAB-298).** Each module's pure `transitionFor` gives each
+   change its view transition type, or none, as today. No call site
+   names a transition type.
+3. **Timers (LAB-298).** A timer that changes the screen later keeps
+   today's checks, and is stopped when its visit, board or puzzle ends,
+   the game left included.
+4. **Double taps (LAB-303).** One double-tap filter at the root of the
+   app swallows the second tap of a double tap, by time and place: less
+   than 500 ms and 100 px from the tap before it, timed by each event's
+   own time, which `src/root.ts` hands it. It knows nothing of screens.
+   Its exact behaviour (when the window opens, drags, repeated taps,
+   keyboard) is specified in LAB-303's own feature. Accepted cost: two
+   controls closer than 100 px, tapped within 500 ms, count once.
+5. **Pictures (LAB-304).** One `<Picture>` component holds a picture's
+   place with a shimmer while it loads and fades it in once decoded, so
+   no screen waits for its pictures before it changes. LAB-304 specifies
+   each game's loading and failure behaviour, and removes the guards of
+   the picture waits with them.
+
+## Why 500 ms and 100 px
+
+Platforms recognise a double tap by time and place: a window of 300 to
+500 ms (Android and Hammer.js 300 ms, WebKit's media controls 350 ms,
+React Native Gesture Handler 500 ms) and Android's double-tap slop of
+100 dp. No study measures how far apart a child of 5–7 taps twice by
+accident; 500 ms takes the cautious end. If deliberate taps are lost on
+an iPad, lower it toward 350 ms. Sources: Nácher et al., IJHCS 73:37–51,
+2015 (children of 2–3, 300 ms); Guerreiro, PhD thesis, 2014,
+arXiv:1402.1036, section 6 (about 400 ms, some up to 750 ms).
 
 ## Forbidden
 
-- Writing the screen state anywhere but the guarded entry point: no
-  `setScreen(` call, nor `changeScreen` around one, in `App.tsx`, a game
-  module or a screen.
-- A one-off guard on a single button in place of the entry point or an
-  action's state.
-- A timer that drops taps as the only thing keeping a tap safe.
+Each item lands with its part. An architecture test searches for every
+item but the last.
 
-## How it is checked
-
-Two checks keep the rule, added with its sibling issues:
-
-- **The double-tap test** (LAB-299): a registry lists every tappable entry
-  point (home tiles, MUSEUM, back and home buttons, result buttons and
-  each game's start and next buttons). Each is tapped twice quickly, and
-  exactly one screen change may follow, with nothing pressed on the next
-  screen. A screen with no registry entry fails the test.
-- **The architecture test** (LAB-300), in `tests/architecture.test.ts`:
-  it fails on a screen-state write or `changeScreen` call outside the
-  guarded entry point, and on `setTimeout` or `setInterval` outside
-  `src/root.ts`, with a message pointing here.
+- `startTransition` or `addTransitionType` outside `src/screens.ts`
+  (LAB-298).
+- In App and the game modules, a `useState` or `useReducer` without its
+  type written, or with a type whose name ends in `Screen` (LAB-298).
+- `setTimeout`, `setInterval`, `Date.now()`, `performance.now()`, an
+  argless `new Date()` or an event's `timeStamp` outside `src/root.ts`
+  (LAB-303).
+- Calling `waitForPictures`, or taking a `LoadPicture`, outside
+  `<Picture>` and `src/root.ts` (LAB-304).
+- A guard against double taps on a single button, once LAB-303 has
+  landed. No search finds it; code review does.

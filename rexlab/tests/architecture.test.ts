@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 const SRC = resolve(import.meta.dirname, "../src");
 
@@ -87,7 +88,6 @@ const COMPOSITION = [
   "pairsGame.tsx",
   "presentation.ts",
   "root.ts",
-  "screenChange.ts",
   "skeletonGame.tsx",
   "sortingGame.tsx"
 ];
@@ -101,6 +101,10 @@ const START_LEVEL = "startLevel.ts";
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
 const WAITING = ["pictureWait.ts"];
+// Where screens are kept and their transitions started.
+const SCREEN_STATE = "screens.ts";
+// The timers of a visit, a board or a puzzle, stopped together as it ends.
+const OWNED_TIMERS = "ownedTimers.ts";
 
 describe("the import graph", () => {
   it("is read from the source", () => {
@@ -230,7 +234,88 @@ describe("the import graph", () => {
     expect(edges((file) => WAITING.includes(file), () => true)).toEqual([]);
   });
 
+  it("keeps the screen state free of the rest of the app", () => {
+    expect(GRAPH.get("App.tsx")).toContain(SCREEN_STATE);
+    expect(edges((file) => file === SCREEN_STATE, () => true)).toEqual([]);
+  });
+
+  it("keeps the timers a game's occurrence owns free of the rest of the app", () => {
+    expect(["careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(OWNED_TIMERS))).toEqual([]);
+    expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
+  });
+
   it("leaves the composition root to the composition root", () => {
     expect(edges((file) => !COMPOSITION.includes(file), (target) => COMPOSITION.includes(target))).toEqual([]);
+  });
+});
+
+// The rules screens, their animation and timers follow.
+const TAP_SAFETY = "docs/tap-safety.md";
+
+// The modules that keep screens, each with useScreens.
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
+
+// Each break, in the modules under `root`, of the Forbidden rules of
+// docs/tap-safety.md that LAB-298 brought: a transition started outside
+// the screen state, and state kept in a module that keeps screens without
+// its type written or with a screen's.
+function tapSafetyBreaks(root: string): string[] {
+  const files = readdirSync(root, { recursive: true, encoding: "utf8" })
+    .filter((file) => /\.tsx?$/.test(file))
+    .sort();
+  return files.flatMap((file) => {
+    const source = readFileSync(join(root, file), "utf8");
+    const transitions =
+      file === SCREEN_STATE
+        ? []
+        : [...source.matchAll(/\b(startTransition|addTransitionType)\b/g)].map(([name]) => `${file}: ${name} outside src/${SCREEN_STATE}, see ${TAP_SAFETY}`);
+    const states = SCREEN_KEEPERS.includes(file)
+      ? [...source.matchAll(/\b(useState|useReducer)\s*(?:<(.*?)>)?\s*\(/g)].flatMap(([, hook, type]) => {
+          if (type === undefined) return [`${file}: ${hook} without its type written, see ${TAP_SAFETY}`];
+          if (/\w*Screen\b/.test(type)) return [`${file}: ${hook}<${type}> keeps a screen outside useScreens, see ${TAP_SAFETY}`];
+          return [];
+        })
+      : [];
+    return [...transitions, ...states];
+  });
+}
+
+// A source tree of `files`, by their paths from its root, removed as the
+// test ends.
+function sourceTree(files: Record<string, string>): string {
+  const root = mkdtempSync(join(tmpdir(), "rexlab-tap-safety-"));
+  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+  for (const [file, source] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, file)), { recursive: true });
+    writeFileSync(join(root, file), source);
+  }
+  return root;
+}
+
+describe("tap safety in the source", () => {
+  it("is kept by the app", () => {
+    expect(tapSafetyBreaks(SRC)).toEqual([]);
+  });
+
+  it.each([
+    ["HomePage.tsx", 'import { startTransition } from "react";', `HomePage.tsx: startTransition outside src/screens.ts, see ${TAP_SAFETY}`],
+    ["care/visit.ts", "addTransitionType(type);", `care/visit.ts: addTransitionType outside src/screens.ts, see ${TAP_SAFETY}`],
+    ["App.tsx", "const [open, setOpen] = useState(false);", `App.tsx: useState without its type written, see ${TAP_SAFETY}`],
+    ["sortingGame.tsx", "const [board, send] = useReducer(play, first);", `sortingGame.tsx: useReducer without its type written, see ${TAP_SAFETY}`],
+    ["careGame.tsx", 'const [screen, setScreen] = useState<CareScreen>({ kind: "welcome" });', `careGame.tsx: useState<CareScreen> keeps a screen outside useScreens, see ${TAP_SAFETY}`],
+    ["pairsGame.tsx", "const [screen, setScreen] = useState<PairsScreen | undefined>();", `pairsGame.tsx: useState<PairsScreen | undefined> keeps a screen outside useScreens, see ${TAP_SAFETY}`],
+    ["skeletonGame.tsx", "const [screen, send] = useReducer<Reducer<SkeletonScreen, Move>>(move, first);", `skeletonGame.tsx: useReducer<Reducer<SkeletonScreen, Move>> keeps a screen outside useScreens, see ${TAP_SAFETY}`]
+  ])("fails %s holding `%s`", (file, source, broken) => {
+    expect(tapSafetyBreaks(sourceTree({ [file]: source }))).toEqual([broken]);
+  });
+
+  it("allows transitions in the screen state, typed state in the modules that keep screens, and any state elsewhere", () => {
+    const root = sourceTree({
+      "screens.ts": 'import { addTransitionType, startTransition } from "react";\nstartTransition(() => addTransitionType(type));',
+      "App.tsx": "const [settling, setSettling] = useState<boolean>(false);\nconst [play, setPlay] = useState<Play>();",
+      "HomePage.tsx": "const [open, setOpen] = useState(false);"
+    });
+
+    expect(tapSafetyBreaks(root)).toEqual([]);
   });
 });
