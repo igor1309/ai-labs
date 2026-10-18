@@ -132,7 +132,7 @@ describe("the museum on the home page", () => {
     expect(onHomePage()).toBe(true);
   });
 
-  it.each(["Language", "Theme"])("only closes the %s menu when tapped while the menu is open", async (label) => {
+  it.each(["Language", "Theme", "Age level"])("only closes the %s menu when tapped while the menu is open", async (label) => {
     const { user } = openHomeApp();
     await openMenu(user, label);
 
@@ -170,12 +170,19 @@ describe("the museum on the home page", () => {
     const museumStyle = getComputedStyle(button);
     expect(museumStyle.whiteSpace).toBe("nowrap");
     const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
+    // Each button shows its face: a symbol or a picture, and at most a code.
     const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
       const style = getComputedStyle(menuButton);
+      const face = menuButton.querySelector(".parent-menu-face");
+      if (!face) throw new Error("A parents' menu button shows nothing");
+      const symbol = menuButton.querySelector("svg");
+      const picture = menuButton.querySelector(".parent-menu-picture");
       const code = menuButton.querySelector(".parent-menu-code")?.textContent;
-      const parts = [drawnWidth(menuButton.querySelector("svg")), ...(code ? [wordWidth(code, style)] : [])];
-      return boxWidth(menuButton, rowWidth(menuButton, parts));
+      const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(getComputedStyle(picture).width)] : []), ...(code ? [wordWidth(code, style)] : [])];
+      expect(parts.length).toBeGreaterThan(0);
+      return boxWidth(menuButton, rowWidth(menuButton, [rowWidth(face, parts)]));
     });
+    expect(menuButtons).toHaveLength(3);
     const corner = partOf(".home-corner");
     // The widths add up along one row, every part centred on it.
     for (const row of [corner, partOf(".parent-menus"), button, partOf(".wordmark")]) {

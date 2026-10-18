@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MENU_EXIT } from "../src/ParentMenu.tsx";
 
 type Rule = { prelude: string; body: string };
 
@@ -396,5 +397,34 @@ describe("the skeleton reveal's motion", () => {
       "pop-in"
     ]);
     expect(bodyOf(".skeleton-star[data-new]")).toMatch(/calc\(var\(--motion-screen\) \* 2\) both/);
+  });
+});
+
+// The language, theme and age level menus share one look and motion.
+describe("the parents' menus' motion", () => {
+  const animationOf = (rules: Rule[], selector: string) =>
+    declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").find(({ property }) => property === "animation")?.value;
+
+  it("grows a menu in and shrinks it out, however it closes, and grows the button's new face in, all at the small motion", () => {
+    expect([".parent-menu-list", ".parent-menu-list[data-leaving]", ".parent-menu-face[data-changed]"].map((selector) => animationOf(PLAIN, selector))).toEqual([
+      "grow-in var(--motion-small) var(--ease-out) both",
+      "shrink-out var(--motion-small) var(--ease-out) both",
+      "grow-in var(--motion-small) var(--ease-out) both"
+    ]);
+    // A leaving menu stays until its animation ends, as long as the small
+    // motion lasts with or without reduced motion; it fades alone there.
+    expect(`${MENU_EXIT}ms`).toBe(tokensOf(PLAIN)["--motion-small"]);
+    expect(tokensOf(REDUCED)["--motion-small"]).toBeUndefined();
+    const shrink = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes shrink-out")?.body ?? "");
+    expect(shrink.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([
+      [
+        "to",
+        [
+          { property: "opacity", value: "0" },
+          { property: "scale", value: "calc(1 - 0.08 * var(--motion-amount))" }
+        ]
+      ]
+    ]);
+    expect([...animationsOf(REDUCED).keys()].filter((selector) => selector.startsWith(".parent-menu"))).toEqual([]);
   });
 });

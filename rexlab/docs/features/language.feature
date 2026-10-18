@@ -81,7 +81,7 @@ Feature: English and Russian
     Given the app is in <language>
     When I play a round of <game> through to the result
     Then every text on every screen is in capitals
-    But the language and theme menus and the version footer, which are for parents, are not
+    But the parents' menus and the version footer, which are for parents, are not, save the age level names (age-level.feature)
 
     Examples:
       | language | game             |

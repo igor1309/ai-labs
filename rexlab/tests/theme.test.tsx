@@ -50,7 +50,8 @@ import {
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
-  homeTile
+  homeTile,
+  unsetAgeLevel
 } from "./support.ts";
 
 // The WCAG AA contrast for text, which every text read in either theme keeps.
@@ -110,6 +111,7 @@ function openApp({
       nameVersion={unreadVersion}
       appearance={device}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       {...emptyCare()}
       {...sorting}
       pals={SHIPPED_PALS}

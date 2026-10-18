@@ -23,7 +23,8 @@ import {
   seededRandom,
   symbolOf,
   type MemoryStorage,
-  homeTile
+  homeTile,
+  unsetAgeLevel
 } from "./support.ts";
 
 afterEach(() => {
@@ -70,7 +71,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       orientation={manualOrientation("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
-      {...lightDevice()}
+      {...lightDevice()} {...unsetAgeLevel()}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
