@@ -583,19 +583,28 @@ func (s *admissionSpy) asked() []admit.Request {
 }
 
 // storeSpy is a spy of runstore: it keeps the folder each store is asked
-// for, each record written and each event appended, in order, with the
-// run's id. The write its test numbers in failWrite, from 1, fails with
-// errFull, and so does every append where failAppend is set. The runs it
-// gives as kept are those of kept, by id, and no other: a record written
-// is not read back. It is safe for concurrent use.
+// for, each record written, each event appended, with the run's id, and
+// each run exported, with its folder, in order. The write its test numbers
+// in failWrite, from 1, fails with errFull, and so does every append where
+// failAppend is set; every export fails with failExport, where it is set.
+// The runs it gives as kept are those of kept, by id, and no other: a
+// record written is not read back. It is safe for concurrent use.
 type storeSpy struct {
 	failWrite  int
 	failAppend bool
+	failExport error
 	kept       map[string]runstore.Record
 	mu         sync.Mutex
 	folders    []string
 	records    []runstore.Record
 	events     []storedEvent
+	exports    []storedExport
+}
+
+// storedExport is a run exported, by its id, and the folder it was
+// exported to.
+type storedExport struct {
+	id, folder string
 }
 
 // storedEvent is an event appended, and the id of its run.
@@ -607,7 +616,7 @@ type storedEvent struct {
 // errFull is the failure of a write or an append the store's test fails.
 var errFull = errors.New("disk full")
 
-func (s *storeSpy) at(folder string) (runStore, error) {
+func (s *storeSpy) at(folder string) (homeRuns, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.folders = append(s.folders, folder)
@@ -633,6 +642,19 @@ func (s *storeSpy) Append(id string, event runstore.Event) error {
 		return errFull
 	}
 	return nil
+}
+
+func (s *storeSpy) Export(id, folder string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.exports = append(s.exports, storedExport{id: id, folder: folder})
+	return s.failExport
+}
+
+func (s *storeSpy) exported() []storedExport {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.exports)
 }
 
 func (s *storeSpy) Runs() ([]string, error) {

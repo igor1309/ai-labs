@@ -253,7 +253,7 @@ func (r *runs) runner(built plan, launch, dir string, record *runRecord) (*workf
 	if err != nil {
 		return nil, err
 	}
-	return workflow.New(boundary{inputs: resolver, declared: built.boundary}, steps, bothEvents{r.events, record}, r.host.clock)
+	return workflow.New(boundary{inputs: resolver, declared: built.boundary, records: record}, steps, bothEvents{r.events, record}, r.host.clock)
 }
 
 // cancelled is the host's context, ended once a signal arrives; stop ends
@@ -909,10 +909,17 @@ type declaredResolver interface {
 
 // boundary answers core/workflow's resolver from core/inputs: what the
 // workflow declares of its params and inputs, resolved at its boundary over
-// the params given.
+// the params given, and told to records, in the order it declares them.
+// Inputs refused are told nothing.
 type boundary struct {
 	inputs   declaredResolver
 	declared inputs.Declared
+	records  boundaryRecords
+}
+
+// boundaryRecords is told a workflow's inputs once they are resolved.
+type boundaryRecords interface {
+	Resolved(given []givenInput)
 }
 
 func (b boundary) Resolve(ctx context.Context, given map[string]string) (workflow.Boundary, error) {
@@ -920,7 +927,25 @@ func (b boundary) Resolve(ctx context.Context, given map[string]string) (workflo
 	if err != nil {
 		return workflow.Boundary{}, err
 	}
+	b.records.Resolved(givenInputs(b.declared.Inputs, resolved.Inputs))
 	return workflow.Boundary{Params: resolved.Params, Inputs: values(resolved.Inputs)}, nil
+}
+
+// givenInput is an input as it was resolved: its name, its value and its
+// identity.
+type givenInput struct {
+	name string
+	inputs.Fixed
+}
+
+// givenInputs is each of declared as resolved gives it, in the order
+// declared.
+func givenInputs(declared []inputs.Input, resolved map[string]inputs.Fixed) []givenInput {
+	var given []givenInput
+	for _, input := range declared {
+		given = append(given, givenInput{name: input.Name, Fixed: resolved[input.Name]})
+	}
+	return given
 }
 
 // values is each input's value, by its name.
@@ -954,7 +979,8 @@ type admission interface {
 // turns report and each stale turn given on to core/workflow's report, and
 // no other line, which the progress skips. A call with no usage,
 // as on bash, has every count of it unknown. Each call, refused or made,
-// is told to records as it ends, with the worktree's facts admit told of
+// is told to records as it ends, with the inputs it was given, none for a
+// call whose inputs were refused, and the worktree's facts admit told of
 // it.
 type stepCalls struct {
 	inputs  declaredResolver
@@ -992,16 +1018,15 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Report)) workflow.Result {
 	planned := s.calls[name]
-	var facts admit.Facts
-	result := s.call(ctx, name, params, report, &facts)
-	s.records.Called(endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues,
-		facts: facts, result: result})
-	return result
+	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues}
+	ended.result = s.call(ctx, name, params, report, &ended)
+	s.records.Called(ended)
+	return ended.result
 }
 
-// call is the result of the step name's call, its worktree's facts told
-// to facts where admit tells them.
-func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Report), facts *admit.Facts) workflow.Result {
+// call is the result of the step name's call, the inputs it is given and
+// its worktree's facts kept in ended where they are known.
+func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Report), ended *endedCall) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
 		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
@@ -1010,10 +1035,11 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
+	ended.inputs = givenInputs(planned.declared.Inputs, resolved.Inputs)
 	step := planned.step
 	step.Environment = resolved.Environment
-	for _, input := range planned.declared.Inputs {
-		step.Inputs = append(step.Inputs, call.Named{Name: input.Name, Text: resolved.Inputs[input.Name].Value})
+	for _, input := range ended.inputs {
+		step.Inputs = append(step.Inputs, call.Named{Name: input.name, Text: input.Value})
 	}
 	request := planned.admission
 	if pin := request.Pin; pin != nil {
@@ -1033,7 +1059,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 				report(workflow.Report{Stale: &workflow.Stale{What: r.Stale.What, Recovering: r.Stale.Recovering}})
 			}
 		})
-	}, func(told admit.Facts) { *facts = told })
+	}, func(told admit.Facts) { ended.facts = told })
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}

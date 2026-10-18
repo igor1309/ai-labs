@@ -25,7 +25,14 @@ type recordStore interface {
 }
 
 // runStoreAt is the store of the runs kept under folder.
-type runStoreAt func(folder string) (runStore, error)
+type runStoreAt func(folder string) (homeRuns, error)
+
+// homeRuns is what build asks of the runs kept under home's "runs": what a
+// run asks of them, and a run exported, as cli's runs ask.
+type homeRuns interface {
+	runStore
+	cli.Runs
+}
 
 // runIDOf is the id of a run started at started: its UTC time to the
 // second, and six hex characters drawn from random, as
@@ -39,19 +46,22 @@ func runIDOf(started time.Time, random io.Reader) (string, error) {
 }
 
 // endedCall is a step's call as it ended: its step, process and agent; the
-// id of the call whose session it continues, "" for none; its worktree's
-// facts, none for a call refused; and its result.
+// id of the call whose session it continues, "" for none; the inputs it
+// was given, in the order its process declares them, none where they were
+// refused; its worktree's facts, none for a call refused; and its result.
 type endedCall struct {
 	step, process, agent string
 	continues            string
+	inputs               []givenInput
 	facts                admit.Facts
 	result               workflow.Result
 }
 
 // runRecord keeps a run's record as the run goes (docs/run-implementation.md,
-// "Records"; ADR-001, invariants 6 and 7): written lost before anything
-// runs, then again as each call ends, holding every call ended so far, and
-// at the run's end as the run ended; each step's start, tool call, stale
+// "Records" and "Runs"; ADR-001, invariants 6 and 7): written lost before
+// anything runs, then again as each call ends, holding the workflow's
+// inputs once resolved and every call ended so far, each with its inputs,
+// and at the run's end as the run ended; each step's start, tool call, stale
 // turn and end appended as an event, at the clock's time. The record is written one
 // write at a time. A write after the first, or an append, that fails is a
 // warning in the run's result, each once.
@@ -97,6 +107,13 @@ func (r *runRecord) begin() error {
 	return r.store.Write(r.written())
 }
 
+// Resolved records given as the workflow's inputs, in every write after.
+func (r *runRecord) Resolved(given []givenInput) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.record.Inputs = recordInputs(given)
+}
+
 // Called records ended among the run's calls, and writes the record again.
 func (r *runRecord) Called(ended endedCall) {
 	call := runstore.Call{
@@ -107,6 +124,7 @@ func (r *runRecord) Called(ended endedCall) {
 		Root:    r.root,
 		Head:    ended.facts.Head,
 		Content: ended.facts.Content,
+		Inputs:  recordInputs(ended.inputs),
 		Result:  runstore.CallResult{Outcome: outcomeOf(ended.result)},
 	}
 	if continues := ended.continues; continues != "" {
@@ -184,6 +202,15 @@ func (r *runRecord) append(event runstore.Event) {
 		defer r.mu.Unlock()
 		r.warn("an event of the run could not be recorded: " + err.Error())
 	}
+}
+
+// recordInputs is each of given as the record keeps it.
+func recordInputs(given []givenInput) []runstore.Input {
+	var kept []runstore.Input
+	for _, input := range given {
+		kept = append(kept, runstore.Input{Name: input.name, Value: input.Value, Identity: input.Identity})
+	}
+	return kept
 }
 
 // outcomeOf is result in the shape Agister prints it: a class and a

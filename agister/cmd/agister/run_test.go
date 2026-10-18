@@ -95,8 +95,13 @@ func echoes(_ context.Context, turn bash.Turn) (bash.Ended, error) {
 
 // kept is what bash gives of a stream that wrote text.
 func kept(text string) bash.Stream {
+	return bash.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: identityOf(text)}
+}
+
+// identityOf is the hex SHA-256 digest of text.
+func identityOf(text string) string {
 	digest := sha256.Sum256([]byte(text))
-	return bash.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: hex.EncodeToString(digest[:])}
+	return hex.EncodeToString(digest[:])
 }
 
 // keptJSON is a stream that wrote text, as the result prints it.
