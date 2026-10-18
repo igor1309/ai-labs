@@ -14,12 +14,13 @@ a button of the museum.
    write of the screen state. A request names the screen it asks for: its
    kind, and for a question its number, for a dinosaur's page, a skeleton
    chosen or a friend called back its dinosaur. A fresh round or board of
-   a game is one request, whatever it deals. The entry point does nothing when asked for the screen
-   already showing or already on its way, so a second tap on SORT or
-   PLAY AGAIN deals no second round, and a second tap on NEXT asks again
-   for the question already on its way. While a change waits for its
-   pictures, a different request replaces it: the waiting change is
-   dropped and never opens, so the child's latest choice wins. Once a new
+   a game is one request, whatever it deals. The entry point does nothing
+   when asked for the screen already showing or already on its way, so a
+   second tap on SORT or PLAY AGAIN deals no second round, and a second
+   tap on NEXT asks again for the question already on its way. While a
+   change waits for its pictures, a different request or an update
+   replaces it: the waiting change is dropped and never opens, so the
+   child's latest choice wins. Once a new
    screen begins to appear, no screen takes a tap or starts a drag until
    it has settled: 500 ms have passed since it began to appear. The window
    outlasts every screen's view transition (320 ms, 160 ms with reduced
@@ -29,9 +30,10 @@ a button of the museum.
    point's own call for updates, not its screen changes: rules 2 and 3
    govern them.
 2. **Actions inside a screen are idempotent.** An action that has started
-   (an answer chosen, a card turned, a round or board started, a bone
-   dropped, a care action, a skeleton chosen) holds an explicit state, and
-   a second trigger while that state holds does nothing.
+   (an answer chosen, a card turned, a bone dropped, a care action) holds
+   an explicit state, and a second trigger while that state holds does
+   nothing. A round or board started, a skeleton chosen or a friend called
+   back is a screen request instead, under rule 1.
 3. **Stale taps are dropped.** A tap takes effect only if the screen is
    still the one the child tapped on, showing the same thing. Work a tap
    started and that finishes later, such as a wait for pictures, checks
@@ -43,7 +45,8 @@ a button of the museum.
    the one settle window of rule 1. No button, screen or game has a timed
    guard of its own: no debounce, no "ignore taps for N ms" wrapper. The
    window's timer is injected by the composition root, `src/root.ts`, as
-   the wait for pictures' is, so tests fire it.
+   the wait for pictures' is, so tests fire it. The injected timer and
+   clock are the only ones: no code reads the time itself.
 
 ## Why 500 ms
 
@@ -75,7 +78,9 @@ during a view transition.
   module or a screen.
 - A one-off guard on a single button in place of the entry point or an
   action's state.
-- A timer that drops taps anywhere but the entry point's settle window.
+- A timer that drops taps anywhere but the entry point's settle window,
+  or a time read outside `src/root.ts` (`Date.now()`, `performance.now()`,
+  an event's `timeStamp`).
 
 ## How it is checked
 
@@ -90,5 +95,6 @@ Two checks keep the rule, added with its sibling issues:
   fails the test.
 - **The architecture test** (LAB-300), in `tests/architecture.test.ts`:
   it fails on a screen-state write or `changeScreen` call outside the
-  guarded entry point, and on `setTimeout` or `setInterval` outside
-  `src/root.ts`, with a message pointing here.
+  guarded entry point, and on `setTimeout`, `setInterval`, `Date.now`,
+  `performance.now` or `timeStamp` outside `src/root.ts`, with a message
+  pointing here.

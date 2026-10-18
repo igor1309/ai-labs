@@ -1,7 +1,8 @@
 Feature: Every tap is safe to repeat: settling and replacing
   A new screen takes no tap or drag until it has settled: 500 ms have
-  passed since it began to appear (docs/tap-safety.md, rules 1 and 4). While a change waits for its pictures, the child's latest
-  different request replaces it.
+  passed since it began to appear (docs/tap-safety.md, rules 1 and 4).
+  While a change waits for its pictures, the child's latest different
+  request, or an update to the screen showing, replaces it.
 
   Background:
     Given an iPad in landscape
@@ -66,6 +67,16 @@ Feature: Every tap is safe to repeat: settling and replacing
     And I tap the card of Stegosaurus before Velociraptor's picture loads
     Then I see the page of Stegosaurus once its picture has loaded
     And the page of Velociraptor never opens
+
+  @next
+  Scenario: A food chosen during a wait replaces it, and the card opens again
+    Given I am on the list of every dinosaur
+    And pictures load slowly
+    When I tap the card of Velociraptor
+    And I choose "MEAT" before Velociraptor's picture loads
+    Then the page of Velociraptor never opens over the meat-eaters
+    When I tap the card of Velociraptor again
+    Then I see the page of Velociraptor once its picture has loaded
 
   @next
   Scenario Outline: The latest dinosaur chosen in a game wins
