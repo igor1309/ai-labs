@@ -4,6 +4,7 @@ import { DietTag, type Diet } from "./DietTag.tsx";
 import { FoodChips, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { SharedPicture } from "./SharedPicture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
@@ -113,7 +114,7 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet, found },
     >
       <span className="catalogue-art">
         <SharedPicture id={id}>
-          <img className="catalogue-picture" src={picture} alt="" width={800} height={600} draggable={false} />
+          <Picture className="catalogue-picture" src={picture} alt="" width={800} height={600} />
         </SharedPicture>
         {found && (
           <span className="found-stamp" role="img" aria-label={text.found}>

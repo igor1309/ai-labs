@@ -5,6 +5,7 @@
 - Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).
 - A level switch on find the pair's welcome screen starts at the age level and keeps the child's choice until a parent picks a different level (LAB-296).
 - Reduced motion holds on every screen again: a card, a step or a sorting card only fades, where later rules had made it move (LAB-296).
+- The catalogue, the compare game and the home page no longer wait for pictures: a screen opens at once, each picture shimmering in its place until it fades in, and a picture that fails or takes over 8 seconds shows footprints instead (LAB-304).
 - A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
 - Tap safety is split into parts that land one by one, screen state and animation first; leaving a game now stops its pending timers at once (LAB-298).
 - A parents' menu picks the age level, Hatchling, Explorer or Paleontologist, kept on this device; a new install starts at Explorer, and no game reads it yet (LAB-291).

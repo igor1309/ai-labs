@@ -51,7 +51,7 @@ describe("waiting for pictures", () => {
 
   it("starts no timer when every picture finishes as it is asked for", () => {
     const pictures = manualPictures();
-    const loadPicture = (url: string, done: () => void) => done();
+    const loadPicture = (_url: string, done: (outcome: "loaded" | "failed") => void) => done("loaded");
     let ready = 0;
 
     waitForPictures(["/a.webp", "/b.webp"], { loadPicture, startTimer: pictures.startTimer, limit: LIMIT }, () => ready++);

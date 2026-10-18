@@ -5,6 +5,7 @@ import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
+import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { usePointerState } from "./usePointerState.ts";
 
@@ -123,21 +124,21 @@ export function HomePage({
     catalogue: {
       name: text.catalogueTile,
       symbol: BookOpen,
-      picture: <img className="catalogue-tile-picture" src={catalogue.picture} alt="" draggable={false} />,
+      picture: <Picture className="catalogue-tile-picture" src={catalogue.picture} alt="" width={800} height={600} />,
       badge: { symbol: Footprints, value: catalogue.count },
       onOpen: onCatalogue
     },
     care: {
       name: text.care,
       symbol: Heart,
-      picture: <img className="care-tile-picture" src={care.picture} alt="" draggable={false} />,
+      picture: <Picture className="care-tile-picture" src={care.picture} alt="" width={800} height={600} />,
       badge: care.best === undefined ? undefined : { symbol: Trophy, value: care.best },
       onOpen: onCare
     },
     sort: {
       name: text.sort,
       symbol: Shapes,
-      picture: <img className="sort-tile-picture" src={sort.picture} alt="" draggable={false} />,
+      picture: <Picture className="sort-tile-picture" src={sort.picture} alt="" width={800} height={600} />,
       badge: sort.best === undefined ? undefined : { symbol: Trophy, value: sort.best },
       onOpen: onSort
     },
@@ -151,7 +152,7 @@ export function HomePage({
     skeletons: {
       name: text.skeletons,
       symbol: Bone,
-      picture: <img className="skeletons-tile-picture" src={skeletons.picture} alt="" draggable={false} />,
+      picture: <Picture className="skeletons-tile-picture" src={skeletons.picture} alt="" width={800} height={600} />,
       badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
       onOpen: onSkeletons
     }
@@ -329,7 +330,7 @@ export function HomePage({
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}
           <div className="more-coming">
-            <img className="more-coming-picture" src={moreComing} alt="" draggable={false} />
+            <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
             <span className="more-coming-row">
               <Lock size={22} aria-hidden="true" />
               <span className="more-coming-title">{text.moreComing}</span>
@@ -354,8 +355,8 @@ function AgeLevelPicture({ level }: { level: AgeLevel }) {
 function FaceOff({ label, left, right }: { label: string; left: string; right: string }) {
   return (
     <span className="face-off" role="img" aria-label={label}>
-      <img className="face-off-picture face-off-left" src={left} alt="" draggable={false} />
-      <img className="face-off-picture face-off-right" src={right} alt="" draggable={false} />
+      <Picture className="face-off-picture face-off-left" src={left} alt="" width={800} height={600} />
+      <Picture className="face-off-picture face-off-right" src={right} alt="" width={800} height={600} />
     </span>
   );
 }
@@ -366,13 +367,13 @@ function PairsArt({ picture }: { picture: string }) {
   return (
     <span className="pairs-tile-art" aria-hidden="true">
       <span className="pairs-tile-card pairs-tile-card-first">
-        <img className="pairs-tile-picture" src={picture} alt="" draggable={false} />
+        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
       </span>
       <span className="pairs-tile-card pairs-tile-back">
         <Footprints size={44} />
       </span>
       <span className="pairs-tile-card pairs-tile-card-second">
-        <img className="pairs-tile-picture" src={picture} alt="" draggable={false} />
+        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
       </span>
     </span>
   );

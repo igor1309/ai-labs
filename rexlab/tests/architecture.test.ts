@@ -60,6 +60,7 @@ const PRESENTATION = [
   "Festivity.tsx",
   "FoodChips.tsx",
   "ParentMenu.tsx",
+  "Picture.tsx",
   "ResultParts.tsx",
   "SharedPicture.tsx",
   "SkeletonBar.tsx",

@@ -50,6 +50,7 @@ import {
   homeTile,
   unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
@@ -123,7 +124,8 @@ function renderQuestion(
   }: { question?: Question; choice?: string; last?: boolean } = {}
 ) {
   render(
-    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />
+    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />,
+    withPictures
   );
 }
 
@@ -364,7 +366,7 @@ describe("Russian text", () => {
     [
       "Play again button",
       () => {
-        render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
+        render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />, withPictures);
         return screen.getByRole("button", { name: "ЕЩЁ РАЗ" });
       },
       "ЕЩЁ РАЗ"
@@ -392,7 +394,7 @@ describe("Russian text", () => {
   });
 
   it("reads the Home button on the result in Russian too", () => {
-    render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />);
+    render(<ResultScreen language="ru" score={6} total={10} best={8} beaten={undefined} celebration={null} hero={fakeBodyPicture("tyrannosaurus")} onPlayAgain={nothing} onHome={nothing} />, withPictures);
 
     expect(words(screen.getByRole("button", { name: "ДОМОЙ" }))).toBe("ДОМОЙ");
   });

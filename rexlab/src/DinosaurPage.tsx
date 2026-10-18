@@ -3,6 +3,7 @@ import { ViewTransition, type ReactNode } from "react";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { SharedPicture } from "./SharedPicture.tsx";
 
 // The view transition types of the next or previous dinosaur taking the
@@ -71,7 +72,7 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, de
           <Sliding key={id} late={false}>
             <div className="dinosaur-stage-art">
               <SharedPicture id={id}>
-                <img className="dinosaur-stage-picture" src={picture} alt={name} width={800} height={600} draggable={false} />
+                <Picture className="dinosaur-stage-picture" src={picture} alt={name} width={800} height={600} />
               </SharedPicture>
             </div>
           </Sliding>

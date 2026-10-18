@@ -154,13 +154,13 @@ describe("the screen changes of the app", () => {
     const [first, second] = cards();
     if (!first || !second) throw new Error("Expected two dinosaur cards");
     await user.click(first);
-    await user.click(screen.getByRole("button", { name: "NEXT" }));
+    const next = screen.getByRole("button", { name: "NEXT" });
     vi.mocked(addTransitionType).mockClear();
     vi.mocked(startTransition).mockClear();
     shown.length = 0;
 
     act(() => {
-      pictures.loading().forEach(pictures.finish);
+      fireEvent.click(next);
       fireEvent.click(second);
     });
 

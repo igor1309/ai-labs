@@ -10,6 +10,7 @@ import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
 import { SHIPPED_SORTABLES, fakeBodyPicture, loadedPictures, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
 // orientation gate, each drop played through the sorting game.
@@ -177,7 +178,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
     random: seededRandom(seed),
     ...loadedPictures()
   };
-  const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />);
+  const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />, withPictures);
   act(() => owner.start?.());
   const random = seededRandom(seed);
   let last: Sorting | undefined;

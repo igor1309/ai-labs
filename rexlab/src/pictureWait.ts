@@ -1,6 +1,9 @@
+// How loading a picture ended.
+export type PictureOutcome = "loaded" | "failed";
+
 // Loads the picture at `url` and calls `done` once, when it has loaded or
-// failed to.
-export type LoadPicture = (url: string, done: () => void) => void;
+// failed to, saying which.
+export type LoadPicture = (url: string, done: (outcome: PictureOutcome) => void) => void;
 
 // Calls `fire` after `ms` milliseconds, unless the returned stop is
 // called first.

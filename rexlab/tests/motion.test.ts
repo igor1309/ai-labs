@@ -66,6 +66,8 @@ describe("the motion", () => {
       "--motion-screen": "320ms",
       "--motion-count": "600ms",
       "--motion-stagger": "40ms",
+      "--motion-picture": "200ms",
+      "--motion-shimmer": "1500ms",
       "--motion-amount": "1"
     });
   });
@@ -455,5 +457,57 @@ describe("the parents' menus' motion", () => {
       ]
     ]);
     expect([...animationsOf(REDUCED).keys()].filter((selector) => selector.startsWith(".parent-menu"))).toEqual([]);
+  });
+});
+
+// pictures.feature: a loading picture's place pulses in the theme's
+// colours, and its picture fades in as it arrives.
+describe("a picture's place", () => {
+  const bodyOf = (selector: string) => declarationsOf(PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "");
+  const shimmer = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes picture-shimmer")?.body ?? "");
+
+  it("pulses to the lighter colour and back every 1.5 seconds, standing on the first where there is no motion", () => {
+    expect(tokensOf(PLAIN)["--motion-shimmer"]).toBe("1500ms");
+    expect(bodyOf('.picture[data-picture="loading"]')).toEqual([
+      { property: "--shimmer-from", value: "#e6e2d9" },
+      { property: "--shimmer-to", value: "#fffdf8" },
+      { property: "background-color", value: "var(--shimmer-from)" },
+      { property: "animation", value: "picture-shimmer var(--motion-shimmer) var(--ease-out) infinite" }
+    ]);
+    expect(shimmer.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([
+      ["50%", [{ property: "background-color", value: "color-mix(in srgb, var(--shimmer-to) calc(var(--motion-amount) * 100%), var(--shimmer-from))" }]]
+    ]);
+  });
+
+  it("pulses in the dark theme's colours", () => {
+    expect(bodyOf('[data-theme="dark"] .picture[data-picture="loading"]')).toEqual([
+      { property: "--shimmer-from", value: "#222a3d" },
+      { property: "--shimmer-to", value: "#181e2e" }
+    ]);
+  });
+
+  it("fades its picture in over 200 ms, with reduced motion too", () => {
+    expect(tokensOf(PLAIN)["--motion-picture"]).toBe("200ms");
+    expect(tokensOf(REDUCED)["--motion-picture"]).toBeUndefined();
+    expect(bodyOf('.picture[data-picture="appearing"]')).toEqual([{ property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]);
+    expect(REDUCED.filter(({ prelude }) => prelude.includes(".picture"))).toEqual([]);
+    const fade = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-in")?.body ?? "");
+    expect(fade.map(({ prelude, body }) => [prelude, declarationsOf(body)])).toEqual([["from", [{ property: "opacity", value: "0" }]]]);
+  });
+
+  it("is silhouetted on MORE COMING only once its picture shows, its shimmer and failure look keeping their colours", () => {
+    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("more-coming-picture") && declarationsOf(body).some(({ property }) => property === "filter"));
+    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
+      ['.more-coming-picture[data-picture="appearing"]', '.more-coming-picture[data-picture="shown"]'],
+      ['[data-theme="dark"] .more-coming-picture[data-picture="appearing"]', '[data-theme="dark"] .more-coming-picture[data-picture="shown"]']
+    ]);
+  });
+
+  it("draws footprints on what holds it once failed, in each theme's soft ink, and never its name", () => {
+    const failed = bodyOf('.picture[data-picture="failed"]').map(({ value }) => value).join("");
+    const dark = bodyOf('[data-theme="dark"] .picture[data-picture="failed"]').map(({ value }) => value).join("");
+    expect([failed, dark]).toEqual([expect.stringMatching(/^url\("data:image\/svg\+xml,.*stroke='%235c647a'.*"\) center \/ clamp\(32px, 30%, 96px\) no-repeat$/), expect.stringMatching(/^url\(.*stroke='%239ca3b6'.*\)$/)]);
+    expect(failed.replace("%235c647a", "")).toBe(dark.replace("%239ca3b6", "") + " center / clamp(32px, 30%, 96px) no-repeat");
+    expect(bodyOf('.picture[data-picture="loading"],\n.picture[data-picture="failed"]')).toEqual([{ property: "color", value: "transparent" }]);
   });
 });
