@@ -90,6 +90,25 @@ describe("the level switch", () => {
     expect(hatchling.boxShadow).not.toBe("none");
   });
 
+  it.each([
+    ["hatchling", "explorer"],
+    ["explorer", "paleontologist"],
+    ["paleontologist", "hatchling"],
+    ["explorer", "hatchling"]
+  ] as const)("slides the chosen mark from %s to %s, the level chosen", async (from, to) => {
+    const { user } = await openPairs({ ageLevel: picked(from) });
+    const mark = levelSwitch().querySelector(".pairs-level-mark");
+    if (!mark) throw new Error("No chosen mark on the switch");
+    // The mark stands a third of the switch and its gap further along for
+    // each level before the chosen one.
+    const place = () => getComputedStyle(levelSwitch()).getPropertyValue("--chosen");
+    expect([getComputedStyle(mark).translate, place()]).toEqual(["calc(var(--chosen) * (100% + 4px)) 0", String(AGE_LEVELS.indexOf(from))]);
+
+    await user.click(button(TEXTS.en.ageLevels[to].name));
+
+    expect([chosen(), place()]).toEqual([[TEXTS.en.ageLevels[to].name], String(AGE_LEVELS.indexOf(to))]);
+  });
+
   it("gives each level at least 48 by 48 to tap", async () => {
     await openPairs();
 
@@ -324,7 +343,8 @@ describe("a board at each level", () => {
     };
 
     const style = getComputedStyle(board());
-    expect([style.width, style.aspectRatio]).toEqual(["min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2))", "calc(var(--columns) * 3) / calc(var(--rows) * 3.2)"]);
+    expect([style.display, style.width, style.aspectRatio]).toEqual(["grid", "min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2))", "calc(var(--columns) * 3) / calc(var(--rows) * 3.2)"]);
+    expect([roomStyle.display, roomStyle.placeItems]).toEqual(["grid", "center"]);
     const [rows, columns] = [Number(board().style.getPropertyValue("--rows")), Number(board().style.getPropertyValue("--columns"))];
     const shape = (columns * 3) / (rows * 3.2);
     const boardWidth = Math.min(room.width, room.height * shape);
@@ -341,6 +361,19 @@ describe("a board at each level", () => {
     expect(floor * rows + (rows - 1) * rowGap).toBeLessThanOrEqual(boardHeight);
     // A face-down card's footprints are drawn at its share of the card.
     expect([styleOf(".pair-card-back-frame svg").width, styleOf(".pair-card-back-frame svg").height]).toEqual(["30cqi", "30cqi"]);
+  });
+
+  it.each(AGE_LEVELS)("draws the footprints of the welcome's face-down card at %s at their share of that card, not of the screen", async (level) => {
+    const { user } = await openPairs({ ageLevel: picked(level) });
+
+    // A container query length is of the nearest container, and with none
+    // it is of the screen: the card is the footprints' container.
+    const card = styleOf(".pairs-hero-back");
+    const footprints = styleOf(".pairs-hero-back svg");
+    expect([card.getPropertyValue("container-type"), footprints.width, footprints.height]).toEqual(["inline-size", "54cqi", "54cqi"]);
+
+    await user.click(button("PLAY"));
+    expect([styleOf(".pair-card").getPropertyValue("container-type"), styleOf(".pair-card-back-frame svg").width]).toEqual(["inline-size", "30cqi"]);
   });
 
   it.each([

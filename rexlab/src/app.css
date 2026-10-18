@@ -44,54 +44,6 @@
   --motion-amount: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-standard: 160ms;
-    --motion-screen: 160ms;
-    --motion-count: 0ms;
-    --motion-stagger: 0ms;
-    --motion-amount: 0;
-  }
-
-  /* A pressed card and the progress steps change size at once. */
-  .card {
-    transition-property: filter, opacity;
-  }
-
-  .step {
-    transition-property: background-color;
-  }
-
-  /* So does the need asked now. */
-  .need {
-    transition-property: background-color;
-  }
-
-  /* Find the pair's climb level folds and unfolds at once, only fading. */
-  .pairs-climb {
-    transition-property: opacity;
-  }
-
-  /* The chosen mark does not travel: the chosen level's own fill fades in
-     where it is. */
-  .pairs-level-mark {
-    visibility: hidden;
-    transition-property: none;
-  }
-
-  /* A card on the sorting board lifts and puts down in place, and slides
-     back only by fading in where it belongs. */
-  .sort-card {
-    transition-property: filter, opacity, box-shadow, outline;
-  }
-
-  /* A dinosaur's picture does not travel between its card and its page:
-     the two only cross-fade, in place. */
-  ::view-transition-group(.dinosaur-share) {
-    animation: none;
-  }
-}
-
 @keyframes fade-out {
   to {
     opacity: 0;
@@ -3703,10 +3655,18 @@ body:has(.result) #version {
   animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* The face-down card's footprints keep the design's share of it, 96 of
+   its 177 pixels inside at 1440 by 900, at every size of the card. */
 .pairs-hero-back {
   padding: 14px;
   background: #1f2b4d;
   rotate: -8deg;
+  container-type: inline-size;
+}
+
+.pairs-hero-back .pair-card-back-frame svg {
+  width: 54cqi;
+  height: 54cqi;
 }
 
 .pairs-hero-silhouette {
@@ -4000,7 +3960,7 @@ body:has(.result) #version {
 }
 
 /* The footprints keep their share of the card at every size of card. */
-.pair-card-back-frame svg {
+.pair-card .pair-card-back-frame svg {
   width: 30cqi;
   height: 30cqi;
 }
@@ -4175,7 +4135,8 @@ body:has(.result) #version {
 .pairs-found-name {
   flex-shrink: 0;
   padding: 8px;
-  /* Every shipped name fits within 13 ems in either language. */
+  /* A name of up to 13 ems stays on one line across its card; the result's
+     fit test checks that every shipped name, in either language, is one. */
   font-size: min(18px, calc((100cqi - 16px) / 13));
   line-height: 1.25;
   font-weight: 700;
@@ -4920,6 +4881,56 @@ body:has(.result) #version {
 .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
   outline: 2px dashed #e39b2d;
   outline-offset: -1px;
+}
+
+/* Reduced motion comes after every rule it overrides, so that it wins
+   over them: a later rule of the same weight would undo it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+  .pairs-level-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
 }
 
 /* The dark theme: each fm-* colour takes its dark value, in the same

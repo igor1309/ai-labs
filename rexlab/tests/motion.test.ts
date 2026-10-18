@@ -114,6 +114,17 @@ describe("the motion", () => {
     expect(moving.length).toBeGreaterThan(0);
     expect(moving.filter((selector) => MOVING.test(reducedTransitions.get(selector) ?? "transform"))).toEqual([]);
   });
+
+  it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
+    const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
+    const overridden = new Set(REDUCED.map(({ prelude }) => prelude));
+    const later = RULES.slice(reducedAt + 1)
+      .filter(({ prelude }) => overridden.has(prelude))
+      .map(({ prelude }) => prelude);
+
+    expect(RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)")).toHaveLength(1);
+    expect(later).toEqual([]);
+  });
 });
 
 // The animation each selector of a rule runs, from its `animation`
