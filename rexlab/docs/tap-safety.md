@@ -41,6 +41,26 @@ a button of the museum.
    window's timer is injected by the composition root, `src/root.ts`, as
    the wait for pictures' is, so tests fire it.
 
+## Why 500 ms
+
+Nothing but time tells the second tap of a double tap from a new tap:
+every platform recognises a double tap by a window between its taps, of
+300 to 500 ms (Android's default and Hammer.js 300 ms, WebKit's media
+controls 350 ms, React Native Gesture Handler 500 ms). A view transition
+already keeps taps off the new screen's buttons while it runs, since its
+pseudo-elements cover the page, but that is 320 ms, 160 ms with reduced
+motion, and nothing where the browser runs no transition. No study
+measures how far apart a child of 5–7 taps twice by accident; 500 ms
+takes the cautious end of the platforms' range for children less sure of
+their fingers. It is provisional and one constant: if a child's deliberate
+taps are lost on an iPad, lower it toward 350 ms.
+
+Sources: Nacher et al., "Multi-touch gestures for pre-kindergarten
+children", IJHCS 2015 (the 300 ms pass mark); Oliveira et al.,
+arXiv:1402.1036 (double taps fit a window from about 400 ms); the
+CSS Working Group's issues #7797 and #12629 on input during a view
+transition.
+
 ## Forbidden
 
 - Writing the screen state anywhere but `src/screens.ts`: no
