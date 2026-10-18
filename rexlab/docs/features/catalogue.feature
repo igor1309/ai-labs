@@ -42,13 +42,12 @@ Feature: The dinosaur catalogue
     And its height "3.1 M" beside "TALL" and its weight "8 T" beside "HEAVY"
     And an "ALL DINOSAURS" button with a 📖 symbol and the position "1 / 42"
 
-  Scenario: A page waits for its picture and loads its neighbours ahead
+  Scenario: A page opens at once and loads its neighbours ahead
     Given I am on the list of every dinosaur
     And the picture of Velociraptor is still loading
     When I tap the card of Velociraptor
-    Then the list stays on screen
+    Then I see the page of Velociraptor at once, its picture shimmering (pictures.feature)
     And the pictures of Triceratops and Brachiosaurus start loading
-    And when the picture has loaded, or after a second at most, I see the page of Velociraptor
 
   Scenario: Next and previous go round the whole list
     Given I am on the page of the last dinosaur, at "42 / 42"
@@ -59,7 +58,6 @@ Feature: The dinosaur catalogue
 
   Scenario: A quick double tap on an arrow goes one dinosaur on
     Given I am on the page of Tyrannosaurus
-    And the picture of Triceratops is still loading
     When I tap the → button twice quickly
     Then I see the page of Triceratops, at "2 / 42"
 
