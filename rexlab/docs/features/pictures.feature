@@ -1,4 +1,4 @@
-Feature: The catalogue, compare and home never wait for their pictures
+Feature: Screens never wait for their pictures
   These screens change at once, whatever their pictures are doing
   (docs/tap-safety.md, part 5); the other games follow. While a picture
   loads, its place keeps the picture's own size and shimmers: its colour
@@ -15,7 +15,7 @@ Feature: The catalogue, compare and home never wait for their pictures
   for screen readers, loading, failed or shown.
 
   It covers every picture of the catalogue, the compare game, the home
-  page and a round's result, which sorting shares.
+  page, care, find the pair and a round's result, which sorting shares.
 
   Background:
     Given an iPad in landscape
