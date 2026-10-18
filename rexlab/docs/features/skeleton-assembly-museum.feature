@@ -43,7 +43,8 @@ Feature: Skeleton assembly: the museum and rebuilding
   Scenario: A quick double tap rebuilds only once
     Given Tyrannosaurus is displayed on its earned stand
     When I tap its "REBUILD" button twice quickly
-    Then one scatter and one fresh Tyrannosaurus puzzle start
+    Then one scatter and one fresh Tyrannosaurus puzzle start at once, whatever its pictures are doing
+    And it is counted as one puzzle started
     And its star and stand stay earned exactly once
 
   Scenario: A stand awaiting rebuilding keeps its earned identity

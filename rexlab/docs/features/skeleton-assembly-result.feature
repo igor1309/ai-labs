@@ -52,11 +52,12 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     And the skeleton's place shows <shows>, as pictures.feature has it
     And the body picture adds no shimmer and no failure look of its own
     And <then>
+    And a body picture that loads late fades in as the reveal does, from when it loads, twice the screen motion after one screen motion, shorter with reduced motion
 
     Examples:
       | skeleton         | body             | shows                    | then                                                                                  |
       | has loaded       | cannot load      | the whole skeleton       | the skeleton stays whole                                                              |
-      | has loaded       | is still loading | the whole skeleton       | once the body picture loads, it fades in over the skeleton as the skeleton fades back |
+      | has loaded       | is still loading | the whole skeleton       | once the body picture loads, it fades in over the skeleton as the skeleton fades back, as in the reveal |
       | is still loading | is still loading | a shimmer at its size    | once the skeleton picture loads, it fades in whole                                    |
       | cannot load      | cannot load      | the failure look         | the failure look stays, the reward still shown                                        |
 
