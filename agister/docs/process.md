@@ -73,9 +73,10 @@ goes to `backlog/`; nothing is dropped silently.
 ## Mechanics
 
 - The scripts are `agister/scripts/loop/`, run from the branch's
-  worktree. They run this Agister as `agister-next`, its settings
-  `~/.agister-next`, both put there by `install.sh` from trunk's
-  checkout after each merge. A branch has its directory, `/tmp/<branch>/` (or
+  worktree. They run this Agister as `agister`, its settings
+  `~/.agister`, both put there by `install.sh` from trunk's
+  checkout after each merge: edit `agister/home`, not home's copy.
+  A branch has its directory, `/tmp/<branch>/` (or
   `$LOOP_DIR`): its `config.sh`, and every prompt, review and triage,
   numbered by round. What is in a file is not repeated in a turn.
   `config.sh` sets:

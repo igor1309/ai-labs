@@ -12,7 +12,7 @@ source "$dir/config.sh"
 n=$("$bin/next-round.sh" "$dir" branch-review)
 out="$dir/branch-review-$n"
 echo "round $n at $(git -C "$WT" rev-parse --short HEAD), goal $GOAL"
-(cd "$WT" && AGISTER_HOME="$HOME/.agister-next" agister-next run code_review \
+(cd "$WT" && agister run code_review \
   --param goal="$GOAL") > "$out.json" 2> "$out.log" || true
 python3 -I "$bin/render-review.py" "$out.json" "$out.md" "$dir/triage-branch-review-$n.md"
 echo "review: $out.md"

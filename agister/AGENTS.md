@@ -25,5 +25,6 @@
   runs real claude-code and codex steps through the built binary
   (opt-in, `AGISTER_E2E=1`), before a PR on the run path.
   `AGISTER_HOME` points the binary at settings other than
-  `~/.agister`, which still holds the archive's. The loop runs this
-  Agister as `agister-next` (`scripts/loop/install.sh`).
+  `~/.agister`. `scripts/loop/install.sh` installs this Agister as
+  `agister`, home's settings into `~/.agister`: edit `home/`, not
+  home's copy.
