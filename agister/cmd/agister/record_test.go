@@ -103,7 +103,8 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 		t.Fatalf("the record holds the calls %+v, want one", calls)
 	}
 	result := calls[0].Result
-	calls[0].Result = runstore.CallResult{}
+	// Its inputs are runs.feature's, proved there.
+	calls[0].Result, calls[0].Inputs = runstore.CallResult{}, nil
 	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", Content: "t1"}
 	if !reflect.DeepEqual(calls[0], want) {
 		t.Errorf("the record's call %+v, want %+v", calls[0], want)

@@ -138,8 +138,9 @@ func TestHomesImplementRunsOnClaudeCodeAdmittedAndHeld(t *testing.T) {
 // admit; a pin from another source gives no commit. A call admit refuses
 // ends failed, class "refused", its reason admit's, with its plan's
 // warnings, and its turn is not taken. Each call is told to the records
-// as it ends: its step, process and agent, the facts admit told of it,
-// none for a call refused, and its result.
+// as it ends: its step, process and agent, its inputs, in the order its
+// process declares them, the facts admit told of it, none for a call
+// refused, and its result.
 func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	t.Parallel()
 	sources := &sourcesSpy{root: "/r", commits: map[string]string{"main": "c1"}}
@@ -159,6 +160,12 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		"by param": {Pin: &admit.Pin{Input: "what", Source: "param"}},
 		"nothing":  {},
 	}
+	what := givenInput{name: "what", Fixed: inputs.Fixed{Value: "hi", Identity: identityOf("hi")}}
+	given := map[string][]givenInput{
+		"pinned":   {what, {name: "rev", Fixed: inputs.Fixed{Value: "c1", Identity: "c1"}}},
+		"by param": {what},
+		"nothing":  {what},
+	}
 	for _, name := range slices.Sorted(maps.Keys(calls)) {
 		admits := &admissionSpy{facts: admit.Facts{Head: "c1", Content: "t1"}}
 		spy := &turnSpy{result: call.Result{Status: call.Completed}}
@@ -171,7 +178,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		if got.Status != workflow.Completed || len(spy.steps) != 1 {
 			t.Errorf("%s: gave %+v, called %d times; want completed, called once", name, got, len(spy.steps))
 		}
-		want := []endedCall{{step: name, process: calls[name].process, agent: calls[name].agent, facts: admits.facts, result: got}}
+		want := []endedCall{{step: name, process: calls[name].process, agent: calls[name].agent, inputs: given[name], facts: admits.facts, result: got}}
 		if told := records.told(); !reflect.DeepEqual(told, want) {
 			t.Errorf("%s: told the records %+v, want %+v", name, told, want)
 		}
@@ -193,7 +200,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	if !reflect.DeepEqual(got, want) || len(spy.steps) > 0 {
 		t.Errorf("refused: gave %+v, called %+v; want %+v, no turn taken", got, spy.steps, want)
 	}
-	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", result: want}}; !reflect.DeepEqual(told, want) {
+	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", inputs: given["pinned"], result: want}}; !reflect.DeepEqual(told, want) {
 		t.Errorf("refused: told the records %+v, want %+v, no facts", told, want)
 	}
 	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, &callsSpy{}); err == nil {

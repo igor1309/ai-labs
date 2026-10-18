@@ -1,7 +1,7 @@
-# runstore, a wrapper (docs/run-implementation.md, "Records" and
-# "Continuation"; ADR-001, "Runs"): runs kept under a folder, each a folder
-# of its id. Contract tests against real files, in a temporary folder
-# (ADR-009, rule 3).
+# runstore, a wrapper (docs/run-implementation.md, "Records",
+# "Continuation" and "Runs"; ADR-001, "Runs"): runs kept under a folder,
+# each a folder of its id. Contract tests against real files, in a temporary
+# folder (ADR-009, rule 3).
 
 Feature: runstore keeps runs
 
@@ -33,3 +33,18 @@ Feature: runstore keeps runs
     When the runs kept are asked
     Then they are "20261016T090000Z-0a0b0c", then
       "20261017T071618Z-55fd36"
+
+  Scenario Outline: A run is exported, its files copied under its id
+    Given the run "x" kept, <kept>
+    When "x" is exported to "out", <out>
+    Then "out/x" holds <holds>, each as kept
+
+    Examples:
+      | kept                          | out                         | holds                            |
+      | its record and events written | not yet made                | "record.json" and "events.jsonl" |
+      | its record alone written      | not yet made                | "record.json" alone              |
+      | its record and events written | "out/x" an older copy of it | "record.json" and "events.jsonl" |
+
+  Scenario: A run not kept is not exported
+    When "x" is exported to "out", no run "x" kept
+    Then it gives an error, and "out" holds nothing

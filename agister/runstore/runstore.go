@@ -1,7 +1,7 @@
 // Package runstore keeps runs, in its own types (ADR-001, "Runs"): under
 // a folder it is given, each run a folder of its id, holding its record,
 // record.json, written whole each time, and its events, events.jsonl, a
-// line each.
+// line each. A run kept is exported as a copy of its folder.
 package runstore
 
 import (
@@ -20,13 +20,15 @@ import (
 // Schema is the schema of the record runstore keeps.
 const Schema = "agister.record/v1alpha1"
 
-// Record is a run's record: its schema, its id, what was asked, when it
-// started and ended, nil while it has not, its status, each of its calls
-// ended so far, and its result, nil until it ends.
+// Record is a run's record: its schema, its id, what was asked, the
+// workflow's inputs as resolved, when it started and ended, nil while it
+// has not, its status, each of its calls ended so far, and its result, nil
+// until it ends.
 type Record struct {
 	Schema  string     `json:"schema"`
 	ID      string     `json:"id"`
 	Request Request    `json:"request"`
+	Inputs  []Input    `json:"inputs"`
 	Started time.Time  `json:"started"`
 	Ended   *time.Time `json:"ended"`
 	Status  string     `json:"status"`
@@ -49,7 +51,8 @@ type Request struct {
 // Call is a call of a run, as it ended: its id, its step, process and
 // agent; its worktree's root, the commit HEAD was when it was admitted and
 // its content at its end, "" where it was refused; the id of the call
-// whose session it continues, nil for none; and its result.
+// whose session it continues, nil for none; the inputs it was given, as
+// resolved; and its result.
 type Call struct {
 	ID        string     `json:"id"`
 	Step      string     `json:"step"`
@@ -59,7 +62,17 @@ type Call struct {
 	Head      string     `json:"head"`
 	Content   string     `json:"content"`
 	Continues *string    `json:"continues"`
+	Inputs    []Input    `json:"inputs"`
 	Result    CallResult `json:"result"`
+}
+
+// Input is an input as it was resolved: its name, its value whole, and
+// its identity. A value is kept as JSON keeps text: bytes that are not
+// UTF-8 are replaced, the identity the original's.
+type Input struct {
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Identity string `json:"identity"`
 }
 
 // Outcome is how a run or a call ended, in the shape Agister prints a
@@ -200,15 +213,21 @@ func New(folder string) (*Store, error) {
 // Write writes record as the record of the run its id names, in place of
 // any written before: whole, to a temporary file in the run's folder,
 // then renamed, so that a reader meets the one or the other, and no
-// temporary file is left behind. Calls and params that are none are
-// written as empty.
+// temporary file is left behind. Calls, params and inputs that are none
+// are written as empty.
 func (s *Store) Write(record Record) error {
 	folder, err := s.run(record.ID)
 	if err != nil {
 		return err
 	}
-	if record.Calls == nil {
-		record.Calls = []Call{}
+	record.Calls = append([]Call{}, record.Calls...)
+	for i, call := range record.Calls {
+		if call.Inputs == nil {
+			record.Calls[i].Inputs = []Input{}
+		}
+	}
+	if record.Inputs == nil {
+		record.Inputs = []Input{}
 	}
 	if record.Request.Params == nil {
 		record.Request.Params = map[string]string{}
@@ -284,6 +303,41 @@ func (s *Store) Runs() ([]string, error) {
 		}
 	}
 	return ids, nil
+}
+
+// Export copies the run id names into a folder of its id under folder:
+// its record.json, and its events.jsonl where it has one, each folder made
+// where missing and a copy already there written over. A run not kept is
+// an error that is, or wraps, fs.ErrNotExist, and nothing is copied. Each
+// file is read whole before anything is written: a record is as it was
+// last written, an event line being appended may be cut.
+func (s *Store) Export(id, folder string) error {
+	from, err := s.run(id)
+	if err != nil {
+		return err
+	}
+	record, err := os.ReadFile(filepath.Join(from, "record.json"))
+	if err != nil {
+		return fmt.Errorf("runstore: the export of %q: %w", id, err)
+	}
+	events, err := os.ReadFile(filepath.Join(from, "events.jsonl"))
+	hasEvents := err == nil
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("runstore: the export of %q: %w", id, err)
+	}
+	to := filepath.Join(folder, id)
+	if err := os.MkdirAll(to, 0o755); err != nil {
+		return fmt.Errorf("runstore: the export of %q: %w", id, err)
+	}
+	if err := os.WriteFile(filepath.Join(to, "record.json"), record, 0o600); err != nil {
+		return fmt.Errorf("runstore: the export of %q: %w", id, err)
+	}
+	if hasEvents {
+		if err := os.WriteFile(filepath.Join(to, "events.jsonl"), events, 0o600); err != nil {
+			return fmt.Errorf("runstore: the export of %q: %w", id, err)
+		}
+	}
+	return nil
 }
 
 // Append appends event to the events of the run id names, as a line of

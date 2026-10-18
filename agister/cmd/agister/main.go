@@ -1,8 +1,8 @@
 // Command agister is the composition root (ADR-001, rule 3): it connects
 // layout, documents, resolve, check and core to files, git, the runtime
 // wrappers and the machine Agister runs on, through the adapters beside
-// it, and answers cli's settings from check and its run from resolve and
-// core.
+// it, and answers cli's settings from check, its run from resolve and
+// core, and its runs from runstore.
 package main
 
 import (
@@ -100,7 +100,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 }
 
 // runsAt is runstore over folder.
-func runsAt(folder string) (runStore, error) {
+func runsAt(folder string) (homeRuns, error) {
 	store, err := runstore.New(folder)
 	if err != nil {
 		return nil, err
@@ -200,8 +200,8 @@ type piWrapper interface {
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
 // runs on machine, a call's output checked by validator, its inputs read
 // through inputsFrom, and the call admitted and held through held's facts
-// and locks, its runs kept by the store storeAt gives for home's "runs",
-// for the user whose home directory is user: home's folder is
+// and locks, its runs kept, and exported, by the store storeAt gives for
+// home's "runs", for the user whose home directory is user: home's folder is
 // homeFolder's, and the lock files are under lockFolder's. A run's result
 // is printed to stdout, and its progress, as it goes, to stderr.
 func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, storeAt runStoreAt, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
@@ -249,7 +249,7 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
-	return newCommandLine(home, links, fs, roots, wrappers, runner, stdout, stderr)
+	return newCommandLine(home, links, fs, roots, wrappers, runner, store, stdout, stderr)
 }
 
 // homeFolder is home's folder (ADR-002, rule 2): AGISTER_HOME where
