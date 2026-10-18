@@ -15,9 +15,18 @@ against these sources only.
 
 ## Rules
 
-- Height is how tall the dinosaur stands as drawn, in metres; mass is in
-  kilograms. Both are estimates: a value is right when it lies within the
-  range the sources give.
+- Height is hip height: from the ground to the top of the hip, the
+  dinosaur standing, in metres (owner, 2026-10-18, LAB-263). Not head
+  height: how sauropods held their necks is still argued (Stevens and
+  Parrish 1999 against Taylor, Wedel and Naish 2009), so a head height
+  rests on one side of that debate, while the hip is fixed by the leg
+  bones, and hip height is the size measure palaeontologists use, in
+  Alexander's 1976 speed estimates among others. Never the top of a neck,
+  head, crest, sail, plates or frill, and never a shoulder height, which
+  for long-armed sauropods such as Brachiosaurus stands above the hip.
+- Mass is the live body mass, in kilograms.
+- Both are estimates: a value is right when it lies within the range the
+  sources give.
 - Where the sources disagree, use a value inside the range most of them
   support, and note the disagreement in the change.
 - Russian names follow the spelling used in Russian scientific and
@@ -50,9 +59,9 @@ against these sources only.
   or are guesswork (Stegosaurus, at 2720 kg by AMNH; Maiasaura, at 2500
   kg by NHM and 3–4 short tons by UCMP; Therizinosaurus, known only from
   a few bones).
-- Where no source gives a height, it is worked out from the length a
-  source gives, in the proportions of a relative already in the list, and
-  the reference says so.
+- Where no source gives a hip height, it is worked out from the length a
+  source gives, in the hip-height-to-length proportion of the closest
+  relative whose hip height a source gives, and the reference says so.
 
 ## References
 

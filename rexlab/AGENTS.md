@@ -8,7 +8,9 @@ description: "Agent instructions for the RexLab project"
 
 RexLab is a dinosaur learning web app for children aged 5–7, served at
 https://rexlab.enoa.ai from the Cloudflare Pages project `rexlab`.
-Architecture: `docs/mvp-infrastructure.md`.
+Architecture: `docs/mvp-infrastructure.md`. Every dinosaur fact (names,
+height, which is hip height, mass, diet, traits) follows the rules and
+sources of `docs/sources.md`.
 
 ## Product principles
 
