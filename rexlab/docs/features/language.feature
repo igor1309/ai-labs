@@ -89,3 +89,12 @@ Feature: English and Russian
       | Russian  | the compare quiz |
       | English  | the sorting game |
       | Russian  | the sorting game |
+
+  Scenario Outline: The version footer is named in the chosen language
+    Given the app is in <language>
+    Then a screen reader names the version footer "<label>", in normal case
+
+    Examples:
+      | language | label   |
+      | English  | Version |
+      | Russian  | Версия  |
