@@ -1,5 +1,5 @@
-# cmd/agister, a reuse (docs/run-implementation.md, "Reuse"; ADR-007,
-# rule 5): a run taking an earlier run's completed calls, with spies in
+# cmd/agister, a reuse (docs/run-implementation.md, "Reuse"; ADR-011,
+# rules 3 and 6): a run taking an earlier run's completed calls, with spies in
 # place of the wrappers (ADR-009, rule 4). Settings as record.feature
 # gives them, with a workflow "review": a parallel "reviews" of the steps
 # "a" and "b", each of the process "ask" on "codex-sol-61" given the
@@ -18,9 +18,19 @@ Feature: The composition reuses an earlier run's completed calls
       "R1/a" and "R1/b" with their results as recorded, and "judge" is
       made
     And the progress shows "· a: reused R1/a" and "· b: reused R1/b"
+    And the result's cost and usage are the judge's alone
+
+  Scenario: A continuation goes on from a call made, not one reused
+    Given runstore keeps "R2", which continued "R1/a" as "R2/a", its
+      session that of "R1/a" and content "t2"; and "R3", which reused
+      "R1", its call "R3/a" reusing "R1/a"; git gives "/r" content "t1"
+    When "agister run --process ask --agent codex-sol-61 --param q=why
+      --continue R2" runs in "/r"
+    Then it prints to stderr that the worktree is not as "R2/a" left
+      it, nothing runs, and it exits 1
 
   Scenario: A call that failed is made again
-    Given in "R1", "b" failed, usage_limit
+    Given in "R1", "b" failed, class "rate_limited"
     When "agister run review --param q=why --reuse R1" runs in "/r"
     Then codex is given one turn, for "b", and "a" reuses "R1/a"
 

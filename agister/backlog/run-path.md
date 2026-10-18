@@ -24,7 +24,8 @@ order it is needed:
   earlier step's session, checked by `core/admit` (ADR-001, rule 5).
 - **The rest of the record**: definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch (ADR-001, invariant 6;
-  ADR-004, rule 4); other commands on runs.
+  ADR-004, rule 4); other commands on runs; a reuse comparing a
+  call's definitions' digests ("Reuse").
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending
   what left a program's group, which the supervisor reads no longer
