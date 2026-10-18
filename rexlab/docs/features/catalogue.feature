@@ -88,7 +88,7 @@ Feature: The dinosaur catalogue
 
   Scenario: The catalogue moves smoothly
     When I open a dinosaur's page from its card
-    Then the card's picture grows into the page's picture while the rest fades
+    Then the card's picture grows into the page's picture while the rest fades, whether it shows the picture or its shimmer
     And going back shrinks it into its card again
     And the next or previous dinosaur slides in the arrow's way
     And on opening the list its cards fade and rise in one after the other

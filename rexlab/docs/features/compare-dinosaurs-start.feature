@@ -42,7 +42,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: A round starts once for two activations from home
     Given the large card features COMPARE
-    When I tap the "COMPARE" tile and then the large card, more than 100 CSS pixels away, before the screen has changed
+    When I tap the "COMPARE" tile and then the large card, more than 100 CSS pixels away, before the first tap's screen change is shown
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 

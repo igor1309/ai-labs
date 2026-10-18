@@ -75,7 +75,11 @@ Feature: Compare dinosaurs quiz: answering a question
     And the pictures of question 4 are still loading
     When I tap "NEXT"
     Then I see the progress "4/10" at once, its pictures shimmering
-    And the pictures of question 5 start loading
+
+  Scenario: Each question but the last loads the next one's pictures ahead
+    When I am on question 1 of a round
+    Then the pictures of question 2 start loading
+    And on question 10 no more pictures load ahead
 
   Scenario: A quick double tap on Next skips nothing
     Given I have answered question 3

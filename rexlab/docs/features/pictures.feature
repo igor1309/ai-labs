@@ -1,10 +1,10 @@
-Feature: A screen never waits for its pictures
-  A screen changes at once, whatever its pictures are doing
-  (docs/tap-safety.md, part 5). While a picture loads, its place keeps
-  the picture's own size and shimmers: a slow sweep in the colours of
-  the theme shown. Once the picture has loaded and decoded, it fades in
-  over the --motion-picture token, 200 ms. A picture already loaded
-  since the app was opened shows at once.
+Feature: The catalogue, compare and home never wait for their pictures
+  These screens change at once, whatever their pictures are doing
+  (docs/tap-safety.md, part 5); the other games follow. While a picture
+  loads, its place keeps the picture's own size and shimmers: its colour
+  pulses slowly in place, in the colours of the theme shown. Once the
+  picture has loaded and decoded, it fades in over the --motion-picture
+  token, 200 ms. A picture loaded since the app was opened shows at once.
 
   A picture that fails, or is still loading 8 seconds after its place
   first showed it, shows the failure look: its place keeps its size, in
@@ -15,8 +15,7 @@ Feature: A screen never waits for its pictures
   for screen readers, loading, failed or shown.
 
   It covers every picture of the catalogue, the compare game, the home
-  page and a round's result, which sorting shares; each other game's
-  features bring their own when its pictures move.
+  page and a round's result, which sorting shares.
 
   Background:
     Given an iPad in landscape
@@ -53,6 +52,7 @@ Feature: A screen never waits for its pictures
     Given I am on question 1 of a compare round, its pictures loading
     When 8 seconds pass
     Then each picture's place shows the failure look
+    And each picture keeps its dinosaur's name for screen readers, as while loading
     And each card still shows its dinosaur's name and can be tapped
     When a picture of question 1 loads
     Then it fades in over 200 ms
@@ -78,9 +78,9 @@ Feature: A screen never waits for its pictures
     Then the page of Triceratops still shows its picture's shimmer
 
     Examples:
-      | before        | after                      |
-      | shown         | is asked for again         |
-      | still loading | finishes loading           |
+      | before        | after                                            |
+      | shown         | is loaded ahead again as Triceratops's neighbour |
+      | still loading | finishes loading                                 |
 
   Scenario: Reduced motion
     Given the iPad asks for reduced motion
@@ -92,7 +92,7 @@ Feature: A screen never waits for its pictures
   Scenario Outline: The shimmer in each theme
     Given the <theme> theme
     And a picture still loading
-    Then its place sweeps from <from> to <to> and back, once every 1.5 seconds
+    Then its place's colour pulses from <from> to <to> and back, once every 1.5 seconds
 
     Examples:
       | theme | from    | to      |
