@@ -1,7 +1,7 @@
 Feature: The level a game starts at
   The age level (age-level.feature) picks the level every game starts at.
   A game with no mode for that level plays its nearest lower one, and a
-  child's own choice in a game wins until a parent sets the level again.
+  child's own choice in a game wins until a parent changes the level.
   Rewards are the same at every level (age-levels.md).
 
   Each game adopts levels in its own issue; until then the rules below
