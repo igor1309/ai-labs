@@ -18,15 +18,34 @@ export type ClimbLevel = 1 | 2 | 3 | 4;
 
 export const TOP_CLIMB_LEVEL: ClimbLevel = 4;
 
-// Each climb level's board: how many pairs, in how many rows of how many
-// cards, and whether each picture is matched to its silhouette rather than
-// to the same picture.
-export const CLIMB_LEVELS: Record<ClimbLevel, { pairs: number; rows: number; columns: number; silhouettes: boolean }> = {
+// A board's shape: how many pairs, in how many rows of how many cards, and
+// whether each picture is matched to its silhouette rather than to the same
+// picture.
+export type BoardShape = { pairs: number; rows: number; columns: number; silhouettes: boolean };
+
+export const CLIMB_LEVELS: Record<ClimbLevel, BoardShape> = {
   1: { pairs: 3, rows: 2, columns: 3, silhouettes: false },
   2: { pairs: 4, rows: 2, columns: 4, silhouettes: false },
   3: { pairs: 4, rows: 2, columns: 4, silhouettes: true },
   4: { pairs: 6, rows: 3, columns: 4, silhouettes: true }
 };
+
+// The levels above Hatchling's climb, Explorer and Paleontologist, each
+// dealing one larger board.
+export type LargeLevel = "explorer" | "paleontologist";
+
+export const LARGE_LEVELS: Record<LargeLevel, BoardShape> = {
+  explorer: { pairs: 9, rows: 3, columns: 6, silhouettes: true },
+  paleontologist: { pairs: 12, rows: 4, columns: 6, silhouettes: true }
+};
+
+// What a board is dealt at: one of Hatchling's climb levels, or a larger
+// level's board.
+export type BoardLevel = { climbLevel: ClimbLevel } | { large: LargeLevel };
+
+export function shapeOf(level: BoardLevel): BoardShape {
+  return "climbLevel" in level ? CLIMB_LEVELS[level.climbLevel] : LARGE_LEVELS[level.large];
+}
 
 // What a card shows once turned over.
 export type Face = "picture" | "silhouette";
@@ -34,7 +53,7 @@ export type Face = "picture" | "silhouette";
 export type Card = { pal: Pal; face: Face };
 
 export type Board = {
-  climbLevel: ClimbLevel;
+  level: BoardLevel;
   // The board's dinosaurs, in the order they were dealt.
   pals: readonly Pal[];
   // The cards, in their places on the board, row by row.
@@ -48,31 +67,33 @@ export type Board = {
   tries: number;
 };
 
-// Deals a board of `climbLevel`: its pairs are of different dinosaurs,
-// none of them on the board before it, and on a silhouette board none from
-// the same look-alike group. Its cards are shuffled.
-export function dealBoard(pals: readonly Pal[], climbLevel: ClimbLevel, random: Random, previous?: Board): Board {
-  const { pairs, silhouettes } = CLIMB_LEVELS[climbLevel];
+// Deals a board at `level`, whatever level the board before it was: its
+// pairs are of different dinosaurs, on a silhouette board each of another
+// look-alike group, and as few of them on the board before as that
+// allows. The board before's dinosaurs are taken last: by then the others
+// have taken one of every group they are in, so only a group none of them
+// is in is left to the board before's, and no other choice deals fewer of
+// them. Its cards are shuffled.
+export function dealBoard(pals: readonly Pal[], level: BoardLevel, random: Random, previous?: Board): Board {
+  const { pairs, silhouettes } = shapeOf(level);
   const dealtBefore = new Set(previous?.pals.map(({ id }) => id));
+  const order = shuffled(pals, random);
   const groups = new Set<string>();
   const dealt: Pal[] = [];
-  for (const pal of shuffled(
-    pals.filter(({ id }) => !dealtBefore.has(id)),
-    random
-  )) {
+  for (const pal of [...order.filter(({ id }) => !dealtBefore.has(id)), ...order.filter(({ id }) => dealtBefore.has(id))]) {
     if (dealt.length === pairs) break;
     if (silhouettes && groups.has(pal.lookAlike)) continue;
     groups.add(pal.lookAlike);
     dealt.push(pal);
   }
   if (dealt.length < pairs) {
-    throw new Error(`Too few dinosaurs for a level ${climbLevel} board`);
+    throw new Error(`Too few dinosaurs for ${"climbLevel" in level ? `a level ${level.climbLevel} board` : `the ${level.large} board`}`);
   }
   const cards = dealt.flatMap((pal): Card[] => [
     { pal, face: "picture" },
     { pal, face: silhouettes ? "silhouette" : "picture" }
   ]);
-  return { climbLevel, pals: dealt, cards: shuffled(cards, random), open: [], found: [], tries: 0 };
+  return { level, pals: dealt, cards: shuffled(cards, random), open: [], found: [], tries: 0 };
 }
 
 // Two different cards are open: they stay so until turned back, and no

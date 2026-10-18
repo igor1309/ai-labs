@@ -1,4 +1,4 @@
-import { isFinished, TOP_CLIMB_LEVEL, type Board, type ClimbLevel, type Pal } from "./board.ts";
+import { isFinished, TOP_CLIMB_LEVEL, type Board, type BoardLevel, type ClimbLevel, type Pal } from "./board.ts";
 
 // What a child has done in find the pair: the stars earned, one for each
 // finished board; the climb level reached and the boards finished on it;
@@ -26,17 +26,17 @@ export type KeptPairs = { progress: PairsProgress; readable: boolean };
 export type Celebration = "first-best" | "new-best";
 
 export type PairsResult = {
-  climbLevel: ClimbLevel;
+  level: BoardLevel;
   // The board's dinosaurs, in the order they were dealt.
   pals: readonly Pal[];
   tries: number;
   // Every star earned, this board's among them.
   stars: number;
-  // Undefined when stored progress cannot be read: there is no best to
-  // show.
+  // Undefined when stored progress cannot be read, or the board is a
+  // larger level's, which keeps no best: there is no best to show.
   best: number | undefined;
   // The climb level's best before this board, undefined when there was
-  // none or it cannot be read.
+  // none, it cannot be read, or the board is a larger level's.
   previousBest: number | undefined;
   celebration: Celebration | null;
   // The climb level this board moved the child up to, or null.
@@ -45,38 +45,41 @@ export type PairsResult = {
   newlyFound: readonly string[];
 };
 
-// A finished board earns a star, and its tries are compared with the
-// climb level's fewest so far: only fewer is a new best. `order` is the
-// dinosaur list's ids: found dinosaurs are kept in its order, and one no
-// longer in it is kept after them, untouched.
+// A finished board earns a star and finds its dinosaurs at every level.
+// A board of the climb has its tries compared with its climb level's
+// fewest so far, only fewer being a new best, and moves the climb on; a
+// larger level's board neither climbs nor touches the climb's bests.
+// `order` is the dinosaur list's ids: found dinosaurs are kept in its
+// order, and one no longer in it is kept after them, untouched.
 export function finishBoard(kept: KeptPairs, board: Board, order: readonly string[]): { result: PairsResult; kept: KeptPairs } {
   if (!isFinished(board)) {
     throw new Error("A board is finished only once every pair is found");
   }
   const { stars, climbLevel, boardsOnClimbLevel, best, found } = kept.progress;
   const { tries } = board;
-  const previousBest = best[board.climbLevel];
+  const played = "climbLevel" in board.level ? board.level.climbLevel : undefined;
+  const previousBest = played === undefined ? undefined : best[played];
   const ids = board.pals.map(({ id }) => id);
   const newlyFound = ids.filter((id) => !found.includes(id));
   const all = new Set([...found, ...ids]);
-  const onClimbLevel = board.climbLevel === climbLevel;
+  const onClimbLevel = played === climbLevel;
   const moving = onClimbLevel && climbLevel < TOP_CLIMB_LEVEL && boardsOnClimbLevel + 1 >= BOARDS_PER_CLIMB_LEVEL;
   const nextLevel = moving ? ((climbLevel + 1) as ClimbLevel) : climbLevel;
   const progress: PairsProgress = {
     stars: stars + 1,
     climbLevel: nextLevel,
     boardsOnClimbLevel: moving ? 0 : onClimbLevel ? boardsOnClimbLevel + 1 : boardsOnClimbLevel,
-    best: { ...best, [board.climbLevel]: previousBest === undefined ? tries : Math.min(previousBest, tries) },
+    best: played === undefined ? best : { ...best, [played]: previousBest === undefined ? tries : Math.min(previousBest, tries) },
     found: [...order.filter((id) => all.has(id)), ...found.filter((id) => !order.includes(id))]
   };
-  const celebration = !kept.readable ? null : previousBest === undefined ? "first-best" : tries < previousBest ? "new-best" : null;
+  const celebration = !kept.readable || played === undefined ? null : previousBest === undefined ? "first-best" : tries < previousBest ? "new-best" : null;
   return {
     result: {
-      climbLevel: board.climbLevel,
+      level: board.level,
       pals: board.pals,
       tries,
       stars: progress.stars,
-      best: kept.readable ? progress.best[board.climbLevel] : undefined,
+      best: kept.readable && played !== undefined ? progress.best[played] : undefined,
       previousBest: kept.readable ? previousBest : undefined,
       celebration,
       levelUp: moving ? nextLevel : null,

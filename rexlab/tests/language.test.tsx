@@ -746,14 +746,17 @@ async function sortingRounds(language: Language): Promise<Seen> {
   return play.seen;
 }
 
-// Find the pair: its welcome, a board with a card open, a miss, found
-// pairs and the cards waving, its result with a first best, the home page
-// again, and the catalogue and a page with the dinosaurs found stamped.
+// Find the pair: its welcome, Hatchling chosen on its switch, a board with
+// a card open, a miss, found pairs and the cards waving, its result with a
+// first best, the home page again, and the catalogue and a page with the
+// dinosaurs found stamped.
 async function findThePair(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, timers, look } = play;
   const text = TEXTS[language];
   await user.click(screen.getByRole("button", { name: text.pairs }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.ageLevels.hatchling.name }));
   look();
   await user.click(screen.getByRole("button", { name: text.play }));
   look();

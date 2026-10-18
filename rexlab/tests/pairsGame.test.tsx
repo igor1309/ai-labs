@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { CLIMB_LEVELS, type ClimbLevel } from "../src/pairs/index.ts";
+import type { AgeLevel, AgeLevelSetting } from "../src/ageLevel.ts";
+import { CLIMB_LEVELS, type Board, type ClimbLevel } from "../src/pairs/index.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import {
   MISS,
@@ -26,6 +27,7 @@ import {
   storedPairs,
   triesShown,
   turnCard,
+  type PairsAppOptions,
   type StoredPairs
 } from "./pairsApp.tsx";
 import { SHIPPED_PALS, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualTimers } from "./support.ts";
@@ -44,6 +46,17 @@ const pal = (id: string) => {
 const THREE = [pal("triceratops"), pal("stegosaurus"), pal("tyrannosaurus")];
 const NAMES = namesOf(dealt(1, { pals: THREE }));
 const [TRIKE, STEGO] = [placesOf(NAMES, "TRICERATOPS"), placesOf(NAMES, "STEGOSAURUS")];
+
+const picked = (level: AgeLevel): AgeLevelSetting => ({ level, revision: `picked-${level}` });
+
+// A board at each level, with the options that open the app on it and the
+// board the app deals first: Hatchling's climb level 1 of the three, and
+// Explorer's and Paleontologist's from the shared list.
+const LEVEL_BOARDS: [string, PairsAppOptions<ManualTimers>, Board][] = [
+  ["Hatchling", { pals: THREE }, dealt(1, { pals: THREE })],
+  ["Explorer", { ageLevel: picked("explorer") }, dealt({ large: "explorer" })],
+  ["Paleontologist", { ageLevel: picked("paleontologist") }, dealt({ large: "paleontologist" })]
+];
 
 const button = (name: string) => screen.getByRole("button", { name });
 const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
@@ -106,7 +119,8 @@ describe("a board", () => {
     expect(pairCards().map((card) => [card.getAttribute("data-state"), symbolsOf(card)])).toEqual(pairCards().map(() => ["down", ["footprints"]]));
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
     const style = getComputedStyle(board());
-    expect([style.gridTemplateRows, style.gridTemplateColumns].map((tracks) => tracks.includes("minmax(150px, 1fr)"))).toEqual([true, true]);
+    expect([style.gridTemplateRows, style.gridTemplateColumns].map((tracks) => tracks.includes("minmax(var(--card-floor), 1fr)"))).toEqual([true, true]);
+    expect(board().style.getPropertyValue("--card-floor")).toBe("150px");
     expect(screen.getByLabelText("LEVEL").textContent).toBe(String(level));
 
     await playBoard(user, clock);
@@ -189,48 +203,54 @@ describe("a board", () => {
   });
 });
 
-describe("turning cards", () => {
+describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
+  const names = namesOf(dealtBoard);
+  const [firstName = "", secondName = ""] = new Set(names);
+  // The places of the first two dinosaurs' cards, as the board deals them.
+  const [FIRST, SECOND] = [placesOf(names, firstName), placesOf(names, secondName)];
+  const firstId = dealtBoard.pals.find(({ name }) => name.en.toLocaleUpperCase("en") === firstName)?.id ?? "";
+
   const open = async () => {
-    const app = openPairsApp({ pals: THREE });
+    const app = openPairsApp(options);
     await playPairs(app.user);
     return app;
   };
 
   it("turns a face-down card over to its dinosaur, pressed before it turns", async () => {
     const { user } = await open();
-    const card = pairCards()[TRIKE[0] ?? 0];
+    const card = pairCards()[FIRST[0] ?? 0];
     if (!card) throw new Error("No card");
 
     await user.pointer({ keys: "[TouchA>]", target: card });
-    expect([card.hasAttribute("data-pressed"), stateAt(TRIKE[0] ?? 0)]).toEqual([true, "down"]);
+    expect([card.hasAttribute("data-pressed"), stateAt(FIRST[0] ?? 0)]).toEqual([true, "down"]);
     await user.pointer({ keys: "[/TouchA]", target: card });
 
-    expect([stateAt(TRIKE[0] ?? 0), labelAt(TRIKE[0] ?? 0)]).toEqual(["open", "TRICERATOPS"]);
-    expect(pairCards()[TRIKE[0] ?? 0]?.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect([stateAt(FIRST[0] ?? 0), labelAt(FIRST[0] ?? 0)]).toEqual(["open", firstName]);
+    expect(pairCards()[FIRST[0] ?? 0]?.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture(firstId));
     expect(triesShown()).toBe("0");
   });
 
   it("keeps an open card open, still the first of two, when it is tapped again", async () => {
     const { user } = await open();
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, TRIKE[0] ?? 0);
-    expect([stateAt(TRIKE[0] ?? 0), triesShown()]).toEqual(["open", "0"]);
-    await turnCard(user, TRIKE[1] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    expect([stateAt(FIRST[0] ?? 0), triesShown()]).toEqual(["open", "0"]);
+    await turnCard(user, FIRST[1] ?? 0);
 
-    expect([stateAt(TRIKE[0] ?? 0), stateAt(TRIKE[1] ?? 0), triesShown()]).toEqual(["found", "found", "1"]);
+    expect([stateAt(FIRST[0] ?? 0), stateAt(FIRST[1] ?? 0), triesShown()]).toEqual(["found", "found", "1"]);
   });
 
   it("keeps a matching pair open, outlined and named, as found", async () => {
     const { user, clock } = await open();
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, TRIKE[1] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
 
-    const pair = TRIKE.map((place) => pairCards()[place]);
+    const pair = FIRST.map((place) => pairCards()[place]);
     expect(pair.map((card) => [card?.getAttribute("data-state"), card?.querySelector(".pair-card-name")?.textContent])).toEqual([
-      ["found", "TRICERATOPS"],
-      ["found", "TRICERATOPS"]
+      ["found", firstName],
+      ["found", firstName]
     ]);
     expect(clock.timers()).toEqual([]);
     expect(getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board()).outline).toBe("4px solid #2e7d4f");
@@ -239,14 +259,14 @@ describe("turning cards", () => {
   it("names a found card in a size its card's width keeps every dinosaur's name in, in every language", async () => {
     const { user } = await open();
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, TRIKE[1] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
 
     // jsdom works out no size from a card's width, so the size is read as
     // app.css gives it: at most a cap, otherwise the card's width, less the
     // name's sides, over a width in ems no name is wider than, which jsdom
     // keeps as a multiplication by its inverse.
-    const name = pairCards()[TRIKE[0] ?? 0]?.querySelector(".pair-card-name") ?? board();
+    const name = pairCards()[FIRST[0] ?? 0]?.querySelector(".pair-card-name") ?? board();
     const style = getComputedStyle(name);
     const size = /^min\((\d+)px, ([\d.]+) \* \(100cqi - (\d+)px\)\)$/.exec(style.fontSize);
     expect([size?.[1], size?.[3]].map(Number)).toEqual([24, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)]);
@@ -259,10 +279,10 @@ describe("turning cards", () => {
   it("turns a miss back after a second, with no cross, no wrong word and no shake", async () => {
     const { user, clock } = await open();
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, STEGO[0] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, SECOND[0] ?? 0);
 
-    expect([stateAt(TRIKE[0] ?? 0), stateAt(STEGO[0] ?? 0), triesShown()]).toEqual(["open", "open", "1"]);
+    expect([stateAt(FIRST[0] ?? 0), stateAt(SECOND[0] ?? 0), triesShown()]).toEqual(["open", "open", "1"]);
     expect(clock.timers()).toEqual([MISS]);
     expect(symbolsOf(board()).filter((symbol) => symbol !== "footprints")).toEqual([]);
     expect(board().textContent).toBe("");
@@ -270,20 +290,20 @@ describe("turning cards", () => {
 
     act(() => clock.fire(MISS));
 
-    expect([stateAt(TRIKE[0] ?? 0), stateAt(STEGO[0] ?? 0), triesShown()]).toEqual(["down", "down", "1"]);
+    expect([stateAt(FIRST[0] ?? 0), stateAt(SECOND[0] ?? 0), triesShown()]).toEqual(["down", "down", "1"]);
   });
 
   it("turns no third card while a miss shows, and any once it has turned back", async () => {
     const { user, clock } = await open();
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, STEGO[0] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, SECOND[0] ?? 0);
 
-    await turnCard(user, TRIKE[1] ?? 0);
-    expect([stateAt(TRIKE[1] ?? 0), triesShown()]).toEqual(["down", "1"]);
+    await turnCard(user, FIRST[1] ?? 0);
+    expect([stateAt(FIRST[1] ?? 0), triesShown()]).toEqual(["down", "1"]);
     act(() => clock.fire(MISS));
-    await turnCard(user, TRIKE[1] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
 
-    expect(stateAt(TRIKE[1] ?? 0)).toBe("open");
+    expect(stateAt(FIRST[1] ?? 0)).toBe("open");
   });
 
   it("turns over one card on a quick double tap", async () => {
@@ -299,11 +319,11 @@ describe("turning cards", () => {
     const { user, clock } = await open();
     expect(symbolOf(screen.getByLabelText("TRIES"))).toBe("hand");
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, STEGO[0] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, SECOND[0] ?? 0);
     act(() => clock.fire(MISS));
-    await turnCard(user, STEGO[0] ?? 0);
-    await turnCard(user, STEGO[1] ?? 0);
+    await turnCard(user, SECOND[0] ?? 0);
+    await turnCard(user, SECOND[1] ?? 0);
 
     expect(triesShown()).toBe("2");
   });
@@ -311,10 +331,10 @@ describe("turning cards", () => {
   it("waves every card once the last pair is found, and then shows the result", async () => {
     const { user, clock } = await open();
 
-    await playDealt(user, clock, NAMES);
+    await playDealt(user, clock, names);
 
     expect(board().hasAttribute("data-finished")).toBe(true);
-    expect(clock.timers()).toEqual([1000]);
+    expect(clock.timers()).toEqual([wave(tokens().motion, dealtBoard.cards.length)]);
     await turnCard(user, 0);
     expect(screen.queryByRole("button", { name: "PLAY AGAIN" })).toBeNull();
     endWave(clock);
@@ -323,8 +343,8 @@ describe("turning cards", () => {
 
   it("goes home from a board without asking, and the board earns nothing", async () => {
     const { user, storage } = await open();
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, TRIKE[1] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
 
     await user.click(button("HOME"));
 
@@ -337,12 +357,12 @@ describe("turning cards", () => {
 
   it("pauses in portrait, with nothing to turn, and is the same board again in landscape", async () => {
     const orientation = manualOrientation("landscape");
-    const { user, clock } = openPairsApp({ pals: THREE, orientation });
+    const { user, clock } = openPairsApp({ ...options, orientation });
     await playPairs(user);
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, STEGO[0] ?? 0);
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, SECOND[0] ?? 0);
     act(() => clock.fire(MISS));
-    await turnCard(user, STEGO[1] ?? 0);
+    await turnCard(user, SECOND[1] ?? 0);
     const before = pairCards().map((_, place) => stateAt(place));
 
     act(() => orientation.turn("portrait"));
@@ -353,10 +373,16 @@ describe("turning cards", () => {
     expect([pairCards().map((_, place) => stateAt(place)), triesShown()]).toEqual([before, "1"]);
   });
 
-  it("names a dinosaur whose picture cannot be loaded on both its cards, by a dinosaur symbol", async () => {
-    const { user, clock } = openPairsApp({ storage: stored({ level: 3 }) });
+});
+
+describe("a board at any level", () => {
+  it.each([
+    ["Hatchling's climb level 3", { storage: stored({ level: 3 }) }, dealt(3)],
+    ...LEVEL_BOARDS.slice(1)
+  ] as const)("names a dinosaur whose picture cannot be loaded on both its cards, by a dinosaur symbol, at %s", async (_, options, dealtBoard) => {
+    const { user, clock } = openPairsApp(options);
     await playPairs(user);
-    const names = namesOf(dealt(3));
+    const names = namesOf(dealtBoard);
     const [first, second] = placesOf(names, names[0] ?? "");
 
     await turnCard(user, first ?? 0);
@@ -379,23 +405,29 @@ function tokens(): Record<"motion" | "reduced", Record<string, number>> {
   return { motion, reduced: { ...motion, ...read(css.slice(reducedAt, css.indexOf("}", reducedAt))) } };
 }
 
+// How long app.css waves a board of `cards` cards: after the last flip,
+// one after the other, each for a screen change.
+function wave({ standard = 0, stagger = 0, screen: change = 0 }: Record<string, number>, cards: number) {
+  return standard + (cards - 1) * stagger + change;
+}
+
 describe("find the pair's motion", () => {
-  // How long app.css waves the cards of the biggest board: after the last
-  // flip, one after the other, each for a screen change.
-  const wave = ({ standard = 0, stagger = 0, screen: change = 0 }: Record<string, number>) => standard + 11 * stagger + change;
+  it.each(LEVEL_BOARDS.flatMap(([level, options, dealtBoard]) => (["motion", "reduced"] as const).map((setting) => [level, setting, options, dealtBoard] as const)))(
+    "waits for the wave of a %s board's cards as app.css plays it, in %s, and a miss stays a second",
+    async (_, setting, options, dealtBoard) => {
+      const names = namesOf(dealtBoard);
+      const { user, clock } = openPairsApp({ ...options, reducedMotion: setting === "reduced" });
+      await playPairs(user);
 
-  it.each(["motion", "reduced"] as const)("waits for the wave as app.css plays it, in %s, and a miss stays a second", async (setting) => {
-    const { user, clock } = openPairsApp({ pals: THREE, reducedMotion: setting === "reduced" });
-    await playPairs(user);
+      await turnCard(user, 0);
+      await turnCard(user, names.findIndex((name) => name !== names[0]));
+      expect(clock.timers()).toEqual([MISS]);
+      act(() => clock.fire(MISS));
+      await playDealt(user, clock, names);
 
-    await turnCard(user, TRIKE[0] ?? 0);
-    await turnCard(user, STEGO[0] ?? 0);
-    expect(clock.timers()).toEqual([MISS]);
-    act(() => clock.fire(MISS));
-    await playDealt(user, clock, NAMES);
-
-    expect(clock.timers()).toEqual([wave(tokens()[setting])]);
-  });
+      expect(clock.timers()).toEqual([wave(tokens()[setting], dealtBoard.cards.length)]);
+    }
+  );
 });
 
 describe("the result", () => {

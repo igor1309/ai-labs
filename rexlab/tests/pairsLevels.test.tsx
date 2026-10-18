@@ -5,8 +5,9 @@ import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
-import { openPairsApp, pairCards, pairsRecord, storedPairs, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, homeTile, manualPictures, memoryStorage, seenOn, surfaceOf } from "./support.ts";
+import { CLIMB_LEVELS } from "../src/pairs/index.ts";
+import { board, dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, playBoard, playDealt, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
+import { SHIPPED_PALS, contrast, homeTile, manualPictures, memoryStorage, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -32,6 +33,9 @@ const climbChip = () => screen.getByLabelText("LEVEL");
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
+// The names of the result's dinosaurs, in the order shown.
+const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent);
+
 const pals = (...ids: string[]) =>
   ids.map((id) => {
     const found = SHIPPED_PALS.find((each) => each.id === id);
@@ -44,8 +48,8 @@ const entry = (progress: Partial<StoredPairs> = {}): StoredPairs => ({ stars: 0,
 const stored = (progress: Partial<StoredPairs> = {}, options?: { read?: boolean; save?: boolean }) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord(entry(progress)) }, options);
 
-async function openPairs(options: Parameters<typeof openPairsApp>[0] = {}) {
-  const app = openPairsApp(options);
+async function openPairs<C extends ManualTimers | ManualPictures = ManualTimers>(options: PairsAppOptions<C> = {}) {
+  const app = openPairsApp<C>(options);
   await app.user.click(button("FIND THE PAIR"));
   return app;
 }
@@ -232,5 +236,133 @@ describe("the choice on the level switch", () => {
 
     expect([chosen(), climbChip().textContent]).toEqual([["HATCHLING"], "1"]);
     expect(writes).not.toHaveBeenCalled();
+  });
+});
+
+describe("a board at each level", () => {
+  // The fit table of find-the-pair-levels.feature: a level's board on a
+  // screen, and the least every card is there.
+  const FIT = [
+    ["Explorer", 1024, 768, 130, "explorer"],
+    ["Paleontologist", 1024, 768, 120, "paleontologist"],
+    ["Paleontologist", 1366, 1024, 150, "paleontologist"]
+  ] as const;
+
+  const styleOf = (selector: string) => {
+    const found = document.querySelector(selector);
+    if (!found) throw new Error(`No ${selector} on the screen`);
+    return getComputedStyle(found);
+  };
+
+  // Each card's dinosaur and face, by the dinosaur's name.
+  const facesByName = () => {
+    const faces = new Map<string, string[]>();
+    for (const card of pairCards()) {
+      const name = card.getAttribute("aria-label") ?? "";
+      faces.set(name, [...(faces.get(name) ?? []), card.getAttribute("data-face") ?? ""].sort());
+    }
+    return faces;
+  };
+
+  it.each([
+    ["explorer", 9, 3, 6],
+    ["paleontologist", 12, 4, 6]
+  ] as const)("deals %s's pairs face down in its rows of 6, each a picture to its silhouette, with no climb level", async (level, pairs, rows, columns) => {
+    const { user, clock } = await openPairs({ ageLevel: picked(level) });
+
+    await user.click(button("PLAY"));
+
+    expect(pairCards()).toHaveLength(pairs * 2);
+    expect(pairCards().map((card) => card.getAttribute("data-state"))).toEqual(pairCards().map(() => "down"));
+    expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
+    expect([screen.queryByLabelText("LEVEL"), screen.getByLabelText("TRIES").textContent]).toEqual([null, "0"]);
+    await playBoard(user, clock);
+    expect([...facesByName().values()]).toEqual(Array.from({ length: pairs }, () => ["picture", "silhouette"]));
+    expect(board().querySelectorAll("img.pair-silhouette")).toHaveLength(pairs);
+  });
+
+  it("plays Hatchling's climb at the climb level reached", async () => {
+    const { user } = await openPairs({ storage: stored({ level: 3 }), ageLevel: picked("explorer") });
+
+    await user.click(button("HATCHLING"));
+    await user.click(button("PLAY"));
+
+    const { pairs, rows, columns } = CLIMB_LEVELS[3];
+    expect([pairCards().length, board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([pairs * 2, String(rows), String(columns)]);
+    expect(screen.getByLabelText("LEVEL").textContent).toBe("3");
+  });
+
+  it.each(FIT)("fits an %s board with HOME on a %i by %i screen, with no scrolling, every card at least %i pixels a side", async (_, width, height, size, level) => {
+    const { user } = await openPairs({ ageLevel: picked(level) });
+    await user.click(button("PLAY"));
+
+    // jsdom lays nothing out, so the board is laid out here as app.css
+    // gives it: the screen is the window, cut off where it ends, a column
+    // of the bar, with HOME, and the room left under it; the board is as
+    // wide as the room, or as the room's height allows at the board's
+    // shape, and its cards share it after the gaps.
+    const page = styleOf(".pairs-board-screen");
+    expect([page.height, page.overflow, page.display, page.flexDirection]).toEqual(["100dvh", "hidden", "flex", "column"]);
+    const bar = document.querySelector(".pairs-bar");
+    if (!bar) throw new Error("No bar on the board");
+    expect(within(bar as HTMLElement).getByRole("button", { name: "HOME" })).toBeDefined();
+    const barHeight = px(getComputedStyle(bar).height);
+    for (const item of [".home-button", ".pairs-bar-mark", ".pairs-bar-chip"]) expect(px(styleOf(item).height)).toBeLessThanOrEqual(barHeight);
+    const roomStyle = styleOf(".pair-board-room");
+    expect([roomStyle.flexGrow, roomStyle.flexShrink, roomStyle.flexBasis, roomStyle.minHeight, roomStyle.getPropertyValue("container-type")]).toEqual(["1", "1", "0px", "0px", "size"]);
+    const room = {
+      width: width - px(page.paddingLeft) - px(page.paddingRight),
+      height: height - px(page.paddingTop) - px(page.paddingBottom) - barHeight - px(page.rowGap)
+    };
+
+    const style = getComputedStyle(board());
+    expect([style.width, style.aspectRatio]).toEqual(["min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2))", "calc(var(--columns) * 3) / calc(var(--rows) * 3.2)"]);
+    const [rows, columns] = [Number(board().style.getPropertyValue("--rows")), Number(board().style.getPropertyValue("--columns"))];
+    const shape = (columns * 3) / (rows * 3.2);
+    const boardWidth = Math.min(room.width, room.height * shape);
+    const boardHeight = boardWidth / shape;
+    const [rowGap, columnGap] = [px(style.rowGap), px(style.columnGap)];
+    const card = { width: (boardWidth - (columns - 1) * columnGap) / columns, height: (boardHeight - (rows - 1) * rowGap) / rows };
+
+    expect(boardHeight).toBeLessThanOrEqual(room.height + 0.01);
+    expect(Math.min(card.width, card.height)).toBeGreaterThanOrEqual(size);
+    // The cards' floor never pushes the board out of its room.
+    const floor = px(board().style.getPropertyValue("--card-floor"));
+    expect([style.gridTemplateColumns, style.gridTemplateRows]).toEqual(["repeat(var(--columns), minmax(var(--card-floor), 1fr))", "repeat(var(--rows), minmax(var(--card-floor), 1fr))"]);
+    expect(floor * columns + (columns - 1) * columnGap).toBeLessThanOrEqual(boardWidth);
+    expect(floor * rows + (rows - 1) * rowGap).toBeLessThanOrEqual(boardHeight);
+    // A face-down card's footprints are drawn at its share of the card.
+    expect([styleOf(".pair-card-back-frame svg").width, styleOf(".pair-card-back-frame svg").height]).toEqual(["30cqi", "30cqi"]);
+  });
+
+  it.each([
+    ["Paleontologist", "paleontologist", "Paleontologist", "paleontologist"],
+    ["Paleontologist", "paleontologist", "Explorer", "explorer"],
+    ["Explorer", "explorer", "Explorer", "explorer"],
+    ["Hatchling", "hatchling", "Paleontologist", "paleontologist"]
+  ] as const)("deals after a %s board a %s board, as few of the board before's dinosaurs as the look-alike rule allows", async (_, before, __, next) => {
+    const { user, clock } = await openPairs({ ageLevel: picked(before) });
+    await user.click(button("PLAY"));
+    const first = dealt(before === "hatchling" ? 1 : { large: before });
+    await playDealt(user, clock, namesOf(first));
+    endWave(clock);
+
+    if (before === next) {
+      await user.click(button("PLAY AGAIN"));
+    } else {
+      await user.click(button("HOME"));
+      await user.click(button("FIND THE PAIR"));
+      await user.click(button(TEXTS.en.ageLevels[next].name));
+      await user.click(button("PLAY"));
+    }
+
+    const second = dealt({ large: next }, { previous: first });
+    await playDealt(user, clock, namesOf(second));
+    endWave(clock);
+    expect(resultNames()).toEqual(second.pals.map(({ name }) => name.en.toLocaleUpperCase("en")));
+    const repeated = second.pals.filter(({ id }) => first.pals.some((one) => one.id === id));
+    const others = SHIPPED_PALS.filter(({ id }) => !first.pals.some((one) => one.id === id));
+    expect(repeated.filter(({ lookAlike }) => others.some((other) => other.lookAlike === lookAlike))).toEqual([]);
+    expect(new Set(second.pals.map(({ lookAlike }) => lookAlike)).size).toBe(second.pals.length);
   });
 });

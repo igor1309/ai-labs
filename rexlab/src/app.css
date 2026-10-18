@@ -3898,8 +3898,13 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* The board: its bar, then the cards, row by row, as big as the screen
-   lets them be, each at least 150px. */
+/* The board: its bar, as tall as HOME so the room left for the cards is
+   known, then the cards, row by row, as big as that room lets them be,
+   each at least the board's floor. */
+.pairs-bar {
+  height: 56px;
+}
+
 .pairs-bar-title {
   flex: 1 1 0;
   min-width: 0;
@@ -3932,15 +3937,23 @@ body:has(.result) #version {
   animation: bump-in var(--motion-standard) var(--ease-overshoot) both;
 }
 
-.pair-board {
+/* The room under the bar holds the board centred, as wide as the room
+   or as its height allows at the board's shape, whichever is less, so a
+   board fits whole however many rows and columns it has. */
+.pair-board-room {
   flex: 1 1 0;
   min-height: 0;
-  align-self: center;
-  max-width: 100%;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.pair-board {
+  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2));
   aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 3.2);
   display: grid;
-  grid-template-columns: repeat(var(--columns), minmax(150px, 1fr));
-  grid-template-rows: repeat(var(--rows), minmax(150px, 1fr));
+  grid-template-columns: repeat(var(--columns), minmax(var(--card-floor), 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(var(--card-floor), 1fr));
   gap: 20px;
 }
 
@@ -3984,6 +3997,12 @@ body:has(.result) #version {
   border: 2px solid #f2b33d59;
   border-radius: 16px;
   color: #e39b2d;
+}
+
+/* The footprints keep their share of the card at every size of card. */
+.pair-card-back-frame svg {
+  width: 30cqi;
+  height: 30cqi;
 }
 
 .pair-card-face {

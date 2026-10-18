@@ -11,6 +11,7 @@ import {
   turn,
   turnBack,
   type Board,
+  type BoardLevel,
   type KeptPairs,
   type Pal,
   type PairsProgress,
@@ -59,15 +60,18 @@ const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 const PICTURE_WAIT = 1000;
 
 // How long a miss stays open before it turns back, in milliseconds, the
-// same with reduced motion: long enough to see both cards. And how long
-// the cards wave before the result, as app.css times them: after the last
-// flip (--motion-standard), staggered over up to 12 cards (11 ×
-// --motion-stagger), each for --motion-screen; with reduced motion only
+// same with reduced motion: long enough to see both cards. And the motion
+// tokens of app.css the cards' wave before the result is timed by: after
+// the last flip (--motion-standard), staggered card by card
+// (--motion-stagger), each for --motion-screen; with reduced motion only
 // the fades the tokens leave.
-const TIMINGS: Record<"motion" | "reduced", { miss: number; finish: number }> = {
-  motion: { miss: 1000, finish: 1000 },
-  reduced: { miss: 1000, finish: 320 }
+const TIMINGS: Record<"motion" | "reduced", { miss: number; flip: number; stagger: number; wave: number }> = {
+  motion: { miss: 1000, flip: 240, stagger: 40, wave: 320 },
+  reduced: { miss: 1000, flip: 160, stagger: 0, wave: 160 }
 };
+
+// How long the cards of a board of `cards` wave before the result.
+const waveOf = ({ flip, stagger, wave }: (typeof TIMINGS)["motion"], cards: number) => flip + (cards - 1) * stagger + wave;
 
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch, which holds while the app is open even when
@@ -107,7 +111,8 @@ export function usePairsGame(
   // Counts each time the child leaves the game, so pictures that finish
   // loading after the child has left deal no board.
   const stay = useRef(0);
-  // The board dealt last, so the next one deals other dinosaurs.
+  // The board dealt last, at whatever level, so the next one deals as few
+  // of its dinosaurs as it can.
   const lastBoard = useRef<Board | undefined>(undefined);
 
   // The level the game is played at: the child's choice on the switch
@@ -141,12 +146,15 @@ export function usePairsGame(
     starting.current = false;
   };
 
-  // A board is dealt at the level reached, and shows once its pictures
-  // are ready, or the wait runs out, only if the child is still here.
+  // A board is dealt at the level shown, Hatchling's at the climb level
+  // reached, and shows once its pictures are ready, or the wait runs out,
+  // only if the child is still here.
   const play = () => {
     if (starting.current) return;
     starting.current = true;
-    const board = dealBoard(pals, keptNow.current.progress.climbLevel, random, lastBoard.current);
+    const shown = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
+    const boardLevel: BoardLevel = shown === "hatchling" ? { climbLevel: keptNow.current.progress.climbLevel } : { large: shown };
+    const board = dealBoard(pals, boardLevel, random, lastBoard.current);
     const dealing = stay.current;
     waitForPictures(
       board.pals.map(({ id }) => bodyPicture(id)),
@@ -197,7 +205,7 @@ export function usePairsGame(
       });
     }
     if (result !== undefined) {
-      startTimer(timing.finish, () => {
+      startTimer(waveOf(timing, to.cards.length), () => {
         if (live.current !== to) return;
         live.current = null;
         show({ kind: "result", result });

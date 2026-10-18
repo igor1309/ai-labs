@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type AppProps } from "../src/App.tsx";
-import { dealBoard, type Board, type ClimbLevel, type Pal, type Random } from "../src/pairs/index.ts";
+import { dealBoard, type Board, type BoardLevel, type ClimbLevel, type Pal, type Random } from "../src/pairs/index.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -150,9 +150,11 @@ export async function turnCard(user: UserEvent, place: number) {
   await user.click(cardAt(place));
 }
 
-// Opens the game and deals a board, its pictures loaded at once.
-export async function playPairs(user: UserEvent) {
+// Opens the game and deals a board, its pictures loaded at once: at the
+// level named on its switch, or else at the level the game starts at.
+export async function playPairs(user: UserEvent, level?: string) {
   await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  if (level !== undefined) await user.click(screen.getByRole("button", { name: level }));
   await user.click(screen.getByRole("button", { name: "PLAY" }));
 }
 
@@ -208,8 +210,10 @@ export function endWave(clock: Timers) {
 // The board the app deals with `random` after `previous`, so a test knows
 // which dinosaur is where. The app takes nothing else from `random` on
 // the way to a board.
-export const dealt = (level: ClimbLevel, { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}) =>
-  dealBoard(pals, level, random, previous);
+export const dealt = (
+  level: ClimbLevel | BoardLevel,
+  { pals = SHIPPED_PALS, random = () => 0, previous }: { pals?: readonly Pal[]; random?: Random; previous?: Board } = {}
+) => dealBoard(pals, typeof level === "number" ? { climbLevel: level } : level, random, previous);
 
 // The names of a board's cards, place by place, as their labels read
 // once turned over.

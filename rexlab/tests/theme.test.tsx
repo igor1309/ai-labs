@@ -17,7 +17,7 @@ import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
-import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
+import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
 import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
@@ -280,10 +280,10 @@ async function pairsWelcome({ theme, user }: Walk) {
   expectScreenIn(theme);
 }
 
-// A board with a card open, a miss, found pairs, and its cards waving,
-// then the result, with its celebration and NEW badges.
+// A Hatchling board with a card open, a miss, found pairs, and its cards
+// waving, then the result, with its celebration and NEW badges.
 async function pairsBoard({ theme, user, timers }: Walk) {
-    await playPairs(user);
+    await playPairs(user, "HATCHLING");
     expectScreenIn(theme);
     await turnCard(user, 0);
     expectScreenIn(theme);
@@ -298,8 +298,23 @@ async function pairsBoard({ theme, user, timers }: Walk) {
     expectScreenIn(theme);
 }
 
+// Explorer's and Paleontologist's boards, each with a silhouette or a
+// picture open, then every pair found.
+async function pairsLargeBoards({ theme, user, timers }: Walk) {
+  for (const level of ["EXPLORER", "PALEONTOLOGIST"]) {
+    await playPairs(user, level);
+    await turnCard(user, 0);
+    expectScreenIn(theme);
+    await turnCard(user, 1);
+    if (stateAt(1) === "open") act(() => timers.fire(MISS));
+    await playBoard(user, timers);
+    expectScreenIn(theme);
+    await user.click(screen.getByRole("button", { name: "HOME" }));
+  }
+}
+
 async function pairsFound({ theme, user, timers }: Walk) {
-  await playPairs(user);
+  await playPairs(user, "HATCHLING");
   await playBoard(user, timers);
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
@@ -441,6 +456,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     [
       ["the welcome", pairsWelcome],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
+      ["Explorer's and Paleontologist's boards of silhouettes, a card open and every pair found", pairsLargeBoards],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
   ],
