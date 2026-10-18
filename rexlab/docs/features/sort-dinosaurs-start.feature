@@ -40,12 +40,12 @@ Feature: Sort dinosaurs: starting a round and the board
       | on the tray |
       | in a basket |
 
-  Scenario Outline: A new board waits for its pictures
+  Scenario Outline: A new board appears at once, its pictures shimmering
     Given I am on <screen>
     And the pictures of the next round's six dinosaurs are still loading
     When I tap "<button>" <taps>
-    Then <screen> stays on screen
-    And when the pictures have loaded, or after a second at most, one round starts
+    Then one round starts at once
+    And each picture still loading shimmers in its place, then fades in once loaded
 
     Examples:
       | screen                                | button     | taps          |

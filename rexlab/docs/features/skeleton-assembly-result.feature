@@ -48,7 +48,7 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     Given a dinosaur's body picture cannot load
     When I finish its skeleton
     Then I see the completed skeleton, its name, fact and reward
-    And the result appears without waiting more than one second for the missing picture
+    And the result appears when the reveal ends, without waiting for the picture
     And I can open the museum or build another dinosaur
 
   Scenario: Build another returns to dinosaur selection

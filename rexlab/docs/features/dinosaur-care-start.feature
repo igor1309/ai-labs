@@ -38,12 +38,12 @@ Feature: Dinosaur care: welcoming a visitor
     Then only one visit starts
     And I have 0 hearts for that visit
 
-  Scenario: A visitor waits briefly for its picture
+  Scenario: A visitor arrives at once, its picture shimmering
     Given I am on the care welcome screen
     And the new visitor's picture is still loading
     When I tap "NEW VISITOR"
-    Then the welcome screen stays visible until the picture loads, for at most a second
-    And then the visit starts
+    Then the visit starts at once
+    And the visitor's picture shimmers in its place, then fades in once loaded
     And a missing picture is replaced by a dinosaur symbol beside its name
     And I can care for the visitor even if its picture never loads
 

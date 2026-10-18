@@ -45,11 +45,11 @@ Feature: Find the pair: starting a board
     Then no two of its dinosaurs are from the same look-alike group
     And every dinosaur in the shared list belongs to exactly one look-alike group
 
-  Scenario: A board waits briefly for its pictures
+  Scenario: A board appears at once, its pictures shimmering
     Given the pictures of the next board are still loading
     When I tap "PLAY"
-    Then the welcome screen stays until the pictures load, for at most a second
-    And then the board appears, its cards dealt one after the other
+    Then the board appears at once, its cards dealt one after the other
+    And a card turned before its picture loads shimmers on its face until it does
 
   Scenario: A quick double tap deals one board
     Given I am on the find-the-pair welcome screen

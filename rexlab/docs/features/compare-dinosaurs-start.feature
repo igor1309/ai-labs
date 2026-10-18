@@ -29,12 +29,12 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 
-  Scenario: The first question waits for its pictures
+  Scenario: The first question shows at once, its pictures shimmering
     Given I am on the home page
     And the pictures of question 1 are still loading
     When I tap the "COMPARE" tile
-    Then the home page stays on screen
-    And when the pictures have loaded, or after a second at most, I see the progress "1/10"
+    Then I see the progress "1/10" at once
+    And each picture still loading shimmers in its place, then fades in once loaded
 
   Scenario: A quick double tap on the tile starts one round
     Given I am on the home page

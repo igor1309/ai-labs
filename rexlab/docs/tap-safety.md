@@ -48,3 +48,15 @@ arXiv:1402.1036, section 6 (about 400 ms, some up to 750 ms).
 - A one-off guard on a single button.
 - A timer or a time read (`setTimeout`, `setInterval`, `Date.now()`,
   `performance.now()`, an event's `timeStamp`) outside `src/root.ts`.
+
+## How it is checked
+
+- `docs/features/double-tap.feature`: a double tap on every control that
+  changes the screen opens one screen and presses nothing on it.
+- Unit tests of each part on its own: `go` as plain state,
+  `transitionFor` as a table of changes, `<Picture>` with pictures that
+  load, fail or never arrive, and the filter with a fake clock (LAB-299).
+- An architecture test (LAB-300) fails on a screen write outside `go`, a
+  transition type named at a call site, a wait for pictures before a
+  screen change, and a timer or time read outside `src/root.ts`, with a
+  message pointing here.
