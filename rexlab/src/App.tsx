@@ -318,6 +318,16 @@ export function App({
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "skeletons" }));
   };
 
+  // The museum opens from the home page straight into the skeleton game,
+  // as a screen change and not a start: only building there starts one.
+  const openMuseum = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => {
+      skeletonGame.openMuseum();
+      setScreen({ kind: "skeletons" });
+    });
+  };
+
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
   // Home, while the pictures load changes nothing more.
@@ -483,6 +493,7 @@ export function App({
             onSort={openSorting}
             onPairs={openPairs}
             onSkeletons={openSkeletons}
+            onMuseum={openMuseum}
           />
         );
     }

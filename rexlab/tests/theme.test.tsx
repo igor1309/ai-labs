@@ -584,7 +584,7 @@ describe("the theme menu", () => {
 
       expect(button.textContent).toBe("");
       expect(symbolOf(button)).toBe("monitor");
-      const corner = getComputedStyle(button.closest(".parent-menus") ?? button);
+      const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("fixed");
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);

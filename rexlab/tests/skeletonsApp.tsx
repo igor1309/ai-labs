@@ -30,6 +30,7 @@ import {
   type MemoryStorage
 } from "./support.ts";
 import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
+import type { Theme } from "../src/theme.ts";
 
 export type SkeletonsAppOptions = {
   // Where progress, the language and the theme are kept: one storage, as
@@ -41,17 +42,20 @@ export type SkeletonsAppOptions = {
   deviceLanguage?: string;
   // Whether the device asks for reduced motion.
   reducedMotion?: boolean;
+  // The theme the device shows.
+  appearance?: Theme;
 };
 
-// The app opened on the skeleton game's choice of dinosaurs by its home
-// tile, its pictures loading only when the test finishes them.
-export function openSkeletonsApp({
+// The app opened on the home page, its pictures loading only when the
+// test finishes them.
+export function openHomeApp({
   storage = memoryStorage(),
   pictures = manualPictures(),
   orientation = manualOrientation("landscape"),
   visibility = manualVisibility("visible"),
   deviceLanguage = "en-GB",
-  reducedMotion = false
+  reducedMotion = false,
+  appearance = "light"
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS,
@@ -64,7 +68,7 @@ export function openSkeletonsApp({
     deviceLanguage,
     languageStore: localLanguage(() => storage),
     nameVersion: unreadVersion,
-    appearance: manualAppearance("light"),
+    appearance: manualAppearance(appearance),
     themeStore: localTheme(() => storage),
     visitors: SHIPPED_VISITORS,
     careProgress: localCareProgress(() => storage),
@@ -81,8 +85,15 @@ export function openSkeletonsApp({
     ...pictures
   };
   render(<App {...props} />);
-  fireEvent.click(screen.getByRole("button", { name: shownTexts().skeletons }));
   return { user: userEvent.setup(), storage, pictures, orientation, visibility };
+}
+
+// The app opened on the skeleton game's choice of dinosaurs by its home
+// tile, its pictures loading only when the test finishes them.
+export function openSkeletonsApp(options: SkeletonsAppOptions = {}) {
+  const opened = openHomeApp(options);
+  fireEvent.click(screen.getByRole("button", { name: shownTexts().skeletons }));
+  return opened;
 }
 
 // Every picture of a skeleton's puzzle: the whole skeleton, then each of

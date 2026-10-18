@@ -192,6 +192,15 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
       await user.click(button("MUSEUM"));
       await user.click(button("REBUILD"));
     }
+  ],
+  [
+    "a skeleton is built from an empty stand in the museum opened on the home page",
+    "skeletons",
+    1,
+    async ({ user }) => {
+      await user.click(button("MUSEUM"));
+      await user.click(within(screen.getByRole("region", { name: "STEGOSAURUS" })).getByRole("button", { name: "BUILD" }));
+    }
   ]
 ];
 
@@ -221,7 +230,7 @@ describe("starting a game", () => {
     expect(storedFeatured(storage).starts).toEqual({ care: 3 });
   });
 
-  it("counts nothing on the care, find-the-pair and skeleton screens before a game, nor on a dinosaur's page and back", async () => {
+  it("counts nothing on the care, find-the-pair and skeleton screens before a game, nor in the museum opened on the home page, nor on a dinosaur's page and back", async () => {
     const { user, storage } = openApp();
     await user.click(homeTile("ALL DINOSAURS"));
     const opened = storedFeatured(storage);
@@ -233,6 +242,8 @@ describe("starting a game", () => {
       await user.click(homeTile(name));
       await user.click(button("HOME"));
     }
+    await user.click(button("MUSEUM"));
+    await user.click(button("HOME"));
 
     expect(storedFeatured(storage)).toEqual(opened);
     expect(opened.starts).toEqual({ catalogue: 1 });

@@ -241,6 +241,13 @@ export function useSkeletonGame(
     show({ kind: "museum" });
   };
 
+  // The museum opened from the home page, as the app changes to the game:
+  // the game shows it, not its choice of dinosaurs.
+  const openMuseum = () => {
+    leave();
+    setScreen({ kind: "museum" });
+  };
+
   const content = (language: Language) => {
     switch (screen.kind) {
       case "choice":
@@ -289,5 +296,5 @@ export function useSkeletonGame(
     }
   };
 
-  return { content, best };
+  return { content, best, openMuseum };
 }

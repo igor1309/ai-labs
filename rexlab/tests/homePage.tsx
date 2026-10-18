@@ -44,6 +44,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onSort={() => opened.push("sort")}
       onPairs={() => opened.push("pairs")}
       onSkeletons={() => opened.push("skeletons")}
+      onMuseum={nothing}
     />
   );
   return { user: userEvent.setup(), opened, unmount: view.unmount };

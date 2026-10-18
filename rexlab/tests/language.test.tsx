@@ -172,7 +172,7 @@ describe("the language menu", () => {
 
       expect(button.textContent).toBe(code);
       expect(symbolOf(button)).toBe("globe");
-      const corner = getComputedStyle(button.closest(".parent-menus") ?? button);
+      const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("fixed");
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
