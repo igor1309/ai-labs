@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-18
+
+- `scripts/watch-pr.sh` no longer waits forever: it stops on a check queued 15
+  minutes with no runner, and on checks still pending after 90 minutes (LAB-305).
+
 ## 2026-09-20
 
 - Moved the AI-account tooling out of this repo into `inventory/tools/`: `cl`,

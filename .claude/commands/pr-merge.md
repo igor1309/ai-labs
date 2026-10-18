@@ -19,7 +19,9 @@ Complete the current branch's PR lifecycle:
    ```
 
 4. Watch CI with `./scripts/watch-pr.sh <number>`. If CI fails, stop and report
-   the failure. Never merge a red PR.
+   the failure. Never merge a red PR. If it exits 3 (a check queued with no
+   runner) or 4 (checks still pending at its limit), stop and report the
+   check it names.
 5. After GitHub reports the PR merged and the remote feature branch deleted, run:
 
    ```sh
