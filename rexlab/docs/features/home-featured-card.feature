@@ -1,4 +1,3 @@
-@next
 Feature: Home page: the featured card and the tiles
   The large card on the left of the home page features one game a day, as
   an extra door beside that game's own tile. Every tile keeps a fixed place,

@@ -4,7 +4,8 @@ import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
-import { HomePage } from "./HomePage.tsx";
+import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
+import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
@@ -49,6 +50,11 @@ export type ThemeStore = {
   save(choice: ThemeChoice): void;
 };
 
+export type StartCounter = {
+  // Counts one more start of `game`, as it begins.
+  countStart(game: HomeGame): void;
+};
+
 // Whether the device is set to its dark appearance, and its changes.
 export type Appearance = {
   isDark(): boolean;
@@ -89,9 +95,16 @@ export type AppProps = CareGameProps &
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
     startTimer: StartTimer;
+    // The device's clock: the time now.
+    now: () => Date;
+    // The start counts and the day's featured game the large card's
+    // choice reads, and where it keeps the day's game.
+    featuredStore: FeaturedStore;
+    // Where each game's starts are counted, for the next days' choices.
+    startCounter: StartCounter;
   };
 
-// The two dinosaurs facing off on the home page's quiz card.
+// The two dinosaurs facing off in the quiz's picture on the home page.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
 // The dinosaur on the catalogue's tile.
@@ -155,6 +168,9 @@ export function App({
   themeStore,
   loadPicture,
   startTimer,
+  now,
+  featuredStore,
+  startCounter,
   sortables,
   sortingProgress,
   pals,
@@ -165,6 +181,10 @@ export function App({
   ...careProps
 }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  // The game the large card features, chosen once as the app starts: it
+  // stays while the app is open, past midnight too, and the next day's is
+  // chosen when the app is opened again.
+  const [featured] = useState(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
@@ -221,6 +241,7 @@ export function App({
     whenPicturesReady(started, () => {
       starting.current = false;
       setLastPlay(started);
+      startCounter.countStart("compare");
       changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "question", play: started }));
     });
   };
@@ -232,7 +253,11 @@ export function App({
     setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "home" }));
 
-  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
+  // Each game counts a start where it begins, wherever the child began it
+  // from, and not as it opens on a welcome or choice screen.
+  const counting = (game: HomeGame) => () => startCounter.countStart(game);
+
+  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home, counting("care"));
 
   const openCare = () => {
     leaveHome();
@@ -242,7 +267,7 @@ export function App({
     });
   };
 
-  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
 
   const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
 
@@ -251,7 +276,11 @@ export function App({
   // chose.
   const leaveHome = () => sorting.cancel();
 
-  const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
+  const pairs = usePairsGame(
+    { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    home,
+    counting("pairs")
+  );
 
   const openPairs = () => {
     leaveHome();
@@ -280,7 +309,8 @@ export function App({
 
   const skeletonGame = useSkeletonGame(
     { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
-    home
+    home,
+    counting("skeletons")
   );
 
   const openSkeletons = () => {
@@ -313,8 +343,22 @@ export function App({
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
 
+  // The catalogue being opened from home: the screen changes only as its
+  // transition commits, so a second tap on ALL DINOSAURS meanwhile, on its
+  // tile or the large card, counts no second start. It ends as the home
+  // page shows again.
+  const openingCatalogue = useRef(false);
+  useEffect(() => {
+    if (screen.kind === "home") openingCatalogue.current = false;
+  }, [screen.kind]);
+
+  // The list opened from home is the catalogue's start; a food chosen or a
+  // dinosaur's page left is not.
   const openCatalogue = () => {
     leaveHome();
+    if (openingCatalogue.current) return;
+    openingCatalogue.current = true;
+    startCounter.countStart("catalogue");
     changeScreen(SCREEN_CHANGE, () => {
       setFood("all");
       setScreen({ kind: "catalogue", returning: undefined });
@@ -424,6 +468,7 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}

@@ -14,6 +14,7 @@ import {
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -23,7 +24,8 @@ import {
   symbolOf,
   words,
   type ManualPictures,
-  type MemoryStorage
+  type MemoryStorage,
+  homeTile
 } from "./support.ts";
 
 // The app on its home page, the sorting game's progress kept in
@@ -39,6 +41,7 @@ function openApp({
 } = {}) {
   const view = render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -258,7 +261,7 @@ describe("a new board", () => {
     const { user } = await openOn("home", pictures);
     await user.click(button("SORT"));
     const asked = pictures.loading();
-    await user.click(button("COMPARE"));
+    await user.click(homeTile("COMPARE"));
     const question = pictures.loading().slice(asked.length);
     expect([question.length, question.filter((url) => asked.includes(url))]).toEqual([2, []]);
 

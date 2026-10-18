@@ -481,16 +481,19 @@ body:has(.result) #version {
 }
 
 /* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. COMPARE takes three sevenths of the width
-   and the other games the rest, in columns of two. The sizes in the tiles
-   are what fits a column. */
+   iPad above the bands of rock. The large card takes three sevenths of
+   the width and the tiles the rest, in columns of two. The sizes in the
+   tiles are what fits a column. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
   display: flex;
   gap: 28px;
 }
 
-.quiz-card {
+/* The large card features one game in its tile's colours, picture,
+   symbol and badge, larger. It fades in with a slight lift as the home
+   page opens. */
+.featured-card {
   position: relative;
   flex: 3 1 0;
   min-width: 0;
@@ -500,10 +503,9 @@ body:has(.result) #version {
   overflow: hidden;
   border: none;
   border-radius: 32px;
-  background: #1f2b4d;
-  color: #f6f2e9;
   box-shadow: 0 18px 40px #1d274224;
   text-align: left;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
 .face-off {
@@ -531,33 +533,43 @@ body:has(.result) #version {
   height: 82%;
 }
 
-.quiz-card-footer {
+/* A tile's picture has the room around it the large card's size gives. */
+.featured-card .catalogue-tile-picture,
+.featured-card .care-tile-picture,
+.featured-card .sort-tile-picture,
+.featured-card .skeletons-tile-picture {
+  padding: 36px 32px 8px;
+}
+
+.featured-card-footer {
   padding: 24px 24px 28px;
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #00000026;
 }
 
-.quiz-card-symbol {
+.featured-card-symbol {
   flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 56px;
   height: 56px;
   border-radius: 17px;
-  background: #e39b2d;
-  color: #1d2742;
 }
 
-.quiz-card-title {
-  font-size: 46px;
+/* The name is as large as the longest word of any game's name, in
+   either language, fits on one line on the smallest iPad. A name of
+   two words, such as ALL DINOSAURS, takes a second line there. */
+.featured-card-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 38px;
   font-weight: 700;
   letter-spacing: 1px;
-  white-space: nowrap;
+  line-height: 1.1;
 }
 
-.quiz-card-best {
+.featured-card-badge {
   position: absolute;
   top: 24px;
   right: 24px;
@@ -566,12 +578,85 @@ body:has(.result) #version {
   align-items: center;
   gap: 8px;
   border-radius: 24px;
-  background: #ffffff1f;
   font-size: 26px;
   font-weight: 700;
 }
 
-.quiz-card-best svg {
+/* Each game's colours on the large card are its tile's: the card, the
+   shade under the words, the symbol's square and the badge. */
+.featured-card[data-game="compare"],
+.featured-card[data-game="skeletons"] {
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.featured-card[data-game="catalogue"] {
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.featured-card[data-game="care"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.featured-card[data-game="sort"] {
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.featured-card[data-game="pairs"] {
+  background: #a9bcd6;
+  color: #1d2742;
+}
+
+.featured-card[data-game="compare"] .featured-card-footer,
+.featured-card[data-game="catalogue"] .featured-card-footer {
+  background: #00000026;
+}
+
+.featured-card[data-game="compare"] .featured-card-symbol {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.featured-card[data-game="catalogue"] .featured-card-symbol,
+.featured-card[data-game="pairs"] .featured-card-symbol,
+.featured-card[data-game="skeletons"] .featured-card-symbol {
+  background: #ffffff33;
+}
+
+.featured-card[data-game="care"] .featured-card-symbol {
+  background: #ffffff59;
+}
+
+.featured-card[data-game="sort"] .featured-card-symbol {
+  background: #c9583d;
+  color: #ffffff;
+}
+
+.featured-card[data-game="compare"] .featured-card-badge,
+.featured-card[data-game="skeletons"] .featured-card-badge {
+  background: #ffffff1f;
+}
+
+.featured-card[data-game="catalogue"] .featured-card-badge,
+.featured-card[data-game="pairs"] .featured-card-badge {
+  background: #00000026;
+}
+
+.featured-card[data-game="care"] .featured-card-badge {
+  background: #ffffff59;
+}
+
+.featured-card[data-game="sort"] .featured-card-badge {
+  background: #e6e2d9;
+}
+
+.featured-card[data-game="compare"] .featured-card-badge svg,
+.featured-card[data-game="sort"] .featured-card-badge svg,
+.featured-card[data-game="skeletons"] .featured-card-badge svg {
   color: #e39b2d;
 }
 
@@ -597,8 +682,10 @@ body:has(.result) #version {
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
-   paper's shade. It is no card, so it neither brightens nor presses in. */
+   paper's shade, the whole height of the last column. It is no card, so
+   it neither brightens nor presses in. */
 .more-coming {
+  grid-row: span 2;
   min-height: 0;
   box-sizing: border-box;
   padding: 20px 24px;
@@ -634,6 +721,78 @@ body:has(.result) #version {
   font-weight: 700;
   letter-spacing: 1.5px;
   white-space: nowrap;
+}
+
+/* The quiz's tile, first in the row: the two dinosaurs facing off on
+   the navy, in the other tiles' shape, its symbol on amber over a shade
+   as the quiz's large card has always had them. */
+.compare-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.compare-tile .face-off {
+  padding: 16px 20px 10px;
+}
+
+.compare-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #00000026;
+}
+
+.compare-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.compare-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.compare-tile-best {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff1f;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.compare-tile-best svg {
+  color: #e39b2d;
 }
 
 /* The catalogue's tile is terracotta. White words keep text contrast on
@@ -4543,6 +4702,7 @@ body:has(.result) #version {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .sort-tile-best,
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
 [data-theme="dark"] .catalogue-count,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
@@ -4552,7 +4712,8 @@ body:has(.result) #version {
 }
 
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"] .parent-menu-choice-code,
-[data-theme="dark"] .quiz-card-symbol,
+[data-theme="dark"] .featured-card[data-game="compare"] .featured-card-symbol,
+[data-theme="dark"] .compare-tile-symbol,
 [data-theme="dark"] .step[data-step="current"],
 [data-theme="dark"] .prompt-symbol,
 [data-theme="dark"] .confetti-amber,
@@ -4563,9 +4724,12 @@ body:has(.result) #version {
 }
 
 [data-theme="dark"] .parent-menu-tick,
-[data-theme="dark"] .quiz-card-best svg,
+[data-theme="dark"] .compare-tile-best svg,
 [data-theme="dark"] .sort-tile-best svg,
 [data-theme="dark"] .skeletons-tile-best svg,
+[data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
+[data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
 [data-theme="dark"] .best-score svg,
@@ -4573,11 +4737,16 @@ body:has(.result) #version {
   color: #f2b24b;
 }
 
-[data-theme="dark"] .quiz-card {
-  background: #2c3b66;
+[data-theme="dark"] .featured-card {
   box-shadow: 0 18px 40px #00000066;
 }
 
+[data-theme="dark"] .featured-card[data-game="compare"],
+[data-theme="dark"] .featured-card[data-game="skeletons"] {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .compare-tile,
 [data-theme="dark"] .skeletons-tile {
   background: #2c3b66;
   box-shadow: 0 8px 24px #00000066;
@@ -4588,7 +4757,12 @@ body:has(.result) #version {
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .sort-tile {
+[data-theme="dark"] .featured-card[data-game="sort"] {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .sort-tile,
+[data-theme="dark"] .featured-card[data-game="sort"] {
   outline-color: #ece8de1f;
 }
 
@@ -4683,14 +4857,18 @@ body:has(.result) #version {
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
 [data-theme="dark"] .diet-tag,
-[data-theme="dark"] .sort-tile-symbol {
+[data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .featured-card[data-game="catalogue"],
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .catalogue-mark,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
-[data-theme="dark"] .sort-tile-symbol {
+[data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .featured-card[data-game="catalogue"],
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
   background: #e57a5d;
 }
 
@@ -4704,6 +4882,7 @@ body:has(.result) #version {
 
 /* The dark page's ink needs no shade under it. */
 [data-theme="dark"] .catalogue-tile-row,
+[data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer,
 [data-theme="dark"] .diet-tag[data-diet="meat"] .diet-tag-face {
   background: none;
 }
@@ -4755,6 +4934,7 @@ body:has(.result) #version {
 /* Care's screens take the dark values in the same shapes. Words and
    symbols on amber stay the light ink. */
 [data-theme="dark"] .care-tile,
+[data-theme="dark"] .featured-card[data-game="care"],
 [data-theme="dark"] .care-mark,
 [data-theme="dark"] .new-visitor-symbol,
 [data-theme="dark"] .need[data-state="current"],
@@ -4927,6 +5107,7 @@ body:has(.result) #version {
    symbols on amber stay the light ink; a silhouette is the dark ink's
    shape. */
 [data-theme="dark"] .pairs-tile,
+[data-theme="dark"] .featured-card[data-game="pairs"],
 [data-theme="dark"] .pairs-mark,
 [data-theme="dark"] .pairs-bar-mark,
 [data-theme="dark"] .pairs-level-up {

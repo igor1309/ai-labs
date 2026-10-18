@@ -14,6 +14,7 @@ import {
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
   manualOrientation,
@@ -21,7 +22,8 @@ import {
   sameColour,
   seededRandom,
   symbolOf,
-  type MemoryStorage
+  type MemoryStorage,
+  homeTile
 } from "./support.ts";
 
 afterEach(() => {
@@ -60,6 +62,7 @@ const storedGame = (storage: MemoryStorage) => stored(storage)?.games["compare-d
 function openApp(storage: MemoryStorage, seed = 21) {
   render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -82,7 +85,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
 // `correct` of them right and the rest wrong, moving on after each but the
 // last question of the round.
 async function answer(user: UserEvent, correct: number, count = 10) {
-  await user.click(screen.getByRole("button", { name: "COMPARE" }));
+  await user.click(homeTile("COMPARE"));
   for (let number = 1; number <= count; number++) {
     const question = shownQuestion();
     const larger = largerOf(question);
@@ -156,7 +159,7 @@ describe("the result", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(screen.queryByLabelText("SCORE")).toBeNull();
   });
 });
@@ -235,7 +238,7 @@ describe("stored progress", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(confirm).not.toHaveBeenCalled();
     expect(storage.items.get(PROGRESS_KEY)).toBe(kept);
   });

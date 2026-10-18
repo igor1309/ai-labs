@@ -17,6 +17,7 @@ import {
   fakeBodyPicture,
   fakeItemPicture,
   fakeSkeletonPicture,
+  featuring,
   manualAppearance,
   manualOrientation,
   manualPictures,
@@ -76,6 +77,7 @@ export function openSkeletonsApp({
     skeletonPicture: fakeSkeletonPicture,
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
+    ...featuring(),
     ...pictures
   };
   render(<App {...props} />);

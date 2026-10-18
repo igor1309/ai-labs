@@ -145,7 +145,7 @@ function Game({
   owner: { start?: () => void };
   onHome: () => void;
 }) {
-  const game = useSortingGame(props, onHome);
+  const game = useSortingGame(props, onHome, () => {});
   owner.start = game.start;
   return (
     <OrientationGate orientation={orientation} language={language}>

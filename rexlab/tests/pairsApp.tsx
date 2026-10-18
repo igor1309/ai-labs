@@ -14,6 +14,7 @@ import {
   emptySkeletons,
   fakeBodyPicture,
   fakeItemPicture,
+  featuring,
   manualAppearance,
   manualOrientation,
   manualTimers,
@@ -53,6 +54,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
 }: PairsAppOptions<C> = {}) {
   const view = render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}

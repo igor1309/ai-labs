@@ -4,7 +4,7 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, fakeBodyPicture, fakeSkeletonPicture, symbolOf } from "./support.ts";
+import { SHIPPED_SKELETONS, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
 
@@ -66,7 +66,7 @@ describe("the skeleton game's choice of dinosaurs", () => {
 
     await user.click(button("HOME"));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in the device's language, %s, its names in capitals", (language) => {
@@ -177,7 +177,7 @@ describe("choosing a dinosaur", () => {
     await user.click(button("HOME"));
     act(() => finishLoading(pictures));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(screen.queryByRole("group", { name: "BONES" })).toBeNull();
   });
 
@@ -188,7 +188,7 @@ describe("choosing a dinosaur", () => {
 
     await user.click(button("HOME"));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its title the dinosaur's name in capitals", async (language) => {

@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
+import type { FeaturedHistory, Featuring } from "../src/featured.ts";
 import { NO_PAIRS } from "../src/pairs/index.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
+import {
+  PROGRESS_KEY,
+  localCareProgress,
+  localFeatured,
+  localPairsProgress,
+  localProgress,
+  localSkeletonProgress,
+  localSortingProgress,
+  type KeyValueStorage
+} from "../src/localProgress.ts";
+import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { NO_PROGRESS } from "../src/quiz/progress.ts";
 import { NO_SKELETONS } from "../src/skeletons/index.ts";
 import { NO_SORTING } from "../src/sorting/index.ts";
@@ -410,5 +422,155 @@ describe("localSkeletonProgress", () => {
 
     expect(progress.load()).toBeUndefined();
     expect(() => progress.save(SKELETONS)).not.toThrow();
+  });
+});
+
+describe("localFeatured", () => {
+  const GAMES = ["compare", "catalogue", "care", "sort", "pairs", "skeletons"];
+  // Today's game as stored, and as the choice features it.
+  const TODAY = { day: "2026-10-18", game: "care" };
+  const FEATURED: Featuring = { game: "care", on: "2026-10-18" };
+  const history = (starts: Record<string, number>, lastFeatured?: Featuring): FeaturedHistory => ({ timesStarted: new Map(Object.entries(starts)), lastFeatured });
+  const NONE = history({});
+  const QUIZ = { bestScore: 7, roundsPlayed: 3 };
+  const CARE = { bestScore: 6, visitsFinished: 2, friends: ["triceratops"] };
+  const SKELETONS = { bestScore: 1, earned: ["stegosaurus"], rebuilding: [] };
+
+  const record = (games: Record<string, unknown>, schemaVersion: unknown = 1) => JSON.stringify({ schemaVersion, games });
+  const featured = (entry: unknown) => record({ "compare-dinosaurs": QUIZ, "home-featured": entry });
+  const stored = (storage: { items: Map<string, string> }) => JSON.parse(storage.items.get(PROGRESS_KEY) ?? "null");
+  const open = (storage: KeyValueStorage) => localFeatured(() => storage, GAMES);
+
+  it("reads no starts and no featured game from empty storage", () => {
+    expect(open(memoryStorage()).history()).toEqual(NONE);
+  });
+
+  it("reads the start counts and the day's game it saved after a reload", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2, sort: 5 }, featured: { day: "2026-10-17", game: "sort" } }) });
+
+    expect(open(storage).history()).toEqual(history({ care: 2, sort: 5 }, { game: "sort", on: "2026-10-17" }));
+  });
+
+  it("adds each start to the stored count, a game not yet started from none, and saves the day's game beside them", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2 }, featured: { day: "2026-10-17", game: "sort" } }) });
+    const store = open(storage);
+
+    store.feature(FEATURED);
+    store.countStart("care");
+    store.countStart("pairs");
+
+    expect(stored(storage).games["home-featured"]).toEqual({ starts: { care: 3, pairs: 1 }, featured: TODAY });
+    expect(open(storage).history()).toEqual(history({ care: 3, pairs: 1 }, FEATURED));
+  });
+
+  it("keeps the games' progress, the language and the theme as they are, and is kept by the games' saves", () => {
+    const storage = memoryStorage({
+      [PROGRESS_KEY]: record({ "compare-dinosaurs": QUIZ, "dinosaur-care": CARE, "skeleton-assembly": SKELETONS }),
+      [LANGUAGE_KEY]: "ru",
+      [THEME_KEY]: "dark"
+    });
+    const store = open(storage);
+
+    store.feature(FEATURED);
+
+    expect(stored(storage).games).toEqual({ "compare-dinosaurs": QUIZ, "dinosaur-care": CARE, "skeleton-assembly": SKELETONS, "home-featured": { starts: {}, featured: TODAY } });
+    expect([localLanguage(() => storage).load(), localTheme(() => storage).load()]).toEqual(["ru", "dark"]);
+
+    store.countStart("compare");
+    localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
+    store.countStart("care");
+    localCareProgress(() => storage).save({ ...CARE, visitsFinished: 3 });
+    store.countStart("skeletons");
+    localSkeletonProgress(() => storage).save({ ...SKELETONS, earned: ["stegosaurus", "triceratops"], bestScore: 2 });
+
+    expect(open(storage).history()).toEqual(history({ compare: 1, care: 1, skeletons: 1 }, FEATURED));
+    expect([localProgress(() => storage).load(), localCareProgress(() => storage).load(), localSkeletonProgress(() => storage).load()]).toEqual([
+      { bestScore: 9, roundsPlayed: 4 },
+      { ...CARE, visitsFinished: 3 },
+      { ...SKELETONS, earned: ["stegosaurus", "triceratops"], bestScore: 2 }
+    ]);
+  });
+
+  it.each([
+    ["absent", record({ "compare-dinosaurs": QUIZ })],
+    ["not a record", featured(3)],
+    ["without start counts", featured({ featured: TODAY })],
+    ["with start counts that are a list", featured({ starts: [1, 2], featured: TODAY })],
+    ["with a featured game that is not a day's choice", featured({ starts: {}, featured: "care" })],
+    ["with a featured game without its day", featured({ starts: {}, featured: { game: "care" } })],
+    ["naming a featured game that no longer exists", featured({ starts: { care: 2 }, featured: { day: "2026-10-18", game: "fossils" } })],
+    ["holding a negative start count", featured({ starts: { care: 2, sort: -1 }, featured: TODAY })],
+    ["holding a fractional start count", featured({ starts: { care: 2.5 }, featured: TODAY })],
+    ["holding a start count in text", featured({ starts: { care: "2" }, featured: TODAY })]
+  ])("reads a featured record %s as no starts and no game, and replaces it with the next save, keeping the games' progress", (_state, raw) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: raw });
+    const store = open(storage);
+
+    expect(store.history()).toEqual(NONE);
+
+    store.feature(FEATURED);
+
+    expect(open(storage).history()).toEqual(history({}, FEATURED));
+    expect(localProgress(() => storage).load()).toEqual(QUIZ);
+  });
+
+  it("reads progress that is not JSON as no starts and no game, and replaces it with the next save", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: "{not json" });
+    const store = open(storage);
+
+    expect(store.history()).toEqual(NONE);
+
+    store.feature(FEATURED);
+
+    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: TODAY } } });
+  });
+
+  it("reads a record of an unknown schema version as no starts and no game, and replaces it with the next save", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: record({ "home-featured": { starts: { care: 2 }, featured: TODAY } }, 2) });
+    const store = open(storage);
+
+    expect(store.history()).toEqual(NONE);
+
+    store.feature({ game: "sort", on: "2026-10-19" });
+
+    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { day: "2026-10-19", game: "sort" } } } });
+  });
+
+  it("drops the count of a game no longer offered, keeping the others and the day's game, and leaves it out of the next save", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2, fossils: 4, gone: -1 }, featured: TODAY }) });
+    const store = open(storage);
+
+    expect(store.history()).toEqual(history({ care: 2 }, FEATURED));
+
+    store.countStart("sort");
+
+    expect(stored(storage).games["home-featured"]).toEqual({ starts: { care: 2, sort: 1 }, featured: TODAY });
+  });
+
+  it("reads no starts and no game when storage cannot be read, and keeps those of the visit", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: featured({ starts: { care: 2 }, featured: TODAY }) }, { read: false });
+    const store = open(storage);
+
+    expect(store.history()).toEqual(NONE);
+    expect(localFeatured(blocked, GAMES).history()).toEqual(NONE);
+
+    store.feature({ game: "sort", on: "2026-10-19" });
+    store.countStart("care");
+
+    expect(store.history()).toEqual(history({ care: 1 }, { game: "sort", on: "2026-10-19" }));
+    expect(stored(storage).games["home-featured"]).toEqual({ starts: { care: 2 }, featured: TODAY });
+  });
+
+  it("keeps the visit's choice and counts when they cannot be saved, and the stored record as it was", () => {
+    const raw = featured({ starts: { care: 2 }, featured: { day: "2026-10-17", game: "sort" } });
+    const storage = memoryStorage({ [PROGRESS_KEY]: raw }, { save: false });
+    const store = open(storage);
+
+    store.feature(FEATURED);
+    store.countStart("care");
+    store.countStart("care");
+
+    expect(store.history()).toEqual(history({ care: 4 }, FEATURED));
+    expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   });
 });

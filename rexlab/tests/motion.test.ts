@@ -126,6 +126,15 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+describe("the home page's motion", () => {
+  it("fades and lifts the large card in as a screen comes in, and only fades it with reduced motion", () => {
+    const card = PLAIN.filter(({ prelude }) => prelude === ".featured-card").flatMap(({ body }) => declarationsOf(body));
+    expect(card.filter(({ property }) => property === "animation").map(({ value }) => value)).toEqual(["rise-in var(--motion-screen) var(--ease-out) both"]);
+    // rise-in lifts by --motion-amount, which reduced motion sets to 0.
+    expect(animationsOf(REDUCED).has(".featured-card")).toBe(false);
+  });
+});
+
 // The quiz and the sorting game end on the same result.
 describe("the result's motion", () => {
   const animations = animationsOf(PLAIN);

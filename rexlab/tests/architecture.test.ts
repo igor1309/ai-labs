@@ -90,6 +90,8 @@ const COMPOSITION = [
   "skeletonGame.tsx",
   "sortingGame.tsx"
 ];
+// The choice of the day's featured game.
+const FEATURED = "featured.ts";
 // The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
@@ -195,6 +197,15 @@ describe("the import graph", () => {
   it("keeps the catalogue's model free of all but the languages", () => {
     expect(GRAPH.get(CATALOGUE)).toBeDefined();
     expect(edges((file) => file === CATALOGUE, (target) => !target.startsWith("language/"))).toEqual([]);
+  });
+
+  it("keeps the featured choice free of the rest of the app", () => {
+    expect(GRAPH.get("App.tsx")).toContain(FEATURED);
+    expect(edges((file) => file === FEATURED, () => true)).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of the featured choice", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target === FEATURED)).toEqual([]);
   });
 
   it("keeps adapters free of their consumers", () => {

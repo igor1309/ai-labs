@@ -20,6 +20,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   loadedPictures,
   manualAppearance,
   manualOrientation,
@@ -30,7 +31,8 @@ import {
   symbolOf,
   unreadVersion,
   words,
-  type ManualPictures
+  type ManualPictures,
+  homeTile
 } from "./support.ts";
 
 function openApp({
@@ -42,6 +44,7 @@ function openApp({
   const themes = memoryStorage();
   render(
     <App
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -95,7 +98,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, beside the quiz card above the CARE tile", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, under the COMPARE tile, before the CARE tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -104,9 +107,8 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(42);
-    const games = screen.getByRole("button", { name: "COMPARE" }).parentElement;
-    expect(games?.contains(tile)).toBe(true);
-    expect(tile.nextElementSibling).toBe(screen.getByRole("button", { name: "CARE" }));
+    expect(homeTile("COMPARE").nextElementSibling).toBe(tile);
+    expect(tile.nextElementSibling).toBe(homeTile("CARE"));
   });
 });
 
@@ -133,7 +135,7 @@ describe("the list of every dinosaur", () => {
 
     await user.click(home);
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(screen.queryByRole("group", { name: "ALL DINOSAURS" })).toBeNull();
   });
 

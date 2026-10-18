@@ -41,7 +41,7 @@ Feature: English and Russian
 
     Examples:
       | item                | text               |
-      | quiz card           | СРАВНИ             |
+      | quiz tile           | СРАВНИ             |
       | mass prompt         | КТО ТЯЖЕЛЕЕ?       |
       | height prompt       | КТО ВЫШЕ?          |
       | Next button         | ДАЛЬШЕ             |

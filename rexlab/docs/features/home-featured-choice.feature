@@ -1,4 +1,3 @@
-@next
 Feature: Home page: choosing the featured game
   Each day one game is featured, chosen at random with a slight lean
   towards the games started least, and it never changes while the app is

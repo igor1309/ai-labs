@@ -24,7 +24,7 @@ import {
   spotOf,
   trayPieces
 } from "./skeletonsApp.tsx";
-import { words, type ManualPictures } from "./support.ts";
+import { words, type ManualPictures, homeTile } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
 // The longest the reveal waits for the body picture.
@@ -148,7 +148,7 @@ describe("help after waiting", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(homeTile("COMPARE")).toBeDefined();
     expect(pictures.timers()).toEqual([]);
   });
 
