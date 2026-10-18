@@ -44,18 +44,21 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     And leaving or reloading during the reveal keeps the reward and completed stand
     And no hint appears after completion
 
-  Scenario Outline: A body picture not shown does not hold back the reward
-    Given a dinosaur's body picture <ends>
+  Scenario Outline: The result waits for neither of its pictures
+    Given a dinosaur's skeleton picture <skeleton> and its body picture <body>
     When I finish its skeleton
-    Then the result appears as soon as the complete skeleton has shown, waiting for no picture
-    And I see the completed skeleton whole, its name, fact and reward, and no shimmer over the skeleton
+    Then the result appears when its reveal ends, waiting for no picture
+    And I see its name, fact and reward, and can open the museum or build another dinosaur
+    And the skeleton's place shows <shows>, as pictures.feature has it
+    And the body picture adds no shimmer and no failure look of its own
     And <then>
-    And I can open the museum or build another dinosaur
 
     Examples:
-      | ends             | then                                                                                  |
-      | cannot load      | the skeleton stays whole                                                              |
-      | is still loading | once the body picture loads, it fades in over the skeleton as the skeleton fades back |
+      | skeleton         | body             | shows                    | then                                                                                  |
+      | has loaded       | cannot load      | the whole skeleton       | the skeleton stays whole                                                              |
+      | has loaded       | is still loading | the whole skeleton       | once the body picture loads, it fades in over the skeleton as the skeleton fades back |
+      | is still loading | is still loading | a shimmer at its size    | once the skeleton picture loads, it fades in whole                                    |
+      | cannot load      | cannot load      | the failure look         | the failure look stays, the reward still shown                                        |
 
   Scenario: Build another returns to dinosaur selection
     Given I am on a skeleton result screen
