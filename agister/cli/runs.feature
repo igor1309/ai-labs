@@ -4,10 +4,15 @@
 
 Feature: The command line exports a run
 
-  Scenario: A run is exported to the folder given
-    When "agister runs export R1 --to /out" runs
-    Then it asks the port to export the run "R1" to "/out"
+  Scenario Outline: A run is exported to the folder given
+    When "agister runs export R1 --to <to>" runs in "/work"
+    Then it asks the port to export the run "R1" to "<folder>"
     And it prints nothing and exits 0
+
+    Examples:
+      | to   | folder    |
+      | /out | /out      |
+      | out  | /work/out |
 
   Scenario: An export that fails is printed to stderr and exits 1
     Given the port's export fails: "no run \"R1\""

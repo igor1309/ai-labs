@@ -34,17 +34,17 @@ Feature: runstore keeps runs
     Then they are "20261016T090000Z-0a0b0c", then
       "20261017T071618Z-55fd36"
 
-  Scenario: A run is exported, its files copied under its id
-    Given the run "x" kept, its record and events written
-    When "x" is exported to "out", not yet made
-    Then "out/x" holds "record.json" and "events.jsonl", each as kept
-
-  Scenario Outline: An export that cannot be made copies nothing
-    Given <given>
-    When "x" is exported to "out"
-    Then it gives an error, and "out" holds nothing new
+  Scenario Outline: A run is exported, its files copied under its id
+    Given the run "x" kept, <kept>
+    When "x" is exported to "out", <out>
+    Then "out/x" holds <holds>, each as kept
 
     Examples:
-      | given                                 |
-      | no run "x" kept                       |
-      | the run "x" kept, and "out/x" present |
+      | kept                          | out                         | holds                            |
+      | its record and events written | not yet made                | "record.json" and "events.jsonl" |
+      | its record alone written      | not yet made                | "record.json" alone              |
+      | its record and events written | "out/x" an older copy of it | "record.json" and "events.jsonl" |
+
+  Scenario: A run not kept is not exported
+    When "x" is exported to "out", no run "x" kept
+    Then it gives an error, and "out" holds nothing

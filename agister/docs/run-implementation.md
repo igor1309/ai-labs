@@ -768,11 +768,12 @@ Decisions, each with its reason:
 
 A run's record holds what its calls were given, and `agister runs
 export` copies a run out (ADR-001, invariant 6 and "Runs"; ADR-010,
-rule 4): what `scripts/agister-gate` reads of a review run, the
-archive's last user's need of it.
+rule 4): what `scripts/agister-gate`, the archive's last user, will
+read of a review run once it moves to this Agister.
 
 **The composition** records the inputs it resolves. The record's
-`inputs` are the workflow's, as resolved at its boundary; a request
+`inputs` are the workflow's, as resolved at its boundary, in the order
+the workflow declares them; a request
 naming a step has none. Each call's `inputs` are its process's, as
 resolved for its call, in the order the process declares them; a call
 whose inputs were refused has none, and so has a run whose workflow's
@@ -789,13 +790,16 @@ a call's in the write as it ends:
 The join's input is its call's like any other: the judge's `reviews`,
 the reviews' outputs as it was given them.
 
-**`runstore`** exports a run: its `record.json` and `events.jsonl`
-copied into a folder of the run's id under the folder it is given,
-which is made where missing. A run not kept, or a folder of its id
-already there, is an error, and nothing is copied.
+**`runstore`** exports a run: its `record.json`, and its
+`events.jsonl` where it has one, copied into a folder of the run's id
+under the folder it is given, each made where missing; a copy already
+there is written over, as the gate exports a run twice. A run not
+kept is an error, and nothing is copied.
 
 **`cli`** gets `agister runs export <run id> --to <dir>`, on a port of
-its own, the composition's from runstore under home's `runs`. It prints
+its own, the composition's from runstore under home's `runs`; a
+relative `--to` is joined to the directory cli is given, as `--dir`
+is. It prints
 nothing and exits 0; a failure goes to stderr, exit 1; a command not
 whole prints its usage, exit 2.
 
@@ -807,14 +811,12 @@ Decisions, each with its reason:
   that is not UTF-8 is kept changed, its identity the original's: a
   risk taken, inputs are text.
 - Not yet in the record: the definitions with their digests, the
-  permission plan, a pinned call's patch (ADR-004, rule 4). No reader
-  needs them yet.
+  process's environment, the permission plan, a pinned call's patch
+  (ADR-004, rule 4). No reader needs them yet.
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
   record is written whole, so it reads as the record then; an event
   line may be cut. Best effort.
-- A relative `--to` is taken as the process's working directory reads
-  it: cli is run where it is launched.
 - `scripts/agister-gate` stays on the archive: moving it is its own
   slice, which reads this record.

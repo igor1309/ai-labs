@@ -23,7 +23,7 @@ order it is needed:
 - **The gate on this Agister**: `scripts/agister-gate` run on this
   Agister, reading its record; the archive retired.
 - **The rest of the record**: definitions with their digests, the
-  permission plan, a pinned call's patch (ADR-001, invariant 6;
+  process's environment, the permission plan, a pinned call's patch (ADR-001, invariant 6;
   ADR-004, rule 4); other commands on runs.
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending

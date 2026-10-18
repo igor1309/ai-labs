@@ -23,6 +23,13 @@ Feature: The composition records what a run was given, and exports it
     Then the record's inputs are [], and its call's are "q", "why" its
       value
 
+  Scenario: A run whose workflow's inputs are refused records none
+    Given the repository's workflow "w" of the step "say", its input
+      "goal" from the source "file", path "g.md", and no file "/r/g.md",
+      as inputs.feature gives it
+    When "agister run w" runs in "/r"
+    Then the record holds the run refused, its inputs [], and no call
+
   Scenario: A call whose inputs are refused records none
     Given git names "HEAD" the commit "c1"
     When "agister run --process implement --agent claude-opus --param
