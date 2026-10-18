@@ -30,7 +30,7 @@ import {
   type StoredPairs
 } from "./pairsApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { SHIPPED_PALS, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, countedStarts, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -168,6 +168,21 @@ describe("a board", () => {
     await user.dblClick(button("PLAY"));
 
     expect([pairCards().length, screen.getByLabelText("TRIES").textContent, pairCards().map((card) => card.dataset.state)]).toEqual([6, "0", Array<string>(6).fill("down")]);
+  });
+
+  // In a browser the board shows after its transition, so a second PLAY
+  // can land on the welcome screen still shown: here both land in one act,
+  // before React renders. A key's click has no pointer's detail, so the
+  // double-tap filter lets both through to the game.
+  it("is dealt once, and counted once, for two PLAYs landing before the board shows", async () => {
+    const { counted, startCounter } = countedStarts();
+    const { user } = openPairsApp({ pals: THREE, startCounter });
+    await user.click(button("FIND THE PAIR"));
+    const play = button("PLAY");
+
+    act(() => [play, play].forEach((each) => fireEvent.click(each, { detail: 0 })));
+
+    expect([pairCards().length, screen.getByLabelText("TRIES").textContent, counted]).toEqual([6, "0", ["pairs"]]);
   });
 });
 

@@ -49,6 +49,8 @@ export type PairsAppOptions<C extends Clock> = {
   // Reuse the parent's saved setting across app reloads, independently
   // of progress storage that a test may make unreadable.
   settingsStorage?: MemoryStorage;
+  // Told each game whose start the app counts.
+  startCounter?: AppProps["startCounter"];
 };
 
 // The age level the climb is played at, so a test about the climb sees it.
@@ -71,12 +73,14 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   deviceLanguage = "en-GB",
   theme = "light",
   ageLevel = PICKED_HATCHLING,
-  settingsStorage
+  settingsStorage,
+  startCounter
 }: PairsAppOptions<C> = {}) {
   const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
     <App
       {...featuring()}
+      {...(startCounter && { startCounter })}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
