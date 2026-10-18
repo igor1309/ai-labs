@@ -55,6 +55,17 @@ const rowWidth = (row: Element, parts: number[]) => {
   return sides(style) + parts.reduce((sum, part) => sum + part, 0) + px(style.gap) * (parts.length - 1);
 };
 
+// The width a box takes for its content: its own width if it sets one,
+// held between its least and its most.
+const boxWidth = (box: Element, content: number) => {
+  const style = getComputedStyle(box);
+  const most = px(style.maxWidth) || Number.POSITIVE_INFINITY;
+  return Math.min(most, Math.max(px(style.minWidth), px(style.width) || content));
+};
+
+// A size the style leaves to the layout.
+const unset = (value: string) => ["", "auto", "none"].includes(value);
+
 const drawnWidth = (symbol: Element | null) => px(symbol?.getAttribute("width") ?? "");
 
 const partOf = (selector: string) => {
@@ -103,14 +114,16 @@ describe("the museum on the home page", () => {
     expect([hall(), choices().length]).toEqual([null, 3]);
   });
 
-  // The museum opens at once, so a double tap's second tap lands on what
-  // stands under MUSEUM there, BUILD ANOTHER on a 1024px iPad.
+  // The museum opens at once, so a double tap's second tap lands on the
+  // museum screen. Every button there is tapped while it settles, so
+  // whichever one stands under MUSEUM, the tap presses nothing.
   it("opens once on a quick double tap: the second tap presses nothing in the museum, and one HOME comes back once it settles", async () => {
     const { user, pictures } = openHomeApp();
 
     await user.click(museumButton());
-    await user.click(button("BUILD ANOTHER"));
-    await user.click(button("HOME"));
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((each) => each.textContent)).toEqual(expect.arrayContaining(["HOME", "BUILD ANOTHER"]));
+    for (const each of buttons) await user.click(each);
 
     expect(hall()).not.toBeNull();
     expect(pictures.timers()).toEqual([SETTLE]);
@@ -134,6 +147,8 @@ describe("the museum on the home page", () => {
     // Fixed to the whole screen: the corner it stands in has no transform
     // or filter, which would pin it to the corner instead.
     expect([over?.top, over?.right, over?.bottom, over?.left]).toEqual(["0px", "0px", "0px", "0px"]);
+    // Nothing in its style shrinks it from the insets.
+    expect([over?.width, over?.height, over?.maxWidth, over?.maxHeight].filter((size) => !unset(size ?? ""))).toEqual([]);
     const corner = getComputedStyle(partOf(".home-corner"));
     expect([corner.transform || "none", corner.filter || "none"]).toEqual(["none", "none"]);
     fireEvent.click(backdrop);
@@ -154,12 +169,12 @@ describe("the museum on the home page", () => {
     const button = museumButton(language);
     const museumStyle = getComputedStyle(button);
     expect(museumStyle.whiteSpace).toBe("nowrap");
-    const museum = rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]);
+    const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
     const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
       const style = getComputedStyle(menuButton);
       const code = menuButton.querySelector(".parent-menu-code")?.textContent;
       const parts = [drawnWidth(menuButton.querySelector("svg")), ...(code ? [wordWidth(code, style)] : [])];
-      return Math.max(px(style.minWidth), rowWidth(menuButton, parts));
+      return boxWidth(menuButton, rowWidth(menuButton, parts));
     });
     const corner = partOf(".home-corner");
     // The widths add up along one row, every part centred on it.
@@ -167,7 +182,7 @@ describe("the museum on the home page", () => {
       const style = getComputedStyle(row);
       expect([style.display, style.flexDirection || "row", style.flexWrap || "nowrap", style.alignItems]).toEqual(["flex", "row", "nowrap", "center"]);
     }
-    const cornerWidth = rowWidth(corner, [museum, rowWidth(partOf(".parent-menus"), menuButtons)]);
+    const cornerWidth = boxWidth(corner, rowWidth(corner, [museum, boxWidth(partOf(".parent-menus"), rowWidth(partOf(".parent-menus"), menuButtons))]));
     const wordmark = partOf(".wordmark");
     const wordmarkStyle = getComputedStyle(wordmark);
     const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), wordWidth("RexLab", wordmarkStyle)]);
