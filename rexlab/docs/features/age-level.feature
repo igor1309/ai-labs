@@ -40,6 +40,7 @@ Feature: Age level
       | the app has never been opened on this iPad               |
       | the games have saved progress, but no age level is saved |
       | the saved age level is not one of the three levels       |
+      | the browser's storage cannot be read                     |
 
   Scenario Outline: A chosen level is shown and remembered
     Given the age level is <from>
@@ -56,6 +57,13 @@ Feature: Age level
       | Explorer       | Paleontologist | 🦴      |
       | Hatchling      | Explorer       | 🦖      |
 
+  Scenario: A level that cannot be saved still applies until the app closes
+    Given the browser's storage cannot be written
+    When I choose Hatchling in the age level menu
+    Then the button shows 🥚
+    When I close and reopen the app
+    Then the button shows 🦖
+
   Scenario: The level outlives the games' progress
     Given I chose Paleontologist
     When the games' saved progress is lost
@@ -63,7 +71,7 @@ Feature: Age level
     Then the age level is Paleontologist
 
   Scenario: Choosing a level changes no score
-    Given I have a score in every game
+    Given I have a score in every game that keeps one
     When I choose each age level in turn
     Then every game's score, star and collection is unchanged
     And no game's start count changes

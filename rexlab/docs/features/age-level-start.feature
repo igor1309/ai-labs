@@ -13,28 +13,28 @@ Feature: The level a game starts at
     Given an iPad in landscape
 
   Scenario Outline: Today's games play as they do now at every level
-    Given the age level is <level>
-    When I play <game>
-    Then it plays as it did before levels existed
+    When I play <game> at each age level in turn
+    Then it starts exactly as it does at Hatchling, every time
 
     Examples:
-      | game               | level          |
-      | the compare quiz   | Paleontologist |
-      | the catalogue      | Paleontologist |
-      | the care game      | Paleontologist |
-      | the sorting game   | Paleontologist |
-      | find the pair      | Paleontologist |
-      | the skeleton game  | Paleontologist |
-      | the compare quiz   | Hatchling      |
-      | find the pair      | Explorer       |
+      | game              |
+      | the compare quiz  |
+      | the catalogue     |
+      | the care game     |
+      | the sorting game  |
+      | find the pair     |
+      | the skeleton game |
 
   Scenario Outline: The same play earns the same reward at every level
-    Given the age level is <level>
+    Given my best compare quiz score is 6
+    And the age level is <level>
     When I answer every question of a compare quiz round right
-    Then I score 10 and see the same celebration as at Hatchling
+    Then I score 10 and see the new best score celebration
+    And my best score is 10, the one best for every level
 
     Examples:
       | level          |
+      | Hatchling      |
       | Explorer       |
       | Paleontologist |
 
@@ -54,21 +54,29 @@ Feature: The level a game starts at
       | all three                    | Explorer       | Explorer       |
       | all three                    | Paleontologist | Paleontologist |
 
-  Scenario: The child's own choice in a game wins until the setting changes
-    Given the age level is Explorer
-    And a game with all three modes, in which the child chose Hatchling
-    When the game starts again
-    Then it plays its Hatchling mode
-    When a parent chooses Paleontologist in the age level menu
+  Scenario Outline: The child's own choice in a game wins until the setting changes
+    Given the age level is <setting>
+    And a game with all three modes, in which the child chose <choice>
+    When I close and reopen the app
     And the game starts again
-    Then it plays its Paleontologist mode
-    When a parent chooses Explorer in the age level menu
+    Then it plays its <choice> mode
+    When a parent chooses <next> in the age level menu
+    And I close and reopen the app
     And the game starts again
-    Then it plays its Explorer mode
+    Then it plays its <next> mode
+    When a parent chooses <setting> in the age level menu
+    And the game starts again
+    Then it plays its <setting> mode
+
+    Examples:
+      | setting   | choice         | next           |
+      | Explorer  | Hatchling      | Paleontologist |
+      | Hatchling | Paleontologist | Explorer       |
 
   Scenario: Choosing the level already set keeps the child's choice
     Given the age level is Explorer
     And a game with all three modes, in which the child chose Hatchling
     When a parent chooses Explorer in the age level menu
+    And I close and reopen the app
     And the game starts again
     Then it plays its Hatchling mode
