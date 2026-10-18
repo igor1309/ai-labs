@@ -232,7 +232,10 @@ describe("the language menu", () => {
     expectShownIn("ru");
   });
 
-  it("names the version footer of the static page in the chosen language, in normal case, and keeps its look", async () => {
+  it.each([
+    ["ru-RU", "Версия", "Язык", "English", "Version"],
+    ["en-GB", "Version", "Language", "Русский", "Версия"]
+  ])("names the version footer of the static page in the language chosen, on %s from %s, in normal case, and keeps its look", async (device, first, menu, choice, then) => {
     // index.html's footer, which the test page does not have.
     const footer = document.createElement("footer");
     footer.id = "version";
@@ -240,13 +243,13 @@ describe("the language menu", () => {
     footer.textContent = "v1.2.3";
     document.body.append(footer);
     try {
-      const { user } = openApp({ device: "ru-RU" });
-      expect(screen.getByRole("contentinfo", { name: "Версия" })).toBe(footer);
+      const { user } = openApp({ device });
+      expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
       expect(getComputedStyle(footer).position).toBe("fixed");
 
-      await chooseFrom(user, "Язык", "English");
+      await chooseFrom(user, menu, choice);
 
-      expect(screen.getByRole("contentinfo", { name: "Version" })).toBe(footer);
+      expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
       expect(getComputedStyle(footer).position).toBe("fixed");
     } finally {
       footer.remove();
