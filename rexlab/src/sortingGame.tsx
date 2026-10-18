@@ -1,10 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
-import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { boardState, drop, finishBoard, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
 
@@ -35,6 +35,12 @@ const PICTURE_WAIT = 1000;
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
+// A board started, even over one left on HOME and still kept, or its
+// result, is the plain screen change; a drop changes the board at once.
+export function transitionFor(from: SortingScreen | undefined, to: SortingScreen | undefined, intent: "start" | undefined): string | undefined {
+  return intent === "start" || from?.kind !== to?.kind ? SCREEN_CHANGE : undefined;
+}
+
 // The sorting game, kept by its owner above the orientation gate, so
 // turning the iPad pauses a board without losing it. It shows nothing
 // until a board is started. `onHome` takes the child back to the home
@@ -44,7 +50,7 @@ export function useSortingGame(
   onHome: () => void,
   onStart: () => void
 ) {
-  const [screen, setScreen] = useState<SortingScreen>();
+  const { screen, go } = useScreens<SortingScreen | undefined, "start">(undefined, transitionFor);
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
   const last = useRef<Sorting | undefined>(undefined);
@@ -55,8 +61,6 @@ export function useSortingGame(
   // cancelled, so pictures that finish loading after the child has gone
   // elsewhere show no board.
   const stay = useRef(0);
-
-  const show = (next: SortingScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
 
   // A new board shows once its six pictures are ready, or the wait runs
   // out, so none pops in. `shown` runs in the same screen change, so the
@@ -72,10 +76,7 @@ export function useSortingGame(
       starting.current = false;
       last.current = sorting;
       onStart();
-      changeScreen(SCREEN_CHANGE, () => {
-        setScreen({ kind: "board", sorting });
-        shown?.();
-      });
+      go({ kind: "board", sorting }, { intent: "start", also: shown });
     });
   };
 
@@ -96,8 +97,8 @@ export function useSortingGame(
   // board listens for drags with it, so it stays the same function.
   const onDrop = useCallback(
     (id: string, basket: Basket) =>
-      setScreen((current) => (current?.kind === "board" ? { ...current, sorting: drop(current.sorting, id, droppedOn(basket)) } : current)),
-    []
+      go((current) => (current?.kind === "board" ? { ...current, sorting: drop(current.sorting, id, droppedOn(basket)) } : current)),
+    [go]
   );
 
   // A board is recorded only here, as its result is shown, so a board
@@ -105,7 +106,7 @@ export function useSortingGame(
   const seeResult = (finished: Sorting) => {
     const result = finishBoard(finished, sortingProgress.load(), beatBest);
     if (result.progress) sortingProgress.save(result.progress);
-    show({ kind: "result", result });
+    go({ kind: "result", result });
   };
 
   const content = (language: Language) => {

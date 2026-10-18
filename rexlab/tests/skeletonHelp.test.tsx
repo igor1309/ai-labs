@@ -1,10 +1,11 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import {
   AWAY,
   board,
   dragTo,
+  finishLoading,
   fit,
   fittedPieces,
   hints,
@@ -150,6 +151,48 @@ describe("help after waiting", () => {
 
     expect(homeTile("COMPARE")).toBeDefined();
     expect(pictures.timers()).toEqual([]);
+  });
+
+  // The tap and the timers read in one act, while the puzzle is still on
+  // the screen: help's timer stops as the child leaves, not as the puzzle
+  // is taken off the screen.
+  it("stops as the child goes home, and the next puzzle's help is not moved on by the tick, delivered all the same", async () => {
+    const { pictures, user } = await openPuzzle("TYRANNOSAURUS");
+    spend(pictures, 9);
+
+    let left: [number[], boolean] = [[], false];
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+      left = [pictures.timers(), document.contains(board())];
+    });
+    fireEvent.click(homeTile("SKELETONS"));
+    await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
+    act(() => finishLoading(pictures));
+    layOutPuzzle();
+    act(() => pictures.deliverStopped(1000));
+
+    expect(left).toEqual([[], true]);
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
+    expect(hints()).toEqual([]);
+    spend(pictures, 1);
+    expect(hints()).toEqual(["slot skull", "spot skull"]);
+    fit(TYRANNOSAURUS, "skull");
+    expect(fittedPieces()).toEqual(["skull"]);
+  });
+
+  it("needs ten more seconds after a fit just before a tick, the tick it stopped delivered all the same", async () => {
+    const { pictures } = await openPuzzle("TYRANNOSAURUS");
+    spend(pictures, 9);
+
+    fit(TYRANNOSAURUS, "skull");
+    act(() => pictures.deliverStopped(1000));
+
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
+    expect(hints()).toEqual([]);
+    spend(pictures, 1);
+    expect(hints()).toEqual(["slot spine", "spot spine"]);
   });
 
   it("completes the skeleton after help, many missed drops and help again, with no time, count or failure shown, and rewards it in full", async () => {

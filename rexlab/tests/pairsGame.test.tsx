@@ -21,6 +21,7 @@ import {
   playBoard,
   playDealt,
   playPairs,
+  showMiss,
   stateAt,
   storedPairs,
   triesShown,
@@ -351,6 +352,33 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect(storedPairs(storage)).toBeUndefined();
     await user.click(button("FIND THE PAIR"));
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
+  });
+
+  // The tap and the timers read in one act, before React renders the home
+  // page: the board's timers stop as the child leaves, not as the game is
+  // taken off the screen.
+  it.each(["miss", "celebration"] as const)("stops the %s as the child goes home, and the next board is not moved on by it, delivered all the same", async (during) => {
+    const { user, clock } = openPairsApp(options);
+    await playPairs(user);
+    if (during === "miss") await showMiss(user);
+    else await playBoard(user, clock);
+    const timer = during === "miss" ? MISS : wave(tokens().motion, dealtBoard.cards.length);
+    expect(clock.timers()).toEqual([timer]);
+
+    let running: number[] = [];
+    act(() => {
+      fireEvent.click(button("HOME"));
+      running = clock.timers();
+    });
+    await playPairs(user);
+    act(() => clock.deliverStopped(timer));
+
+    expect(running).toEqual([]);
+    expect([pairCards().map((_, place) => stateAt(place)), triesShown(), board().hasAttribute("data-finished")]).toEqual([pairCards().map(() => "down"), "0", false]);
+    expect(screen.queryByRole("button", { name: "PLAY AGAIN" })).toBeNull();
+    await turnCard(user, 0);
+    await turnCard(user, 1);
+    expect([[stateAt(0), stateAt(1)].includes("down"), triesShown()]).toEqual([false, "1"]);
   });
 
   it("pauses in portrait, with nothing to turn, and is the same board again in landscape", async () => {

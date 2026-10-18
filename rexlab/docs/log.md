@@ -4,6 +4,8 @@
 
 - Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).
 - A level switch on find the pair's welcome screen starts at the age level and keeps the child's choice until a parent picks a different level (LAB-296).
+- A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
+- Tap safety is split into parts that land one by one, screen state and animation first; leaving a game now stops its pending timers at once (LAB-298).
 - A parents' menu picks the age level, Hatchling, Explorer or Paleontologist, kept on this device; a new install starts at Explorer, and no game reads it yet (LAB-291).
 - The language, theme and age level menus animate in and out, and their ✓ reads in the light theme (LAB-291).
 - The tap safety rule is written down in `docs/tap-safety.md`: a double tap does what one tap does, and never presses anything on the next screen (LAB-297).

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
+import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
 import {
   dealBoard,
   finishBoard,
@@ -23,7 +24,7 @@ import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
-import { changeScreen, SCREEN_CHANGE } from "./screenChange.ts";
+import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 // What find the pair keeps: its progress, and the child's last choice on
@@ -80,6 +81,12 @@ type Kept = KeptPairs & { levelChoice: LevelChoice | undefined };
 
 type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult };
 
+// A card turned, or turned back, changes the board at once; every other
+// change is the plain screen change.
+export function transitionFor(from: PairsScreen, to: PairsScreen): string | undefined {
+  return from.kind === to.kind ? undefined : SCREEN_CHANGE;
+}
+
 // Find the pair, kept by the app above its orientation gate, so turning
 // the iPad pauses a board without losing it. `ageLevel` is the age level a
 // parent picked, which the game starts at until the child chooses another
@@ -91,7 +98,7 @@ export function usePairsGame(
   onHome: () => void,
   onStart: () => void
 ) {
-  const [screen, setScreen] = useState<PairsScreen>({ kind: "welcome" });
+  const { screen, go, set } = useScreens<PairsScreen>({ kind: "welcome" }, transitionFor);
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but stars, levels and dinosaurs found
   // meanwhile are still kept while the app is open, and so is progress
@@ -105,6 +112,9 @@ export function usePairsGame(
   // on the board as it is, not as last rendered. Null once the child
   // leaves it.
   const live = useRef<Board | null>(null);
+  // The miss and celebration timers of the board in play, all stopped as
+  // the child leaves it, and null from then on.
+  const boardTimers = useRef<OwnedTimers | null>(null);
   // A board being dealt while its pictures load: a second tap meanwhile
   // deals nothing more.
   const starting = useRef(false);
@@ -136,13 +146,13 @@ export function usePairsGame(
     keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
   };
 
-  const show = (next: PairsScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
-
   const timings = () => TIMINGS[reducedMotion() ? "reduced" : "motion"];
 
   const leave = () => {
     stay.current++;
     live.current = null;
+    boardTimers.current?.stopAll();
+    boardTimers.current = null;
     starting.current = false;
   };
 
@@ -164,8 +174,9 @@ export function usePairsGame(
         starting.current = false;
         lastBoard.current = board;
         live.current = board;
+        boardTimers.current = ownedTimers(startTimer);
         onStart();
-        show({ kind: "board", board, finished: false });
+        go({ kind: "board", board, finished: false });
       }
     );
   };
@@ -188,27 +199,28 @@ export function usePairsGame(
   // nothing.
   const showBoard = (from: Board, to: Board, finished = false) => {
     live.current = to;
-    setScreen((current) => (current.kind === "board" && current.board === from ? { kind: "board", board: to, finished } : current));
+    go((current) => (current.kind === "board" && current.board === from ? { kind: "board", board: to, finished } : current));
   };
 
   const turnCard = (place: number) => {
     const from = live.current;
-    if (from === null) return;
+    const timers = boardTimers.current;
+    if (from === null || timers === null) return;
     const to = turn(from, place);
     if (to === from) return;
     const result = isFinished(to) ? record(to) : undefined;
     showBoard(from, to, result !== undefined);
     const timing = timings();
     if (isMiss(to)) {
-      startTimer(timing.miss, () => {
+      timers.start(timing.miss, () => {
         if (live.current === to) showBoard(to, turnBack(to));
       });
     }
     if (result !== undefined) {
-      startTimer(waveOf(timing, to.cards.length), () => {
+      timers.start(waveOf(timing, to.cards.length), () => {
         if (live.current !== to) return;
         live.current = null;
-        show({ kind: "result", result });
+        go({ kind: "result", result });
       });
     }
   };
@@ -261,7 +273,7 @@ export function usePairsGame(
     // The game opens on its welcome screen, whatever screen it was left on.
     open: () => {
       leave();
-      setScreen({ kind: "welcome" });
+      set({ kind: "welcome" });
     },
     content
   };

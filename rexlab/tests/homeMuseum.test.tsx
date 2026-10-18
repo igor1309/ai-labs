@@ -3,10 +3,11 @@ import { addTransitionType } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { SCREEN_CHANGE } from "../src/screenChange.ts";
+import { SCREEN_CHANGE } from "../src/screens.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
-import { PALETTE, contrast, homeTile, symbolOf, type ManualPictures } from "./support.ts";
+import { PALETTE, contrast, homeTile, symbolOf } from "./support.ts";
+import { filterTaps, tapAt } from "./taps.ts";
 
 // home-museum.feature
 
@@ -25,12 +26,6 @@ const hall = () => screen.queryByRole("group", { name: "STANDS" });
 const onHomePage = () => document.querySelector(".games-tiles") !== null;
 
 const button = (name: string) => screen.getByRole("button", { name });
-
-// How long the museum, opened from the home page, takes no taps: half a
-// second, longer than the gap between a child's two quick taps.
-const SETTLE = 500;
-
-const settle = (pictures: ManualPictures) => act(() => pictures.fire(SETTLE));
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
@@ -97,7 +92,6 @@ describe("the museum on the home page", () => {
     const { user, pictures } = openHomeApp({ storage: keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] }) });
 
     await user.click(museumButton());
-    settle(pictures);
     expect(within(hall() ?? document.body).getByRole("region", { name: "TRICERATOPS" }).getAttribute("data-state")).toBe("built");
     expect(screen.getByLabelText("STARS").textContent).toBe("1/3");
 
@@ -109,25 +103,23 @@ describe("the museum on the home page", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
     await user.click(museumButton());
-    settle(pictures);
     await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
     expect([hall(), choices().length]).toEqual([null, 3]);
   });
 
   // The museum opens at once, so a double tap's second tap lands on the
-  // museum screen. Every button there is tapped while it settles, so
+  // museum screen. Every button there is tapped in the burst, so
   // whichever one stands under MUSEUM, the tap presses nothing.
-  it("opens once on a quick double tap: the second tap presses nothing in the museum, and one HOME comes back once it settles", async () => {
-    const { user, pictures } = openHomeApp();
+  it("opens once on a quick double tap: the second tap presses nothing in the museum, and one HOME comes back", async () => {
+    const { user } = openHomeApp();
+    filterTaps();
 
-    await user.click(museumButton());
+    tapAt(museumButton(), 0);
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((each) => each.textContent)).toEqual(expect.arrayContaining(["HOME", "BUILD ANOTHER"]));
-    for (const each of buttons) await user.click(each);
+    buttons.forEach((each, i) => tapAt(each, 250 + 250 * i));
 
     expect(hall()).not.toBeNull();
-    expect(pictures.timers()).toEqual([SETTLE]);
-    settle(pictures);
     await user.click(button("HOME"));
     expect(onHomePage()).toBe(true);
   });
