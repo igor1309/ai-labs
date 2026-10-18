@@ -152,7 +152,7 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"schema": "agister.record/v1alpha1", "id": "x",
-		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r", "continue": nil},
+		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r", "continue": nil, "reuse": nil},
 		"inputs":  []any{},
 		"started": "2026-10-17T07:16:18Z", "ended": nil, "status": "lost", "calls": []any{}, "result": nil}
 	if !reflect.DeepEqual(got, want) {
@@ -174,11 +174,48 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 	if continues, ok := call.Calls[0]["continues"]; !ok || continues != nil {
 		t.Errorf("record.json holds the call %v, want its continues null", call.Calls[0])
 	}
+	if reuses, ok := call.Calls[0]["reuses"]; !ok || reuses != nil {
+		t.Errorf("record.json holds the call %v, want its reuses null", call.Calls[0])
+	}
 	if inputs, ok := call.Calls[0]["inputs"]; !ok || !reflect.DeepEqual(inputs, []any{}) {
 		t.Errorf("record.json holds the call %v, want its inputs []", call.Calls[0])
 	}
 	if record.Calls[0].Inputs != nil {
 		t.Errorf("the record given holds the call's inputs %v after the write, want them as given", record.Calls[0].Inputs)
+	}
+}
+
+// A run that reuses another is written with that run's id as its
+// request's reuse, and each call taken with the id of the call it reuses,
+// given back as written.
+//
+// Contract test: the operating system's filesystem.
+func TestAReuseIsWrittenAsTheIDsItReuses(t *testing.T) {
+	t.Parallel()
+	s, runs := store(t)
+	record := lost("x")
+	run, call := "r0", "r0/a"
+	record.Request.Reuse = &run
+	record.Calls = []runstore.Call{{ID: "x/a", Step: "a", Reuses: &call, Inputs: []runstore.Input{}}}
+	if err := s.Write(record); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(runs, "x", "record.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Request map[string]any   `json:"request"`
+		Calls   []map[string]any `json:"calls"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Request["reuse"] != "r0" || len(got.Calls) != 1 || got.Calls[0]["reuses"] != "r0/a" {
+		t.Errorf("record.json holds the request %v and the calls %v, want it reusing r0, its call r0/a", got.Request, got.Calls)
+	}
+	if back, err := s.Record("x"); err != nil || !reflect.DeepEqual(back, record) {
+		t.Errorf("given back %+v, %v; want %+v", back, err, record)
 	}
 }
 
@@ -358,6 +395,8 @@ func TestAnEventIsTheLineOfItsKind(t *testing.T) {
 	}{
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Started, Agent: "bash", Name: "x"},
 			`{"at":"` + at + `","step":"a","kind":"started","agent":"bash"}`},
+		{runstore.Event{At: started, Step: "a", Kind: runstore.Reused, Call: "r0/a", Agent: "x"},
+			`{"at":"` + at + `","step":"a","kind":"reused","call":"r0/a"}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Tool, Name: "Bash", Input: "ls", Agent: "x"},
 			`{"at":"` + at + `","step":"a","kind":"tool","name":"Bash","input":"ls"}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Stale, What: "no event for 1m", Recovering: true, Name: "x"},

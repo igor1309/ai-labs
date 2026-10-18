@@ -1,6 +1,6 @@
-# cli's run (docs/run-implementation.md, "The first run" and "Continuation";
-# ADR-013): a command turned into a request on the port, the result printed
-# as JSON. A spy answers the port in every test.
+# cli's run (docs/run-implementation.md, "The first run", "Continuation"
+# and "Reuse"; ADR-013): a command turned into a request on the port, the
+# result printed as JSON. A spy answers the port in every test.
 
 Feature: The command line runs a request
 
@@ -42,12 +42,13 @@ Feature: The command line runs a request
     Then it prints its usage to stderr and exits 2, asking the port nothing
 
     Examples:
-      | args              |
-      | run               |
-      | run w --process p |
-      | run --process p   |
-      | run w --param a   |
-      | run w x           |
+      | args                           |
+      | run                            |
+      | run w --process p              |
+      | run --process p                |
+      | run w --param a                |
+      | run w x                        |
+      | run w --continue R1 --reuse R2 |
 
   Scenario Outline: A request may continue a run
     When "agister <args>" runs
@@ -57,3 +58,12 @@ Feature: The command line runs a request
       | args                                    | request                    |
       | run w --continue R1                     | the workflow "w"           |
       | run --process p --agent a --continue R1 | the process "p", agent "a" |
+
+  Scenario Outline: A request may reuse a run
+    When "agister <args>" runs
+    Then it asks the port to run <request>, reusing the run "R1"
+
+    Examples:
+      | args                                 | request                    |
+      | run w --reuse R1                     | the workflow "w"           |
+      | run --process p --agent a --reuse R1 | the process "p", agent "a" |
