@@ -50,10 +50,10 @@ Feature: Home page: the featured card and the tiles
 
     Examples:
       | game          | destination                                    |
-      | COMPARE       | question "1/10"                                |
+      | COMPARE       | question "1/10", once its pictures have loaded |
       | ALL DINOSAURS | the dinosaur list                              |
       | CARE          | the care welcome screen                        |
-      | SORT          | a sorting round                                |
+      | SORT          | a sorting round, once its pictures have loaded |
       | FIND THE PAIR | the find-the-pair welcome screen               |
       | SKELETONS     | the skeleton selection screen                  |
 

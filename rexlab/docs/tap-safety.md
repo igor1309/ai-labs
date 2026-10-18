@@ -6,55 +6,45 @@ anything on the screen that appears next. The rule came from MUSEUM on the
 home page (LAB-290): a double tap opened the museum once, but its second
 tap could have landed on a button of the museum.
 
-This is the build once LAB-298 lands; until then the scenarios that
-describe it are tagged `@next`, and screens still wait up to a second for
-their pictures.
+It is built from parts that do not know of each other, each landing in its
+own issue. Until the click filter lands, today's picture waits and one-off
+guards (`MUSEUM_SETTLE` among them) keep double taps safe, and they stay.
 
-## Four parts, each on its own
+## The parts
 
-1. **Screen state.** A tap that changes the screen changes it at once.
-   Each module that has screens (App and each game) keeps them with
-   `useScreens(first, transitionFor)` from `src/screens.ts`, which gives
-   the screen showing and `go(next)`, the only way to change it. `go`
-   takes a screen and nothing else, and nothing waits for pictures
-   before it. A timer a screen starts to change the screen later (a
-   reveal, a departure, a celebration) is stopped when that screen is
-   left, so it never changes a screen the child has gone from.
-2. **Animation.** Each module passes `useScreens` a pure
-   `transitionFor(from, to)` that gives the view transition type of each
-   change: the next question, a page closing to its card, a page sliding
-   left or right, or a plain screen change. `go` applies the type it
-   gives, in the same React transition as the change; no caller names a
-   type.
-3. **Pictures.** One `<Picture>` component shows every picture. While the
-   picture loads it holds its place, with a shimmer unless its screen
-   says otherwise (a body that fades in over its skeleton holds none),
-   and it fades the picture in once decoded. A picture that fails, or is
-   not decoded a second after it was asked for, timed by the timer
-   `src/root.ts` injects, shows what its screen gives for it: the
-   dinosaur symbol on a card, nothing behind a skeleton. Loading pictures ahead (a page's neighbours) is
-   `<Picture>`'s too. Nothing else knows where pictures come from or
-   when they arrive.
-4. **Double taps.** One input filter at the root of the app works on
-   presses, a finger or pointer going down. A press that comes less than
-   500 ms after the release of the last tap that counted, and less than
-   100 px from where that tap was released, is the second tap of a
-   double tap: the filter swallows its whole gesture, the press, any
-   drag that follows, the release and its click. Any other press counts.
-   The window runs from the release because a tap acts on its release: a
-   child who holds the first tap still has the full window after the
-   screen changes. The filter reads the clock `src/root.ts`
-   injects and knows nothing of screens: a quick tap elsewhere is a new,
-   deliberate tap, on whatever screen is showing. Actions inside a
-   screen keep the states their games give them. One cost is accepted:
-   on the sorting board, a card tapped to pick it up and then dragged
-   from the same spot within the window does not move; pressed again, it
-   does.
+1. **Screen state (LAB-298).** App and each game module keep their
+   screens with `useScreens(first, transitionFor)` from `src/screens.ts`,
+   which gives the screen showing and `go(next)`, the only way to change
+   it. `go` knows nothing of pictures or input.
+2. **Animation (LAB-298).** Each module's `transitionFor(from, to,
+   intent)` is a pure function that gives each change's view transition
+   type; `go` applies it in the same React transition as the change. A
+   change the two screens alone cannot tell apart passes its intent: a
+   catalogue page going previous or next, also when the list wraps or has
+   one or two dinosaurs. No call site names a transition type.
+3. **Timers owned by their occurrence (LAB-298).** A timer that changes
+   the screen later (a care reaction or departure, a pairs miss or
+   celebration, a skeleton reveal or help) belongs to its visit, board or
+   puzzle, and is stopped when that occurrence ends, the game left
+   included. Updates inside the occurrence (a bone fitted, a card turned)
+   do not stop it.
+4. **Double taps (LAB-303).** One filter at the root of the app drops a
+   pointer click less than 500 ms and less than 100 px after the last
+   click that counted, timed by each event's own time, which `src/root.ts`
+   reads and hands it. It knows nothing of screens. Presses, drags and
+   scrolling are untouched; keyboard and assistive activation are not
+   filtered. Accepted cost: two controls closer than 100 px, such as
+   neighbouring find-the-pair cards tapped near their shared edge, count
+   once if tapped within 500 ms.
+5. **Pictures (LAB-304).** One `<Picture>` component holds a picture's
+   place with a shimmer while it loads and fades it in once decoded, so
+   no screen waits for its pictures before it changes. Each game's
+   loading and failure behaviour is specified in that issue.
 
 ## Why 500 ms and 100 px
 
-Platforms recognise a double tap by time and place: a window from the
-first release to the next press of 300 to 500 ms (Android and Hammer.js 300 ms, WebKit's media controls 350 ms,
+Platforms recognise a double tap by time and place: a window of 300 to
+500 ms (Android and Hammer.js 300 ms, WebKit's media controls 350 ms,
 React Native Gesture Handler 500 ms) and Android's double-tap slop of
 100 dp. No study measures how far apart a child of 5–7 taps twice by
 accident; 500 ms takes the cautious end. If deliberate taps are lost on
@@ -64,29 +54,13 @@ arXiv:1402.1036, section 6 (about 400 ms, some up to 750 ms).
 
 ## Forbidden
 
-Each item names what the architecture test (LAB-300) searches for.
+Each item lands with its part, and an architecture test searches for it.
 
-- `startTransition` or `addTransitionType` outside `src/screens.ts`.
-- A `useState` or `useReducer` that holds a module's screen type outside
-  `src/screens.ts`: screens are kept only with `useScreens`.
-- Importing `waitForPictures` or `decodedPictures`, or taking a
-  `LoadPicture`, anywhere but `<Picture>` and `src/root.ts`.
+- `startTransition` or `addTransitionType` outside `src/screens.ts`, and
+  a `useState` holding a module's screen type outside it (LAB-298).
 - `setTimeout`, `setInterval`, `Date.now()`, `performance.now()` or an
-  event's `timeStamp` outside `src/root.ts`; screens and games use the
-  timer and clock it injects.
-- A one-off guard on a single button. No search finds it; code review
-  does.
-
-## How it is checked
-
-- `docs/features/double-tap.feature` (LAB-298): a double tap on one
-  control of each kind opens one screen and presses nothing on it. Its
-  rows are examples: the filter covers every control by sitting at the
-  root, not by a list.
-- Unit tests of each part on its own (LAB-299): `useScreens` as plain
-  state, each module's `transitionFor` as a table, `<Picture>` with
-  pictures that load, fail or are not decoded within a second, a
-  screen's timer stopped as the screen is left, and the filter with a
-  fake clock.
-- An architecture test (LAB-300) fails on each searchable item above,
-  with a message pointing here.
+  event's `timeStamp` outside `src/root.ts` (LAB-303).
+- Calling `waitForPictures`, or taking a `LoadPicture`, outside
+  `<Picture>` and `src/root.ts` (LAB-304).
+- A one-off guard on a single button, once the click filter has landed.
+  No search finds it; code review does.

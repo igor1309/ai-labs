@@ -11,8 +11,8 @@ https://rexlab.enoa.ai from the Cloudflare Pages project `rexlab`.
 Architecture: `docs/mvp-infrastructure.md`. Every dinosaur fact (names,
 height, which is hip height, mass, diet, traits) follows the rules and
 sources of `docs/sources.md`.
-A double tap counts as one tap: screens, their pictures and taps follow
-`docs/tap-safety.md`.
+A double tap counts as one tap: screens, their animation, timers, taps and
+pictures follow `docs/tap-safety.md`.
 
 ## Product principles
 

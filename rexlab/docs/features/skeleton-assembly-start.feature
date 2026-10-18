@@ -35,14 +35,6 @@ Feature: Skeleton assembly: choosing a dinosaur
     And no pieces are placed yet
     And I see "MUSEUM" and "HOME" with their symbols
 
-  @next
-  Scenario: A puzzle starts at once, its bones shimmering
-    Given I am on the skeleton selection screen
-    And the outline and pieces of Triceratops are still loading
-    When I tap Triceratops
-    Then its puzzle starts at once
-    And the outline and each piece still loading shimmer in their place, then fade in once loaded
-
   Scenario: A quick double tap starts one puzzle
     Given I am on the skeleton selection screen
     When I tap Tyrannosaurus twice quickly

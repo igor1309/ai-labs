@@ -44,12 +44,11 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     And leaving or reloading during the reveal keeps the reward and completed stand
     And no hint appears after completion
 
-  @next
   Scenario: A missing body picture does not block the reward
     Given a dinosaur's body picture cannot load
     When I finish its skeleton
     Then I see the completed skeleton, its name, fact and reward
-    And the result appears when the reveal ends, without waiting for the picture
+    And the result appears without waiting more than one second for the missing picture
     And I can open the museum or build another dinosaur
 
   Scenario: Build another returns to dinosaur selection
