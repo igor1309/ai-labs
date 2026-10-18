@@ -14,6 +14,11 @@
   commit messages.
 - Never merge a red or incomplete PR. Stop and report the failure if required
   CI fails.
+- `scripts/watch-pr.sh` exits 3 when a check has waited 15 minutes for a
+  runner, naming it, and 4 when checks are still pending after 90 minutes.
+  Either way, stop and report the stuck check. A `local-mac` job means the
+  self-hosted runner on this Mac lost GitHub, as it did after a proxy
+  password rotation. Do not rerun the watch in a loop.
 - Stop if cleanup reports a dirty worktree, a non-fast-forward update, or any
   other unsafe condition. Never force past the check.
 - Do not force-merge, force-delete branches, or discard untracked work.
