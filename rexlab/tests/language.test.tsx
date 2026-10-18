@@ -10,6 +10,7 @@ import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { versionFooter } from "../src/root.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
@@ -38,6 +39,7 @@ import {
   seededRandom,
   sortingBy,
   symbolOf,
+  unreadVersion,
   words,
   type ManualOrientation,
   type ManualTimers,
@@ -67,13 +69,15 @@ function openApp({
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
   progress = emptyProgress(),
-  timers = loadedPictures()
+  timers = loadedPictures(),
+  nameVersion = unreadVersion
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
+  nameVersion?: (label: string) => void;
 }) {
   const view = render(
     <App
@@ -85,6 +89,7 @@ function openApp({
       progress={progress}
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
+      nameVersion={nameVersion}
       {...lightDevice()}
       {...emptyCare()}
       {...emptySorting()}
@@ -238,14 +243,14 @@ describe("the language menu", () => {
   ])(
     "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
     async (device, first, menu, choice, tile, then, home, menuBack, choiceBack) => {
-      // index.html's footer, which the test page does not have.
+      // index.html's footer, named as the app in a browser names it.
       const footer = document.createElement("footer");
       footer.id = "version";
       footer.setAttribute("aria-label", "Version");
       footer.textContent = "v1.2.3";
       document.body.append(footer);
       try {
-        const { user } = openApp({ device });
+        const { user } = openApp({ device, nameVersion: versionFooter(document) });
         expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
 
         await chooseFrom(user, menu, choice);

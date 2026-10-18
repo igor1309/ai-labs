@@ -26,6 +26,7 @@ import {
   memoryStorage,
   sameColour,
   seededRandom,
+  unreadVersion,
   words
 } from "./support.ts";
 
@@ -41,6 +42,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => memoryStorage())}
+      nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => memoryStorage())}
       {...loadedPictures()}

@@ -33,11 +33,22 @@ export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
   navigator: { language: string };
-  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">;
+  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener"> & {
+    getElementById(id: string): Pick<Element, "setAttribute"> | null;
+  };
   Image: new () => DecodingImage;
   setTimeout(fire: () => void, ms: number): number;
   clearTimeout(id: number): void;
 };
+
+// Names index.html's version footer, which stands outside the app.
+export function versionFooter(document: Browser["document"]): (label: string) => void {
+  const footer = document.getElementById("version");
+  if (!footer) {
+    throw new Error("index.html has no #version element");
+  }
+  return (label) => footer.setAttribute("aria-label", label);
+}
 
 // The app's collaborators in a browser. Progress, the chosen language and
 // the chosen theme outlive the visit, so all of them are kept in local
@@ -59,6 +70,7 @@ export function appProps(browser: Browser): AppProps {
     progress: localProgress(storage),
     deviceLanguage: browser.navigator.language,
     languageStore: localLanguage(storage),
+    nameVersion: versionFooter(browser.document),
     appearance: { isDark: appearance.dark, subscribe: appearance.watch },
     themeStore: localTheme(storage),
     visitors: readVisitors(records),

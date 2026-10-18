@@ -82,6 +82,9 @@ export type AppProps = CareGameProps &
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
     languageStore: LanguageStore;
+    // Gives the version footer, which the static page holds outside the
+    // app, its name for a screen reader.
+    nameVersion: (label: string) => void;
     appearance: Appearance;
     themeStore: ThemeStore;
     loadPicture: LoadPicture;
@@ -147,6 +150,7 @@ export function App({
   progress,
   deviceLanguage,
   languageStore,
+  nameVersion,
   appearance,
   themeStore,
   loadPicture,
@@ -166,12 +170,11 @@ export function App({
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
 
-  // The version footer is part of the static page, outside the app, so
-  // its name follows the language here, with the page's.
+  // The version footer's name follows the language, with the page's.
   useEffect(() => {
     document.documentElement.lang = language;
-    document.getElementById("version")?.setAttribute("aria-label", TEXTS[language].versionLabel);
-  }, [language]);
+    nameVersion(TEXTS[language].versionLabel);
+  }, [language, nameVersion]);
 
   const chooseLanguage = (chosen: Language) => {
     setLanguage(chosen);

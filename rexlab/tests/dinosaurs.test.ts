@@ -197,7 +197,7 @@ describe("the shipped dinosaur list", () => {
     }
   });
 
-  // Copy the copy check corrected, written out here so a revert fails.
+  // Copy whose wording is settled, written out in full.
   it.each([["apatosaurus", "ru", "ОГРОМНЫЙ ДИНОЗАВР С ДЛИННОЙ, ОЧЕНЬ ТОЛСТОЙ И КРЕПКОЙ ШЕЕЙ."]] as const)(
     "keeps the corrected description of %s in %s",
     (id, language, text) => {

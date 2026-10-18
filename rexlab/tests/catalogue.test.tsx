@@ -28,6 +28,7 @@ import {
   sameColour,
   seededRandom,
   symbolOf,
+  unreadVersion,
   words,
   type ManualPictures
 } from "./support.ts";
@@ -49,6 +50,7 @@ function openApp({
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => languages)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
