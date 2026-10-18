@@ -33,14 +33,30 @@ Feature: A turn failed on capacity is retried
 
   Scenario Outline: A wait that is ended ends the call
     Given a model step of the time limit 10m, whose first turn fails at
-      capacity
+      capacity at 9m45s
     When <what> during the wait
     Then it makes one turn, and ends interrupted, class "<class>"
 
     Examples:
       | what                        | class     |
-      | the timer reaches 10m       | timeout   |
+      | the time limit passes       | timeout   |
       | the caller cancels the call | cancelled |
+
+  Scenario: A turn at capacity that reported another session fails
+    Given a model step whose first turn reports the session "s1", then
+      goes stale, and whose recovery turn reports the session "s2", then
+      fails at capacity
+    When the call is made
+    Then it makes 2 turns, the timer waiting for no retry, and ends
+      failed, class "runtime_error", the reason that the turn reported
+      the session "s2", not "s1"
+
+  Scenario: A rerun keeps the session its turn was given
+    Given a model step whose first turn reports the session "s1", then
+      goes stale, and whose recovery turn fails at capacity, reporting
+      no session, and whose third turn completes
+    When the call is made
+    Then the third turn is given the session "s1"
 
   Scenario: A retry spends none of the recovery
     Given a model step of 1 resume, whose first turn fails at capacity,

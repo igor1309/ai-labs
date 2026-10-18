@@ -988,16 +988,18 @@ before its other classes.
 `capacity`, while the call has made fewer than three turns of that end,
 and neither its context nor its time limit has ended: it waits on its
 timer, 30 seconds after the first such turn, 60 after the second, then
-makes the turn as the step gives it, resuming the session the failed
-turn reported, where it reported one and no other than the one it
-resumed; else as the step gives it, its session the step's. A wait the
+makes the turn as the step gives it, in the session the failed turn
+reported, else in the session that turn was given, none for a first
+turn. A capacity turn that reported a session other than the one it
+resumed is not retried: it fails the call, `runtime_error`, as any turn
+that strayed does. A wait the
 time limit ends ends the call interrupted, `timeout`; one the caller's
 context ends, interrupted, `cancelled`. A retry spends none of the
 step's recovery, and what follows it follows it as it would any turn, a
 recovery turn included. The call's cost, usage and session are its
-turns', as a recovered call's are. A call whose last capacity turn is
-not retried ends failed, `capacity`, its reason the turn's, after
-"<n> turns at capacity: ". Its report grows a turn at capacity: its
+turns', as a recovered call's are. A call whose third capacity turn
+ends it fails, `capacity`, its reason the turn's, after "3 turns at
+capacity: ". Its report grows a turn at capacity: its
 reason, and the wait before its retry, none where none follows.
 
 **`core/workflow`** gives a call's capacity report to its events port,
@@ -1006,8 +1008,9 @@ one. **`runstore`**'s event grows the kind `capacity`, with `reason`
 and `retrying`.
 
 **The composition** prints a turn at capacity as a progress line,
-`· <step>: at capacity; retrying in 30s`, or `· <step>: at capacity`
-where no retry follows, and records an event:
+`· <step>: at capacity; retrying in <wait>`, the wait as the progress
+prints a duration, or `· <step>: at capacity` where no retry follows,
+and records an event:
 
 ```json
 {"at": "", "step": "a", "kind": "capacity", "reason": "", "retrying": true}
@@ -1025,5 +1028,9 @@ Decisions, each with its reason:
 - The wait is fixed, not drawn at random: calls side by side that hit
   capacity together are few, and a fixed wait is tested on a timer.
 - Each turn at capacity is an event, not an entry in `record.json`, as
-  a stale turn is: events are the run's history.
+  a stale turn is: events are the run's history. The event keeps
+  whether a retry follows, not its wait: the wait is the policy's, by
+  the turn's place, and the next event's time shows it.
+- A codex turn that failed reports no usage, so a retried codex call's
+  usage is unknown: unknown, never zero (ADR-001, invariant 3).
 - No cost limit bounds the retries: none is run yet (`run-path.md`).
