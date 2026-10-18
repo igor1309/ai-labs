@@ -20,7 +20,8 @@ import {
 import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
+import { LoadAhead } from "./Picture.tsx";
+import type { StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 
@@ -37,7 +38,6 @@ export type PairsGameProps = {
   pairsProgress: PairsProgressStore;
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
-  loadPicture: LoadPicture;
   startTimer: StartTimer;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
@@ -45,10 +45,6 @@ export type PairsGameProps = {
 
 // The dinosaur on the welcome screen's cards.
 const HERO = "triceratops";
-
-// The longest a board waits for its pictures, in milliseconds, as a
-// question does for its pictures.
-const PICTURE_WAIT = 1000;
 
 // How long a miss stays open before it turns back, in milliseconds, the
 // same with reduced motion: long enough to see both cards. And how long
@@ -73,7 +69,7 @@ export function transitionFor(from: PairsScreen, to: PairsScreen): string | unde
 // the iPad pauses a board without losing it. `onHome` takes the child
 // back to the home page; `onStart` is told as each board is dealt.
 export function usePairsGame(
-  { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion }: PairsGameProps,
+  { pals, pairsProgress, bodyPicture, random, startTimer, reducedMotion }: PairsGameProps,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -94,45 +90,30 @@ export function usePairsGame(
   // The miss and celebration timers of the board in play, all stopped as
   // the child leaves it, and null from then on.
   const boardTimers = useRef<OwnedTimers | null>(null);
-  // A board being dealt while its pictures load: a second tap meanwhile
-  // deals nothing more.
-  const starting = useRef(false);
-  // Counts each time the child leaves the game, so pictures that finish
-  // loading after the child has left deal no board.
-  const stay = useRef(0);
   // The board dealt last, so the next one deals other dinosaurs.
   const lastBoard = useRef<Board | undefined>(undefined);
 
   const timings = () => TIMINGS[reducedMotion() ? "reduced" : "motion"];
 
   const leave = () => {
-    stay.current++;
     live.current = null;
     boardTimers.current?.stopAll();
     boardTimers.current = null;
-    starting.current = false;
   };
 
-  // A board is dealt at the level reached, and shows once its pictures
-  // are ready, or the wait runs out, only if the child is still here.
+  // A board is dealt at the level reached and shows at once, its
+  // pictures loading while its cards lie face down. A second PLAY in the
+  // same change deals nothing more.
   const play = () => {
-    if (starting.current) return;
-    starting.current = true;
     const board = dealBoard(pals, keptNow.current.progress.level, random, lastBoard.current);
-    const dealing = stay.current;
-    waitForPictures(
-      board.pals.map(({ id }) => bodyPicture(id)),
-      { loadPicture, startTimer, limit: PICTURE_WAIT },
-      () => {
-        if (stay.current !== dealing) return;
-        starting.current = false;
+    go((current) => (current.kind === "board" ? current : { kind: "board", board, finished: false }), {
+      also: () => {
         lastBoard.current = board;
         live.current = board;
         boardTimers.current = ownedTimers(startTimer);
         onStart();
-        go({ kind: "board", board, finished: false });
       }
-    );
+    });
   };
 
   // The board is recorded the moment its last pair is found, before the
@@ -201,13 +182,16 @@ export function usePairsGame(
         );
       case "board":
         return (
-          <PairsBoardScreen
-            language={language}
-            {...presentPairsBoard(screen.board, language, bodyPicture)}
-            finished={screen.finished}
-            onTurn={turnCard}
-            onHome={home}
-          />
+          <>
+            <LoadAhead urls={screen.board.pals.map(({ id }) => bodyPicture(id))} />
+            <PairsBoardScreen
+              language={language}
+              {...presentPairsBoard(screen.board, language, bodyPicture)}
+              finished={screen.finished}
+              onTurn={turnCard}
+              onHome={home}
+            />
+          </>
         );
       case "result":
         return <PairsResultScreen language={language} {...presentPairsResult(screen.result, language, bodyPicture)} onPlayAgain={play} onHome={home} />;

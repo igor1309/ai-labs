@@ -1,6 +1,7 @@
 import { ChartNoAxesColumnIncreasing, Copy, Footprints, House, Play, Star } from "lucide-react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 export type PairsWelcomeScreenProps = {
@@ -36,10 +37,10 @@ export function PairsWelcomeScreen({ language, level, stars, heroPicture, onPlay
             </span>
           </span>
           <span className="pairs-hero-card pairs-hero-silhouette">
-            <img className="pairs-hero-picture pair-silhouette" src={heroPicture} alt="" draggable={false} />
+            <Picture className="pairs-hero-picture pair-silhouette" src={heroPicture} alt="" width={800} height={600} />
           </span>
           <span className="pairs-hero-card pairs-hero-picture-card">
-            <img className="pairs-hero-picture" src={heroPicture} alt="" draggable={false} />
+            <Picture className="pairs-hero-picture" src={heroPicture} alt="" width={800} height={600} />
           </span>
         </div>
         <div className="pairs-start">

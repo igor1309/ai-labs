@@ -116,8 +116,8 @@ export const heartsShown = () => screen.getByLabelText("HEARTS").textContent;
 
 export const needStates = () => [...document.querySelectorAll(".need")].map((need) => need.getAttribute("data-state"));
 
-// What the need's bubble pictures, by its pictures' names.
-export const bubbleShows = () => [...document.querySelectorAll(".need-bubble .bubble-picture")].map((picture) => picture.getAttribute("data-item"));
+// What the need's bubble pictures, by its loaded pictures' names.
+export const bubbleShows = () => [...document.querySelectorAll(".need-bubble .bubble-picture")].map((picture) => /^\/care\/(.+)\.webp$/.exec(picture.getAttribute("src") ?? "")?.[1] ?? null);
 
 export const scoreShown = () => screen.getByLabelText("SCORE").textContent;
 

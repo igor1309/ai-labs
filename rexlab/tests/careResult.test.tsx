@@ -112,18 +112,15 @@ describe("a finished visit", () => {
     expect(storedCare(storage)).toMatchObject({ bestScore: 7 });
   });
 
-  it("gives way to one fresh visit by another dinosaur on a quick double tap of NEW VISITOR", async () => {
+  it("gives way at once to one fresh visit by another dinosaur on a quick double tap of NEW VISITOR", async () => {
     const clock = manualPictures();
     const { user, storage } = openCareApp({ clock });
-    await openCare(user);
-    await user.click(button("NEW VISITOR"));
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
+    await welcomeVisitor(user);
+    act(() => clock.finishAll());
     await playVisit(user, clock);
 
     await user.dblClick(button("NEW VISITOR"));
 
-    expect(clock.loading()).toEqual([fakeBodyPicture("triceratops")]);
-    act(() => clock.finish(fakeBodyPicture("triceratops")));
     expect([visitorShown().id, heartsShown(), needStates()]).toEqual(["triceratops", "0", ["current", "pending", "pending", "pending"]]);
     expect(storedCare(storage)).toMatchObject({ visitsFinished: 1 });
   });

@@ -257,11 +257,10 @@ describe("starting a game", () => {
 
 // Each game whose start waits for its pictures, the buttons on the way to
 // its start, and the button that starts it.
-const WAITING: Array<[start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement]> = [
-  ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
-  ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
+type Start = [start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement];
+
+const WAITING: Start[] = [
   ["a sorting round", "sort", [], () => homeTile("SORT")],
-  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
   ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
   ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
 ];
@@ -284,6 +283,34 @@ describe("a start that waits for its pictures", () => {
     act(() => pictures.fire(1000));
     expect(counted).toEqual([game]);
     loadAll();
+    expect(counted).toEqual([game]);
+  });
+});
+
+// Each game whose start shows at once, its pictures loading, the buttons
+// on the way to its start, and the button that starts it.
+const AT_ONCE: Start[] = [
+  ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
+  ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
+  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")]
+];
+
+describe("a start that does not wait for its pictures", () => {
+  it.each(AT_ONCE)("counts one start of %s, its game %s, at once for two taps in one moment, and none more as they arrive", async (_start, game, way, begin) => {
+    const pictures = manualPictures();
+    const { counted, startCounter } = countedStarts();
+    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
+    loadShownPictures(pictures);
+    for (const step of way) await user.click(step());
+    const starting = begin();
+
+    act(() => {
+      starting.click();
+      starting.click();
+    });
+
+    expect(counted).toEqual([game]);
+    act(() => pictures.finishAll());
     expect(counted).toEqual([game]);
   });
 });

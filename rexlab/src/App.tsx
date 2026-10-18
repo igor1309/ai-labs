@@ -279,7 +279,7 @@ export function App({
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
-  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home, counting("care"));
+  const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"));
 
   const openCare = () => {
     leaveHome();
@@ -298,7 +298,7 @@ export function App({
   const leaveHome = () => sorting.cancel();
 
   const pairs = usePairsGame(
-    { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    { pals, pairsProgress, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion },
     home,
     counting("pairs")
   );

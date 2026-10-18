@@ -1,7 +1,8 @@
-import { Bath, Check, Droplet, Footprints, Heart, House, Moon, Undo2, Utensils, type LucideIcon } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import { Bath, Check, Droplet, Heart, House, Moon, Undo2, Utensils, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 export type CareItem = keyof Texts["items"];
@@ -46,9 +47,6 @@ export type VisitScreenProps = {
 export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: VisitScreenProps) {
   const text = TEXTS[language];
   const { id, name, picture, needs, hearts, need, bubble, suggested, refused, reacting, leaving } = visit;
-  // The visitor whose picture failed to load: its name then carries a
-  // dinosaur symbol in its place, and the visit goes on without it.
-  const [missing, setMissing] = useState<string>();
   // Items are taken only while a need is asked, so a tap during a
   // reaction, or once the visitor leaves, gives nothing.
   const busy = need === undefined || reacting !== null;
@@ -81,10 +79,12 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
         <span className="stage-glow" aria-hidden="true" />
         <span className="stage-ground" aria-hidden="true" />
         <h1 className="visitor-name" aria-label={name}>
-          {missing === id && <Footprints className="visitor-missing" size={36} aria-hidden="true" />}
           {name.toLocaleUpperCase(language)}
         </h1>
-        {missing !== id && <img key={id} className="visitor" src={picture} alt="" draggable={false} onError={() => setMissing(id)} />}
+        {/* The visitor moves; its picture's place shimmers and fades inside. */}
+        <span key={id} className="visitor">
+          <Picture className="visitor-picture" src={picture} alt="" width={800} height={600} />
+        </span>
         {need !== undefined && bubble.length > 0 && (
           // A new bubble grows from its tail, and so does the one showing
           // what to try after a refusal.
@@ -93,7 +93,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
             <span className="bubble-tail bubble-tail-2" />
             <span className="bubble-art" data-count={bubble.length}>
               {bubble.map((shown) => (
-                <img key={shown} className="bubble-picture" data-item={shown} src={itemPicture(shown)} alt="" draggable={false} />
+                <Picture key={shown} className="bubble-picture" src={itemPicture(shown)} alt="" width={400} height={300} />
               ))}
               {need === "tired" && (
                 <span className="bubble-badge">
@@ -105,7 +105,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
         )}
         {reacting && (
           <span key={`${reacting.item}-${reacting.reaction}`} className="given" data-reaction={reacting.reaction} aria-hidden="true">
-            <img className="given-picture" src={itemPicture(reacting.item)} alt="" draggable={false} />
+            <Picture className="given-picture" src={itemPicture(reacting.item)} alt="" width={400} height={300} />
             {reacting.reaction === "refusal" && <Undo2 className="turn-away" size={56} />}
           </span>
         )}
@@ -175,7 +175,7 @@ function TrayItem({ item, label, picture, suggested, refused, busy, onGive }: Tr
       onClick={() => onGive(item)}
       {...pointer}
     >
-      <img className="tray-picture" src={picture} alt="" draggable={false} />
+      <Picture className="tray-picture" src={picture} alt="" width={400} height={300} />
       <span className="tray-label">{label}</span>
     </button>
   );
