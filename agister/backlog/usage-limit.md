@@ -14,7 +14,7 @@ Three things cost a run each:
   A run on another agent is refused, as the worktree is not clean, so
   the changes had to be saved as a patch by hand and the files reset.
 - A review's judge stopped by the limit threw away five finished
-  reviews (`rerun-the-join.md`).
+  reviews (since "Reuse", `--reuse` runs the judge alone).
 - Nothing waited for the reset: the caller watched the clock and ran
   it again.
 
