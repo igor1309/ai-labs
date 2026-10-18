@@ -112,14 +112,21 @@ describe("the sorting game's transition for each change", () => {
   const screens: SortingScreen[] = [undefined, { kind: "board", sorting }, { kind: "result", result: finishSorting(sorting, undefined, beatBest) }];
 
   it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
-    expect(sortingTransitionFor(from, to)).toBe(type);
+    expect(sortingTransitionFor(from, to, undefined)).toBe(type);
   });
 
   it("changes a board at once as a card is dropped", () => {
     const card = sorting.board.cards[0];
     if (!card) throw new Error("Expected a card");
 
-    expect(sortingTransitionFor({ kind: "board", sorting }, { kind: "board", sorting: drop(sorting, card.dinosaur.id, card.basket) })).toBeUndefined();
+    expect(sortingTransitionFor({ kind: "board", sorting }, { kind: "board", sorting: drop(sorting, card.dinosaur.id, card.basket) }, undefined)).toBeUndefined();
+  });
+
+  it("shows a board started over the board kept from before as the plain screen change", () => {
+    const next = startBoard(SHIPPED_SORTABLES, seededRandom(2), sorting);
+
+    expect(sortingTransitionFor({ kind: "board", sorting }, { kind: "board", sorting: next }, "start")).toBe(SCREEN_CHANGE);
+    expect(sortingTransitionFor(undefined, { kind: "board", sorting: next }, "start")).toBe(SCREEN_CHANGE);
   });
 });
 

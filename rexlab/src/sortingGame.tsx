@@ -35,10 +35,10 @@ const PICTURE_WAIT = 1000;
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
-// A drop changes the board at once; a board shown, or its result, is the
-// plain screen change.
-export function transitionFor(from: SortingScreen | undefined, to: SortingScreen | undefined): string | undefined {
-  return from?.kind === to?.kind ? undefined : SCREEN_CHANGE;
+// A board started, even over one left on HOME and still kept, or its
+// result, is the plain screen change; a drop changes the board at once.
+export function transitionFor(from: SortingScreen | undefined, to: SortingScreen | undefined, intent: "start" | undefined): string | undefined {
+  return intent === "start" || from?.kind !== to?.kind ? SCREEN_CHANGE : undefined;
 }
 
 // The sorting game, kept by its owner above the orientation gate, so
@@ -50,7 +50,7 @@ export function useSortingGame(
   onHome: () => void,
   onStart: () => void
 ) {
-  const { screen, go } = useScreens<SortingScreen | undefined>(undefined, transitionFor);
+  const { screen, go } = useScreens<SortingScreen | undefined, "start">(undefined, transitionFor);
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
   const last = useRef<Sorting | undefined>(undefined);
@@ -76,7 +76,7 @@ export function useSortingGame(
       starting.current = false;
       last.current = sorting;
       onStart();
-      go({ kind: "board", sorting }, { also: shown });
+      go({ kind: "board", sorting }, { intent: "start", also: shown });
     });
   };
 

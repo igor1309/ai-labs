@@ -3,8 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { addTransitionType, Profiler, startTransition } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
+import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
 import { NEXT_QUESTION } from "../src/QuestionScreen.tsx";
-import { useScreens, type TransitionFor } from "../src/screens.ts";
+import { SCREEN_CHANGE, useScreens, type TransitionFor } from "../src/screens.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -18,6 +19,7 @@ import {
   featuring,
   homeTile,
   lightDevice,
+  loadedPictures,
   unsetAgeLevel,
   manualOrientation,
   manualPictures,
@@ -171,5 +173,61 @@ describe("the screen changes of the app", () => {
       ["true", null],
       ["true", null]
     ]);
+  });
+});
+
+// The app on the home page, its pictures ready at once, with the
+// catalogue it is given.
+function openApp(catalogue = SHIPPED_CATALOGUE) {
+  render(
+    <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />
+  );
+  return userEvent.setup();
+}
+
+// The transition types added since the last call.
+function typesAdded() {
+  const types = vi.mocked(addTransitionType).mock.calls.map(([type]) => type);
+  vi.mocked(addTransitionType).mockClear();
+  return types;
+}
+
+describe("the screen changes of the games and pages", () => {
+  // HOME keeps the board left unfinished, so the next board is shown over
+  // it: still the plain screen change, as the first one was.
+  it("shows SORT reopened after HOME as the plain screen change, as the first time", async () => {
+    const user = openApp();
+    typesAdded();
+
+    await user.click(homeTile("SORT"));
+    expect(typesAdded()).toContain(SCREEN_CHANGE);
+
+    await user.click(screen.getByRole("button", { name: "HOME" }));
+    typesAdded();
+    await user.click(homeTile("SORT"));
+
+    expect(typesAdded()).toEqual([SCREEN_CHANGE]);
+  });
+
+  it.each([
+    ["a catalogue, from a page in the middle", 42, 20],
+    ["a catalogue, from its last page, going round", 42, 41],
+    ["a catalogue of two", 2, 0],
+    ["a catalogue of two, from its last page", 2, 1],
+    ["a catalogue of one", 1, 0]
+  ])("slides a dinosaur's page in each arrow's direction, on %s", async (_, size, at) => {
+    const catalogue = SHIPPED_CATALOGUE.slice(0, size);
+    const shown = catalogue[at];
+    if (!shown) throw new Error("Expected a dinosaur");
+    const user = openApp(catalogue);
+    await user.click(homeTile("ALL DINOSAURS"));
+    await user.click(screen.getByRole("button", { name: shown.name.en }));
+    typesAdded();
+
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
+    expect(typesAdded()).toEqual([NEXT_DINOSAUR]);
+
+    await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
+    expect(typesAdded()).toEqual([PREVIOUS_DINOSAUR]);
   });
 });
