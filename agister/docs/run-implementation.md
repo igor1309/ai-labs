@@ -989,10 +989,10 @@ before its other classes.
 and neither its context nor its time limit has ended: it waits on its
 timer, 30 seconds after the first such turn, 60 after the second, then
 makes the turn as the step gives it, in the session the failed turn
-reported, else in the session that turn was given, none for a first
-turn. A capacity turn that reported a session other than the one it
-resumed is not retried: it fails the call, `runtime_error`, as any turn
-that strayed does. A wait the
+reported, else in the session that turn was given, a continued call's
+first turn included. A capacity turn that reported a session other than
+the one it resumed is not retried: it fails the call, `runtime_error`,
+as any turn that strayed does. A wait the
 time limit ends ends the call interrupted, `timeout`; one the caller's
 context ends, interrupted, `cancelled`. A retry spends none of the
 step's recovery, and what follows it follows it as it would any turn, a

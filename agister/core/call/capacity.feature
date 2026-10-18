@@ -16,12 +16,13 @@ Feature: A turn failed on capacity is retried
     And the call ends completed, its output the text "done"
     And it reports the turn at capacity, retrying in 30s
 
-  Scenario: A turn at capacity with no session runs again
-    Given a model step whose first turn fails at capacity, reporting no
-      session, and whose second turn completes
+  Scenario: A turn at capacity with no session runs again in its own
+    Given a model step continuing the session "s0", whose first turn
+      fails at capacity, reporting no session, and whose second turn
+      completes
     When the call is made
-    Then the second turn is given the step's session, none, and the
-      call ends completed
+    Then the second turn is given the session "s0", and the call ends
+      completed
 
   Scenario: Three turns at capacity end the call
     Given a model step whose every turn fails at capacity
