@@ -10,18 +10,20 @@ a button of the museum.
 ## The rule
 
 1. **Screen changes go through one place.** Every screen change goes
-   through one guarded entry point, never a direct write of the screen
-   state. It does nothing when asked for the screen already showing, or
-   for the screen already on its way. While a change waits for its
-   pictures, a request for another screen replaces it: the waiting change
-   is dropped and never opens. Once a new screen begins to appear, no
-   screen takes a tap or starts a drag until it has finished appearing:
-   when its view transition ends, or, where the browser runs none, when
-   it is shown. A screen is the same screen when it is of the same kind
-   and shows the same thing (the same question, the same dinosaur).
-   Updates inside the screen showing, such as an answer chosen or a food
-   chosen, also pass through the entry point but are not screen changes:
-   rules 2 and 3 govern them, not this one.
+   through one guarded entry point in `src/screens.ts`, never a direct
+   write of the screen state. A request names the kind of screen it asks
+   for (a question, the dinosaur list, a dinosaur's page, a game's board).
+   The entry point does nothing when asked for the kind of screen already
+   showing or already on its way, so a second tap on SORT or PLAY AGAIN
+   deals no second round; a dinosaur's page asked for is the same request
+   only for the same dinosaur. While a change waits for its pictures, a
+   request for another kind of screen replaces it: the waiting change is
+   dropped and never opens. Once a new screen begins to appear, no screen
+   takes a tap or starts a drag until it has finished appearing: when its
+   view transition ends, or, where the browser runs none, when it is
+   shown. Updates inside the screen showing, such as an answer chosen or
+   a food chosen, go through the entry point's own call for updates, not
+   its screen changes: rules 2 and 3 govern them.
 2. **Actions inside a screen are idempotent.** An action that has started
    (an answer chosen, a card turned, a round or board started, a bone
    dropped, a care action, a skeleton chosen) holds an explicit state, and
@@ -34,11 +36,12 @@ a button of the museum.
 4. **No time-based delays as the fix.** A tap is never made safe by
    ignoring taps for a number of milliseconds. Such a wrapper may stay as
    a safety net behind the rule, never as what makes a tap safe. Timers
-   are injected by the composition root, `src/root.ts`.
+   are injected by the composition root, `src/root.ts`, and a safety-net
+   guard takes its timer from there, as the wait for pictures does.
 
 ## Forbidden
 
-- Writing the screen state anywhere but the guarded entry point: no
+- Writing the screen state anywhere but `src/screens.ts`: no
   `setScreen(` call, nor `changeScreen` around one, in `App.tsx`, a game
   module or a screen.
 - A one-off guard on a single button in place of the entry point or an
@@ -50,8 +53,9 @@ a button of the museum.
 Two checks keep the rule, added with its sibling issues:
 
 - **The double-tap test** (LAB-299): a registry lists every tappable entry
-  point (home tiles, MUSEUM, back and home buttons, result buttons and
-  each game's start and next buttons). Each is tapped twice quickly, and
+  point, such as the home tiles, the large card, MUSEUM, back and home
+  buttons, result buttons, the catalogue's cards and arrows, the skeleton
+  cards, REBUILD, FRIENDS and each game's start and next buttons. Each is tapped twice quickly, and
   exactly one screen change may follow, with nothing pressed on the next
   screen. A screen with no registry entry fails the test.
 - **The architecture test** (LAB-300), in `tests/architecture.test.ts`:

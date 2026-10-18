@@ -1,15 +1,17 @@
-@next
 Feature: Every tap is safe to repeat
   A child of 5–7 often taps twice, or keeps tapping while a screen
   changes. A quick double tap does what one tap does: it opens one
   screen, starts one thing, and presses nothing on the screen that
   appears next. docs/tap-safety.md states the rule. The rows below are
   examples of each kind of control; the double-tap test's registry
-  (LAB-299) lists every one.
+  (LAB-299) lists every one. A second trigger of an action inside a
+  screen (an answer, a card turned, water given) is specified in each
+  game's own feature.
 
   Background:
     Given an iPad in landscape
 
+  @next
   Scenario Outline: A double tap opens one screen and presses nothing on it
     Given I am on <from>
     When I tap <control> twice quickly
@@ -51,6 +53,7 @@ Feature: Every tap is safe to repeat
       | the museum hall, Triceratops built      | "REBUILD"               | the Triceratops skeleton board        | one start of SKELETONS is     |
       | the museum hall                         | "HOME"                  | the home page                         | no start is                   |
 
+  @next
   Scenario Outline: Taps wait until the new screen has appeared
     Given the device <motion>
     And I am on the home page
@@ -66,29 +69,28 @@ Feature: Every tap is safe to repeat
       | does not ask for reduced motion |
       | asks for reduced motion         |
 
+  @next
+  Scenario: A drag waits until the new screen has appeared
+    Given I am on the home page
+    When I tap "SORT"
+    And while the sorting board is still appearing I start dragging a card
+    Then the card does not move
+    When the board has appeared
+    Then I can drag a card to a basket
+
+  @next
   Scenario: Another screen chosen during a wait for pictures replaces it
     Given I am on the home page
-    And the pictures of the next sorting board are still loading
+    And pictures load slowly
     When I tap "SORT"
-    And I tap "ALL DINOSAURS" before they load
+    And I tap "ALL DINOSAURS" before the sorting board's pictures load
     Then I see the dinosaur list
     And the sorting board never opens over it, nor counts a start
 
-  Scenario: An answer chosen takes no second tap
-    Given I am on a question whose left dinosaur is the right answer
-    When I tap the left dinosaur twice quickly
-    Then the answer is marked right once
-    And the score rises by one
-
-  Scenario: A face-down card turned takes no second tap
-    Given I am on a pairs board with no card face up
-    When I tap a face-down card twice quickly
-    Then that one card turns face up
-    And no other card turns
-
-  Scenario: Water given takes no second tap
-    Given I am on a care visit
-    And the dinosaur is thirsty
-    And I have 2 hearts and have not offered an item for that need
-    When I tap water twice quickly
-    Then it drinks only once and earns only 2 hearts, for 4 in all
+  @next
+  Scenario: A second tap on a game's start deals no second round
+    Given I am on the home page
+    And pictures load slowly
+    When I tap "SORT" twice quickly, before the pictures load
+    Then one sorting board is dealt and loads
+    And it opens once its pictures have loaded
