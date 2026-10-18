@@ -272,30 +272,61 @@ describe("localSortingProgress", () => {
 
 const pairs = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, "find-the-pair": entry } });
 
+// Find the pair's entry as stored, under the names it had before the
+// game had levels, and the same progress as the game speaks of it.
 const PAIRS = { stars: 5, level: 3, boardsOnLevel: 1, best: { 1: 4, 2: 6 }, found: ["triceratops"] } as const;
+const PAIRS_PROGRESS = { stars: 5, climbLevel: 3, boardsOnClimbLevel: 1, best: { 1: 4, 2: 6 }, found: ["triceratops"] } as const;
+const NO_CHOICE = { progress: PAIRS_PROGRESS, levelChoice: undefined };
+const CHOICE = { level: "paleontologist", revision: "2-picked" } as const;
 
 describe("localPairsProgress", () => {
-  it("reads no find-the-pair progress from empty storage", () => {
+  it("reads no find-the-pair progress and no level choice from empty storage", () => {
     const storage = memoryStorage();
 
-    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: NO_PAIRS, levelChoice: undefined });
   });
 
   it.each([
-    [PAIRS, PAIRS],
-    [{ ...PAIRS, best: {}, achievements: ["first-board"] }, { ...PAIRS, best: {} }]
-  ])("reads stars, level, boards on it, bests and found dinosaurs from %j", (entry, progress) => {
+    [PAIRS, NO_CHOICE],
+    [{ ...PAIRS, best: {}, achievements: ["first-board"] }, { ...NO_CHOICE, progress: { ...PAIRS_PROGRESS, best: {} } }],
+    [{ ...PAIRS, levelChoice: CHOICE }, { ...NO_CHOICE, levelChoice: CHOICE }],
+    [{ ...PAIRS, levelChoice: { level: "hatchling", revision: null } }, { ...NO_CHOICE, levelChoice: { level: "hatchling", revision: null } }]
+  ])("reads stars, the climb level, boards on it, bests, found dinosaurs and the level choice from %j", (entry, saved) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: pairs(entry) });
 
-    expect(localPairsProgress(() => storage).load()).toEqual(progress);
+    expect(localPairsProgress(() => storage).load()).toEqual(saved);
   });
 
-  it("saves its progress and reads it back after a reload", () => {
+  it("saves and reloads each large level's best beside the climb's, under the same game key", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, levelChoice: CHOICE }) });
+    const best = { ...PAIRS.best, explorer: 11, paleontologist: 14 };
+    const saved = { progress: { ...PAIRS_PROGRESS, best }, levelChoice: CHOICE };
+
+    localPairsProgress(() => storage).save(saved);
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["find-the-pair"]).toEqual({ ...PAIRS, best, levelChoice: CHOICE });
+    expect(localPairsProgress(() => storage).load()).toEqual(saved);
+  });
+
+  it.each([
+    ["no level choice", NO_CHOICE, PAIRS],
+    ["a level choice", { ...NO_CHOICE, levelChoice: CHOICE }, { ...PAIRS, levelChoice: CHOICE }]
+  ])("saves its progress and %s under the names it had before levels, and reads them back after a reload", (_, saved, entry) => {
     const storage = memoryStorage();
 
-    localPairsProgress(() => storage).save(PAIRS);
+    localPairsProgress(() => storage).save(saved);
 
-    expect(localPairsProgress(() => storage).load()).toEqual(PAIRS);
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["find-the-pair"]).toEqual(entry);
+    expect(localPairsProgress(() => storage).load()).toEqual(saved);
+  });
+
+  it("keeps the level choice saved when progress is saved with it again", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, levelChoice: CHOICE }) });
+    const store = localPairsProgress(() => storage);
+
+    store.save({ progress: { ...PAIRS_PROGRESS, stars: 6 }, levelChoice: store.load()?.levelChoice });
+
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { ...PAIRS_PROGRESS, stars: 6 }, levelChoice: CHOICE });
   });
 
   it.each([
@@ -309,15 +340,26 @@ describe("localPairsProgress", () => {
     ["a best of an unknown level", { ...PAIRS, best: { 5: 4 } }],
     ["a best of no tries", { ...PAIRS, best: { 1: 0 } }],
     ["a best in text", { ...PAIRS, best: { 1: "4" } }],
+    ["a large level's best in text", { ...PAIRS, best: { explorer: "9" } }],
+    ["a large level's best of no tries", { ...PAIRS, best: { paleontologist: 0 } }],
+    ["a large level's negative best", { ...PAIRS, best: { explorer: -1 } }],
+    ["a large level's fractional best", { ...PAIRS, best: { paleontologist: 12.5 } }],
+    ["a best of an unknown age level", { ...PAIRS, best: { expert: 12 } }],
     ["found dinosaurs that are not a list", { ...PAIRS, found: "triceratops" }],
     ["a found dinosaur that is not an id", { ...PAIRS, found: [3] }],
+    ["a level choice that is not a record", { ...PAIRS, levelChoice: "explorer" }],
+    ["a level choice of no age level", { ...PAIRS, levelChoice: { level: "expert", revision: "2-picked" } }],
+    ["a level choice of a climb level", { ...PAIRS, levelChoice: { level: 2, revision: "2-picked" } }],
+    ["a level choice with no revision", { ...PAIRS, levelChoice: { level: "explorer" } }],
+    ["a level choice of an empty revision", { ...PAIRS, levelChoice: { level: "explorer", revision: "" } }],
+    ["a level choice of a revision that is not text", { ...PAIRS, levelChoice: { level: "explorer", revision: 2 } }],
     ["an entry that is not a record", 6]
   ])("reads %s as no find-the-pair progress, and keeps the other games'", (_, entry) => {
     const storage = memoryStorage({
       [PROGRESS_KEY]: pairs(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 6, visitsFinished: 1, friends: [] } })
     });
 
-    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: NO_PAIRS, levelChoice: undefined });
     expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
     expect(localCareProgress(() => storage).load()).toEqual({ bestScore: 6, visitsFinished: 1, friends: [] });
   });
@@ -325,13 +367,13 @@ describe("localPairsProgress", () => {
   it("reads progress of an unknown schema version as none", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 2, games: { "find-the-pair": PAIRS } }) });
 
-    expect(localPairsProgress(() => storage).load()).toEqual(NO_PAIRS);
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: NO_PAIRS, levelChoice: undefined });
   });
 
   it("keeps the other games in one record, each saved without touching the others", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
 
-    localPairsProgress(() => storage).save(PAIRS);
+    localPairsProgress(() => storage).save(NO_CHOICE);
     localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: [] });
     localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
 
@@ -352,7 +394,7 @@ describe("localPairsProgress", () => {
     const progress = localPairsProgress(storage);
 
     expect(progress.load()).toBeUndefined();
-    expect(() => progress.save(PAIRS)).not.toThrow();
+    expect(() => progress.save(NO_CHOICE)).not.toThrow();
   });
 });
 
@@ -406,11 +448,11 @@ describe("localSkeletonProgress", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
 
     localSkeletonProgress(() => storage).save(SKELETONS);
-    localPairsProgress(() => storage).save(NO_PAIRS);
+    localPairsProgress(() => storage).save({ progress: NO_PAIRS, levelChoice: undefined });
 
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
-      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": NO_PAIRS }
+      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": { stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [] } }
     });
   });
 

@@ -55,6 +55,7 @@ const SCREENS = [
 ];
 const PRESENTATION = [
   ...SCREENS,
+  "ageLevelPictures.ts",
   "DietTag.tsx",
   "Festivity.tsx",
   "FoodChips.tsx",

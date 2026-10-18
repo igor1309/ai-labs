@@ -1,6 +1,7 @@
 import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
+import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
@@ -9,9 +10,6 @@ import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { usePointerState } from "./usePointerState.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
-
-// Each age level's picture, on its choice and on the menu's button.
-export const AGE_LEVEL_PICTURES: Record<AgeLevel, string> = { hatchling: "🥚", explorer: "🦖", paleontologist: "🦴" };
 
 // The app's name, the same in every language.
 const BRAND = "RexLab";

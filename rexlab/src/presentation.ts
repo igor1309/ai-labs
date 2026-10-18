@@ -6,7 +6,7 @@ import type { Diet as ShownDiet } from "./DietTag.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
-import { LEVELS, type Board, type Celebration as PairsCelebration, type PairsResult } from "./pairs/index.ts";
+import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
 import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
@@ -208,17 +208,24 @@ export function presentSortingResult({ score, total, progress, previousBest, cel
 
 const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
-export type PairsBoardView = Pick<PairsBoardScreenProps, "level" | "tries" | "rows" | "columns" | "cards">;
+export type PairsBoardView = Pick<PairsBoardScreenProps, "climbLevel" | "tries" | "rows" | "columns" | "cardFloor" | "cards">;
+
+// The smallest a card may be, in CSS pixels: 150 on the climb's boards, as
+// find-the-pair-start.feature says, and on a larger level's board its size
+// on the smallest screen of the fit table of find-the-pair-levels.feature.
+const CLIMB_CARD_FLOOR = 150;
+const LARGE_CARD_FLOORS: Record<LargeLevel, number> = { explorer: 130, paleontologist: 120 };
 
 // A card is found once its pair is, open while turned over, and face down
-// otherwise.
+// otherwise. Only a board of the climb shows its climb level.
 export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string): PairsBoardView {
-  const { rows, columns } = LEVELS[board.level];
+  const { rows, columns } = shapeOf(board.level);
   return {
-    level: board.level,
+    climbLevel: "climbLevel" in board.level ? board.level.climbLevel : undefined,
     tries: board.tries,
     rows,
     columns,
+    cardFloor: "climbLevel" in board.level ? CLIMB_CARD_FLOOR : LARGE_CARD_FLOORS[board.level.large],
     cards: board.cards.map(
       ({ pal, face }, place): PairCardView => ({
         id: pal.id,
@@ -243,7 +250,7 @@ export function presentPairsResult(result: PairsResult, language: Language, body
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
-    levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+    levelUp: levelUp === null ? null : { level: levelUp, rows: CLIMB_LEVELS[levelUp].rows, columns: CLIMB_LEVELS[levelUp].columns }
   };
 }
 

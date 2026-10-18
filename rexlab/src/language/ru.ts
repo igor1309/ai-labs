@@ -81,6 +81,7 @@ export const ru: Texts = {
   moreComing: "СКОРО ЕЩЁ",
   play: "ИГРАТЬ",
   level: "УРОВЕНЬ",
+  ageLevelSwitch: "ВОЗРАСТНОЙ УРОВЕНЬ",
   starsEarned: "ЗВЁЗДЫ",
   tries: "ПОПЫТКИ",
   cards: "КАРТОЧКИ",

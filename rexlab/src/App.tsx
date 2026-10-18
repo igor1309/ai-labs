@@ -299,6 +299,7 @@ export function App({
 
   const pairs = usePairsGame(
     { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    ageLevel,
     home,
     counting("pairs")
   );

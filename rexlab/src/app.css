@@ -46,42 +46,6 @@
   --motion-amount: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-standard: 160ms;
-    --motion-screen: 160ms;
-    --motion-count: 0ms;
-    --motion-stagger: 0ms;
-    --motion-amount: 0;
-  }
-
-  /* A pressed card and the progress steps change size at once. */
-  .card {
-    transition-property: filter, opacity;
-  }
-
-  .step {
-    transition-property: background-color;
-  }
-
-  /* So does the need asked now. */
-  .need {
-    transition-property: background-color;
-  }
-
-  /* A card on the sorting board lifts and puts down in place, and slides
-     back only by fading in where it belongs. */
-  .sort-card {
-    transition-property: filter, opacity, box-shadow, outline;
-  }
-
-  /* A dinosaur's picture does not travel between its card and its page:
-     the two only cross-fade, in place. */
-  ::view-transition-group(.dinosaur-share) {
-    animation: none;
-  }
-}
-
 @keyframes fade-out {
   to {
     opacity: 0;
@@ -3696,7 +3660,10 @@ body:has(.result) #version {
 }
 
 /* The welcome: a face-down card, and a dinosaur's picture matched to its
-   silhouette, beside the title, the level and stars, and PLAY. */
+   silhouette, beside the title, the climb level and stars, the level
+   switch and PLAY. The column beside the cards is as wide as the switch
+   needs for every level's name on one line, so the cards take what is
+   left. */
 .pairs-welcome-body {
   flex: 1 1 0;
   min-height: 0;
@@ -3728,10 +3695,18 @@ body:has(.result) #version {
   animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* The face-down card's footprints keep the design's share of it, 96 of
+   its 177 pixels inside at 1440 by 900, at every size of the card. */
 .pairs-hero-back {
   padding: 14px;
   background: #1f2b4d;
   rotate: -8deg;
+  container-type: inline-size;
+}
+
+.pairs-hero-back .pair-card-back-frame svg {
+  width: 54cqi;
+  height: 54cqi;
 }
 
 .pairs-hero-silhouette {
@@ -3754,12 +3729,12 @@ body:has(.result) #version {
 }
 
 .pairs-start {
-  flex: 528 1 0;
-  min-width: 0;
+  flex-shrink: 0;
+  width: 648px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 32px;
+  gap: 28px;
 }
 
 .pairs-title {
@@ -3816,6 +3791,98 @@ body:has(.result) #version {
   color: #e39b2d;
 }
 
+/* The climb level is Hatchling's alone: at the other levels its chip folds
+   away beside the stars, the gap before them with it, and unfolds again at
+   Hatchling. */
+.pairs-climb {
+  display: grid;
+  grid-template-columns: 0fr;
+  overflow: hidden;
+  margin-right: -16px;
+  opacity: 0;
+  transition:
+    grid-template-columns var(--motion-standard) var(--ease-out),
+    margin-right var(--motion-standard) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out);
+}
+
+.pairs-climb[data-shown] {
+  grid-template-columns: 1fr;
+  margin-right: 0;
+  opacity: 1;
+}
+
+.pairs-climb .pairs-chip {
+  min-width: 0;
+}
+
+/* The level switch: the age levels side by side, youngest first, across
+   the column. The chosen level is filled in ink, bolder and raised, and a
+   mark of the same ink slides to it from the level chosen before. */
+.pairs-levels {
+  position: relative;
+  isolation: isolate;
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border: 1px solid #1d27421f;
+  border-radius: 36px;
+  background: #e6e2d9;
+}
+
+.pairs-level-mark {
+  position: absolute;
+  z-index: -1;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 20px) / 3);
+  border-radius: 30px;
+  background: #1d2742;
+  translate: calc(var(--chosen) * (100% + 4px)) 0;
+  transition: translate var(--motion-standard) var(--ease-out);
+}
+
+.pairs-level {
+  height: 58px;
+  min-width: 0;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 30px;
+  background-color: transparent;
+  color: #1d2742;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  transition:
+    color var(--motion-standard) var(--ease-out),
+    background-color var(--motion-standard) var(--ease-out);
+}
+
+.pairs-level[aria-pressed="true"] {
+  background-color: #1d2742;
+  color: #fffdf8;
+  font-weight: 700;
+  box-shadow: 0 4px 10px #1d274224;
+}
+
+/* An age level's picture, as in the age level menu. */
+.pairs-level-picture {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 22px;
+  line-height: 1;
+  text-align: center;
+}
+
 .pairs-play-button {
   height: 104px;
   padding: 0 52px 0 44px;
@@ -3831,8 +3898,13 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* The board: its bar, then the cards, row by row, as big as the screen
-   lets them be, each at least 150px. */
+/* The board: its bar, as tall as HOME so the room left for the cards is
+   known, then the cards, row by row, as big as that room lets them be,
+   each at least the board's floor. */
+.pairs-bar {
+  height: 56px;
+}
+
 .pairs-bar-title {
   flex: 1 1 0;
   min-width: 0;
@@ -3865,15 +3937,23 @@ body:has(.result) #version {
   animation: bump-in var(--motion-standard) var(--ease-overshoot) both;
 }
 
-.pair-board {
+/* The room under the bar holds the board centred, as wide as the room
+   or as its height allows at the board's shape, whichever is less, so a
+   board fits whole however many rows and columns it has. */
+.pair-board-room {
   flex: 1 1 0;
   min-height: 0;
-  align-self: center;
-  max-width: 100%;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.pair-board {
+  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2));
   aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 3.2);
   display: grid;
-  grid-template-columns: repeat(var(--columns), minmax(150px, 1fr));
-  grid-template-rows: repeat(var(--rows), minmax(150px, 1fr));
+  grid-template-columns: repeat(var(--columns), minmax(var(--card-floor), 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(var(--card-floor), 1fr));
   gap: 20px;
 }
 
@@ -3917,6 +3997,12 @@ body:has(.result) #version {
   border: 2px solid #f2b33d59;
   border-radius: 16px;
   color: #e39b2d;
+}
+
+/* The footprints keep their share of the card at every size of card. */
+.pair-card .pair-card-back-frame svg {
+  width: 30cqi;
+  height: 30cqi;
 }
 
 .pair-card-face {
@@ -4018,6 +4104,44 @@ body:has(.result) #version {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* The large results keep the design's three columns and up to four rows.
+   Rows share the screen's height; the art yields room to every name. */
+.pairs-result[data-large] .pairs-found {
+  height: 100%;
+  max-height: calc(var(--found-rows) * 162px + (var(--found-rows) - 1) * 14px);
+  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pairs-result[data-large] .pairs-found-art {
+  flex: 1 1 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.pairs-result .result-content {
+  min-width: 0;
+  gap: clamp(16px, 2vh, 24px);
+}
+
+.pairs-result .result-title {
+  font-size: clamp(32px, 3.34vw, 48px);
+  line-height: 1.2;
+}
+
+.pairs-result .result-actions {
+  gap: 12px;
+}
+
+.pairs-result .result-actions button {
+  flex-shrink: 0;
+  height: clamp(64px, 8.9vh, 80px);
+  padding: 0 clamp(16px, 2vw, 32px);
+  gap: 10px;
+  font-size: clamp(20px, 1.8vw, 26px);
+  white-space: nowrap;
+}
+
 .pairs-found-card {
   position: relative;
   min-width: 0;
@@ -4049,8 +4173,12 @@ body:has(.result) #version {
 }
 
 .pairs-found-name {
-  padding: 8px 10px 10px;
-  font-size: min(18px, 9cqi);
+  flex-shrink: 0;
+  padding: 8px;
+  /* A name of up to 13 ems stays on one line across its card; the result's
+     fit test checks that every shipped name, in either language, is one. */
+  font-size: min(18px, calc((100cqi - 16px) / 13));
+  line-height: 1.25;
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
@@ -4795,6 +4923,56 @@ body:has(.result) #version {
   outline-offset: -1px;
 }
 
+/* Reduced motion comes after every rule it overrides, so that it wins
+   over them: a later rule of the same weight would undo it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+  .pairs-level-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
+}
+
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -5311,6 +5489,25 @@ body:has(.result) #version {
 
 [data-theme="dark"] .pairs-play-button {
   box-shadow: 0 18px 40px #00000066;
+}
+
+[data-theme="dark"] .pairs-levels {
+  border-color: #ece8de1f;
+  background: #222a3d;
+}
+
+[data-theme="dark"] .pairs-level {
+  color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-level-mark,
+[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+  background-color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+  color: #181e2e;
+  box-shadow: 0 4px 10px #00000066;
 }
 
 [data-theme="dark"] .pairs-tile-back,

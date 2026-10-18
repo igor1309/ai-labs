@@ -77,6 +77,7 @@ export const en: Texts = {
   moreComing: "MORE COMING",
   play: "PLAY",
   level: "LEVEL",
+  ageLevelSwitch: "AGE LEVEL",
   starsEarned: "STARS",
   tries: "TRIES",
   cards: "CARDS",

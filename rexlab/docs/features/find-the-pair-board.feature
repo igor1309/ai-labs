@@ -1,6 +1,9 @@
 Feature: Find the pair: turning cards
   Two cards are open at most. A match stays open; a miss turns back
   with no "wrong" mark, so trying is never punished.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
