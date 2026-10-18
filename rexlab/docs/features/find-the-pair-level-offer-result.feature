@@ -46,6 +46,20 @@ Feature: Find the pair: the level offer on the result
       | does not ask for reduced motion | with the shared motion tokens |
       | asks for reduced motion         | as short fades only           |
 
+  Scenario Outline: Leaving before the offer rises in keeps it due
+    Given I have finished 2 strong Explorer boards in a row
+    And I finish an Explorer board in 12 tries
+    When I <leave> before the offer rises in
+    Then the offer was not shown and does not count as unanswered
+    And my next Explorer board in 18 tries offers the Paleontologist level
+    But an Explorer board in 19 tries instead offers nothing
+
+    Examples:
+      | leave            |
+      | tap "PLAY AGAIN" |
+      | tap "HOME"       |
+      | reload the app   |
+
   Scenario: A quick double tap answers once
     Given I see the offer of the Explorer level on a Hatchling result
     When I double tap "YES" quickly
