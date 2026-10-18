@@ -1,32 +1,25 @@
 Feature: A double tap counts as one tap
   A child of 5–7 often taps twice. One filter at the app's root swallows
-  the second tap of a double tap, wherever it lands, so it never presses
-  anything a second time and never presses anything on the screen that
-  appears next (docs/tap-safety.md). It goes by time and place only,
-  from each press's own time: a press less than 500 ms after the release
-  of the tap before it, and less than 100 CSS pixels in a straight line
-  from where that tap was released, is a second tap. The filter swallows
-  its whole touch: press, moves, release and the tap it would make. It
-  knows nothing of screens, so it holds on every screen alike, for a
-  finger, a pen or a mouse.
+  the second tap of a double tap, so it never presses anything a second
+  time, nor what appears under it next (docs/tap-safety.md). It goes by
+  time and place, from each press's own time: a press less than 500 ms
+  after the release of the tap before it, and less than 100 CSS pixels
+  from it in a straight line, is a second tap, and the filter swallows
+  its whole touch: press, moves, release and tap. It knows nothing of
+  screens, and holds alike for a finger, a pen or a mouse.
 
-  A touch is a tap if the finger moved no more than 8 CSS pixels between
-  press and release, as a sort card's drag begins after 8. A drag is not
-  a tap, and the press after it is never a second tap. A swallowed
-  touch, a drag or not, keeps the window open from its own release, so a
-  quick burst on one spot counts once. Keys are not filtered: a key
-  press is never a child's accidental second tap.
+  A tap never moved more than 8 CSS pixels from its press, as a sort
+  card's drag begins after 8. A drag the filter lets through is not a
+  tap, so the press after it is never a second tap. A swallowed touch, a
+  drag or not, keeps the window open from its own release, so a burst
+  counts once. A cancelled touch, as when the browser scrolls, opens no
+  window and closes an open one; a swallowed touch can still scroll the
+  page. Keys are not filtered.
 
   Accepted costs:
   - two controls closer than 100 CSS pixels, tapped within 500 ms, count once;
-  - a sort card tapped to pick it up and tapped again within 500 ms stays
-    picked up (sort-dinosaurs-play.feature);
-  - a card or a bone piece tapped, or moved no more than 8 CSS pixels,
-    and pressed again on the same spot at once, does not move until
-    pressed again.
-
-  Each game's own double-tap scenarios still hold; the guards of the
-  picture waits stay until docs/tap-safety.md, part 5, lands.
+  - a sort card re-tapped within 500 ms stays picked up;
+  - a card or bone piece tapped and pressed again on its spot at once does not move.
 
   Background:
     Given an iPad in landscape
@@ -71,6 +64,13 @@ Feature: A double tap counts as one tap
     When I drag a dinosaur card 40 CSS pixels away and back, and let go over its own place in the tray
     And 100 ms after letting go I tap the same card on that spot
     Then the card shows it is picked up
+
+  Scenario: A swallowed drag keeps the window open
+    Given a sorting board is shown
+    When I tap a dinosaur card, picking it up
+    And 200 ms after its release I drag it 40 CSS pixels away and back
+    And 200 ms after letting go I tap it again on that spot
+    Then the card is still picked up
 
   Scenario: A second press on a sort card does nothing
     Given a sorting board is shown

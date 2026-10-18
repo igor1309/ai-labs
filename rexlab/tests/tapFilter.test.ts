@@ -63,6 +63,10 @@ describe("the double-tap filter", () => {
     expect(taps([...tap(0), ...tap(300), ...tap(600), ...tap(1200)]).map((kept) => kept[0])).toEqual([true, false, false, true]);
   });
 
+  it("keeps the window open from a swallowed drag's release", () => {
+    expect(through([...tap(0), press(250), move(260, { x: 40 }), release(300), TAP, press(500)]).at(-1)).toBe(false);
+  });
+
   it("opens no window for a drag", () => {
     expect(through([press(0), move(20, { x: 40 }), release(60, { x: 40 }), TAP, press(100, { x: 40 })]).at(-1)).toBe(true);
   });

@@ -110,6 +110,20 @@ describe("a second tap on a sort card", () => {
     expect(isPicked(trayCard(card))).toBe(true);
   });
 
+  it("stays picked up when a swallowed drag out and back is followed by a tap 200 ms later", () => {
+    const { card } = sortBoard();
+    tapAt(trayCard(card), 0, PRESS);
+
+    pressAt(trayCard(card), 250, PRESS);
+    moveAt(270, { x: PRESS.x + 40, y: PRESS.y });
+    moveAt(290, PRESS);
+    releaseAt(window, 310, PRESS);
+    clickOf(trayCard(card), PRESS);
+    tapAt(trayCard(card), 510, PRESS);
+
+    expect(isPicked(trayCard(card))).toBe(true);
+  });
+
   it("does nothing when pressed again and dragged onto its right basket", () => {
     const { sorting, opened, card } = sortBoard();
     tapAt(trayCard(card), 0, PRESS);

@@ -40,13 +40,13 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then the card is dropped on that basket, as if dragged there
 
   Scenario Outline: Touching the board with a card picked up, or none
-    Given <state>
+    Given <state>, the last tap half a second or more ago
     When I <action>
     Then <outcome>
 
     Examples:
       | state                | action                                                | outcome                                               |
-      | a card is picked up  | tap the same card, half a second or more later        | the card is put down and nothing counts               |
+      | a card is picked up  | tap the same card                                     | the card is put down and nothing counts               |
       | a card is picked up  | tap another card                                      | the other card is picked up instead                   |
       | a card is picked up  | tap a sorted card, an empty slot or the space between | the card is put down and nothing counts               |
       | a card is picked up  | drag another card                                     | the picked card is put down and the dragged one moves |

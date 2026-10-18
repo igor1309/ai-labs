@@ -9,8 +9,11 @@ tap could have landed on a button of the museum.
 It is built from parts that do not know of each other, each landing in its
 own issue, in this order: LAB-298, LAB-303, LAB-304. Until the double-tap
 filter lands, today's picture waits and one-off guards keep double taps
-safe, and they stay; LAB-303 removes the two that only guard double
-taps, and LAB-304 removes the waits and theirs. Each issue brings the
+safe, and they stay. LAB-303 removes the two that only guard double
+taps, `MUSEUM_SETTLE` and `openingCatalogue`; the catalogue then counts
+its start with the screen change, as keys and far taps pass the filter.
+A leaving parent menu still catches taps while it animates out. LAB-304
+removes the waits and their guards. Each issue brings the
 Gherkin of its own behaviour; LAB-298 changes none.
 
 ## The parts
@@ -30,8 +33,8 @@ Gherkin of its own behaviour; LAB-298 changes none.
    than 500 ms and 100 px from the release of the tap before it, timed
    by each event's own time, which `src/root.ts` hands it. It knows nothing of screens.
    Its exact behaviour (when the window opens, drags, repeated taps,
-   keyboard) is specified in LAB-303's own feature. Accepted cost: two
-   controls closer than 100 px, tapped within 500 ms, count once.
+   keyboard) and its accepted costs are specified in LAB-303's own
+   feature, `docs/features/double-tap.feature`.
 5. **Pictures (LAB-304).** One `<Picture>` component holds a picture's
    place with a shimmer while it loads and fades it in once decoded, so
    no screen waits for its pictures before it changes. LAB-304 specifies
