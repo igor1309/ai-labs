@@ -214,7 +214,6 @@ describe("the shipped dinosaur list", () => {
     ["parasaurolophus", "massKg", 2721, 5000],
     ["brachiosaurus", "massKg", 46900, 80000],
     ["psittacosaurus", "massKg", 23, 80],
-    ["psittacosaurus", "heightMeters", 0.6, 0.6],
     ["coelophysis", "massKg", 18, 45],
     ["iguanodon", "massKg", 3628, 4535],
     ["oviraptor", "massKg", 20, 32],
@@ -225,6 +224,61 @@ describe("the shipped dinosaur list", () => {
 
     expect(value).toBeGreaterThanOrEqual(low);
     expect(value).toBeLessThanOrEqual(high);
+  });
+
+  // Each height is the hip height docs/sources.md works out from the leg
+  // bones, as its Hip heights table records it, in metres.
+  const HIP_HEIGHTS = [
+    ["tyrannosaurus", 3.1],
+    ["triceratops", 2.7],
+    ["velociraptor", 0.59],
+    ["brachiosaurus", 3.4],
+    ["stegosaurus", 1.5],
+    ["ankylosaurus", 1.1],
+    ["spinosaurus", 1.6],
+    ["diplodocus", 2.8],
+    ["parasaurolophus", 2.2],
+    ["pachycephalosaurus", 1.1],
+    ["iguanodon", 2.2],
+    ["compsognathus", 0.32],
+    ["gallimimus", 1.9],
+    ["allosaurus", 2.2],
+    ["argentinosaurus", 4.3],
+    ["microraptor", 0.33],
+    ["protoceratops", 0.65],
+    ["dilophosaurus", 1.5],
+    ["carnotaurus", 2.5],
+    ["giganotosaurus", 3.1],
+    ["therizinosaurus", 3],
+    ["edmontosaurus", 2.4],
+    ["deinonychus", 0.87],
+    ["oviraptor", 0.65],
+    ["coelophysis", 0.59],
+    ["psittacosaurus", 0.52],
+    ["styracosaurus", 2.4],
+    ["kentrosaurus", 1.1],
+    ["baryonyx", 2.2],
+    ["apatosaurus", 3.2],
+    ["ceratosaurus", 1.4],
+    ["utahraptor", 1.4],
+    ["yutyrannus", 1.7],
+    ["archaeopteryx", 0.16],
+    ["troodon", 0.88],
+    ["heterodontosaurus", 0.33],
+    ["mamenchisaurus", 2.3],
+    ["amargasaurus", 1.8],
+    ["plateosaurus", 1.4],
+    ["maiasaura", 2.1],
+    ["corythosaurus", 2.4],
+    ["chasmosaurus", 2.2]
+  ] as const;
+
+  it.each(HIP_HEIGHTS)("keeps the %s's hip height at %s m", (id, height) => {
+    expect(records.find((record) => record.id === id)?.attributes.heightMeters).toBe(height);
+  });
+
+  it("keeps a worked-out hip height for every dinosaur", () => {
+    expect(HIP_HEIGHTS.map(([id]) => id)).toEqual(records.map(({ id }) => id));
   });
 
   // The size each of those dinosaurs sorts by: null where the sources'

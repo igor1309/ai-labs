@@ -39,7 +39,7 @@ Feature: The dinosaur catalogue
     Then I see a big picture of Tyrannosaurus and its name in large capital letters
     And right under the name the "MEAT" food tag
     And its description, "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS."
-    And its height "3.7 M" beside "TALL" and its weight "8 T" beside "HEAVY"
+    And its height "3.1 M" beside "TALL" and its weight "8 T" beside "HEAVY"
     And an "ALL DINOSAURS" button with a 📖 symbol and the position "1 / 42"
 
   Scenario: A page waits for its picture and loads its neighbours ahead

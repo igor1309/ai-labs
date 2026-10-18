@@ -66,7 +66,7 @@ Additional views can be added to `images` without changing the hosting architect
 
 | Attribute | Measures | Unit | Comes from |
 | --- | --- | --- | --- |
-| `heightMeters` | Hip height: ground to the top of the hip, standing; never head, neck, crest, plates or shoulder | metres | The trusted sources' hip height, or the length scaled by the closest relative's hip-height proportion |
+| `heightMeters` | Hip height: ground to the top of the hip, standing; never head, neck, crest, plates or shoulder | metres | The leg bones end to end (femur, tibia, third metatarsal) in peer-reviewed tables; a missing bone, or the whole leg, in the closest relative's proportion |
 | `massKg` | Live body mass | kilograms | The trusted sources' estimates; Britannica's short tons at 907 kg |
 
 Length and horn count are not asked yet; each gets its definition here when a game asks it.

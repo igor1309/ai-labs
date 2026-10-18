@@ -6,7 +6,7 @@
       "ru": "Тираннозавр"
     },
     "attributes": {
-      "heightMeters": 3.7,
+      "heightMeters": 3.1,
       "massKg": 8000
     },
     "diet": "meat",
@@ -29,7 +29,7 @@
       "ru": "Трицератопс"
     },
     "attributes": {
-      "heightMeters": 3,
+      "heightMeters": 2.7,
       "massKg": 7000
     },
     "diet": "plants",
@@ -52,7 +52,7 @@
       "ru": "Велоцираптор"
     },
     "attributes": {
-      "heightMeters": 0.5,
+      "heightMeters": 0.59,
       "massKg": 15
     },
     "diet": "meat",
@@ -75,7 +75,7 @@
       "ru": "Брахиозавр"
     },
     "attributes": {
-      "heightMeters": 12.5,
+      "heightMeters": 3.4,
       "massKg": 50000
     },
     "diet": "plants",
@@ -98,7 +98,7 @@
       "ru": "Стегозавр"
     },
     "attributes": {
-      "heightMeters": 4,
+      "heightMeters": 1.5,
       "massKg": 2700
     },
     "diet": "plants",
@@ -121,7 +121,7 @@
       "ru": "Анкилозавр"
     },
     "attributes": {
-      "heightMeters": 1.7,
+      "heightMeters": 1.1,
       "massKg": 6000
     },
     "diet": "plants",
@@ -144,7 +144,7 @@
       "ru": "Спинозавр"
     },
     "attributes": {
-      "heightMeters": 4.2,
+      "heightMeters": 1.6,
       "massKg": 7400
     },
     "diet": "meat",
@@ -167,7 +167,7 @@
       "ru": "Диплодок"
     },
     "attributes": {
-      "heightMeters": 5,
+      "heightMeters": 2.8,
       "massKg": 15000
     },
     "diet": "plants",
@@ -190,7 +190,7 @@
       "ru": "Паразауролоф"
     },
     "attributes": {
-      "heightMeters": 2.8,
+      "heightMeters": 2.2,
       "massKg": 3500
     },
     "diet": "plants",
@@ -213,7 +213,7 @@
       "ru": "Пахицефалозавр"
     },
     "attributes": {
-      "heightMeters": 1.5,
+      "heightMeters": 1.1,
       "massKg": 450
     },
     "diet": "plants",
@@ -236,7 +236,7 @@
       "ru": "Игуанодон"
     },
     "attributes": {
-      "heightMeters": 2.7,
+      "heightMeters": 2.2,
       "massKg": 4000
     },
     "diet": "plants",
@@ -259,7 +259,7 @@
       "ru": "Компсогнат"
     },
     "attributes": {
-      "heightMeters": 0.25,
+      "heightMeters": 0.32,
       "massKg": 3
     },
     "diet": "meat",
@@ -305,7 +305,7 @@
       "ru": "Аллозавр"
     },
     "attributes": {
-      "heightMeters": 2.9,
+      "heightMeters": 2.2,
       "massKg": 2300
     },
     "diet": "meat",
@@ -328,7 +328,7 @@
       "ru": "Аргентинозавр"
     },
     "attributes": {
-      "heightMeters": 7,
+      "heightMeters": 4.3,
       "massKg": 70000
     },
     "diet": "plants",
@@ -351,7 +351,7 @@
       "ru": "Микрораптор"
     },
     "attributes": {
-      "heightMeters": 0.3,
+      "heightMeters": 0.33,
       "massKg": 1
     },
     "diet": "meat",
@@ -374,7 +374,7 @@
       "ru": "Протоцератопс"
     },
     "attributes": {
-      "heightMeters": 0.7,
+      "heightMeters": 0.65,
       "massKg": 180
     },
     "diet": "plants",
@@ -443,7 +443,7 @@
       "ru": "Гиганотозавр"
     },
     "attributes": {
-      "heightMeters": 3.6,
+      "heightMeters": 3.1,
       "massKg": 7000
     },
     "diet": "meat",
@@ -466,7 +466,7 @@
       "ru": "Теризинозавр"
     },
     "attributes": {
-      "heightMeters": 5,
+      "heightMeters": 3,
       "massKg": 5000
     },
     "diet": "plants",
@@ -489,7 +489,7 @@
       "ru": "Эдмонтозавр"
     },
     "attributes": {
-      "heightMeters": 3,
+      "heightMeters": 2.4,
       "massKg": 3400
     },
     "diet": "plants",
@@ -512,7 +512,7 @@
       "ru": "Дейноних"
     },
     "attributes": {
-      "heightMeters": 0.9,
+      "heightMeters": 0.87,
       "massKg": 75
     },
     "diet": "meat",
@@ -535,7 +535,7 @@
       "ru": "Овираптор"
     },
     "attributes": {
-      "heightMeters": 0.8,
+      "heightMeters": 0.65,
       "massKg": 30
     },
     "diet": "both",
@@ -558,7 +558,7 @@
       "ru": "Целофизис"
     },
     "attributes": {
-      "heightMeters": 0.6,
+      "heightMeters": 0.59,
       "massKg": 20
     },
     "diet": "meat",
@@ -581,7 +581,7 @@
       "ru": "Пситтакозавр"
     },
     "attributes": {
-      "heightMeters": 0.6,
+      "heightMeters": 0.52,
       "massKg": 50
     },
     "diet": "plants",
@@ -604,7 +604,7 @@
       "ru": "Стиракозавр"
     },
     "attributes": {
-      "heightMeters": 1.8,
+      "heightMeters": 2.4,
       "massKg": 2700
     },
     "diet": "plants",
@@ -627,7 +627,7 @@
       "ru": "Кентрозавр"
     },
     "attributes": {
-      "heightMeters": 1.5,
+      "heightMeters": 1.1,
       "massKg": 1000
     },
     "diet": "plants",
@@ -650,7 +650,7 @@
       "ru": "Барионикс"
     },
     "attributes": {
-      "heightMeters": 2.5,
+      "heightMeters": 2.2,
       "massKg": 1700
     },
     "diet": "meat",
@@ -673,7 +673,7 @@
       "ru": "Апатозавр"
     },
     "attributes": {
-      "heightMeters": 4.5,
+      "heightMeters": 3.2,
       "massKg": 23000
     },
     "diet": "plants",
@@ -696,7 +696,7 @@
       "ru": "Цератозавр"
     },
     "attributes": {
-      "heightMeters": 2,
+      "heightMeters": 1.4,
       "massKg": 1000
     },
     "diet": "meat",
@@ -719,7 +719,7 @@
       "ru": "Ютараптор"
     },
     "attributes": {
-      "heightMeters": 1.5,
+      "heightMeters": 1.4,
       "massKg": 350
     },
     "diet": "meat",
@@ -742,7 +742,7 @@
       "ru": "Ютираннус"
     },
     "attributes": {
-      "heightMeters": 2.3,
+      "heightMeters": 1.7,
       "massKg": 1400
     },
     "diet": "meat",
@@ -765,7 +765,7 @@
       "ru": "Археоптерикс"
     },
     "attributes": {
-      "heightMeters": 0.3,
+      "heightMeters": 0.16,
       "massKg": 1
     },
     "diet": "meat",
@@ -788,7 +788,7 @@
       "ru": "Троодон"
     },
     "attributes": {
-      "heightMeters": 0.9,
+      "heightMeters": 0.88,
       "massKg": 50
     },
     "diet": "both",
@@ -811,7 +811,7 @@
       "ru": "Гетеродонтозавр"
     },
     "attributes": {
-      "heightMeters": 0.3,
+      "heightMeters": 0.33,
       "massKg": 2
     },
     "diet": "plants",
@@ -834,7 +834,7 @@
       "ru": "Маменчизавр"
     },
     "attributes": {
-      "heightMeters": 4,
+      "heightMeters": 2.3,
       "massKg": 12000
     },
     "diet": "plants",
@@ -857,7 +857,7 @@
       "ru": "Амаргазавр"
     },
     "attributes": {
-      "heightMeters": 2.5,
+      "heightMeters": 1.8,
       "massKg": 9000
     },
     "diet": "plants",
@@ -880,7 +880,7 @@
       "ru": "Платеозавр"
     },
     "attributes": {
-      "heightMeters": 2,
+      "heightMeters": 1.4,
       "massKg": 4000
     },
     "diet": "plants",
@@ -903,7 +903,7 @@
       "ru": "Майазавра"
     },
     "attributes": {
-      "heightMeters": 2.5,
+      "heightMeters": 2.1,
       "massKg": 3000
     },
     "diet": "plants",
@@ -926,7 +926,7 @@
       "ru": "Коритозавр"
     },
     "attributes": {
-      "heightMeters": 2.8,
+      "heightMeters": 2.4,
       "massKg": 4000
     },
     "diet": "plants",
@@ -949,7 +949,7 @@
       "ru": "Хасмозавр"
     },
     "attributes": {
-      "heightMeters": 1.8,
+      "heightMeters": 2.2,
       "massKg": 2500
     },
     "diet": "plants",
