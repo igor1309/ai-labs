@@ -14,8 +14,9 @@ Feature: The composition keeps the bytes of a run's definitions
 
   Scenario: A digest read by two steps is written once
     When "agister run pair" runs in "/r"
-    Then runstore is given the bytes of the process "say" once, and of
-      the workflow "pair" before the record is first written
+    Then runstore is given the bytes of each digest once, the process
+      "say", the agent and its runtime among them, and of the workflow
+      "pair" before the record is first written
 
   Scenario: A call taken by a reuse has its bytes written under this run
     Given runstore keeps the run "R1" of "ask" in "/r", q "why", its

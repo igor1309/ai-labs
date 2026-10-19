@@ -42,4 +42,6 @@ Feature: Documents gives the files a document is made from
   Scenario: Each file gives its bytes
     Given the process "a" has a home source "{x: 1}"
     When documents is asked the files of the process "a"
-    Then the home file gives the bytes "{x: 1}", the caller's own
+    Then the home file gives the bytes "{x: 1}"
+    And changing the bytes given leaves those a second ask gives
+      unchanged

@@ -21,13 +21,12 @@ twelfth ("Capacity") a turn at capacity retried; the thirteenth
 ("A binding continuing a session") a step continuing an earlier step's
 session; the fourteenth ("A call's changes") the HEAD a call left and a
 pinned call's patch; the fifteenth ("Definitions") each call's
-definitions with their digests, compared by a reuse; the sixteenth ("A definition's bytes") their
-bytes kept beside the record.
-What it leaves out, roughly in the
-order it is needed:
+definitions with their digests, compared by a reuse; the sixteenth
+("A definition's bytes") their bytes kept beside the record. What it
+leaves out, roughly in the order it is needed:
 
-- **The rest of the record**: the process's environment, the permission plan (ADR-001, invariant 6);
-  other commands on runs.
+- **The rest of the record**: the process's environment, the
+  permission plan (ADR-001, invariant 6); other commands on runs.
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending
   what left a program's group, which the supervisor reads no longer

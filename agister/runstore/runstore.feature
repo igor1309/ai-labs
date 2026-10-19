@@ -75,5 +75,4 @@ Feature: runstore keeps runs
     Given runstore over the folder "runs"
     When the bytes "b1" of the digest "d1" of the run "x" are written,
       then again
-    Then "runs/x/definitions" holds "d1" alone, "b1" whole, given back
-      by "x" and "d1"
+    Then "runs/x/definitions" holds "d1" alone, "b1" whole
