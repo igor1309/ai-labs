@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
@@ -8,6 +9,7 @@ import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
 import { SkeletonMuseumScreen } from "./SkeletonMuseumScreen.tsx";
 import {
   awaitsHelp,
+  cutAt,
   drop,
   finishSkeleton,
   isComplete,
@@ -24,6 +26,7 @@ import {
 } from "./skeletons/index.ts";
 import { SkeletonPuzzleScreen, type FramePoint, type ShownPiece } from "./SkeletonPuzzleScreen.tsx";
 import { SkeletonResultScreen } from "./SkeletonResultScreen.tsx";
+import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 export type { SkeletonPicture } from "./presentation.ts";
 
@@ -34,11 +37,14 @@ export type Presence = {
   subscribe(onChange: () => void): () => void;
 };
 
+// The skeleton game's progress, and the child's last choice on its level
+// switch, none until the switch is first used.
+export type SkeletonSaved = { progress: SkeletonProgress; levelChoice: LevelChoice | undefined };
+
 export type SkeletonProgressStore = {
-  // The skeleton game's progress kept so far, or undefined when it cannot
-  // be read at all.
-  load(): SkeletonProgress | undefined;
-  save(progress: SkeletonProgress): void;
+  // What is kept so far, or undefined when it cannot be read at all.
+  load(): SkeletonSaved | undefined;
+  save(saved: SkeletonSaved): void;
 };
 
 export type SkeletonGameProps = {
@@ -52,6 +58,15 @@ export type SkeletonGameProps = {
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
 };
+
+// The skeleton game has a mode for every age level; a level without a cut
+// of its own plays Hatchling's.
+const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
+
+// The progress the game goes by while the app is open, with the child's
+// choice on the level switch, which holds while the app is open even when
+// it cannot be saved.
+type Kept = KeptSkeletons & { levelChoice: LevelChoice | undefined };
 
 // How often the time spent at a puzzle is counted towards help, in
 // milliseconds: a second away is lost at most, as the child leaves.
@@ -78,11 +93,13 @@ export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string 
 }
 
 // The skeleton game, kept by the app above its orientation gate, so
-// turning the iPad pauses a puzzle without losing it. `onHome` takes the
-// child back to the home page; `onStart` is told as each puzzle begins, a
-// rebuild's too.
+// turning the iPad pauses a puzzle without losing it. `ageLevel` is the
+// age level a parent picked, which the game starts at until the child
+// chooses another level on its switch. `onHome` takes the child back to
+// the home page; `onStart` is told as each puzzle begins, a rebuild's too.
 export function useSkeletonGame(
   { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion }: SkeletonGameProps,
+  ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -92,7 +109,10 @@ export function useSkeletonGame(
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but stars earned meanwhile are still kept
   // while the app is open, and so is progress that cannot be saved.
-  const [kept, setKept] = useState<KeptSkeletons>(() => openCollection(skeletonProgress.load(), skeletons.map(({ id }) => id)));
+  const [kept, setKept] = useState<Kept>(() => {
+    const stored = skeletonProgress.load();
+    return { ...openCollection(stored?.progress, skeletons.map(({ id }) => id)), levelChoice: stored?.levelChoice };
+  });
   const keptNow = useRef(kept);
   // The puzzle in play, ahead of the screen: a drop, or a tick, acts on the
   // puzzle as it is, not as last rendered. Null once the child leaves it.
@@ -102,6 +122,11 @@ export function useSkeletonGame(
   const puzzleTimers = useRef<OwnedTimers | null>(null);
 
   const order = skeletons.map(({ id }) => id);
+
+  // The level the game is played at: the child's choice on the switch
+  // while the age level is still the pick it was made under, otherwise the
+  // age level.
+  const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
 
   // The best collection score, undefined while there is none or stored
   // progress cannot be read.
@@ -113,13 +138,23 @@ export function useSkeletonGame(
     puzzleTimers.current = null;
   };
 
-  // Each change is saved as it is made; unreadable progress is not saved
-  // over.
-  const keep = (next: KeptSkeletons) => {
-    if (next === keptNow.current) return;
-    keptNow.current = next;
-    setKept(next);
-    if (next.readable) skeletonProgress.save(next.progress);
+  // Each change is saved as it is made, the level choice with it;
+  // unreadable progress is not saved over.
+  const keep = (next: KeptSkeletons, levelChoice = keptNow.current.levelChoice) => {
+    if (next === keptNow.current && levelChoice === keptNow.current.levelChoice) return;
+    const both = { ...next, levelChoice };
+    keptNow.current = both;
+    setKept(both);
+    if (both.readable) skeletonProgress.save({ progress: both.progress, levelChoice });
+  };
+
+  // A level chosen on the switch is kept under the age level it was chosen
+  // at. The switch rests once a puzzle is asked for, so the puzzle starts
+  // at the level shown then; the level already chosen, as on a double tap,
+  // changes nothing.
+  const chooseLevel = (chosen: AgeLevel) => {
+    if (live.current !== null || chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    keep(keptNow.current, { level: chosen, revision: ageLevel.revision });
   };
 
   // A puzzle shows at once, its pictures shimmering until they load, and
@@ -127,12 +162,13 @@ export function useSkeletonGame(
   // moment, on the same dinosaur or another, starts nothing more. A
   // skeleton rebuilt is knocked down from its stand only as its puzzle
   // starts, its bones scattering from the outline, and its stand awaits
-  // it from then on, however the rebuild is left.
+  // it from then on, however the rebuild is left. The puzzle is cut for the
+  // level the switch shows.
   const start = (id: string, rebuild: boolean) => {
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined) return;
     const from = screen;
-    const started = startPuzzle(skeleton, skeleton.cuts.hatchling);
+    const started = startPuzzle(skeleton, cutAt(skeleton, startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)));
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
@@ -235,6 +271,8 @@ export function useSkeletonGame(
             language={language}
             choices={presentSkeletonChoices(skeletons, language, bodyPicture, kept.progress.earned)}
             best={best}
+            level={level}
+            onLevel={chooseLevel}
             onChoose={choose}
             onMuseum={museum}
             onHome={home}

@@ -1,9 +1,10 @@
+import { AGE_LEVELS, isAgeLevel, type AgeLevel } from "./ageLevel.ts";
 import type { Visitor } from "./care/index.ts";
 import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import { LANGUAGES, type Language } from "./language/language.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
-import type { Cut, Cuts, Place, Skeleton } from "./skeletons/index.ts";
+import type { Cut, Place, Skeleton } from "./skeletons/index.ts";
 import type { Dinosaur as Sortable } from "./sorting/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
@@ -110,15 +111,13 @@ export type SkeletonsFile = {
   dinosaurs: Readonly<Record<string, Readonly<{ fact?: unknown; cuts?: unknown }>>>;
 };
 
-// The levels a skeleton is cut for, each with a cut of its own.
-const CUT_LEVELS: readonly (keyof Cuts)[] = ["hatchling"];
-
 // The skeleton game needs each skeleton's dinosaur, named as in the
 // list, its fact and its cuts, in the file's order. A skeleton of no
-// dinosaur in the list, without its fact in every language, or with a cut
-// missing, of no level or not whole, fails here, when the app is put
-// together, rather than as a puzzle no child can finish or a reveal with
-// nothing to say.
+// dinosaur in the list, without its fact in every language, without
+// Hatchling's cut, or with a cut of no level or not whole, fails here,
+// when the app is put together, rather than as a puzzle no child can
+// finish or a reveal with nothing to say. The other levels' cuts are
+// optional: a level without one plays Hatchling's.
 export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, file: SkeletonsFile): Skeleton[] {
   const { width, height } = file.frame;
   return Object.entries(file.dinosaurs).map(([id, { fact, cuts }]) => {
@@ -126,14 +125,15 @@ export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
     if (!record) throw new Error(`The skeleton ${id} is of no dinosaur in the list`);
     if (!isInEveryLanguage(fact)) throw new Error(`${id} has no fact in every language: ${JSON.stringify(fact)}`);
     const levels = typeof cuts === "object" && cuts !== null ? (cuts as Record<string, unknown>) : {};
-    const stray = Object.keys(levels).find((level) => !(CUT_LEVELS as readonly string[]).includes(level));
+    const stray = Object.keys(levels).find((level) => !isAgeLevel(level));
     if (stray !== undefined) throw new Error(`${id} has a cut of no level: ${stray}`);
+    const cutOf = (level: AgeLevel) => readCut(id, level, levels[level], { width, height });
     return {
       id,
       name: { en: record.name.en, ru: record.name.ru },
       fact: { en: fact.en, ru: fact.ru },
       frame: { width, height },
-      cuts: { hatchling: readCut(id, "hatchling", levels.hatchling, { width, height }) }
+      cuts: { hatchling: cutOf("hatchling"), ...Object.fromEntries(AGE_LEVELS.filter((level) => level !== "hatchling" && level in levels).map((level) => [level, cutOf(level)])) }
     };
   });
 }

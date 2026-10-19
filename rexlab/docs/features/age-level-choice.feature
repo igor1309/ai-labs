@@ -3,7 +3,8 @@ Feature: A child's own level choice in a game
   there, and it wins over the age level (age-level.feature) until a
   parent picks a different level (docs/age-levels.md). Find the pair has
   a switch (find-the-pair-levels.feature), and remembers its choice
-  (find-the-pair-level-progress.feature); these rules are
+  (find-the-pair-level-progress.feature), as the skeleton game does
+  (skeleton-assembly-levels.feature); these rules are
   checked on the shared rule of age-level-start.feature, given the
   child's choice and the level it was made under.
 

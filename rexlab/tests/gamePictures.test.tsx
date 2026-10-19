@@ -54,7 +54,7 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
   ],
   [
     "the skeleton selection, each choice",
-    <SkeletonChoiceScreen language="en" choices={presentSkeletonChoices(SHIPPED_SKELETONS, "en", fakeBodyPicture, [])} best={undefined} onChoose={none} onMuseum={none} onHome={none} />,
+    <SkeletonChoiceScreen language="en" choices={presentSkeletonChoices(SHIPPED_SKELETONS, "en", fakeBodyPicture, [])} best={undefined} level="hatchling" onLevel={none} onChoose={none} onMuseum={none} onHome={none} />,
     Array<string>(SHIPPED_SKELETONS.length).fill("skeleton-choice-picture")
   ],
   [

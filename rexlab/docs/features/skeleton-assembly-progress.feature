@@ -3,6 +3,8 @@ Feature: Skeleton assembly: keeping the collection
   effort. An unfinished rebuild keeps only its earned identity and
   awaiting-rebuild state; fitted bone placements are not saved. Leaving
   a puzzle never awards a star or removes a previously earned star or stand.
+  The child's choice on the level switch is kept beside them
+  (skeleton-assembly-levels.feature).
 
   Background:
     Given an iPad in landscape

@@ -7,7 +7,8 @@ Feature: The level a game starts at
   levels is its Hatchling best, shown on its tile and, when it is
   featured, on the large card.
 
-  Find the pair has levels (find-the-pair-levels.feature). Each other
+  Find the pair and the skeleton game have levels
+  (find-the-pair-levels.feature, skeleton-assembly-levels.feature). Each other
   game adopts them in its own issue, which removes its row from the
   first scenario and keeps the child's choice in its own progress; the
   catalogue has no levels and keeps its row. The rules below are checked
@@ -28,7 +29,6 @@ Feature: The level a game starts at
       | the catalogue     |
       | the care game     |
       | the sorting game  |
-      | the skeleton game |
 
   Scenario Outline: The same play earns the same reward at every level
     Given my best compare quiz score is 6

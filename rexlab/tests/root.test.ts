@@ -106,7 +106,7 @@ describe("the app in a browser", () => {
     });
     const props = appProps(given);
 
-    props.skeletonProgress.save({ bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] });
+    props.skeletonProgress.save({ progress: { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] }, levelChoice: undefined });
 
     expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
@@ -118,7 +118,7 @@ describe("the app in a browser", () => {
     });
     const reopened = appProps(given);
     expect([reopened.skeletonProgress.load(), reopened.progress.load(), reopened.careProgress.load()]).toEqual([
-      { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] },
+      { progress: { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"] }, levelChoice: undefined },
       { bestScore: 6, roundsPlayed: 3 },
       care
     ]);

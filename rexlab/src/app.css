@@ -3824,10 +3824,10 @@ body:has(.result) #version {
   min-width: 0;
 }
 
-/* The level switch: the age levels side by side, youngest first, across
-   the column. The chosen level is filled in ink, bolder and raised, and a
+/* A game's level switch, find the pair's and the skeleton game's: the age
+   levels side by side, youngest first, across its column. The chosen level is filled in ink, bolder and raised, and a
    mark of the same ink slides to it from the level chosen before. */
-.pairs-levels {
+.level-switch {
   position: relative;
   isolation: isolate;
   align-self: stretch;
@@ -3841,7 +3841,7 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
-.pairs-level-mark {
+.level-switch-mark {
   position: absolute;
   z-index: -1;
   top: 6px;
@@ -3854,7 +3854,7 @@ body:has(.result) #version {
   transition: translate var(--motion-standard) var(--ease-out);
 }
 
-.pairs-level {
+.level-switch-level {
   height: 58px;
   min-width: 0;
   padding: 0 6px;
@@ -3875,7 +3875,7 @@ body:has(.result) #version {
     background-color var(--motion-standard) var(--ease-out);
 }
 
-.pairs-level[aria-pressed="true"] {
+.level-switch-level[aria-pressed="true"] {
   background-color: #1d2742;
   color: #fffdf8;
   font-weight: 700;
@@ -3883,7 +3883,7 @@ body:has(.result) #version {
 }
 
 /* An age level's picture, as in the age level menu. */
-.pairs-level-picture {
+.level-switch-picture {
   flex-shrink: 0;
   width: 22px;
   font-size: 22px;
@@ -4508,6 +4508,17 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The level switch, centred between the bar and the dinosaurs, as wide as
+   find the pair's column so every level's name fits on one line. */
+.skeleton-levels {
+  flex-shrink: 0;
+  align-self: center;
+  width: 648px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* The three dinosaurs side by side, each a big card of its picture over
    its name, rising in one after the other. */
 .skeleton-choices {
@@ -5095,7 +5106,7 @@ body:has(.result) #version {
 
   /* The chosen mark does not travel: the chosen level's own fill fades in
      where it is. */
-  .pairs-level-mark {
+  .level-switch-mark {
     visibility: hidden;
     transition-property: none;
   }
@@ -5631,21 +5642,21 @@ body:has(.result) #version {
   box-shadow: 0 18px 40px #00000066;
 }
 
-[data-theme="dark"] .pairs-levels {
+[data-theme="dark"] .level-switch {
   border-color: #ece8de1f;
   background: #222a3d;
 }
 
-[data-theme="dark"] .pairs-level {
+[data-theme="dark"] .level-switch-level {
   color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-level-mark,
-[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+[data-theme="dark"] .level-switch-mark,
+[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
   background-color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
   color: #181e2e;
   box-shadow: 0 4px 10px #00000066;
 }

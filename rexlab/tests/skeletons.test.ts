@@ -62,6 +62,20 @@ describe("readSkeletons", () => {
     ]);
   });
 
+  it("reads a cut of Explorer's and Paleontologist's own beside Hatchling's, and none where the file has none", () => {
+    const two = [FILED[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, ...place(80, 10, 320, 390) }];
+    const [read] = readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts: { hatchling: FILED, paleontologist: two } } }));
+
+    expect(read?.cuts).toEqual({ hatchling: CUT, paleontologist: [CUT[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, place: place(80, 10, 320, 390) }] });
+  });
+
+  it.each<[string, unknown, string]>([
+    ["of no pieces", { hatchling: FILED, explorer: [] }, "triceratops has no explorer cut: []"],
+    ["with a piece past the frame", { hatchling: FILED, paleontologist: [{ id: "skull", name: NAMED.skull, ...place(350, 0, 100, 80) }] }, "triceratops has no skull in its 400×400 frame"]
+  ])("fails when it is made on another level's cut %s", (_, cuts, message) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts } }))).toThrow(message);
+  });
+
   it("fails when it is made on a skeleton of no dinosaur in the list", () => {
     expect(() => readSkeletons(NAMES, file({ stegosaurus: ENTRY }))).toThrow("The skeleton stegosaurus is of no dinosaur in the list");
   });

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import { isLanguage } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -28,7 +29,6 @@ import {
   type ManualPictures,
   type ManualVisibility,
   type MemoryStorage,
-  unsetAgeLevel,
   loadShownPictures
 } from "./support.ts";
 import type { Place, Skeleton } from "../src/skeletons/index.ts";
@@ -48,6 +48,12 @@ export type SkeletonsAppOptions = {
   appearance?: Theme;
   // Told each game whose start the app counts.
   startCounter?: AppProps["startCounter"];
+  // Where the parent's age level is kept, apart from progress, so a test
+  // that blocks progress still has the level it gives; none picked by
+  // default.
+  ageLevels?: MemoryStorage;
+  // The skeletons to build, the shipped ones by default.
+  skeletons?: readonly Skeleton[];
   // Whether the home page's pictures load as it opens; if not, they load
   // only when the test finishes them.
   loadHome?: boolean;
@@ -64,6 +70,8 @@ export function openHomeApp({
   reducedMotion = false,
   appearance = "light",
   startCounter,
+  ageLevels = memoryStorage(),
+  skeletons = SHIPPED_SKELETONS,
   loadHome = true
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
@@ -79,7 +87,7 @@ export function openHomeApp({
     nameVersion: unreadVersion,
     appearance: manualAppearance(appearance),
     themeStore: localTheme(() => storage),
-    ...unsetAgeLevel(),
+    ageLevelStore: localAgeLevel(() => ageLevels),
     visitors: SHIPPED_VISITORS,
     careProgress: localCareProgress(() => storage),
     itemPicture: fakeItemPicture,
@@ -87,7 +95,7 @@ export function openHomeApp({
     pairsProgress: localPairsProgress(() => storage),
     sortables: SHIPPED_SORTABLES,
     sortingProgress: localSortingProgress(() => storage),
-    skeletons: SHIPPED_SKELETONS,
+    skeletons,
     skeletonPicture: fakeSkeletonPicture,
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
@@ -95,9 +103,9 @@ export function openHomeApp({
     ...(startCounter && { startCounter }),
     ...pictures
   };
-  render(<App {...props} />);
+  const view = render(<App {...props} />);
   if (loadHome) loadShownPictures(pictures);
-  return { user: userEvent.setup(), storage, pictures, orientation, visibility };
+  return { user: userEvent.setup(), storage, pictures, orientation, visibility, ageLevels, unmount: view.unmount };
 }
 
 // The app opened on the skeleton game's choice of dinosaurs by its home

@@ -114,13 +114,35 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
 
 // The skeleton game's progress, beside the others in the same record: the
 // best collection score, the dinosaurs whose skeleton earned a star and
-// those whose stand awaits its skeleton rebuilt.
+// those whose stand awaits its skeleton rebuilt, with the child's last
+// choice on its level switch, none until the switch is first used.
 export function localSkeletonProgress(storage: () => KeyValueStorage) {
-  return gameProgress<SkeletonProgress>(storage, "skeleton-assembly", NO_SKELETONS, ({ bestScore, earned, rebuilding }) =>
-    (bestScore === null || isCount(bestScore)) && isIds(earned) && isIds(rebuilding)
-      ? { bestScore, earned: [...earned], rebuilding: [...rebuilding] }
-      : undefined
-  );
+  const entry = gameProgress<StoredSkeletons>(storage, "skeleton-assembly", NO_SKELETONS, readSkeletons);
+  return {
+    // Undefined when storage cannot be read at all.
+    load(): { progress: SkeletonProgress; levelChoice: LevelChoice | undefined } | undefined {
+      const stored = entry.load();
+      if (stored === undefined) return undefined;
+      const { levelChoice, ...progress } = stored;
+      return { progress, levelChoice };
+    },
+
+    save({ progress, levelChoice }: { progress: SkeletonProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save({ ...progress, ...(levelChoice && { levelChoice }) });
+    }
+  };
+}
+
+// The skeleton game's entry as stored; an entry saved before the game had
+// levels has no choice.
+type StoredSkeletons = SkeletonProgress & { levelChoice?: LevelChoice };
+
+// A choice that cannot be read is dropped, keeping the stars and stands
+// beside it.
+function readSkeletons({ bestScore, earned, rebuilding, levelChoice }: Entry): StoredSkeletons | undefined {
+  if (!((bestScore === null || isCount(bestScore)) && isIds(earned) && isIds(rebuilding))) return undefined;
+  const choice = choiceOf(levelChoice);
+  return { bestScore, earned: [...earned], rebuilding: [...rebuilding], ...(choice && { levelChoice: choice }) };
 }
 
 // The home page's start counts and the day's featured game, beside the

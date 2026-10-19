@@ -31,7 +31,7 @@ const levelSwitch = (language: Language = "en") => screen.getByRole("group", { n
 const chosen = () =>
   within(levelSwitch())
     .getAllByRole("button", { pressed: true })
-    .map((level) => level.querySelector(".pairs-level-name")?.textContent);
+    .map((level) => level.querySelector(".level-switch-name")?.textContent);
 const climbChip = () => screen.getByLabelText("LEVEL");
 
 const px = (value: string) => Number.parseFloat(value) || 0;
@@ -75,8 +75,8 @@ describe("the level switch", () => {
 
     expect(levelSwitch().compareDocumentPosition(button("PLAY")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const levels = within(levelSwitch()).getAllByRole("button");
-    expect(levels.map((level) => level.querySelector(".pairs-level-picture")?.textContent)).toEqual(["🥚", "🦖", "🦴"]);
-    expect(levels.map((level) => level.querySelector(".pairs-level-name")?.textContent)).toEqual(NAMES);
+    expect(levels.map((level) => level.querySelector(".level-switch-picture")?.textContent)).toEqual(["🥚", "🦖", "🦴"]);
+    expect(levels.map((level) => level.querySelector(".level-switch-name")?.textContent)).toEqual(NAMES);
     // The pictures are not read out: each level is read as its name.
     expect(levels).toEqual(NAMES.map((name) => within(levelSwitch()).getByRole("button", { name })));
   });
@@ -98,7 +98,7 @@ describe("the level switch", () => {
     ["explorer", "hatchling"]
   ] as const)("slides the chosen mark from %s to %s, the level chosen", async (from, to) => {
     const { user } = await openPairs({ ageLevel: picked(from) });
-    const mark = levelSwitch().querySelector(".pairs-level-mark");
+    const mark = levelSwitch().querySelector(".level-switch-mark");
     if (!mark) throw new Error("No chosen mark on the switch");
     // The mark is as wide as a level, a third of the switch inside its
     // padding and two gaps, and stands one level and one gap further along
@@ -147,11 +147,11 @@ describe("the level switch", () => {
       const room = px(getComputedStyle(column).width) - px(style.borderLeftWidth) - px(style.borderRightWidth) - px(style.paddingLeft) - px(style.paddingRight);
       const segment = (room - columnGapOf(style) * 2) / 3;
       const levels = within(levelSwitch(language)).getAllByRole("button");
-      expect(levels.map((level) => level.querySelector(".pairs-level-name")?.textContent)).toEqual(AGE_LEVELS.map((level) => TEXTS[language].ageLevels[level].name));
+      expect(levels.map((level) => level.querySelector(".level-switch-name")?.textContent)).toEqual(AGE_LEVELS.map((level) => TEXTS[language].ageLevels[level].name));
       for (const level of levels) {
         const levelStyle = getComputedStyle(level);
-        const picture = level.querySelector(".pairs-level-picture");
-        const name = level.querySelector(".pairs-level-name");
+        const picture = level.querySelector(".level-switch-picture");
+        const name = level.querySelector(".level-switch-name");
         if (!picture || !name) throw new Error("A level without its picture or name");
         const words = name.textContent ?? "";
         // The name takes the level's face and colour.

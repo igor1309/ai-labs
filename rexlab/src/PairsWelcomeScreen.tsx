@@ -1,9 +1,8 @@
 import { ChartNoAxesColumnIncreasing, Copy, Footprints, House, Play, Star } from "lucide-react";
-import type { CSSProperties } from "react";
-import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
-import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
+import type { AgeLevel } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
@@ -21,10 +20,6 @@ export type PairsWelcomeScreenProps = {
   onPlay: () => void;
   onHome: () => void;
 };
-
-// The place of the chosen level on the switch, which the stylesheet slides
-// the chosen mark to.
-const chosenAt = (level: AgeLevel) => ({ "--chosen": AGE_LEVELS.indexOf(level) }) as CSSProperties;
 
 export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPicture, onLevel, onPlay, onHome }: PairsWelcomeScreenProps) {
   const text = TEXTS[language];
@@ -76,17 +71,7 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
               {stars}
             </p>
           </div>
-          <div className="pairs-levels" role="group" aria-label={text.ageLevelSwitch} style={chosenAt(level)}>
-            <span className="pairs-level-mark" aria-hidden="true" />
-            {AGE_LEVELS.map((each) => (
-              <button key={each} type="button" className="pairs-level" aria-pressed={each === level} onClick={() => onLevel(each)}>
-                <span className="pairs-level-picture" aria-hidden="true">
-                  {AGE_LEVEL_PICTURES[each]}
-                </span>
-                <span className="pairs-level-name">{text.ageLevels[each].name}</span>
-              </button>
-            ))}
-          </div>
+          <LevelSwitch language={language} level={level} onLevel={onLevel} />
           <button type="button" className="card pairs-play-button" onClick={onPlay} {...playPointer}>
             <Play size={44} aria-hidden="true" />
             {text.play}

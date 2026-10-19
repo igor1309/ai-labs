@@ -10,10 +10,11 @@ export type Piece = { id: string; name: Record<Language, string>; place: Place }
 // A skeleton cut into pieces, in the order the tray shows them.
 export type Cut = readonly Piece[];
 
-// The cuts a skeleton is played in. Today's four pieces are Hatchling's:
-// the spine carries the neck and ribs, and the legs piece all four or both
-// legs.
-export type Cuts = { hatchling: Cut };
+// The cuts a skeleton is played in, by age level (docs/age-levels.md).
+// Today's four pieces are Hatchling's: the spine carries the neck and
+// ribs, and the legs piece all four or both legs. A level with no cut of
+// its own plays Hatchling's.
+export type Cuts = { hatchling: Cut; explorer?: Cut; paleontologist?: Cut };
 
 // A point on the outline, in pixels of the skeleton's frame.
 export type Point = { x: number; y: number };
@@ -28,6 +29,10 @@ export type Skeleton = {
   frame: { width: number; height: number };
   cuts: Cuts;
 };
+
+// The cut a skeleton is built from at `level`: the level's own, or
+// Hatchling's while it has none.
+export const cutAt = (skeleton: Skeleton, level: keyof Cuts): Cut => skeleton.cuts[level] ?? skeleton.cuts.hatchling;
 
 export type Puzzle = {
   skeleton: Skeleton;

@@ -281,9 +281,9 @@ describe("find the pair's motion", () => {
     Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
   it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
-    expect(declared(PLAIN, ".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
-    expect(declared(PLAIN, ".pairs-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
-    expect(declared(REDUCED, ".pairs-level-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
+    expect(declared(PLAIN, ".level-switch-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".level-switch-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".level-switch-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
   });
 
   it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
