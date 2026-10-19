@@ -294,15 +294,14 @@ describe("find the pair's motion", () => {
     expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
   });
 
-  it("bumps a new count of tries in, and pops the result's NEW badges and star in", () => {
+  it("bumps a new count of tries in, and pops the result's NEW badges and star", () => {
     const animations = animationsOf(PLAIN);
-    expect([".pairs-tries", ".pairs-new-badge", ".pairs-result-star", ".pairs-level-up", ".pairs-found-card", ".dinosaur-found-stamp"].map((selector) => animations.get(selector))).toEqual([
+    expect([".pairs-tries", ".pairs-new-badge", ".pairs-result-star", ".pairs-level-up", ".pairs-found-card"].map((selector) => animations.get(selector))).toEqual([
       "bump-in",
       "pop-in",
       "pop-in",
       "pop-in",
-      "rise-in",
-      "stamp-in"
+      "rise-in"
     ]);
   });
 

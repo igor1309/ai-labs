@@ -81,7 +81,7 @@ type CatalogueCardProps = {
   onOpen: (id: string) => void;
 };
 
-function CatalogueCard({ view: { id, name, picture, height, mass, diet, found }, language, place, onOpen }: CatalogueCardProps) {
+function CatalogueCard({ view: { id, name, picture, height, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
   const pointer = usePointerState();
   const text = TEXTS[language];
   return (
@@ -98,11 +98,6 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet, found },
         <SharedPicture id={id}>
           <Picture className="catalogue-picture" src={picture} alt="" width={800} height={600} />
         </SharedPicture>
-        {found && (
-          <span className="found-stamp" role="img" aria-label={text.found}>
-            <Copy size={26} aria-hidden="true" />
-          </span>
-        )}
       </span>
       <span className="catalogue-footer">
         <span className="catalogue-name">{name.toLocaleUpperCase(language)}</span>

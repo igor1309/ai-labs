@@ -21,17 +21,11 @@ Feature: Find the pair: dinosaurs found in the catalogue
     Then Triceratops is still found once
     And it has no "NEW" badge on that result
 
-  Scenario: The catalogue shows found dinosaurs
+  Scenario: The catalogue does not mark found dinosaurs
     Given I have found Triceratops and Stegosaurus
     When I open "ALL DINOSAURS"
-    Then the cards of Triceratops and Stegosaurus have a found stamp with a two-cards symbol
-    And no other card has a found stamp
-    And the page of Triceratops shows the same stamp
-
-  Scenario: The catalogue shows no stamps before anything is found
-    Given I have never finished a board
-    When I open "ALL DINOSAURS"
-    Then I see no found stamps
+    Then I see no count of the found and no found stamp over any card's artwork
+    And the page of Triceratops has no found stamp either
 
   Scenario: A board left halfway finds nothing
     Given I have found Triceratops

@@ -150,12 +150,11 @@ describe("the catalogue's food chips", () => {
     expect(cardNames()).toEqual(["Gallimimus", "Oviraptor", "Troodon"]);
   });
 
-  it("stamp the found among the dinosaurs shown", async () => {
+  it("show no count of the found and no stamps over the artwork", async () => {
     const user = openApp({ found: ["tyrannosaurus", "velociraptor", "triceratops"] });
     await choose(user, "MEAT");
 
-    const stamped = within(grid()).getAllByRole("img", { name: "FOUND" }).map((stamp) => stamp.closest("button")?.getAttribute("aria-label"));
-    expect(stamped).toEqual(["Tyrannosaurus", "Velociraptor"]);
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
   it("make a page go round the dinosaurs shown, counting its place among them", async () => {

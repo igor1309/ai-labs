@@ -33,11 +33,10 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     When I tap "BOTH" again
     Then I still see the 3 cards with the "BOTH" tag
 
-  Scenario: The found stamps are on the dinosaurs shown
+  Scenario: The found are not marked among the dinosaurs shown
     Given I have found Tyrannosaurus, Velociraptor and Triceratops
     When I open "ALL DINOSAURS" and tap "MEAT"
-    Then the cards of Tyrannosaurus and Velociraptor have a found stamp
-    And there is no count of the found
+    Then I see no count of the found and no found stamps
 
   Scenario: Next and previous go round the dinosaurs shown
     Given I chose "MEAT"

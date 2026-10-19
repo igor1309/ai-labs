@@ -751,7 +751,7 @@ async function sortingRounds(language: Language): Promise<Seen> {
 // Find the pair: its welcome, Hatchling chosen on its switch, a board with
 // a card open, a miss, found pairs and the cards waving, its result with a
 // first best, the home page again, and the catalogue and a page with the
-// dinosaurs found stamped.
+// dinosaurs found.
 async function findThePair(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, timers, look } = play;
@@ -776,9 +776,8 @@ async function findThePair(language: Language): Promise<Seen> {
   look();
   await user.click(screen.getByRole("button", { name: text.catalogueTile }));
   look();
-  const stamped = screen.getAllByRole("img", { name: text.found })[0]?.closest("button");
-  if (!stamped) throw new Error("No dinosaur found in the catalogue");
-  await user.click(stamped);
+  const catalogue = screen.getByRole("group", { name: text.catalogue });
+  await user.click(within(catalogue).getAllByRole("button")[0] as HTMLElement);
   look();
   return play.seen;
 }
