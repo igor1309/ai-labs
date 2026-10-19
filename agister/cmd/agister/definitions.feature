@@ -52,7 +52,8 @@ Feature: The composition records the definitions a call ran under
 
   Scenario Outline: A reuse takes a call only under the same definitions
     Given runstore keeps the run "R1" of "ask" in "/r", q "why", its
-      call "R1/ask" completed at HEAD "c1" and content "t1", <kept>
+      call "R1/ask" completed at HEAD "c1" and content "t1", its
+      environment this call's, <kept>
     When "agister run --process ask --agent claude-opus --param q=why
       --reuse R1" runs in "/r"
     Then "ask" <taken>

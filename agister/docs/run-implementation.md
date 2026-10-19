@@ -1260,12 +1260,13 @@ step and the environment its process set, so the record holds the rest
 of what Agister gave a call (ADR-001, invariant 6; ADR-003, rule 4;
 LAB-324).
 
-**`runstore`**'s call grows `"permissions"`, the step's plan as
-`resolve.Plan` gives it and `agister settings show` prints it: the
-options taken and the permissions required, allowed, granted, granted
-beyond the allowed and withheld, each a list, `[]` for none; and
+**`runstore`**'s call grows `"permissions"`, the six lists of
+`resolve.Plan` for its step, under the same meanings: the options taken
+(`"options"`) and the permissions required, allowed, granted, granted
+beyond the allowed (`"extra"`) and withheld, each `[]` for none; and
 `"environment"`, each variable the process sets, its name and its value
-whole, in the order the process declares them, `[]` for none:
+whole, in the order the process declares them, `[]` for none. An entry
+from before, with neither field, is read as having none.
 
 ```json
 {"calls": [{"permissions": {"options": [], "required": [],
@@ -1276,16 +1277,20 @@ whole, in the order the process declares them, `[]` for none:
 **The composition** records a call's permissions from its step's plan,
 on every entry, refused or made; and its environment as resolved for
 its call, as its inputs are: a call whose inputs were refused has none.
-A call taken by a reuse keeps the earlier entry's, as it keeps the rest
-of that entry; an entry from before has neither field, and is read as
-having none.
+A reuse takes a call only where the earlier entry's `"environment"` is
+this call's, variable for variable; an entry with no such field is
+taken only where this call's is `[]`. A call taken records this call's
+permissions and environment: its definitions are this call's, file for
+file, so its plan is the same.
 
 Decisions, each with its reason:
 
 - The plan as resolve made it, not as a runtime's flags: the flags are
   the runtime's words, and the plan is what Agister decided.
-- Values whole, as inputs are: the environment's values come from the
-  inputs, so the record holds nothing it did not already.
-- No identity per variable: a reuse compares the inputs a variable's
-  value comes from, and the definitions that say how.
-
+- Values whole, as inputs are: a value is a definition's text, an
+  input's or a param's, each already in the record.
+- The environment compared by a reuse: a variable may read a param,
+  which a reuse does not otherwise compare; the program would be given
+  another value.
+- A call taken records this call's plan, not the earlier entry's: an
+  entry from before has none, and would record a call given nothing.

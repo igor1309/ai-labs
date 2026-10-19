@@ -22,7 +22,7 @@ Feature: The composition keeps the bytes of a run's definitions
   Scenario: A call taken by a reuse has its bytes written under this run
     Given runstore keeps the run "R1" of "ask" in "/r", q "why", its
       call "R1/ask" completed at HEAD "c1" and content "t1", its
-      definitions this call's
+      definitions and environment this call's
     When "agister run --process ask --agent claude-opus --param q=why
       --reuse R1" runs in "/r"
     Then "ask" reuses "R1/ask", and runstore is given under "R" the
