@@ -151,7 +151,7 @@ function Game({
   owner: { start?: () => void };
   onHome: () => void;
 }) {
-  const game = useSortingGame(props, onHome, () => {});
+  const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
   return (
     <OrientationGate orientation={orientation} language={language}>
@@ -186,7 +186,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
   act(() => owner.start?.());
   const random = seededRandom(seed);
   let last: Sorting | undefined;
-  const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, random, last));
+  const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, "hatchling", random, last));
   return { user: userEvent.setup(), storage, homes, nextBoard, unmount };
 }
 
@@ -226,17 +226,17 @@ export function storedRecord(storage: MemoryStorage): { schemaVersion: unknown; 
 // The baskets of the board on screen, in order, by their names.
 export const basketsShown = () => [...document.querySelectorAll(".basket")].map((basket) => basket.getAttribute("aria-label"));
 
-// Sorts every card on the tray by taps, as a child who tries the first
-// basket and, after a miss, the other one: each card of the second basket
-// misses once. `look` is called after each drop.
+// Sorts every card on the tray by taps, trying baskets in order until
+// the card lands. `look` is called after each drop.
 export async function sortByTrying(user: UserEvent, language: Language = "en", look: () => void = () => {}) {
-  const [first, second] = [...document.querySelectorAll<HTMLElement>(".basket")];
+  const baskets = [...document.querySelectorAll<HTMLElement>(".basket")];
+  const [first, second] = baskets;
   if (!first || !second) throw new Error("The board has no two baskets");
   const names = within(tray(language))
     .getAllByRole("button")
     .map((card) => card.getAttribute("aria-label") ?? "");
   for (const name of names) {
-    for (const basket of [first, second]) {
+    for (const basket of baskets) {
       const card = within(tray(language)).queryByRole("button", { name });
       if (!card) break;
       await user.click(card);

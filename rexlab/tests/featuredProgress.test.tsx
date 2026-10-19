@@ -351,7 +351,7 @@ describe("a sorting round started twice before React renders", () => {
     });
 
     const cards = within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
-    expect([counted.slice(before), cards.map((card) => card.getAttribute("aria-pressed"))]).toEqual([["sort"], Array<string>(6).fill("false")]);
+    expect([counted.slice(before), cards.map((card) => card.getAttribute("aria-pressed"))]).toEqual([["sort"], Array<string>(8).fill("false")]);
   });
 });
 

@@ -1,11 +1,23 @@
-// What a child has done in the sorting game: the best score of a finished
-// board, null until one is finished, and how many boards were finished.
+import type { AgeLevel } from "../ageLevel.ts";
+import type { LevelChoice } from "../startLevel.ts";
+
+// A best belongs to the level where it was earned. The original field
+// stays Hatchling's so progress saved before levels keeps its meaning.
 export type SortingProgress = {
   bestScore: number | null;
+  explorerBest: number | null;
+  paleontologistBest: number | null;
   roundsPlayed: number;
+  levelChoice?: LevelChoice;
 };
 
-export const NO_SORTING: SortingProgress = { bestScore: null, roundsPlayed: 0 };
+export const NO_SORTING: SortingProgress = { bestScore: null, explorerBest: null, paleontologistBest: null, roundsPlayed: 0 };
+
+const BEST_FIELDS = { hatchling: "bestScore", explorer: "explorerBest", paleontologist: "paleontologistBest" } as const;
+
+export function bestForLevel(progress: SortingProgress, level: AgeLevel): number | null {
+  return progress[BEST_FIELDS[level]];
+}
 
 export type Celebration = "first-best" | "new-best";
 
@@ -18,14 +30,14 @@ export type Beaten = { best: number; celebration: Celebration | null };
 export type BeatBest = (previous: number | null, score: number) => Beaten;
 
 export type SortingOutcome = {
-  progress: { bestScore: number; roundsPlayed: number };
+  progress: SortingProgress;
   celebration: Celebration | null;
 };
 
-export function finishRound(previous: SortingProgress, score: number, beatBest: BeatBest): SortingOutcome {
-  const { best, celebration } = beatBest(previous.bestScore, score);
+export function finishRound(previous: SortingProgress, level: AgeLevel, score: number, beatBest: BeatBest): SortingOutcome {
+  const { best, celebration } = beatBest(bestForLevel(previous, level), score);
   return {
-    progress: { bestScore: best, roundsPlayed: previous.roundsPlayed + 1 },
+    progress: { ...previous, [BEST_FIELDS[level]]: best, roundsPlayed: previous.roundsPlayed + 1 },
     celebration
   };
 }

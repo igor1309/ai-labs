@@ -62,9 +62,9 @@ const withSkeletons = (storage: MemoryStorage) => ({ ...emptySkeletons(), skelet
 const record = (bestScore: number | null) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed: 3 } } });
 
-// The same record, for the sorting game.
+// The sorting game’s Explorer best, the level a new install plays.
 const sortingRecord = (bestScore: number | null) =>
-  JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore, roundsPlayed: 2 } } });
+  JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore, explorerBest: bestScore, paleontologistBest: null, roundsPlayed: 2 } } });
 
 const nothing = () => {};
 

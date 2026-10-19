@@ -213,7 +213,7 @@ describe("localSortingProgress", () => {
   ])("reads the sorting game's best score and finished rounds from %j", (entry, progress) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting(entry) });
 
-    expect(localSortingProgress(() => storage).load()).toEqual(progress);
+    expect(localSortingProgress(() => storage).load()).toEqual({ ...NO_SORTING, ...progress });
   });
 
   it.each([
@@ -234,7 +234,7 @@ describe("localSortingProgress", () => {
   it("keeps the sorting game beside the quiz and care in one record, each saved without touching the others", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
 
-    localSortingProgress(() => storage).save({ bestScore: 4, roundsPlayed: 1 });
+    localSortingProgress(() => storage).save({ explorerBest: null, paleontologistBest: null, bestScore: 4, roundsPlayed: 1 });
     localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: ["triceratops"] });
     localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
 
@@ -243,21 +243,41 @@ describe("localSortingProgress", () => {
       games: {
         "compare-dinosaurs": { bestScore: 9, roundsPlayed: 4 },
         "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: ["triceratops"] },
-        "sort-dinosaurs": { bestScore: 4, roundsPlayed: 1 }
+        "sort-dinosaurs": { ...NO_SORTING, bestScore: 4, roundsPlayed: 1 }
       }
     });
-    expect(localSortingProgress(() => storage).load()).toEqual({ bestScore: 4, roundsPlayed: 1 });
+    expect(localSortingProgress(() => storage).load()).toEqual({ ...NO_SORTING, bestScore: 4, roundsPlayed: 1 });
   });
 
   it("replaces an unusable sorting entry on save, and keeps a quiz entry it cannot read", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ bestScore: "4" }, { "compare-dinosaurs": { bestScore: "x" } }) });
 
-    localSortingProgress(() => storage).save({ bestScore: 3, roundsPlayed: 1 });
+    localSortingProgress(() => storage).save({ explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 });
 
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
-      games: { "compare-dinosaurs": { bestScore: "x" }, "sort-dinosaurs": { bestScore: 3, roundsPlayed: 1 } }
+      games: { "compare-dinosaurs": { bestScore: "x" }, "sort-dinosaurs": { ...NO_SORTING, bestScore: 3, roundsPlayed: 1 } }
     });
+  });
+
+  it.each([null, "parent-pick"])("round-trips every level's best and a choice with revision %j, preserving other fields and games", (revision) => {
+    const entry = { bestScore: 5, explorerBest: 7, paleontologistBest: 9, roundsPlayed: 6, levelChoice: { level: "explorer" as const, revision } };
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ ...entry, achievements: ["first-round"] }, { "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } }) });
+    const progress = localSortingProgress(() => storage);
+    expect(progress.load()).toEqual(entry);
+    const next = { ...entry, explorerBest: 8, roundsPlayed: 7 };
+    progress.save(next);
+    expect(progress.load()).toEqual(next);
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { ...next, achievements: ["first-round"] }, "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } } });
+  });
+
+  it.each([
+    { explorerBest: "7" }, { explorerBest: -1 }, { paleontologistBest: 2.5 },
+    { levelChoice: null }, { levelChoice: { level: "junior", revision: null } },
+    { levelChoice: { level: "explorer" } }, { levelChoice: { level: "explorer", revision: "" } }
+  ])("rejects malformed level progress %j", (invalid) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ ...NO_SORTING, ...invalid }) });
+    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
   });
 
   it.each([
@@ -267,7 +287,7 @@ describe("localSortingProgress", () => {
     const progress = localSortingProgress(storage);
 
     expect(progress.load()).toBeUndefined();
-    expect(() => progress.save({ bestScore: 3, roundsPlayed: 1 })).not.toThrow();
+    expect(() => progress.save({ explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 })).not.toThrow();
   });
 });
 

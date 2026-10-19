@@ -235,8 +235,12 @@ describe("a chosen level", () => {
     for (const level of ["hatchling", "paleontologist", "explorer", "hatchling"] as const) await chooseLevel(user, NAMES[level]);
 
     expect(pictureOn(levelButton())).toBe("🥚");
-    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "6", "5", "40", "2", null, "6"]);
-    expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([badges, featured]);
+    // The pre-level sorting best belongs to Hatchling: changing the
+    // setting changes the badge to that level's best (docs/age-levels.md).
+    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "6", null, "40", "2", null, "6"]);
+    const hatchlingBadges = [...badges];
+    hatchlingBadges[3] = "5";
+    expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([hatchlingBadges, featured]);
     expect(featured).toBe("care");
     expect([...storage.items].filter(([key]) => key !== AGE_LEVEL_KEY)).toEqual([...kept].filter(([key]) => key !== AGE_LEVEL_KEY));
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games).toEqual(games);

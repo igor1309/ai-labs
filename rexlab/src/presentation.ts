@@ -29,6 +29,7 @@ import {
   type SkeletonResult,
   type StandState
 } from "./skeletons/index.ts";
+import { bestForLevel } from "./sorting/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
@@ -205,8 +206,8 @@ export function presentBoard(board: BoardState, language: Language, bodyPicture:
 const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
 // A finished board shows on the quiz's result screen, a star for each card.
-export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
+export function presentSortingResult({ level, score, total, progress, previousBest, celebration }: SortingResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForLevel(progress, level) ?? undefined, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
 }
 
 const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };

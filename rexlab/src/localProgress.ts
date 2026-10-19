@@ -32,7 +32,15 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
-  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, readRounds);
+  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, (entry) => {
+    const rounds = readRounds(entry);
+    const { explorerBest = null, paleontologistBest = null, levelChoice } = entry;
+    if (!rounds || !(explorerBest === null || isCount(explorerBest)) || !(paleontologistBest === null || isCount(paleontologistBest))) return undefined;
+    const progress = { ...rounds, explorerBest, paleontologistBest };
+    if (levelChoice === undefined) return progress;
+    const choice = choiceOf(levelChoice);
+    return choice && { ...progress, levelChoice: choice };
+  });
 }
 
 // The best score and finished rounds of a game that keeps only those.

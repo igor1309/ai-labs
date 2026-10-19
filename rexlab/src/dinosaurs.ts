@@ -13,9 +13,9 @@ export type DinosaurRecord = {
   attributes: { massKg: number; heightMeters: number };
   // "meat", "plants" or "both"; read as any string, as the JSON gives it.
   diet: string;
-  // Each null where the sources give no clear answer; read as the JSON
-  // gives them.
-  traits: { legs: number | null; size: string | null; horns: boolean | null; feathers: boolean | null };
+  // Explicit uncertain values distinguish a third basket from a fact
+  // left off every board (null); read as the JSON gives them.
+  traits: { legs: number | string | null; size: string | null; horns: boolean | null; feathers: boolean | string | null };
   description: { en: string; ru: string };
   // The group of dinosaurs whose silhouettes look alike, such as
   // "duck-bill"; read as any value, as the JSON gives it.
@@ -66,7 +66,7 @@ export function readCatalogue(records: readonly DinosaurRecord[]): CatalogueEntr
   });
 }
 
-const LEGS = [2, 4, null] as const;
+const LEGS = [2, 4, "either", null] as const;
 const SIZES = ["big", "small", null] as const;
 
 // The sorting game needs the facts it sorts by. A record whose fact is
@@ -82,7 +82,7 @@ export function readSortables(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
     const knownSize = SIZES.find((each) => each === size);
     if (knownSize === undefined) throw fail("size", size);
     if (!isFact(horns)) throw fail("horns", horns);
-    if (!isFact(feathers)) throw fail("feathers", feathers);
+    if (feathers !== "unknown" && !isFact(feathers)) throw fail("feathers", feathers);
     return { id, name: { en: name.en, ru: name.ru }, legs: knownLegs, diet, size: knownSize, horns, feathers };
   });
 }

@@ -57,8 +57,8 @@ const LEVELS: readonly Level[] = [
     baskets: ["feathers", "no-feathers", "not-known-yet"],
     members: [
       ["velociraptor", "microraptor", "archaeopteryx"],
-      ["tyrannosaurus", "stegosaurus", "triceratops"],
-      ["spinosaurus", "compsognathus", "giganotosaurus", "coelophysis"]
+      ["allosaurus", "carnotaurus"],
+      ["tyrannosaurus", "spinosaurus", "compsognathus", "giganotosaurus", "coelophysis"]
     ],
     names: { en: ["FEATHERS", "NO FEATHERS", "NOT KNOWN YET"], ru: ["С ПЕРЬЯМИ", "БЕЗ ПЕРЬЕВ", "ПОКА НЕИЗВЕСТНО"] },
     third: { pictures: ["feather"], words: "?" }
@@ -77,7 +77,7 @@ function dealt({ property, baskets, members }: Level): Sorting {
       return dinosaur && basket ? [{ dinosaur, basket }] : [];
     })
   ).flat();
-  return { board: { property, baskets, cards }, landed: [], misses: [] };
+  return { board: { level: property === "diet" ? "explorer" : "paleontologist", property, baskets, cards }, landed: [], misses: [] };
 }
 
 const baskets = () => [...document.querySelectorAll<HTMLElement>(".baskets .basket")];

@@ -1,14 +1,15 @@
 // The sorting game's API: its use cases and the types the app speaks with
 // it. Everything else under sorting/ is reached only through this file.
+import type { AgeLevel } from "../ageLevel.ts";
 import { generateBoard, type Basket, type Baskets, type Dinosaur, type Property, type Random } from "./board.ts";
 import { isFinished, score, startSorting, type Sorting } from "./play.ts";
-import { finishRound, type BeatBest, type Celebration, type SortingProgress } from "./progress.ts";
+import { bestForLevel, finishRound, type BeatBest, type Celebration, type SortingProgress } from "./progress.ts";
 
 export type { Basket, Baskets, Diet, Dinosaur, Property, Random } from "./board.ts";
 export type { BeatBest, Celebration, Sorting, SortingProgress };
 export type { Beaten } from "./progress.ts";
 export { drop, score } from "./play.ts";
-export { NO_SORTING } from "./progress.ts";
+export { bestForLevel, NO_SORTING } from "./progress.ts";
 
 // One card of the board, where it is now.
 export type CardState = {
@@ -35,11 +36,12 @@ export type BoardState = {
 };
 
 export type SortingResult = {
+  level: AgeLevel;
   score: number;
   total: number;
   // Undefined when stored progress cannot be read: there is no best to
   // compare with, so the board is neither celebrated nor saved over it.
-  progress: { bestScore: number; roundsPlayed: number } | undefined;
+  progress: SortingProgress | undefined;
   // The best score before this board, undefined when there was none or it
   // cannot be read.
   previousBest: number | undefined;
@@ -48,8 +50,8 @@ export type SortingResult = {
 
 // A new board sorting by any property but that of `previous`, so two
 // boards in a row never sort by the same one.
-export function startBoard(dinosaurs: readonly Dinosaur[], random: Random, previous?: Sorting): Sorting {
-  return startSorting(generateBoard(dinosaurs, random, previous?.board.property));
+export function startBoard(dinosaurs: readonly Dinosaur[], level: AgeLevel, random: Random, previous?: Sorting): Sorting {
+  return startSorting(generateBoard(dinosaurs, level, random, previous?.board.property));
 }
 
 export function boardState(sorting: Sorting): BoardState {
@@ -76,12 +78,13 @@ export function boardState(sorting: Sorting): BoardState {
 // best-score rule.
 export function finishBoard(sorting: Sorting, stored: SortingProgress | undefined, beatBest: BeatBest): SortingResult {
   const right = score(sorting);
-  const outcome = stored === undefined ? undefined : finishRound(stored, right, beatBest);
+  const outcome = stored === undefined ? undefined : finishRound(stored, sorting.board.level, right, beatBest);
   return {
+    level: sorting.board.level,
     score: right,
     total: sorting.board.cards.length,
     progress: outcome?.progress,
-    previousBest: stored?.bestScore ?? undefined,
+    previousBest: stored === undefined ? undefined : bestForLevel(stored, sorting.board.level) ?? undefined,
     celebration: outcome?.celebration ?? null
   };
 }
