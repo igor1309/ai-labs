@@ -56,6 +56,9 @@ export type SkeletonPuzzleScreenProps = {
   // size.
   outline: string;
   silhouette: boolean;
+  // Whether a held piece's home is outlined, so the youngest see where it
+  // goes; older children find it themselves.
+  homeShown: boolean;
   frame: { width: number; height: number };
   // Every piece's slot, in the cut's order: a piece not yet fitted waits
   // in its spot in the tray, and a fitted one leaves its spot empty, so
@@ -97,7 +100,7 @@ export type SkeletonPuzzleScreenProps = {
 type TraySpot = Pick<SkeletonSlotView, "piece" | "name" | "picture" | "area" | "fitted">;
 
 // The most spots the tray stacks in one column before it needs two.
-const TRAY_COLUMN = 8;
+const TRAY_COLUMN = 4;
 
 // How near its home a dropped piece's centre fits, in CSS pixels:
 // generous, so a child's near miss still fits.
@@ -143,6 +146,7 @@ export function SkeletonPuzzleScreen({
   name,
   outline,
   silhouette,
+  homeShown,
   frame,
   slots,
   strays,
@@ -337,7 +341,7 @@ export function SkeletonPuzzleScreen({
                 className="skeleton-slot"
                 data-piece={slot.piece}
                 data-state={slot.fitted ? "fitted" : "empty"}
-                data-target={held?.piece === slot.piece || undefined}
+                data-target={(homeShown && held?.piece === slot.piece) || undefined}
                 data-hint={glowing === slot.piece || undefined}
                 data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ left: percent(slot.left), top: percent(slot.top), width: percent(slot.width), height: percent(slot.height) }}

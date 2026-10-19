@@ -170,13 +170,13 @@ describe("Paleontologist's puzzle", () => {
 });
 
 describe("the other levels", () => {
-  it.each<[AgeLevel, number]>([
-    ["hatchling", 4],
-    ["explorer", 6]
-  ])("keep %s's faint outline of bones and a tray of its own %i pieces only", async (level, count) => {
+  it.each<[AgeLevel, number, string | null]>([
+    ["hatchling", 4, null],
+    ["explorer", 6, "2"]
+  ])("keep %s's faint outline of bones and a tray of its own %i pieces only, in two columns from five", async (level, count, columns) => {
     await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level) });
 
     expect([silhouette(), board().querySelector(".skeleton-outline img")?.getAttribute("src")]).toEqual([null, "/skeletons/triceratops/skeleton.webp"]);
-    expect([spotPieces().length, strays(), tray().hasAttribute("data-columns"), screen.queryByRole("status")]).toEqual([count, [], false, null]);
+    expect([spotPieces().length, strays(), tray().getAttribute("data-columns"), screen.queryByRole("status")]).toEqual([count, [], columns, null]);
   });
 });

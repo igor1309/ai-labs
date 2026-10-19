@@ -282,6 +282,7 @@ describe("presenting the skeleton game", () => {
       name: "Triceratops",
       outline: fakeSkeletonPicture("triceratops", "skeleton"),
       silhouette: false,
+      homeShown: false,
       frame,
       slots: PIECES.map((piece) => ({
         piece,
