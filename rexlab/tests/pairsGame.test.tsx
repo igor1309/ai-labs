@@ -585,7 +585,7 @@ describe("the result", () => {
     const app = openPairsApp({ pals: THREE });
     await playPairs(app.user);
     await playDealt(app.user, app.clock, NAMES);
-    const recorded = { stars: 1, level: 1, boardsOnLevel: 1, best: { 1: 3 }, found: ["triceratops", "stegosaurus", "tyrannosaurus"] };
+    const recorded = { stars: 1, level: 1, boardsOnLevel: 1, best: { 1: 3 }, found: ["triceratops", "stegosaurus", "tyrannosaurus"], offer: { level: "hatchling", strong: 0, declined: [] } };
     expect(storedPairs(app.storage)).toEqual(recorded);
 
     await app.user.click(button("HOME"));

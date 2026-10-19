@@ -3,6 +3,7 @@
 ## 2026-10-19
 
 - Skeletons no longer wait for pictures: a puzzle starts at once, each bone fitted the same while its picture shimmers or is missing, and the result shows once the skeleton has held, the body fading in whenever it loads; nothing in the app waits for a picture any more (LAB-308).
+- Find the pair offers the next age level after three strong boards in a row, or five after NOT NOW; YES keeps that level for the game and leaves the parents' setting alone (LAB-293).
 
 ## 2026-10-18
 

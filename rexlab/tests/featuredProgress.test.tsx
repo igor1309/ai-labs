@@ -268,7 +268,8 @@ const AT_ONCE: Start[] = [
   ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
   ["a sorting round", "sort", [], () => homeTile("SORT")],
   ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
-  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
+  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")],
+  ["a sorting round over a board left unfinished", "sort", [() => homeTile("SORT"), () => button("HOME")], () => homeTile("SORT")]
 ];
 
 describe("a start that does not wait for its pictures", () => {
@@ -278,6 +279,7 @@ describe("a start that does not wait for its pictures", () => {
     const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
     loadShownPictures(pictures);
     for (const step of way) await user.click(step());
+    const before = counted.length;
     const starting = begin();
 
     act(() => {
@@ -285,9 +287,9 @@ describe("a start that does not wait for its pictures", () => {
       starting.click();
     });
 
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
     act(() => pictures.finishAll());
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
   });
 });
 

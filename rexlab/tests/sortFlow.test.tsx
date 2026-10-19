@@ -187,7 +187,7 @@ describe("a new board", () => {
 
       await tap(user, control());
 
-      // A dinosaur of the board before has its picture loaded already.
+      // A picture loaded before shows at once, and only the rest shimmer.
       const cards = within(tray()).getAllByRole("button");
       const urls = cards.map((card) => fakeBodyPicture(SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id ?? ""));
       const asked = pictures.loading();

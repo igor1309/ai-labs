@@ -4286,6 +4286,100 @@ body:has(.result) #version {
   animation-delay: var(--motion-screen);
 }
 
+/* The next level is offered over the completed result. The scrim keeps
+   catching taps through its fade out. */
+.pairs-offer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.pairs-offer-scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0f1320;
+  opacity: 0.6;
+}
+
+.pairs-offer {
+  position: relative;
+  box-sizing: border-box;
+  width: 640px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 44px 40px 40px;
+  border-radius: 36px;
+  background: #fffdf8;
+  color: #1d2742;
+  box-shadow: 0 24px 60px #1d274224;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.pairs-offer-picture {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: #e6e2d9;
+  font-size: 72px;
+  line-height: 1;
+}
+
+.pairs-offer-question {
+  width: 100%;
+  margin: 0;
+  font-size: min(36px, 3.125vw);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pairs-offer-answers {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+}
+
+.pairs-offer-answers button {
+  flex: 1 1 0;
+  min-width: 48px;
+  height: 88px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 0;
+  border-radius: 24px;
+  font-size: 28px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pairs-offer-yes {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.pairs-offer-not-now {
+  background: #e6e2d9;
+  color: #1d2742;
+}
+
+.pairs-offer-scrim[data-leaving] {
+  animation: fade-out var(--motion-small) var(--ease-out) both;
+}
+
 /* Found dinosaurs in the catalogue: the count is of those found, on the
    navy, and each found card and page is stamped. */
 .catalogue-count.catalogue-found {
@@ -4969,6 +5063,15 @@ body:has(.result) #version {
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+  }
+
+  .pairs-offer-scrim,
+  .pairs-offer {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .pairs-offer-scrim[data-leaving] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
   /* A pressed card and the progress steps change size at once. */
@@ -5694,4 +5797,20 @@ body:has(.result) #version {
 
 [data-theme="dark"] .picture[data-picture="failed"] {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3b6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z'/%3E%3Cpath d='M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z'/%3E%3Cpath d='M16 17h4'/%3E%3Cpath d='M4 13h4'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .pairs-offer {
+  background: #181e2e;
+  color: #ece8de;
+  box-shadow: 0 24px 60px #00000066;
+}
+
+[data-theme="dark"] .pairs-offer-picture,
+[data-theme="dark"] .pairs-offer-not-now {
+  background: #222a3d;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .pairs-offer-yes {
+  background: #f2b24b;
 }
