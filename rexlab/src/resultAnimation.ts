@@ -1,4 +1,4 @@
-import type { StartTimer } from "./pictureWait.ts";
+import type { StartTimer } from "./ownedTimers.ts";
 
 // Read the running CSS animations so reward order and dismissal follow
 // the stylesheet, including the device's reduced-motion timings.

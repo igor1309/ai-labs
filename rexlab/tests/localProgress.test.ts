@@ -365,6 +365,36 @@ describe("localPairsProgress", () => {
     expect(localCareProgress(() => storage).load()).toEqual({ bestScore: 6, visitsFinished: 1, friends: [] });
   });
 
+  it("reads the strong boards and the offers turned down as saved", () => {
+    const offer = { level: "explorer", strong: 2, declined: ["hatchling", "explorer"] };
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, offer }) });
+
+    expect(localPairsProgress(() => storage).load()).toEqual({ ...NO_CHOICE, offer });
+  });
+
+  it.each([
+    ["no offer", undefined],
+    ["an offer that is not a record", "explorer"],
+    ["an offer of an unknown level", { level: "expert", strong: 2, declined: [] }],
+    ["an offer of a climb level", { level: 2, strong: 2, declined: [] }],
+    ["strong boards in text", { level: "explorer", strong: "2", declined: [] }],
+    ["negative strong boards", { level: "explorer", strong: -1, declined: [] }],
+    ["fractional strong boards", { level: "explorer", strong: 1.5, declined: [] }],
+    ["strong boards at no level", { level: null, strong: 2, declined: [] }],
+    ["declines that are not a list", { level: "explorer", strong: 2, declined: "hatchling" }],
+    ["a decline of an unknown level", { level: "explorer", strong: 2, declined: ["hatchling", "expert"] }]
+  ])("reads %s as no strong boards and no declines, with the rest of the progress as saved", (_, offer) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, levelChoice: CHOICE, offer }) });
+
+    expect(localPairsProgress(() => storage).load()).toEqual({ ...NO_CHOICE, levelChoice: CHOICE, offer: NO_LEVEL_OFFER });
+  });
+
+  it("reads a level turned down twice once", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairs({ ...PAIRS, offer: { level: null, strong: 0, declined: ["explorer", "explorer"] } }) });
+
+    expect(localPairsProgress(() => storage).load()?.offer.declined).toEqual(["explorer"]);
+  });
+
   it("reads progress of an unknown schema version as none", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 2, games: { "find-the-pair": PAIRS } }) });
 
@@ -453,7 +483,7 @@ describe("localSkeletonProgress", () => {
 
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
-      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": { stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [] } }
+      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": { stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], offer: NO_LEVEL_OFFER } }
     });
   });
 

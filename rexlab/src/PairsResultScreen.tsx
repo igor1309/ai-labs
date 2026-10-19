@@ -2,7 +2,7 @@ import { ArrowRight, ChartNoAxesColumnIncreasing, Check, Footprints, Hand, House
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
-import type { StartTimer } from "./pictureWait.ts";
+import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
