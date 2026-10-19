@@ -38,3 +38,8 @@ Feature: Documents gives the files a document is made from
     Given the process "a" has a home source "{extends: missing}"
     When documents is asked the files of the process "a"
     Then it gives no file, and the problem that "missing" is not held
+
+  Scenario: Each file gives its bytes
+    Given the process "a" has a home source "{x: 1}"
+    When documents is asked the files of the process "a"
+    Then the home file gives the bytes "{x: 1}", the caller's own

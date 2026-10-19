@@ -1201,9 +1201,8 @@ Decisions, each with its reason:
 - The files, not the composed definitions: a digest of each file is
   what was read, and the record does not keep a second decoding of
   settings that may change.
-- Paths and digests, not the bytes: a file changed since is known
-  changed, not what it held; keeping the bytes is left
-  (`run-path.md`, "The rest of the record").
+- Paths and digests in the record, the bytes beside it ("A
+  definition's bytes"): the record stays small to read.
 - `"digest"`, as a stream's: one name for a SHA-256 in the record.
 - The documents a plan read, not every document of the snapshot: a
   change to a process another step runs is no reason to run this one
@@ -1212,3 +1211,38 @@ Decisions, each with its reason:
 - The workflow's files are the run's, not each call's: a reuse does
   not compare them, as a change to another step is no reason to run
   this one again; each call's own documents say what it ran under.
+
+## A definition's bytes
+
+A run keeps the bytes of each definition file its record names, beside
+the record, so the record says what a call was given, not only that it
+changed (ADR-001, invariant 6; LAB-322).
+
+**`settings/documents`** gives each file of a document with its bytes,
+the caller's own, beside its layer, path and digest.
+
+**`runstore`** writes a definition's bytes whole, as it writes a
+record, under its run's folder by their digest,
+`<run id>/definitions/<digest>`, gives them back by their run and
+digest, and a run exported takes them. Bytes written again under the
+same digest leave one file.
+
+**The composition** writes the bytes of each file of a run's request,
+before the record is first written, and of each file of a call's
+definitions, before the entry that names them, refused or made, a
+digest once in a run. A call taken by a reuse ran under this call's
+definitions, so its bytes are this run's snapshot's, written the same
+way. Bytes runstore could not write are a warning in the result, as a
+patch not written is, naming the file's path; the record is kept. The
+record gains no field: a file's bytes are at its run's
+`definitions/<digest>`.
+
+Decisions, each with its reason:
+
+- By digest, not by kind and name: the same file read by every step is
+  kept once, and the path follows from what the record holds.
+- No field naming the bytes: the digest names them; a reader joins the
+  run's folder and `definitions/` to it.
+- A write that fails is a warning, not a refusal: the call's work is
+  worth more than its settings' copy, as with a patch.
+
