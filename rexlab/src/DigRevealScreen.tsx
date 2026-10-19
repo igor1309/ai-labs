@@ -83,7 +83,7 @@ export function DigRevealScreen({
           )}
           {celebration && <CelebrationChip language={language} celebration={celebration} />}
           <div className="dig-reveal-ways" inert={!landed}>
-            <LevelSwitch language={language} level={level} onLevel={onLevel} />
+            <LevelSwitch language={language} level={level} onLevel={onLevel} disabled={!landed} />
             <nav className="result-actions">
               <button type="button" className="play-again-button" disabled={!landed} onClick={onDigAgain}>
                 <RotateCcw size={28} aria-hidden="true" />

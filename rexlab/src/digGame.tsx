@@ -121,6 +121,10 @@ export function useDigGame(
   // chosen at; the level already chosen, as on a double tap, changes
   // nothing.
   const chooseLevel = (chosen: AgeLevel) => {
+    // The reveal owns the switch until its reward has landed. The screen
+    // also disables the buttons, but keeping the boundary here protects
+    // against a queued or programmatic click crossing it.
+    if (screen?.kind === "reveal" && !screen.landed) return;
     if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
     keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
   };
