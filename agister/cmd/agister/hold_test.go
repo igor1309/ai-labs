@@ -18,6 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/files"
+	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
@@ -178,7 +179,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		if got.Status != workflow.Completed || len(spy.steps) != 1 {
 			t.Errorf("%s: gave %+v, called %d times; want completed, called once", name, got, len(spy.steps))
 		}
-		want := []endedCall{{step: name, process: calls[name].process, agent: calls[name].agent, inputs: given[name], facts: admits.facts, result: got}}
+		want := []endedCall{{step: name, process: calls[name].process, agent: calls[name].agent, inputs: given[name], environment: []runstore.Variable{}, facts: admits.facts, result: got}}
 		if told := records.told(); !reflect.DeepEqual(told, want) {
 			t.Errorf("%s: told the records %+v, want %+v", name, told, want)
 		}
@@ -200,7 +201,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	if !reflect.DeepEqual(got, want) || len(spy.steps) > 0 {
 		t.Errorf("refused: gave %+v, called %+v; want %+v, no turn taken", got, spy.steps, want)
 	}
-	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", inputs: given["pinned"], result: want}}; !reflect.DeepEqual(told, want) {
+	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", inputs: given["pinned"], environment: []runstore.Variable{}, result: want}}; !reflect.DeepEqual(told, want) {
 		t.Errorf("refused: told the records %+v, want %+v, no facts", told, want)
 	}
 	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, &callsSpy{}); err == nil {

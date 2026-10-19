@@ -76,6 +76,7 @@ func TestACallsDefinitionBytesPrecedeItsRecord(t *testing.T) {
 				earlier := keptCall("R1/ask", "t1", "s1")
 				earlier.Inputs = []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}}
 				earlier.Definitions = askDefinitions(settings, "claude-opus")
+				earlier.Environment = []runstore.Variable{{Name: "A", Value: "1"}}
 				record := keptRun("R1", earlier)
 				record.Request = runstore.Request{Process: "ask", Agent: "claude-opus", Dir: "/r"}
 				f.store.kept = map[string]runstore.Record{"R1": record}

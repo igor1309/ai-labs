@@ -6,8 +6,9 @@
 # param q, then "judge", of the process "rule" on "claude-opus", given
 # the parallel's outputs. runstore keeps the run "R1" of "review" in
 # "/r", q "why": "a" and "b" completed, their root "/r", HEAD "c1" and
-# content "t1", "judge" failed, each call holding the definitions this
-# run's call of its step reads; git gives "/r" HEAD "c1" and content "t1".
+# content "t1", "judge" failed, each call holding the definitions and
+# environment this run's call of its step has; git gives "/r" HEAD "c1"
+# and content "t1".
 
 Feature: The composition reuses an earlier run's completed calls
 
