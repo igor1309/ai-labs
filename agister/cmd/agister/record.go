@@ -58,7 +58,7 @@ func callID(run, step string) string {
 // was given and its resolved process environment, in declaration order,
 // none where its inputs were refused; its permission plan; its worktree's
 // facts, none for a call refused; the earlier call
-// it took, nil for one made; and its result.
+// it took, nil for one made; its result and session cost, nil where unknown.
 type endedCall struct {
 	definitions          []runstore.Definition
 	definitionBytes      map[string][]byte
@@ -70,6 +70,7 @@ type endedCall struct {
 	inputs               []givenInput
 	facts                admit.Facts
 	result               workflow.Result
+	sessionCost          *float64
 }
 
 // runRecord keeps a run's record as the run goes (docs/run-implementation.md,
@@ -148,7 +149,7 @@ func (r *runRecord) Called(ended endedCall) {
 		EndHead:     &ended.facts.EndHead,
 		Content:     ended.facts.Content,
 		Inputs:      recordInputs(ended.inputs),
-		Result:      runstore.CallResult{Outcome: outcomeOf(ended.result)},
+		Result:      runstore.CallResult{Outcome: outcomeOf(ended.result), SessionCost: ended.sessionCost},
 	}
 	if continues := ended.continues; continues != "" {
 		call.Continues = &continues

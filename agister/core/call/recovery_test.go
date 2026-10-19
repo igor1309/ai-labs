@@ -77,9 +77,10 @@ func TestAStaleTurnWithAResumeLeftIsRecoveredInItsSession(t *testing.T) {
 	}
 	var stale staleTurns
 	got := recoveringCaller(t, spy, staleness, clocktest.NewClock(start)).Call(context.Background(), step, stale.report)
-	first := call.Turn{Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
+	first := call.Turn{SessionCostBefore: dollars(0), Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
 		Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read"}}
 	second := first
+	second.SessionCostBefore = nil
 	second.Prompt, second.Session = "Go on.\n\nno event for 21m", "s1"
 	if want := []call.Turn{first, second}; !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)

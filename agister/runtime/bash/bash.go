@@ -12,7 +12,7 @@ import (
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
 // efforts it accepts, report tool calls and tool commands, and how it
-// takes a call's inputs.
+// takes a call's inputs, and whether it takes a budget.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -22,6 +22,7 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Budget       bool
 	Inputs       Inputs
 }
 

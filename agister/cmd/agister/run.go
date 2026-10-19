@@ -54,10 +54,11 @@ type host struct {
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,
-// how it takes a call's inputs, and its turns.
+// how it takes a call's inputs, whether it takes a budget, and its turns.
 type turn struct {
 	contract string
 	inputs   call.Inputs
+	budget   bool
 	runtime  call.Runtime
 }
 
@@ -187,6 +188,18 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	}
 	if len(unrun) > 0 {
 		return cli.Result{}, refused(unrun)
+	}
+	for name, planned := range built.calls {
+		if limit := planned.step.CostLimit; limit != nil {
+			for _, runtime := range r.turns {
+				if runtime.contract == planned.contract && !runtime.budget {
+					runtimeName := resolved.Agents[planned.agent].Runtime.Value
+					planned.step.Warnings = append(planned.step.Warnings, fmt.Sprintf("the runtime %s reports no cost: the cost limit %g spends nothing", runtimeName, *limit))
+					planned.step.CostLimit = nil
+				}
+			}
+		}
+		built.calls[name] = planned
 	}
 	built, refusal := sessionsContinued(built, read.documents)
 	if len(refusal) > 0 {
@@ -621,9 +634,6 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				unrun.add(owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
 			}
 		}
-		if definition.Limits.Value.Cost.Given {
-			unrun.add(owner, "the cost limit")
-		}
 		if inEnvironment && definition.Limits.Value.Stale.Given {
 			unrun.add(owner, fmt.Sprintf("the staleness limit on %s", runtime))
 		}
@@ -786,6 +796,9 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 			return plannedCall{}, err
 		}
 		planned.step.Prompt = string(text)
+	}
+	if cost := definition.Limits.Value.Cost; cost.Given {
+		planned.step.CostLimit = &cost.Value
 	}
 	planned.step.TimeLimit = definition.Limits.Value.Time.Value
 	stale := definition.Limits.Value.Stale.Value
@@ -1089,10 +1102,11 @@ type sessionCalls struct {
 }
 
 // sessionCall is a session's latest call: its id, and the worktree it
-// left.
+// left, together with its session cost, nil where unknown.
 type sessionCall struct {
 	id   string
 	left admit.Facts
+	cost *float64
 }
 
 // of is the latest call of session, false for none.
@@ -1205,6 +1219,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 			return s.refused(fmt.Sprintf("no call of the run went on in the session %q", session), planned.step.Warnings)
 		}
 		step.Session = session
+		step.SessionCostBefore = latest.cost
 		ended.continues = latest.id
 		request.Left = &latest.left
 	}
@@ -1224,7 +1239,8 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
-	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts}, step.Session, called.Session)
+	ended.sessionCost = called.SessionCost
+	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts, cost: called.SessionCost}, step.Session, called.Session)
 	var usage workflow.Usage
 	if u := called.Usage; u != nil {
 		usage = workflow.Usage(*u)
@@ -1346,7 +1362,7 @@ func newClaudeCodeTurns(claude claudeCodeRuns) (*claudeCodeTurns, error) {
 
 func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(call.Report)) (call.Ended, error) {
 	result, err := c.claude.Run(ctx, claudecode.Turn{Message: turn.Prompt, Dir: turn.Dir, Env: turn.Env, Instruction: turn.Instruction,
-		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema, Session: turn.Session},
+		Model: turn.Model, Effort: turn.Effort, Options: turn.Options, Schema: turn.Schema, Session: turn.Session, SessionCostBefore: turn.SessionCostBefore, Budget: turn.Budget},
 		func(r claudecode.Report) {
 			var tool *call.Tool
 			if t := r.Tool; t != nil {
@@ -1366,7 +1382,7 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr),
 		Session: result.Session}
 	if r := result.Reply; r != nil {
-		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost,
+		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost, SessionCost: r.SessionCost,
 			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, CacheWrite: r.Usage.CacheWrite},
 			Failure: call.Class(r.Failure), Reason: r.Reason}
 	}

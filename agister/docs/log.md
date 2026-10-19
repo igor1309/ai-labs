@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-336: a call on claude-code is kept to its process's cost limit, and
+  a resumed turn's cost is its own, no longer the session's to date.
+
 - LAB-324: each call records its permission plan and resolved process
   environment; reuse requires the same environment.
 

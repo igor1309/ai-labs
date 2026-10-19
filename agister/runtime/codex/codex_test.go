@@ -129,6 +129,7 @@ func TestItsFacts(t *testing.T) {
 		Model:        true,
 		Efforts:      []string{"minimal", "low", "medium", "high", "xhigh"},
 		ToolCalls:    true,
+		Budget:       false,
 		ToolCommands: true,
 		Inputs:       codex.InMessage,
 	}

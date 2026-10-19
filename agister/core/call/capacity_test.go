@@ -57,9 +57,10 @@ func TestATurnAtCapacityResumesItsSessionAfterAWait(t *testing.T) {
 	}
 	clock.Advance(30 * time.Second)
 	got := <-done
-	first := call.Turn{Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
+	first := call.Turn{SessionCostBefore: dollars(0), Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
 		Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read"}, Schema: []byte("s")}
 	second := first
+	second.SessionCostBefore = nil
 	second.Session = "s1"
 	if want := []call.Turn{first, second}; !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)

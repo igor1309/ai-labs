@@ -60,8 +60,8 @@ const (
 	ContextOverflow Class = "context_overflow"
 	// NoResult is a turn that ended with no result.
 	NoResult Class = "no_result"
-	// BudgetExhausted is a turn ended for making the same tool call too
-	// many times in a row.
+	// BudgetExhausted is a call that spent its cost limit or made the
+	// same tool call too many times in a row.
 	BudgetExhausted Class = "budget_exhausted"
 	// Capacity is a turn the runtime failed because its model is at
 	// capacity.
@@ -97,17 +97,20 @@ var ErrNotStarted = errors.New("the program could not start")
 // message on a model; the directory; the environment, as "KEY=value"; the
 // instruction, the model and the effort, each empty where not given; the
 // options; the schema, nil where none is given; and the session it
-// resumes, "" for none.
+// resumes, "" for none. SessionCostBefore is its earlier cost in US
+// dollars, nil where unknown; Budget is the turn's budget, nil for none.
 type Turn struct {
-	Prompt      string
-	Dir         string
-	Env         []string
-	Instruction string
-	Model       string
-	Effort      string
-	Options     []string
-	Schema      []byte
-	Session     string
+	Prompt            string
+	Dir               string
+	Env               []string
+	Instruction       string
+	Model             string
+	Effort            string
+	Options           []string
+	Schema            []byte
+	Session           string
+	SessionCostBefore *float64
+	Budget            *float64
 }
 
 // Ended is how a turn's program ended and what it wrote: the code it
@@ -125,15 +128,17 @@ type Ended struct {
 // Reply is what a model's runtime reported of its turn: its text; its
 // structured output, nil for none; its session; its cost in US dollars,
 // nil where not reported; its usage; and its failure class and reason,
-// empty where it reports none.
+// empty where it reports none. SessionCost is the session's cost after
+// this turn, in US dollars, nil where unknown.
 type Reply struct {
-	Text    string
-	Output  []byte
-	Session string
-	Cost    *float64
-	Usage   Usage
-	Failure Class
-	Reason  string
+	Text        string
+	Output      []byte
+	Session     string
+	Cost        *float64
+	SessionCost *float64
+	Usage       Usage
+	Failure     Class
+	Reason      string
 }
 
 // Usage is the tokens a turn used, each nil where not reported.
@@ -244,22 +249,26 @@ type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // a model takes in its message; the instruction, the model, the effort,
 // the options and the schema the turn is given; the session it continues,
 // "" for none; its time limit, none when zero; its staleness limits; its
-// recovery; and the warnings of its plan.
+// recovery; and the warnings of its plan. SessionCostBefore is the
+// continued session's earlier cost, nil where unknown; CostLimit is the
+// call's limit in US dollars, nil for none.
 type Step struct {
-	Prompt      string
-	Environment map[string]string
-	Inputs      []Named
-	Documents   []Named
-	Instruction string
-	Model       string
-	Effort      string
-	Options     []string
-	Schema      []byte
-	Session     string
-	TimeLimit   time.Duration
-	Staleness   Limits
-	Recovery    Recovery
-	Warnings    []string
+	Prompt            string
+	Environment       map[string]string
+	Inputs            []Named
+	Documents         []Named
+	Instruction       string
+	Model             string
+	Effort            string
+	Options           []string
+	Schema            []byte
+	Session           string
+	SessionCostBefore *float64
+	CostLimit         *float64
+	TimeLimit         time.Duration
+	Staleness         Limits
+	Recovery          Recovery
+	Warnings          []string
 }
 
 // Recovery is how many recovery turns a call may make, none when zero, and
@@ -278,17 +287,19 @@ type Named struct {
 // completed call; its timing; its cost, nil when unknown, as on bash,
 // which reports none; its usage, nil on bash; the session its runtime
 // reported; the reason of a call that did not complete, empty where there
-// is none; and its warnings.
+// is none; and its warnings. SessionCost is the last turn's reported
+// session cost in US dollars, nil where unknown.
 type Result struct {
-	Status   Status
-	Class    Class
-	Output   map[string]any
-	Timing   Timing
-	Cost     *float64
-	Usage    *Usage
-	Session  string
-	Reason   string
-	Warnings []string
+	Status      Status
+	Class       Class
+	Output      map[string]any
+	Timing      Timing
+	Cost        *float64
+	SessionCost *float64
+	Usage       *Usage
+	Session     string
+	Reason      string
+	Warnings    []string
 }
 
 // Timing is when a call started and ended, and how long it took.
@@ -397,14 +408,32 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	// atCapacity counts the call's turns at capacity; interrupted is the
 	// cause of the call's context where it ended a wait.
 	atCapacity, interrupted := 0, error(nil)
+	knownCost, spent := 0.0, false
+	before := step.SessionCostBefore
+	if step.Session == "" {
+		before = new(float64)
+	}
 	for {
+		turn.SessionCostBefore = before
+		if step.CostLimit != nil {
+			remaining := *step.CostLimit - knownCost
+			turn.Budget = &remaining
+		}
 		last := c.take(callCtx, turn, step.Staleness, report)
 		turns = append(turns, last)
+		before = nil
+		if reply := last.ended.Reply; last.err == nil && reply != nil {
+			before = reply.SessionCost
+			if reply.Cost != nil {
+				knownCost += *reply.Cost
+			}
+		}
 		if reason, ok := last.atCapacity(); ok {
 			atCapacity++
+			spent = step.CostLimit != nil && knownCost >= *step.CostLimit && last.strayed == "" && callCtx.Err() == nil
 			wait := time.Duration(atCapacity) * capacityWait
 			left := step.TimeLimit - c.clock.Now().Sub(started)
-			if atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
+			if spent || atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
 				wait = 0
 			}
 			report(Report{Capacity: &CapacityTurn{Reason: reason, Retry: wait}})
@@ -443,6 +472,9 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	result := timed()
 	counted(&result, turns)
 	switch {
+	case spent:
+		result.Status, result.Class = Failed, BudgetExhausted
+		result.Reason = fmt.Sprintf("the cost limit %g is spent: %g", *step.CostLimit, knownCost)
 	case errors.Is(interrupted, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout
 	case interrupted != nil:
@@ -545,8 +577,12 @@ func (c *Caller) take(ctx context.Context, turn Turn, limits Limits, report func
 // counted gives result what its turns reported: the session the last that
 // reported one reported; and, where any gave a reply, its cost and each
 // count of its usage, the sum of its turns', unknown where any turn
-// reported none (ADR-001, invariant 3), as a turn with no reply does.
+// reported none (ADR-001, invariant 3), as a turn with no reply does. The
+// session's cost is only the last turn's report, never an earlier one.
 func counted(result *Result, turns []turned) {
+	if last := turns[len(turns)-1]; last.err == nil && last.ended.Reply != nil {
+		result.SessionCost = last.ended.Reply.SessionCost
+	}
 	replied := false
 	costs, usages := make([]*float64, len(turns)), make([]Usage, len(turns))
 	for i, t := range turns {

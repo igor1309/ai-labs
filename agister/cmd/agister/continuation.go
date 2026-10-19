@@ -30,10 +30,11 @@ type continuedWorktree interface {
 }
 
 // continuation is how a run continues an earlier call's session: the
-// session, the id of its latest call, and the text of home's prompt
+// session and its cost, the id of its latest call, and the text of home's prompt
 // "continuation".
 type continuation struct {
 	session         string
+	sessionCost     *float64
 	continues       string
 	prompt          string
 	definitions     []runstore.Definition
@@ -102,7 +103,7 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if len(refusal) > 0 {
 		return continuation{}, refusal, nil
 	}
-	return continuation{session: session, continues: latest.ID, prompt: prompt, definitions: definitions, definitionBytes: files}, nil, nil
+	return continuation{session: session, sessionCost: latest.Result.SessionCost, continues: latest.ID, prompt: prompt, definitions: definitions, definitionBytes: files}, nil, nil
 }
 
 // continuationPrompt is the text of the prompt "continuation" in docs, or
@@ -154,6 +155,7 @@ func continued(built plan, c continuation) plan {
 		planned = continuing(planned, c.prompt, c.definitions, c.definitionBytes)
 		planned.continues = c.continues
 		planned.step.Session = c.session
+		planned.step.SessionCostBefore = c.sessionCost
 		calls[name] = planned
 	}
 	built.calls = calls

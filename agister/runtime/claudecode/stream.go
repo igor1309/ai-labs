@@ -141,7 +141,8 @@ func (s *stream) reply(ended Ended, schema bool) *Reply {
 // class is a failed result's class, by its fields: its status and a
 // rejected rate limit where claude-code reports them, else its words,
 // since a failure before any request, such as no login, has no status. A
-// model at capacity comes first: it is the one failure core retries.
+// budget subtype decides before capacity signals: core must not retry
+// a turn whose budget ended it.
 func (s *stream) class(r *event) Class {
 	status := 0
 	if r.APIErrorStatus != nil {
@@ -149,6 +150,8 @@ func (s *stream) class(r *event) Class {
 	}
 	words := strings.ToLower(reason(r))
 	switch {
+	case r.Subtype == "error_max_budget_usd":
+		return BudgetExhausted
 	case status == 529 || strings.Contains(words, "overloaded"):
 		return Capacity
 	case status == 429 || s.rejected:
