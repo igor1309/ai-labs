@@ -54,7 +54,8 @@ func identity(value string) string {
 func keptReview(step string, settings map[string]string) runstore.Call {
 	cost, in, session := 1.0, int64(100), "s-"+step
 	return runstore.Call{ID: "R1/" + step, Step: step, Process: "ask", Agent: "codex-sol-61", Root: "/r", Head: "c1",
-		Content: "t1", Definitions: askDefinitions(settings, "codex-sol-61"), Inputs: []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}},
+		Content: "t1", Definitions: askDefinitions(settings, "codex-sol-61"), Environment: []runstore.Variable{{Name: "A", Value: "1"}},
+		Inputs: []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}},
 		Result: runstore.CallResult{Session: &session, Outcome: runstore.Outcome{Status: "completed",
 			Output: map[string]any{"ok": true, "by": step}, Cost: &cost, Usage: runstore.Usage{Input: &in}}}}
 }

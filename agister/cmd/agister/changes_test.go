@@ -217,6 +217,7 @@ func TestAReusedCallsPatchIsCopied(t *testing.T) {
 			earlier := keptCall("R1/fix", "t2", "s1")
 			earlier.Step, earlier.Process, earlier.EndHead, earlier.Patch = "fix", "fix", textPointer("c2"), textPointer("R1/patches/fix.patch")
 			earlier.Inputs = []runstore.Input{{Name: "base", Value: "c1", Identity: "c1"}}
+			earlier.Environment = []runstore.Variable{}
 			earlier.Definitions = []runstore.Definition{
 				definitionAt(f.settings, "agent", "claude-opus", "home", "/u/.agister/agents/claude-opus.toml"),
 				definitionAt(f.settings, "process", "fix", "repository", "/r/.agister/processes/fix.yaml"),

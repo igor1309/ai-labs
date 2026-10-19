@@ -100,8 +100,9 @@ func validProcessDefinition() documents.ProcessDefinition {
 				}}, 11, "inputs.goal"),
 		}, 9, "inputs"),
 		Environment: given([]documents.Field[documents.Binding]{
-			given(documents.Binding{Name: "BASE", Value: documents.Value{From: input("base")}}, 14, "environment.BASE"),
+			// The call records variables in their process's declaration order.
 			given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13, "environment.MODE"),
+			given(documents.Binding{Name: "BASE", Value: documents.Value{From: input("base")}}, 14, "environment.BASE"),
 		}, 12, "environment"),
 		Permissions: given(documents.Permissions{
 			Require: given([]string{"repository.read"}, 15, "permissions.require"),

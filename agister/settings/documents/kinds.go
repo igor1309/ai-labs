@@ -391,13 +391,17 @@ type Binding struct {
 // bindings is the field key, a map of values by name, each a string or a
 // reference that reads what readable says, in the order of their names.
 func (f *fields) bindings(key string, need need, readable readable) Field[[]Field[Binding]] {
+	return f.bindingsBy(key, need, readable, tree.Node.Keys)
+}
+
+func (f *fields) bindingsBy(key string, need need, readable readable, keys func(tree.Node) []string) Field[[]Field[Binding]] {
 	mapping := f.mapping(key, need)
 	if !mapping.Given {
 		return Field[[]Field[Binding]]{}
 	}
 	m := mapping.Value
 	typed := []Field[Binding]{}
-	for _, name := range m.node.Keys() {
+	for _, name := range keys(m.node) {
 		if value := m.value(name, required, readable); value.Given {
 			typed = append(typed, Field[Binding]{Value: Binding{Name: name, Value: value.Value}, Origin: value.Origin, Given: true})
 		}
