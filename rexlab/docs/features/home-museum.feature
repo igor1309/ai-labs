@@ -27,7 +27,7 @@ Feature: The museum from the home page
     Given I have finished Triceratops but neither of the other skeletons
     When I tap "MUSEUM" on the home page
     Then I see the museum hall with the Triceratops skeleton on its stand
-    And my collection score is "1/3"
+    And my collection score is "1/5"
     When I tap "HOME"
     Then I see the home page
     When I tap "SKELETONS"

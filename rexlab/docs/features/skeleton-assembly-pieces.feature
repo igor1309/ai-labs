@@ -35,6 +35,8 @@ Feature: Skeleton assembly: placing bones
       | Tyrannosaurus |
       | Triceratops   |
       | Stegosaurus   |
+      | Brachiosaurus |
+      | Spinosaurus   |
 
   Scenario: A near miss snaps into the correct slot
     Given all four pieces are unplaced

@@ -232,6 +232,6 @@ describe("the choice on the level switch", () => {
 
     expect(chosen()).toEqual(["PALEONTOLOGIST"]);
     expect(within(button("TYRANNOSAURUS")).queryByRole("img", { name: TEXTS.en.star })).not.toBeNull();
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("1/3");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("1/5");
   });
 });

@@ -8,8 +8,8 @@ specified under `features/`; this note is the plan they follow.
 
 Today's game becomes Hatchling, as it is (demote, never delete):
 
-- **Pieces.** The child picks one of three dinosaurs: Tyrannosaurus,
-  Triceratops and Stegosaurus. Its skeleton is cut into four pieces (skull,
+- **Pieces.** The child picks one of five dinosaurs: Tyrannosaurus,
+  Triceratops, Stegosaurus, Brachiosaurus and Spinosaurus. Its skeleton is cut into four pieces (skull,
   spine, legs, tail), each cut from one whole `skeleton.webp`.
 - **The puzzle.**
   - The pieces wait in a tray, the right way up, beside a full outline.

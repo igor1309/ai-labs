@@ -4646,21 +4646,25 @@ body:has(.result) #version {
 
 /* The three dinosaurs side by side, each a big card of its picture over
    its name, rising in one after the other. */
+/* The dinosaurs in rows of three, a last row of fewer centred: each card a
+   third of the row, as wide however many there are. */
 .skeleton-choices {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  gap: 28px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px 28px;
 }
 
 .skeleton-choice {
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 2 * 28px) / 3);
   min-width: 0;
   box-sizing: border-box;
-  padding: 24px 28px 28px;
+  padding: 16px 24px 18px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   border: none;
   border-radius: 28px;
   outline: 1px solid #1d27421f;
@@ -5235,24 +5239,28 @@ body:has(.result) #version {
    skeleton not on its stand shows as its faint silhouette; one knocked
    down to be built again keeps its star, and its exhibit and button are
    ringed in amber, so it reads as work in progress, not as never built. */
+/* The stands in rows of three, a last row of fewer centred: each stand a
+   third of the row, as wide however many there are. */
 .skeleton-hall {
   flex: 1 1 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 32px 32px 0;
+  padding: 24px 32px 0;
   display: flex;
-  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 32px;
   border-radius: 32px;
   background: #e6e2d9;
 }
 
 .skeleton-stand {
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 2 * 32px) / 3);
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   container-type: inline-size;
   animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--stand) * var(--motion-stagger)) both;
 }
@@ -5357,7 +5365,7 @@ body:has(.result) #version {
 .skeleton-plinth {
   align-self: stretch;
   box-sizing: border-box;
-  padding: 18px 14px 24px;
+  padding: 10px 14px 12px;
   border-radius: 20px 20px 0 0;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
@@ -5370,7 +5378,7 @@ body:has(.result) #version {
    least as large as the bar's on the narrowest iPad. */
 .skeleton-stand-button {
   width: 100%;
-  height: 64px;
+  height: 56px;
   padding: 0 10px;
   display: flex;
   align-items: center;
