@@ -4742,6 +4742,25 @@ body:has(.result) #version {
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* Each picture of a skeleton fills the place its wrapper keeps: a bone
+   in the tray or held keeps its own shape within it. */
+.skeleton-outline-picture,
+.skeleton-fitted-picture,
+.skeleton-piece-picture,
+.skeleton-lifted-picture,
+.skeleton-reveal-bones-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skeleton-piece-picture,
+.skeleton-lifted-picture {
+  object-fit: contain;
+}
+
 .skeleton-slot {
   position: absolute;
   display: flex;
@@ -4754,10 +4773,6 @@ body:has(.result) #version {
   height: 100%;
   min-width: 0;
   min-height: 0;
-}
-
-.skeleton-piece {
-  object-fit: contain;
 }
 
 /* The tray keeps a spot for every piece, each piece large in its own,
@@ -4924,7 +4939,9 @@ body:has(.result) #version {
   animation: none;
 }
 
-.skeleton-reveal-body {
+/* The body fades in as the reveal does, however late it loads, in place
+   of a picture's own fade-in. */
+.picture.skeleton-reveal-body {
   animation: fade-in calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both;
 }
 
@@ -5128,9 +5145,15 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
+/* A silhouette is faint whatever its picture is doing, and dark only
+   once its picture shows: its shimmer and footprints stay as they are. */
 .skeleton-silhouette {
-  filter: brightness(0);
   opacity: 0.22;
+}
+
+.skeleton-silhouette[data-picture="appearing"],
+.skeleton-silhouette[data-picture="shown"] {
+  filter: brightness(0);
 }
 
 .skeleton-plinth {
@@ -5892,7 +5915,8 @@ body:has(.result) #version {
   background: #f2b24b;
 }
 
-[data-theme="dark"] .skeleton-silhouette {
+[data-theme="dark"] .skeleton-silhouette[data-picture="appearing"],
+[data-theme="dark"] .skeleton-silhouette[data-picture="shown"] {
   filter: brightness(0) invert(1);
 }
 

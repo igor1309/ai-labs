@@ -11,6 +11,8 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
+import type { StartTimer } from "../src/ownedTimers.ts";
+import { pictureStore, type LoadPicture, type PictureStore } from "../src/Picture.tsx";
 import type { Language } from "../src/language/language.ts";
 import { presentQuestion } from "../src/presentation.ts";
 import { choose, questionState, type Random } from "../src/quiz/index.ts";
@@ -38,13 +40,20 @@ export const fakeItemPicture = (name: string) => `/care/${name}.webp`;
 // the picture files.
 export const fakeSkeletonPicture = (dinosaurId: string, part: string) => `/skeletons/${dinosaurId}/${part}.webp`;
 
+// How a test gives the app its pictures and its timers: the loader, the
+// store that alone calls it, as App takes it, and the timers.
+export type PictureClock = { loadPicture: LoadPicture; pictures: PictureStore; startTimer: StartTimer };
+
+// The clock of `loadPicture`, its store calling it.
+export const pictureClock = (loadPicture: LoadPicture, startTimer: StartTimer): PictureClock => ({ loadPicture, pictures: pictureStore(loadPicture), startTimer });
+
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
-export function loadedPictures(): Pick<AppProps, "loadPicture" | "startTimer"> {
-  return { loadPicture: (_url, done) => done("loaded"), startTimer: () => () => {} };
+export function loadedPictures(): PictureClock {
+  return pictureClock((_url, done) => done("loaded"), () => () => {});
 }
 
-export type ManualPictures = Pick<AppProps, "loadPicture" | "startTimer"> & {
+export type ManualPictures = PictureClock & {
   // The URL of every picture asked for and not yet finished, in order.
   loading(): string[];
   // Ends the loading of `url`: from then on it is loaded.
@@ -76,18 +85,20 @@ export function manualPictures(): ManualPictures {
     }
   };
   return {
-    loadPicture: (url, done) => {
-      loading.push({ url, done });
-    },
-    startTimer: (ms, fire) => {
-      const timer = { ms, fire };
-      timers.push(timer);
-      return () => {
-        if (!timers.includes(timer)) return;
-        drop(timers, timer);
-        stopped.push(timer);
-      };
-    },
+    ...pictureClock(
+      (url, done) => {
+        loading.push({ url, done });
+      },
+      (ms, fire) => {
+        const timer = { ms, fire };
+        timers.push(timer);
+        return () => {
+          if (!timers.includes(timer)) return;
+          drop(timers, timer);
+          stopped.push(timer);
+        };
+      }
+    ),
     loading: () => loading.map(({ url }) => url),
     finish: (url) => end(url, "loaded"),
     fail: (url) => end(url, "failed"),
@@ -138,7 +149,7 @@ export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
   };
 }
 
-export type ManualTimers = Pick<AppProps, "loadPicture" | "startTimer"> & {
+export type ManualTimers = PictureClock & {
   // The length of every timer started and not yet fired or stopped.
   timers(): number[];
   // Fires every running timer of `ms`.
@@ -155,8 +166,7 @@ export type ManualTimers = Pick<AppProps, "loadPicture" | "startTimer"> & {
 export function manualTimers(): ManualTimers {
   const pictures = manualPictures();
   return {
-    loadPicture: (_url, done) => done("loaded"),
-    startTimer: pictures.startTimer,
+    ...pictureClock((_url, done) => done("loaded"), pictures.startTimer),
     timers: pictures.timers,
     fire: pictures.fire,
     deliverStopped: pictures.deliverStopped,
@@ -168,8 +178,8 @@ export function manualTimers(): ManualTimers {
 
 // The pictures on screen loaded, when the test loads pictures by hand,
 // so it sees only those asked for from then on.
-export function loadShownPictures(clock: Pick<AppProps, "loadPicture" | "startTimer">) {
-  if ("finishAll" in clock) act(() => (clock as ManualPictures).finishAll());
+export function loadShownPictures(given: PictureClock) {
+  if ("finishAll" in given) act(() => (given as ManualPictures).finishAll());
 }
 
 // A seeded random source (mulberry32): each seed is one repeatable run.

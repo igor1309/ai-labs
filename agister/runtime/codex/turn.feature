@@ -55,11 +55,12 @@ Feature: The codex wrapper runs a turn
     Then the reply's failure class is "<class>", its reason the message
 
     Examples:
-      | message                     | class            |
-      | You've hit your usage limit | rate_limited     |
-      | 401 Unauthorized            | auth             |
-      | exceeds the context window  | context_overflow |
-      | stream disconnected         | runtime_error    |
+      | message                       | class            |
+      | Selected model is at capacity | capacity         |
+      | You've hit your usage limit   | rate_limited     |
+      | 401 Unauthorized              | auth             |
+      | exceeds the context window    | context_overflow |
+      | stream disconnected           | runtime_error    |
 
   Scenario Outline: A schema given and no JSON message is invalid output
     Given a schema, and the lines of <message> and turn.completed

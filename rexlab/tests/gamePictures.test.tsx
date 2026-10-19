@@ -9,15 +9,19 @@ import { dealBoard, turn } from "../src/pairs/index.ts";
 import { PairsBoardScreen } from "../src/PairsBoardScreen.tsx";
 import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
-import { presentFriend, presentPairsBoard, presentVisit } from "../src/presentation.ts";
+import { presentFriend, presentPairsBoard, presentSkeletonChoices, presentVisit } from "../src/presentation.ts";
+import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
+import { SkeletonMuseumScreen } from "../src/SkeletonMuseumScreen.tsx";
 import { VisitScreen } from "../src/VisitScreen.tsx";
 import { shipped } from "./careApp.tsx";
 import { withManualPictures } from "./pictures.tsx";
-import { SHIPPED_PALS, fakeBodyPicture, fakeItemPicture, manualPictures } from "./support.ts";
+import { SHIPPED_PALS, SHIPPED_SKELETONS, fakeBodyPicture, fakeItemPicture, fakeSkeletonPicture, manualPictures } from "./support.ts";
 
-// dinosaur-care-pictures.feature and find-the-pair-pictures.feature: every
-// picture of each screen of care and find the pair, shimmering in its
-// place until it has loaded, then fading in.
+// dinosaur-care-pictures.feature, find-the-pair-pictures.feature and
+// skeleton-assembly-pictures.feature: every picture of each screen of
+// care, find the pair and the skeletons' choice and museum, shimmering in
+// its place until it has loaded, then fading in, or showing the failure
+// look once it fails.
 
 const none = () => {};
 const T_REX = shipped("tyrannosaurus");
@@ -47,6 +51,29 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
     "the result of a board",
     <PairsResultScreen language="en" pals={[{ ...TRIKE, newlyFound: true }]} tries={3} stars={3} best={3} beaten={undefined} celebration={null} levelUp={null} onPlayAgain={none} onHome={none} />,
     ["pairs-found-picture"]
+  ],
+  [
+    "the skeleton selection, each choice",
+    <SkeletonChoiceScreen language="en" choices={presentSkeletonChoices(SHIPPED_SKELETONS, "en", fakeBodyPicture, [])} best={undefined} onChoose={none} onMuseum={none} onHome={none} />,
+    Array<string>(SHIPPED_SKELETONS.length).fill("skeleton-choice-picture")
+  ],
+  [
+    "the museum, a built skeleton beside an empty stand",
+    <SkeletonMuseumScreen
+      language="en"
+      stands={[
+        { id: "tyrannosaurus", name: "Tyrannosaurus", skeleton: fakeSkeletonPicture("tyrannosaurus", "skeleton"), state: "built" },
+        { id: "triceratops", name: "Triceratops", skeleton: fakeSkeletonPicture("triceratops", "skeleton"), state: "empty" }
+      ]}
+      score={1}
+      total={2}
+      best={1}
+      onBuild={none}
+      onRebuild={none}
+      onBuildAnother={none}
+      onHome={none}
+    />,
+    ["skeleton-exhibit-picture", "skeleton-exhibit-picture"]
   ]
 ];
 
@@ -64,6 +91,15 @@ describe.each(SCREENS)("every picture of %s", (_, element, places) => {
     act(() => pictures.finishAll());
     expect(looks()).toEqual(places.map((place) => [place, "appearing", expect.any(String)]));
     expect(looks().every(([, , src]) => asked.includes(src ?? ""))).toBe(true);
+  });
+
+  it("shows the failure look once its picture fails", () => {
+    const pictures = manualPictures();
+    render(element, withManualPictures(pictures));
+
+    act(() => new Set(pictures.loading()).forEach(pictures.fail));
+
+    expect(looks()).toEqual(places.map((place) => [place, "failed", null]));
   });
 });
 

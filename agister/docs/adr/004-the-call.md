@@ -1,7 +1,7 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-004: the call: it works in the caller's worktree, is admitted against the worktree, holds it as a reader or a writer, and a continuation resumes there"
+description: "ADR-004: the call: it works in the caller's worktree, is admitted against the worktree, holds it as a reader or a writer, a continuation resumes there, and a turn at capacity is retried"
 ---
 
 # ADR-004: The call
@@ -10,8 +10,8 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
 - **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** where a call works, what admits it, the hold on its
-  worktree, what it leaves, how a continuation resumes, and who declares
-  its limits
+  worktree, what it leaves, how a continuation resumes, who declares
+  its limits, and a turn at capacity retried
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
 
@@ -87,6 +87,18 @@ A call's process declares its limits on time and cost, and an enclosing
 run's budgets cover all its descendants. A cost budget limits reported
 cost: a call whose runtime reports no cost spends none of it. A caller
 may tighten the limits, never loosen them.
+
+### 8. A turn failed on capacity is retried
+
+A runtime's model at capacity is transient: the wrapper, which alone
+knows the provider's words, classes it `capacity`, and core retries it,
+one policy for every runtime, on by default: up to three turns at
+capacity, a wait between them, within the call's limits
+(`docs/run-implementation.md`, "Capacity"). A turn that reported its
+session resumes it, keeping the work done; else the turn runs again. Each failed turn is recorded. In a workflow, the call
+that failed is retried alone. No other agent takes over: a fallback the
+settings declare waits (`backlog/run-path.md`; the owner's decisions on
+LAB-249, 2026-10-13).
 
 ## Consequences
 

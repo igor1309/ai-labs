@@ -188,7 +188,8 @@ func output(message string) ([]byte, Class, string) {
 }
 
 // class is a failed turn's class, by its message's words: codex reports
-// a failure as text alone.
+// a failure as text alone. A model at capacity comes first: it is the one
+// failure core retries.
 func class(message string) Class {
 	words := strings.ToLower(message)
 	has := func(found ...string) bool {
@@ -200,6 +201,8 @@ func class(message string) Class {
 		return false
 	}
 	switch {
+	case has("at capacity"):
+		return Capacity
 	case has("rate limit", "usage limit", "429"):
 		return RateLimited
 	case has("unauthorized", "401", "login"):

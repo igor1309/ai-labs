@@ -46,6 +46,11 @@ export type SkeletonsAppOptions = {
   reducedMotion?: boolean;
   // The theme the device shows.
   appearance?: Theme;
+  // Told each game whose start the app counts.
+  startCounter?: AppProps["startCounter"];
+  // Whether the home page's pictures load as it opens; if not, they load
+  // only when the test finishes them.
+  loadHome?: boolean;
 };
 
 // The app opened on the home page, its own pictures loaded and those
@@ -57,7 +62,9 @@ export function openHomeApp({
   visibility = manualVisibility("visible"),
   deviceLanguage = "en-GB",
   reducedMotion = false,
-  appearance = "light"
+  appearance = "light",
+  startCounter,
+  loadHome = true
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS,
@@ -85,10 +92,11 @@ export function openHomeApp({
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
     ...featuring(),
+    ...(startCounter && { startCounter }),
     ...pictures
   };
   render(<App {...props} />);
-  loadShownPictures(pictures);
+  if (loadHome) loadShownPictures(pictures);
   return { user: userEvent.setup(), storage, pictures, orientation, visibility };
 }
 

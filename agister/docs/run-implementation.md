@@ -971,3 +971,70 @@ Decisions, each with its reason:
   ones in its entry, which a sum over records skips.
 - One run is reused, not a chain: a run that reused gives its calls,
   taken ones included, as recorded.
+
+## Capacity
+
+A turn that fails because the runtime's model is at capacity is retried
+in the call, no longer the call's end (ADR-004, rule 8; LAB-249): a
+review loses no node to it, and an implement run keeps its session.
+
+**claude-code and codex** class it `capacity`, which joins core's
+closed set of classes (ADR-001, invariant 3): claude-code a failed
+result of the status 529, or "overloaded" in its words, before its
+other classes; codex a `turn.failed` whose message says "at capacity",
+before its other classes.
+
+**`core/call`** retries a turn that ends by a reply of the class
+`capacity`, while the call has made fewer than three turns of that end:
+it waits on its timer, 30 seconds after the first such turn, 60 after
+the second, then makes that turn again as it was given, its message and
+all, in the session it reported, else in the session it was given. A
+capacity turn that reported a session other than the one it resumed is
+not retried: it fails the call, `runtime_error`, as any turn that
+strayed does. No wait starts where the call's context has ended, or
+where its time limit, read on its clock, leaves no more than the wait; a
+wait the caller's context ends ends the call interrupted, `cancelled`.
+A retry spends none of the step's recovery, and what follows it follows
+it as it would any turn, a recovery turn included. The call's cost,
+usage and session are its turns', as a recovered call's are. A call
+whose last turn is at capacity, not retried, fails, `capacity`, its
+reason the turn's, after "<n> of 3 turns at capacity: ". Its report grows a
+turn at capacity: its reason, and the wait before its retry, none where
+none follows.
+
+**`core/workflow`** gives a call's capacity report to its events port,
+which grows a capacity event, by the step's name, as it gives a stale
+one. **`runstore`**'s event grows the kind `capacity`, with `reason`
+and `retrying`.
+
+**The composition** prints a turn at capacity as a progress line,
+`· <step>: at capacity; retrying in <wait>`, the wait as the progress
+prints a duration, or `· <step>: at capacity` where no retry follows,
+and records an event:
+
+```json
+{"at": "", "step": "a", "kind": "capacity", "reason": "", "retrying": true}
+```
+
+Decisions, each with its reason:
+
+- The policy is core's, not a setting: the owner chose one policy for
+  every runtime, on by default; a process's own attempts and backoff
+  wait until one needs them.
+- A retry resumes with the step's own message, not a message of its
+  own: the session holds the work done, and the task given again is
+  what a message telling it to go on would say, from settings Agister
+  already has.
+- The wait is fixed, not drawn at random: the load is the provider's,
+  which the few calls of a run retrying together do not change, and the
+  owner chose one policy.
+- A wait the time limit would cut is not started: the call ends at
+  capacity, its cause, not at a timeout a caller would answer by raising
+  the limit.
+- Each turn at capacity is an event, not an entry in `record.json`, as
+  a stale turn is: events are the run's history. The event keeps
+  whether a retry follows, not its wait: the wait is the policy's, by
+  the turn's place, and the next event's time shows it.
+- A codex turn that failed reports no usage, so a retried codex call's
+  usage is unknown: unknown, never zero (ADR-001, invariant 3).
+- No cost limit bounds the retries: none is run yet (`run-path.md`).

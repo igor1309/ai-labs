@@ -52,6 +52,8 @@ Feature: The claude-code wrapper runs a turn
 
     Examples:
       | seen                  | result                                                   | class            |
+      | an init event         | of api_error_status 529                                  | capacity         |
+      | an init event         | of is_error true and "Overloaded"                        | capacity         |
       | an init event         | of api_error_status 429                                  | rate_limited     |
       | a rejected rate limit | error_during_execution                                   | rate_limited     |
       | an init event         | of api_error_status 401                                  | auth             |

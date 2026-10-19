@@ -140,6 +140,7 @@ type Usage struct {
 type Class string
 
 const (
+	Capacity        Class = "capacity"
 	RateLimited     Class = "rate_limited"
 	Auth            Class = "auth"
 	ContextOverflow Class = "context_overflow"

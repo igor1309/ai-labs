@@ -32,7 +32,8 @@ import {
   memoryStorage,
   type ManualTimers,
   type MemoryStorage,
-  unsetAgeLevel
+  unsetAgeLevel,
+  type PictureClock
 } from "./support.ts";
 
 // home-featured-progress.feature
@@ -48,7 +49,7 @@ const progressWith = (starts: Record<string, number> = {}, games: Record<string,
 // The app as a browser opens it: progress, start counts and the featured
 // game all kept in `storage`. Unless `clock` is given, pictures load the
 // moment they are asked for and timers fire only when the test says.
-function openApp<C extends Pick<AppProps, "loadPicture" | "startTimer"> = ManualTimers>(
+function openApp<C extends PictureClock = ManualTimers>(
   storage: MemoryStorage = memoryStorage({ [PROGRESS_KEY]: progressWith() }),
   { random = () => 0, clock = manualTimers() as unknown as C, startCounter }: { random?: () => number; clock?: C; startCounter?: AppProps["startCounter"] } = {}
 ) {
@@ -255,36 +256,9 @@ describe("starting a game", () => {
   });
 });
 
-// Each game whose start waits for its pictures, the buttons on the way to
-// its start, and the button that starts it.
+// A game whose start counts, the buttons on the way to its start, and
+// the button that starts it.
 type Start = [start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement];
-
-const WAITING: Start[] = [
-  ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
-  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
-];
-
-describe("a start that waits for its pictures", () => {
-  it.each(WAITING)("counts one start of %s, its game %s, as the wait runs out, and none more as they arrive", async (_start, game, way, begin) => {
-    const pictures = manualPictures();
-    const { counted, startCounter } = countedStarts();
-    const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
-    loadShownPictures(pictures);
-    const loadAll = () => act(() => pictures.loading().forEach(pictures.finish));
-    for (const step of way) {
-      await user.click(step());
-      loadAll();
-    }
-
-    await user.click(begin());
-
-    expect([counted, pictures.timers()]).toEqual([[], [1000]]);
-    act(() => pictures.fire(1000));
-    expect(counted).toEqual([game]);
-    loadAll();
-    expect(counted).toEqual([game]);
-  });
-});
 
 // Each game whose start shows at once, its pictures loading, the buttons
 // on the way to its start, and the button that starts it.
@@ -293,6 +267,8 @@ const AT_ONCE: Start[] = [
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
   ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
   ["a sorting round", "sort", [], () => homeTile("SORT")],
+  ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
+  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")],
   ["a sorting round over a board left unfinished", "sort", [() => homeTile("SORT"), () => button("HOME")], () => homeTile("SORT")]
 ];
 

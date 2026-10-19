@@ -2,6 +2,7 @@ import { Bone } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
 export type ShownPiece = "skull" | "spine" | "legs" | "tail";
@@ -186,7 +187,11 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
           data-complete={complete || undefined}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
         >
-          <img className="skeleton-outline" src={outline} alt="" draggable={false} />
+          {/* The outline is faint and comes in with the screen on a wrapper,
+              so its picture's shimmer and fade never replace either. */}
+          <span className="skeleton-outline">
+            <Picture className="skeleton-outline-picture" src={outline} alt="" />
+          </span>
           {slots.map((slot) => {
             const release = releases[slot.piece];
             return (
@@ -200,15 +205,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                 style={{ left: percent(slot.left), top: percent(slot.top), width: percent(slot.width), height: percent(slot.height) }}
               >
                 {shownHint === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
+                {/* The piece settles on a wrapper, so its picture's
+                    shimmer and fade never replace the movement. */}
                 {slot.fitted && (
-                  <img
-                    className="skeleton-fitted"
-                    src={slot.picture}
-                    alt={text.pieces[slot.piece]}
-                    draggable={false}
-                    data-snapped={release ? true : undefined}
-                    style={release && fromStyle(release.slot)}
-                  />
+                  <span className="skeleton-fitted" data-snapped={release ? true : undefined} style={release && fromStyle(release.slot)}>
+                    <Picture className="skeleton-fitted-picture" src={slot.picture} alt={text.pieces[slot.piece]} />
+                  </span>
                 )}
               </span>
             );
@@ -241,31 +243,29 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                     there each time. It stays in its spot while held, only
                     unseen, so the touch that holds it keeps its target. */}
                 {!slot.fitted && (
-                  <img
+                  <span
                     key={release?.count ?? 0}
                     className="skeleton-piece"
-                    src={slot.picture}
-                    alt={text.pieces[slot.piece]}
-                    draggable={false}
                     data-held={held?.piece === slot.piece || undefined}
                     data-returning={release ? true : undefined}
                     data-scattering={scattering ? true : undefined}
                     style={release ? fromStyle(release.spot) : scattering && ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)}
-                  />
+                  >
+                    <Picture className="skeleton-piece-picture" src={slot.picture} alt={text.pieces[slot.piece]} />
+                  </span>
                 )}
               </span>
             );
           })}
         </div>
         {held && lifted && (
-          <img
+          <span
             className="skeleton-lifted"
             data-piece={held.piece}
-            src={lifted.picture}
-            alt=""
-            draggable={false}
             style={{ width: held.width, height: held.height, translate: `${held.x - held.width / 2}px ${held.y - held.height / 2}px` }}
-          />
+          >
+            <Picture className="skeleton-lifted-picture" src={lifted.picture} alt="" />
+          </span>
         )}
       </div>
     </main>

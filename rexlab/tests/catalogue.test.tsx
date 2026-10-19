@@ -33,14 +33,15 @@ import {
   words,
   type ManualPictures,
   homeTile,
-  unsetAgeLevel
+  unsetAgeLevel,
+  type PictureClock
 } from "./support.ts";
 
 function openApp({
   pictures = loadedPictures(),
   language = "en",
   theme = "light"
-}: { pictures?: Pick<ManualPictures, "loadPicture" | "startTimer">; language?: Language; theme?: Theme } = {}) {
+}: { pictures?: PictureClock; language?: Language; theme?: Theme } = {}) {
   const languages = memoryStorage();
   const themes = memoryStorage();
   render(

@@ -198,10 +198,10 @@ describe("the app in a browser", () => {
 
   it("decodes each picture with the browser's own images", () => {
     const given = browser();
-    const { loadPicture } = appProps(given);
+    const { pictures } = appProps(given);
 
-    loadPicture("/pictures/stegosaurus.webp", () => {});
-    loadPicture("/pictures/triceratops.webp", () => {});
+    pictures.request("/pictures/stegosaurus.webp");
+    pictures.request("/pictures/triceratops.webp");
 
     expect(given.decoding).toEqual(["/pictures/stegosaurus.webp", "/pictures/triceratops.webp"]);
   });
