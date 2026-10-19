@@ -1,3 +1,4 @@
+import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { act, isInaccessible, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel.ts";
@@ -193,7 +194,7 @@ describe("the level switch", () => {
 
     expect(chosen()).toEqual(["EXPLORER"]);
     expect(writes.mock.calls.filter(([key]) => key === PROGRESS_KEY)).toHaveLength(1);
-    expect(storedPairs(storage)).toEqual({ ...entry(), levelChoice: { level: "explorer", revision: "2" } });
+    expect(storedPairs(storage)).toEqual({ ...entry(), offer: NO_LEVEL_OFFER, levelChoice: { level: "explorer", revision: "2" } });
   });
 
   it("rests once PLAY is tapped: the board is dealt at the level shown then", async () => {
@@ -216,7 +217,7 @@ describe("the choice on the level switch", () => {
     const storage = memoryStorage();
     const first = await openPairs({ storage, ageLevel: picked("explorer", "2") });
     await first.user.click(button("HATCHLING"));
-    expect(storedPairs(storage)).toEqual({ ...entry(), levelChoice: { level: "hatchling", revision: "2" } });
+    expect(storedPairs(storage)).toEqual({ ...entry(), offer: NO_LEVEL_OFFER, levelChoice: { level: "hatchling", revision: "2" } });
     first.unmount();
 
     const reopened = await openPairs({ storage, ageLevel: picked("explorer", "2") });

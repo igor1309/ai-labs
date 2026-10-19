@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-19
+
+- Find the pair offers the next age level after three strong boards in a row, or five after NOT NOW; YES keeps that level for the game and leaves the parents' setting alone (LAB-293).
+
 ## 2026-10-18
 
 - Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).

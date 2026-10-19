@@ -1,3 +1,4 @@
+import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -39,7 +40,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     endWave(app.clock);
 
     expect(screen.getByLabelText("STARS").textContent).toBe("★1");
-    expect(storedPairs(storage)).toEqual(entry({ stars: 1, boardsOnLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length }, found: ordered(ids) }));
+    expect(storedPairs(storage)).toEqual(entry({ stars: 1, boardsOnLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length }, found: ordered(ids), offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } }));
     await app.user.click(button("HOME"));
     const tile = homeTile("FIND THE PAIR").querySelector(".pairs-tile-stars");
     expect(tile && [tile.textContent, symbolOf(tile)]).toEqual(["1", "star"]);
@@ -108,13 +109,13 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
 
     expect(within(screen.getByRole("group", { name: "AGE LEVEL" })).getByRole("button", { pressed: true }).textContent).toContain(level.toUpperCase());
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
-    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 0, climbLevel: 1, boardsOnClimbLevel: 0, best: {}, found: [] }, levelChoice: undefined });
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 0, climbLevel: 1, boardsOnClimbLevel: 0, best: {}, found: [] }, levelChoice: undefined, offer: NO_LEVEL_OFFER });
     await app.user.click(button("PLAY"));
     await playDealt(app.user, app.clock, names, 1);
     endWave(app.clock);
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
-    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 1, climbLevel: 1, boardsOnClimbLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length + 1 }, found: ordered(ids) }, levelChoice: undefined });
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 1, climbLevel: 1, boardsOnClimbLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length + 1 }, found: ordered(ids) }, levelChoice: undefined, offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } });
     expect(localProgress(() => storage).load()).toEqual(state === "unknown schema" ? { bestScore: null, roundsPlayed: 0 } : quiz);
   });
 
@@ -234,7 +235,7 @@ describe("the level's progress across screens", () => {
     const app = openPairsApp({ storage, ageLevel: picked("explorer"), clock: manualTimers(), random: () => 0 });
     await app.user.click(button("FIND THE PAIR"));
 
-    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 5, climbLevel: 2, boardsOnClimbLevel: 1, best: saved.best, found: saved.found }, levelChoice: undefined });
+    expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 5, climbLevel: 2, boardsOnClimbLevel: 1, best: saved.best, found: saved.found }, levelChoice: undefined, offer: NO_LEVEL_OFFER });
     expect(storedPairs(storage)).toEqual(saved);
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
@@ -247,6 +248,6 @@ describe("the level's progress across screens", () => {
     endWave(app.clock);
 
     expect(celebrations()).toContain("NEW LEVEL 3");
-    expect(storedPairs(storage)).toEqual(entry({ stars: 6, level: 3, best: { ...saved.best, 2: 4 }, found: ordered([...saved.found, ...board.pals.map(({ id }) => id)]), levelChoice: { level: "hatchling", revision: "picked-explorer" } }));
+    expect(storedPairs(storage)).toEqual(entry({ stars: 6, level: 3, best: { ...saved.best, 2: 4 }, found: ordered([...saved.found, ...board.pals.map(({ id }) => id)]), levelChoice: { level: "hatchling", revision: "picked-explorer" }, offer: { level: "hatchling", strong: 0, declined: [] } }));
   });
 });
