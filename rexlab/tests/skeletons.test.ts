@@ -296,6 +296,8 @@ describe("presenting the skeleton game", () => {
       strays: [],
       tray: [...PIECES],
       told: undefined,
+      turning: false,
+      turns: {},
       hint: undefined,
       complete: false
     });

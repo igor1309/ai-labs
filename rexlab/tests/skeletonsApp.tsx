@@ -54,6 +54,9 @@ export type SkeletonsAppOptions = {
   ageLevels?: MemoryStorage;
   // The skeletons to build, the shipped ones by default.
   skeletons?: readonly Skeleton[];
+  // The app's random source, always 0 by default: nothing drawn turns a
+  // piece.
+  random?: () => number;
   // Whether the home page's pictures load as it opens; if not, they load
   // only when the test finishes them.
   loadHome?: boolean;
@@ -72,13 +75,14 @@ export function openHomeApp({
   startCounter,
   ageLevels = memoryStorage(),
   skeletons = SHIPPED_SKELETONS,
-  loadHome = true
+  loadHome = true,
+  random = () => 0
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS,
     catalogue: SHIPPED_CATALOGUE,
     bodyPicture: fakeBodyPicture,
-    random: () => 0,
+    random,
     orientation,
     pageVisibility: visibility,
     progress: localProgress(() => storage),
@@ -254,6 +258,15 @@ export function dragTo(piece: string, at: At, pointerId = 1) {
   press(spot, { clientX: left + 40, clientY: top + 40 }, pointerId);
   moveTo(at, pointerId);
   release(at, pointerId);
+}
+
+// Taps a piece in its spot in the tray: a press let go where it pressed.
+export function tap(piece: string) {
+  const spot = spotOf(piece);
+  const { left, top } = spot.getBoundingClientRect();
+  const at = { clientX: left + 40, clientY: top + 40 };
+  press(spot, at);
+  release(at);
 }
 
 // Fits a piece in its home, dropped right on it.

@@ -54,7 +54,11 @@ const tokensOf = (rules: Rule[]) =>
   );
 
 const TIMING = /^(animation|transition)(-duration|-delay|-timing-function)?$/;
-const MOVING = /\b(transform|translate|scale|height|width)\b/;
+const MOVING = /\b(transform|translate|rotate|scale|height|width)\b/;
+
+// A rule's declarations, by property.
+const declared = (rules: Rule[], selector: string) =>
+  Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
 describe("the motion", () => {
   it("is built from the shared tokens", () => {
@@ -276,10 +280,6 @@ describe("find the pair's motion", () => {
     );
   });
 
-  // A rule's declarations, by property.
-  const declared = (rules: Rule[], selector: string) =>
-    Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
-
   it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
     expect(declared(PLAIN, ".level-switch-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
     expect(declared(PLAIN, ".level-switch-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
@@ -372,6 +372,13 @@ describe("the skeleton puzzle's motion", () => {
 
   it("fades help's glow in", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
+  });
+
+  // skeleton-assembly-turning.feature: a tapped piece turns in its spot,
+  // and shows turned at once with reduced motion.
+  it("turns a tapped piece a quarter, and only at once with reduced motion", () => {
+    expect(declared(PLAIN, ".skeleton-tray[data-turning] .skeleton-piece").transition).toBe("rotate var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".skeleton-tray[data-turning] .skeleton-piece")).toEqual({ "transition-property": "none" });
   });
 
   // skeleton-assembly-paleontologist.feature: the line saying whose

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
+import type { AgeLevel, AgeLevelSetting, Random } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
@@ -17,6 +17,7 @@ import {
   museumOf,
   openCollection,
   startPuzzle,
+  turn,
   wait,
   type KeptSkeletons,
   type Puzzle,
@@ -57,6 +58,8 @@ export type SkeletonGameProps = {
   presence: Presence;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
+  // Draws which pieces arrive turned.
+  random: Random;
 };
 
 // The skeleton game has a mode for every age level; a level without a cut
@@ -69,12 +72,12 @@ const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 type Look = { coloured: boolean; silhouette: boolean };
 
 // How each level plays its puzzle: its look, whether help climbs the
-// ladder of steps rather than Hatchling's one glow, and whether other
-// skeletons' bones wait in the tray.
-const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean }> = {
-  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false },
-  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false },
-  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true }
+// ladder of steps rather than Hatchling's one glow, whether other
+// skeletons' bones wait in the tray, and whether pieces arrive turned.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean }> = {
+  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false, turning: false },
+  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false, turning: false },
+  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true, turning: true }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -113,7 +116,7 @@ export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string 
 // chooses another level on its switch. `onHome` takes the child back to
 // the home page; `onStart` is told as each puzzle begins, a rebuild's too.
 export function useSkeletonGame(
-  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion }: SkeletonGameProps,
+  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion, random }: SkeletonGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
@@ -184,8 +187,8 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { look, ladder, distractors } = MODES[at];
-    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors });
+    const { look, ladder, distractors, turning } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined });
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
@@ -247,6 +250,14 @@ export function useSkeletonGame(
     if (isComplete(to)) reveal(to, record(to), timers);
   };
 
+  // A tap on a piece in the tray turns it.
+  const onTurn = (piece: ShownPiece) => {
+    const from = live.current;
+    if (from === null) return;
+    const to = turn(from, piece);
+    if (to !== from) showPuzzle(from, to);
+  };
+
   // Only time at the puzzle counts towards help: the count pauses while
   // the child is away, and starts again from nothing as a piece fits. Its
   // timer is the puzzle's, so leaving stops it at once, not once the
@@ -302,6 +313,7 @@ export function useSkeletonGame(
             {...presentPuzzle(screen.puzzle, language, skeletonPicture, screen.look)}
             scatter={screen.scatter}
             onDrop={onDrop}
+            onTurn={onTurn}
             onMuseum={museum}
             onHome={home}
           />

@@ -268,7 +268,7 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "frame" | "slots" | "strays" | "tray" | "told" | "hint" | "complete">;
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "frame" | "slots" | "strays" | "tray" | "told" | "turning" | "turns" | "hint" | "complete">;
 
 // The pictures of a skeleton: the whole of it, "skeleton", or one of its
 // pieces, by the piece's id.
@@ -298,14 +298,14 @@ function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undef
 // gives each slot its piece's area; one on a `silhouette` shows its
 // outline as the skeleton's shape alone. Other skeletons' bones wait in
 // the tray among the pieces, each its own skeleton's picture, sized as
-// the pieces are.
+// the pieces are. A puzzle that turns shows how each piece lies.
 export function presentPuzzle(
   puzzle: Puzzle,
   language: Language,
   skeletonPicture: SkeletonPicture,
   { coloured = false, silhouette = false }: { coloured?: boolean; silhouette?: boolean } = {}
 ): SkeletonPuzzleView {
-  const { skeleton, cut, fitted, distractors, told } = puzzle;
+  const { skeleton, cut, fitted, distractors, told, turning, turns } = puzzle;
   const { id, name, frame } = skeleton;
   return {
     name: name[language],
@@ -321,6 +321,8 @@ export function presentPuzzle(
     })),
     tray: trayOf(puzzle),
     told: told?.name[language],
+    turning,
+    turns,
     slots: cut.map((piece) => {
       const { x, y, width, height } = piece.place;
       return {

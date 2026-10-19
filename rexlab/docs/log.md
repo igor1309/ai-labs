@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- At Paleontologist about one skeleton piece in three arrives turned; a tap turns it a quarter, and it fits only the right way up (LAB-318).
 - Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).
 - Skeletons at Paleontologist are cut into ten to twelve plain bones from the same skeleton pictures (LAB-316).
 - Skeletons at Explorer and Paleontologist help in steps, ten seconds apart, until a bone fits: the bone's body region on the outline, then a faint ghost at its home, then the bone moving towards its home and back, fading instead under reduced motion; Hatchling keeps its one glow (LAB-315).

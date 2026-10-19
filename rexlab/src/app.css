@@ -4692,6 +4692,21 @@ body:has(.result) #version {
   opacity: 0;
 }
 
+/* Paleontologist's piece turns a quarter in its spot at a tap. */
+.skeleton-tray[data-turning] .skeleton-piece {
+  transition: rotate var(--motion-standard) var(--ease-out);
+}
+
+/* A turned piece's mark that it turns, in its spot's corner. */
+.skeleton-turn-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  color: #5c647a;
+  pointer-events: none;
+}
+
 /* While a piece is held, its slot shows faintly where it goes. */
 .skeleton-slot[data-target] {
   border-radius: 20px;
@@ -5278,6 +5293,11 @@ body:has(.result) #version {
   ::view-transition-group(.dinosaur-share) {
     animation: none;
   }
+
+  /* A piece shows turned at once. */
+  .skeleton-tray[data-turning] .skeleton-piece {
+    transition-property: none;
+  }
 }
 
 /* The dark theme: each fm-* colour takes its dark value, in the same
@@ -5857,6 +5877,10 @@ body:has(.result) #version {
 [data-theme="dark"] .skeleton-chip,
 [data-theme="dark"] .skeleton-tray {
   background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-turn-mark {
+  color: #9ca3b6;
 }
 
 [data-theme="dark"] .skeleton-choice,

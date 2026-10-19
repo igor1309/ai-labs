@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitsHelp, drop, help, HELP_AFTER, isComplete, startPuzzle, strayId, trayOf, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { awaitsHelp, drop, help, HELP_AFTER, isComplete, startPuzzle, strayId, trayOf, turn, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
 import { PIECES, type Piece } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
 
@@ -244,5 +244,56 @@ describe("other skeletons' bones", () => {
 
     expect([isComplete(complete), trayOf(complete)]).toEqual([false, ["skull", "tyrannosaurus/skull", "spine", "legs", "stegosaurus/spikes", "tail"]]);
     expect([isComplete(done), trayOf(done), done.told]).toEqual([true, ["skull", "spine", "legs", "tail"], undefined]);
+  });
+});
+
+describe("turned pieces", () => {
+  // Draws `values` in turn, one for each piece in the cut's order.
+  const draws = (...values: number[]) => {
+    const left = [...values];
+    return () => left.shift() ?? 0;
+  };
+  const turned = (...values: number[]) => startPuzzle(SKELETON, SKELETON.cuts.hatchling, { turning: draws(...values) });
+
+  it("arrive turned only when the puzzle turns, by a draw for each piece in the cut's order", () => {
+    expect([start().turning, start().turns]).toEqual([false, {}]);
+    expect([turned().turning, turned().turns]).toEqual([true, {}]);
+    expect(turned(0.7, 0, 0.8, 0.95).turns).toEqual({ skull: 1, legs: 2, tail: 3 });
+  });
+
+  it.each([
+    [0, 0],
+    [0.66, 0],
+    [2 / 3, 1],
+    [0.77, 1],
+    [7 / 9, 2],
+    [0.88, 2],
+    [8 / 9, 3],
+    [0.9999, 3]
+  ])("leave a piece drawn %f turned %i quarters, about one in three turned at all", (draw, quarters) => {
+    expect(turned(draw).turns.skull ?? 0).toBe(quarters);
+  });
+
+  it("turn a quarter at each tap, back the right way up after four", () => {
+    const quarter = turned(0.7);
+    const taps = [1, 2, 3].reduce((each) => [...each, turn(each.at(-1) ?? quarter, "skull")], [quarter]);
+
+    expect(taps.map(({ turns }) => turns.skull ?? 0)).toEqual([1, 2, 3, 0]);
+    expect(turn(turned(), "spine").turns).toEqual({ spine: 1 });
+  });
+
+  it("never turn a fitted piece, a piece not of the cut, or a piece of a puzzle that does not turn", () => {
+    const puzzle = fitted(["spine"], turned());
+
+    expect([turn(puzzle, "spine"), turn(puzzle, "frill"), turn(start(), "skull")]).toEqual([puzzle, puzzle, start()]);
+  });
+
+  it("fit only the right way up: a turned piece dropped on its home is a miss, nothing lost", () => {
+    const quarter = turned(0.7);
+    const missed = drop(quarter, "skull", CENTRES.skull, 30);
+    const upright = [1, 2, 3].reduce((puzzle) => turn(puzzle, "skull"), quarter);
+
+    expect(missed).toBe(quarter);
+    expect(drop(upright, "skull", CENTRES.skull, 30).fitted).toEqual(["skull"]);
   });
 });

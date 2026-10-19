@@ -1,4 +1,4 @@
-import { Bone } from "lucide-react";
+import { Bone, RotateCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -68,6 +68,11 @@ export type SkeletonPuzzleScreenProps = {
   // The name of the other skeleton's bone last dropped, until the next
   // drop, so a line says whose bone it is.
   told: string | undefined;
+  // Whether a tap on a piece in the tray turns it, and how many quarter
+  // turns, clockwise, each piece of the cut lies turned; none for one the
+  // right way up.
+  turning: boolean;
+  turns: Readonly<Partial<Record<ShownPiece, number>>>;
   // The help showing, if any: Hatchling's glow on the piece and its slot
   // alike, or the ladder's steps.
   hint: ShownHint | undefined;
@@ -79,6 +84,8 @@ export type SkeletonPuzzleScreenProps = {
   // A piece let go with its centre at `centre`, and how far from its home
   // it still fits, both in pixels of the frame.
   onDrop: (piece: ShownPiece, centre: FramePoint, reach: number) => void;
+  // A piece of the cut tapped in the tray, on a puzzle that turns.
+  onTurn: (piece: ShownPiece) => void;
   onMuseum: () => void;
   onHome: () => void;
 };
@@ -94,10 +101,19 @@ const TRAY_COLUMN = 8;
 // generous, so a child's near miss still fits.
 export const SNAP = 48;
 
-// A piece held by a finger, a pen or the mouse: where the pointer is, the
-// size the piece is drawn at on the board, and the help showing as it
-// was picked up, which stays as it is until the piece is let go.
-type Hold = { pointerId: number; piece: ShownPiece; x: number; y: number; width: number; height: number; hint: ShownHint | undefined };
+// How far a pointer may move between pressing a piece and letting it go
+// for it to be a tap, in CSS pixels.
+export const TAP = 12;
+
+// A quarter turn and the number of them that bring a piece back.
+const QUARTER = 90;
+const QUARTERS = 4;
+
+// A piece held by a finger, a pen or the mouse: where the pointer is and
+// where it pressed, the size the piece is drawn at on the board, and the
+// help showing as it was picked up, which stays as it is until the piece
+// is let go.
+type Hold = { pointerId: number; piece: ShownPiece; x: number; y: number; from: { x: number; y: number }; width: number; height: number; hint: ShownHint | undefined };
 
 // Where a piece was let go, from the centre of its slot and of its spot in
 // the tray, in CSS pixels, so it slides from there to whichever it ends
@@ -109,6 +125,9 @@ const percent = (fraction: number) => `${fraction * 100}%`;
 
 const NO_RECT = { left: 0, top: 0, width: 0, height: 0 };
 
+// A picture turned by its quarters, or as it is for none.
+const turnStyle = (quarters: number): CSSProperties | undefined => (quarters === 0 ? undefined : { rotate: `${quarters * QUARTER}deg` });
+
 const offsetFrom = (x: number, y: number, { left, top, width, height }: typeof NO_RECT): Offset => ({ dx: x - (left + width / 2), dy: y - (top + height / 2) });
 
 const fromStyle = ({ dx, dy }: Offset) => ({ "--from-x": `${dx}px`, "--from-y": `${dy}px` }) as CSSProperties;
@@ -117,12 +136,34 @@ const fromStyle = ({ dx, dy }: Offset) => ({ "--from-x": `${dx}px`, "--from-y": 
 // tray, and how much larger it is drawn in its home than there.
 type Scattered = Offset & { scale: number };
 
-export function SkeletonPuzzleScreen({ language, name, outline, silhouette, frame, slots, strays, tray, told, hint, complete, scatter, onDrop, onMuseum, onHome }: SkeletonPuzzleScreenProps) {
+export function SkeletonPuzzleScreen({
+  language,
+  name,
+  outline,
+  silhouette,
+  frame,
+  slots,
+  strays,
+  tray,
+  told,
+  turning,
+  turns,
+  hint,
+  complete,
+  scatter,
+  onDrop,
+  onTurn,
+  onMuseum,
+  onHome
+}: SkeletonPuzzleScreenProps) {
   const text = TEXTS[language];
   const fitted = slots.filter((slot) => slot.fitted).length;
   const [held, setHeld] = useState<Hold>();
   const [releases, setReleases] = useState<Partial<Record<ShownPiece, Release>>>({});
   const [scattered, setScattered] = useState<Partial<Record<ShownPiece, Scattered>>>({});
+  // How many whole turns each piece has made from tapping, so it turns on
+  // clockwise from three quarters, never back.
+  const [laps, setLaps] = useState<Partial<Record<ShownPiece, number>>>({});
   // The listeners on the window read the hold as it is now, not as it was
   // when they were rendered.
   const hold = useRef<Hold>(undefined);
@@ -168,8 +209,10 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
   // Only the pointer that holds a piece moves it, so a second finger
   // neither picks up nor drops anything while one piece is held. A piece
   // let go is dropped where it is; one whose touch is cancelled, as when
-  // the iPad turns, goes back to the tray without a drop. The listeners
-  // are added anew on each render, so they drop on the board as it is.
+  // the iPad turns, goes back to the tray without a drop. On a puzzle that
+  // turns, a piece of the cut let go where it was pressed is tapped: it
+  // turns in its spot instead. The listeners are added anew on each
+  // render, so they drop on the board as it is.
   useEffect(() => {
     const move = (event: PointerEvent) => {
       const current = hold.current;
@@ -180,7 +223,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
       const current = hold.current;
       if (!current || event.pointerId !== current.pointerId) return;
       holdPiece(undefined);
-      const { piece } = current;
+      const { piece, from } = current;
+      if (event.type === "pointerup" && turning && slots.some((slot) => slot.piece === piece) && Math.hypot(event.clientX - from.x, event.clientY - from.y) < TAP) {
+        if ((turns[piece] ?? 0) === QUARTERS - 1) setLaps((all) => ({ ...all, [piece]: (all[piece] ?? 0) + 1 }));
+        onTurn(piece);
+        return;
+      }
       const [x, y] = event.type === "pointerup" ? [event.clientX, event.clientY] : [current.x, current.y];
       const spot = spotElements.current.get(piece)?.getBoundingClientRect() ?? NO_RECT;
       const slot = offsetFrom(x, y, slotRect(piece));
@@ -205,7 +253,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
   const press = (piece: ShownPiece) => (event: ReactPointerEvent) => {
     if (hold.current || event.button !== 0) return;
     const { width, height } = slotRect(piece);
-    holdPiece({ pointerId: event.pointerId, piece, x: event.clientX, y: event.clientY, width, height, hint });
+    holdPiece({ pointerId: event.pointerId, piece, x: event.clientX, y: event.clientY, from: { x: event.clientX, y: event.clientY }, width, height, hint });
   };
 
   // Help that falls due while a piece is held waits until it is let go,
@@ -238,6 +286,8 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
   const glowing = shownHint?.step === "glow" ? shownHint.piece : undefined;
   const ghost = shownHint?.step === "ghost" || shownHint?.step === "move" ? shownHint.piece : undefined;
   const region = shownHint?.region;
+  // The quarters a piece is drawn turned by, counting its whole turns.
+  const quartersOf = (piece: ShownPiece) => (turns[piece] ?? 0) + QUARTERS * (laps[piece] ?? 0);
 
   return (
     <main className="skeleton-screen">
@@ -320,7 +370,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
             </p>
           )}
         </div>
-        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined} data-columns={spots.length > TRAY_COLUMN ? 2 : undefined}>
+        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined} data-turning={turning || undefined} data-columns={spots.length > TRAY_COLUMN ? 2 : undefined}>
           {spots.map((slot, index) => {
             const release = releases[slot.piece];
             // A piece once let go floats back from where it was let go
@@ -343,6 +393,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
                 onPointerDown={slot.fitted ? undefined : press(slot.piece)}
               >
                 {!slot.fitted && shownHint?.piece === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
+                {/* A turned piece carries a mark that it turns. */}
+                {!slot.fitted && (turns[slot.piece] ?? 0) > 0 && (
+                  <span className="skeleton-turn-mark" aria-hidden="true">
+                    <RotateCw size={20} />
+                  </span>
+                )}
                 {/* The whole spot picks its piece up. A piece let go is
                     drawn anew where it was let go, so it floats back from
                     there each time. It stays in its spot while held, only
@@ -355,15 +411,17 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
                     data-returning={release ? true : undefined}
                     data-scattering={scattering ? true : undefined}
                     data-nudge={nudge?.piece === slot.piece || undefined}
-                    style={
-                      release
+                    data-turns={turns[slot.piece] || undefined}
+                    style={{
+                      ...(release
                         ? fromStyle(release.spot)
                         : scattering
                           ? ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)
                           : nudge?.piece === slot.piece
                             ? ({ "--nudge-x": `${nudge.dx}px`, "--nudge-y": `${nudge.dy}px` } as CSSProperties)
-                            : undefined
-                    }
+                            : undefined),
+                      ...turnStyle(quartersOf(slot.piece))
+                    }}
                   >
                     <Picture className="skeleton-piece-picture" src={slot.picture} alt={slot.name} />
                   </span>
@@ -376,7 +434,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, silhouette, fram
           <span
             className="skeleton-lifted"
             data-piece={held.piece}
-            style={{ width: held.width, height: held.height, translate: `${held.x - held.width / 2}px ${held.y - held.height / 2}px` }}
+            style={{ width: held.width, height: held.height, translate: `${held.x - held.width / 2}px ${held.y - held.height / 2}px`, ...turnStyle(quartersOf(held.piece)) }}
           >
             <Picture className="skeleton-lifted-picture" src={lifted.picture} alt="" />
           </span>
