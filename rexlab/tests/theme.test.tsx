@@ -355,19 +355,21 @@ async function skeletonAtWork({ theme, user, timers }: Walk) {
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
   layOutPuzzle();
-  const [first = "", second = ""] = spotPieces();
+  const [, second = ""] = spotPieces();
   fit(stegosaurus, second);
-  const spot = spotOf(spotPieces().at(-1) ?? "");
+  const last = spotPieces().at(-1) ?? "";
+  const spot = spotOf(last);
   const { left, top } = spot.getBoundingClientRect();
   press(spot, { clientX: left + 40, clientY: top + 40 });
   moveTo(AWAY);
   expect([fittedPieces(), lifted()]).toEqual([[second], expect.anything()]);
   expectScreenIn(theme);
   release(AWAY);
-  // Explorer's help climbs its steps: the region, the ghost, the move.
+  // Explorer's help climbs its steps for the bone just lifted: the
+  // region, the ghost, the move.
   for (const step of [".skeleton-region", ".skeleton-ghost", ".skeleton-piece[data-nudge]"]) {
     for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
-    expect([hints(), document.querySelector(step) !== null]).toEqual([[`spot ${first}`], true]);
+    expect([hints(), document.querySelector(step) !== null]).toEqual([[`spot ${last}`], true]);
     expectScreenIn(theme);
   }
 }
