@@ -4,6 +4,7 @@ import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import { useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -77,13 +78,15 @@ export type PageVisibility = {
 };
 
 export type { CareProgressStore } from "./careGame.tsx";
+export type { SandContext } from "./digGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
 export type AppProps = CareGameProps &
   PairsGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
-  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> & {
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> &
+  Pick<DigGameProps, "digDinosaurs" | "sandContext"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -133,6 +136,9 @@ const PAIRS_TILE = "stegosaurus";
 // The dinosaur whose skeleton stands on the skeleton game's tile.
 const SKELETONS_TILE = "triceratops";
 
+// The dinosaur on the dig game's tile.
+const DIG_TILE = "stegosaurus";
+
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
 const MORE_COMING = "triceratops";
@@ -157,7 +163,9 @@ type Screen =
   // Find the pair, which keeps its own screens too.
   | { kind: "pairs" }
   // And the skeleton game.
-  | { kind: "skeletons" };
+  | { kind: "skeletons" }
+  // And the dig game.
+  | { kind: "dig" };
 
 // A new question animates only its pair of cards, and an answer chosen,
 // or a food, changes the screen at once. A dinosaur's page opens from its
@@ -198,6 +206,8 @@ export function App({
   skeletons,
   skeletonPicture,
   skeletonProgress,
+  digDinosaurs,
+  sandContext,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
@@ -334,6 +344,22 @@ export function App({
     go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
 
+  const dinosaurName = (dinosaurId: string, chosen: Language) => {
+    const dinosaur = dinosaurs.find(({ id }) => id === dinosaurId);
+    if (!dinosaur) throw new Error(`No dinosaur ${dinosaurId} to name`);
+    return dinosaur.name[chosen];
+  };
+
+  const dig = useDigGame(
+    { digDinosaurs, dinosaurName, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion, sandContext },
+    home
+  );
+
+  // A round starts at once from the tile, with no choice screen.
+  const openDig = () => {
+    dig.start(() => set({ kind: "dig" }));
+  };
+
   // The next question shows at once, and only if the round is still where
   // Next was tapped: a second tap changes nothing more.
   const goOn = (from: Play) => {
@@ -467,6 +493,8 @@ export function App({
         return pairs.content(language);
       case "skeletons":
         return skeletonGame.content(language);
+      case "dig":
+        return dig.content(language);
       case "home":
         return (
           <HomePage
@@ -485,6 +513,7 @@ export function App({
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
+            dig={{ picture: bodyPicture(DIG_TILE), dugUp: dig.dugUp }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
@@ -493,6 +522,7 @@ export function App({
             onPairs={openPairs}
             onSkeletons={openSkeletons}
             onMuseum={openMuseum}
+            onDig={openDig}
           />
         );
     }

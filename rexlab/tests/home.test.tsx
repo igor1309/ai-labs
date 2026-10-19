@@ -15,6 +15,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyDig,
   emptyPairs,
   emptyProgress,
   emptySkeletons,
@@ -48,7 +49,7 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons()
 ) {
-  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
+  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...emptyDig()} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard(), tile: homeTile("COMPARE") };
 }
 
@@ -87,6 +88,7 @@ function renderHomePage(taps: number[]) {
       sort={{ picture: fakeBodyPicture("triceratops"), best: undefined }}
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
+      dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
@@ -95,6 +97,7 @@ function renderHomePage(taps: number[]) {
       onPairs={nothing}
       onSkeletons={nothing}
       onMuseum={nothing}
+      onDig={nothing}
     />,
     withPictures
   );
@@ -138,17 +141,20 @@ const TITLE_EMS: Record<string, number> = {
   ПАРУ: 2.7,
   SKELETONS: 6.2,
   СКЕЛЕТЫ: 4.8,
+  DIG: 2.1,
+  РАСКОПКИ: 5.8,
   "MORE COMING": 7.9,
   "СКОРО ЕЩЁ": 6.0
 };
 
 // The words each tile's title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "moreComing"> = {
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing"> = {
   "compare-tile-title": "quizCard",
   "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care",
   "sort-tile-title": "sort",
   "skeletons-tile-title": "skeletons",
+  "dig-tile-title": "dig",
   "more-coming-title": "moreComing"
 };
 
@@ -245,7 +251,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every game in equal columns of two beside the large card: COMPARE over ALL DINOSAURS, CARE over SORT, FIND THE PAIR over SKELETONS, then MORE COMING, last, the column's whole height", () => {
+  it("stands every game in equal columns of two beside the large card: COMPARE over ALL DINOSAURS, CARE over SORT, FIND THE PAIR over SKELETONS, then DIG over MORE COMING, last, every tile half its column", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -254,16 +260,16 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
-    // column as wide as the others and its two tiles sharing its height;
-    // MORE COMING, alone in the last column, takes all of it.
+    // column as wide as the others and its two tiles sharing its height,
+    // MORE COMING too.
     const style = getComputedStyle(row);
     expect([style.display, style.gridAutoFlow, style.gridTemplateRows]).toEqual(["grid", "column", "minmax(0, 1fr) minmax(0, 1fr)"]);
     expect(tileColumnWidth()).toBeGreaterThan(0);
     expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
-    expect(tiles.map((tile) => getComputedStyle(tile ?? row).gridRow || "auto")).toEqual([...tiles.slice(1).map(() => "auto"), "span 2"]);
+    expect(tiles.map((tile) => getComputedStyle(tile ?? row).gridRow || "auto")).toEqual(tiles.map(() => "auto"));
   });
 
   it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
@@ -364,6 +370,7 @@ describe("the home page", () => {
         ["CARE", "nowrap"],
         ["SORT", "nowrap"],
         ["SKELETONS", "nowrap"],
+        ["DIG", "nowrap"],
         ["MORE COMING", "nowrap"]
       ]);
       const overflowing = titles.flatMap((title) => {
@@ -383,7 +390,8 @@ describe("the home page", () => {
       expect(overflowing).toEqual([]);
 
       const tiles = ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile);
-      expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(tiles.map(() => true));
+      const titled = [...tiles, homeTile("DIG")];
+      expect(titled.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(titled.map(() => true));
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
       const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
@@ -438,7 +446,7 @@ describe("the home page", () => {
     expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
   });
 
-  it("offers the skeleton game as a SKELETONS tile over MORE COMING: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
+  it("offers the skeleton game as a SKELETONS tile before DIG: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
     openHomePage();
 
     const tile = skeletonsTile();
@@ -448,7 +456,7 @@ describe("the home page", () => {
     expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("triceratops", "skeleton")]);
     const title = tile.querySelector(".skeletons-tile-title");
     expect(title?.previousElementSibling?.contains(tile.querySelector("svg.lucide-bone"))).toBe(true);
-    expect(tile.nextElementSibling).toBe(document.querySelector(".more-coming"));
+    expect(tile.nextElementSibling).toBe(homeTile("DIG"));
     expect(tile.querySelector(".skeletons-tile-best")).toBeNull();
   });
 
@@ -723,7 +731,7 @@ describe("the large card", () => {
       const badges = [badgeOf(card), badgeOf(tile)].map((badge) => badge && [symbolOf(badge), badge.textContent]);
       expect(badges[0]).toEqual(badges[1]);
       expect(badges[0] !== null).toBe(scored || game === "catalogue");
-      expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(HOME_GAMES.map(([, other]) => TEXTS.en[other]));
+      expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([...HOME_GAMES.map(([, other]) => TEXTS.en[other]), TEXTS.en.dig]);
 
       await user.click(card);
       await user.click(tile);
@@ -768,7 +776,7 @@ describe("the large card", () => {
   async function openedBy(game: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+      <App {...featuring(game)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
     );
     await tap(userEvent.setup());
     const asked: string[] = [];
@@ -838,7 +846,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for the COMPARE tile and the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
+    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
     const [tile, card] = [homeTile("COMPARE"), featuredCard()];
 
     act(() => {

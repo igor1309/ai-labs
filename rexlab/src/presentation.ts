@@ -3,6 +3,8 @@ import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } f
 import type { CatalogueEntry, Diet } from "./catalogue.ts";
 import type { CatalogueCardView } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
+import { clearCells, FRAME, roundShare, type DigRound } from "./dig/index.ts";
+import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
@@ -410,5 +412,23 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
     score,
     total,
     best
+  };
+}
+
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown">;
+
+// A dig round's board: its dinosaur's picture under the sand, every mark
+// brushed, and which cells are clear, as rows of 0 and 1, as dig.json
+// gives the dinosaur's own.
+export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: string) => string): DigBoardView {
+  return {
+    picture: bodyPicture(round.dinosaur.id),
+    frame: FRAME,
+    marks: round.sand.marks,
+    clear: clearCells(round.sand)
+      .map((row) => row.map((clear) => (clear ? "1" : "0")).join(""))
+      .join(" "),
+    cleared: roundShare(round),
+    blown: round.blown
   };
 }

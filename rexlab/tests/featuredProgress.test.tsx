@@ -10,6 +10,7 @@ import { endWave, playBoard } from "./pairsApp.tsx";
 import { sortByTrying } from "./sorting.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 import {
+  emptyDig,
   unreadVersion,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -81,6 +82,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       pairsProgress={localPairsProgress(() => storage)}
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
+      {...emptyDig()}
       skeletonProgress={localSkeletonProgress(() => storage)}
       reducedMotion={() => false}
       {...clock}

@@ -11,6 +11,7 @@ import {
   SHIPPED_PALS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptyDig,
   emptySkeletons,
   fakeBodyPicture,
   fakeItemPicture,
@@ -73,6 +74,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => storage)}
       {...emptySkeletons()}
+      {...emptyDig()}
       reducedMotion={() => reducedMotion}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}

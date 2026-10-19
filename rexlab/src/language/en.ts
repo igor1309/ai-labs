@@ -103,5 +103,8 @@ export const en: Texts = {
   build: "BUILD",
   rebuild: "REBUILD",
   keepBuilding: "CONTINUE",
+  dig: "DIG",
+  sand: "SAND",
+  dugUp: "DUG UP",
   spotKinds: { eye: "EYE", foot: "FOOT", tail: "TAIL", horn: "HORN", plate: "PLATE", claw: "CLAW", crest: "CREST", sail: "SAIL", frill: "FRILL", beak: "BEAK" }
 };

@@ -18,6 +18,7 @@ import {
   SHIPPED_SKELETONS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptyDig,
   fakeBodyPicture,
   fakeItemPicture,
   fakeSkeletonPicture,
@@ -78,6 +79,7 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
       pairsProgress={localPairsProgress(local)}
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
+      {...emptyDig()}
       skeletonProgress={localSkeletonProgress(local)}
       now={() => TODAY}
       featuredStore={featured}
@@ -237,7 +239,7 @@ describe("a chosen level", () => {
     expect(pictureOn(levelButton())).toBe("🥚");
     // The pre-level sorting best belongs to Hatchling: changing the
     // setting changes the badge to that level's best (docs/age-levels.md).
-    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "6", null, "40", "2", null, "6"]);
+    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "6", null, "40", "2", null, null, "6"]);
     const hatchlingBadges = [...badges];
     hatchlingBadges[3] = "5";
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([hatchlingBadges, featured]);

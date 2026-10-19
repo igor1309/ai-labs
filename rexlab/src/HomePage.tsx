@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -54,6 +54,9 @@ export type HomePageProps = {
   // The skeleton game's tile: the skeleton on it and the best collection
   // score, undefined while there is none to show.
   skeletons: { picture: string; best: number | undefined };
+  // The dig game's tile: the dinosaur on it and how many dinosaurs have
+  // been dug up, undefined until one has.
+  dig: { picture: string; dugUp: number | undefined };
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
   moreComing: string;
@@ -65,6 +68,7 @@ export type HomePageProps = {
   onSkeletons: () => void;
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
+  onDig: () => void;
 };
 
 type Menu = "language" | "theme" | "ageLevel";
@@ -85,6 +89,7 @@ export function HomePage({
   sort,
   pairs,
   skeletons,
+  dig,
   moreComing,
   onCompareDinosaurs,
   onCatalogue,
@@ -92,7 +97,8 @@ export function HomePage({
   onSort,
   onPairs,
   onSkeletons,
-  onMuseum
+  onMuseum,
+  onDig
 }: HomePageProps) {
   const text = TEXTS[language];
   const featuredPointer = usePointerState();
@@ -103,6 +109,7 @@ export function HomePage({
   const pairsPointer = usePointerState();
   const skeletonsPointer = usePointerState();
   const museumPointer = usePointerState();
+  const digPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -326,6 +333,18 @@ export function HomePage({
               <span className="skeletons-tile-title">{games.skeletons.name}</span>
             </span>
             <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
+          </button>
+          {/* The dig game's tile stands over MORE COMING. It is not yet
+              among the games the large card features. */}
+          <button type="button" className="card dig-tile" aria-label={text.dig} onClick={onDig} {...digPointer}>
+            <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />
+            <span className="dig-tile-row">
+              <span className="dig-tile-symbol" aria-hidden="true">
+                <Brush size={20} />
+              </span>
+              <span className="dig-tile-title">{text.dig}</span>
+            </span>
+            <BadgeChip badge={dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp }} className="dig-tile-count" size={18} />
           </button>
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}

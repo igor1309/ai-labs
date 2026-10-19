@@ -794,10 +794,9 @@ body:has(.result) #version {
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
-   paper's shade, the whole height of the last column. It is no card, so
-   it neither brightens nor presses in. */
+   paper's shade, under DIG in the last column. It is no card, so it
+   neither brightens nor presses in. */
 .more-coming {
-  grid-row: span 2;
   min-height: 0;
   box-sizing: border-box;
   padding: 20px 24px;
@@ -1252,6 +1251,77 @@ body:has(.result) #version {
 
 .skeletons-tile-best svg {
   color: #e39b2d;
+}
+
+/* The dig game's tile, over MORE COMING, in the other tiles' shape. The
+   design's sand brown is no colour of either theme, so the tile takes the
+   deepest band of rock, the nearest the palette has to sand. */
+.dig-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #d0c5b2;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.dig-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.dig-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dig-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff59;
+}
+
+.dig-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.dig-tile-count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff59;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 /* The question fills the screen, and the cards take what is left of it. */
@@ -4668,6 +4738,203 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The dig game's screens, under a bar like the skeleton game's: HOME,
+   the title beside a brush and the dinosaurs dug up. Nothing on them
+   selects or opens a menu at a long press, which would take the touch
+   that brushes. */
+.dig-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.dig-screen .stratum-1 {
+  height: 40px;
+}
+
+.dig-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.dig-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-mark {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-chip {
+  flex-shrink: 0;
+  height: 44px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.dig-bar .home-button {
+  flex-shrink: 0;
+  min-width: 48px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.dig-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The board keeps the picture's frame, as large as the screen leaves it.
+   It fades in whole, so the dinosaur never shows before the sand covers
+   it, and a finger on it only brushes. */
+.dig-board {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: var(--frame-width) / var(--frame-height);
+  height: 100%;
+  max-width: 100%;
+  border-radius: 28px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -2px;
+  background: #fffdf8;
+  touch-action: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-picture,
+.dig-sand {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dig-picture {
+  object-fit: contain;
+}
+
+/* The gust blows the sand left over off to the side; with reduced motion
+   it only fades. */
+.dig-board[data-blown] .dig-sand {
+  animation: dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both;
+}
+
+@keyframes dig-gust {
+  to {
+    opacity: 0;
+    translate: calc(110% * var(--motion-amount)) 0;
+  }
+}
+
+/* The brush, a ring the width it brushes, under the finger. */
+.dig-brush {
+  position: absolute;
+  width: var(--brush);
+  height: var(--brush);
+  box-sizing: border-box;
+  translate: -50% -50%;
+  border: 3px solid #fffdf8;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #1d274233;
+  pointer-events: none;
+}
+
+/* A puff of grains flies off the brush and fades, in the amber nearest
+   the sand among the theme's colours. */
+.dig-puff {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.dig-grain {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #e39b2d;
+  animation: dig-puff calc(2 * var(--motion-standard)) var(--ease-out) both;
+}
+
+@keyframes dig-puff {
+  to {
+    opacity: 0;
+    translate: calc(-50% + var(--grain-x) * 28px * var(--motion-amount)) calc(-50% + var(--grain-y) * 28px * var(--motion-amount));
+  }
+}
+
+/* The dinosaur dug up, whole, over its name. */
+.dig-reveal {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.dig-reveal-art {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.dig-reveal-picture {
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  animation: grow-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-reveal-name {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
 /* The level switch, centred between the bar and the dinosaurs, as wide as
    find the pair's column so every level's name fits on one line. */
 .skeleton-levels {
@@ -6243,6 +6510,35 @@ body:has(.result) #version {
 [data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
 [data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
   outline-color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-tile {
+  background: #1f273c;
+  color: #ece8de;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .dig-tile-symbol,
+[data-theme="dark"] .dig-tile-count {
+  background: #ffffff1f;
+}
+
+[data-theme="dark"] .dig-mark {
+  background: #f2b24b;
+  color: #1d2742;
+}
+
+[data-theme="dark"] .dig-chip {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .dig-grain {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-board {
+  outline-color: #ece8de1f;
+  background: #181e2e;
 }
 
 [data-theme="dark"] .more-coming {

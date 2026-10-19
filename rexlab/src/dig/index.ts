@@ -2,3 +2,7 @@
 // it. Everything else under dig/ is reached only through this file.
 export type { Cells, DigDinosaur, DigFile, Spot, SpotKind } from "./spots.ts";
 export { FRAME, GRID, readDig, SPOT_KINDS, spotCells, TELLING_KINDS } from "./spots.ts";
+export type { FramePoint, Mark, Sand } from "./sand.ts";
+export { brush, clearCells, clearShare, NEW_SAND } from "./sand.ts";
+export type { DigLevel, DigRound, Random } from "./round.ts";
+export { BRUSH_SIZES, brushRound, GUST_SHARE, roundShare, startRound } from "./round.ts";

@@ -25,6 +25,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyDig,
   emptyPairs,
   emptyProgress,
   emptySkeletons,
@@ -102,6 +103,7 @@ function openApp({
       {...emptySorting()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      {...emptyDig()}
       {...timers}
     />
   );

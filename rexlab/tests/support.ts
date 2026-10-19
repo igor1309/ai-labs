@@ -1,10 +1,12 @@
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
+import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
+import { readDig, type DigFile } from "../src/dig/index.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -27,6 +29,10 @@ export const SHIPPED_VISITORS = readVisitors(records);
 export const SHIPPED_SORTABLES = readSortables(records);
 export const SHIPPED_PALS = readPals(records);
 export const SHIPPED_SKELETONS = readSkeletons(records, skeletonPlaces);
+export const SHIPPED_DIG = readDig(
+  SHIPPED_DINOSAURS.map(({ id }) => id),
+  digFile as DigFile
+);
 
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
@@ -358,6 +364,12 @@ export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"
     skeletonProgress: localSkeletonProgress(() => storage),
     pageVisibility: manualVisibility("visible")
   };
+}
+
+// The dig game for tests that are not about it: every shipped dinosaur
+// may be dug up, and the sand is never drawn, jsdom having no canvas.
+export function emptyDig(): Pick<AppProps, "digDinosaurs" | "sandContext"> {
+  return { digDinosaurs: SHIPPED_DIG, sandContext: () => null };
 }
 
 // The language for tests that are not about it: an English device, no

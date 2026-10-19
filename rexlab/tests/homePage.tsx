@@ -41,6 +41,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       sort={{ picture: fakeBodyPicture("triceratops"), best: score(6) }}
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: score(120) }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: score(3) }}
+      dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: score(4) }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={() => opened.push("compare")}
       onCatalogue={() => opened.push("catalogue")}
@@ -49,6 +50,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onPairs={() => opened.push("pairs")}
       onSkeletons={() => opened.push("skeletons")}
       onMuseum={nothing}
+      onDig={nothing}
     />,
     withPictures
   );
@@ -60,4 +62,4 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
 export const symbolSquareOf = (card: Element) => card.querySelector('[class$="-tile-symbol"], .featured-card-symbol');
 export const nameRowOf = (card: Element) => card.querySelector('[class$="-tile-row"], .featured-card-footer');
 export const badgeOf = (card: Element) =>
-  card.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .featured-card-badge");
+  card.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count, .featured-card-badge");

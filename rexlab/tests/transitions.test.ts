@@ -4,6 +4,8 @@ import { beatBest } from "../src/bestScore.ts";
 import { finishVisit, give, NO_CARE, startVisit } from "../src/care/index.ts";
 import { transitionFor as careTransitionFor } from "../src/careGame.tsx";
 import { stepFrom, type Step } from "../src/catalogue.ts";
+import { brushRound, startRound as startDig } from "../src/dig/index.ts";
+import { transitionFor as digTransitionFor } from "../src/digGame.tsx";
 import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
 import { dealBoard, finishBoard as finishPairs, NO_PAIRS, turn } from "../src/pairs/index.ts";
 import { transitionFor as pairsTransitionFor } from "../src/pairsGame.tsx";
@@ -15,7 +17,7 @@ import { finishSkeleton, openCollection, startPuzzle, wait } from "../src/skelet
 import { transitionFor as skeletonTransitionFor } from "../src/skeletonGame.tsx";
 import { drop, finishBoard as finishSorting, startBoard } from "../src/sorting/index.ts";
 import { transitionFor as sortingTransitionFor } from "../src/sortingGame.tsx";
-import { SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SKELETONS, SHIPPED_SORTABLES, SHIPPED_VISITORS, seededRandom } from "./support.ts";
+import { SHIPPED_DIG, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SKELETONS, SHIPPED_SORTABLES, SHIPPED_VISITORS, seededRandom } from "./support.ts";
 
 type AppScreen = Parameters<typeof transitionFor>[0];
 
@@ -35,7 +37,8 @@ const APP: AppScreen[] = [
   { kind: "care" },
   { kind: "sorting" },
   { kind: "pairs" },
-  { kind: "skeletons" }
+  { kind: "skeletons" },
+  { kind: "dig" }
 ];
 
 // The transition each change between two kinds of the app's screen has,
@@ -173,5 +176,28 @@ describe("the skeleton game's transition for each change", () => {
 
   it("changes a puzzle at once as time counts towards help", () => {
     expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { coloured: false, silhouette: false, homeShown: true } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { coloured: false, silhouette: false, homeShown: true } })).toBeUndefined();
+  });
+});
+
+describe("the dig game's transition for each change", () => {
+  type DigScreen = Parameters<typeof digTransitionFor>[0];
+  const round = startDig(SHIPPED_DIG, [], undefined, () => 0);
+  const screens: DigScreen[] = [undefined, { kind: "board", round }, { kind: "reveal", round }];
+
+  it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
+    expect(digTransitionFor(from, to, undefined)).toBe(type);
+  });
+
+  it("changes a board at once as the brush moves", () => {
+    const brushed = brushRound(round, { from: { x: 300, y: 300 }, to: { x: 500, y: 300 }, radius: 24 });
+
+    expect(digTransitionFor({ kind: "board", round }, { kind: "board", round: brushed }, undefined)).toBeUndefined();
+  });
+
+  it("shows a round started over the round kept from before as the plain screen change", () => {
+    const next = startDig(SHIPPED_DIG, [round.dinosaur.id], undefined, () => 0);
+
+    expect(digTransitionFor({ kind: "board", round }, { kind: "board", round: next }, "start")).toBe(SCREEN_CHANGE);
+    expect(digTransitionFor(undefined, { kind: "board", round: next }, "start")).toBe(SCREEN_CHANGE);
   });
 });

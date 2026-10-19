@@ -17,6 +17,7 @@ import {
   SHIPPED_SKELETONS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptyDig,
   fakeBodyPicture,
   fakeItemPicture,
   fakeSkeletonPicture,
@@ -83,6 +84,7 @@ function openApp(storage: MemoryStorage) {
       pairsProgress={localPairsProgress(local)}
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
+      {...emptyDig()}
       skeletonProgress={localSkeletonProgress(local)}
       now={() => TODAY}
       featuredStore={featured}

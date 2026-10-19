@@ -9,6 +9,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyDig,
   emptyPairs,
   emptyProgress,
   emptySkeletons,
@@ -192,6 +193,7 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
       {...emptySorting()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      {...emptyDig()}
       {...loadedPictures()}
     />
   );
