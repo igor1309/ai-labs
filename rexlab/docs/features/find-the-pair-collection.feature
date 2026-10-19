@@ -24,15 +24,14 @@ Feature: Find the pair: dinosaurs found in the catalogue
   Scenario: The catalogue shows found dinosaurs
     Given I have found Triceratops and Stegosaurus
     When I open "ALL DINOSAURS"
-    Then I see the count "2 / 42" with a two-cards symbol beside the title
-    And the cards of Triceratops and Stegosaurus have a found stamp with a two-cards symbol
+    Then the cards of Triceratops and Stegosaurus have a found stamp with a two-cards symbol
     And no other card has a found stamp
     And the page of Triceratops shows the same stamp
 
-  Scenario: The catalogue shows no count before anything is found
+  Scenario: The catalogue shows no stamps before anything is found
     Given I have never finished a board
     When I open "ALL DINOSAURS"
-    Then I see no found count and no found stamps
+    Then I see no found stamps
 
   Scenario: A board left halfway finds nothing
     Given I have found Triceratops

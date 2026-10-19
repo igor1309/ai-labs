@@ -1,4 +1,4 @@
-import { BookOpen, Copy, Footprints, House, Ruler, Weight } from "lucide-react";
+import { Copy, House, Ruler, Weight } from "lucide-react";
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import { FoodChips, type Food, type FoodChoice } from "./FoodChips.tsx";
@@ -40,7 +40,6 @@ export type CatalogueScreenProps = {
 
 export function CatalogueScreen({ language, dinosaurs, foods, food, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
-  const found = dinosaurs.filter((view) => view.found).length;
   const grid = useRef<HTMLDivElement>(null);
 
   // Back from a page, its card is in view, so its picture has a card to
@@ -52,32 +51,15 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, returning, o
   }, [returning]);
 
   return (
-    <main className="catalogue">
+    <main className="catalogue" aria-label={text.catalogue}>
+      {/* HOME and the chips in one row, the cards under it. */}
       <header className="catalogue-bar">
         <button type="button" className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
         </button>
-        <h1 className="catalogue-title">
-          <span className="catalogue-mark" aria-hidden="true">
-            <BookOpen size={28} />
-          </span>
-          {text.catalogue}
-        </h1>
-        {/* Once a dinosaur shown is found, the count is of those found. */}
-        {found > 0 ? (
-          <p className="catalogue-count catalogue-found" aria-label={text.found}>
-            <Copy size={20} aria-hidden="true" />
-            {found} / {dinosaurs.length}
-          </p>
-        ) : (
-          <p className="catalogue-count" aria-label={text.dinosaurs}>
-            <Footprints size={20} aria-hidden="true" />
-            {dinosaurs.length}
-          </p>
-        )}
+        <FoodChips language={language} choices={foods} chosen={food} onChoose={onFood} />
       </header>
-      <FoodChips language={language} choices={foods} chosen={food} onChoose={onFood} />
       {/* The cards rise in when the catalogue opens from home, and again
           for each food chosen, as a list of their own: back from a page,
           the picture shrinking into its card is the motion. */}

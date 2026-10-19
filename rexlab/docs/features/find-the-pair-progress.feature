@@ -41,7 +41,7 @@ Feature: Find the pair: keeping progress
   Scenario: A found dinosaur no longer in the list is ignored
     Given the stored found dinosaurs include one that is no longer in the dinosaur list
     When I open "ALL DINOSAURS"
-    Then the found count counts only dinosaurs in the list
+    Then only the dinosaurs in the list are stamped found
     And the stored progress is not changed by opening it
 
   Scenario: The game works when progress cannot be read

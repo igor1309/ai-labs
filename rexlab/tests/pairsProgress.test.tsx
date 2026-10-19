@@ -20,8 +20,6 @@ const ordered = (ids: readonly string[]) => SHIPPED_PALS.filter(({ id }) => ids.
 
 function expectFound(ids: readonly string[]) {
   const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
-  const count = document.querySelector(".catalogue-found");
-  expect(count?.textContent ?? null).toBe(ids.length ? `${ids.length} / ${SHIPPED_PALS.length}` : null);
   const stamped = within(catalogue).getAllByRole("button").filter((card) => within(card).queryByRole("img", { name: "FOUND" }));
   expect(stamped.map((card) => card.getAttribute("aria-label")).sort()).toEqual(SHIPPED_PALS.filter(({ id }) => ids.includes(id)).map(({ name }) => name.en).sort());
 }

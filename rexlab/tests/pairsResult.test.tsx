@@ -62,8 +62,6 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
 
-    const count = document.querySelector(".catalogue-found");
-    expect(count && [count.textContent, symbolOf(count)]).toEqual([`${ids.length} / ${SHIPPED_PALS.length}`, "copy"]);
     const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
     const stamped = within(catalogue).getAllByRole("button").filter((card) => within(card).queryByRole("img", { name: "FOUND" }));
     expect(stamped.map((card) => card.getAttribute("aria-label")).sort()).toEqual(board.pals.map(({ name }) => name.en).sort());

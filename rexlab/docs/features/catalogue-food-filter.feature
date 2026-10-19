@@ -9,8 +9,8 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
 
   Scenario: The list offers a chip for each food
     When I open "ALL DINOSAURS"
-    Then under the title I see the chips "ALL", "MEAT", "PLANTS" and "BOTH", in that order
-    And "ALL" has a 📖 symbol and the count "42"
+    Then beside "HOME" I see the chips "ALL", "MEAT", "PLANTS" and "BOTH", in that order
+    And "ALL" is a round button with a filter symbol alone, no word or count, "ALL" only read out
     And "MEAT" is terracotta with a 🥩 symbol and the count "16"
     And "PLANTS" is green with a 🍃 symbol and the count "23"
     And "BOTH" is amber with 🥩 🍃 symbols and the count "3"
@@ -22,23 +22,22 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     When I tap "MEAT"
     Then "MEAT" is chosen and "ALL" is not
     And I see only the 16 cards with the "MEAT" tag, in the order of the dinosaur list
-    And the count beside the title is "16"
 
   Scenario: ALL shows every dinosaur again
     Given I chose "PLANTS"
     When I tap "ALL"
-    Then I see all 42 cards and the count "42"
+    Then I see all 42 cards
 
   Scenario: Tapping the chosen chip changes nothing
     Given I chose "BOTH"
     When I tap "BOTH" again
     Then I still see the 3 cards with the "BOTH" tag
 
-  Scenario: The found count counts the dinosaurs shown
+  Scenario: The found stamps are on the dinosaurs shown
     Given I have found Tyrannosaurus, Velociraptor and Triceratops
     When I open "ALL DINOSAURS" and tap "MEAT"
-    Then I see the count "2 / 16" with a two-cards symbol beside the title
-    And the cards of Tyrannosaurus and Velociraptor have a found stamp
+    Then the cards of Tyrannosaurus and Velociraptor have a found stamp
+    And there is no count of the found
 
   Scenario: Next and previous go round the dinosaurs shown
     Given I chose "MEAT"
@@ -70,7 +69,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
   Scenario Outline: The chips are in the chosen language
     Given the app is in <language>
     When I open "<tile>"
-    Then I see the title "<title>" and the chips "<all>", "<meat>", "<plants>" and "<both>"
+    Then the list reads "<title>" and the chips "<all>", "<meat>", "<plants>" and "<both>"
 
     Examples:
       | language | tile          | title         | all | meat | plants   | both |
