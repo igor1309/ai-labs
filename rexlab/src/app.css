@@ -3984,6 +3984,63 @@ body:has(.result) #version {
   text-align: center;
 }
 
+/* The result's switch keeps the names on one line at iPad width; the
+   dinosaur takes the room beside it. Rewards and actions share the
+   height even with ten stars and a celebration. */
+.result-with-levels {
+  padding: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 648px);
+}
+
+.result-with-levels .result-content {
+  gap: 16px;
+}
+
+.result-with-levels .celebration {
+  height: 52px;
+  font-size: 22px;
+}
+
+.result-with-levels .result-score-value {
+  font-size: min(180px, 20vh);
+}
+
+.result-with-levels .result-title {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.result-with-levels .play-again-button,
+.result-with-levels .result-actions .home-button {
+  height: 72px;
+  white-space: nowrap;
+}
+
+/* The result is navy in either theme, with a pale chosen mark. */
+.result-with-levels .pairs-levels,
+[data-theme="dark"] .result-with-levels .pairs-levels {
+  background: #00000033;
+  border-color: #ffffff40;
+}
+
+.result-with-levels .pairs-level,
+[data-theme="dark"] .result-with-levels .pairs-level {
+  color: #f6f2e9;
+}
+
+.result-with-levels .pairs-level-mark,
+.result-with-levels .pairs-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .pairs-level-mark,
+[data-theme="dark"] .result-with-levels .pairs-level[aria-pressed="true"] {
+  background-color: #f6f2e9;
+}
+
+.result-with-levels .pairs-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .pairs-level[aria-pressed="true"] {
+  color: #1f2b4d;
+  box-shadow: 0 4px 10px #00000066;
+}
+
 .pairs-play-button {
   height: 104px;
   padding: 0 52px 0 44px;
