@@ -45,6 +45,11 @@ func runIDOf(started time.Time, random io.Reader) (string, error) {
 	return started.UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(drawn), nil
 }
 
+// callID is the id of the call of the step step in the run run.
+func callID(run, step string) string {
+	return run + "/" + step
+}
+
 // endedCall is a step's call as it ended: its step, process and agent; the
 // id of the call whose session it continues, "" for none; the inputs it
 // was given, in the order its process declares them, none where they were
@@ -122,7 +127,7 @@ func (r *runRecord) Resolved(given []givenInput) {
 // Called records ended among the run's calls, and writes the record again.
 func (r *runRecord) Called(ended endedCall) {
 	call := runstore.Call{
-		ID:      r.record.ID + "/" + ended.step,
+		ID:      callID(r.record.ID, ended.step),
 		Step:    ended.step,
 		Process: ended.process,
 		Agent:   ended.agent,
@@ -140,7 +145,7 @@ func (r *runRecord) Called(ended endedCall) {
 	}
 	if taken := ended.taken; taken != nil {
 		call = *taken
-		call.ID, call.Continues, call.Reuses = r.record.ID+"/"+ended.step, nil, &taken.ID
+		call.ID, call.Continues, call.Reuses = callID(r.record.ID, ended.step), nil, &taken.ID
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()

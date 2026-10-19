@@ -478,19 +478,30 @@ func (s *sourcesSpy) sourcing() sourcing {
 
 // holdingSpy is a spy of what a run admits and holds a worktree through:
 // git's HEAD, cleanness and content of root, as its test gives them, any
-// other directory an error; and files' locks, each taken unless its test
-// gives lockErr, as Lock's error. It keeps each lock asked, and how many
-// are held now, alone or shared. It is safe for concurrent use.
+// other directory an error, the content each of contents in turn, the last
+// repeated, where its test gives them; and files' locks, each taken unless
+// its test gives lockErr, as Lock's error. It keeps each lock asked, and
+// how many are held now, alone or shared. It is safe for concurrent use;
+// its test sets its fields before the run, and changes the worktree
+// meanwhile through write.
 type holdingSpy struct {
-	root    string
-	head    string
-	clean   bool
-	content string
-	lockErr error
-	mu      sync.Mutex
-	asked   []lockAsked
-	alone   int
-	shared  int
+	root     string
+	head     string
+	clean    bool
+	content  string
+	contents []string
+	lockErr  error
+	mu       sync.Mutex
+	asked    []lockAsked
+	alone    int
+	shared   int
+}
+
+// write leaves the worktree's content content, no longer HEAD's.
+func (s *holdingSpy) write(content string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.content, s.clean = content, false
 }
 
 // lockAsked is a lock asked of files: its file, and whether alone.
@@ -500,6 +511,8 @@ type lockAsked struct {
 }
 
 func (s *holdingSpy) Head(_ context.Context, dir string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return "", errors.New("git spy: no worktree " + dir)
 	}
@@ -507,6 +520,8 @@ func (s *holdingSpy) Head(_ context.Context, dir string) (string, error) {
 }
 
 func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return false, errors.New("git spy: no worktree " + dir)
 	}
@@ -514,8 +529,16 @@ func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
 }
 
 func (s *holdingSpy) Content(_ context.Context, dir string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return "", errors.New("git spy: no worktree " + dir)
+	}
+	if len(s.contents) > 0 {
+		s.content = s.contents[0]
+		if len(s.contents) > 1 {
+			s.contents = s.contents[1:]
+		}
 	}
 	return s.content, nil
 }

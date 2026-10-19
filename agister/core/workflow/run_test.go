@@ -38,7 +38,7 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 // the call it reused for that name, or nothing where its test names the
 // step in silent; then its test's tools for that name, in order, then its
 // stale turns, then its turns at capacity; and keeps each call's params, in the order called and by
-// its step. A step it has no answer for fails its test, and is answered
+// its step, and the session each step is given, by its step. A step it has no answer for fails its test, and is answered
 // with nothing. It is safe for concurrent use; the trail is read once the
 // run has ended.
 type callerSpy struct {
@@ -53,16 +53,17 @@ type callerSpy struct {
 	mu       sync.Mutex
 	params   []map[string]string
 	bound    map[string]map[string]string
+	sessions map[string]string
 }
 
-func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, report func(workflow.Report)) workflow.Result {
+func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	s.mu.Lock()
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
 	if s.bound == nil {
-		s.bound = map[string]map[string]string{}
+		s.bound, s.sessions = map[string]map[string]string{}, map[string]string{}
 	}
-	s.bound[step] = params
+	s.bound[step], s.sessions[step] = params, session
 	s.mu.Unlock()
 	switch reused := s.reused[step]; {
 	case reused != "":

@@ -128,7 +128,7 @@ type startingCaller struct {
 	before []string
 }
 
-func (c *startingCaller) Call(_ context.Context, _ string, _ map[string]string, report func(workflow.Report)) workflow.Result {
+func (c *startingCaller) Call(_ context.Context, _ string, _ map[string]string, _ string, report func(workflow.Report)) workflow.Result {
 	c.events.mu.Lock()
 	c.before = slices.Clone(c.events.told)
 	c.events.mu.Unlock()

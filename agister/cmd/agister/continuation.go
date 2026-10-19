@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/igor1309/ai-labs/agister/core/call"
+	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 )
@@ -95,11 +96,21 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if latest.Content == "" || content != latest.Content {
 		return refuse("the worktree is not as %q left it", latest.ID)
 	}
+	prompt, refusal := continuationPrompt(docs)
+	if len(refusal) > 0 {
+		return continuation{}, refusal, nil
+	}
+	return continuation{session: session, continues: latest.ID, prompt: prompt}, nil, nil
+}
+
+// continuationPrompt is the text of the prompt "continuation" in docs, or
+// why it does not resolve.
+func continuationPrompt(docs runDocuments) (string, []string) {
 	prompt, problems := docs.Blob(documents.Prompt, "continuation")
 	if len(problems) > 0 {
-		return refuse("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))
+		return "", []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
 	}
-	return continuation{session: session, continues: latest.ID, prompt: string(prompt.Bytes)}, nil, nil
+	return string(prompt.Bytes), nil
 }
 
 // latestCall is the latest call made of session, first the call of the
@@ -130,18 +141,54 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 }
 
 // continued is built, its one step continuing c: its call given c's
-// session and the prompt "continuation" as its first document, and
-// admitted with no clean worktree asked, the continuation's checks taking
-// its place (ADR-004, rule 5).
+// session, and continuing as continuing gives it.
 func continued(built plan, c continuation) plan {
 	calls := maps.Clone(built.calls)
 	for name, planned := range calls {
+		planned = continuing(planned, c.prompt)
 		planned.continues = c.continues
 		planned.step.Session = c.session
-		planned.step.Documents = append([]call.Named{{Name: "continuation", Text: c.prompt}}, planned.step.Documents...)
-		planned.admission.Clean = false
 		calls[name] = planned
 	}
 	built.calls = calls
 	return built
+}
+
+// continuing is planned, a call continuing a session: given prompt, the
+// prompt "continuation", as its first document, and admitted with no clean
+// worktree asked, the checks of the worktree the session left taking its
+// place (ADR-004, rule 5).
+func continuing(planned plannedCall, prompt string) plannedCall {
+	planned.step.Documents = append([]call.Named{{Name: "continuation", Text: prompt}}, planned.step.Documents...)
+	planned.admission.Clean = false
+	return planned
+}
+
+// sessionsContinued is built, each step continuing an earlier step's
+// session continuing as continuing gives it (docs/run-implementation.md, "A
+// binding continuing a session"), or why it does not hold: the prompt
+// "continuation" does not resolve in docs. A workflow none of whose steps
+// continues a session does not ask for the prompt.
+func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
+	var names []string
+	for _, item := range built.workflow.Steps {
+		for _, step := range append([]workflow.Step{item}, item.Parallel...) {
+			if step.Session != "" {
+				names = append(names, step.Name)
+			}
+		}
+	}
+	if len(names) == 0 {
+		return built, nil
+	}
+	prompt, refusal := continuationPrompt(docs)
+	if len(refusal) > 0 {
+		return plan{}, refusal
+	}
+	calls := maps.Clone(built.calls)
+	for _, name := range names {
+		calls[name] = continuing(calls[name], prompt)
+	}
+	built.calls = calls
+	return built, nil
 }
