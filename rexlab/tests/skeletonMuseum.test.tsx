@@ -394,6 +394,48 @@ describe("rebuilding", () => {
   });
 });
 
+// Two taps landing in one act, before React renders, as in a browser
+// where the screen asked for shows after its transition: the first
+// tapped's screen is the one asked for, and a start tapped on the screen
+// still shown is stale, starting, counting and knocking down nothing.
+const rebuildOf = (name: string) => () => within(stand(name)).getByRole("button", { name: "REBUILD" });
+const buildOf = (name: string) => () => within(stand(name)).getByRole("button", { name: "BUILD" });
+const named = (name: string) => () => button(name);
+
+const ONE_ACT: Array<[taps: string, opened: "the museum" | "the choice", tapped: Array<() => HTMLElement>, heading: string, counted: string[], rebuilding: string[]]> = [
+  ["BUILD ANOTHER, then REBUILD", "the museum", [named("BUILD ANOTHER"), rebuildOf("TYRANNOSAURUS")], "BUILD A SKELETON", [], []],
+  ["BUILD ANOTHER, then another stand's BUILD", "the museum", [named("BUILD ANOTHER"), buildOf("STEGOSAURUS")], "BUILD A SKELETON", [], []],
+  ["MUSEUM, then a dinosaur", "the choice", [named("MUSEUM"), named("TRICERATOPS")], "MUSEUM", [], []],
+  ["REBUILD, then BUILD ANOTHER", "the museum", [rebuildOf("TYRANNOSAURUS"), named("BUILD ANOTHER")], "TYRANNOSAURUS", ["skeletons"], ["tyrannosaurus"]]
+];
+
+describe("two taps in one act", () => {
+  it.each(ONE_ACT)("on %s from %s, shows the first's screen", async (_, opened, tapped, heading, counted, rebuilding) => {
+    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
+    const starts = countedStarts();
+    if (opened === "the museum") await openMuseum({ storage, startCounter: starts.startCounter });
+    else openSkeletonsApp({ storage, startCounter: starts.startCounter });
+    const taps = tapped.map((each) => each());
+
+    act(() => taps.forEach((each) => fireEvent.click(each, { detail: 0 })));
+
+    expect([screen.getByRole("heading", { level: 1 }).textContent, starts.counted]).toEqual([heading, counted]);
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding });
+  });
+
+  it("plays the puzzle REBUILD asked for when BUILD ANOTHER lands in the same act", async () => {
+    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
+    await openMuseum({ storage });
+    const taps = [rebuildOf("TYRANNOSAURUS")(), button("BUILD ANOTHER")];
+    act(() => taps.forEach((each) => fireEvent.click(each, { detail: 0 })));
+    layOutPuzzle();
+
+    fit(skeletonOf("tyrannosaurus"), "skull");
+
+    expect(slots().map(([piece, state]) => `${piece} ${state}`)).toEqual(["skull fitted", "spine empty", "legs empty", "tail empty"]);
+  });
+});
+
 // Where the board, the tray's spots and their pictures are on the iPad's
 // screen, in CSS pixels, as the design lays them out, from the moment
 // each is drawn: jsdom lays nothing out. Returns where the tray draws

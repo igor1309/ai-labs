@@ -207,10 +207,10 @@ export function useSkeletonGame(
   }, [puzzle, away]);
 
   // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
-  // meanwhile changes nothing more.
+  // meanwhile, or a tap after a puzzle was asked for, changes nothing
+  // more, and leaves that puzzle in play.
   const buildAnother = () => {
-    leave();
-    go((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current));
+    go((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current), { also: leave });
   };
 
   // MUSEUM leaves whatever the child was doing: an unfinished puzzle is

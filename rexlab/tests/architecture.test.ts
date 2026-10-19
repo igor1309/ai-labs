@@ -260,12 +260,12 @@ const CLOCKS = /\b(setTimeout|setInterval|Date\.now\(\)|performance\.now\(\)|new
 // The module whose picture store alone calls the loader.
 const PICTURES = "Picture.tsx";
 
-// Each break, in the modules under `root`, of the Forbidden rules of
-// docs/tap-safety.md that LAB-298, LAB-303 and LAB-308 brought: a
-// transition started outside the screen state, state kept in a module
-// that keeps screens without its type written or with a screen's, the
-// clock or a timer read outside the composition root, and a wait for
-// pictures or a picture loader named outside the picture store.
+// Each break, in the modules under `root`, of these Forbidden rules of
+// docs/tap-safety.md: a transition started outside the screen state,
+// state kept in a module that keeps screens without its type written or
+// with a screen's, the clock or a timer read outside the composition
+// root, and a wait for pictures or a picture loader named outside the
+// picture store.
 function tapSafetyBreaks(root: string): string[] {
   const files = readdirSync(root, { recursive: true, encoding: "utf8" })
     .filter((file) => /\.tsx?$/.test(file))

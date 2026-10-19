@@ -1,7 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { AWAY, BOARD_AT, fittedPieces, homeOf, layOutPuzzle, lifted, moveTo, openSkeletonsApp, press, release, skeletonOf, slotOf, spotOf, trayPieces } from "./skeletonsApp.tsx";
+import { AWAY, BOARD_AT, fit, fitAll, fittedPieces, homeOf, layOutPuzzle, lifted, moveTo, openSkeletonsApp, press, release, reveal, revealNow, skeletonOf, slotOf, spotOf, trayPieces } from "./skeletonsApp.tsx";
 import { fakeSkeletonPicture, type ManualPictures } from "./support.ts";
 
 // skeleton-assembly-pictures.feature: a bone whose picture is still
@@ -85,5 +85,51 @@ describe.each(START)("a bone whose picture is %s in the tray", (_, start, tray) 
     release(homeOf(TYRANNOSAURUS, "skull"));
 
     expect([fittedPieces(), lookIn(slotOf("skull").querySelector(".skeleton-fitted")), asked(pictures)]).toEqual([["skull"], "loading", 1]);
+  });
+});
+
+// A picture still loading has no size of its own, so each fills the place
+// its wrapper keeps, a bone in the tray or held keeping its own shape.
+const fills = (picture: Element | null | undefined) => {
+  const style = getComputedStyle(picture ?? document.body);
+  return [style.display, style.width, style.height, style.objectFit];
+};
+
+// The puzzle open, every one of its pictures still loading.
+async function openLoading() {
+  const opened = openSkeletonsApp();
+  await opened.user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
+  layOutPuzzle();
+  return opened.pictures;
+}
+
+describe("a skeleton's picture still loading", () => {
+  it.each<[string, () => Element | null | undefined, string]>([
+    ["the outline", () => document.querySelector(".skeleton-outline img"), "fill"],
+    ["a bone in the tray", () => spotOf("spine").querySelector("img"), "contain"],
+    ["the bone held", () => lifted()?.querySelector("img"), "contain"]
+  ])("fills %s's place", async (_, picture, objectFit) => {
+    await openLoading();
+    lift();
+
+    expect(fills(picture())).toEqual(["block", "100%", "100%", objectFit]);
+  });
+
+  it("fills a fitted bone's place", async () => {
+    await openLoading();
+
+    fit(TYRANNOSAURUS, "skull");
+
+    expect(fills(slotOf("skull").querySelector(".skeleton-fitted img"))).toEqual(["block", "100%", "100%", "fill"]);
+  });
+
+  it("fills the whole skeleton's place on the result", async () => {
+    const pictures = await openLoading();
+
+    fitAll(TYRANNOSAURUS);
+    revealNow(pictures, "tyrannosaurus");
+
+    const bones = reveal()?.querySelector(".skeleton-reveal-bones img");
+    expect([bones?.getAttribute("data-picture"), ...fills(bones)]).toEqual(["loading", "block", "100%", "100%", "fill"]);
   });
 });
