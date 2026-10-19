@@ -66,7 +66,7 @@ Feature: Home page: counting starts and keeping the featured choice
     Given the browser cannot read progress
     When I open the home page
     Then a featured game is chosen with every start count at 0
-    And every tile opens its game
+    And every tile, and the large card, opens its game
 
 
   Scenario: A browser that cannot save keeps the choice for the session

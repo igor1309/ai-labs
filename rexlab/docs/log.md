@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- The home page no longer repeats today's featured game as a small tile: the large card stands in its place, and the other tiles keep their order (LAB-348).
 - The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
 - Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).

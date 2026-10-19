@@ -640,9 +640,13 @@ export function tilesRow(): HTMLElement {
   return row;
 }
 
-// A game's own tile on the home page, apart from the large card, which
-// may feature the same game under the same name.
+// A game's own tile on the home page, apart from the large card. The
+// large card's game has no tile.
 export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
+
+// The way into a game from the home page: its tile, or the large card
+// when it features the game.
+export const gameDoor = (name: string) => within(document.body).getByRole("button", { name });
 
 // The home page's large card, featuring today's game.
 export function featuredCard(): HTMLElement {

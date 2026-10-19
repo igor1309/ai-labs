@@ -101,7 +101,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, under the COMPARE tile, before the CARE tile", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the CARE tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -110,7 +110,7 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(42);
-    expect(homeTile("COMPARE").nextElementSibling).toBe(tile);
+    expect(tile.parentElement?.firstElementChild).toBe(tile);
     expect(tile.nextElementSibling).toBe(homeTile("CARE"));
   });
 });
@@ -138,7 +138,7 @@ describe("the list of every dinosaur", () => {
 
     await user.click(home);
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(homeTile("ALL DINOSAURS")).toBeDefined();
     expect(screen.queryByRole("group", { name: "ALL DINOSAURS" })).toBeNull();
   });
 

@@ -5,7 +5,7 @@ import { boardState, type CardState, type Sorting } from "../src/sorting/index.t
 import { pairCards, openPairsApp, playPairs, stateAt } from "./pairsApp.tsx";
 import { finishLoading, fittedPieces, homeOf, lifted, openHomeApp, openPuzzle, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { CARD_AT, centreOf, latest, layOutBaskets, openBoard, trayCard } from "./sorting.tsx";
-import { homeTile, sortingBy } from "./support.ts";
+import { gameDoor, sortingBy } from "./support.ts";
 import { clickOf, filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
 // double-tap.feature. Its first scenario is in homeMuseum.test.tsx and
@@ -20,7 +20,7 @@ const next = () => screen.getByRole("button", { name: "NEXT" });
 // side of it ready, and the filter before it from then on.
 async function onFirstPage() {
   const { user, pictures } = openHomeApp();
-  await user.click(homeTile(TEXTS.en.catalogueTile));
+  await user.click(gameDoor(TEXTS.en.catalogueTile));
   act(() => finishLoading(pictures));
   await user.click(within(screen.getByRole("group", { name: TEXTS.en.catalogue })).getByRole("button", { name: "Tyrannosaurus" }));
   act(() => finishLoading(pictures));

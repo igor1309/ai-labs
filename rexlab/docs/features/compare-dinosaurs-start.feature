@@ -10,7 +10,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: The home page offers the quiz as a tile
     When I open the home page
     Then I see a "COMPARE" tile with a scales symbol and a picture of two dinosaurs
-    And it is the first tile of the row, above "ALL DINOSAURS"
+    And on a day another game is featured it is the first tile of the row, above "ALL DINOSAURS"
     And it shows my best score with a trophy symbol when there is one
 
   Scenario: The quiz tile brightens under a pointer
@@ -42,7 +42,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: A round starts once for two activations from home
     Given the large card features COMPARE
-    When I tap the "COMPARE" tile and then the large card, more than 100 CSS pixels away, before the first tap's screen change is shown
+    When I tap the large card twice, more than 100 CSS pixels apart, before the first tap's screen change is shown
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 

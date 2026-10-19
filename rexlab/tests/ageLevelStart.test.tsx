@@ -20,7 +20,7 @@ import {
   fakeBodyPicture,
   fakeItemPicture,
   fakeSkeletonPicture,
-  homeTile,
+  gameDoor,
   manualAppearance,
   manualOrientation,
   manualTimers,
@@ -111,7 +111,7 @@ const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]>
 // keeps once there, beside the age level.
 async function start(storage: MemoryStorage, tile: string, into: Array<() => HTMLElement>) {
   const { user, container, unmount } = openApp(storage);
-  await user.click(homeTile(tile));
+  await user.click(gameDoor(tile));
   const shown = [container.innerHTML];
   for (const tap of into) {
     await user.click(tap());
@@ -145,7 +145,7 @@ function shownQuestion(): Question {
 // Plays a compare quiz round from the home page, every question answered
 // right, and sees its result.
 async function answerEveryQuestionRight(user: UserEvent) {
-  await user.click(homeTile("COMPARE"));
+  await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= 10; number++) {
     await user.click(within(group()).getByRole("button", { name: largerOf(shownQuestion()).name.en }));
     if (number < 10) await user.click(button("NEXT"));
@@ -163,7 +163,7 @@ describe("the same play", () => {
     expect(screen.getByLabelText("SCORE").textContent).toBe("10/10");
     expect(screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"))).toEqual(["NEW BEST SCORE"]);
     await user.click(button("HOME"));
-    expect(badgeOf(homeTile("COMPARE"))?.textContent).toBe("10");
+    expect(badgeOf(gameDoor("COMPARE"))?.textContent).toBe("10");
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: 10, roundsPlayed: 4 });
   });
 });

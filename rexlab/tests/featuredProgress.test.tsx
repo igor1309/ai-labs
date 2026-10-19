@@ -22,7 +22,7 @@ import {
   fakeItemPicture,
   fakeSkeletonPicture,
   featuredCard,
-  homeTile,
+  gameDoor,
   manualAppearance,
   manualOrientation,
   loadShownPictures,
@@ -115,24 +115,24 @@ async function finishRound(user: UserEvent) {
 // Each way to start a game, the game, and the starts it counts on the
 // way: one from the home page and one more from PLAY AGAIN.
 const STARTS: Array<[action: string, game: string, starts: number, act: (opened: Opened) => Promise<void>]> = [
-  ["a quiz round starts from the home page", "compare", 1, ({ user }) => user.click(homeTile("COMPARE"))],
+  ["a quiz round starts from the home page", "compare", 1, ({ user }) => user.click(gameDoor("COMPARE"))],
   [
     "a quiz round starts from the home page, then from PLAY AGAIN",
     "compare",
     2,
     async ({ user }) => {
-      await user.click(homeTile("COMPARE"));
+      await user.click(gameDoor("COMPARE"));
       await finishRound(user);
       await user.click(button("PLAY AGAIN"));
     }
   ],
-  ["the dinosaur list opens from the home page", "catalogue", 1, ({ user }) => user.click(homeTile("ALL DINOSAURS"))],
+  ["the dinosaur list opens from the home page", "catalogue", 1, ({ user }) => user.click(gameDoor("ALL DINOSAURS"))],
   [
     "a care visit starts from NEW VISITOR",
     "care",
     1,
     async ({ user }) => {
-      await user.click(homeTile("CARE"));
+      await user.click(gameDoor("CARE"));
       await user.click(button("NEW VISITOR"));
     }
   ],
@@ -141,18 +141,18 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "care",
     1,
     async ({ user }) => {
-      await user.click(homeTile("CARE"));
+      await user.click(gameDoor("CARE"));
       await user.click(button("FRIENDS"));
       await user.click(within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button"));
     }
   ],
-  ["a sorting round starts from its card", "sort", 1, ({ user }) => user.click(homeTile("SORT"))],
+  ["a sorting round starts from its card", "sort", 1, ({ user }) => user.click(gameDoor("SORT"))],
   [
     "a sorting round starts from its card, then from PLAY AGAIN",
     "sort",
     2,
     async ({ user }) => {
-      await user.click(homeTile("SORT"));
+      await user.click(gameDoor("SORT"));
       await sortByTrying(user);
       await user.click(button("SEE RESULT"));
       await user.click(button("PLAY AGAIN"));
@@ -163,7 +163,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "pairs",
     1,
     async ({ user }) => {
-      await user.click(homeTile("FIND THE PAIR"));
+      await user.click(gameDoor("FIND THE PAIR"));
       await user.click(button("PLAY"));
     }
   ],
@@ -172,7 +172,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "pairs",
     2,
     async ({ user, clock }) => {
-      await user.click(homeTile("FIND THE PAIR"));
+      await user.click(gameDoor("FIND THE PAIR"));
       await user.click(button("PLAY"));
       await playBoard(user, clock);
       endWave(clock);
@@ -184,7 +184,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "skeletons",
     1,
     async ({ user }) => {
-      await user.click(homeTile("SKELETONS"));
+      await user.click(gameDoor("SKELETONS"));
       await user.click(firstIn("DINOSAURS"));
     }
   ],
@@ -193,7 +193,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     "skeletons",
     1,
     async ({ user }) => {
-      await user.click(homeTile("SKELETONS"));
+      await user.click(gameDoor("SKELETONS"));
       await user.click(button("MUSEUM"));
       await user.click(button("REBUILD"));
     }
@@ -228,7 +228,7 @@ describe("starting a game", () => {
   it("counts the start of a care visit left unfinished", async () => {
     const { user, storage } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({ care: 2 }) }));
 
-    await user.click(homeTile("CARE"));
+    await user.click(gameDoor("CARE"));
     await user.click(button("NEW VISITOR"));
     await user.click(button("HOME"));
 
@@ -237,14 +237,14 @@ describe("starting a game", () => {
 
   it("counts nothing on the care, find-the-pair and skeleton screens before a game, nor in the museum opened on the home page, nor on a dinosaur's page and back", async () => {
     const { user, storage, clock } = openApp();
-    await user.click(homeTile("ALL DINOSAURS"));
+    await user.click(gameDoor("ALL DINOSAURS"));
     const opened = storedFeatured(storage);
 
     await user.click(firstIn("ALL DINOSAURS"));
     await user.click(button("ALL DINOSAURS"));
     await user.click(button("HOME"));
     for (const name of ["CARE", "FIND THE PAIR", "SKELETONS"]) {
-      await user.click(homeTile(name));
+      await user.click(gameDoor(name));
       await user.click(button("HOME"));
     }
     await user.click(button("MUSEUM"));
@@ -263,13 +263,13 @@ type Start = [start: string, game: HomeGame, way: Array<() => HTMLElement>, begi
 // Each game whose start shows at once, its pictures loading, the buttons
 // on the way to its start, and the button that starts it.
 const AT_ONCE: Start[] = [
-  ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
-  ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
-  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
-  ["a sorting round", "sort", [], () => homeTile("SORT")],
-  ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
-  ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")],
-  ["a sorting round over a board left unfinished", "sort", [() => homeTile("SORT"), () => button("HOME")], () => homeTile("SORT")]
+  ["a care visit", "care", [() => gameDoor("CARE")], () => button("NEW VISITOR")],
+  ["a friend called back", "care", [() => gameDoor("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
+  ["a board", "pairs", [() => gameDoor("FIND THE PAIR")], () => button("PLAY")],
+  ["a sorting round", "sort", [], () => gameDoor("SORT")],
+  ["a skeleton puzzle", "skeletons", [() => gameDoor("SKELETONS")], () => firstIn("DINOSAURS")],
+  ["a skeleton rebuilt", "skeletons", [() => gameDoor("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")],
+  ["a sorting round over a board left unfinished", "sort", [() => gameDoor("SORT"), () => button("HOME")], () => gameDoor("SORT")]
 ];
 
 describe("a start that does not wait for its pictures", () => {
@@ -296,13 +296,13 @@ describe("a start that does not wait for its pictures", () => {
 // Each way a sorting round starts, the game featured meanwhile, the steps
 // on the way and the button that starts it.
 const SORT_STARTS: Array<[start: string, featured: HomeGame, way: (user: UserEvent) => Promise<void>, begin: () => HTMLElement]> = [
-  ["SORT", "compare", async () => {}, () => homeTile("SORT")],
+  ["SORT", "compare", async () => {}, () => gameDoor("SORT")],
   ["the featured card", "sort", async () => {}, () => featuredCard()],
   [
     "PLAY AGAIN",
     "compare",
     async (user) => {
-      await user.click(homeTile("SORT"));
+      await user.click(gameDoor("SORT"));
       await sortByTrying(user);
       await user.click(button("SEE RESULT"));
     },
@@ -340,7 +340,7 @@ describe("a browser that cannot keep progress", () => {
     expect(featuredCard().dataset.game).toBe("compare");
     expect(featured.history()).toEqual({ timesStarted: new Map(), lastFeatured: { game: "compare", on: "2026-10-18" } });
     for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"]) {
-      await user.click(homeTile(name));
+      await user.click(gameDoor(name));
       expect(document.querySelector(".games-tiles")).toBeNull();
       await user.click(button("HOME"));
     }
@@ -350,7 +350,7 @@ describe("a browser that cannot keep progress", () => {
     const raw = progressWith({ care: 1 });
     const { user, storage, featured } = openApp(memoryStorage({ [PROGRESS_KEY]: raw }, { save: false }));
 
-    await user.click(homeTile("CARE"));
+    await user.click(gameDoor("CARE"));
     await user.click(button("NEW VISITOR"));
     await user.click(button("HOME"));
 
@@ -395,11 +395,10 @@ describe("the featured card", () => {
   // A key's click has no pointer's detail, and is never filtered.
   it.each([
     ["Enter twice on the large card", () => [featuredCard(), featuredCard()].forEach((each) => fireEvent.click(each, { detail: 0 }))],
-    ["Enter twice on its tile", () => [0, 1].forEach(() => fireEvent.click(homeTile("ALL DINOSAURS"), { detail: 0 }))],
     [
-      "a tap on its tile and then on the large card, more than 100 CSS pixels away",
+      "two taps on the large card, more than 100 CSS pixels apart",
       () => {
-        tapAt(homeTile("ALL DINOSAURS"), 0, { x: 0 });
+        tapAt(featuredCard(), 0, { x: 0 });
         tapAt(featuredCard(), 250, { x: 150 });
       }
     ]

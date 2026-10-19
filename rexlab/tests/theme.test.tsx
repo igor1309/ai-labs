@@ -50,7 +50,7 @@ import {
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
-  homeTile,
+  gameDoor,
   unsetAgeLevel
 } from "./support.ts";
 
@@ -198,13 +198,13 @@ async function answer(user: UserEvent, from: number, to: number, check: () => vo
 const questions =
   (from: number, to: number) =>
   async ({ theme, user }: Walk) => {
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     await answer(user, 1, from - 1, unchecked);
     await answer(user, from, to, () => expectScreenIn(theme));
   };
 
 async function quizResult({ theme, user }: Walk) {
-  await user.click(homeTile("COMPARE"));
+  await user.click(gameDoor("COMPARE"));
   await answer(user, 1, 10, unchecked);
   expect(screen.getByRole("status")).toBeDefined();
   expectScreenIn(theme);
@@ -522,7 +522,7 @@ describe("the System theme", () => {
   it("follows the device while the app is open, without reloading", async () => {
     const device = manualAppearance("light");
     const { user } = openApp({ device });
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     await user.click(cardOf(smallerOf(shownQuestion())));
     expectScreenIn("light");
     const answered = document.body.innerHTML;
@@ -555,7 +555,7 @@ describe("a chosen theme", () => {
     act(() => device.switchTo(chosen));
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     expectScreenIn(chosen);
   });
 
@@ -621,7 +621,7 @@ describe("the theme menu", () => {
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
       const button = screen.getByRole("button", { name: LABELS[language].menu });
-      const card = homeTile(LABELS[language].card);
+      const card = gameDoor(LABELS[language].card);
 
       expect(button.textContent).toBe("");
       expect(symbolOf(button)).toBe("monitor");
@@ -696,7 +696,7 @@ describe("the large card", () => {
         expectScreenIn(theme);
 
         const card = featuredCard();
-        const tile = homeTile(TEXTS.en[key]);
+        const tile = gameDoor(TEXTS.en[key]);
         const parts = (of: Element) => [look(of), look(symbolSquareOf(of)), look(badgeOf(of)), look(of.querySelector('[class$="-title"]'))];
         expect({ game, parts: parts(card) }).toEqual({ game, parts: parts(tile) });
         // The shade the name stands on, the tile's row's or none.
@@ -806,7 +806,7 @@ describe("the sorting result", () => {
 describe("marks", () => {
   it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     const question = shownQuestion();
 
     await user.click(cardOf(smallerOf(question)));

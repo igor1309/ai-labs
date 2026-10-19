@@ -794,10 +794,9 @@ body:has(.result) #version {
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
-   paper's shade, the whole height of the last column. It is no card, so
-   it neither brightens nor presses in. */
+   paper's shade, under the last tile in the last column. It is no card,
+   so it neither brightens nor presses in. */
 .more-coming {
-  grid-row: span 2;
   min-height: 0;
   box-sizing: border-box;
   padding: 20px 24px;

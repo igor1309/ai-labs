@@ -7,7 +7,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, playDealt, playPairs, storedPairs, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, homeTile, manualTimers, memoryStorage, symbolOf } from "./support.ts";
+import { SHIPPED_PALS, gameDoor, manualTimers, memoryStorage, symbolOf } from "./support.ts";
 
 // find-the-pair-progress.feature at every age level, and the full flow
 // of find-the-pair-level-progress.feature.
@@ -41,7 +41,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("★1");
     expect(storedPairs(storage)).toEqual(entry({ stars: 1, boardsOnLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length }, found: ordered(ids), offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } }));
     await app.user.click(button("HOME"));
-    const tile = homeTile("FIND THE PAIR").querySelector(".pairs-tile-stars");
+    const tile = gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars");
     expect(tile && [tile.textContent, symbolOf(tile)]).toEqual(["1", "star"]);
     app.unmount();
 
@@ -128,7 +128,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
 
     expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length + 3), "★1", null, []]);
     await app.user.click(button("HOME"));
-    expect(homeTile("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe("1");
+    expect(gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe("1");
     await app.user.click(button("ALL DINOSAURS"));
     expectFound(ids);
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);

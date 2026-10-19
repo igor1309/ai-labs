@@ -17,7 +17,7 @@ import {
   englishDevice,
   fakeBodyPicture,
   featuring,
-  homeTile,
+  gameDoor,
   lightDevice,
   loadedPictures,
   unsetAgeLevel,
@@ -173,7 +173,7 @@ describe("the screen changes of the app", () => {
       </Profiler>
     );
     const user = userEvent.setup();
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     act(() => pictures.loading().forEach(pictures.finish));
     const [first, second] = cards();
     if (!first || !second) throw new Error("Expected two dinosaur cards");
@@ -223,12 +223,12 @@ describe("the screen changes of the games and pages", () => {
     const user = openApp();
     typesAdded();
 
-    await user.click(homeTile("SORT"));
+    await user.click(gameDoor("SORT"));
     expect(typesAdded()).toContain(SCREEN_CHANGE);
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
     typesAdded();
-    await user.click(homeTile("SORT"));
+    await user.click(gameDoor("SORT"));
 
     expect(typesAdded()).toEqual([SCREEN_CHANGE]);
   });
@@ -244,7 +244,7 @@ describe("the screen changes of the games and pages", () => {
     const shown = catalogue[at];
     if (!shown) throw new Error("Expected a dinosaur");
     const user = openApp(catalogue);
-    await user.click(homeTile("ALL DINOSAURS"));
+    await user.click(gameDoor("ALL DINOSAURS"));
     await user.click(screen.getByRole("button", { name: shown.name.en }));
     typesAdded();
 
