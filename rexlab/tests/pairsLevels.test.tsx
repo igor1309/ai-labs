@@ -9,7 +9,7 @@ import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualTimers, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -392,7 +392,8 @@ describe("a board at each level", () => {
     // board's dinosaurs are read from the pictures it loads ahead: every
     // picture fails, so a board asks again for each of its own.
     const asked: string[] = [];
-    const clock: ManualTimers = { ...manualTimers(), loadPicture: (url, done) => (asked.push(url), done("failed")) };
+    const timers = manualTimers();
+    const clock: ManualTimers = { ...timers, ...pictureClock((url, done) => (asked.push(url), done("failed")), timers.startTimer) };
     const { user } = await openPairs({ ageLevel: picked(before), random: seededRandom(296), clock });
     const deal = async (...taps: string[]) => {
       for (const tap of taps.slice(0, -1)) await user.click(button(tap));

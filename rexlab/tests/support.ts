@@ -44,12 +44,12 @@ export const fakeSkeletonPicture = (dinosaurId: string, part: string) => `/skele
 export type PictureClock = { loadPicture: LoadPicture; pictures: PictureStore; startTimer: StartTimer };
 
 // The clock of `loadPicture`, its store calling it.
-const clock = (loadPicture: LoadPicture, startTimer: StartTimer): PictureClock => ({ loadPicture, pictures: pictureStore(loadPicture), startTimer });
+export const pictureClock = (loadPicture: LoadPicture, startTimer: StartTimer): PictureClock => ({ loadPicture, pictures: pictureStore(loadPicture), startTimer });
 
 // Pictures for tests that are not about them: each is loaded the moment
 // it is asked for, so nothing waits on the timer, which never fires.
 export function loadedPictures(): PictureClock {
-  return clock((_url, done) => done("loaded"), () => () => {});
+  return pictureClock((_url, done) => done("loaded"), () => () => {});
 }
 
 export type ManualPictures = PictureClock & {
@@ -84,7 +84,7 @@ export function manualPictures(): ManualPictures {
     }
   };
   return {
-    ...clock(
+    ...pictureClock(
       (url, done) => {
         loading.push({ url, done });
       },
@@ -165,7 +165,7 @@ export type ManualTimers = PictureClock & {
 export function manualTimers(): ManualTimers {
   const pictures = manualPictures();
   return {
-    ...clock((_url, done) => done("loaded"), pictures.startTimer),
+    ...pictureClock((_url, done) => done("loaded"), pictures.startTimer),
     timers: pictures.timers,
     fire: pictures.fire,
     deliverStopped: pictures.deliverStopped,
