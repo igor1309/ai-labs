@@ -2,11 +2,11 @@
 
 The dig game (LAB-335): the child brushes sand off a covered picture with
 a finger until a dinosaur shows. Its modes at each age level
-(`age-levels.md`), and the sub-issues that build them. The behaviour itself
-will be specified under `features/`; this note is the plan they follow.
-The frames are the "Dig" frames of `../design/rexlab.pen`, and its home
-with the DIG tile; their sand art is a mock-up of the brush, not shipped
-art.
+(`age-levels.md`), and the sub-issues that build them. The behaviour is
+specified in `features/dig-*.feature`; this note is the plan they
+follow. The frames are the "Dig" frames of `../design/rexlab.pen`, and
+its home with the DIG tile; their sand art is a mock-up of the brush,
+not shipped art.
 
 ## The brush
 
@@ -46,9 +46,10 @@ The one interaction at every level.
   deduction (the dinosaur is named from what the clues uncovered), never
   speed.
 - **Details.** A detail is a spot on the dinosaur's body picture: an
-  eye, a foot, the tail, a horn, a plate, a claw, a crest or a sail. A
-  spot is found once most of its cells are clear. Each dinosaur in the
-  game has three to five spots, in `src/data/dig.json`; a round picks 3.
+  eye, a foot, the tail, a horn, a plate, a claw, a crest, a sail, a
+  frill or a beak. A spot is found once most of its cells are clear.
+  Each dinosaur in the game has three to five spots, in
+  `src/data/dig.json`; a round picks 3.
   The close-up on a card is the picture itself, cropped round the spot,
   so the card shows exactly what to find. Its word is a small caption
   under it, not the cue.
