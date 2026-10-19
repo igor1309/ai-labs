@@ -292,7 +292,8 @@ const AT_ONCE: Start[] = [
   ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
   ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
-  ["a sorting round", "sort", [], () => homeTile("SORT")]
+  ["a sorting round", "sort", [], () => homeTile("SORT")],
+  ["a sorting round over a board left unfinished", "sort", [() => homeTile("SORT"), () => button("HOME")], () => homeTile("SORT")]
 ];
 
 describe("a start that does not wait for its pictures", () => {
@@ -302,6 +303,7 @@ describe("a start that does not wait for its pictures", () => {
     const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
     loadShownPictures(pictures);
     for (const step of way) await user.click(step());
+    const before = counted.length;
     const starting = begin();
 
     act(() => {
@@ -309,9 +311,9 @@ describe("a start that does not wait for its pictures", () => {
       starting.click();
     });
 
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
     act(() => pictures.finishAll());
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
   });
 });
 
