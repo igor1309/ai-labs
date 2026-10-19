@@ -2910,6 +2910,8 @@ body:has(.result) #version {
 .given-picture {
   display: block;
   width: 100%;
+  /* Square whatever size its picture says it is. */
+  height: auto;
   aspect-ratio: 1;
   object-fit: contain;
 }
