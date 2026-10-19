@@ -4296,15 +4296,16 @@ body:has(.result) #version {
   line-height: 1.2;
 }
 
+/* PLAY AGAIN, BACK and HOME share the right column's width. */
 .pairs-result .result-actions {
-  gap: 12px;
+  gap: 10px;
 }
 
 .pairs-result .result-actions button {
   flex-shrink: 0;
   height: clamp(64px, 8.9vh, 80px);
-  padding: 0 clamp(16px, 2vw, 32px);
-  gap: 10px;
+  padding: 0 clamp(12px, 1.2vw, 32px);
+  gap: 8px;
   font-size: clamp(20px, 1.8vw, 26px);
   white-space: nowrap;
 }
@@ -4571,9 +4572,17 @@ body:has(.result) #version {
   display: flex;
   align-items: center;
   gap: 14px;
+  container-type: inline-size;
   font-size: 40px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* The title's words stay on one line and shrink to the room the bar's
+   buttons leave beside the bone: their letters are at most 0.75 of their
+   size wide in Lexend's capitals. */
+.skeleton-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.75));
 }
 
 .skeleton-mark {

@@ -154,16 +154,16 @@ describe("help after waiting", () => {
   // The tap and the timers read in one act, while the puzzle is still on
   // the screen: help's timer stops as the child leaves, not as the puzzle
   // is taken off the screen.
-  it("stops as the child goes home, and the next puzzle's help is not moved on by the tick, delivered all the same", async () => {
+  it.each(["HOME", "BACK"])("stops as the child taps %s, and the next puzzle's help is not moved on by the tick, delivered all the same", async (leave) => {
     const { pictures, user } = await openPuzzle("TYRANNOSAURUS");
     spend(pictures, 9);
 
     let left: [number[], boolean] = [[], false];
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+      fireEvent.click(screen.getByRole("button", { name: leave }));
       left = [pictures.timers(), document.contains(board())];
     });
-    fireEvent.click(gameDoor("SKELETONS"));
+    if (leave === "HOME") fireEvent.click(gameDoor("SKELETONS"));
     await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
     act(() => finishLoading(pictures));
     layOutPuzzle();

@@ -21,7 +21,7 @@ import {
   trayPieces,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { memoryStorage, type MemoryStorage, gameDoor } from "./support.ts";
+import { memoryStorage, type MemoryStorage, gameDoor, symbolOf } from "./support.ts";
 
 // skeleton-assembly-progress.feature
 
@@ -138,6 +138,19 @@ describe("keeping the collection", () => {
         await opened.user.click(button("HOME"));
         expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog"), gameDoor("COMPARE")]).toEqual([[], [], expect.anything()]);
         await opened.user.click(button("SKELETONS"));
+        return opened;
+      }
+    ],
+    [
+      "taps BACK, before HOME, without being asked to confirm",
+      async (opened) => {
+        const bar = document.querySelector(".skeleton-bar");
+        expect([...(bar?.querySelectorAll("button") ?? [])].slice(0, 2).map((each) => [each.textContent, symbolOf(each)])).toEqual([
+          ["BACK", "arrow-left"],
+          ["HOME", "house"]
+        ]);
+        await opened.user.click(button("BACK"));
+        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog")]).toEqual([[], []]);
         return opened;
       }
     ],

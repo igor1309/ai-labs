@@ -77,3 +77,12 @@ Feature: Skeleton assembly: choosing a dinosaur
       | theme |
       | light |
       | dark  |
+
+  Scenario: Back leaves a puzzle for the choice of dinosaurs
+    Given a skeleton puzzle is unfinished
+    Then its bar shows "BACK" with an arrow symbol, before "HOME"
+    And the dinosaur's whole name still fits beside them
+    When I tap "BACK"
+    Then I see the dinosaur selection screen without being asked to confirm
+    And the unfinished puzzle is not counted as complete
+    And its help no longer counts towards a hint

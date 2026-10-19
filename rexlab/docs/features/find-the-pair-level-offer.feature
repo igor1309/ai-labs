@@ -47,7 +47,7 @@ Feature: Find the pair: the offer of the next age level
     Given the age level a parent picked is Hatchling
     And I see the offer of the Explorer level again after turning it down
     When I tap "YES"
-    Then the offer goes and "PLAY AGAIN" and "HOME" can be tapped again
+    Then the offer goes and "PLAY AGAIN", "BACK" and "HOME" can be tapped again
     And "PLAY AGAIN" deals an Explorer board
     And when I open find the pair again the level switch shows Explorer chosen
     And the age level menu still shows Hatchling chosen

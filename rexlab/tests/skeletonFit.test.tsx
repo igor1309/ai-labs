@@ -2,7 +2,9 @@ import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { NAME_EMS } from "./nameWidths.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, revealNow, skeletonOf } from "./skeletonsApp.tsx";
+import { SHIPPED_SKELETONS } from "./support.ts";
 
 // The narrowest iPad's width in landscape, in CSS pixels.
 const NARROWEST = 1024;
@@ -15,6 +17,8 @@ const NARROWEST = 1024;
 const WORD_EMS: Record<string, number> = {
   HOME: 3.2,
   ДОМОЙ: 4.1,
+  BACK: 2.9,
+  НАЗАД: 3.7,
   MUSEUM: 4.6,
   МУЗЕЙ: 3.8,
   "BUILD ANOTHER": 8.9,
@@ -94,6 +98,11 @@ const contentWidth = () => NARROWEST - widthOf(document.querySelector(".skeleton
 // between every part of the bar, fit in the bar, the title shrinking to
 // nothing at the least.
 function barOverflow() {
+  const { bar, needed } = barNeeds();
+  return overflow(bar, needed, contentWidth());
+}
+
+function barNeeds() {
   const bar = document.querySelector(".skeleton-bar");
   if (!bar) throw new Error("No skeleton bar");
   const title = bar.querySelector(".skeleton-title");
@@ -102,7 +111,27 @@ function barOverflow() {
   const parts = [...bar.children].filter((part) => part !== title);
   expect(parts.filter((part) => getComputedStyle(part).flexShrink !== "0").map(wordsOf)).toEqual([]);
   const needed = parts.reduce((sum, part) => sum + neededBy(part, sizeOf(part)), 0) + columnGapOf(getComputedStyle(bar)) * parts.length;
-  return overflow(bar, needed, contentWidth());
+  return { bar, title, needed };
+}
+
+// The title's words in the room the bar's buttons and chips leave it,
+// beside its bone: the size app.css gives them, at most a cap, otherwise
+// that room less the bone and its gap, over the words' letters at 0.75 of
+// an em each, and the width those words then need.
+function titleFit() {
+  const { title, needed } = barNeeds();
+  const words = title.querySelector<HTMLElement>(".skeleton-title-words");
+  if (!words) throw new Error("No words in the title");
+  const shown = words.textContent ?? "";
+  const size = /^min\((\d+)px, \(100cqi - (\d+)px\) \/ \(var\(--letters\) \* ([\d.]+)\)\)$/.exec(getComputedStyle(words).fontSize);
+  expect([getComputedStyle(title).getPropertyValue("container-type"), size?.[2], words.style.getPropertyValue("--letters")]).toEqual([
+    "inline-size",
+    String(px(getComputedStyle(title.querySelector(".skeleton-mark") ?? title).width) + columnGapOf(getComputedStyle(title))),
+    String(shown.length)
+  ]);
+  const room = contentWidth() - needed - px(size?.[2] ?? "");
+  const at = Math.min(Number(size?.[1]), room / (shown.length * Number(size?.[3])));
+  return { shown, size: at, needed: (NAME_EMS[shown] ?? Number.NaN) * at, room };
 }
 
 // Each button on the reveal's panel is as wide as the panel inside its
@@ -173,6 +202,17 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
 
     expect(screen.getByLabelText(text.fitted).textContent).toBe("0/4");
     expect([wrapping(), barOverflow()]).toEqual([[], []]);
+  });
+
+  it.each(SHIPPED_SKELETONS.map(({ id }) => id))("fit the name of the %s in the bar of its puzzle, beside BACK, HOME and MUSEUM, at a size a child reads", async (id) => {
+    const { user, pictures } = openSkeletonsApp({ deviceLanguage: deviceOf(language) });
+    await user.click(screen.getByRole("button", { name: name(id) }));
+    act(() => finishLoading(pictures));
+
+    const fit = titleFit();
+    expect(fit.shown).toBe(name(id));
+    expect(fit.needed).toBeLessThanOrEqual(fit.room);
+    expect(fit.size).toBeGreaterThanOrEqual(24);
   });
 
   it("keep their words on one line on the reveal, the panel at its least width", async () => {

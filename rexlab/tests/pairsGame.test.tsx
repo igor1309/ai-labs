@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { TEXTS } from "../src/language/texts.ts";
 import { join } from "node:path";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
@@ -332,10 +333,28 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
   });
 
-  // The tap and the timers read in one act, before React renders the home
-  // page: the board's timers stop as the child leaves, not as the game is
+  it("goes back from a board to the welcome screen, BACK before HOME, without asking, and the board earns nothing", async () => {
+    const { user, storage } = await open();
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
+    const bar = document.querySelector(".pairs-bar");
+    expect([...(bar?.querySelectorAll("button") ?? [])].map((each) => [each.textContent, symbolOf(each)])).toEqual([
+      ["BACK", "arrow-left"],
+      ["HOME", "house"]
+    ]);
+
+    await user.click(button("BACK"));
+
+    expect([screen.getByRole("heading").textContent, symbolOf(button("PLAY"))]).toEqual(["FIND THE PAIR", "play"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(storedPairs(storage)).toBeUndefined();
+    expect(screen.getByLabelText("STARS").textContent).toBe("0");
+  });
+
+  // The tap and the timers read in one act, before React renders the next
+  // screen: the board's timers stop as the child leaves, not as the game is
   // taken off the screen.
-  it.each(["miss", "celebration"] as const)("stops the %s as the child goes home, and the next board is not moved on by it, delivered all the same", async (during) => {
+  it.each((["miss", "celebration"] as const).flatMap((during) => (["HOME", "BACK"] as const).map((leave) => [during, leave] as const)))("stops the %s as the child taps %s, and the next board is not moved on by it, delivered all the same", async (during, leave) => {
     const { user, clock } = openPairsApp(options);
     await playPairs(user);
     if (during === "miss") await showMiss(user);
@@ -345,10 +364,11 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
 
     let running: number[] = [];
     act(() => {
-      fireEvent.click(button("HOME"));
+      fireEvent.click(button(leave));
       running = clock.timers();
     });
-    await playPairs(user);
+    if (leave === "HOME") await playPairs(user);
+    else await user.click(button("PLAY"));
     act(() => clock.deliverStopped(timer));
 
     expect(running).toEqual([]);
@@ -510,7 +530,7 @@ describe("find the pair's motion", () => {
 });
 
 describe("the result", () => {
-  it("shows the tries by a hand, the stars earned, the board's dinosaurs and PLAY AGAIN and HOME", async () => {
+  it("shows the tries by a hand, the stars earned, the board's dinosaurs and PLAY AGAIN, BACK and HOME", async () => {
     const app = openPairsApp({ pals: THREE, storage: stored({ stars: 4 }) });
 
     await finishThree(app, 7);
@@ -520,7 +540,17 @@ describe("the result", () => {
     expect(screen.getByLabelText("STARS").textContent).toBe("★5");
     expect(resultNames()).toEqual(["TRICERATOPS", "STEGOSAURUS", "TYRANNOSAURUS"].filter((name) => NAMES.includes(name)).sort((a, b) => NAMES.indexOf(a) - NAMES.indexOf(b)));
     expect(screen.getByRole("heading").textContent).toBe("WELL DONE!");
-    expect([symbolOf(button("PLAY AGAIN")), symbolOf(button("HOME"))]).toEqual(["rotate-ccw", "house"]);
+    expect(["PLAY AGAIN", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["rotate-ccw", "arrow-left", "house"]);
+  });
+
+  it("goes back from the result to the welcome screen, its stars and level switch there", async () => {
+    const app = openPairsApp({ pals: THREE, storage: stored({ stars: 4 }) });
+    await finishThree(app, 7);
+
+    await app.user.click(button("BACK"));
+
+    expect([screen.getByRole("heading").textContent, screen.getByLabelText("STARS").textContent]).toEqual(["FIND THE PAIR", "5"]);
+    expect(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).toBeDefined();
   });
 
   it("sets and celebrates the level's first best", async () => {

@@ -15,7 +15,9 @@ Feature: Find the pair: stars, levels and the best score
     Then I see a star fly into my stars, with my stars as a number
     And I see "7" beside a hand symbol
     And I see the board's dinosaurs with their names
-    And I see "PLAY AGAIN" and "HOME", each with its symbol
+    And I see "PLAY AGAIN", "BACK" and "HOME", each with its symbol
+    When I tap "BACK"
+    Then I see the game's welcome screen with its level switch
 
   Scenario: The first board of a level sets and celebrates its first best
     Given I have never finished a board on level 2
