@@ -128,18 +128,20 @@ type Timing struct {
 type Kind string
 
 const (
-	Started Kind = "started" // the step started, on its agent
-	Reused  Kind = "reused"  // the step took an earlier call in place of making one
-	Tool    Kind = "tool"    // the step called a tool
-	Stale   Kind = "stale"   // the step's turn went stale
-	Ended   Kind = "ended"   // the step ended
+	Started  Kind = "started"  // the step started, on its agent
+	Reused   Kind = "reused"   // the step took an earlier call in place of making one
+	Tool     Kind = "tool"     // the step called a tool
+	Stale    Kind = "stale"    // the step's turn went stale
+	Capacity Kind = "capacity" // the step's turn failed at capacity
+	Ended    Kind = "ended"    // the step ended
 )
 
 // Event is what a step did, at a time. Of the rest, each kind has its
 // own: a step started its agent; a step reused the id of the call it
 // took; a tool call the tool's name and its input; a stale turn what went
-// stale and whether a recovery turn follows; a step ended its status, its
-// class, "" for none, and how long it took.
+// stale and whether a recovery turn follows; a turn at capacity its reason
+// and whether the turn is made again; a step ended its status, its class,
+// "" for none, and how long it took.
 type Event struct {
 	At         time.Time
 	Step       string
@@ -150,6 +152,8 @@ type Event struct {
 	Input      string
 	What       string
 	Recovering bool
+	Reason     string
+	Retrying   bool
 	Status     string
 	Class      string
 	Duration   time.Duration
@@ -189,6 +193,14 @@ func (e Event) MarshalJSON() ([]byte, error) {
 			What       string    `json:"what"`
 			Recovering bool      `json:"recovering"`
 		}{e.At, e.Step, e.Kind, e.What, e.Recovering})
+	case Capacity:
+		return json.Marshal(struct {
+			At       time.Time `json:"at"`
+			Step     string    `json:"step"`
+			Kind     Kind      `json:"kind"`
+			Reason   string    `json:"reason"`
+			Retrying bool      `json:"retrying"`
+		}{e.At, e.Step, e.Kind, e.Reason, e.Retrying})
 	case Ended:
 		var class *string
 		if e.Class != "" {

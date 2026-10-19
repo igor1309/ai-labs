@@ -37,21 +37,22 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 // has given the call's report its start, or, where its test gives one,
 // the call it reused for that name, or nothing where its test names the
 // step in silent; then its test's tools for that name, in order, then its
-// stale turns; and keeps each call's params, in the order called and by
+// stale turns, then its turns at capacity; and keeps each call's params, in the order called and by
 // its step. A step it has no answer for fails its test, and is answered
 // with nothing. It is safe for concurrent use; the trail is read once the
 // run has ended.
 type callerSpy struct {
-	t       *testing.T
-	trail   *trail
-	answers map[string]func() workflow.Result
-	reused  map[string]string
-	silent  []string
-	tools   map[string][]workflow.Tool
-	stale   map[string][]workflow.Stale
-	mu      sync.Mutex
-	params  []map[string]string
-	bound   map[string]map[string]string
+	t        *testing.T
+	trail    *trail
+	answers  map[string]func() workflow.Result
+	reused   map[string]string
+	silent   []string
+	tools    map[string][]workflow.Tool
+	stale    map[string][]workflow.Stale
+	capacity map[string][]workflow.Capacity
+	mu       sync.Mutex
+	params   []map[string]string
+	bound    map[string]map[string]string
 }
 
 func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, report func(workflow.Report)) workflow.Result {
@@ -74,6 +75,9 @@ func (s *callerSpy) Call(_ context.Context, step string, params map[string]strin
 	}
 	for _, stale := range s.stale[step] {
 		report(workflow.Report{Stale: &stale})
+	}
+	for _, capacity := range s.capacity[step] {
+		report(workflow.Report{Capacity: &capacity})
 	}
 	answer, ok := s.answers[step]
 	if !ok {
@@ -120,6 +124,10 @@ func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
 
 func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
 	s.tell("%s stale %q recovering %t", step, stale.What, stale.Recovering)
+}
+
+func (s *eventsSpy) Capacity(step string, capacity workflow.Capacity) {
+	s.tell("%s at capacity %q retrying in %v", step, capacity.Reason, capacity.Retry)
 }
 
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
