@@ -1224,18 +1224,18 @@ the caller's own, beside its layer, path and digest.
 **`runstore`** writes a definition's bytes whole, as it writes a record,
 under its run's folder by their digest, `<run id>/definitions/<digest>`,
 and a run exported takes them. Bytes written again under the same digest
-leave one file.
+leave one file. A digest that is not a plain file name is refused, as a
+patch's step is.
 
 **The composition** writes the bytes of each file of a run's request,
 before the record is first written, and of each file of a call's
-definitions, before the entry that names them, refused or made. A digest
-is skipped only once its write has ended well; one not written is tried
-again by the next entry that names it, its warning given once. A call
-taken by a reuse ran under this call's definitions, so its bytes are
-this run's snapshot's, written the same way. Bytes runstore could not
-write are a warning in the result, as a patch not written is, naming the
-file's path; the record is kept. The record gains no field: a file's
-bytes are at its run's `definitions/<digest>`.
+definitions, before the entry that names them, refused or made. Each
+digest is written once in a run, its write tried once. A call taken by a
+reuse ran under this call's definitions, so its bytes are this run's
+snapshot's, written the same way. Bytes runstore could not write are a
+warning in the result, as a patch not written is, naming the path of the
+first file of that digest; the record is kept. The record gains no
+field: a file's bytes are at its run's `definitions/<digest>`.
 
 Decisions, each with its reason:
 
@@ -1244,8 +1244,10 @@ Decisions, each with its reason:
 - No field naming the bytes: the digest names them; a reader joins the
   run's folder and `definitions/` to it.
 - A write that fails is a warning, not a refusal: the call's work is
-  worth more than its settings' copy. Unlike a patch's, the record does
-  not show the gap: it names a digest with no file, the result's
-  warning the one sign.
+  worth more than its settings' copy. Unlike a patch's, the call's entry
+  does not show the gap: it names a digest with no file, the run's
+  result's warning the sign.
+- A write tried once: no write has been met that fails and then works;
+  a retry would leave a warning for bytes since kept.
 - No reader in runstore: nothing in a run reads the bytes back; a
   reuse writes them from this run's snapshot.
