@@ -32,7 +32,7 @@ Feature: Skeleton assembly: pictures that load
     When I drag the skull
     Then it is lifted at the size it fits on the board, a new place for its picture, <lifted>
     When I let it go on its home
-    Then it fits, its place in its slot <look>
+    Then it slides into its slot and fits, its place there <look>
 
     Examples:
       | ends                       | lifted                                               | look                                                           |
@@ -61,17 +61,16 @@ Feature: Skeleton assembly: pictures that load
       | the Tyrannosaurus choice       | the skeleton selection      |
       | Tyrannosaurus's built skeleton | the museum, its stand built |
       | Tyrannosaurus's silhouette     | the museum, its stand empty |
-      | Tyrannosaurus's whole skeleton | the result of its skeleton  |
 
   Scenario Outline: A silhouette turns only its picture
     Given the picture of <stand>'s skeleton <ends>
     When I open the museum
-    Then the stand's place shows <look> in the theme's colours, faint as the stand is, not turned into a silhouette
-    And once a picture shows, it is turned into its silhouette, dark in the light theme and light in the dark
+    Then the stand's place shows <look>, faint as the stand is, not turned into a silhouette
+    And <then>
 
     Examples:
-      | stand                         | ends             | look                              |
-      | an empty stand                | is still loading | the shimmer                       |
-      | an empty stand                | cannot load      | the failure look, its footprints  |
-      | a stand awaiting rebuilding   | is still loading | the shimmer                       |
-      | a stand awaiting rebuilding   | cannot load      | the failure look, its footprints  |
+      | stand                       | ends             | look                                                       | then                                                                                         |
+      | an empty stand              | is still loading | the shimmer                                                | once it loads, the picture is turned into its silhouette, dark in the light theme and light in the dark |
+      | an empty stand              | cannot load      | the failure look, in the colour of the stand that holds it | it stays so                                                                                  |
+      | a stand awaiting rebuilding | is still loading | the shimmer                                                | once it loads, the picture is turned into its silhouette, dark in the light theme and light in the dark |
+      | a stand awaiting rebuilding | cannot load      | the failure look, in the colour of the stand that holds it | it stays so                                                                                  |

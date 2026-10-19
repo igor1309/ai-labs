@@ -51,6 +51,7 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     And I see its name, fact and reward, and can open the museum or build another dinosaur
     And the skeleton's place shows <shows>, as pictures.feature has it
     And the body picture adds no shimmer and no failure look of its own
+    And a body picture that failed before is loaded again, as any new place loads it
     And <then>
 
     Examples:
@@ -58,11 +59,13 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
       | has loaded       | cannot load      | the whole skeleton                              | it stays whole                                                               |
       | has loaded       | is still loading | the whole skeleton                              | once the body loads, it fades in over the skeleton as the skeleton fades back |
       | is still loading | has loaded       | its shimmer, faded back under the body          | once the skeleton picture loads, it fades in, faded back under the body      |
-      | is still loading | is still loading | its shimmer                                     | each picture, once loaded, shows as in the rows above                        |
+      | is still loading | cannot load      | its shimmer                                     | once the skeleton picture loads, it fades in whole                           |
+      | is still loading | is still loading | its shimmer                                     | each picture, once loaded or failed, shows as in the rows above              |
       | cannot load      | has loaded       | the failure look, faded back under the body     | it stays so                                                                  |
+      | cannot load      | is still loading | the failure look                                | once the body loads, it fades in over the failure look as that fades back    |
       | cannot load      | cannot load      | the failure look                                | it stays so, the reward still shown                                          |
 
-  Scenario: A body picture fades in as the reveal does, however late it loads
+  Scenario Outline: A body picture fades in as the reveal does, however late it loads
     Given the device <asks> reduced motion
     When the result shows a body picture, as it appears or once the picture loads
     Then from then the body waits one --motion-screen, then fades in over two, as the skeleton fades back

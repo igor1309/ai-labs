@@ -49,7 +49,7 @@ Feature: Skeleton assembly: the museum and rebuilding
 
   Scenario: Two stands tapped at the same moment start one puzzle
     Given Tyrannosaurus is displayed on its earned stand and Stegosaurus's stand is empty
-    When I tap Tyrannosaurus's "REBUILD" and Stegosaurus's "BUILD" at the same moment
+    When I tap Tyrannosaurus's "REBUILD" and, in the same moment, Stegosaurus's "BUILD"
     Then one fresh Tyrannosaurus puzzle starts at once, counted as one puzzle started
     And only Tyrannosaurus's stand changes, as a stand awaiting rebuilding
 

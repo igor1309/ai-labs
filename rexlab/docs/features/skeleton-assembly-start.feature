@@ -44,7 +44,7 @@ Feature: Skeleton assembly: choosing a dinosaur
 
   Scenario: Two choices tapped at the same moment start one puzzle
     Given I am on the skeleton selection screen
-    When I tap Tyrannosaurus and Triceratops at the same moment
+    When I tap Tyrannosaurus and, in the same moment, Triceratops
     Then one Tyrannosaurus puzzle starts at once, counted as one puzzle started
 
   Scenario Outline: Skeleton screens use the chosen language
