@@ -24,7 +24,14 @@ Feature: The composition records the definitions a call ran under
   Scenario: A workflow's files are the request's
     When "agister run pair" runs in "/r"
     Then the record's request holds the definitions of the workflow
-      "pair", and each call its own
+      "pair" alone, and the calls "a" and "b" each those of the process
+      "say", the agent and its runtime
+
+  Scenario: A workflow's input briefs are the request's
+    Given home's code_review as review.feature gives it
+    When "agister run code_review --param goal=g.md" runs in "/r"
+    Then the record's request holds the definitions of the workflow
+      "code_review" and the brief "goal"
 
   Scenario: A call refused names its definitions
     Given git gives "/r" not clean, and the process "ask" asks a clean
@@ -35,8 +42,9 @@ Feature: The composition records the definitions a call ran under
       first scenario
 
   Scenario: A continuation names the prompt continuation
-    Given runstore keeps the run "R1", its call "R1/ask" with the
-      session "s1", left at HEAD "c1" and the content "t1"
+    Given runstore keeps the run "R1", its call "R1/ask" of the process
+      "ask" on "claude-opus", its root "/r", the session "s1", left at
+      HEAD "c1" and the content "t1"
     When "agister run --process ask --agent claude-opus --param q=more
       --continue R1" runs in "/r"
     Then the record's call holds the definitions, among them home's

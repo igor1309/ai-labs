@@ -1175,8 +1175,9 @@ no files.
 
 **`runstore`**'s call grows `"definitions"`: each document, its kind,
 name and files, in order of kind, then name. The request grows
-`"definitions"` the same way: the workflow's document, when the request
-names a workflow, and none for a step requested alone.
+`"definitions"` the same way: the documents the workflow's plan reads
+outside its steps, the workflow's own and each brief its inputs are
+checked against; `[]` for a step requested alone.
 
 **The composition**, as it plans a step's call, gathers its documents:
 its process, its agent and the agent's runtime; and each prompt, schema
@@ -1186,7 +1187,8 @@ them; the run's request records its workflow's:
 
 ```json
 {"calls": [{"definitions": [{"kind": "process", "name": "implement",
-  "files": [{"layer": "home", "path": "", "sha256": ""}]}]}]}
+  "files": [{"layer": "home", "path": "", "digest": ""}]}]}],
+ "request": {"definitions": []}}
 ```
 
 A reuse takes a call only where the earlier entry's `"definitions"` are
@@ -1199,8 +1201,10 @@ Decisions, each with its reason:
 - The files, not the composed definitions: a digest of each file is
   what was read, and the record does not keep a second decoding of
   settings that may change.
-- Paths and digests, not the bytes: the bytes are kept with the other
-  bytes of a call (`run-path.md`, "Sources, the rest", ADR-010, rule 4).
+- Paths and digests, not the bytes: a file changed since is known
+  changed, not what it held; keeping the bytes is left
+  (`run-path.md`, "The rest of the record").
+- `"digest"`, as a stream's: one name for a SHA-256 in the record.
 - The documents a plan read, not every document of the snapshot: a
   change to a process another step runs is no reason to run this one
   again.

@@ -18,7 +18,7 @@ specified in `settings/documents`' feature files.
 |---|---|---|
 | `settings/layout` | home's folder and the launch directory → the layers found, and a snapshot | where layers are, folders and file names; no content |
 | tree, a library | bytes → a value tree with origins; one tree merged over another | values and origins; no Agister word |
-| `settings/documents` | a snapshot, a kind and a name → one definition, or its problems | what each kind is, and `extends` |
+| `settings/documents` | a snapshot, a kind and a name → one definition, or its problems; or its files, each its layer, path and digest | what each kind is, and `extends` |
 | `settings/resolve` | a request → what a run needs, or a refusal naming the chain | how documents name one another; blocks; plans |
 | `settings/check` | handed resolve: resolves every document and reports; lists and shows documents, each field with its layer | no kind's fields; how a source is read |
 

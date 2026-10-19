@@ -15,7 +15,7 @@ Feature: Documents gives the files a document is made from
       | project | /proj/.agister/processes/a.yaml | {x: 2} |
     When documents is asked the files of the process "a"
     Then it gives:
-      | layer   | path                            | sha256      |
+      | layer   | path                            | digest      |
       | project | /proj/.agister/processes/a.yaml | of "{x: 2}" |
       | home    | /home/.agister/processes/a.yaml | of "{x: 1}" |
     And it has no problem
