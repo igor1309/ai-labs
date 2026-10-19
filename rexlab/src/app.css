@@ -4821,6 +4821,48 @@ body:has(.result) #version {
   border-radius: 22px;
 }
 
+/* The ladder of help, each step adding to the ones before: the piece's
+   body region on the outline ringed in amber, then a faint ghost of the
+   piece at its home, then the piece moving from its spot part of the way
+   towards its home and back, once. With reduced motion it fades out and
+   back in its spot instead. */
+.skeleton-region {
+  position: absolute;
+  border-radius: 28px;
+  outline: 3px dashed #e39b2d;
+  outline-offset: -1.5px;
+  box-shadow: 0 0 32px #e39b2d59;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-ghost {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-ghost-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-piece[data-nudge] {
+  position: relative;
+  z-index: 1;
+  animation: nudge calc(var(--motion-screen) * 3) var(--ease-out) both;
+}
+
+@keyframes nudge {
+  50% {
+    opacity: calc(1 - 0.7 * (1 - var(--motion-amount)));
+    translate: calc(var(--nudge-x) * 0.6 * var(--motion-amount)) calc(var(--nudge-y) * 0.6 * var(--motion-amount));
+  }
+}
+
 /* A dinosaur built: its star sits on its card in the choice. */
 .skeleton-choice-art {
   position: relative;
@@ -5847,6 +5889,11 @@ body:has(.result) #version {
 
 [data-theme="dark"] .skeleton-slot[data-target] {
   outline-color: #9ca3b659;
+}
+
+[data-theme="dark"] .skeleton-region {
+  outline-color: #f2b24b;
+  box-shadow: 0 0 32px #f2b24b59;
 }
 
 [data-theme="dark"] .skeleton-glow {

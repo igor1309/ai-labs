@@ -374,6 +374,24 @@ describe("the skeleton puzzle's motion", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
   });
 
+  // skeleton-assembly-help-ladder.feature: the ladder's region and ghost
+  // fade in, and its last step moves the piece part of the way towards
+  // its home and back once, or with reduced motion fades it out and back.
+  it("fades the ladder's region and ghost in, and moves its piece towards its home and back, fading instead with reduced motion", () => {
+    expect([".skeleton-region", ".skeleton-ghost", ".skeleton-piece[data-nudge]"].map((selector) => animations.get(selector))).toEqual(["fade-in", "fade-in", "nudge"]);
+    expect(PLAIN.find(({ prelude }) => prelude === ".skeleton-piece[data-nudge]")?.body ?? "").toMatch(/nudge calc\(var\(--motion-screen\) \* 3\) var\(--ease-out\) both/);
+    const nudge = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes nudge")?.body ?? "").map(({ prelude, body: frame }) => [prelude, declarationsOf(frame)]);
+    expect(nudge).toEqual([
+      [
+        "50%",
+        [
+          { property: "opacity", value: "calc(1 - 0.7 * (1 - var(--motion-amount)))" },
+          { property: "translate", value: "calc(var(--nudge-x) * 0.6 * var(--motion-amount)) calc(var(--nudge-y) * 0.6 * var(--motion-amount))" }
+        ]
+      ]
+    ]);
+  });
+
   it("scatters a knocked-down skeleton's bones from their homes to the tray one after the other, each spinning on its way, its spots already there", () => {
     expect(animations.get(".skeleton-piece[data-scattering]")).toBe("scatter");
     const body = PLAIN.find(({ prelude }) => prelude === ".skeleton-piece[data-scattering]")?.body ?? "";

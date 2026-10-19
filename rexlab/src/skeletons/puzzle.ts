@@ -50,17 +50,34 @@ export type Puzzle = {
   // or since it started, in milliseconds. Drops that miss do not reset
   // it, so trying again and again never puts help off.
   waited: number;
+  // Whether help climbs the ladder of steps rather than glowing once.
+  ladder: boolean;
 };
 
 // How long the child works at the puzzle without fitting a piece before
-// help is offered, in milliseconds.
+// help is offered, in milliseconds, and before each further step of the
+// ladder.
 export const HELP_AFTER = 10_000;
 
+// Help's steps: Hatchling's one glow on a piece and its slot, or the
+// ladder's, each adding to the ones before: the piece's body region on
+// the outline, a faint ghost of it at its home, then the piece moving
+// towards its home and back.
+export const LADDER = ["region", "ghost", "move"] as const;
+
+export type HelpStep = "glow" | (typeof LADDER)[number];
+
+// The piece help points at, and the step it has reached.
+export type Help = { piece: string; step: HelpStep };
+
 // A puzzle starts with every piece of its cut in the tray, the right way
-// up.
-export function startPuzzle(skeleton: Skeleton, cut: Cut): Puzzle {
-  return { skeleton, cut, fitted: [], waited: 0 };
+// up, its help the ladder's when `ladder` says so.
+export function startPuzzle(skeleton: Skeleton, cut: Cut, { ladder = false }: { ladder?: boolean } = {}): Puzzle {
+  return { skeleton, cut, fitted: [], waited: 0, ladder };
 }
+
+// How long help takes to reach its last step.
+const lastHelpAt = (puzzle: Puzzle) => (puzzle.ladder ? LADDER.length : 1) * HELP_AFTER;
 
 // A piece dropped with its centre at `centre` fits its own home, and no
 // other, when its centre is within `reach` of its home's centre. Any
@@ -79,20 +96,24 @@ export function isComplete(puzzle: Puzzle): boolean {
 }
 
 // Whether the time the child spends at the puzzle still counts towards
-// help: not once help is due, nor once the skeleton is complete.
+// help: not once help has reached its last step, nor once the skeleton is
+// complete.
 export function awaitsHelp(puzzle: Puzzle): boolean {
-  return puzzle.waited < HELP_AFTER && !isComplete(puzzle);
+  return puzzle.waited < lastHelpAt(puzzle) && !isComplete(puzzle);
 }
 
 // `ms` more spent at the puzzle without fitting a piece.
 export function wait(puzzle: Puzzle, ms: number): Puzzle {
   if (!awaitsHelp(puzzle)) return puzzle;
-  return { ...puzzle, waited: Math.min(puzzle.waited + ms, HELP_AFTER) };
+  return { ...puzzle, waited: Math.min(puzzle.waited + ms, lastHelpAt(puzzle)) };
 }
 
-// The piece, and so its home, that help points at once it is due: the
-// first in the tray still to fit. Help never fits it for the child.
-export function help(puzzle: Puzzle): string | undefined {
-  if (puzzle.waited < HELP_AFTER) return undefined;
-  return puzzle.cut.find(({ id }) => !puzzle.fitted.includes(id))?.id;
+// The piece, and so its home, that help points at once it is due, the
+// first in the tray still to fit, and the step help has reached: one
+// more every HELP_AFTER on the ladder. Help never fits it for the child.
+export function help(puzzle: Puzzle): Help | undefined {
+  const reached = Math.floor(puzzle.waited / HELP_AFTER);
+  const piece = puzzle.cut.find(({ id }) => !puzzle.fitted.includes(id))?.id;
+  if (reached === 0 || piece === undefined) return undefined;
+  return { piece, step: puzzle.ladder ? (LADDER[Math.min(reached, LADDER.length) - 1] ?? "region") : "glow" };
 }

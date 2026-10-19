@@ -30,6 +30,19 @@ export type SkeletonSlotView = {
 // A point on the outline, in pixels of the skeleton's frame.
 export type FramePoint = { x: number; y: number };
 
+// Help's step: Hatchling's glow on a piece and its slot, or the ladder's,
+// each adding to the ones before: the piece's body region on the outline,
+// a faint ghost of it at its home, then the piece moving towards its home
+// and back.
+export type ShownHelpStep = "glow" | "region" | "ghost" | "move";
+
+// Part of the outline, as fractions of its width and height.
+export type ShownRegion = { left: number; top: number; width: number; height: number };
+
+// The piece help points at, the step it has reached and, on the ladder,
+// the body region it shows.
+export type ShownHint = { piece: ShownPiece; step: ShownHelpStep; region: ShownRegion | undefined };
+
 export type SkeletonPuzzleScreenProps = {
   language: Language;
   // The dinosaur being built.
@@ -42,8 +55,9 @@ export type SkeletonPuzzleScreenProps = {
   // in its spot in the tray, and a fitted one leaves its spot empty, so
   // the other pieces never move.
   slots: readonly SkeletonSlotView[];
-  // The piece help points at, if any: it and its slot glow alike.
-  hint: ShownPiece | undefined;
+  // The help showing, if any: Hatchling's glow on the piece and its slot
+  // alike, or the ladder's steps.
+  hint: ShownHint | undefined;
   // Every piece is fitted.
   complete: boolean;
   // The skeleton was knocked down from its stand: each piece scatters from
@@ -63,7 +77,7 @@ export const SNAP = 48;
 // A piece held by a finger, a pen or the mouse: where the pointer is, the
 // size the piece is drawn at on the board, and the help showing as it
 // was picked up, which stays as it is until the piece is let go.
-type Hold = { pointerId: number; piece: ShownPiece; x: number; y: number; width: number; height: number; hint: ShownPiece | undefined };
+type Hold = { pointerId: number; piece: ShownPiece; x: number; y: number; width: number; height: number; hint: ShownHint | undefined };
 
 // Where a piece was let go, from the centre of its slot and of its spot in
 // the tray, in CSS pixels, so it slides from there to whichever it ends
@@ -173,9 +187,28 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
   };
 
   // Help that falls due while a piece is held waits until it is let go,
-  // so nothing new lights up under the child's finger.
+  // so nothing new lights up or moves under the child's finger.
   const shownHint = held ? held.hint : hint;
+
+  // Help's last step moves its piece from its spot towards its home and
+  // back, measured as the step is reached.
+  const [nudge, setNudge] = useState<Offset & { piece: ShownPiece }>();
+  const moving = shownHint?.step === "move" ? shownHint.piece : undefined;
+  useLayoutEffect(() => {
+    if (moving === undefined) {
+      setNudge(undefined);
+      return;
+    }
+    const home = slotRect(moving);
+    const spot = spotElements.current.get(moving)?.getBoundingClientRect() ?? NO_RECT;
+    const { dx, dy } = offsetFrom(home.left + home.width / 2, home.top + home.height / 2, spot);
+    setNudge({ piece: moving, dx, dy });
+  }, [moving]);
+
   const lifted = held && slots.find((slot) => slot.piece === held.piece);
+  const glowing = shownHint?.step === "glow" ? shownHint.piece : undefined;
+  const ghost = shownHint?.step === "ghost" || shownHint?.step === "move" ? shownHint.piece : undefined;
+  const region = shownHint?.region;
 
   return (
     <main className="skeleton-screen">
@@ -200,6 +233,14 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
           <span className="skeleton-outline">
             <Picture className="skeleton-outline-picture" src={outline} alt="" />
           </span>
+          {region && (
+            <span
+              key={shownHint?.piece}
+              className="skeleton-region"
+              aria-hidden="true"
+              style={{ left: `calc(${percent(region.left)} - 12px)`, top: `calc(${percent(region.top)} - 12px)`, width: `calc(${percent(region.width)} + 24px)`, height: `calc(${percent(region.height)} + 24px)` }}
+            />
+          )}
           {slots.map((slot) => {
             const release = releases[slot.piece];
             return (
@@ -209,16 +250,23 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                 data-piece={slot.piece}
                 data-state={slot.fitted ? "fitted" : "empty"}
                 data-target={held?.piece === slot.piece || undefined}
-                data-hint={shownHint === slot.piece || undefined}
+                data-hint={glowing === slot.piece || undefined}
                 data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ left: percent(slot.left), top: percent(slot.top), width: percent(slot.width), height: percent(slot.height) }}
               >
-                {shownHint === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
+                {glowing === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
                 {/* An empty slot of a coloured puzzle shows its bone's
                     shape in its body area's colour. */}
                 {!slot.fitted && slot.area && <span className="skeleton-slot-area" aria-hidden="true" style={{ "--piece-picture": `url("${slot.picture}")` } as CSSProperties} />}
                 {/* The piece settles on a wrapper, so its picture's
                     shimmer and fade never replace the movement. */}
+                {/* Help's ghost of the piece, faint in its slot, which
+                    nothing can pick up. */}
+                {!slot.fitted && ghost === slot.piece && (
+                  <span className="skeleton-ghost" aria-hidden="true">
+                    <Picture className="skeleton-ghost-picture" src={slot.picture} alt="" />
+                  </span>
+                )}
                 {slot.fitted && (
                   <span className="skeleton-fitted" data-snapped={release ? true : undefined} style={release && fromStyle(release.slot)}>
                     <Picture className="skeleton-fitted-picture" src={slot.picture} alt={slot.name} />
@@ -245,12 +293,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                 }}
                 className="skeleton-tray-spot"
                 data-piece={slot.piece}
-                data-hint={(!slot.fitted && shownHint === slot.piece) || undefined}
+                data-hint={(!slot.fitted && shownHint?.piece === slot.piece) || undefined}
                 data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ "--piece": index } as CSSProperties}
                 onPointerDown={slot.fitted ? undefined : press(slot.piece)}
               >
-                {!slot.fitted && shownHint === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
+                {!slot.fitted && shownHint?.piece === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
                 {/* The whole spot picks its piece up. A piece let go is
                     drawn anew where it was let go, so it floats back from
                     there each time. It stays in its spot while held, only
@@ -262,7 +310,16 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                     data-held={held?.piece === slot.piece || undefined}
                     data-returning={release ? true : undefined}
                     data-scattering={scattering ? true : undefined}
-                    style={release ? fromStyle(release.spot) : scattering && ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)}
+                    data-nudge={nudge?.piece === slot.piece || undefined}
+                    style={
+                      release
+                        ? fromStyle(release.spot)
+                        : scattering
+                          ? ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)
+                          : nudge?.piece === slot.piece
+                            ? ({ "--nudge-x": `${nudge.dx}px`, "--nudge-y": `${nudge.dy}px` } as CSSProperties)
+                            : undefined
+                    }
                   >
                     <Picture className="skeleton-piece-picture" src={slot.picture} alt={slot.name} />
                   </span>

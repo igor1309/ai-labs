@@ -63,9 +63,14 @@ export type SkeletonGameProps = {
 // of its own plays Hatchling's.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 
-// The levels whose puzzle colours each piece and its slot by body area:
-// Explorer's, as a cue to where a bone goes.
-const COLOURED: Record<AgeLevel, boolean> = { hatchling: false, explorer: true, paleontologist: false };
+// How each level plays its puzzle: whether each piece and its slot are
+// coloured by body area, Explorer's cue to where a bone goes, and whether
+// help climbs the ladder of steps rather than Hatchling's one glow.
+const MODES: Record<AgeLevel, { coloured: boolean; ladder: boolean }> = {
+  hatchling: { coloured: false, ladder: false },
+  explorer: { coloured: true, ladder: true },
+  paleontologist: { coloured: false, ladder: true }
+};
 
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch, which holds while the app is open even when
@@ -174,8 +179,9 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const started = startPuzzle(skeleton, cutAt(skeleton, at));
-    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, coloured: COLOURED[at] } : current), {
+    const { coloured, ladder } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder });
+    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, coloured } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
         live.current = started;

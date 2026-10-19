@@ -264,9 +264,31 @@ describe("presenting the skeleton game", () => {
     const due = { ...hatchlingPuzzle("tyrannosaurus"), fitted: ["skull", "legs"] as const, waited: HELP_AFTER };
 
     expect([presentPuzzle(due, "en", fakeSkeletonPicture).hint, presentPuzzle({ ...due, waited: HELP_AFTER - 1 }, "en", fakeSkeletonPicture).hint]).toEqual([
-      "spine",
+      { piece: "spine", step: "glow", region: undefined },
       undefined
     ]);
+  });
+
+  it("shows the ladder's help with the body region of its piece, around every piece of that area in the cut", () => {
+    const tyrannosaurus = skeletonOf("tyrannosaurus");
+    const explorer = tyrannosaurus.cuts.explorer ?? [];
+    const legs = explorer.filter(({ area }) => area === "legs").map(({ place }) => place);
+    const due = { ...startPuzzle(tyrannosaurus, explorer, { ladder: true }), fitted: ["skull", "neck", "back", "hips"], waited: 2 * HELP_AFTER };
+    const left = Math.min(...legs.map(({ x }) => x));
+    const top = Math.min(...legs.map(({ y }) => y));
+    const { width, height } = tyrannosaurus.frame;
+
+    expect(legs).toHaveLength(2);
+    expect(presentPuzzle(due, "en", fakeSkeletonPicture).hint).toEqual({
+      piece: "left-leg",
+      step: "ghost",
+      region: {
+        left: left / width,
+        top: top / height,
+        width: (Math.max(...legs.map(({ x, width: w }) => x + w)) - left) / width,
+        height: (Math.max(...legs.map(({ y, height: h }) => y + h)) - top) / height
+      }
+    });
   });
 
   it("reports the skeleton complete once every piece is fitted, and not before", () => {

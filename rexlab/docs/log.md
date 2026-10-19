@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- Skeletons at Explorer and Paleontologist help in steps, ten seconds apart, until a bone fits: the bone's body region on the outline, then a faint ghost at its home, then the bone moving towards its home and back, fading instead under reduced motion; Hatchling keeps its one glow (LAB-315).
 - Skeletons at Explorer colour each bone and its empty slot by body area, head to tail, in both themes, as a cue to where it goes; Hatchling stays plain (LAB-314).
 - Skeletons at Explorer are cut into six to eight bones along the body, from the same skeleton pictures (LAB-313).
 - Skeletons play at each age level: a level switch on the selection screen starts at the age level and keeps the child's choice until a parent picks a different level; for now every level builds Hatchling's four pieces, and stars stay one per skeleton (LAB-312).

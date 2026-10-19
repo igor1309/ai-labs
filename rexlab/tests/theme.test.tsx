@@ -349,7 +349,7 @@ const skeletonPuzzle =
   };
 
 // A puzzle at work: a bone fitted, another lifted from the tray, and,
-// once the child has waited, help glowing on a slot and its bone.
+// once the child has waited, each step of help on the bone to fit next.
 async function skeletonAtWork({ theme, user, timers }: Walk) {
   const stegosaurus = skeletonOf("stegosaurus");
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
@@ -364,9 +364,12 @@ async function skeletonAtWork({ theme, user, timers }: Walk) {
   expect([fittedPieces(), lifted()]).toEqual([[second], expect.anything()]);
   expectScreenIn(theme);
   release(AWAY);
-  for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
-  expect(hints()).toEqual([`slot ${first}`, `spot ${first}`]);
-  expectScreenIn(theme);
+  // Explorer's help climbs its steps: the region, the ghost, the move.
+  for (const step of [".skeleton-region", ".skeleton-ghost", ".skeleton-piece[data-nudge]"]) {
+    for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
+    expect([hints(), document.querySelector(step) !== null]).toEqual([[`spot ${first}`], true]);
+    expectScreenIn(theme);
+  }
 }
 
 // A skeleton's reveal with a first best, the choice with its star, a
@@ -471,7 +474,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
-      ["a puzzle with a bone fitted, one lifted and help glowing", skeletonAtWork],
+      ["a puzzle with a bone fitted, one lifted and each step of help", skeletonAtWork],
       ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]

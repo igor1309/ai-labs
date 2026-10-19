@@ -15,7 +15,7 @@ import type { ResultScreenProps, Celebration as ShownCelebration } from "./Resul
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
-import type { ShownArea, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
   help,
@@ -23,6 +23,7 @@ import {
   type Celebration as SkeletonCelebration,
   type Museum,
   type BodyArea,
+  type HelpStep,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
@@ -271,12 +272,28 @@ export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outli
 // pieces, by the piece's id.
 export type SkeletonPicture = (dinosaurId: string, part: string) => string;
 
-// Each slot is placed as a fraction of the frame, so the outline and its
-// pieces scale together to any board.
 // Each body area, as the puzzle screen colours it.
 const SHOWN_AREAS: Record<BodyArea, ShownArea> = { head: "head", neck: "neck", back: "back", hips: "hips", legs: "legs", tail: "tail" };
 
-// A puzzle `coloured` by body area gives each slot its piece's area.
+const SHOWN_STEPS: Record<HelpStep, ShownHelpStep> = { glow: "glow", region: "region", ghost: "ghost", move: "move" };
+
+// The body region the ladder's help shows for `piece`: around every piece
+// of its cut in the same body area, as fractions of the frame.
+function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undefined {
+  const area = cut.find(({ id }) => id === piece)?.area;
+  const places = cut.filter((each) => each.area === area).map(({ place }) => place);
+  if (places.length === 0) return undefined;
+  const left = Math.min(...places.map(({ x }) => x));
+  const top = Math.min(...places.map(({ y }) => y));
+  const right = Math.max(...places.map(({ x, width }) => x + width));
+  const bottom = Math.max(...places.map(({ y, height }) => y + height));
+  const { width, height } = skeleton.frame;
+  return { left: left / width, top: top / height, width: (right - left) / width, height: (bottom - top) / height };
+}
+
+// Each slot is placed as a fraction of the frame, so the outline and its
+// pieces scale together to any board. A puzzle `coloured` by body area
+// gives each slot its piece's area.
 export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture, { coloured = false }: { coloured?: boolean } = {}): SkeletonPuzzleView {
   const { skeleton, cut, fitted } = puzzle;
   const { id, name, frame } = skeleton;
@@ -298,9 +315,16 @@ export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPictur
         fitted: fitted.includes(piece.id)
       };
     }),
-    hint: help(puzzle),
+    hint: hintOf(puzzle),
     complete: isComplete(puzzle)
   };
+}
+
+// Help as the screen shows it: the ladder's steps with their region.
+function hintOf(puzzle: Puzzle): ShownHint | undefined {
+  const shown = help(puzzle);
+  if (shown === undefined) return undefined;
+  return { piece: shown.piece, step: SHOWN_STEPS[shown.step], region: shown.step === "glow" ? undefined : regionOf(puzzle, shown.piece) };
 }
 
 const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebration> = { "first-best": "first-best", "new-best": "new-best" };
