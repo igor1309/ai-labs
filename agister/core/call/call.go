@@ -2,7 +2,8 @@
 // the runtime, through the runtime protocol it declares, ended at the
 // call's time limit or when its staleness port says it went stale (ADR-006,
 // rule 2), a stale turn followed by a recovery turn in its session while
-// the step's recovery allows (ADR-006, rules 3 to 5); and given in the
+// the step's recovery allows (ADR-006, rules 3 to 5), and a turn at
+// capacity made again after a wait (ADR-004, rule 8); and given in the
 // result shape (ADR-001, invariant 3); on a model, its inputs in its
 // message and its output checked against its schema.
 package call
@@ -62,6 +63,9 @@ const (
 	// BudgetExhausted is a turn ended for making the same tool call too
 	// many times in a row.
 	BudgetExhausted Class = "budget_exhausted"
+	// Capacity is a turn the runtime failed because its model is at
+	// capacity.
+	Capacity Class = "capacity"
 )
 
 // known tells whether class is one of core's, a closed set (ADR-001,
@@ -69,7 +73,7 @@ const (
 func known(class Class) bool {
 	switch class {
 	case RuntimeUnavailable, RuntimeError, Timeout, Cancelled, Killed, Refused,
-		InvalidOutput, RateLimited, Auth, ContextOverflow, NoResult, BudgetExhausted:
+		InvalidOutput, RateLimited, Auth, ContextOverflow, NoResult, BudgetExhausted, Capacity:
 		return true
 	}
 	return false
@@ -147,12 +151,14 @@ type Stream struct {
 
 // Report is a line a turn read: the tool call it made, where Tool is not
 // nil; a tool's result, where Result is set; else another line. A call
-// reports besides each turn that went stale, where Stale is not nil; a
-// runtime reports none.
+// reports besides each turn that went stale, where Stale is not nil, and
+// each turn at capacity, where Capacity is not nil; a runtime reports
+// none.
 type Report struct {
-	Tool   *Tool
-	Result bool
-	Stale  *StaleTurn
+	Tool     *Tool
+	Result   bool
+	Stale    *StaleTurn
+	Capacity *CapacityTurn
 }
 
 // StaleTurn is a turn that went stale, as a call reports it: what went
@@ -160,6 +166,14 @@ type Report struct {
 type StaleTurn struct {
 	What       string
 	Recovering bool
+}
+
+// CapacityTurn is a turn at capacity, as a call reports it: its reply's
+// reason, and the wait before the turn is made again, zero where it is
+// not.
+type CapacityTurn struct {
+	Reason string
+	Retry  time.Duration
 }
 
 // Tool is a tool call a turn reports: the tool's name and all it was
@@ -345,14 +359,22 @@ func (s staleCause) Error() string { return s.What }
 // the time limit has ended: the turn as the step gives it, but resuming
 // that session, its message the recovery's instruction, a blank line and
 // what went stale, watched anew; the time limit is the call's, over all
-// its turns. A turn whose context the call ended ends the call
-// interrupted, however its program then exited; one that reported a
-// session other than the one it resumed fails it, however it ended
-// otherwise, since its work went elsewhere; a stale one, not recovered, as
-// what went stale says, unless ctx has ended meanwhile; a model's turn
-// that ended otherwise ends by its reply. A call
-// whose ctx has already ended makes no turn: its program would start, and
-// act, only to be ended.
+// its turns. A turn that ends by a reply of the class capacity is reported,
+// then, while the call has made fewer than capacityTurns such turns, made
+// again as it was given, in the session it reported, else in the one it
+// was given, once capacityWait times their count has passed on the timer;
+// unless it reported a session other than the one it resumed, ctx or the
+// time limit has ended, or the time limit leaves no more than the wait,
+// read on the clock: a retry never starts as the limit passes. A retry spends none of the step's recovery. A wait that
+// the call's context ends ends the call interrupted. A turn whose context
+// the call ended ends the call interrupted, however its program then
+// exited; one that reported a session other than the one it resumed fails
+// it, however it ended otherwise, since its work went elsewhere; a stale
+// one, not recovered, as what went stale says, unless ctx has ended
+// meanwhile; a model's turn that ended otherwise ends by its reply, one at
+// capacity its reason after how many of capacityTurns were. A call whose
+// ctx has already ended makes no turn: its program would start, and act,
+// only to be ended.
 func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Result {
 	started := c.clock.Now()
 	timed := func() Result {
@@ -372,9 +394,32 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	turn := c.turn(step)
 	resumes, went := step.Recovery.Resumes, map[string]bool{}
 	var turns []turned
+	// atCapacity counts the call's turns at capacity; interrupted is the
+	// cause of the call's context where it ended a wait.
+	atCapacity, interrupted := 0, error(nil)
 	for {
 		last := c.take(callCtx, turn, step.Staleness, report)
 		turns = append(turns, last)
+		if reason, ok := last.atCapacity(); ok {
+			atCapacity++
+			wait := time.Duration(atCapacity) * capacityWait
+			left := step.TimeLimit - c.clock.Now().Sub(started)
+			if atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
+				wait = 0
+			}
+			report(Report{Capacity: &CapacityTurn{Reason: reason, Retry: wait}})
+			if wait == 0 {
+				break
+			}
+			if !c.pause(callCtx, wait) {
+				interrupted = context.Cause(callCtx)
+				break
+			}
+			if session := last.session(); session != "" {
+				turn.Session = session
+			}
+			continue
+		}
 		var stale staleCause
 		if !errors.As(last.cause, &stale) || ctx.Err() != nil {
 			break
@@ -397,8 +442,37 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 
 	result := timed()
 	counted(&result, turns)
-	c.end(&result, step, turns[len(turns)-1], ctx.Err() != nil)
+	switch {
+	case errors.Is(interrupted, errTimeout):
+		result.Status, result.Class = Interrupted, Timeout
+	case interrupted != nil:
+		result.Status, result.Class = Interrupted, Cancelled
+	default:
+		c.end(&result, step, turns[len(turns)-1], ctx.Err() != nil, atCapacity)
+	}
 	return result
+}
+
+// capacityTurns is the most turns at capacity a call makes; the wait
+// before a retry is capacityWait times how many turns were at capacity,
+// fixed rather than drawn at random: the load is the provider's, which
+// the few calls of a run retrying together do not change.
+const (
+	capacityTurns = 3
+	capacityWait  = 30 * time.Second
+)
+
+// pause waits wait on the timer, unless ctx ends first, and tells whether
+// the wait passed with ctx still running.
+func (c *Caller) pause(ctx context.Context, wait time.Duration) bool {
+	fired, stop := c.timer(wait)
+	defer stop()
+	select {
+	case <-fired:
+		return ctx.Err() == nil
+	case <-ctx.Done():
+		return false
+	}
 }
 
 // turned is how one of a call's turns ended: what its runtime gave, the
@@ -409,6 +483,17 @@ type turned struct {
 	err     error
 	cause   error
 	strayed string
+}
+
+// atCapacity is the reason of the turn's reply, and whether the turn ended
+// by that reply, of the class capacity: it returned of itself, with no
+// error and no signal.
+func (t turned) atCapacity() (string, bool) {
+	reply := t.ended.Reply
+	if !errors.Is(t.cause, errTurnReturn) || t.err != nil || t.ended.Signal != "" || reply == nil || reply.Failure != Capacity {
+		return "", false
+	}
+	return reply.Reason, true
 }
 
 // session is the session the turn reported, its end's, else its reply's;
@@ -505,8 +590,8 @@ func total[T int64 | float64](values []*T) *T {
 }
 
 // end ends result as the call's last turn, last, ended it, the call's
-// ctx ended where cancelled.
-func (c *Caller) end(result *Result, step Step, last turned, cancelled bool) {
+// ctx ended where cancelled, atCapacity of its turns at capacity.
+func (c *Caller) end(result *Result, step Step, last turned, cancelled bool, atCapacity int) {
 	var stale staleCause
 	isStale := errors.As(last.cause, &stale)
 	switch cause, err, ended := last.cause, last.err, last.ended; {
@@ -530,7 +615,7 @@ func (c *Caller) end(result *Result, step Step, last turned, cancelled bool) {
 	case ended.Signal != "":
 		result.Status, result.Class = Failed, Killed
 	case ended.Reply != nil:
-		c.replied(result, step, *ended.Reply)
+		c.replied(result, step, *ended.Reply, atCapacity)
 	default:
 		result.Status, result.Output = Completed, output(ended)
 	}
@@ -558,11 +643,15 @@ func (c *Caller) turn(step Step) Turn {
 }
 
 // replied ends result by reply: its failure first, a turn that failed
-// not checked; then, where step gives a schema, its structured output
-// checked against it by the validator, and decoded as the call's output;
-// else its text the output.
-func (c *Caller) replied(result *Result, step Step, reply Reply) {
+// not checked, one at capacity its reason after how many, atCapacity, of
+// capacityTurns were; then, where step gives a schema, its structured
+// output checked against it by the validator, and decoded as the call's
+// output; else its text the output.
+func (c *Caller) replied(result *Result, step Step, reply Reply, atCapacity int) {
 	switch failure := reply.Failure; {
+	case failure == Capacity:
+		result.Status, result.Class = Failed, Capacity
+		result.Reason = cut(fmt.Sprintf("%d of %d turns at capacity: %s", atCapacity, capacityTurns, reply.Reason))
 	case failure == NoResult:
 		result.Status, result.Class, result.Reason = Lost, NoResult, cut(reply.Reason)
 	case known(failure):

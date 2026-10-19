@@ -27,6 +27,12 @@ Feature: A workflow reports what each step is doing
     When the workflow runs
     Then the events hold "a" stale, "no event for 1m", recovering
 
+  Scenario: A step's turn at capacity is an event
+    Given the step "a", its call reporting a turn at capacity, "at
+      capacity", retrying in 30s
+    When the workflow runs
+    Then the events hold "a" at capacity, "at capacity", retrying in 30s
+
   Scenario: A step's start is told when its call reports it
     Given the step "a" on "bash"
     When the workflow runs

@@ -990,8 +990,8 @@ type admission interface {
 // git.revision input gives, and made through admit, which holds the
 // worktree while it is made; a call not admitted is refused as well. Each
 // call is made by the caller of its turn's contract, each tool call its
-// turns report and each stale turn given on to core/workflow's report, and
-// no other line, which the progress skips. A call with no usage,
+// turns report, each stale turn and each turn at capacity given on to
+// core/workflow's report, and no other line, which the progress skips. A call with no usage,
 // as on bash, has every count of it unknown. Each call, refused or made,
 // is told to records as it ends, with the inputs it was given, none for a
 // call whose inputs were refused, and the worktree's facts admit told of
@@ -1087,6 +1087,8 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 				report(workflow.Report{Tool: &workflow.Tool{Name: r.Tool.Name, Input: r.Tool.Input}})
 			case r.Stale != nil:
 				report(workflow.Report{Stale: &workflow.Stale{What: r.Stale.What, Recovering: r.Stale.Recovering}})
+			case r.Capacity != nil:
+				report(workflow.Report{Capacity: &workflow.Capacity{Reason: r.Capacity.Reason, Retry: r.Capacity.Retry}})
 			}
 		})
 	}, func(told admit.Facts) { ended.facts = told })

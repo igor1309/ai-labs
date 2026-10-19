@@ -106,22 +106,23 @@ type Resolver interface {
 
 // Caller calls the step named step, its process's params given by name,
 // and gives report that the call starts, or the id of a call it took in
-// place of making one; then each tool call its turns report and each turn
-// that went stale. It is called from many goroutines at once, one for each
-// step of a parallel.
+// place of making one; then each tool call its turns report, each turn
+// that went stale and each turn at capacity. It is called from many
+// goroutines at once, one for each step of a parallel.
 type Caller interface {
 	Call(ctx context.Context, step string, params map[string]string, report func(Report)) Result
 }
 
 // Report is what a step's call reports: that it starts, where Started;
 // the id of the call it took in place of making one, where Reused is not
-// ""; a tool call, where Tool is not nil; else a stale turn, where Stale
-// is not nil.
+// ""; a tool call, where Tool is not nil; a stale turn, where Stale is not
+// nil; else a turn at capacity, where Capacity is not nil.
 type Report struct {
-	Started bool
-	Reused  string
-	Tool    *Tool
-	Stale   *Stale
+	Started  bool
+	Reused   string
+	Tool     *Tool
+	Stale    *Stale
+	Capacity *Capacity
 }
 
 // Tool is a tool call a step's turn reports: the tool's name and what it
@@ -137,16 +138,25 @@ type Stale struct {
 	Recovering bool
 }
 
+// Capacity is a step's turn at capacity: its reason, and the wait before
+// it is made again, zero where it is not.
+type Capacity struct {
+	Reason string
+	Retry  time.Duration
+}
+
 // Events is told what each step of a run is doing, by the step's name: that
 // it started, on its agent, or that it took the call of the id call in
-// place of making one; each tool call its turns report, and each turn
-// that went stale; and how a step that started ended. It is told from many
-// goroutines at once, one for each step of a parallel.
+// place of making one; each tool call its turns report, each turn that
+// went stale and each turn at capacity; and how a step that started ended.
+// It is told from many goroutines at once, one for each step of a
+// parallel.
 type Events interface {
 	Started(step, agent string)
 	Reused(step, call string)
 	Tool(step string, tool Tool)
 	Stale(step string, stale Stale)
+	Capacity(step string, capacity Capacity)
 	Ended(step string, ended Ended)
 }
 
@@ -242,7 +252,8 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 // Run runs w over the params given: its inputs resolved once, then each
 // item in order, until a step in sequence does not complete or the run is
 // cancelled, each step's start on its agent or the call it reused, tool
-// calls, stale turns and end told to the events as its caller reports
+// calls, stale turns, turns at capacity and end told to the events as its
+// caller reports
 // them. A parallel calls its steps at once and ends once
 // all have ended: completed, its outputs each step's end, in declaration
 // order, whatever each ended as; a run cancelled meanwhile ends with it,
@@ -356,8 +367,8 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 }
 
 // call calls step with params, its start or the call it reused, its tool
-// calls and stale turns told to the events by its name as the caller
-// reports them, and its end once it has ended, where it started.
+// calls, stale turns and turns at capacity told to the events by its name
+// as the caller reports them, and its end once it has ended, where it started.
 func (r *Runner) call(ctx context.Context, step Step, params map[string]string) Result {
 	// A caller may report from a goroutine of its own, as a turn's tool
 	// calls come from the one reading its program's output.
@@ -373,6 +384,8 @@ func (r *Runner) call(ctx context.Context, step Step, params map[string]string) 
 			r.events.Tool(step.Name, *report.Tool)
 		case report.Stale != nil:
 			r.events.Stale(step.Name, *report.Stale)
+		case report.Capacity != nil:
+			r.events.Capacity(step.Name, *report.Capacity)
 		}
 	})
 	if started.Load() {
