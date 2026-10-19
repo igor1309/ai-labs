@@ -1,11 +1,10 @@
 // The sorting game's API: its use cases and the types the app speaks with
 // it. Everything else under sorting/ is reached only through this file.
-import type { AgeLevel } from "../ageLevel.ts";
-import { generateBoard, type Basket, type Baskets, type Dinosaur, type Property, type Random } from "./board.ts";
+import { generateBoard, type Basket, type Baskets, type Dinosaur, type Property, type Random, type SortingLevel } from "./board.ts";
 import { isFinished, score, startSorting, type Sorting } from "./play.ts";
 import { bestForLevel, finishRound, type BeatBest, type Celebration, type SortingProgress } from "./progress.ts";
 
-export type { Basket, Baskets, Diet, Dinosaur, Property, Random } from "./board.ts";
+export type { Basket, Baskets, Diet, Dinosaur, Property, Random, SortingLevel } from "./board.ts";
 export type { BeatBest, Celebration, Sorting, SortingProgress };
 export type { Beaten } from "./progress.ts";
 export { drop, score } from "./play.ts";
@@ -36,7 +35,7 @@ export type BoardState = {
 };
 
 export type SortingResult = {
-  level: AgeLevel;
+  level: SortingLevel;
   score: number;
   total: number;
   // Undefined when stored progress cannot be read: there is no best to
@@ -50,7 +49,7 @@ export type SortingResult = {
 
 // A new board sorting by any property but that of `previous`, so two
 // boards in a row never sort by the same one.
-export function startBoard(dinosaurs: readonly Dinosaur[], level: AgeLevel, random: Random, previous?: Sorting): Sorting {
+export function startBoard(dinosaurs: readonly Dinosaur[], level: SortingLevel, random: Random, previous?: Sorting): Sorting {
   return startSorting(generateBoard(dinosaurs, level, random, previous?.board.property));
 }
 

@@ -157,18 +157,8 @@ describe("the import graph", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inSorting)).toEqual([]);
   });
 
-  // Sorting keeps the shared age level and revisioned LevelChoice in its
-  // progress contract (LAB-295); both dependencies are types alone.
-  it("keeps the sorting game free of all but languages and shared level types", () => {
-    expect(edges(inSorting, (target) => !inSorting(target) && !target.startsWith("language/") && ![AGE_LEVEL, START_LEVEL].includes(target))).toEqual([]);
-    for (const [file, imported] of GRAPH) {
-      if (!inSorting(file)) continue;
-      for (const target of imported.filter((target) => [AGE_LEVEL, START_LEVEL].includes(target))) {
-        const source = readFileSync(join(SRC, file), "utf8");
-        const imports = source.split("\n").filter((line) => line.includes(`../${target}`));
-        expect(imports.every((line) => line.startsWith("import type "))).toBe(true);
-      }
-    }
+  it("keeps the sorting game free of all but the languages", () => {
+    expect(edges(inSorting, (target) => !inSorting(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("keeps the quiz free of all but the languages", () => {

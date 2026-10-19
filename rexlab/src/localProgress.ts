@@ -32,15 +32,31 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
-  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, (entry) => {
-    const rounds = readRounds(entry);
-    const { explorerBest = null, paleontologistBest = null, levelChoice } = entry;
-    if (!rounds || !(explorerBest === null || isCount(explorerBest)) || !(paleontologistBest === null || isCount(paleontologistBest))) return undefined;
-    const progress = { ...rounds, explorerBest, paleontologistBest };
-    if (levelChoice === undefined) return progress;
-    const choice = choiceOf(levelChoice);
-    return choice && { ...progress, levelChoice: choice };
-  });
+  const entry = gameProgress<StoredSorting>(storage, "sort-dinosaurs", NO_SORTING, readSorting);
+  return {
+    load(): { progress: SortingProgress; levelChoice: LevelChoice | undefined } | undefined {
+      const stored = entry.load();
+      if (stored === undefined) return undefined;
+      const { levelChoice, ...progress } = stored;
+      return { progress, levelChoice };
+    },
+
+    save({ progress, levelChoice }: { progress: SortingProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save({ ...progress, ...(levelChoice && { levelChoice }) });
+    }
+  };
+}
+
+type StoredSorting = SortingProgress & { levelChoice?: LevelChoice };
+
+function readSorting(entry: Entry): StoredSorting | undefined {
+  const rounds = readRounds(entry);
+  const { explorerBest = null, paleontologistBest = null, levelChoice } = entry;
+  if (!rounds || !(explorerBest === null || isCount(explorerBest)) || !(paleontologistBest === null || isCount(paleontologistBest))) return undefined;
+  const progress = { ...rounds, explorerBest, paleontologistBest };
+  if (levelChoice === undefined) return progress;
+  const choice = choiceOf(levelChoice);
+  return choice && { ...progress, levelChoice: choice };
 }
 
 // The best score and finished rounds of a game that keeps only those.

@@ -461,9 +461,12 @@ describe("the sorting levels across the app", () => {
       }
       await finishWith(user, at + 1);
       expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
-      expect(localSortingProgress(() => storage).load()?.roundsPlayed).toBe(at + 1);
+      expect(localSortingProgress(() => storage).load()?.progress.roundsPlayed).toBe(at + 1);
     }
-    expect(localSortingProgress(() => storage).load()).toEqual({ bestScore: 1, explorerBest: 2, paleontologistBest: 3, roundsPlayed: 3, levelChoice: { level: "paleontologist", revision: "parent-pick" } });
+    expect(localSortingProgress(() => storage).load()).toEqual({
+      progress: { bestScore: 1, explorerBest: 2, paleontologistBest: 3, roundsPlayed: 3 },
+      levelChoice: { level: "paleontologist", revision: "parent-pick" }
+    });
   });
 
   it("reads a pre-level best as Hatchling's, retains its rounds, and starts at the age level without a choice", async () => {

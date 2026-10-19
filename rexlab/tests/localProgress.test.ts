@@ -204,7 +204,7 @@ describe("localSortingProgress", () => {
   it("reads no sorting progress from empty storage", () => {
     const storage = memoryStorage();
 
-    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
+    expect(localSortingProgress(() => storage).load()).toEqual({ progress: NO_SORTING, levelChoice: undefined });
   });
 
   it.each([
@@ -213,7 +213,7 @@ describe("localSortingProgress", () => {
   ])("reads the sorting game's best score and finished rounds from %j", (entry, progress) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting(entry) });
 
-    expect(localSortingProgress(() => storage).load()).toEqual({ ...NO_SORTING, ...progress });
+    expect(localSortingProgress(() => storage).load()).toEqual({ progress: { ...NO_SORTING, ...progress }, levelChoice: undefined });
   });
 
   it.each([
@@ -226,7 +226,7 @@ describe("localSortingProgress", () => {
     const others = { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 6, visitsFinished: 2, friends: [] } };
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting(entry, others) });
 
-    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
+    expect(localSortingProgress(() => storage).load()).toEqual({ progress: NO_SORTING, levelChoice: undefined });
     expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
     expect(localCareProgress(() => storage).load()).toEqual({ bestScore: 6, visitsFinished: 2, friends: [] });
   });
@@ -234,7 +234,7 @@ describe("localSortingProgress", () => {
   it("keeps the sorting game beside the quiz and care in one record, each saved without touching the others", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
 
-    localSortingProgress(() => storage).save({ explorerBest: null, paleontologistBest: null, bestScore: 4, roundsPlayed: 1 });
+    localSortingProgress(() => storage).save({ progress: { explorerBest: null, paleontologistBest: null, bestScore: 4, roundsPlayed: 1 }, levelChoice: undefined });
     localCareProgress(() => storage).save({ bestScore: 8, visitsFinished: 1, friends: ["triceratops"] });
     localProgress(() => storage).save({ bestScore: 9, roundsPlayed: 4 });
 
@@ -246,13 +246,13 @@ describe("localSortingProgress", () => {
         "sort-dinosaurs": { ...NO_SORTING, bestScore: 4, roundsPlayed: 1 }
       }
     });
-    expect(localSortingProgress(() => storage).load()).toEqual({ ...NO_SORTING, bestScore: 4, roundsPlayed: 1 });
+    expect(localSortingProgress(() => storage).load()).toEqual({ progress: { ...NO_SORTING, bestScore: 4, roundsPlayed: 1 }, levelChoice: undefined });
   });
 
   it("replaces an unusable sorting entry on save, and keeps a quiz entry it cannot read", () => {
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ bestScore: "4" }, { "compare-dinosaurs": { bestScore: "x" } }) });
 
-    localSortingProgress(() => storage).save({ explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 });
+    localSortingProgress(() => storage).save({ progress: { explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 }, levelChoice: undefined });
 
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
@@ -261,14 +261,15 @@ describe("localSortingProgress", () => {
   });
 
   it.each([null, "parent-pick"])("round-trips every level's best and a choice with revision %j, preserving other fields and games", (revision) => {
-    const entry = { bestScore: 5, explorerBest: 7, paleontologistBest: 9, roundsPlayed: 6, levelChoice: { level: "explorer" as const, revision } };
-    const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ ...entry, achievements: ["first-round"] }, { "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } }) });
+    const levelChoice = { level: "explorer" as const, revision };
+    const entry = { bestScore: 5, explorerBest: 7, paleontologistBest: 9, roundsPlayed: 6 };
+    const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ ...entry, levelChoice, achievements: ["first-round"] }, { "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } }) });
     const progress = localSortingProgress(() => storage);
-    expect(progress.load()).toEqual(entry);
-    const next = { ...entry, explorerBest: 8, roundsPlayed: 7 };
+    expect(progress.load()).toEqual({ progress: entry, levelChoice });
+    const next = { progress: { ...entry, explorerBest: 8, roundsPlayed: 7 }, levelChoice };
     progress.save(next);
     expect(progress.load()).toEqual(next);
-    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { ...next, achievements: ["first-round"] }, "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } } });
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { ...next.progress, levelChoice, achievements: ["first-round"] }, "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } } });
   });
 
   it.each([
@@ -277,7 +278,7 @@ describe("localSortingProgress", () => {
     { levelChoice: { level: "explorer" } }, { levelChoice: { level: "explorer", revision: "" } }
   ])("rejects malformed level progress %j", (invalid) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: sorting({ ...NO_SORTING, ...invalid }) });
-    expect(localSortingProgress(() => storage).load()).toEqual(NO_SORTING);
+    expect(localSortingProgress(() => storage).load()).toEqual({ progress: NO_SORTING, levelChoice: undefined });
   });
 
   it.each([
@@ -287,7 +288,7 @@ describe("localSortingProgress", () => {
     const progress = localSortingProgress(storage);
 
     expect(progress.load()).toBeUndefined();
-    expect(() => progress.save({ explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 })).not.toThrow();
+    expect(() => progress.save({ progress: { explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 }, levelChoice: undefined })).not.toThrow();
   });
 });
 

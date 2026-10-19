@@ -1,5 +1,6 @@
-import type { AgeLevel } from "../ageLevel.ts";
 import type { Language } from "../language/language.ts";
+
+export type SortingLevel = "hatchling" | "explorer" | "paleontologist";
 
 // What a board sorts by.
 export type Property = "legs" | "diet" | "size" | "horns" | "feathers";
@@ -56,7 +57,7 @@ export type Card = {
 };
 
 export type Board = {
-  level: AgeLevel;
+  level: SortingLevel;
   property: Property;
   baskets: Baskets;
   // The cards in their places on the tray.
@@ -66,14 +67,14 @@ export type Board = {
 // A number in [0, 1), as Math.random gives.
 export type Random = () => number;
 
-const BOARD_SIZES: Record<AgeLevel, number> = { hatchling: 6, explorer: 8, paleontologist: 10 };
+const BOARD_SIZES: Record<SortingLevel, number> = { hatchling: 6, explorer: 8, paleontologist: 10 };
 
 // Each basket gets at least this many cards, so neither is a giveaway.
 export const LEAST_PER_BASKET = 2;
 
 // A fact has a basket only on a level that can explain it. Paleontologist
 // asks about fossil evidence for feathers, rather than unfeathered art.
-export function basketOf(dinosaur: Dinosaur, property: Property, level: AgeLevel): Basket | null {
+export function basketOf(dinosaur: Dinosaur, property: Property, level: SortingLevel): Basket | null {
   switch (property) {
     case "legs":
       if (dinosaur.legs === null) return null;
@@ -93,7 +94,7 @@ export function basketOf(dinosaur: Dinosaur, property: Property, level: AgeLevel
   }
 }
 
-function basketsFor(property: Property, level: AgeLevel): Baskets {
+function basketsFor(property: Property, level: SortingLevel): Baskets {
   const pair = BASKETS[property];
   if (level === "explorer" && property === "diet") return [...pair, "both"];
   if (level === "paleontologist") return [...pair, property === "legs" ? "two-or-four" : "not-known-yet"];
@@ -102,7 +103,7 @@ function basketsFor(property: Property, level: AgeLevel): Baskets {
 
 // Different dinosaurs, at least two per basket, sorting by a property
 // other than the last board's even when the level changes.
-export function generateBoard(dinosaurs: readonly Dinosaur[], level: AgeLevel, random: Random, previous?: Property): Board {
+export function generateBoard(dinosaurs: readonly Dinosaur[], level: SortingLevel, random: Random, previous?: Property): Board {
   const properties: readonly Property[] = level === "paleontologist" ? ["legs", "feathers"] : PROPERTIES;
   const property = pick(random, properties.filter((each) => each !== previous));
   const baskets = basketsFor(property, level);

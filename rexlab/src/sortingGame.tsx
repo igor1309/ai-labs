@@ -9,11 +9,13 @@ import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { bestForLevel, boardState, drop, finishBoard, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
 
+export type SortingSaved = { progress: SortingProgress; levelChoice: LevelChoice | undefined };
+
 export type SortingProgressStore = {
   // The sorting game's progress kept so far, or undefined when it cannot
   // be read at all.
-  load(): SortingProgress | undefined;
-  save(progress: SortingProgress): void;
+  load(): SortingSaved | undefined;
+  save(saved: SortingSaved): void;
 };
 
 export type SortingGameProps = {
@@ -53,21 +55,20 @@ export function useSortingGame(
   // Read once for this visit, so a choice and scores survive a failed
   // save. Unreadable progress is never overwritten or compared against.
   const [kept, setKept] = useState<Kept>(() => {
-    const progress = sortingProgress.load();
-    return { progress, levelChoice: progress?.levelChoice };
+    const stored = sortingProgress.load();
+    return { progress: stored?.progress, levelChoice: stored?.levelChoice };
   });
   const keptNow = useRef(kept);
   const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
   const keep = (next: Kept) => {
     keptNow.current = next;
     setKept(next);
-    if (next.progress !== undefined) sortingProgress.save(next.progress);
+    if (next.progress !== undefined) sortingProgress.save({ progress: next.progress, levelChoice: next.levelChoice });
   };
   const chooseLevel = (chosen: AgeLevel) => {
     if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
     const levelChoice = { level: chosen, revision: ageLevel.revision };
-    const progress = keptNow.current.progress;
-    keep({ levelChoice, progress: progress === undefined ? undefined : { ...progress, levelChoice } });
+    keep({ ...keptNow.current, levelChoice });
   };
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
