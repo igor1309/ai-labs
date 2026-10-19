@@ -72,8 +72,8 @@ export type Puzzle = {
   // Whether help climbs the ladder of steps rather than glowing once.
   ladder: boolean;
   // Other skeletons' bones mixed into the tray, which fit nowhere, and
-  // the one last dropped, until the next drop, so the child is told whose
-  // bone it is.
+  // the one last dropped, until another piece is touched, so the child is
+  // told whose bone it is.
   distractors: readonly Distractor[];
   told: Distractor | undefined;
   // Whether a tap turns a piece, and how many quarter turns, clockwise,
@@ -190,6 +190,13 @@ export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number
   const { x, y, width, height } = home.place;
   if (Math.hypot(centre.x - (x + width / 2), centre.y - (y + height / 2)) > reach) return missed;
   return { ...puzzle, fitted: [...puzzle.fitted, piece], waited: 0, told: undefined };
+}
+
+// `piece` touched in the tray: the line about another skeleton's bone
+// goes, unless it is that bone again.
+export function touch(puzzle: Puzzle, piece: string): Puzzle {
+  if (puzzle.told === undefined || strayId(puzzle.told) === piece) return puzzle;
+  return { ...puzzle, told: undefined };
 }
 
 export function isComplete(puzzle: Puzzle): boolean {

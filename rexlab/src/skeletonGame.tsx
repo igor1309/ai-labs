@@ -18,6 +18,7 @@ import {
   openCollection,
   showLastStep,
   startPuzzle,
+  touch,
   turn,
   wait,
   type Badge,
@@ -255,6 +256,14 @@ export function useSkeletonGame(
     if (isComplete(to)) reveal(to, record(to), timers);
   };
 
+  // A piece touched in the tray.
+  const onTouch = (piece: ShownPiece) => {
+    const from = live.current;
+    if (from === null) return;
+    const to = touch(from, piece);
+    if (to !== from) showPuzzle(from, to);
+  };
+
   // A tap on a piece in the tray turns it.
   const onTurn = (piece: ShownPiece) => {
     const from = live.current;
@@ -338,6 +347,7 @@ export function useSkeletonGame(
             {...presentPuzzle(screen.puzzle, language, skeletonPicture, screen.look)}
             scatter={screen.scatter}
             onDrop={onDrop}
+            onTouch={onTouch}
             onTurn={onTurn}
             onLastStep={onLastStep}
             onMuseum={museum}

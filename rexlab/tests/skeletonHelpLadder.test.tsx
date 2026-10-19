@@ -48,7 +48,7 @@ const nudged = () => document.querySelector<HTMLElement>(".skeleton-piece[data-n
 
 // What help shows: the glows, whether the region, the ghost and the move
 // show, and what is fitted.
-const shown = (piece = "skull") => ({ hints: hints(), region: region() !== null, ghost: ghostOf(piece) !== null, move: nudged() !== null, fitted: fittedPieces() });
+const shown = (piece = "head") => ({ hints: hints(), region: region() !== null, ghost: ghostOf(piece) !== null, move: nudged() !== null, fitted: fittedPieces() });
 
 const NONE = { hints: [], region: false, ghost: false, move: false, fitted: [] };
 
@@ -77,9 +77,9 @@ describe("Explorer's help in steps", () => {
 
     spend(pictures, 1);
 
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true });
-    expect(slotOf("skull").querySelector(".skeleton-glow")).toBeNull();
-    expect(spotOf("skull").querySelector(".skeleton-glow")?.getAttribute("aria-hidden")).toBe("true");
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true });
+    expect(slotOf("head").querySelector(".skeleton-glow")).toBeNull();
+    expect(spotOf("head").querySelector(".skeleton-glow")?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("rings the head's region around the skull's slot, 12 CSS pixels beyond it", async () => {
@@ -92,7 +92,7 @@ describe("Explorer's help in steps", () => {
         const [, percent = "", pixels = "0"] = /^(?:calc\()?([\d.]+)%(?: ([-+] \d+)px\))?$/.exec(side) ?? [];
         return [px(percent), px(pixels.replace(" ", ""))] as const;
       });
-    const skull = sides(slotOf("skull").style).map(([percent]) => expect.closeTo(percent, 4));
+    const skull = sides(slotOf("head").style).map(([percent]) => expect.closeTo(percent, 4));
     expect(sides(region()?.style ?? board().style)).toEqual([
       [skull[0], -12],
       [skull[1], -12],
@@ -107,10 +107,10 @@ describe("Explorer's help in steps", () => {
 
     spend(pictures, 20);
 
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true, ghost: true });
-    const ghost = ghostOf("skull");
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true, ghost: true });
+    const ghost = ghostOf("head");
     expect([ghost?.getAttribute("aria-hidden"), getComputedStyle(ghost ?? document.body).opacity, getComputedStyle(ghost ?? document.body).pointerEvents]).toEqual(["true", "0.35", "none"]);
-    expect(slotOf("skull").getAttribute("data-state")).toBe("empty");
+    expect(slotOf("head").getAttribute("data-state")).toBe("empty");
   });
 
   it("moves the skull from its spot towards its home and back after thirty seconds, every other step still showing, and counts no more time", async () => {
@@ -118,10 +118,10 @@ describe("Explorer's help in steps", () => {
 
     spend(pictures, 30);
 
-    expect(shown()).toEqual({ hints: ["spot skull"], region: true, ghost: true, move: true, fitted: [] });
-    const { shown: offsets, towards } = nudgeOf("skull");
+    expect(shown()).toEqual({ hints: ["spot head"], region: true, ghost: true, move: true, fitted: [] });
+    const { shown: offsets, towards } = nudgeOf("head");
     expect(offsets).toEqual(towards);
-    expect(nudged()?.closest(".skeleton-tray-spot")).toBe(spotOf("skull"));
+    expect(nudged()?.closest(".skeleton-tray-spot")).toBe(spotOf("head"));
     expect(pictures.timers()).toEqual([]);
   });
 
@@ -133,32 +133,32 @@ describe("Explorer's help in steps", () => {
     expect(shown()).toEqual({ ...NONE, fitted: ["neck"] });
 
     spend(pictures, 10);
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true, fitted: ["neck"] });
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true, fitted: ["neck"] });
   });
 
   it("helps the next piece once the helped one fits", async () => {
     const { pictures } = await openExplorer();
     spend(pictures, 20);
 
-    fit(TYRANNOSAURUS, "skull");
+    fit(TYRANNOSAURUS, "head");
     spend(pictures, 10);
 
-    expect(shown("neck")).toEqual({ ...NONE, hints: ["spot neck"], region: true, fitted: ["skull"] });
+    expect(shown("neck")).toEqual({ ...NONE, hints: ["spot neck"], region: true, fitted: ["head"] });
   });
 
   it("holds a step that falls due while a piece is held until it is let go", async () => {
     const { pictures } = await openExplorer();
     spend(pictures, 19);
-    const spot = spotOf("tail");
+    const spot = spotOf("tail-bones");
     const { left, top } = spot.getBoundingClientRect();
 
     press(spot, { clientX: left + 40, clientY: top + 40 });
     moveTo({ clientX: BOARD_AT.left + 10, clientY: BOARD_AT.top + 10 });
     spend(pictures, 2);
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true });
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true });
 
     release(AWAY);
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true, ghost: true });
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true, ghost: true });
   });
 });
 
@@ -171,7 +171,7 @@ const BEFORE: Array<[string, (level: AgeLevel) => Promise<{ pictures: ManualPict
     "a drop of it that missed",
     async (level) => {
       const opened = await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf(level) });
-      dragTo("skull", AWAY);
+      dragTo("head", AWAY);
       return opened;
     }
   ],
@@ -179,8 +179,8 @@ const BEFORE: Array<[string, (level: AgeLevel) => Promise<{ pictures: ManualPict
     "a touch on it that was cancelled",
     async (level) => {
       const opened = await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf(level) });
-      const { left, top } = spotOf("skull").getBoundingClientRect();
-      press(spotOf("skull"), { clientX: left + 40, clientY: top + 40 });
+      const { left, top } = spotOf("head").getBoundingClientRect();
+      press(spotOf("head"), { clientX: left + 40, clientY: top + 40 });
       moveTo(homeOf(TYRANNOSAURUS, "spine"));
       cancel(homeOf(TYRANNOSAURUS, "spine"));
       return opened;
@@ -206,8 +206,8 @@ describe("help's last step after a piece has moved", () => {
 
     spend(pictures, 30);
 
-    const { shown: offsets, towards } = nudgeOf("skull");
-    expect([nudged()?.closest(".skeleton-tray-spot"), offsets, fittedPieces()]).toEqual([spotOf("skull"), towards, []]);
+    const { shown: offsets, towards } = nudgeOf("head");
+    expect([nudged()?.closest(".skeleton-tray-spot"), offsets, fittedPieces()]).toEqual([spotOf("head"), towards, []]);
   });
 });
 
@@ -246,7 +246,7 @@ describe("help's time at Paleontologist", () => {
       else dragTo(stray, AWAY);
     }
 
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true });
+    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true });
   });
 });
 
@@ -264,6 +264,6 @@ describe("help at the other levels", () => {
 
     spend(pictures, 30);
 
-    expect(shown()).toEqual({ ...NONE, hints: ["slot skull", "spot skull"] });
+    expect(shown("skull")).toEqual({ ...NONE, hints: ["slot skull", "spot skull"] });
   });
 });

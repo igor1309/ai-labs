@@ -87,6 +87,8 @@ export type SkeletonPuzzleScreenProps = {
   // A piece let go with its centre at `centre`, and how far from its home
   // it still fits, both in pixels of the frame.
   onDrop: (piece: ShownPiece, centre: FramePoint, reach: number) => void;
+  // A piece pressed in the tray, as it is picked up.
+  onTouch: (piece: ShownPiece) => void;
   // A piece of the cut tapped in the tray, on a puzzle that turns.
   onTurn: (piece: ShownPiece) => void;
   // Help's last step has shown: a piece moved towards its home.
@@ -158,6 +160,7 @@ export function SkeletonPuzzleScreen({
   complete,
   scatter,
   onDrop,
+  onTouch,
   onTurn,
   onLastStep,
   onMuseum,
@@ -261,6 +264,7 @@ export function SkeletonPuzzleScreen({
     if (hold.current || event.button !== 0) return;
     const { width, height } = slotRect(piece);
     holdPiece({ pointerId: event.pointerId, piece, x: event.clientX, y: event.clientY, from: { x: event.clientX, y: event.clientY }, width, height, hint });
+    onTouch(piece);
   };
 
   // Help that falls due while a piece is held waits until it is let go,
@@ -299,7 +303,7 @@ export function SkeletonPuzzleScreen({
   const quartersOf = (piece: ShownPiece) => (turns[piece] ?? 0) + QUARTERS * (laps[piece] ?? 0);
 
   return (
-    <main className="skeleton-screen">
+    <main className="skeleton-screen" onContextMenu={(event) => event.preventDefault()}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onHome={onHome}>
         <p className="skeleton-chip" aria-label={text.fitted}>

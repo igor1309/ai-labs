@@ -13,7 +13,7 @@ Feature: Skeleton assembly: help in steps
   Background:
     Given an iPad in landscape
     And the level switch shows Explorer chosen
-    And I am building Tyrannosaurus, no piece fitted
+    And I am building Tyrannosaurus, no piece fitted, the skull first in the tray
 
   Scenario: The first step shows the body region
     When 9 seconds pass

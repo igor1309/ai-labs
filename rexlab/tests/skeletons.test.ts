@@ -9,6 +9,7 @@ import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
 import { drop, HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
+import { bonesOf, SEAMS } from "../scripts/skeletonBones.ts";
 import { PIECES, placeOf } from "./skeletonsApp.tsx";
 import { PALETTE, SHIPPED_SKELETONS, browserDocument, contrast, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
@@ -320,7 +321,7 @@ describe("presenting the skeleton game", () => {
     ]);
     expect(distractors).toHaveLength(3);
     expect(shown.tray).toEqual([
-      "skull",
+      "head",
       "neck-bones",
       "arms",
       "triceratops/frill",
@@ -341,7 +342,7 @@ describe("presenting the skeleton game", () => {
     const triceratops = skeletonOf("triceratops");
     const cut = triceratops.cuts.paleontologist ?? [];
     const started = startPuzzle(triceratops, cut, { distractors: true });
-    const told = drop(started, "tyrannosaurus/skull", { x: 0, y: 0 }, 30);
+    const told = drop(started, "tyrannosaurus/head", { x: 0, y: 0 }, 30);
     const complete = { ...told, fitted: cut.map(({ id }) => id) };
 
     expect([presentPuzzle(told, "en", fakeSkeletonPicture).told, presentPuzzle(told, "ru", fakeSkeletonPicture).told]).toEqual(["TYRANNOSAURUS SKULL", "ЧЕРЕП ТИРАННОЗАВРА"]);
@@ -361,7 +362,7 @@ describe("presenting the skeleton game", () => {
     const tyrannosaurus = skeletonOf("tyrannosaurus");
     const explorer = tyrannosaurus.cuts.explorer ?? [];
     const legs = explorer.filter(({ area }) => area === "legs").map(({ place }) => place);
-    const due = { ...startPuzzle(tyrannosaurus, explorer, { ladder: true }), fitted: ["skull", "neck", "back", "hips"], waited: 2 * HELP_AFTER };
+    const due = { ...startPuzzle(tyrannosaurus, explorer, { ladder: true }), fitted: ["head", "neck", "back", "hips"], waited: 2 * HELP_AFTER };
     const left = Math.min(...legs.map(({ x }) => x));
     const top = Math.min(...legs.map(({ y }) => y));
     const { width, height } = tyrannosaurus.frame;
@@ -464,6 +465,29 @@ describe("every shipped skeleton", () => {
     expect(measured).toEqual(
       skeletons.flatMap(({ id, cuts }) => Object.entries(cuts).map(([level, cut]) => ({ id, level, rebuilt: true, inPlace: cut.map(() => true), offByAPixel: cut.map(() => true) })))
     );
+  });
+
+  // skeleton-assembly-pictures.feature: Explorer's and Paleontologist's
+  // pieces follow the bones the picture draws, as recut-skeletons.ts cuts
+  // them, so no piece shows the end of its neighbour's bone.
+  it("is cut for Explorer and Paleontologist along its drawn bones, each bone whole in one piece", async () => {
+    const split = await Promise.all(
+      skeletons.flatMap(({ id, cuts }) => (["explorer", "paleontologist"] as const).map(async (level) => {
+        const { data, info } = await sharp(fileOf(skeletonPicture(id, "skeleton"))).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        const bone = bonesOf({ data: new Uint8Array(data), width: info.width, height: info.height }, SEAMS[id]);
+        const owner = new Map<number, Set<string>>();
+        for (const piece of cuts[level] ?? []) {
+          const { alpha, width } = await alphaOf(fileOf(skeletonPicture(id, piece.id)));
+          alpha.forEach((shown, at) => {
+            const each = bone[(piece.place.y + Math.floor(at / width)) * info.width + piece.place.x + (at % width)] ?? 0;
+            if (shown === 255 && each !== 0) owner.set(each, (owner.get(each) ?? new Set()).add(piece.id));
+          });
+        }
+        return { id, level, split: [...owner.values()].filter((pieces) => pieces.size > 1).map((pieces) => [...pieces]) };
+      }))
+    );
+
+    expect(split).toEqual(skeletons.flatMap(({ id }) => ["explorer", "paleontologist"].map((level) => ({ id, level, split: [] }))));
   });
 
   // A piece in two cuts is one picture, so it lies at one place in both.
