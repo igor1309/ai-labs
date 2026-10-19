@@ -1,11 +1,29 @@
-// What a child has done in the sorting game: the best score of a finished
-// board, null until one is finished, and how many boards were finished.
+import type { SortingLevel } from "./board.ts";
+
+// A best belongs to the level where it was earned.
 export type SortingProgress = {
-  bestScore: number | null;
+  best: Record<SortingLevel, number | null>;
   roundsPlayed: number;
 };
 
-export const NO_SORTING: SortingProgress = { bestScore: null, roundsPlayed: 0 };
+export const NO_SORTING: SortingProgress = { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 };
+
+export function bestForLevel(progress: SortingProgress, level: SortingLevel): number | null {
+  return progress.best[level];
+}
+
+// A visit may hold unsaved scores while another tab saves newer progress.
+export function mergeProgress(kept: SortingProgress, stored: SortingProgress): SortingProgress {
+  const higher = (left: number | null, right: number | null) => left === null ? right : right === null ? left : Math.max(left, right);
+  return {
+    best: {
+      hatchling: higher(kept.best.hatchling, stored.best.hatchling),
+      explorer: higher(kept.best.explorer, stored.best.explorer),
+      paleontologist: higher(kept.best.paleontologist, stored.best.paleontologist)
+    },
+    roundsPlayed: Math.max(kept.roundsPlayed, stored.roundsPlayed)
+  };
+}
 
 export type Celebration = "first-best" | "new-best";
 
@@ -18,14 +36,14 @@ export type Beaten = { best: number; celebration: Celebration | null };
 export type BeatBest = (previous: number | null, score: number) => Beaten;
 
 export type SortingOutcome = {
-  progress: { bestScore: number; roundsPlayed: number };
+  progress: SortingProgress;
   celebration: Celebration | null;
 };
 
-export function finishRound(previous: SortingProgress, score: number, beatBest: BeatBest): SortingOutcome {
-  const { best, celebration } = beatBest(previous.bestScore, score);
+export function finishRound(previous: SortingProgress, level: SortingLevel, score: number, beatBest: BeatBest): SortingOutcome {
+  const { best, celebration } = beatBest(bestForLevel(previous, level), score);
   return {
-    progress: { bestScore: best, roundsPlayed: previous.roundsPlayed + 1 },
+    progress: { best: { ...previous.best, [level]: best }, roundsPlayed: previous.roundsPlayed + 1 },
     celebration
   };
 }

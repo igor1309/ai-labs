@@ -40,27 +40,30 @@ Feature: English and Russian
     Then it reads "<text>"
 
     Examples:
-      | item                | text               |
-      | quiz tile           | СРАВНИ             |
-      | mass prompt         | КТО ТЯЖЕЛЕЕ?       |
-      | height prompt       | КТО ВЫШЕ?          |
-      | Next button         | ДАЛЬШЕ             |
-      | See result button   | РЕЗУЛЬТАТ          |
-      | Play again button   | ЕЩЁ РАЗ            |
-      | Home button         | ДОМОЙ              |
-      | name of Triceratops | ТРИЦЕРАТОПС        |
-      | sorting game card   | РАЗЛОЖИ            |
-      | sorting prompt      | РАЗЛОЖИ ДИНОЗАВРОВ |
-      | basket TWO LEGS     | ДВЕ НОГИ           |
-      | basket FOUR LEGS    | ЧЕТЫРЕ НОГИ        |
-      | basket PLANTS       | РАСТЕНИЯ           |
-      | basket MEAT         | МЯСО               |
-      | basket BIG          | БОЛЬШИЕ            |
-      | basket SMALL        | МАЛЕНЬКИЕ          |
-      | basket HORNS        | С РОГАМИ           |
-      | basket NO HORNS     | БЕЗ РОГОВ          |
-      | basket FEATHERS     | С ПЕРЬЯМИ          |
-      | basket NO FEATHERS  | БЕЗ ПЕРЬЕВ         |
+      | item                 | text               |
+      | quiz tile            | СРАВНИ             |
+      | mass prompt          | КТО ТЯЖЕЛЕЕ?       |
+      | height prompt        | КТО ВЫШЕ?          |
+      | Next button          | ДАЛЬШЕ             |
+      | See result button    | РЕЗУЛЬТАТ          |
+      | Play again button    | ЕЩЁ РАЗ            |
+      | Home button          | ДОМОЙ              |
+      | name of Triceratops  | ТРИЦЕРАТОПС        |
+      | sorting game card    | РАЗЛОЖИ            |
+      | sorting prompt       | РАЗЛОЖИ ДИНОЗАВРОВ |
+      | basket TWO LEGS      | ДВЕ НОГИ           |
+      | basket FOUR LEGS     | ЧЕТЫРЕ НОГИ        |
+      | basket PLANTS        | РАСТЕНИЯ           |
+      | basket MEAT          | МЯСО               |
+      | basket BIG           | БОЛЬШИЕ            |
+      | basket SMALL         | МАЛЕНЬКИЕ          |
+      | basket HORNS         | С РОГАМИ           |
+      | basket NO HORNS      | БЕЗ РОГОВ          |
+      | basket FEATHERS      | С ПЕРЬЯМИ          |
+      | basket NO FEATHERS   | БЕЗ ПЕРЬЕВ         |
+      | basket BOTH          | ВСЁ                |
+      | basket TWO OR FOUR   | ДВЕ ИЛИ ЧЕТЫРЕ     |
+      | basket NOT KNOWN YET | ПОКА НЕИЗВЕСТНО    |
 
   Scenario Outline: Values are written in the chosen language
     Given the app is in <language>

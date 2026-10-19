@@ -1,17 +1,21 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
+import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
-import { ResultScreen } from "./ResultScreen.tsx";
+import { startLevel, type LevelChoice } from "./startLevel.ts";
+import { SortResultScreen } from "./SortResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
-import { boardState, drop, finishBoard, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
+import { bestForLevel, boardState, drop, finishBoard, mergeProgress, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
+
+export type SortingSaved = { progress: SortingProgress; levelChoice: LevelChoice | undefined };
 
 export type SortingProgressStore = {
   // The sorting game's progress kept so far, or undefined when it cannot
   // be read at all.
-  load(): SortingProgress | undefined;
-  save(progress: SortingProgress): void;
+  load(): SortingSaved | undefined;
+  save(saved: SortingSaved): void;
 };
 
 export type SortingGameProps = {
@@ -25,6 +29,9 @@ export type SortingGameProps = {
 // The dinosaur cheering the child on at the end of a board, as on the
 // quiz's result.
 const HERO = "tyrannosaurus";
+const OFFERED = ["hatchling", "explorer", "paleontologist"] as const;
+
+type Kept = { progress: SortingProgress | undefined; levelChoice: LevelChoice | undefined };
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
@@ -40,10 +47,34 @@ export function transitionFor(from: SortingScreen | undefined, to: SortingScreen
 // page; `onStart` is told as each board begins.
 export function useSortingGame(
   { sortables, sortingProgress, bodyPicture, random }: SortingGameProps,
+  ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
 ) {
   const { screen, go } = useScreens<SortingScreen | undefined, "start">(undefined, transitionFor);
+  // Keep this visit's choice and scores even when a save fails.
+  const [kept, setKept] = useState<Kept>(() => {
+    const stored = sortingProgress.load();
+    return { progress: stored?.progress, levelChoice: stored?.levelChoice };
+  });
+  const keptNow = useRef(kept);
+  const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
+  const refreshedProgress = (progress: SortingProgress | undefined) => {
+    const stored = sortingProgress.load()?.progress;
+    return stored === undefined ? undefined : progress === undefined ? stored : mergeProgress(progress, stored);
+  };
+  const keep = (next: Kept) => {
+    const progress = refreshedProgress(next.progress);
+    const merged = { ...next, progress: progress ?? next.progress };
+    keptNow.current = merged;
+    setKept(merged);
+    if (progress !== undefined) sortingProgress.save({ progress, levelChoice: next.levelChoice });
+  };
+  const chooseLevel = (chosen: AgeLevel) => {
+    if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    const levelChoice = { level: chosen, revision: ageLevel.revision };
+    keep({ ...keptNow.current, levelChoice });
+  };
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
   const last = useRef<Sorting | undefined>(undefined);
@@ -54,7 +85,7 @@ export function useSortingGame(
   // change, so the owner can bring the game on screen with its board.
   const start = (shown?: () => void) => {
     const from = screen;
-    const sorting = startBoard(sortables, random, last.current);
+    const sorting = startBoard(sortables, startLevel(ageLevel, OFFERED, keptNow.current.levelChoice), random, last.current);
     go((current) => (current === from ? { kind: "board", sorting } : current), {
       intent: "start",
       also: () => {
@@ -77,8 +108,8 @@ export function useSortingGame(
   // A board is recorded only here, as its result is shown, so a board
   // left early changes nothing. Unreadable progress is not saved over.
   const seeResult = (finished: Sorting) => {
-    const result = finishBoard(finished, sortingProgress.load(), beatBest);
-    if (result.progress) sortingProgress.save(result.progress);
+    const result = finishBoard(finished, refreshedProgress(keptNow.current.progress), beatBest);
+    if (result.progress) keep({ ...keptNow.current, progress: result.progress });
     go({ kind: "result", result });
   };
 
@@ -100,10 +131,12 @@ export function useSortingGame(
       }
       case "result":
         return (
-          <ResultScreen
+          <SortResultScreen
             language={language}
             {...presentSortingResult(screen.result)}
             hero={bodyPicture(HERO)}
+            level={level}
+            onChoose={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
           />
@@ -111,5 +144,5 @@ export function useSortingGame(
     }
   };
 
-  return { start, content };
+  return { start, content, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
 }

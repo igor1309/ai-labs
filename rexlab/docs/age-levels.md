@@ -34,9 +34,10 @@ an approximate age level next to the theme and language controls
   offer down at that level: from then on it takes 5 strong rounds in a
   row there, not 3, until "YES" is tapped there; other levels keep 3.
   Showing the card, a round that is not strong, or a round at another
-  level starts the count again. Each game says what a strong round is in
-  its own offer feature. Nothing moves a child down, and no words say a
-  round went badly; a game's top level offers nothing.
+  level starts the count again. Each game with an offer says what a strong
+  round is in its own offer feature; the sorting game has none
+  (LAB-295). Nothing moves a child down, and no words say a round went
+  badly; a game's top level offers nothing.
 - **Demote, never delete.** A game made harder keeps its current behaviour
   as its easiest level; the rule is in `../AGENTS.md`.
 
@@ -50,6 +51,6 @@ this table in step as they land.
 | Skeleton (LAB-270) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, coloured by body area | 10–20 pieces, distractor bones, mystery skeleton, odd bone out |
 | Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to silhouette; to skeleton once the art covers 12 dinosaurs (LAB-301) |
 | Care (LAB-294) | today's game: need bubbles and the matching item | one-step missions | the reasoning puzzle of LAB-281 |
-| Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 3 baskets where a property allows | 3 baskets, more cards, the subtler properties |
+| Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 8 cards; diet adds BOTH | 10 cards, legs or feathers, with TWO OR FOUR or NOT KNOWN YET |
 | Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter and shorter, then earlier or later |
 | Reading (LAB-273) | the first letter, with a picture cue | the missing letter, from 3 tiles | the name built from shuffled letters |

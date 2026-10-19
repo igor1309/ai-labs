@@ -56,25 +56,37 @@ trusted for that alone.
 - Diet is the one the Dino Directory's fact box lists, as the catalogue
   shows it; every diet is inferred from teeth and jaws, so a hedge in
   the text does not make it unclear. A dinosaur listed as an omnivore is
-  `both` (Gallimimus and Oviraptor), and the sorting game leaves it out
-  of diet boards.
-- Traits sort dinosaurs in the sorting game: `legs` (2 or 4), `horns`
-  and `feathers` (true or false) and `size` (`big` or `small`). A trait
-  is `null`, and the dinosaur is left out of that sort, when the sources
-  leave it unclear (Iguanodon, Plateosaurus and the duck-billed
-  dinosaurs walked on two legs or four; feathers are unknown for
-  Tyrannosaurus and most large theropods) or when the dinosaur's picture
-  could mislead a child (Allosaurus's small brow horns are hard to see
-  in its picture; Pachycephalosaurus's knobs, Kentrosaurus's shoulder
-  spikes, the tail spikes of both stegosaurs and Amargasaurus's neck
-  spines are not horns, nor are the crests of Parasaurolophus,
+  `both` (Gallimimus, Oviraptor and Troodon). The sorting game leaves it
+  out of a diet board with two baskets and sorts it into BOTH on
+  Explorer's, which has a third (LAB-295).
+- Traits sort dinosaurs in the sorting game: `legs` (2, 4 or `either`),
+  `horns` (true or false), `feathers` (true, false or `unknown`) and
+  `size` (`big` or `small`). `legs` is `either` for the dinosaurs the
+  sources say walked on two legs or four (Iguanodon, Plateosaurus and
+  the duck-billed dinosaurs). A trait is `null`, and the dinosaur is left
+  out of that sort, when the sources leave it unclear in another way
+  (Spinosaurus's posture is argued over; Psittacosaurus walked on four
+  legs as a hatchling and on two as an adult) or when the dinosaur's
+  picture could mislead a child (Allosaurus's small brow horns are hard
+  to see in its picture; Pachycephalosaurus's knobs, Kentrosaurus's
+  shoulder spikes, the tail spikes of both stegosaurs and Amargasaurus's
+  neck spines are not horns, nor are the crests of Parasaurolophus,
   Corythosaurus and Dilophosaurus). Feathered means feathered in the
   picture too, as `art/style.md` lists. Feathers are `false` for the
   plant-eaters drawn without them, Psittacosaurus, with its tail
   bristles, and Heterodontosaurus, whose close relatives had bristles,
-  aside, and for the meat-eaters whose skin impressions show scales
-  (Allosaurus and Carnotaurus); for the other meat-eaters and the
-  omnivores drawn without feathers they are `null`.
+  aside (both `null`), and for the meat-eaters whose skin impressions
+  show scales and nothing else (Allosaurus and Carnotaurus). For the
+  other meat-eaters and the omnivores drawn without feathers feathers
+  are `unknown`: no fossil settles it, Tyrannosaurus included, whose
+  scaly skin NHM reports while leaving feathers on its back open.
+- The sorting game (LAB-295) deals `either` and `unknown` only on the
+  Paleontologist level's legs and feathers boards, into TWO OR FOUR and
+  NOT KNOWN YET; every other board leaves them out, as it does `null`.
+  Paleontologist's feathers board deals only the dinosaurs drawn with
+  feathers and the meat-eaters and omnivores, the ones a fossil can
+  answer for, so its NO FEATHERS means skin that shows scales, not a
+  plant-eater merely drawn without feathers.
 - Size is `big` only for a dinosaur of 3000 kg or more and `small` only
   for one of 500 kg or less, and only when no source's estimate crosses
   that line; it is `null` in between and when the estimates cross a line

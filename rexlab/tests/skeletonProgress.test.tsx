@@ -115,7 +115,7 @@ const others = (storage: MemoryStorage) => [
   storage.items.get(THEME_KEY)
 ];
 
-const OTHERS = [QUIZ, CARE, SORTING, PAIRS_SAVED, "en", "dark"];
+const OTHERS = [QUIZ, CARE, { progress: { best: { hatchling: SORTING.bestScore, explorer: null, paleontologist: null }, roundsPlayed: SORTING.roundsPlayed }, levelChoice: undefined }, PAIRS_SAVED, "en", "dark"];
 
 describe("keeping the collection", () => {
   it("keeps the stars and the skeletons on their stands once the app is closed and reopened", async () => {
@@ -203,7 +203,7 @@ describe("keeping the collection", () => {
     expect(savedSkeletons(storage)).toEqual(saved);
     localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 4 });
     localCareProgress(() => storage).save({ ...CARE, visitsFinished: 3 });
-    localSortingProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
+    localSortingProgress(() => storage).save({ progress: { best: { hatchling: 10, explorer: null, paleontologist: null }, roundsPlayed: 5 }, levelChoice: undefined });
     localPairsProgress(() => storage).save({ ...PAIRS_SAVED, progress: { ...PAIRS_SAVED.progress, stars: 6 } });
     expect(savedSkeletons(storage)).toEqual(saved);
   });
