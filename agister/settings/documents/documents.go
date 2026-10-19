@@ -385,7 +385,7 @@ func nearest(kind Kind, name string, document Document) blobResult {
 			held := bytes.Clone(source.Bytes)
 			digest := sha256.Sum256(held)
 			return blobResult{blob: Blob{Path: source.Path, Bytes: held, Digest: digest},
-				files: []File{{Layer: []string{"project", "repository", "home"}[i], Path: source.Path, Digest: fmt.Sprintf("%x", digest)}}}
+				files: []File{{Layer: []string{"project", "repository", "home"}[i], Path: source.Path, Digest: fmt.Sprintf("%x", digest), Bytes: held}}}
 		}
 	}
 	return blobResult{problems: []Problem{noLayer(kind, name)}}

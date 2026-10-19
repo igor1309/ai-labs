@@ -630,19 +630,22 @@ func (s *admissionSpy) asked() []admit.Request {
 // The runs it gives as kept are those of kept, by id, and no other: a
 // record written is not read back. It is safe for concurrent use.
 type storeSpy struct {
-	failWrite             int
-	failAppend            bool
-	failExport            error
-	failPatch             error
-	patches               map[string]string
-	patchWrites           []string
-	patchesMissingAtWrite []string
-	kept                  map[string]runstore.Record
-	mu                    sync.Mutex
-	folders               []string
-	records               []runstore.Record
-	events                []storedEvent
-	exports               []storedExport
+	failDefinition           map[string]error
+	definitionWrites         []storedDefinition
+	definitionWritesAtRecord []int
+	failWrite                int
+	failAppend               bool
+	failExport               error
+	failPatch                error
+	patches                  map[string]string
+	patchWrites              []string
+	patchesMissingAtWrite    []string
+	kept                     map[string]runstore.Record
+	mu                       sync.Mutex
+	folders                  []string
+	records                  []runstore.Record
+	events                   []storedEvent
+	exports                  []storedExport
 }
 
 // storedExport is a run exported, by its id, and the folder it was
@@ -670,6 +673,7 @@ func (s *storeSpy) at(folder string) (homeRuns, error) {
 func (s *storeSpy) Write(record runstore.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.definitionWritesAtRecord = append(s.definitionWritesAtRecord, len(s.definitionWrites))
 	record.Calls = slices.Clone(record.Calls)
 	for _, call := range record.Calls {
 		if call.Patch != nil {
@@ -683,6 +687,17 @@ func (s *storeSpy) Write(record runstore.Record) error {
 		return errFull
 	}
 	return nil
+}
+
+type storedDefinition struct {
+	id, digest, data string
+}
+
+func (s *storeSpy) WriteDefinition(id, digest string, data []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.definitionWrites = append(s.definitionWrites, storedDefinition{id: id, digest: digest, data: string(data)})
+	return s.failDefinition[digest]
 }
 
 func (s *storeSpy) WritePatch(id, step string, patch []byte) (string, error) {

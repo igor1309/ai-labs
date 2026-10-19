@@ -325,6 +325,22 @@ func (s *Store) WritePatch(id, step string, patch []byte) (string, error) {
 	return filepath.ToSlash(filepath.Join(id, path)), nil
 }
 
+// WriteDefinition writes a definition's bytes whole under its digest in
+// the run's definitions folder, replacing any bytes written there before.
+func (s *Store) WriteDefinition(id, digest string, data []byte) error {
+	folder, err := s.run(id)
+	if err != nil {
+		return err
+	}
+	if digest == "" || digest == "." || digest == ".." || strings.ContainsAny(digest, `/\`) {
+		return fmt.Errorf("runstore: %q is no definition's digest", digest)
+	}
+	if err := writeWhole(filepath.Join(folder, "definitions", digest), data); err != nil {
+		return fmt.Errorf("runstore: the definition %q of %q: %w", digest, id, err)
+	}
+	return nil
+}
+
 // Patch reads a patch by its path under the runs folder.
 func (s *Store) Patch(path string) ([]byte, error) {
 	if !filepath.IsLocal(path) {
@@ -385,7 +401,7 @@ func (s *Store) Runs() ([]string, error) {
 }
 
 // Export copies the run id names into a folder of its id under folder:
-// its record.json, events.jsonl and patches where present, each folder made
+// its record.json, events.jsonl, patches and definitions where present, each folder made
 // where missing and a copy already there written over. A run not kept is
 // an error that is, or wraps, fs.ErrNotExist, and nothing is copied. Each
 // file is read whole before anything is written: a record is as it was
@@ -404,17 +420,20 @@ func (s *Store) Export(id, folder string) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
 	}
-	patches := map[string][]byte{}
-	entries, err := os.ReadDir(filepath.Join(from, "patches"))
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("runstore: the export of %q: %w", id, err)
-	}
-	for _, entry := range entries {
-		data, err := os.ReadFile(filepath.Join(from, "patches", entry.Name()))
-		if err != nil {
+	artifacts := map[string][]byte{}
+	for _, directory := range []string{"patches", "definitions"} {
+		entries, err := os.ReadDir(filepath.Join(from, directory))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("runstore: the export of %q: %w", id, err)
 		}
-		patches[entry.Name()] = data
+		for _, entry := range entries {
+			path := filepath.Join(directory, entry.Name())
+			data, err := os.ReadFile(filepath.Join(from, path))
+			if err != nil {
+				return fmt.Errorf("runstore: the export of %q: %w", id, err)
+			}
+			artifacts[path] = data
+		}
 	}
 	to := filepath.Join(folder, id)
 	if err := os.MkdirAll(to, 0o755); err != nil {
@@ -428,8 +447,8 @@ func (s *Store) Export(id, folder string) error {
 			return fmt.Errorf("runstore: the export of %q: %w", id, err)
 		}
 	}
-	for name, data := range patches {
-		if err := writeWhole(filepath.Join(to, "patches", name), data); err != nil {
+	for path, data := range artifacts {
+		if err := writeWhole(filepath.Join(to, path), data); err != nil {
 			return fmt.Errorf("runstore: the export of %q: %w", id, err)
 		}
 	}

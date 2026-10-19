@@ -11,7 +11,7 @@ import (
 )
 
 func file(layer, path, text string) documents.File {
-	return documents.File{Layer: layer, Path: path, Digest: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))}
+	return documents.File{Layer: layer, Path: path, Digest: fmt.Sprintf("%x", sha256.Sum256([]byte(text))), Bytes: []byte(text)}
 }
 
 // files.feature: layers precede the extended document, blobs select only
@@ -47,6 +47,17 @@ func TestDocumentFiles(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			d := documents.New(c.snapshot)
+			for _, named := range c.snapshot.Documents {
+				for _, document := range named {
+					for _, source := range []*documents.Source{document.Sources.Home, document.Sources.Repository, document.Sources.Project} {
+						if source != nil {
+							for i := range source.Bytes {
+								source.Bytes[i] = '?'
+							}
+						}
+					}
+				}
+			}
 			got, problems := d.Files(c.kind, "a")
 			if !reflect.DeepEqual(got, c.want) {
 				t.Errorf("files %+v, want %+v", got, c.want)
@@ -61,6 +72,11 @@ func TestDocumentFiles(t *testing.T) {
 			}
 			if len(got) > 0 {
 				got[0].Digest = "changed"
+				for i := range got {
+					for j := range got[i].Bytes {
+						got[i].Bytes[j] = '!'
+					}
+				}
 			}
 			again, ps := d.Files(c.kind, "a")
 			if !reflect.DeepEqual(again, c.want) || c.problem != "" && !strings.Contains(fmt.Sprint(ps), c.problem) {

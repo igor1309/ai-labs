@@ -23,6 +23,7 @@ type recordStore interface {
 	Write(record runstore.Record) error
 	Append(id string, event runstore.Event) error
 	WritePatch(id, step string, patch []byte) (string, error)
+	WriteDefinition(id, digest string, data []byte) error
 	Patch(path string) ([]byte, error)
 }
 
@@ -59,6 +60,7 @@ func callID(run, step string) string {
 // it took, nil for one made; and its result.
 type endedCall struct {
 	definitions          []runstore.Definition
+	definitionBytes      map[string][]byte
 	step, process, agent string
 	continues            string
 	taken                *runstore.Call
@@ -80,15 +82,17 @@ type runRecord struct {
 	clock clock
 	root  string
 
-	mu       sync.Mutex
-	record   runstore.Record
-	warnings []string
+	mu                 sync.Mutex
+	record             runstore.Record
+	warnings           []string
+	definitionBytes    map[string][]byte
+	definitionAttempts map[string]bool
 }
 
 // newRunRecord is the record of the run id, started at started, of request,
 // asked in launch, its calls made in the worktree whose root is root, kept
 // by store.
-func newRunRecord(store recordStore, clock clock, id string, started time.Time, request cli.Request, definitions []runstore.Definition, launch, root string) (*runRecord, error) {
+func newRunRecord(store recordStore, clock clock, id string, started time.Time, request cli.Request, definitions []runstore.Definition, data map[string][]byte, launch, root string) (*runRecord, error) {
 	switch {
 	case store == nil:
 		return nil, errors.New("run record: no store")
@@ -103,7 +107,7 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 	if reuse := request.Reuse; reuse != "" {
 		asked.Reuse = &reuse
 	}
-	return &runRecord{store: store, clock: clock, root: root, record: runstore.Record{
+	return &runRecord{store: store, clock: clock, root: root, definitionBytes: data, definitionAttempts: map[string]bool{}, record: runstore.Record{
 		Schema:  runstore.Schema,
 		ID:      id,
 		Request: asked,
@@ -117,6 +121,7 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 func (r *runRecord) begin() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.keepDefinitions(r.record.Request.Definitions, r.definitionBytes)
 	return r.store.Write(r.written())
 }
 
@@ -156,6 +161,7 @@ func (r *runRecord) Called(ended endedCall) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.keepDefinitions(call.Definitions, ended.definitionBytes)
 	patch := ended.facts.Patch
 	patchError := ended.facts.PatchError
 	if taken := ended.taken; taken != nil {
