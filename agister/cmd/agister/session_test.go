@@ -152,6 +152,10 @@ func TestASessionsStepsAreNotTakenByAReuse(t *testing.T) {
 	f := newSessionFixture(t, talkWorkflow(), nil)
 	kept := func(step string) runstore.Call {
 		call := keptCall("R1/"+step, "t1", "s1")
+		call.Definitions = askDefinitions(f.settings, "claude-opus")
+		if step == "second" {
+			call.Definitions = append(call.Definitions[:3:3], append([]runstore.Definition{definitionAt(f.settings, "prompt", "continuation", "home", "/u/.agister/prompts/continuation.md")}, call.Definitions[3:]...)...)
+		}
 		call.Step, call.Inputs = step, []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}}
 		return call
 	}

@@ -56,7 +56,7 @@ func (r reusable) taken(ctx context.Context, ended endedCall) (runstore.Call, bo
 	}
 	earlier := r.calls[i]
 	if earlier.Result.Status != string(workflow.Completed) || earlier.Process != ended.process ||
-		earlier.Agent != ended.agent || earlier.Root != r.root || earlier.Content == "" || leftHead(earlier) == "" ||
+		earlier.Agent != ended.agent || !sameDefinitions(earlier.Definitions, ended.definitions) || earlier.Root != r.root || earlier.Content == "" || leftHead(earlier) == "" ||
 		!slices.EqualFunc(earlier.Inputs, ended.inputs, func(kept runstore.Input, given givenInput) bool {
 			return kept.Name == given.name && kept.Identity == given.Identity
 		}) {

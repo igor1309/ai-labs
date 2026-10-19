@@ -103,11 +103,13 @@ type Documents struct {
 
 type treeResult struct {
 	tree     tree.Node
+	files    []File
 	problems []Problem
 }
 
 type blobResult struct {
 	blob     Blob
+	files    []File
 	problems []Problem
 }
 
@@ -254,7 +256,7 @@ func compose(format tree.Format, document Document, decode decoder) treeResult {
 	if len(problems) > 0 {
 		return treeResult{problems: problems}
 	}
-	return treeResult{tree: composed}
+	return treeResult{tree: composed, files: sourceFiles(document.Sources)}
 }
 
 // extender applies extends to the documents of one kind: each document's
@@ -320,7 +322,7 @@ func (e *extender) derive(name string, chain []string) treeResult {
 		}
 		return treeResult{problems: problems}
 	}
-	return treeResult{tree: merged.tree.Over(under.tree)}
+	return treeResult{tree: merged.tree.Over(under.tree), files: slices.Concat(merged.files, under.files)}
 }
 
 // cycle gives each document of cycle, where each extends the next and the
@@ -378,10 +380,12 @@ func nearest(kind Kind, name string, document Document) blobResult {
 		return blobResult{problems: slices.Clone(document.Problems)}
 	}
 	sources := document.Sources
-	for _, source := range []*Source{sources.Project, sources.Repository, sources.Home} {
+	for i, source := range []*Source{sources.Project, sources.Repository, sources.Home} {
 		if source != nil {
 			held := bytes.Clone(source.Bytes)
-			return blobResult{blob: Blob{Path: source.Path, Bytes: held, Digest: sha256.Sum256(held)}}
+			digest := sha256.Sum256(held)
+			return blobResult{blob: Blob{Path: source.Path, Bytes: held, Digest: digest},
+				files: []File{{Layer: []string{"project", "repository", "home"}[i], Path: source.Path, Digest: fmt.Sprintf("%x", digest)}}}
 		}
 	}
 	return blobResult{problems: []Problem{noLayer(kind, name)}}
