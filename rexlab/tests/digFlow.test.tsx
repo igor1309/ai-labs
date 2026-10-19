@@ -87,6 +87,46 @@ describe("dig reveals through the app", () => {
     expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")?.textContent).toBe("1");
   });
 
+  it.each(
+    (["gust", "flight", "landed"] as const).flatMap((rotation) =>
+      [false, true].flatMap((reducedMotion) => ["DIG AGAIN", "HOME"].map((action) => ({ rotation, reducedMotion, action })))
+    )
+  )("waits for the displayed star after rotating during $rotation, reduced motion $reducedMotion, then accepts $action", ({ rotation, reducedMotion, action }) => {
+    const app = openDigApp({ reducedMotion });
+    const timing = reducedMotion ? "reduced" : "motion";
+    fireEvent.click(homeTile("DIG"));
+    placeBoard(800);
+    brushAll();
+    if (rotation !== "gust") act(() => app.timers.fire(GUST[timing]));
+    if (rotation === "landed") act(() => app.timers.fire(STAR_LANDS[timing]));
+
+    act(() => app.orientation.turn("portrait"));
+    if (rotation === "gust") act(() => app.timers.fire(GUST[timing]));
+    expect(app.timers.timers()).toEqual([]);
+    act(() => app.timers.fire(STAR_LANDS[timing]));
+    act(() => app.orientation.turn("landscape"));
+    expect(app.timers.timers()).toEqual([STAR_LANDS[timing]]);
+    act(() => app.timers.deliverStopped(STAR_LANDS[timing]));
+
+    fireEvent.click(levelButton("paleontologist"));
+    fireEvent.click(screen.getByRole("button", { name: "DIG AGAIN" }));
+    fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
+    expect(levelButton("explorer").getAttribute("aria-pressed")).toBe("true");
+    expect(app.featured.history().timesStarted.get("dig")).toBe(1);
+
+    act(() => app.timers.fire(STAR_LANDS[timing]));
+    fireEvent.click(levelButton("paleontologist"));
+    expect(levelButton("paleontologist").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    if (action === "DIG AGAIN") {
+      expect(document.querySelector(".dig-board")?.getAttribute("data-level")).toBe("paleontologist");
+      expect(app.featured.history().timesStarted.get("dig")).toBe(2);
+    } else {
+      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+    }
+  });
+
   it.each(AGE_LEVELS)("starts the first round at the parent age level %s and marks it on the reveal", (level) => {
     const app = reveal({ ageLevel: level });
     expect(app.startedLevel).toBe(level);

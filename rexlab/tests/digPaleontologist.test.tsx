@@ -1,18 +1,29 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
+import { DigBoardScreen } from "../src/DigBoardScreen.tsx";
+import { BRUSH_SIZES, brushRound, startRound } from "../src/dig/index.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
+import { presentDigBoard } from "../src/presentation.ts";
 import { board, brushAll, drag, openDigApp, placeBoard } from "./digApp.tsx";
-import { SHIPPED_DIG, homeTile, manualPictures, memoryStorage } from "./support.ts";
+import { SHIPPED_DIG, fakeBodyPicture, homeTile, manualPictures, memoryStorage } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
+import { withPictures } from "./pictures.tsx";
 
 const rex = SHIPPED_DIG.find(({ id }) => id === "tyrannosaurus")!;
 const cards = () => [...document.querySelectorAll<HTMLElement>(".dig-find-card")];
 const choices = () => [...document.querySelectorAll<HTMLButtonElement>(".dig-choice-card")];
-const correct = () => choices().find((card) => card.dataset.choice === rex.id)!;
-const wrong = () => choices().find((card) => card.dataset.choice !== rex.id)!;
+const pictureOf = (card: HTMLButtonElement) => card.querySelector("img")?.getAttribute("src");
+const correct = () => choices().find((card) => pictureOf(card) === fakeBodyPicture(rex.id))!;
+const wrong = () => choices().find((card) => pictureOf(card) !== fakeBodyPicture(rex.id))!;
+const expectChoicePictures = () => {
+  expect(choices()).toHaveLength(3);
+  expect(new Set(choices().map((card) => card.dataset.choice)).size).toBe(3);
+  expect(new Set(choices().map(pictureOf)).size).toBe(3);
+  for (const card of choices()) expect(pictureOf(card)).toBe(fakeBodyPicture(card.dataset.choice!));
+};
 const ageLevel = { level: "paleontologist", revision: null } as const;
 
 function openRound(options: Parameters<typeof openDigApp>[0] = {}) {
@@ -127,6 +138,24 @@ describe("Paleontologist's board", () => {
 });
 
 describe("the choice and its badge", () => {
+  it("submits the dinosaur shown by each of three different body pictures", () => {
+    const started = startRound(SHIPPED_DIG, [], undefined, () => 0, "paleontologist");
+    const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
+    const submitted: string[] = [];
+    render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, "en")}
+      level={round.level} brush={BRUSH_SIZES[round.level]} grains={false}
+      dugUp={0} total={SHIPPED_DIG.length} sandContext={() => null}
+      onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);
+
+    expectChoicePictures();
+    for (const card of choices()) {
+      fireEvent.click(card);
+      expect(pictureOf(card)).toBe(fakeBodyPicture(submitted.at(-1)!));
+    }
+    expect(submitted).toHaveLength(3);
+    expect(new Set(submitted).size).toBe(3);
+  });
+
   it.each([false, true])("locks an ongoing stroke and further brushing, fades wrong picks permanently, then gusts on the right pick, reduced motion %s", (reducedMotion) => {
     const app = openRound({ reducedMotion });
     find("eye");
@@ -140,8 +169,7 @@ describe("the choice and its badge", () => {
       moveAt(time += 10, { x: foot.x - foot.r, y: y + 20, pointer: 9 });
     }
     expect(cards().every((card) => card.hasAttribute("data-found"))).toBe(true);
-    expect(choices()).toHaveLength(3);
-    expect(new Set(choices().map((card) => card.dataset.choice)).size).toBe(3);
+    expectChoicePictures();
     expect(choices().every((card) => card.querySelector("img") && card.textContent === "")).toBe(true);
     expect(board().hasAttribute("data-blown")).toBe(false);
     const before = board().getAttribute("data-clear");
@@ -164,7 +192,7 @@ describe("the choice and its badge", () => {
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     act(() => app.orientation.turn("portrait"));
     act(() => app.orientation.turn("landscape"));
-    expect(choices().find((card) => card.dataset.choice === rejected.dataset.choice)?.disabled).toBe(true);
+    expect(choices().find((card) => pictureOf(card) === pictureOf(rejected))?.disabled).toBe(true);
     fireEvent.click(correct());
     expect(board().hasAttribute("data-blown")).toBe(true);
     expect(choices().every((card) => card.disabled)).toBe(true);
@@ -207,17 +235,30 @@ describe("the choice and its badge", () => {
     expect(cards()[0]?.querySelector("img")?.getAttribute("data-picture")).toBe("loading");
     brushAll();
     expect(choices().map((card) => card.querySelector("img")?.getAttribute("data-picture"))).toEqual(["loading", "loading", "loading"]);
-    const urls = choices().map((card) => `/pictures/${card.dataset.choice}.webp`);
+    const urls = choices().map((card) => fakeBodyPicture(card.dataset.choice!));
     act(() => {
       if (outcome === "late") pictures.fire(PICTURE_LIMIT);
       else for (const url of urls) outcome === "loaded" ? pictures.finish(url) : pictures.fail(url);
     });
     const look = outcome === "loaded" ? "appearing" : "failed";
     expect(choices().map((card) => card.querySelector("img")?.getAttribute("data-picture"))).toEqual([look, look, look]);
+    if (outcome === "loaded") expectChoicePictures();
     expect(cards().every((card) => card.querySelector("img")?.getAttribute("data-picture") === look)).toBe(true);
-    fireEvent.click(wrong());
-    expect(wrong().disabled).toBe(true);
-    fireEvent.click(correct());
+    if (outcome === "loaded") {
+      fireEvent.click(wrong());
+      expect(wrong().disabled).toBe(true);
+      fireEvent.click(correct());
+    } else {
+      // Failed pictures deliberately have no src. Try the cards in reverse
+      // order, checking rejected taps until this seeded round's right pick.
+      expect(choices().map(pictureOf)).toEqual([null, null, null]);
+      for (const card of choices().reverse()) {
+        fireEvent.click(card);
+        expect(card.disabled).toBe(true);
+        if (!board().hasAttribute("data-blown")) expect(card.hasAttribute("data-rejected")).toBe(true);
+      }
+      expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toHaveLength(2);
+    }
     expect(board().hasAttribute("data-blown")).toBe(true);
     act(() => app.timers.fire(GUST.motion));
     expect(reward().textContent).toContain(`1/${SHIPPED_DIG.length}`);

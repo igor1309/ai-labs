@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { App, type SandContext } from "../src/App.tsx";
+import type { AgeLevel } from "../src/ageLevel.ts";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -30,11 +31,11 @@ import {
 import { board, brushAll, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
-type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext };
+type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext; level?: AgeLevel };
 
 // The app on its home page, every timer firing only when the test says,
 // pictures loading at once, and random draws counted.
-function openApp({ reducedMotion = false, random = () => 0, language = "en", sandContext = emptyDig().sandContext }: Options = {}) {
+function openApp({ reducedMotion = false, random = () => 0, language = "en", sandContext = emptyDig().sandContext, level = "hatchling" }: Options = {}) {
   const timers = manualTimers();
   const orientation = manualOrientation("landscape");
   const draws = { count: 0 };
@@ -56,9 +57,7 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       languageStore={localLanguage(() => storage)}
       nameVersion={unreadVersion}
       {...lightDevice()}
-      // These are Hatchling's free-brushing scenarios; Explorer has help
-      // timers and a finer brush of its own.
-      ageLevelStore={{ load: () => ({ level: "hatchling", revision: null }), save: () => {} }}
+      ageLevelStore={{ load: () => ({ level, revision: null }), save: () => {} }}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
@@ -81,24 +80,49 @@ function openRound(options: Options = {}) {
   return opened;
 }
 
-// The drawing on the sand's canvas: each time it is covered whole, and
-// each round stamp taken off it, in canvas pixels.
+type Arc = { x: number; y: number; r: number; start: number; end: number };
+type Gradient = { circles: number[]; stops: Array<[number, string]>; addColorStop(at: number, colour: string): void };
+type Fill = { path: Arc[]; operation: string; style: string | Gradient };
+
+// Completed drawing operations on the sand's canvas, in canvas pixels.
 function spySand() {
-  const drawn = { covers: [] as Array<[number, number]>, stamps: [] as Array<{ x: number; y: number; r: number }> };
+  const drawn = {
+    covers: [] as Array<[number, number]>,
+    paints: [] as Array<{ operation: string; style: string | Gradient }>,
+    fills: [] as Fill[],
+    get stamps() { return this.fills.flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); }
+  };
+  let path: Arc[] = [];
   const context = {
     globalCompositeOperation: "source-over",
-    fillStyle: "",
+    fillStyle: "" as string | Gradient,
     fillRect: (x: number, y: number, width: number, height: number) => {
+      drawn.paints.push({ operation: context.globalCompositeOperation, style: context.fillStyle });
       if (context.globalCompositeOperation === "source-over" && x === 0 && y === 0) drawn.covers.push([width, height]);
     },
-    createRadialGradient: () => ({ addColorStop: () => {} }),
-    beginPath: () => {},
-    arc: (x: number, y: number, r: number) => {
-      if (context.globalCompositeOperation === "destination-out") drawn.stamps.push({ x, y, r });
+    createRadialGradient: (...circles: number[]) => {
+      const gradient: Gradient = { circles, stops: [], addColorStop: (at, colour) => { gradient.stops.push([at, colour]); } };
+      return gradient;
     },
-    fill: () => {}
+    beginPath: () => { path = []; },
+    arc: (x: number, y: number, r: number, start: number, end: number) => { path.push({ x, y, r, start, end }); },
+    fill: () => { drawn.fills.push({ path: [...path], operation: context.globalCompositeOperation, style: context.fillStyle }); }
   };
   return { drawn, sandContext: () => context as unknown as CanvasRenderingContext2D };
+}
+
+function expectErased(fills: Fill[], places: Array<{ x: number; y: number; r: number }>) {
+  expect(fills).toHaveLength(places.length);
+  places.forEach(({ x, y, r }, at) => {
+    expect(fills[at]).toEqual({
+      operation: "destination-out",
+      path: [{ x, y, r, start: 0, end: 2 * Math.PI }],
+      style: expect.objectContaining({
+        circles: [x, y, 0, x, y, r],
+        stops: [[0, "rgba(0, 0, 0, 1)"], [0.6, "rgba(0, 0, 0, 0.9)"], [1, "rgba(0, 0, 0, 0)"]]
+      })
+    });
+  });
 }
 
 const APP_CSS = readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8");
@@ -156,6 +180,8 @@ describe("a round's start", () => {
     expect([clearCells(), cleared()]).toEqual([[], 0]);
     expect(board().getAttribute("data-clear")).toBe(Array.from({ length: 30 }, () => "0".repeat(40)).join(" "));
     expect(drawn.covers.at(-1)).toEqual([800, 600]);
+    expect(drawn.paints.every(({ operation }) => operation === "source-over")).toBe(true);
+    expect(drawn.paints[0]?.style).toBe("#d9b77e");
     expect(drawn.stamps).toEqual([]);
     expect(getComputedStyle(board()).animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
   });
@@ -214,6 +240,27 @@ describe("the brush", () => {
 
     expect(clearCells()).toEqual(["14:20", "15:19", "15:20", "15:21", "16:20"]);
     expect(drawn.stamps).toEqual([{ x: 410, y: 310, r: 24 }]);
+    expectErased(drawn.fills, [{ x: 410, y: 310, r: 24 }]);
+  });
+
+  it.each([["hatchling", 24], ["explorer", 18], ["paleontologist", 18]] as const)("erases a tap and drag with %s's gradient, and redraws them after resize", (level, r) => {
+    const { drawn, sandContext } = spySand();
+    openRound({ sandContext, level });
+    tapAt(board(), 0, { x: 410, y: 310 });
+    expectErased(drawn.fills, [{ x: 410, y: 310, r }]);
+
+    const before = drawn.fills.length;
+    drag([[200, 110], [200 + r, 110]], 1000);
+    const stroke = [0, 0, 1, 2, 3].map((step) => ({ x: 200 + step * r / 3, y: 110, r }));
+    expectErased(drawn.fills.slice(before), stroke);
+
+    const filled = drawn.fills.length;
+    const painted = drawn.paints.length;
+    placeBoard(400);
+    expectErased(drawn.fills.slice(filled), [{ x: 410, y: 310, r }, ...stroke].map(({ x, y, r }) => ({ x: x / 2, y: y / 2, r: r / 2 })));
+    expect(drawn.covers.at(-1)).toEqual([400, 300]);
+    expect(drawn.paints.slice(painted).length).toBeGreaterThan(1);
+    expect(drawn.paints.every(({ operation }) => operation === "source-over")).toBe(true);
   });
 
   it("takes taps through the double-tap filter: two taps 600 ms apart clear two spots, a press within 500 ms and 100 px clears nothing", () => {

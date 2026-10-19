@@ -8,8 +8,13 @@ import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { LevelBadge } from "./LevelBadge.tsx";
 import { LevelSwitch, type LevelSwitchProps } from "./LevelSwitch.tsx";
 import { Picture, PictureImage, type PictureLook } from "./Picture.tsx";
+import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
 import { CelebrationChip, type Celebration } from "./ResultParts.tsx";
+
+// The reveal's arrival, then the star's flight, or their reduced-motion
+// fades. Every mounted reveal waits as long, a star flying or not.
+export const STAR_LANDS: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
 
 export type DigRevealScreenProps = Omit<LevelSwitchProps, "language"> & {
   language: Language;
@@ -31,6 +36,9 @@ export type DigRevealScreenProps = Omit<LevelSwitchProps, "language"> & {
   badge: boolean;
   // The star has landed on the card, and the reveal takes taps.
   landed: boolean;
+  startTimer: StartTimer;
+  landingWait: number;
+  onLanded: (landed: boolean) => void;
   onDigAgain: () => void;
   onHome: () => void;
 };
@@ -51,6 +59,9 @@ export function DigRevealScreen({
   celebration,
   badge,
   landed,
+  startTimer,
+  landingWait,
+  onLanded,
   level,
   onLevel,
   onDigAgain,
@@ -63,16 +74,29 @@ export function DigRevealScreen({
   const blocked = phase === "shown" || phase === "leaving";
   const latestOffer = useRef(offer);
   latestOffer.current = offer;
-  const startTimer = offer?.startTimer;
+  const hasOffer = Boolean(offer);
+  // Rotation remounts the reveal and restarts its animation, so only this
+  // mounted reveal can say when its displayed star has landed.
   useEffect(() => {
-    if (!landed || phase !== "waiting" || !startTimer || !result.current) return;
+    let active = true;
+    const stop = startTimer(landingWait, () => {
+      if (active) onLanded(true);
+    });
+    return () => {
+      active = false;
+      stop();
+      onLanded(false);
+    };
+  }, [startTimer, landingWait, onLanded]);
+  useEffect(() => {
+    if (!landed || phase !== "waiting" || !hasOffer || !result.current) return;
     const rewards = [...result.current.querySelectorAll(".dig-card-star, .celebration")];
     return afterResultAnimations(rewards, startTimer, () => {
       if (!latestOffer.current) return;
       setShownOffer(latestOffer.current);
       setPhase("shown");
     });
-  }, [landed, phase, startTimer]);
+  }, [landed, phase, startTimer, hasOffer]);
   useEffect(() => {
     if (phase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
   }, [phase]);

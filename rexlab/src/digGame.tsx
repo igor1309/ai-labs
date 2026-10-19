@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import {
@@ -20,7 +20,7 @@ import {
   type Random
 } from "./dig/index.ts";
 import { DigBoardScreen, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
-import { DigRevealScreen } from "./DigRevealScreen.tsx";
+import { DigRevealScreen, STAR_LANDS } from "./DigRevealScreen.tsx";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 import { usePicture, type PictureLook } from "./Picture.tsx";
 import type { Language } from "./language/language.ts";
@@ -30,6 +30,7 @@ import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 export type { SandContext } from "./DigBoardScreen.tsx";
+export { STAR_LANDS } from "./DigRevealScreen.tsx";
 
 // What the dig game keeps: its collection, the child's level choice
 // and the run of strong rounds for its next level offer.
@@ -65,12 +66,6 @@ const HELP_TICK = 1000;
 // fade with reduced motion.
 export const GUST: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
 
-// How long the reveal's star takes to land on the "DUG UP" card, in
-// milliseconds, before the reveal takes taps: the reveal's arrival over
-// --motion-screen, then the star's flight over another, and their fades
-// with reduced motion. Every reveal waits as long, a star flying or not.
-export const STAR_LANDS: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
-
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch; both hold while the app is open even when
 // they cannot be saved.
@@ -99,6 +94,10 @@ export function useDigGame(
   onStart: () => void
 ) {
   const { screen, go } = useScreens<DigScreen | undefined, "start">(undefined, transitionFor);
+  const revealRound = screen?.kind === "reveal" ? screen.round : undefined;
+  const onLanded = useCallback((landed: boolean) => {
+    go((current) => current?.kind === "reveal" && current.round === revealRound && current.landed !== landed ? { ...current, landed } : current);
+  }, [go, revealRound]);
   const away = useSyncExternalStore(presence.subscribe, presence.isAway);
   const ids = digDinosaurs.map(({ id }) => id);
   // Progress is read once, as the app opens, and kept from then on, so a
@@ -227,9 +226,6 @@ export function useDigGame(
       const levelOffer = countBoard(keptNow.current.levelOffer, to.level, !to.helpShown);
       keep({ ...keptNow.current, levelOffer });
       go({ kind: "reveal", round: to, reward: dug.reward, landed: false, offer: offeredLevel(levelOffer) });
-      timers.start(STAR_LANDS[timing], () =>
-        go((current) => (current?.kind === "reveal" && current.round === to ? { ...current, landed: true } : current))
-      );
     });
   };
 
@@ -272,6 +268,9 @@ export function useDigGame(
             picture={bodyPicture(id)}
             {...screen.reward}
             landed={screen.landed}
+            startTimer={startTimer}
+            landingWait={STAR_LANDS[reducedMotion() ? "reduced" : "motion"]}
+            onLanded={onLanded}
             level={level}
             onLevel={chooseLevel}
             offer={screen.offer ? {

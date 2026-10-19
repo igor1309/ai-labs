@@ -1,12 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { DigRevealScreen } from "../src/DigRevealScreen.tsx";
+import { DigRevealScreen, STAR_LANDS } from "../src/DigRevealScreen.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { withPictures } from "./pictures.tsx";
-import { contrast, fakeBodyPicture, seenOn, surfaceOf } from "./support.ts";
+import { contrast, fakeBodyPicture, manualTimers, seenOn, surfaceOf } from "./support.ts";
 
 // jsdom lays nothing out. Budget the delivered CSS of the fullest reveal,
 // the 42nd dinosaur dug up and named at the first pick, at 1024 by 768,
@@ -52,6 +52,9 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
           celebration="new-best"
           badge
           landed
+          startTimer={manualTimers().startTimer}
+          landingWait={STAR_LANDS.motion}
+          onLanded={() => {}}
           level="paleontologist"
           onLevel={() => {}}
           onDigAgain={() => {}}
