@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- DIG's reveal names the dinosaur with a star on its DUG UP card, out of all 42, with the best-score celebrations, a 🏆 once all are dug up, and the level switch above DIG AGAIN; the dinosaurs dug up and the child's level choice are kept (LAB-341).
 - A new game, DIG: a tile over MORE COMING starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
 - Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
