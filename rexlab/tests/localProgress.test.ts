@@ -1,12 +1,14 @@
 import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { describe, expect, it } from "vitest";
 import { NO_CARE } from "../src/care/index.ts";
+import { NO_DIG } from "../src/dig/index.ts";
 import type { FeaturedHistory, Featuring } from "../src/featured.ts";
 import { NO_PAIRS } from "../src/pairs/index.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import {
   PROGRESS_KEY,
   localCareProgress,
+  localDigProgress,
   localFeatured,
   localPairsProgress,
   localProgress,
@@ -572,6 +574,104 @@ describe("localSkeletonProgress", () => {
 
     expect(progress.load()).toBeUndefined();
     expect(() => progress.save(saved(SKELETONS))).not.toThrow();
+  });
+});
+
+const dig = (entry: unknown, games: Record<string, unknown> = {}) => JSON.stringify({ schemaVersion: 1, games: { ...games, dig: entry } });
+
+const DIG = { dug: ["stegosaurus", "triceratops"], badges: ["triceratops"] };
+const NO_DIG_SAVED = { progress: NO_DIG, levelChoice: undefined };
+
+describe("localDigProgress", () => {
+  it("reads no dinosaurs dug up, no badges and no level choice from empty storage", () => {
+    const storage = memoryStorage();
+
+    expect(localDigProgress(() => storage).load()).toEqual(NO_DIG_SAVED);
+  });
+
+  it.each([
+    [DIG, { progress: DIG, levelChoice: undefined }],
+    [{ ...DIG, levelChoice: CHOICE }, { progress: DIG, levelChoice: CHOICE }],
+    [{ ...DIG, dug: ["triceratops", "a-dinosaur-no-longer-shipped"] }, { progress: { ...DIG, dug: ["triceratops", "a-dinosaur-no-longer-shipped"] }, levelChoice: undefined }]
+  ])("reads the dinosaurs dug up, their badges and the level choice from %j", (entry, read) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: dig(entry) });
+
+    expect(localDigProgress(() => storage).load()).toEqual(read);
+  });
+
+  it.each([
+    ["no level choice", { progress: DIG, levelChoice: undefined }, DIG],
+    ["a level choice", { progress: DIG, levelChoice: CHOICE }, { ...DIG, levelChoice: CHOICE }]
+  ])("saves its progress and %s under the dig key, and reads them back after a reload", (_, saved, entry) => {
+    const storage = memoryStorage();
+
+    localDigProgress(() => storage).save(saved);
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games.dig).toEqual(entry);
+    expect(localDigProgress(() => storage).load()).toEqual(saved);
+  });
+
+  it.each([
+    ["no dinosaurs dug up", { badges: DIG.badges }],
+    ["dinosaurs dug up that are not a list", { ...DIG, dug: "triceratops" }],
+    ["a dinosaur dug up that is not an id", { ...DIG, dug: [3] }],
+    ["no badges", { dug: DIG.dug }],
+    ["badges that are not a list", { ...DIG, badges: { triceratops: true } }],
+    ["a badge that is not an id", { ...DIG, badges: [null] }],
+    ["a level choice that is not a record", { ...DIG, levelChoice: "explorer" }],
+    ["a level choice of no age level", { ...DIG, levelChoice: { level: "expert", revision: "2-picked" } }],
+    ["a level choice with no revision", { ...DIG, levelChoice: { level: "explorer" } }],
+    ["a level choice of an empty revision", { ...DIG, levelChoice: { level: "explorer", revision: "" } }],
+    ["an entry that is not a record", 6]
+  ])("reads %s as no dig progress, keeps the other games' and is replaced by the next save", (_, entry) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: dig(entry, { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 } }) });
+    const store = localDigProgress(() => storage);
+
+    expect(store.load()).toEqual(NO_DIG_SAVED);
+    expect(localProgress(() => storage).load()).toEqual({ bestScore: 7, roundsPlayed: 3 });
+
+    store.save({ progress: DIG, levelChoice: undefined });
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games).toEqual({ "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, dig: DIG });
+  });
+
+  it("reads progress of an unknown schema version as none, and replaces it with a readable record on save", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 2, games: { dig: DIG } }) });
+    const store = localDigProgress(() => storage);
+
+    expect(store.load()).toEqual(NO_DIG_SAVED);
+
+    store.save({ progress: { dug: ["stegosaurus"], badges: [] }, levelChoice: undefined });
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({ schemaVersion: 1, games: { dig: { dug: ["stegosaurus"], badges: [] } } });
+  });
+
+  it("keeps the other games in one record, each saved without touching the others", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: game({ bestScore: 7, roundsPlayed: 3 }) });
+
+    localDigProgress(() => storage).save({ progress: DIG, levelChoice: CHOICE });
+    localSkeletonProgress(() => storage).save(saved(SKELETONS));
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "")).toEqual({
+      schemaVersion: 1,
+      games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, dig: { ...DIG, levelChoice: CHOICE }, "skeleton-assembly": SKELETONS }
+    });
+  });
+
+  it("keeps the stored record as it was when progress cannot be saved", () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: dig(DIG) }, { save: false });
+    const store = localDigProgress(() => storage);
+
+    expect(() => store.save({ progress: { dug: [...DIG.dug, "ankylosaurus"], badges: [] }, levelChoice: CHOICE })).not.toThrow();
+    expect(store.load()).toEqual({ progress: DIG, levelChoice: undefined });
+  });
+
+  it.each([
+    ["the storage cannot be reached", blocked],
+    ["the storage cannot be read", () => memoryStorage({ [PROGRESS_KEY]: dig(DIG) }, { read: false })]
+  ])("loads nothing and saves nothing when %s", (_, storage) => {
+    const progress = localDigProgress(storage);
+
+    expect(progress.load()).toBeUndefined();
+    expect(() => progress.save({ progress: DIG, levelChoice: undefined })).not.toThrow();
   });
 });
 

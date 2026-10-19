@@ -6,3 +6,5 @@ export type { FramePoint, Mark, Sand } from "./sand.ts";
 export { brush, clearCells, clearShare, NEW_SAND } from "./sand.ts";
 export type { DigLevel, DigRound, Random } from "./round.ts";
 export { BRUSH_SIZES, brushRound, GUST_SHARE, roundShare, startRound } from "./round.ts";
+export type { BeatBest, Celebration, DigProgress, DigReward, KeptDig } from "./progress.ts";
+export { digUp, dugUpOf, mergeProgress, NO_DIG } from "./progress.ts";

@@ -181,8 +181,9 @@ describe("the skeleton game's transition for each change", () => {
 
 describe("the dig game's transition for each change", () => {
   type DigScreen = Parameters<typeof digTransitionFor>[0];
-  const round = startDig(SHIPPED_DIG, [], undefined, () => 0);
-  const screens: DigScreen[] = [undefined, { kind: "board", round }, { kind: "reveal", round }];
+  const round = startDig(SHIPPED_DIG, [], undefined, () => 0, "hatchling");
+  const reward = { dugUp: 1, total: SHIPPED_DIG.length, newStar: true, celebration: "first-best", badge: false } as const;
+  const screens: DigScreen[] = [undefined, { kind: "board", round }, { kind: "reveal", round, reward, landed: false }];
 
   it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
     expect(digTransitionFor(from, to, undefined)).toBe(type);
@@ -194,8 +195,12 @@ describe("the dig game's transition for each change", () => {
     expect(digTransitionFor({ kind: "board", round }, { kind: "board", round: brushed }, undefined)).toBeUndefined();
   });
 
+  it("changes the reveal at once as its star lands", () => {
+    expect(digTransitionFor({ kind: "reveal", round, reward, landed: false }, { kind: "reveal", round, reward, landed: true }, undefined)).toBeUndefined();
+  });
+
   it("shows a round started over the round kept from before as the plain screen change", () => {
-    const next = startDig(SHIPPED_DIG, [round.dinosaur.id], undefined, () => 0);
+    const next = startDig(SHIPPED_DIG, [round.dinosaur.id], undefined, () => 0, "hatchling");
 
     expect(digTransitionFor({ kind: "board", round }, { kind: "board", round: next }, "start")).toBe(SCREEN_CHANGE);
     expect(digTransitionFor(undefined, { kind: "board", round: next }, "start")).toBe(SCREEN_CHANGE);

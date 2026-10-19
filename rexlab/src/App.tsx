@@ -78,7 +78,7 @@ export type PageVisibility = {
 };
 
 export type { CareProgressStore } from "./careGame.tsx";
-export type { SandContext } from "./digGame.tsx";
+export type { DigProgressStore, SandContext } from "./digGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
@@ -86,7 +86,7 @@ export type AppProps = CareGameProps &
   PairsGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
   Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> &
-  Pick<DigGameProps, "digDinosaurs" | "sandContext"> & {
+  Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -207,6 +207,7 @@ export function App({
   skeletonPicture,
   skeletonProgress,
   digDinosaurs,
+  digProgress,
   sandContext,
   ...careProps
 }: AppProps) {
@@ -351,7 +352,8 @@ export function App({
   };
 
   const dig = useDigGame(
-    { digDinosaurs, dinosaurName, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion, sandContext },
+    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion, sandContext },
+    ageLevel,
     home
   );
 

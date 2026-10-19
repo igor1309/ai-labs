@@ -4091,27 +4091,38 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-/* The result is navy in either theme, with a pale chosen mark. */
+/* The result is navy in either theme, with a pale chosen mark, and so is
+   the dig game's reveal. */
 .result-with-levels .level-switch,
-[data-theme="dark"] .result-with-levels .level-switch {
+.dig-reveal-screen .level-switch,
+[data-theme="dark"] .result-with-levels .level-switch,
+[data-theme="dark"] .dig-reveal-screen .level-switch {
   background: #00000033;
   border-color: #ffffff40;
 }
 
 .result-with-levels .level-switch-level,
-[data-theme="dark"] .result-with-levels .level-switch-level {
+.dig-reveal-screen .level-switch-level,
+[data-theme="dark"] .result-with-levels .level-switch-level,
+[data-theme="dark"] .dig-reveal-screen .level-switch-level {
   color: #f6f2e9;
 }
 
 .result-with-levels .level-switch-mark,
 .result-with-levels .level-switch-level[aria-pressed="true"],
+.dig-reveal-screen .level-switch-mark,
+.dig-reveal-screen .level-switch-level[aria-pressed="true"],
 [data-theme="dark"] .result-with-levels .level-switch-mark,
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .dig-reveal-screen .level-switch-mark,
+[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
   background-color: #f6f2e9;
 }
 
 .result-with-levels .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+.dig-reveal-screen .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
   color: #1f2b4d;
   box-shadow: 0 4px 10px #00000066;
 }
@@ -4902,37 +4913,150 @@ body:has(.result) #version {
   }
 }
 
-/* The dinosaur dug up, whole, over its name. */
+/* The reveal is the round's result, ink navy in both themes as every
+   game's result is: the dinosaur dug up, whole, beside its name, the
+   "DUG UP" card, the level switch and the ways on, under a glow and
+   confetti when the count grows. */
+.dig-reveal-screen {
+  padding: 32px;
+  gap: 16px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
 .dig-reveal {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .dig-reveal-art {
   flex: 1 1 0;
-  min-height: 0;
-  width: 100%;
+  min-width: 0;
+  height: 100%;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
 .dig-reveal-picture {
-  height: 100%;
-  max-width: 100%;
+  width: 100%;
+  max-height: 100%;
   object-fit: contain;
   animation: grow-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* As wide as the level switch needs for every level's name on one line,
+   as the sorting result's column. The name is as large as fits there,
+   its size the column's width over the longest name's, in ems:
+   PACHYCEPHALOSAURUS's 12.7, with its letters' spacing. */
+.dig-reward {
+  flex: 0 1 648px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  container-type: inline-size;
+}
+
 .dig-reveal-name {
+  align-self: stretch;
   margin: 0;
-  font-size: 48px;
+  font-size: min(64px, (100cqi - 18px) / 12.7);
   font-weight: 700;
-  letter-spacing: 2px;
+  line-height: 1.2;
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dig-card {
+  height: 72px;
+  box-sizing: border-box;
+  padding: 0 24px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 36px;
+  outline: 1px solid #ffffff40;
+  outline-offset: -0.5px;
+  background: #00000033;
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-card-star {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-card-words {
+  letter-spacing: 1px;
+}
+
+.dig-card-count,
+.dig-card-new,
+.dig-card-trophy {
+  color: #e39b2d;
+}
+
+.dig-card-count {
+  font-size: 28px;
+}
+
+.dig-card-trophy {
+  display: grid;
+}
+
+/* A star newly earned flies from the dinosaur onto the card as the
+   reveal settles, and the count and NEW! pop in as it lands; with
+   reduced motion they only fade in. */
+.dig-card[data-new] .dig-card-star {
+  animation: dig-star-flies var(--motion-screen) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes dig-star-flies {
+  from {
+    opacity: 0;
+    translate: calc(-280px * var(--motion-amount)) calc(-140px * var(--motion-amount));
+    scale: calc(1 + var(--motion-amount));
+  }
+}
+
+.dig-card[data-new] .dig-card-count,
+.dig-card-new {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(2 * var(--motion-screen)) both;
+}
+
+.dig-reveal-screen .celebration {
+  height: 52px;
+  font-size: 22px;
+}
+
+/* The level switch above DIG AGAIN and HOME, which take no tap until the
+   star has landed. */
+.dig-reveal-ways {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.dig-reveal-screen .play-again-button,
+.dig-reveal-screen .result-actions .home-button {
+  height: 72px;
+  white-space: nowrap;
 }
 
 /* The level switch, centred between the bar and the dinosaurs, as wide as
@@ -6539,6 +6663,20 @@ body:has(.result) #version {
 [data-theme="dark"] .dig-board {
   outline-color: #ece8de1f;
   background: #181e2e;
+}
+
+[data-theme="dark"] .dig-reveal-screen {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .dig-card-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-card-count,
+[data-theme="dark"] .dig-card-new,
+[data-theme="dark"] .dig-card-trophy {
+  color: #f2b24b;
 }
 
 [data-theme="dark"] .more-coming {

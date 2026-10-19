@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -30,12 +31,15 @@ export type DigBoardScreenProps = {
   cleared: number;
   // The gust has blown the rest of the sand away.
   blown: boolean;
+  // The age level the round plays.
+  level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
   brush: number;
   // Whether grains puff from the brush: not with reduced motion.
   grains: boolean;
-  // The dinosaurs dug up so far, out of all of them.
-  dugUp: number;
+  // The dinosaurs dug up so far, out of all of them; undefined when
+  // stored progress cannot be read, so there is no count to show.
+  dugUp: number | undefined;
   total: number;
   sandContext: SandContext;
   onBrush: (mark: SandMark) => void;
@@ -115,6 +119,7 @@ export function DigBoardScreen({
   clear,
   cleared,
   blown,
+  level,
   brush,
   grains,
   dugUp,
@@ -230,10 +235,12 @@ export function DigBoardScreen({
     <main className="dig-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} onHome={onHome}>
-        <p className="dig-chip" aria-label={text.dugUp}>
-          <Star size={20} aria-hidden="true" />
-          {dugUp}/{total}
-        </p>
+        {dugUp !== undefined && (
+          <p className="dig-chip" aria-label={text.dugUp}>
+            <Star size={20} aria-hidden="true" />
+            {dugUp}/{total}
+          </p>
+        )}
       </DigBar>
       <div className="dig-body">
         <div
@@ -244,6 +251,7 @@ export function DigBoardScreen({
           data-clear={clear}
           data-cleared={cleared}
           data-blown={blown || undefined}
+          data-level={level}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height, "--brush": `${brush}px` } as CSSProperties}
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}

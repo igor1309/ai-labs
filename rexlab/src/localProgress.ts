@@ -1,5 +1,6 @@
 import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
+import { NO_DIG, type DigProgress } from "./dig/index.ts";
 import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
@@ -146,6 +147,41 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
   if (!isObject(raw)) return undefined;
   const { level, revision } = raw;
   return isAgeLevel(level) && (revision === null || (typeof revision === "string" && revision !== "")) ? { level, revision } : undefined;
+}
+
+// The dig game's progress, beside the others in the same record: the
+// dinosaurs dug up and those with their 🦴 badge, by id, with the child's
+// last choice on its level switch, none until the switch is first used.
+export function localDigProgress(storage: () => KeyValueStorage) {
+  const entry = gameProgress<StoredDig>(storage, "dig", storedDig(NO_DIG, undefined), readDig);
+  return {
+    // Undefined when storage cannot be read at all.
+    load(): { progress: DigProgress; levelChoice: LevelChoice | undefined } | undefined {
+      const stored = entry.load();
+      if (stored === undefined) return undefined;
+      const { levelChoice, ...progress } = stored;
+      return { progress, levelChoice };
+    },
+
+    save({ progress, levelChoice }: { progress: DigProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save(storedDig(progress, levelChoice));
+    }
+  };
+}
+
+type StoredDig = DigProgress & { levelChoice?: LevelChoice };
+
+function storedDig({ dug, badges }: DigProgress, levelChoice: LevelChoice | undefined): StoredDig {
+  return { dug: [...dug], badges: [...badges], ...(levelChoice && { levelChoice }) };
+}
+
+// As find the pair's, an entry whose choice cannot be read is unusable.
+function readDig({ dug, badges, levelChoice }: Entry): StoredDig | undefined {
+  if (!isIds(dug) || !isIds(badges)) return undefined;
+  const progress = { dug: [...dug], badges: [...badges] };
+  if (levelChoice === undefined) return progress;
+  const choice = choiceOf(levelChoice);
+  return choice && { ...progress, levelChoice: choice };
 }
 
 // The skeleton game's progress, beside the others in the same record: the

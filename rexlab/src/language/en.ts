@@ -106,5 +106,8 @@ export const en: Texts = {
   dig: "DIG",
   sand: "SAND",
   dugUp: "DUG UP",
+  dugUpNew: "NEW!",
+  digAgain: "DIG AGAIN",
+  allDugUp: "EVERY DINOSAUR DUG UP",
   spotKinds: { eye: "EYE", foot: "FOOT", tail: "TAIL", horn: "HORN", plate: "PLATE", claw: "CLAW", crest: "CREST", sail: "SAIL", frill: "FRILL", beak: "BEAK" }
 };

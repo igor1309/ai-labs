@@ -1,17 +1,46 @@
 import { useRef, useState } from "react";
-import { BRUSH_SIZES, brushRound, startRound, type DigDinosaur, type DigLevel, type DigRound, type Random } from "./dig/index.ts";
+import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
+import { beatBest } from "./bestScore.ts";
+import {
+  BRUSH_SIZES,
+  brushRound,
+  digUp,
+  dugUpOf,
+  mergeProgress,
+  NO_DIG,
+  startRound,
+  type DigDinosaur,
+  type DigProgress,
+  type DigReward,
+  type DigRound,
+  type KeptDig,
+  type Random
+} from "./dig/index.ts";
 import { DigBoardScreen, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
 import { DigRevealScreen } from "./DigRevealScreen.tsx";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
 import { presentDigBoard } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
+import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 export type { SandContext } from "./DigBoardScreen.tsx";
+
+// What the dig game keeps: its progress, and the child's last choice on
+// its level switch, none until the switch is first used.
+export type DigSaved = { progress: DigProgress; levelChoice: LevelChoice | undefined };
+
+export type DigProgressStore = {
+  // What the dig game has kept so far, or undefined when it cannot be
+  // read at all.
+  load(): DigSaved | undefined;
+  save(saved: DigSaved): void;
+};
 
 export type DigGameProps = {
   // Every dinosaur a round may dig up, with its cells.
   digDinosaurs: readonly DigDinosaur[];
+  digProgress: DigProgressStore;
   // The name of the dinosaur with this id, in `language`.
   dinosaurName: (dinosaurId: string, language: Language) => string;
   bodyPicture: (dinosaurId: string) => string;
@@ -22,16 +51,31 @@ export type DigGameProps = {
   sandContext: SandContext;
 };
 
-// Every age level plays Hatchling's free brushing until Explorer's and
+// The dig game has a mode for every age level. Each round plays
+// Hatchling's free brushing, with its brush, until Explorer's and
 // Paleontologist's tasks are built.
-const LEVEL: DigLevel = "hatchling";
+const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
+const BRUSH = BRUSH_SIZES.hatchling;
 
 // How long the gust blows the sand away before the reveal, in
 // milliseconds: the gust's animation of twice --motion-screen, and its
 // fade with reduced motion.
 export const GUST: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
 
-type DigScreen = { kind: "board"; round: DigRound } | { kind: "reveal"; round: DigRound };
+// How long the reveal's star takes to land on the "DUG UP" card, in
+// milliseconds, before the reveal takes taps: the reveal's arrival over
+// --motion-screen, then the star's flight over another, and their fades
+// with reduced motion. Every reveal waits as long, a star flying or not.
+export const STAR_LANDS: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
+
+// The progress the game goes by while the app is open, with the child's
+// choice on the level switch; both hold while the app is open even when
+// they cannot be saved.
+type Kept = KeptDig & { levelChoice: LevelChoice | undefined };
+
+// The reveal shows the round dug up and its reward; it takes taps once
+// its star has `landed`.
+type DigScreen = { kind: "board"; round: DigRound } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean };
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
@@ -42,15 +86,44 @@ export function transitionFor(from: DigScreen | undefined, to: DigScreen | undef
 
 // The dig game, kept by its owner above the orientation gate, so turning
 // the iPad pauses a round without losing its sand. It shows nothing until
-// a round is started. `onHome` takes the child back to the home page.
+// a round is started. `ageLevel` is the age level a parent picked, which
+// the game starts at until the child chooses another level on its
+// switch. `onHome` takes the child back to the home page.
 export function useDigGame(
-  { digDinosaurs, dinosaurName, bodyPicture, random, startTimer, reducedMotion, sandContext }: DigGameProps,
+  { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, reducedMotion, sandContext }: DigGameProps,
+  ageLevel: AgeLevelSetting,
   onHome: () => void
 ) {
   const { screen, go } = useScreens<DigScreen | undefined, "start">(undefined, transitionFor);
-  // The ids of the dinosaurs dug up while the app is open.
-  const [dug, setDug] = useState<readonly string[]>([]);
-  const dugNow = useRef<readonly string[]>([]);
+  const ids = digDinosaurs.map(({ id }) => id);
+  // Progress is read once, as the app opens, and kept from then on, so a
+  // dinosaur dug up counts while the app is open even when it cannot be
+  // saved.
+  const [kept, setKept] = useState<Kept>(() => {
+    const stored = digProgress.load();
+    return { progress: stored?.progress ?? NO_DIG, levelChoice: stored?.levelChoice, readable: stored !== undefined };
+  });
+  const keptNow = useRef(kept);
+  // The level the next round plays: the child's choice on the switch
+  // while the age level is still the pick it was made under, otherwise
+  // the age level.
+  const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
+  // Kept, then saved over the progress another tab may have saved
+  // meanwhile; unreadable progress is not saved over.
+  const keep = (next: Kept) => {
+    const stored = next.readable ? digProgress.load() : undefined;
+    const merged = stored === undefined ? next : { ...next, progress: mergeProgress(next.progress, stored.progress) };
+    keptNow.current = merged;
+    setKept(merged);
+    if (merged.readable) digProgress.save({ progress: merged.progress, levelChoice: merged.levelChoice });
+  };
+  // A level chosen on the switch is kept under the age level it was
+  // chosen at; the level already chosen, as on a double tap, changes
+  // nothing.
+  const chooseLevel = (chosen: AgeLevel) => {
+    if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
+  };
   // The round being brushed, ahead of the screen: a stroke, or the gust's
   // timer, acts on the round as it is, not as last rendered. Null once
   // the child leaves it or the gust has blown.
@@ -74,7 +147,7 @@ export function useDigGame(
   // screen with its board.
   const start = (shown?: () => void) => {
     const from = screen;
-    const round = startRound(digDinosaurs, dugNow.current, last.current, random);
+    const round = startRound(digDinosaurs, keptNow.current.progress.dug, last.current, random, startLevel(ageLevel, OFFERED, keptNow.current.levelChoice));
     go((current) => (current === from ? { kind: "board", round } : current), {
       intent: "start",
       also: () => {
@@ -86,9 +159,11 @@ export function useDigGame(
     });
   };
 
-  // Each stroke moves from the round as it is. The dinosaur is dug up the
-  // moment the gust begins, so leaving during it cannot lose it, and the
-  // reveal follows once the gust has blown.
+  // Each stroke moves from the round as it is. The dinosaur is dug up,
+  // and recorded, the moment the gust begins, so leaving during it cannot
+  // lose it, and the reveal follows once the gust has blown; a round left
+  // before its gust is never recorded. The reveal takes taps once its
+  // star has landed.
   const brush = (mark: SandMark) => {
     const from = live.current;
     const timers = roundTimers.current;
@@ -99,14 +174,16 @@ export function useDigGame(
     go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
     if (!to.blown) return;
     last.current = to.dinosaur.id;
-    if (!dugNow.current.includes(to.dinosaur.id)) {
-      dugNow.current = [...dugNow.current, to.dinosaur.id];
-      setDug(dugNow.current);
-    }
-    timers.start(GUST[reducedMotion() ? "reduced" : "motion"], () => {
+    const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest);
+    keep({ ...keptNow.current, ...dug.kept });
+    const timing = reducedMotion() ? "reduced" : "motion";
+    timers.start(GUST[timing], () => {
       if (live.current !== to) return;
       live.current = null;
-      go({ kind: "reveal", round: to });
+      go({ kind: "reveal", round: to, reward: dug.reward, landed: false });
+      timers.start(STAR_LANDS[timing], () =>
+        go((current) => (current?.kind === "reveal" && current.round === to ? { ...current, landed: true } : current))
+      );
     });
   };
 
@@ -124,10 +201,11 @@ export function useDigGame(
           <DigBoardScreen
             language={language}
             {...presentDigBoard(screen.round, bodyPicture)}
-            brush={BRUSH_SIZES[LEVEL]}
+            level={screen.round.level}
+            brush={BRUSH}
             grains={!reducedMotion()}
-            dugUp={dug.length}
-            total={digDinosaurs.length}
+            dugUp={kept.readable ? dugUpOf(kept.progress, ids) : undefined}
+            total={ids.length}
             sandContext={sandContext}
             onBrush={brush}
             onHome={home}
@@ -135,12 +213,25 @@ export function useDigGame(
         );
       case "reveal": {
         const { id } = screen.round.dinosaur;
-        return <DigRevealScreen language={language} name={dinosaurName(id, language)} picture={bodyPicture(id)} onHome={home} />;
+        return (
+          <DigRevealScreen
+            language={language}
+            name={dinosaurName(id, language)}
+            picture={bodyPicture(id)}
+            {...screen.reward}
+            landed={screen.landed}
+            level={level}
+            onLevel={chooseLevel}
+            onDigAgain={() => start()}
+            onHome={home}
+          />
+        );
       }
     }
   };
 
+  const dugUp = kept.readable ? dugUpOf(kept.progress, ids) : 0;
   // The count on the game's home tile, undefined until a dinosaur is dug
-  // up.
-  return { start, content, dugUp: dug.length > 0 ? dug.length : undefined };
+  // up, or when stored progress cannot be read.
+  return { start, content, dugUp: dugUp > 0 ? dugUp : undefined };
 }

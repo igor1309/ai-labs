@@ -76,25 +76,25 @@ describe("a round", () => {
   const dinosaurs = ["rex", "steg", "trike"].map((id) => dinosaur(id));
 
   it("digs up a dinosaur not dug up yet, at random", () => {
-    expect(startRound(dinosaurs, ["rex"], undefined, () => 0).dinosaur.id).toBe("steg");
-    expect(startRound(dinosaurs, ["rex"], undefined, () => 0.99).dinosaur.id).toBe("trike");
-    expect(startRound(dinosaurs, ["rex", "trike"], undefined, () => 0.5).dinosaur.id).toBe("steg");
+    expect(startRound(dinosaurs, ["rex"], undefined, () => 0, "hatchling").dinosaur.id).toBe("steg");
+    expect(startRound(dinosaurs, ["rex"], undefined, () => 0.99, "hatchling").dinosaur.id).toBe("trike");
+    expect(startRound(dinosaurs, ["rex", "trike"], undefined, () => 0.5, "hatchling").dinosaur.id).toBe("steg");
   });
 
   it("digs up any dinosaur but the last one once every one is dug up", () => {
     const dug = ["rex", "steg", "trike"];
-    expect([0, 0.5, 0.99].map((draw) => startRound(dinosaurs, dug, "rex", () => draw).dinosaur.id)).toEqual(["steg", "trike", "trike"]);
+    expect([0, 0.5, 0.99].map((draw) => startRound(dinosaurs, dug, "rex", () => draw, "hatchling").dinosaur.id)).toEqual(["steg", "trike", "trike"]);
   });
 
   it("starts under sand that covers it all", () => {
-    const round = startRound(SHIPPED_DIG, [], undefined, () => 0);
+    const round = startRound(SHIPPED_DIG, [], undefined, () => 0, "hatchling");
 
     expect([roundShare(round), round.blown, round.sand.marks]).toEqual([0, false, []]);
   });
 
   it("blows the rest of the sand away once 70% of the dinosaur's cells are clear, and takes no stroke after", () => {
     // Ten columns of dinosaur: seven of them clear is 70%.
-    const round = startRound([dinosaur("rex", cellsWhere((_, column) => column < 10))], [], undefined, () => 0);
+    const round = startRound([dinosaur("rex", cellsWhere((_, column) => column < 10))], [], undefined, () => 0, "hatchling");
     const six = brushRound(round, downAt(0, 6 * CELL - 2));
     const seven = brushRound(six, downAt(0, 7 * CELL - 2));
 

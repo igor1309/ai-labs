@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { App, type SandContext } from "../src/App.tsx";
-import { GUST } from "../src/digGame.tsx";
+import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -164,6 +164,7 @@ describe("a round's start", () => {
     const first = roundDinosaur();
     brushAll();
     act(() => timers.fire(GUST.motion));
+    act(() => timers.fire(STAR_LANDS.motion));
 
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
     expect(within(homeTile("DIG")).getByText("1")).toBeDefined();
@@ -328,6 +329,7 @@ describe("the brush", () => {
     const name = SHIPPED_DINOSAURS.find((each) => each.id === id)?.name.en.toLocaleUpperCase("en");
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("DIG");
+    act(() => timers.fire(STAR_LANDS.motion));
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
     expect(homeTile("DIG")).toBeDefined();
   });

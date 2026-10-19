@@ -16,19 +16,19 @@ export const BRUSH_SIZES: Readonly<Record<DigLevel, number>> = { hatchling: 48, 
 // blows the rest of the sand away, so no child hunts for the last grains.
 export const GUST_SHARE = 0.7;
 
-// A round: the dinosaur under the sand, the sand, and whether the gust
-// has blown it away.
-export type DigRound = { dinosaur: DigDinosaur; sand: Sand; blown: boolean };
+// A round: the level it is played at, the dinosaur under the sand, the
+// sand, and whether the gust has blown it away.
+export type DigRound = { level: DigLevel; dinosaur: DigDinosaur; sand: Sand; blown: boolean };
 
-// A round of a dinosaur not dug up yet, at random; once every one is, of
-// any but `last`, the last one dug up.
-export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly string[], last: string | undefined, random: Random): DigRound {
+// A round at `level` of a dinosaur not dug up yet, at random; once every
+// one is, of any but `last`, the last one dug up.
+export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly string[], last: string | undefined, random: Random, level: DigLevel): DigRound {
   const fresh = dinosaurs.filter(({ id }) => !dug.includes(id));
   const others = dinosaurs.filter(({ id }) => id !== last);
   const pool = fresh.length > 0 ? fresh : others.length > 0 ? others : dinosaurs;
   const dinosaur = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
   if (dinosaur === undefined) throw new Error("No dinosaur to dig up");
-  return { dinosaur, sand: NEW_SAND, blown: false };
+  return { level, dinosaur, sand: NEW_SAND, blown: false };
 }
 
 // The share of the round's dinosaur that is clear.

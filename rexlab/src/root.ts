@@ -11,7 +11,7 @@ import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localCareProgress, localDigProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -126,6 +126,7 @@ export function appProps(browser: Browser): AppProps {
       dinosaurs.map(({ id }) => id),
       digFile as DigFile
     ),
+    digProgress: localDigProgress(storage),
     sandContext: (canvas) => canvas.getContext("2d"),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
     now: () => new Date(browser.Date.now()),
