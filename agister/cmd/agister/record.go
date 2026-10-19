@@ -55,12 +55,15 @@ func callID(run, step string) string {
 
 // endedCall is a step's call as it ended: its step, process and agent; the
 // id of the call whose session it continues, "" for none; the inputs it
-// was given, in the order its process declares them, none where they were
-// refused; its worktree's facts, none for a call refused; the earlier call
+// was given and its resolved process environment, in declaration order,
+// none where its inputs were refused; its permission plan; its worktree's
+// facts, none for a call refused; the earlier call
 // it took, nil for one made; and its result.
 type endedCall struct {
 	definitions          []runstore.Definition
 	definitionBytes      map[string][]byte
+	permissions          runstore.Permissions
+	environment          []runstore.Variable
 	step, process, agent string
 	continues            string
 	taken                *runstore.Call
@@ -159,6 +162,8 @@ func (r *runRecord) Called(ended endedCall) {
 		head := leftHead(*taken)
 		call.EndHead = &head
 	}
+	call.Permissions = ended.permissions
+	call.Environment = slices.Clone(ended.environment)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.keepDefinitions(call.Definitions, ended.definitionBytes)

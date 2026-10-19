@@ -1,4 +1,5 @@
 import type { Language } from "../language/language.ts";
+import { shuffled } from "./shuffled.ts";
 
 // A piece's home on the outline, in pixels of the skeleton's frame.
 export type Place = { x: number; y: number; width: number; height: number };
@@ -12,7 +13,7 @@ export type BodyArea = (typeof BODY_AREAS)[number];
 // unique in its cut, its name, its body area and its home on the outline.
 export type Piece = { id: string; name: Record<Language, string>; area: BodyArea; place: Place };
 
-// A skeleton cut into pieces, in the order the tray shows them.
+// A skeleton cut into pieces, head to tail.
 export type Cut = readonly Piece[];
 
 // The cuts a skeleton is played in, by age level (docs/age-levels.md).
@@ -57,8 +58,10 @@ export type Badge = (typeof BADGES)[number];
 
 export type Puzzle = {
   skeleton: Skeleton;
-  // The cut the skeleton is built from.
+  // The cut the skeleton is built from, and its pieces' ids in the order
+  // the tray shows them.
   cut: Cut;
+  order: readonly string[];
   // The ids of the pieces fitted on the outline, in the order they were
   // fitted.
   fitted: readonly string[];
@@ -69,8 +72,8 @@ export type Puzzle = {
   // Whether help climbs the ladder of steps rather than glowing once.
   ladder: boolean;
   // Other skeletons' bones mixed into the tray, which fit nowhere, and
-  // the one last dropped, until the next drop, so the child is told whose
-  // bone it is.
+  // the one last dropped, until another piece is touched, so the child is
+  // told whose bone it is.
   distractors: readonly Distractor[];
   told: Distractor | undefined;
   // Whether a tap turns a piece, and how many quarter turns, clockwise,
@@ -113,8 +116,10 @@ export type Help = { piece: string; step: HelpStep };
 // up, its help the ladder's when `ladder` says so, and the skeleton's
 // distractors among them when `distractors` says so. With `turning`, a
 // draw for each piece in the cut's order turns it a quarter, half or
-// three quarters, or leaves it the right way up. Finished without help's
-// last step, it earns `badge`, if any.
+// three quarters, or leaves it the right way up. With `shuffling`, the
+// tray shows the pieces in an order drawn from it, so their order gives
+// nothing away; without, in the cut's order. Finished without help's last
+// step, it earns `badge`, if any.
 export function startPuzzle(
   skeleton: Skeleton,
   cut: Cut,
@@ -122,13 +127,16 @@ export function startPuzzle(
     ladder = false,
     distractors = false,
     turning,
+    shuffling,
     badge
-  }: { ladder?: boolean; distractors?: boolean; turning?: (() => number) | undefined; badge?: Badge | undefined } = {}
+  }: { ladder?: boolean; distractors?: boolean; turning?: (() => number) | undefined; shuffling?: (() => number) | undefined; badge?: Badge | undefined } = {}
 ): Puzzle {
   const turns = turning === undefined ? [] : cut.map(({ id }) => [id, Math.min(QUARTERS - 1, Math.floor(turning() * PARTS) - UPRIGHT + 1)] as const);
+  const ids = cut.map(({ id }) => id);
   return {
     skeleton,
     cut,
+    order: shuffling === undefined ? ids : shuffled(ids, shuffling),
     fitted: [],
     waited: 0,
     ladder,
@@ -151,10 +159,11 @@ export function turn(puzzle: Puzzle, piece: string): Puzzle {
   return { ...puzzle, turns: next === 0 ? others : { ...others, [piece]: next } };
 }
 
-// The tray's order: the cut's pieces, with the distractors spread evenly
-// among them, until the skeleton is complete and they leave.
+// The tray's order: the pieces in the puzzle's order, with the
+// distractors spread evenly among them, until the skeleton is complete
+// and they leave.
 export function trayOf(puzzle: Puzzle): string[] {
-  const pieces = puzzle.cut.map(({ id }) => id);
+  const pieces = [...puzzle.order];
   if (isComplete(puzzle)) return pieces;
   const { distractors } = puzzle;
   // The piece each distractor follows, counted from one.
@@ -181,6 +190,13 @@ export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number
   const { x, y, width, height } = home.place;
   if (Math.hypot(centre.x - (x + width / 2), centre.y - (y + height / 2)) > reach) return missed;
   return { ...puzzle, fitted: [...puzzle.fitted, piece], waited: 0, told: undefined };
+}
+
+// `piece` touched in the tray: the line about another skeleton's bone
+// goes, unless it is that bone again.
+export function touch(puzzle: Puzzle, piece: string): Puzzle {
+  if (puzzle.told === undefined || strayId(puzzle.told) === piece) return puzzle;
+  return { ...puzzle, told: undefined };
 }
 
 export function isComplete(puzzle: Puzzle): boolean {
@@ -212,7 +228,7 @@ export function showLastStep(puzzle: Puzzle): Puzzle {
 // more every HELP_AFTER on the ladder. Help never fits it for the child.
 export function help(puzzle: Puzzle): Help | undefined {
   const reached = Math.floor(puzzle.waited / HELP_AFTER);
-  const piece = puzzle.cut.find(({ id }) => !puzzle.fitted.includes(id))?.id;
+  const piece = puzzle.order.find((id) => !puzzle.fitted.includes(id));
   if (reached === 0 || piece === undefined) return undefined;
   return { piece, step: puzzle.ladder ? (LADDER[Math.min(reached, LADDER.length) - 1] ?? "region") : "glow" };
 }

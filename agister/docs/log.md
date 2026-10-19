@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-324: each call records its permission plan and resolved process
+  environment; reuse requires the same environment.
+
 - LAB-322: a run keeps the bytes of each settings file its record
   names, beside the record, and its export takes them.
 

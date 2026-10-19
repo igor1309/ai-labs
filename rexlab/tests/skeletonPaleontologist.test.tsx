@@ -15,6 +15,8 @@ import {
   homeOf,
   openPuzzle,
   openSkeletonsApp,
+  press,
+  release,
   reveal,
   revealNow,
   savedSkeletons,
@@ -54,8 +56,8 @@ function spend(pictures: ManualPictures, seconds: number) {
 describe("Paleontologist's puzzle", () => {
   it.each([
     ["TYRANNOSAURUS", "tyrannosaurus", 11, ["triceratops/frill", "stegosaurus/spikes", "stegosaurus/front-plates"]],
-    ["TRICERATOPS", "triceratops", 10, ["tyrannosaurus/skull", "stegosaurus/back-plates"]],
-    ["STEGOSAURUS", "stegosaurus", 10, ["tyrannosaurus/skull", "triceratops/frill", "tyrannosaurus/arms"]]
+    ["TRICERATOPS", "triceratops", 10, ["tyrannosaurus/head", "stegosaurus/back-plates"]],
+    ["STEGOSAURUS", "stegosaurus", 10, ["tyrannosaurus/head", "triceratops/frill", "tyrannosaurus/arms"]]
   ] as const)("is %s's own cut, with other dinosaurs' bones spread among its pieces in the tray", async (name, id, count, others) => {
     await openPaleontologist(name);
 
@@ -111,7 +113,7 @@ describe("Paleontologist's puzzle", () => {
     const tyrannosaurus = skeletonOf("tyrannosaurus");
     expect(told()).toBe("");
 
-    dragTo("triceratops/frill", homeOf(tyrannosaurus, "skull"));
+    dragTo("triceratops/frill", homeOf(tyrannosaurus, "head"));
 
     expect(told()).toBe("THAT'S THE TRICERATOPS FRILL!");
     expect(fittedPieces()).toEqual([]);
@@ -127,13 +129,29 @@ describe("Paleontologist's puzzle", () => {
     expect(told()).toBe("ЭТО ШИПЫ СТЕГОЗАВРА!");
   });
 
+  it("clears the line the moment another piece is touched, still held, and keeps it while the same bone is touched again", async () => {
+    await openPaleontologist("TYRANNOSAURUS");
+    const pressOn = (piece: string) => {
+      const { left, top } = spotOf(piece).getBoundingClientRect();
+      press(spotOf(piece), { clientX: left + 40, clientY: top + 40 });
+    };
+
+    dragTo("triceratops/frill", AWAY);
+    pressOn("triceratops/frill");
+    expect(told()).toBe("THAT'S THE TRICERATOPS FRILL!");
+    release(AWAY);
+
+    pressOn("arms");
+    expect([told(), fittedPieces()]).toEqual(["", []]);
+  });
+
   it("clears the line with the next drop, a fit or a miss alike", async () => {
     await openPaleontologist("TYRANNOSAURUS");
     const tyrannosaurus = skeletonOf("tyrannosaurus");
 
     dragTo("triceratops/frill", AWAY);
-    fit(tyrannosaurus, "skull");
-    expect([told(), fittedPieces()]).toEqual(["", ["skull"]]);
+    fit(tyrannosaurus, "head");
+    expect([told(), fittedPieces()]).toEqual(["", ["head"]]);
 
     dragTo("stegosaurus/spikes", AWAY);
     dragTo("arms", AWAY);
@@ -144,10 +162,10 @@ describe("Paleontologist's puzzle", () => {
     const { pictures } = await openPaleontologist("TYRANNOSAURUS");
 
     spend(pictures, 9);
-    dragTo("triceratops/frill", homeOf(skeletonOf("tyrannosaurus"), "skull"));
+    dragTo("triceratops/frill", homeOf(skeletonOf("tyrannosaurus"), "head"));
     spend(pictures, 1);
 
-    expect(hints()).toEqual(["spot skull"]);
+    expect(hints()).toEqual(["spot head"]);
     expect(board().querySelector(".skeleton-region")).not.toBeNull();
   });
 
@@ -156,9 +174,9 @@ describe("Paleontologist's puzzle", () => {
     const { pictures } = await openPaleontologist("TRICERATOPS", "light", storage);
     const triceratops = skeletonOf("triceratops");
     const [last = "", ...others] = [...(triceratops.cuts.paleontologist ?? [])].map(({ id }) => id).reverse();
-    dragTo("tyrannosaurus/skull", AWAY);
+    dragTo("tyrannosaurus/head", AWAY);
     for (const piece of others.reverse()) fit(triceratops, piece);
-    expect([counter(), strays()]).toEqual(["9/10", ["tyrannosaurus/skull", "stegosaurus/back-plates"]]);
+    expect([counter(), strays()]).toEqual(["9/10", ["tyrannosaurus/head", "stegosaurus/back-plates"]]);
 
     fit(triceratops, last);
     expect([counter(), strays()]).toEqual(["10/10", []]);
@@ -170,13 +188,13 @@ describe("Paleontologist's puzzle", () => {
 });
 
 describe("the other levels", () => {
-  it.each<[AgeLevel, number]>([
-    ["hatchling", 4],
-    ["explorer", 6]
-  ])("keep %s's faint outline of bones and a tray of its own %i pieces only", async (level, count) => {
+  it.each<[AgeLevel, number, string | null]>([
+    ["hatchling", 4, null],
+    ["explorer", 6, "2"]
+  ])("keep %s's faint outline of bones and a tray of its own %i pieces only, in two columns from five", async (level, count, columns) => {
     await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level) });
 
     expect([silhouette(), board().querySelector(".skeleton-outline img")?.getAttribute("src")]).toEqual([null, "/skeletons/triceratops/skeleton.webp"]);
-    expect([spotPieces().length, strays(), tray().hasAttribute("data-columns"), screen.queryByRole("status")]).toEqual([count, [], false, null]);
+    expect([spotPieces().length, strays(), tray().getAttribute("data-columns"), screen.queryByRole("status")]).toEqual([count, [], columns, null]);
   });
 });
