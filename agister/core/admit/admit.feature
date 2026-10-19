@@ -66,3 +66,16 @@ Feature: A call is admitted before it starts
     When the call is made through admit
     Then the call is made, and the port is told HEAD and the end HEAD
       empty
+
+  Scenario Outline: A pinned call's patch is told, asked under its hold
+    Given the worktree's HEAD is "c1", its content "t2" at the call's
+      end, and its changes from "c1" to "t2" <changes>
+    And an admitted call that <pins>
+    When the call ends
+    Then the port is told <told>, asked before the hold is released
+
+    Examples:
+      | pins                         | changes   | told                                          |
+      | pins the input "rev" of "c1" | "d1"      | the patch "d1"                                |
+      | pins the input "rev" of "c1" | not given | no patch, and why: the changes' error         |
+      | pins nothing                 | "d1"      | no patch, and no error, its changes not asked |

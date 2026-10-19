@@ -56,3 +56,8 @@ Feature: runstore keeps runs
       "p2"
     Then it gives "x/patches/a.patch", and "runs/x/patches" holds
       "a.patch" alone, "p2" whole
+
+  Scenario: A patch is given back by its path
+    Given the patch "p1" of the step "a" of the run "x" written
+    When the patch "x/patches/a.patch" is asked
+    Then it gives "p1"

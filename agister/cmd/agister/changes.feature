@@ -17,6 +17,13 @@ Feature: The composition records a call's changes
     And the record's call holds the head "c1", the end_head "c2", the
       content "t2" and the patch "R/patches/fix.patch"
 
+  Scenario: An empty change is an empty patch
+    Given git gives the changes from "c1" to "t2" empty
+    When "agister run --process fix --agent claude-opus --param
+      base=main" runs in "/r"
+    Then runstore is given the empty patch of "fix" of "R", and the
+      record's call holds the patch "R/patches/fix.patch"
+
   Scenario: An unpinned call keeps no patch
     When "agister run --process ask --agent claude-opus --param q=why"
       runs in "/r"
@@ -31,14 +38,15 @@ Feature: The composition records a call's changes
       and the record's call holds the patch null
 
     Examples:
-      | fault                                  |
-      | git gives no changes from "c1" to "t2" |
-      | runstore cannot write the patch        |
+      | fault                                         |
+      | git cannot give the changes from "c1" to "t2" |
+      | git cannot read the content at the call's end |
+      | runstore cannot write the patch               |
 
   Scenario: A step that commits is continued
-    Given the workflow "pair": the step "fix", then "check", of the
-      process "ask", continuing "fix"'s session, claude-code reporting
-      the session "s1"
+    Given the workflow "pair": the step "fix", of the process "fix",
+      then "check", of the process "ask", continuing "fix"'s session,
+      claude-code reporting the session "s1"
     When "agister run pair --param base=main --param q=why" runs in "/r"
     Then "check" is admitted against the HEAD "c2" and the content "t2"
 
@@ -53,14 +61,15 @@ Feature: The composition records a call's changes
     Examples:
       | heads                               |
       | the head "c1" and the end_head "c2" |
-      | the head "c2" and no end_head       |
+      | the head "c2" and no field end_head |
 
-  Scenario: A call taken by a reuse keeps its earlier patch
+  Scenario: A call taken by a reuse keeps its earlier patch, copied
     Given runstore keeps the run "R1" of "fix" in "/r", base "main", its
       call "R1/fix" completed, its root "/r", end_head "c2", content
       "t2" and patch "R1/patches/fix.patch"; and git gives "/r" HEAD "c2"
       and the content "t2"
     When "agister run --process fix --agent claude-opus --param
       base=main --reuse R1" runs in "/r"
-    Then "fix" is reused, no patch is written, and the record's call
-      holds the patch "R1/patches/fix.patch"
+    Then "fix" is reused, git is asked no changes, runstore is given
+      "R1/patches/fix.patch"'s bytes as the patch of "fix" of "R", and
+      the record's call holds the patch "R/patches/fix.patch"

@@ -814,7 +814,8 @@ Decisions, each with its reason:
   risk taken, inputs are text.
 - Not yet in the record: the definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch
-  (ADR-004, rule 4). No reader needs them yet.
+  (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
+  adds the patch.)
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
@@ -1070,7 +1071,7 @@ refuses the call, `HEAD is "<now>", not the session's latest call's
 refuses it, `the worktree is not as the session's latest call left it`.
 
 **The composition** keeps, for the run, each session's latest call: its
-id and the HEAD and content admit told at its end. A step's call
+id and the end HEAD and content admit told at its end. A step's call
 continuing a session is given that session, the prompt `continuation`
 first among its documents, as a continuation's is, and admit the facts
 its latest call left, no clean worktree asked: the check takes its
@@ -1111,23 +1112,30 @@ included.
 
 **`core/admit`** tells, of an admitted call, the HEAD at its end too,
 read with its content, before the hold is released; empty where it
-cannot be read. A call continuing a session is checked against the HEAD
-its latest call left, no longer the one it was admitted at.
+cannot be read. Of a call admitted with a pin it tells the patch too:
+its worktree port, which grows the changes from a commit to a content,
+asked from the pinned commit to the content the call left, under the
+hold; or why there is none, the content not read or the changes not
+given. A call continuing a session is checked against the HEAD its
+latest call left, no longer the one it was admitted at.
 
 **`runstore`**'s call grows `"end_head"`, the HEAD it left, and
 `"patch"`, null for none, else the path of its patch under the runs
 folder, `<run id>/patches/<step>.patch`. It writes a call's patch whole,
-as it writes a record, and a run exported takes its patches.
+as it writes a record, gives one back by its path, and a run exported
+takes its patches. A refused call's `"end_head"` is empty, as its
+`"head"` and `"content"` are.
 
-**The composition**, as a call admitted with a pin ends, its content
-known, asks git the changes from the pinned commit to that content and
-writes them before the call's entry; an empty change is an empty patch.
-A patch that cannot be made or written is a warning in the result, as a
-record's later write is, the entry's `"patch"` null. A call taken by a
-reuse keeps the earlier entry's `"patch"`, the earlier run's file.
-Wherever a call is compared with the HEAD an earlier one left, a
-continuation, a session's latest call in a run and a reuse, the HEAD is
-its `"end_head"`, else, for a record from before, its `"head"`.
+**The composition** answers admit's changes from `git`, and writes the
+patch admit told before the call's entry; an empty change is an empty
+patch. A pinned call's patch that admit could not give, or runstore
+could not write, is a warning in the result, as a record's later write
+is, the entry's `"patch"` null. A call taken by a reuse has the earlier
+entry's patch written again under this run, its `"patch"` this run's:
+an export holds what its record names. Wherever a call is compared with
+the HEAD an earlier one left, a continuation, a session's latest call in
+a run and a reuse, the HEAD is its `"end_head"`, else, where its entry
+has no such field, a record from before, its `"head"`.
 
 ```json
 {"calls": [{"head": "<admitted>", "end_head": "<left>", "content": "",
@@ -1141,8 +1149,10 @@ Decisions, each with its reason:
 - The patch runs from the pinned commit to the content the call left,
   commits included: what the call changed from what it was given,
   whatever it committed on the way.
-- It is made after the hold is released: the commit and the tree are
-  objects git keeps, not the worktree, which may change meanwhile.
+- The patch is admit's to tell, through its port: core knows no git,
+  and the patch is an answer to its ports (ADR-004, "Consequences").
+  It is asked under the hold, as the content is: one git diff of two
+  objects, short beside the call.
 - An unpinned call keeps no patch: it was given no revision to diff
   from (ADR-004, rule 4).
 - A record from before is read with its `"head"` as the HEAD it left,
