@@ -73,6 +73,7 @@ Feature: Resolve checks that every reference reads what is there
       | item          | reads           | problem                                     |
       | workflow item | steps.d.session | the item "d" is no step, and has no session |
       | step          | steps.d.outputs | it reads a step's session                   |
+      | step on "a2"  | steps.d.session | the step "d" runs on another agent, "a2"    |
 
   Scenario Outline: A process's references read its own params and inputs
     Given the process "p" declares the param "base" and the input "rev"

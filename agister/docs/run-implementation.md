@@ -621,7 +621,8 @@ Decisions, each with its reason:
 `agister run ... --continue <run id>` continues the session of an
 earlier one-step run's call (ADR-001, rule 5; ADR-004, rule 5; ADR-012,
 rule 1): the work goes on in the same worktree, in the same session.
-A binding that continues a session inside a run is not run yet.
+A step inside a run continues one by a binding ("A binding continuing
+a session").
 
 **`cli`** takes `--continue <run id>` with either form of request; the
 request carries it.
@@ -1038,3 +1039,63 @@ Decisions, each with its reason:
 - A codex turn that failed reports no usage, so a retried codex call's
   usage is unknown: unknown, never zero (ADR-001, invariant 3).
 - No cost limit bounds the retries: none is run yet (`run-path.md`).
+
+## A binding continuing a session
+
+A step of a workflow continues an earlier step's session, `session:
+{from: steps.<item>.session}` (ADR-001, rule 5; ADR-004, rule 5;
+ADR-011, rule 3; LAB-309): a summary goes on in the session of the
+judge that read the reviews. It is refused as not run no longer.
+
+**`settings/resolve`** refuses a step continuing the session of a step
+on another agent: a session belongs to its runtime, and one agent is
+the plainest same runtime, as a continuation's is.
+
+**`core/workflow`**'s step names the step whose session it continues,
+"" for none. The run gives its caller the session that step's call
+reported, read from its results; where it reported none, the run is
+refused, its reason `the step "<item>" reported no session`, the step
+not called. Its caller port grows the session a step continues, "" for
+none.
+
+**`core/admit`**'s request grows the worktree a call continuing a
+session must find: the HEAD and content the session's latest call left
+it with. Checked after the pin and before the hold, either not the
+worktree's now, or the content left empty, refuses the call: `the
+worktree is not as the session's latest call left it`. A request with
+it asks no clean worktree: the check takes its place.
+
+**The composition** keeps, for the run, each session's latest call:
+its id and the HEAD and content admit told at its end. A step's call
+continuing a session is given that session, the prompt `continuation`
+first among its documents, as a continuation's is, and admit the facts
+its latest call left; the record's call continues that call's id. A
+call continuing a session that another call of the run is making is
+refused, `the session of "<item>" is in another call`, nothing taken:
+two turns at once in one session are not run. A step that continues
+a session, or whose session a step of the workflow continues, is made,
+never taken by a reuse. Where the prompt
+`continuation` does not resolve, the run is refused before its record
+is first written, as a continuation's is.
+
+Decisions, each with its reason:
+
+- The session's latest call is the run's own: the binding reads a step
+  of this run, and only this run's calls go on in it meanwhile. A call
+  of another run in that session meanwhile is a risk taken: the caller
+  does not run two writers in one worktree (ADR-004, rule 6).
+- Admission checks the worktree, as ADR-001's table of parts says, not
+  the composition, as a continuation's: here the facts are the run's
+  own, kept in memory, and the hold is taken right after.
+- A step that ended otherwise than completed still has its session:
+  continuing it is the binding's to choose, as a recovery turn resumes
+  a stale one.
+- Two calls in one session at once are refused, not queued or
+  serialized: a parallel binding one session twice is a settings
+  mistake met at run time, and no settings check is made for it until
+  one is needed.
+- A step of a session's chain is never taken by a reuse: what a
+  session held is not compared, and a session the earlier run went on
+  in has moved past the call a reuse would take.
+- The step is given its process's inputs and documents as any call is,
+  as a continued call is.
