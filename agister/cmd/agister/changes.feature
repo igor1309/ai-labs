@@ -66,7 +66,8 @@ Feature: The composition records a call's changes
   Scenario: A call taken by a reuse keeps its earlier patch, copied
     Given runstore keeps the run "R1" of "fix" in "/r", base "main", its
       call "R1/fix" completed, its root "/r", end_head "c2", content
-      "t2" and patch "R1/patches/fix.patch"; and git gives "/r" HEAD "c2"
+      "t2", patch "R1/patches/fix.patch" and this call's definitions;
+      and git gives "/r" HEAD "c2"
       and the content "t2"
     When "agister run --process fix --agent claude-opus --param
       base=main --reuse R1" runs in "/r"

@@ -217,6 +217,12 @@ func TestAReusedCallsPatchIsCopied(t *testing.T) {
 			earlier := keptCall("R1/fix", "t2", "s1")
 			earlier.Step, earlier.Process, earlier.EndHead, earlier.Patch = "fix", "fix", textPointer("c2"), textPointer("R1/patches/fix.patch")
 			earlier.Inputs = []runstore.Input{{Name: "base", Value: "c1", Identity: "c1"}}
+			earlier.Definitions = []runstore.Definition{
+				definitionAt(f.settings, "agent", "claude-opus", "home", "/u/.agister/agents/claude-opus.toml"),
+				definitionAt(f.settings, "process", "fix", "repository", "/r/.agister/processes/fix.yaml"),
+				definitionAt(f.settings, "prompt", "ask", "repository", "/r/.agister/prompts/ask.md"),
+				definitionAt(f.settings, "runtime", "claude-code", "home", "/u/.agister/runtimes/claude-code.yaml"),
+			}
 			f.store.kept = map[string]runstore.Record{"R1": keptRun("R1", earlier)}
 			record := f.store.kept["R1"]
 			record.Request.Process, record.Request.Agent = "fix", "claude-opus"
@@ -266,9 +272,10 @@ func TestReuseChecksTheHeadLeft(t *testing.T) {
 			earlier := keptCall("R1/fix", "t1", "s1")
 			earlier.Step, earlier.Process = "fix", "fix"
 			earlier.Head, earlier.EndHead = c.head, c.endHead
+			earlier.Definitions = []runstore.Definition{{Kind: "process", Name: "fix", Files: []runstore.File{{Layer: "home", Path: "/h/fix.yaml", Digest: "d1"}}}}
 			reuse := reusable{calls: []runstore.Call{earlier}, root: "/r",
 				facts: &holdingSpy{root: "/r", head: "c1", content: "t1"}}
-			got, taken, err := reuse.taken(context.Background(), endedCall{step: "fix", process: "fix", agent: "claude-opus"})
+			got, taken, err := reuse.taken(context.Background(), endedCall{step: "fix", process: "fix", agent: "claude-opus", definitions: earlier.Definitions})
 			if err != nil || taken != c.reused || taken && got.ID != "R1/fix" {
 				t.Errorf("call %+v, taken %v, error %v; want taken %v", got, taken, err, c.reused)
 			}

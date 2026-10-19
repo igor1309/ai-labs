@@ -41,13 +41,14 @@ type Record struct {
 // continues, nil for none; and the id of the run whose calls it reuses,
 // nil for none.
 type Request struct {
-	Workflow string            `json:"workflow"`
-	Process  string            `json:"process"`
-	Agent    string            `json:"agent"`
-	Params   map[string]string `json:"params"`
-	Dir      string            `json:"dir"`
-	Continue *string           `json:"continue"`
-	Reuse    *string           `json:"reuse"`
+	Definitions []Definition      `json:"definitions"`
+	Workflow    string            `json:"workflow"`
+	Process     string            `json:"process"`
+	Agent       string            `json:"agent"`
+	Params      map[string]string `json:"params"`
+	Dir         string            `json:"dir"`
+	Continue    *string           `json:"continue"`
+	Reuse       *string           `json:"reuse"`
 }
 
 // Call is a call of a run, as it ended: its id, its step, process and
@@ -57,19 +58,35 @@ type Request struct {
 // nil for none; the inputs it was given, as resolved; and its result.
 // EndHead is nil only for a record from before end_head was kept.
 type Call struct {
-	ID        string     `json:"id"`
-	Step      string     `json:"step"`
-	Process   string     `json:"process"`
-	Agent     string     `json:"agent"`
-	Root      string     `json:"root"`
-	Head      string     `json:"head"`
-	EndHead   *string    `json:"end_head,omitempty"`
-	Patch     *string    `json:"patch"`
-	Content   string     `json:"content"`
-	Continues *string    `json:"continues"`
-	Reuses    *string    `json:"reuses"`
-	Inputs    []Input    `json:"inputs"`
-	Result    CallResult `json:"result"`
+	Definitions []Definition `json:"definitions"`
+	ID          string       `json:"id"`
+	Step        string       `json:"step"`
+	Process     string       `json:"process"`
+	Agent       string       `json:"agent"`
+	Root        string       `json:"root"`
+	Head        string       `json:"head"`
+	EndHead     *string      `json:"end_head,omitempty"`
+	Patch       *string      `json:"patch"`
+	Content     string       `json:"content"`
+	Continues   *string      `json:"continues"`
+	Reuses      *string      `json:"reuses"`
+	Inputs      []Input      `json:"inputs"`
+	Result      CallResult   `json:"result"`
+}
+
+// Definition identifies a document read by the plan, with its files in
+// composition order. Definitions are ordered by kind, then name.
+type Definition struct {
+	Kind  string `json:"kind"`
+	Name  string `json:"name"`
+	Files []File `json:"files"`
+}
+
+// File identifies a source's layer, path and SHA-256 digest as lowercase hex.
+type File struct {
+	Layer  string `json:"layer"`
+	Path   string `json:"path"`
+	Digest string `json:"digest"`
 }
 
 // Input is an input as it was resolved: its name, its value whole, and

@@ -106,7 +106,7 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 	// Its inputs are runs.feature's, proved there.
 	calls[0].Result, calls[0].Inputs = runstore.CallResult{}, nil
 	endHead := "c1"
-	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1"}
+	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1", Definitions: askDefinitions(f.settings, "claude-opus")}
 	if !reflect.DeepEqual(calls[0], want) {
 		t.Errorf("the record's call %+v, want %+v", calls[0], want)
 	}
@@ -170,7 +170,7 @@ func TestEachEventReachesRunstoreInOrder(t *testing.T) {
 func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
 	t.Parallel()
 	store := &storeSpy{}
-	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, "/r", "/r")
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, "/r", "/r")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
 func TestATurnAtCapacityIsAppendedAsACapacityEvent(t *testing.T) {
 	t.Parallel()
 	store := &storeSpy{}
-	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, "/r", "/r")
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, "/r", "/r")
 	if err != nil {
 		t.Fatal(err)
 	}

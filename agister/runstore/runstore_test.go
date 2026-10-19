@@ -152,7 +152,7 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"schema": "agister.record/v1alpha1", "id": "x",
-		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r", "continue": nil, "reuse": nil},
+		"request": map[string]any{"workflow": "pair", "process": "", "agent": "", "params": map[string]any{}, "dir": "/r", "continue": nil, "reuse": nil, "definitions": nil},
 		"inputs":  []any{},
 		"started": "2026-10-17T07:16:18Z", "ended": nil, "status": "lost", "calls": []any{}, "result": nil}
 	if !reflect.DeepEqual(got, want) {
