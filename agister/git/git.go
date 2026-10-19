@@ -138,7 +138,7 @@ func (g *Git) Content(ctx context.Context, dir string) (string, error) {
 // Changes gives the binary-capable patch from commit to content, both
 // objects already in dir's repository.
 func (g *Git) Changes(ctx context.Context, dir, commit, content string) (string, error) {
-	stdout, stderr, err := g.run(ctx, dir, "diff", "--binary", "--no-ext-diff", "--no-textconv", commit, content, "--")
+	stdout, stderr, err := g.run(ctx, dir, "diff", "--binary", "--no-color", "--no-ext-diff", "--no-textconv", commit, content, "--")
 	if err != nil {
 		return "", fmt.Errorf("git diff --binary %s %s in %s: %w: %s", commit, content, dir, err, strings.TrimSpace(stderr))
 	}

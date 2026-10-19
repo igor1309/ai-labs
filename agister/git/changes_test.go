@@ -29,6 +29,8 @@ func TestTheChangesFromACommitToATreeAreAPatch(t *testing.T) {
 	write("tracked", "committed\n")
 	run(t, r, "add", "tracked")
 	run(t, r, "commit", "-qm", "second")
+	// A repository that colours its diffs still gives a patch that applies.
+	run(t, r, "config", "color.diff", "always")
 	write("untracked", "new\n")
 	write("binary", "after\x00\xfe")
 	g := newGit(t)
