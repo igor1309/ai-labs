@@ -57,3 +57,8 @@ Feature: Dig: stored progress
   Scenario: The tile and the featured card show the count
     Given I have dug up 7 dinosaurs
     Then the "DIG" tile shows 7, and so does the large card on a day it features DIG
+
+  Scenario: Digging shows nowhere outside the dig game and the home page
+    Given I have dug up Triceratops, and named it at the first pick at Paleontologist
+    When I open the catalogue and Triceratops's page
+    Then they look as they would had I never played the dig game: no mark, badge, stamp or count of digging
