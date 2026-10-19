@@ -1,15 +1,17 @@
 package documents
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"slices"
 )
 
 // File identifies a document's source by layer, path and lowercase hex
-// SHA-256 digest of its bytes.
+// SHA-256 digest, with the original bytes owned by the caller.
 type File struct {
 	Layer, Path, Digest string
+	Bytes               []byte
 }
 
 // Files gives the tree's own sources nearest first, then its base's
@@ -37,7 +39,11 @@ func (d *Documents) Files(kind Kind, name string) ([]File, []Problem) {
 	if len(problems) > 0 {
 		return nil, slices.Clone(problems)
 	}
-	return slices.Clone(files), nil
+	cloned := slices.Clone(files)
+	for i := range cloned {
+		cloned[i].Bytes = bytes.Clone(cloned[i].Bytes)
+	}
+	return cloned, nil
 }
 
 func sourceFiles(sources Sources) []File {
@@ -48,7 +54,7 @@ func sourceFiles(sources Sources) []File {
 	}{{"project", sources.Project}, {"repository", sources.Repository}, {"home", sources.Home}} {
 		if layer.file != nil {
 			files = append(files, File{Layer: layer.name, Path: layer.file.Path,
-				Digest: fmt.Sprintf("%x", sha256.Sum256(layer.file.Bytes))})
+				Digest: fmt.Sprintf("%x", sha256.Sum256(layer.file.Bytes)), Bytes: bytes.Clone(layer.file.Bytes)})
 		}
 	}
 	return files

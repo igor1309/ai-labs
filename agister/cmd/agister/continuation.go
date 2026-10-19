@@ -33,10 +33,11 @@ type continuedWorktree interface {
 // session, the id of its latest call, and the text of home's prompt
 // "continuation".
 type continuation struct {
-	session     string
-	continues   string
-	prompt      string
-	definitions []runstore.Definition
+	session         string
+	continues       string
+	prompt          string
+	definitions     []runstore.Definition
+	definitionBytes map[string][]byte
 }
 
 // continuationOf is the continuation of the run named run by built, asked
@@ -97,25 +98,25 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if latest.Content == "" || content != latest.Content {
 		return refuse("the worktree is not as %q left it", latest.ID)
 	}
-	prompt, definitions, refusal := continuationPrompt(docs)
+	prompt, definitions, files, refusal := continuationPrompt(docs)
 	if len(refusal) > 0 {
 		return continuation{}, refusal, nil
 	}
-	return continuation{session: session, continues: latest.ID, prompt: prompt, definitions: definitions}, nil, nil
+	return continuation{session: session, continues: latest.ID, prompt: prompt, definitions: definitions, definitionBytes: files}, nil, nil
 }
 
 // continuationPrompt is the text of the prompt "continuation" in docs, or
 // why it does not resolve.
-func continuationPrompt(docs runDocuments) (string, []runstore.Definition, []string) {
+func continuationPrompt(docs runDocuments) (string, []runstore.Definition, map[string][]byte, []string) {
 	prompt, problems := docs.Blob(documents.Prompt, "continuation")
 	if len(problems) > 0 {
-		return "", nil, []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
+		return "", nil, nil, []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
 	}
-	definitions, err := definitionsOf(docs, []runstore.Definition{{Kind: "prompt", Name: "continuation"}})
+	definitions, files, err := definitionsOf(docs, []runstore.Definition{{Kind: "prompt", Name: "continuation"}})
 	if err != nil {
-		return "", nil, []string{err.Error()}
+		return "", nil, nil, []string{err.Error()}
 	}
-	return string(prompt.Bytes), definitions, nil
+	return string(prompt.Bytes), definitions, files, nil
 }
 
 // latestCall is the latest call made of session, first the call of the
@@ -150,7 +151,7 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 func continued(built plan, c continuation) plan {
 	calls := maps.Clone(built.calls)
 	for name, planned := range calls {
-		planned = continuing(planned, c.prompt, c.definitions)
+		planned = continuing(planned, c.prompt, c.definitions, c.definitionBytes)
 		planned.continues = c.continues
 		planned.step.Session = c.session
 		calls[name] = planned
@@ -163,9 +164,13 @@ func continued(built plan, c continuation) plan {
 // prompt "continuation", as its first document, and admitted with no clean
 // worktree asked, the checks of the worktree the session left taking its
 // place (ADR-004, rule 5).
-func continuing(planned plannedCall, prompt string, definitions []runstore.Definition) plannedCall {
+func continuing(planned plannedCall, prompt string, definitions []runstore.Definition, files map[string][]byte) plannedCall {
 	planned.step.Documents = append([]call.Named{{Name: "continuation", Text: prompt}}, planned.step.Documents...)
 	planned.definitions = orderedDefinitions(slices.Concat(planned.definitions, definitions))
+	data := make(map[string][]byte, len(planned.definitionBytes)+len(files))
+	maps.Copy(data, planned.definitionBytes)
+	maps.Copy(data, files)
+	planned.definitionBytes = data
 	planned.admission.Clean = false
 	return planned
 }
@@ -187,13 +192,13 @@ func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
 	if len(names) == 0 {
 		return built, nil
 	}
-	prompt, definitions, refusal := continuationPrompt(docs)
+	prompt, definitions, files, refusal := continuationPrompt(docs)
 	if len(refusal) > 0 {
 		return plan{}, refusal
 	}
 	calls := maps.Clone(built.calls)
 	for _, name := range names {
-		calls[name] = continuing(calls[name], prompt, definitions)
+		calls[name] = continuing(calls[name], prompt, definitions, files)
 	}
 	built.calls = calls
 	return built, nil

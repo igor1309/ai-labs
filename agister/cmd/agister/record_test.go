@@ -170,7 +170,7 @@ func TestEachEventReachesRunstoreInOrder(t *testing.T) {
 func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
 	t.Parallel()
 	store := &storeSpy{}
-	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, "/r", "/r")
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, nil, "/r", "/r")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
 func TestATurnAtCapacityIsAppendedAsACapacityEvent(t *testing.T) {
 	t.Parallel()
 	store := &storeSpy{}
-	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, "/r", "/r")
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, nil, "/r", "/r")
 	if err != nil {
 		t.Fatal(err)
 	}

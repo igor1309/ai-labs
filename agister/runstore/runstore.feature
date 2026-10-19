@@ -1,6 +1,7 @@
 # runstore, a wrapper (docs/run-implementation.md, "Records",
-# "Continuation", "Runs", "A call's changes" and "Definitions";
-# ADR-001, "Runs"): runs kept under a folder, each a folder of its id.
+# "Continuation", "Runs", "A call's changes", "Definitions" and "A
+# definition's bytes"; ADR-001, "Runs"): runs kept under a folder, each
+# a folder of its id.
 # Contract tests against real files, in a temporary folder (ADR-009, rule 3).
 
 Feature: runstore keeps runs
@@ -40,11 +41,12 @@ Feature: runstore keeps runs
     Then "out/x" holds <holds>, each as kept
 
     Examples:
-      | kept                           | out                         | holds                               |
-      | its record and events written  | not yet made                | "record.json" and "events.jsonl"    |
-      | its record alone written       | not yet made                | "record.json" alone                 |
-      | its record and a patch written | not yet made                | "record.json" and "patches/a.patch" |
-      | its record and events written  | "out/x" an older copy of it | "record.json" and "events.jsonl"    |
+      | kept                                                | out                         | holds                               |
+      | its record and events written                       | not yet made                | "record.json" and "events.jsonl"    |
+      | its record alone written                            | not yet made                | "record.json" alone                 |
+      | its record and a patch written                      | not yet made                | "record.json" and "patches/a.patch" |
+      | its record and the bytes of the digest "d1" written | not yet made                | "record.json" and "definitions/d1"  |
+      | its record and events written                       | "out/x" an older copy of it | "record.json" and "events.jsonl"    |
 
   Scenario: A run not kept is not exported
     When "x" is exported to "out", no run "x" kept
@@ -68,3 +70,9 @@ Feature: runstore keeps runs
       process "p", its home file "/h/p.yaml", digest "d1"
     Then "runs/x/record.json"'s call holds "definitions": the kind
       "process", the name "p" and that file, given back by "x"
+
+  Scenario: A definition's bytes are written whole by their digest
+    Given runstore over the folder "runs"
+    When the bytes "b1" of the digest "d1" of the run "x" are written,
+      then again
+    Then "runs/x/definitions" holds "d1" alone, "b1" whole
