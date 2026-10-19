@@ -244,6 +244,7 @@ describe("presenting the skeleton game", () => {
     previousBest: 1,
     celebration: "new-best",
     newStar: true,
+    badge: undefined,
     ...overrides
   });
 

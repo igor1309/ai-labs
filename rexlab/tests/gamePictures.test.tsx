@@ -62,8 +62,8 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
     <SkeletonMuseumScreen
       language="en"
       stands={[
-        { id: "tyrannosaurus", name: "Tyrannosaurus", skeleton: fakeSkeletonPicture("tyrannosaurus", "skeleton"), state: "built" },
-        { id: "triceratops", name: "Triceratops", skeleton: fakeSkeletonPicture("triceratops", "skeleton"), state: "empty" }
+        { id: "tyrannosaurus", name: "Tyrannosaurus", skeleton: fakeSkeletonPicture("tyrannosaurus", "skeleton"), state: "built", badges: ["explorer"] },
+        { id: "triceratops", name: "Triceratops", skeleton: fakeSkeletonPicture("triceratops", "skeleton"), state: "empty", badges: [] }
       ]}
       score={1}
       total={2}

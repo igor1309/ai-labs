@@ -374,6 +374,11 @@ describe("the skeleton puzzle's motion", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
   });
 
+  // skeleton-assembly-badges.feature: the reveal's earned badge rises in.
+  it("rises the earned badge in on the reveal", () => {
+    expect(animations.get(".skeleton-badge-earned")).toBe("rise-in");
+  });
+
   // skeleton-assembly-turning.feature: a tapped piece turns in its spot,
   // and shows turned at once with reduced motion.
   it("turns a tapped piece a quarter, and only at once with reduced motion", () => {

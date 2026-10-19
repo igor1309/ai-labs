@@ -50,6 +50,11 @@ export type Skeleton = {
 // Hatchling's while it has none.
 export const cutAt = (skeleton: Skeleton, level: keyof Cuts): Cut => skeleton.cuts[level] ?? skeleton.cuts.hatchling;
 
+// A level's badge, which a skeleton finished there without help's last
+// step earns, in the levels' order; Hatchling has none.
+export const BADGES = ["explorer", "paleontologist"] as const;
+export type Badge = (typeof BADGES)[number];
+
 export type Puzzle = {
   skeleton: Skeleton;
   // The cut the skeleton is built from.
@@ -73,6 +78,10 @@ export type Puzzle = {
   // right way up.
   turning: boolean;
   turns: Readonly<Record<string, number>>;
+  // The badge finishing the puzzle earns, if any, and whether help's last
+  // step has shown, which leaves it none.
+  badge: Badge | undefined;
+  lastStepShown: boolean;
 };
 
 // A piece turns a quarter at a time, so four turns bring it back.
@@ -97,6 +106,9 @@ export const LADDER = ["region", "ghost", "move"] as const;
 
 export type HelpStep = "glow" | (typeof LADDER)[number];
 
+// Help's last step on the ladder: a piece moving towards its home.
+const LAST_STEP: HelpStep = "move";
+
 // The piece help points at, and the step it has reached.
 export type Help = { piece: string; step: HelpStep };
 
@@ -104,11 +116,17 @@ export type Help = { piece: string; step: HelpStep };
 // up, its help the ladder's when `ladder` says so, and the skeleton's
 // distractors among them when `distractors` says so. With `turning`, a
 // draw for each piece in the cut's order turns it a quarter, half or
-// three quarters, or leaves it the right way up.
+// three quarters, or leaves it the right way up. Finished without help's
+// last step, it earns `badge`, if any.
 export function startPuzzle(
   skeleton: Skeleton,
   cut: Cut,
-  { ladder = false, distractors = false, turning }: { ladder?: boolean; distractors?: boolean; turning?: (() => number) | undefined } = {}
+  {
+    ladder = false,
+    distractors = false,
+    turning,
+    badge
+  }: { ladder?: boolean; distractors?: boolean; turning?: (() => number) | undefined; badge?: Badge | undefined } = {}
 ): Puzzle {
   const turns = turning === undefined ? [] : cut.map(({ id }) => [id, Math.min(QUARTERS - 1, Math.floor(turning() * PARTS) - UPRIGHT + 1)] as const);
   return {
@@ -120,7 +138,9 @@ export function startPuzzle(
     distractors: distractors ? (skeleton.distractors ?? []) : [],
     told: undefined,
     turning: turning !== undefined,
-    turns: Object.fromEntries(turns.filter(([, quarters]) => quarters > 0))
+    turns: Object.fromEntries(turns.filter(([, quarters]) => quarters > 0)),
+    badge,
+    lastStepShown: false
   };
 }
 
@@ -180,7 +200,8 @@ export function awaitsHelp(puzzle: Puzzle): boolean {
 // `ms` more spent at the puzzle without fitting a piece.
 export function wait(puzzle: Puzzle, ms: number): Puzzle {
   if (!awaitsHelp(puzzle)) return puzzle;
-  return { ...puzzle, waited: Math.min(puzzle.waited + ms, lastHelpAt(puzzle)) };
+  const waited = { ...puzzle, waited: Math.min(puzzle.waited + ms, lastHelpAt(puzzle)) };
+  return { ...waited, lastStepShown: puzzle.lastStepShown || help(waited)?.step === LAST_STEP };
 }
 
 // The piece, and so its home, that help points at once it is due, the

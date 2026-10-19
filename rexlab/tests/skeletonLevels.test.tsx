@@ -189,7 +189,7 @@ describe("a puzzle at each level", () => {
 
     fitAll(skeletonOf("triceratops"));
 
-    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [], badges: { triceratops: ["explorer"] } });
   });
 });
 

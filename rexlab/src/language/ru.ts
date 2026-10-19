@@ -98,6 +98,7 @@ export const ru: Texts = {
   fitted: "КОСТИ НА МЕСТЕ",
   otherBone: (name) => `ЭТО ${name}!`,
   star: "ЗВЕЗДА",
+  badges: { explorer: "ЗНАЧОК ИССЛЕДОВАТЕЛЯ", paleontologist: "ЗНАЧОК ПАЛЕОНТОЛОГА" },
   buildAnother: "СОБРАТЬ ДРУГОЙ",
   stands: "СТЕНДЫ",
   build: "СОБРАТЬ",

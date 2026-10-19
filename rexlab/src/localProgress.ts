@@ -4,7 +4,7 @@ import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
-import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
+import { BADGES, NO_SKELETONS, type Badge, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
 import type { LevelChoice } from "./startLevel.ts";
 
@@ -114,8 +114,9 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
 
 // The skeleton game's progress, beside the others in the same record: the
 // best collection score, the dinosaurs whose skeleton earned a star and
-// those whose stand awaits its skeleton rebuilt, with the child's last
-// choice on its level switch, none until the switch is first used.
+// those whose stand awaits its skeleton rebuilt, each skeleton's level
+// badges, kept only once one is earned, with the child's last choice on
+// its level switch, none until the switch is first used.
 export function localSkeletonProgress(storage: () => KeyValueStorage) {
   const entry = gameProgress<StoredSkeletons>(storage, "skeleton-assembly", NO_SKELETONS, readSkeletons);
   return {
@@ -123,26 +124,39 @@ export function localSkeletonProgress(storage: () => KeyValueStorage) {
     load(): { progress: SkeletonProgress; levelChoice: LevelChoice | undefined } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
-      const { levelChoice, ...progress } = stored;
-      return { progress, levelChoice };
+      const { levelChoice, badges = {}, ...progress } = stored;
+      return { progress: { ...progress, badges }, levelChoice };
     },
 
     save({ progress, levelChoice }: { progress: SkeletonProgress; levelChoice: LevelChoice | undefined }): void {
-      entry.save({ ...progress, ...(levelChoice && { levelChoice }) });
+      const { badges, ...rest } = progress;
+      entry.save({ ...rest, ...(Object.keys(badges).length > 0 && { badges }), ...(levelChoice && { levelChoice }) });
     }
   };
 }
 
 // The skeleton game's entry as stored; an entry saved before the game had
-// levels has no choice.
-type StoredSkeletons = SkeletonProgress & { levelChoice?: LevelChoice };
+// levels has no choice, and one saved before a badge was earned no badges.
+type StoredSkeletons = Omit<SkeletonProgress, "badges"> & { badges?: SkeletonProgress["badges"]; levelChoice?: LevelChoice };
 
 // A choice that cannot be read is dropped, keeping the stars and stands
-// beside it.
-function readSkeletons({ bestScore, earned, rebuilding, levelChoice }: Entry): StoredSkeletons | undefined {
+// beside it, and so is a skeleton's badge that cannot.
+function readSkeletons({ bestScore, earned, rebuilding, badges, levelChoice }: Entry): StoredSkeletons | undefined {
   if (!((bestScore === null || isCount(bestScore)) && isIds(earned) && isIds(rebuilding))) return undefined;
   const choice = choiceOf(levelChoice);
-  return { bestScore, earned: [...earned], rebuilding: [...rebuilding], ...(choice && { levelChoice: choice }) };
+  return { bestScore, earned: [...earned], rebuilding: [...rebuilding], badges: badgesOf(badges), ...(choice && { levelChoice: choice }) };
+}
+
+// Each skeleton's badges, in the levels' order; a skeleton with none that
+// can be read has no entry.
+function badgesOf(raw: unknown): SkeletonProgress["badges"] {
+  if (!isObject(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw).flatMap(([id, held]) => {
+      const kept = Array.isArray(held) ? BADGES.filter((badge: Badge) => held.includes(badge)) : [];
+      return kept.length === 0 ? [] : [[id, kept]];
+    })
+  );
 }
 
 // The home page's start counts and the day's featured game, beside the

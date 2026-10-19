@@ -14,6 +14,7 @@ import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionSc
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { ShownBadge } from "./LevelBadge.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
 import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
@@ -22,6 +23,7 @@ import {
   isComplete,
   strayId,
   trayOf,
+  type Badge,
   type Celebration as SkeletonCelebration,
   type Museum,
   type BodyArea,
@@ -353,13 +355,13 @@ const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebratio
 
 export type SkeletonResultView = Pick<
   SkeletonResultScreenProps,
-  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar"
+  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar" | "badge"
 >;
 
 // A finished skeleton is revealed as its dinosaur, its body picture over
 // the whole skeleton in the frame they share.
 export function presentSkeletonResult(
-  { skeleton, score, total, best, previousBest, celebration, newStar }: SkeletonResult,
+  { skeleton, score, total, best, previousBest, celebration, newStar, badge }: SkeletonResult,
   language: Language,
   skeletonPicture: SkeletonPicture,
   bodyPicture: (dinosaurId: string) => string
@@ -377,11 +379,14 @@ export function presentSkeletonResult(
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
-    newStar
+    newStar,
+    badge: badge && SHOWN_BADGES[badge]
   };
 }
 
 const STANDS: Record<StandState, ShownStand> = { built: "built", rebuilding: "rebuilding", empty: "empty" };
+
+const SHOWN_BADGES: Record<Badge, ShownBadge> = { explorer: "explorer", paleontologist: "paleontologist" };
 
 export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "score" | "total" | "best">;
 
@@ -389,7 +394,13 @@ export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "sco
 // not standing there.
 export function presentSkeletonMuseum({ stands, score, total, best }: Museum, language: Language, skeletonPicture: SkeletonPicture): SkeletonMuseumView {
   return {
-    stands: stands.map(({ skeleton: { id, name }, state }) => ({ id, name: name[language], skeleton: skeletonPicture(id, "skeleton"), state: STANDS[state] })),
+    stands: stands.map(({ skeleton: { id, name }, state, badges }) => ({
+      id,
+      name: name[language],
+      skeleton: skeletonPicture(id, "skeleton"),
+      state: STANDS[state],
+      badges: badges.map((badge) => SHOWN_BADGES[badge])
+    })),
     score,
     total,
     best

@@ -115,7 +115,7 @@ describe("Explorer's puzzle", () => {
     revealNow(pictures, "stegosaurus");
 
     expect(reveal()).not.toBeNull();
-    expect(savedSkeletons(storage)).toEqual({ earned: ["stegosaurus"], bestScore: 1, rebuilding: [] });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["stegosaurus"], bestScore: 1, rebuilding: [], badges: { stegosaurus: ["explorer"] } });
   });
 });
 

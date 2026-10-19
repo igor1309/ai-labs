@@ -19,6 +19,7 @@ import {
   startPuzzle,
   turn,
   wait,
+  type Badge,
   type KeptSkeletons,
   type Puzzle,
   type Skeleton,
@@ -73,11 +74,12 @@ type Look = { coloured: boolean; silhouette: boolean };
 
 // How each level plays its puzzle: its look, whether help climbs the
 // ladder of steps rather than Hatchling's one glow, whether other
-// skeletons' bones wait in the tray, and whether pieces arrive turned.
-const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean }> = {
-  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false, turning: false },
-  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false, turning: false },
-  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true, turning: true }
+// skeletons' bones wait in the tray, whether pieces arrive turned, and
+// the badge a skeleton built there without help's last step earns.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean; badge: Badge | undefined }> = {
+  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false, turning: false, badge: undefined },
+  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false, turning: false, badge: "explorer" },
+  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true, turning: true, badge: "paleontologist" }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -187,8 +189,8 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { look, ladder, distractors, turning } = MODES[at];
-    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined });
+    const { look, ladder, distractors, turning, badge } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined, badge });
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));

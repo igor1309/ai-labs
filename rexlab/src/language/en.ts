@@ -94,6 +94,7 @@ export const en: Texts = {
   fitted: "BONES IN PLACE",
   otherBone: (name) => `THAT'S THE ${name}!`,
   star: "STAR",
+  badges: { explorer: "EXPLORER BADGE", paleontologist: "PALEONTOLOGIST BADGE" },
   buildAnother: "BUILD ANOTHER",
   stands: "STANDS",
   build: "BUILD",

@@ -5162,11 +5162,48 @@ body:has(.result) #version {
 }
 
 .skeleton-exhibit {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   align-self: stretch;
   display: flex;
   border-radius: 20px;
+}
+
+/* A level badge: its level's picture in a round mark. */
+.level-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* A stand's badges sit in its exhibit's top corner, over the skeleton. */
+.skeleton-stand-badges {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 6px;
+}
+
+/* The reveal names the badge the skeleton earned. */
+.skeleton-badge-earned {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
 }
 
 .skeleton-exhibit-picture {
@@ -5982,6 +6019,11 @@ body:has(.result) #version {
 
 [data-theme="dark"] .skeleton-fact {
   background: #222a3d;
+}
+
+[data-theme="dark"] .level-badge {
+  outline-color: #ece8de1f;
+  background: #181e2e;
 }
 
 [data-theme="dark"] .skeleton-fact svg,

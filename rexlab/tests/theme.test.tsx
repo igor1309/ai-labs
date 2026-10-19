@@ -411,9 +411,10 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
-// The museum empty, then with a skeleton on its stand, its puzzle as the
-// skeleton is knocked down and its bones scatter, and the museum with that
-// stand awaiting it.
+// The museum empty, then with a skeleton on its stand with its Explorer
+// badge, built at Explorer, the level none was picked at, without help;
+// its puzzle as the skeleton is knocked down and its bones scatter, and
+// the museum with that stand awaiting it.
 async function skeletonMuseum({ theme, user, timers }: Walk) {
   const triceratops = skeletonOf("triceratops");
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
@@ -424,7 +425,7 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
   fitAll(triceratops);
   act(() => timers.fire(REVEAL.motion));
   await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
-  expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
+  expect([screen.getAllByRole("img", { name: "STAR" }), screen.getAllByRole("img", { name: "EXPLORER BADGE" })].map((shown) => shown.length)).toEqual([1, 1]);
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "REBUILD" }));
   expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);

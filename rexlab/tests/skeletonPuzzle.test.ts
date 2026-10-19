@@ -297,3 +297,19 @@ describe("turned pieces", () => {
     expect(drop(upright, "skull", CENTRES.skull, 30).fitted).toEqual(["skull"]);
   });
 });
+
+describe("help's last step", () => {
+  const ladder = () => startPuzzle(SKELETON, SKELETON.cuts.hatchling, { ladder: true, badge: "explorer" });
+
+  it("is marked once a piece has moved towards its home, and stays marked through every fit after", () => {
+    const steps = [1, 2, 3].map((step) => wait(ladder(), step * HELP_AFTER));
+    const moved = steps[2] ?? ladder();
+
+    expect([ladder().lastStepShown, ...steps.map(({ lastStepShown }) => lastStepShown)]).toEqual([false, false, false, true]);
+    expect([help(moved)?.step, fitted(["skull"], moved).lastStepShown, ladder().badge]).toEqual(["move", true, "explorer"]);
+  });
+
+  it("is never marked by Hatchling's glow", () => {
+    expect(wait(start(), 10 * HELP_AFTER).lastStepShown).toBe(false);
+  });
+});

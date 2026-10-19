@@ -435,7 +435,8 @@ const skeletons = (entry: unknown, games: Record<string, unknown> = {}) => JSON.
 const SKELETONS = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: ["triceratops"] };
 
 // The skeleton game's saved progress and level choice, none by default.
-const saved = (progress: SkeletonProgress, levelChoice?: LevelChoice) => ({ progress, levelChoice });
+// Progress as loaded and saved, with no badges unless it gives some.
+const saved = (progress: Omit<SkeletonProgress, "badges"> & Partial<Pick<SkeletonProgress, "badges">>, levelChoice?: LevelChoice) => ({ progress: { badges: {}, ...progress }, levelChoice });
 
 describe("localSkeletonProgress", () => {
   it("reads no skeleton progress from empty storage", () => {
@@ -509,6 +510,27 @@ describe("localSkeletonProgress", () => {
       schemaVersion: 1,
       games: { "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 }, "skeleton-assembly": SKELETONS, "find-the-pair": { stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], offer: NO_LEVEL_OFFER } }
     });
+  });
+
+  it("keeps each skeleton's level badges once one is earned, and reads them back after a reload", () => {
+    const storage = memoryStorage();
+    const badges = { triceratops: ["explorer", "paleontologist"], tyrannosaurus: ["paleontologist"] } as const;
+
+    localSkeletonProgress(() => storage).save(saved({ ...SKELETONS, badges }));
+
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["skeleton-assembly"]).toEqual({ ...SKELETONS, badges });
+    expect(localSkeletonProgress(() => storage).load()).toEqual(saved({ ...SKELETONS, badges }));
+  });
+
+  it.each<[string, unknown, SkeletonProgress["badges"]]>([
+    ["that are not a record", ["explorer"], {}],
+    ["of a skeleton that are not a list", { triceratops: "explorer" }, {}],
+    ["of no level, or Hatchling's", { triceratops: ["hatchling", "grown-up"], stegosaurus: ["explorer"] }, { stegosaurus: ["explorer"] }],
+    ["repeated or out of the levels' order", { triceratops: ["paleontologist", "explorer", "paleontologist"] }, { triceratops: ["explorer", "paleontologist"] }]
+  ])("drops badges %s, keeping the stars and stands beside them", (_, badges, read) => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: skeletons({ ...SKELETONS, badges }) });
+
+    expect(localSkeletonProgress(() => storage).load()).toEqual(saved({ ...SKELETONS, badges: read }));
   });
 
   it.each([

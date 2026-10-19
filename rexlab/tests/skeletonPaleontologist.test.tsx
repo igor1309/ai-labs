@@ -119,7 +119,7 @@ describe("Paleontologist's puzzle", () => {
     revealNow(pictures, "triceratops");
 
     expect(reveal()).not.toBeNull();
-    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [], badges: { triceratops: ["paleontologist"] } });
   });
 });
 
