@@ -43,8 +43,9 @@ level's piece order:
   its source's pixels inside them, outlines included, that no piece
   before it in the level has taken.
 - Each source has one piece with no `region`, taking all the rest of it.
-  A piece that is the whole of a source of its own id, such as a skull
-  Explorer keeps whole, is that source's file.
+- An Explorer or Paleontologist piece never shares an id with a Hatchling
+  piece, even one it keeps whole (`head` from `skull`): step 3 re-cuts it
+  along the drawn bones, and Hatchling keeps its straight cut.
 
 Hatchling has four pieces, `skull`, `spine`, `legs` and `tail`; Explorer
 six to eight along the body areas; Paleontologist ten to twelve. A test
@@ -73,6 +74,20 @@ losslessly, and the skeleton's cuts, with every piece's place, into
 those levels, reading Hatchling's pieces from their files: the shipped
 skeletons' Hatchling pieces were cut before this script, so re-cut only
 their later levels.
+
+Then move each Explorer and Paleontologist piece's edges onto the bones
+the picture draws, so no piece shows part of a bone and part of its
+neighbour:
+
+```sh
+npx tsx scripts/recut-skeletons.ts
+```
+
+It re-cuts every skeleton's higher levels from the pieces as they are, so
+the cut lines need only put most of each bone in the right piece. A bone
+the art draws as one shape with its neighbour, as Triceratops's skull runs
+into its frill, needs its seam in `SEAMS` of `scripts/skeletonBones.ts`;
+the no-split test of `tests/skeletons.test.ts` finds it.
 
 Then, by hand, in `src/data/skeletons.json`:
 

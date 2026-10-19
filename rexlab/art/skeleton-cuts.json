@@ -38,7 +38,7 @@
     ],
     "explorer": [
       {
-        "id": "skull",
+        "id": "head",
         "from": "skull",
         "area": "head",
         "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
@@ -83,7 +83,7 @@
         "name": { "en": "RIGHT LEG", "ru": "ПРАВАЯ НОГА" }
       },
       {
-        "id": "tail",
+        "id": "tail-bones",
         "from": "tail",
         "area": "tail",
         "name": { "en": "TAIL", "ru": "ХВОСТ" }
@@ -91,8 +91,8 @@
     ],
     "paleontologist": [
       {
-        "id": "skull",
-        "from": "skull",
+        "id": "head",
+        "from": "head",
         "area": "head",
         "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
       },
@@ -155,7 +155,7 @@
       },
       {
         "id": "tail-base",
-        "from": "tail",
+        "from": "tail-bones",
         "area": "tail",
         "name": { "en": "TAIL", "ru": "ХВОСТ" },
         "region": [
@@ -164,7 +164,7 @@
       },
       {
         "id": "tail-tip",
-        "from": "tail",
+        "from": "tail-bones",
         "area": "tail",
         "name": { "en": "TAIL TIP", "ru": "КОНЧИК ХВОСТА" }
       }
@@ -226,7 +226,7 @@
         "name": { "en": "FRILL", "ru": "ВОРОТНИК" }
       },
       {
-        "id": "spine",
+        "id": "back",
         "from": "spine",
         "area": "back",
         "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
@@ -247,7 +247,7 @@
         "name": { "en": "HIND LEGS", "ru": "ЗАДНИЕ НОГИ" }
       },
       {
-        "id": "tail",
+        "id": "tail-bones",
         "from": "tail",
         "area": "tail",
         "name": { "en": "TAIL", "ru": "ХВОСТ" }
@@ -277,7 +277,7 @@
       },
       {
         "id": "ribs",
-        "from": "spine",
+        "from": "back",
         "area": "back",
         "name": { "en": "RIBS", "ru": "РЁБРА" },
         "region": [
@@ -286,7 +286,7 @@
       },
       {
         "id": "backbone",
-        "from": "spine",
+        "from": "back",
         "area": "back",
         "name": { "en": "BACKBONE", "ru": "ПОЗВОНОЧНИК" }
       },
@@ -321,8 +321,8 @@
         "name": { "en": "RIGHT HIND LEG", "ru": "ПРАВАЯ ЗАДНЯЯ НОГА" }
       },
       {
-        "id": "tail",
-        "from": "tail",
+        "id": "tail-bones",
+        "from": "tail-bones",
         "area": "tail",
         "name": { "en": "TAIL", "ru": "ХВОСТ" }
       }
@@ -369,7 +369,7 @@
     ],
     "explorer": [
       {
-        "id": "skull",
+        "id": "head",
         "from": "skull",
         "area": "head",
         "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
@@ -422,8 +422,8 @@
     ],
     "paleontologist": [
       {
-        "id": "skull",
-        "from": "skull",
+        "id": "head",
+        "from": "head",
         "area": "head",
         "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
       },
