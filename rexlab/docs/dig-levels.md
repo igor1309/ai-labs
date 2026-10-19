@@ -98,7 +98,7 @@ The one interaction at every level.
 
 - **A full collection.** Once all 42 are dug up the card keeps its 🏆
   and a round's reward is its reveal; at Paleontologist the 🦴 badges
-  still collect. Suggested to the owner (2026-10-19): no further
+  still collect. Accepted by the owner (2026-10-19): no further
   collection until a playtest shows children dig on past 42, as 42
   rounds is already a long goal at 5–7.
 
