@@ -10,7 +10,7 @@ import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, contrast, fakeBodyPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -131,7 +131,7 @@ describe("the level switch", () => {
     "fits and reads on a 1024 by 768 screen, in %s and the %s theme",
     async (language, theme) => {
       const app = openPairsApp({ deviceLanguage: DEVICES[language], theme });
-      await app.user.click(homeTile(TEXTS[language].pairs));
+      await app.user.click(gameDoor(TEXTS[language].pairs));
 
       // The column of the switch stands beside the cards, which take what
       // is left of the row.

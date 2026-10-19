@@ -4,7 +4,7 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
+import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, gameDoor } from "./support.ts";
 
 // The names of Hatchling's four pieces, in the tray's order.
 const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕП", "ПОЗВОНОЧНИК", "НОГИ", "ХВОСТ"] };
@@ -72,7 +72,7 @@ describe("the skeleton game's choice of dinosaurs", () => {
 
     await user.click(button("HOME"));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in the device's language, %s, its names in capitals", (language) => {
@@ -182,7 +182,7 @@ describe("choosing a dinosaur", () => {
 
     await user.click(button("HOME"));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its title the dinosaur's name in capitals", async (language) => {

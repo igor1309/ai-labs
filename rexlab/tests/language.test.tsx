@@ -47,7 +47,7 @@ import {
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
-  homeTile,
+  gameDoor,
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
@@ -112,7 +112,7 @@ function openApp({
 // tile reads in it.
 function expectShownIn(language: Language) {
   expect(document.documentElement.lang).toBe(language);
-  expect(words(homeTile(QUIZ_CARD[language]))).toBe(QUIZ_CARD[language]);
+  expect(words(gameDoor(QUIZ_CARD[language]))).toBe(QUIZ_CARD[language]);
 }
 
 function renderQuestion(
@@ -327,7 +327,7 @@ describe("Russian text", () => {
       "quiz tile",
       () => {
         openApp({ device: "ru-RU" });
-        return homeTile("СРАВНИ");
+        return gameDoor("СРАВНИ");
       },
       "СРАВНИ"
     ],
@@ -644,7 +644,7 @@ async function homeAndMenus(language: Language): Promise<Seen> {
 
 async function roundWithMistakes(language: Language): Promise<Seen> {
   const play = openPlay(language);
-  await play.user.click(homeTile(QUIZ_CARD[language]));
+  await play.user.click(gameDoor(QUIZ_CARD[language]));
   await playRound(play, 5);
   expect(screen.getAllByRole("status")).toHaveLength(1);
   return play.seen;
@@ -654,7 +654,7 @@ async function roundWithMistakes(language: Language): Promise<Seen> {
 async function roundWithoutMistakes(language: Language): Promise<Seen> {
   const play = openPlay(language, memoryStorage({ [PROGRESS_KEY]: BEST_OF_5 }));
   const { user, look } = play;
-  await user.click(homeTile(QUIZ_CARD[language]));
+  await user.click(gameDoor(QUIZ_CARD[language]));
   await playRound(play, 10);
   expect(screen.getAllByRole("status")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));

@@ -237,9 +237,9 @@ describe("a chosen level", () => {
     expect(pictureOn(levelButton())).toBe("🥚");
     // The pre-level sorting best belongs to Hatchling: changing the
     // setting changes the badge to that level's best (docs/age-levels.md).
-    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "6", null, "40", "2", null, "6"]);
+    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), null, "40", "2", null, "6"]);
     const hatchlingBadges = [...badges];
-    hatchlingBadges[3] = "5";
+    hatchlingBadges[2] = "5";
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([hatchlingBadges, featured]);
     expect(featured).toBe("care");
     expect([...storage.items].filter(([key]) => key !== AGE_LEVEL_KEY)).toEqual([...kept].filter(([key]) => key !== AGE_LEVEL_KEY));

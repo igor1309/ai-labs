@@ -15,7 +15,7 @@ import {
   englishDevice,
   fakeBodyPicture,
   featuring,
-  homeTile,
+  gameDoor,
   lightDevice,
   manualOrientation,
   manualPictures,
@@ -41,7 +41,7 @@ describe("a place shimmering until its picture loads", () => {
   it("is the ALL DINOSAURS tile on the home page", () => {
     const pictures = manualPictures();
     openApp(pictures);
-    const picture = homeTile("ALL DINOSAURS").querySelector("img");
+    const picture = gameDoor("ALL DINOSAURS").querySelector("img");
 
     expect(lookOf(picture)).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("stegosaurus")));
@@ -52,7 +52,7 @@ describe("a place shimmering until its picture loads", () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
 
-    await user.click(homeTile("ALL DINOSAURS"));
+    await user.click(gameDoor("ALL DINOSAURS"));
 
     const card = within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Velociraptor" });
     expect(lookOf(card.querySelector("img"))).toEqual(["loading", null]);
@@ -66,7 +66,7 @@ describe("a place shimmering until its picture loads", () => {
     const pictures = manualPictures();
     const loadAllBut = () => act(() => pictures.loading().filter((url) => url !== hero).forEach(pictures.finish));
     const user = openApp(pictures);
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     for (let number = 1; number <= 10; number++) {
       loadAllBut();
       await user.click(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")[0] ?? document.body);
@@ -112,7 +112,7 @@ describe("a screen whose pictures fail or are late", () => {
   it("is question 1, each card named and answered, once its pictures load past the limit", async () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     const shown = cards().map((card) => card.querySelector("img")?.getAttribute("alt") ?? "");
     act(() => pictures.fire(PICTURE_LIMIT));
 
@@ -129,7 +129,7 @@ describe("a screen whose pictures fail or are late", () => {
   it("is question 1, its cards answered once their pictures fail", async () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     const names = cards().map((card) => card.querySelector("img")?.getAttribute("alt") ?? "");
     act(() => names.forEach((name) => pictures.fail(fakeBodyPicture(name.toLowerCase()))));
 
@@ -141,7 +141,7 @@ describe("a screen whose pictures fail or are late", () => {
   it("is the page of Velociraptor, its → button going on", async () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
-    await user.click(homeTile("ALL DINOSAURS"));
+    await user.click(gameDoor("ALL DINOSAURS"));
     await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Velociraptor" }));
     act(() => pictures.fail(fakeBodyPicture("velociraptor")));
 
@@ -155,7 +155,7 @@ describe("a screen whose pictures fail or are late", () => {
     const hero = fakeBodyPicture("tyrannosaurus");
     const pictures = manualPictures();
     const user = openApp(pictures);
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     for (let number = 1; number <= 10; number++) {
       act(() => pictures.loading().filter((url) => url !== hero).forEach(pictures.finish));
       await user.click(cards()[0] ?? document.body);
