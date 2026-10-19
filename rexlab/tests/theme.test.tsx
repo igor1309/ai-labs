@@ -322,13 +322,11 @@ async function pairsFound({ theme, user, timers }: Walk) {
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
-  expect(screen.getAllByRole("img", { name: "FOUND" })).toHaveLength(3);
+  expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
   expectScreenIn(theme);
   const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
-  const stamped = within(grid).getAllByRole("img", { name: "FOUND" })[0]?.closest("button");
-  if (!stamped) throw new Error("No stamped card");
-  await user.click(stamped);
-  expect(screen.getByRole("img", { name: "FOUND" })).toBeDefined();
+  await user.click(within(grid).getAllByRole("button")[0] as HTMLElement);
+  expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
   expectScreenIn(theme);
 }
 

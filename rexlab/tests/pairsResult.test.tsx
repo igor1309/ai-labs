@@ -49,7 +49,7 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     expect(storedPairs(app.storage)).toMatchObject({ stars: 5, best: { ...otherBests, [played]: expected }, found: ordered(ids), level: level === "hatchling" ? 2 : 1, boardsOnLevel: level === "hatchling" ? 0 : 1 });
   });
 
-  it("marks only newly found dinosaurs and stamps the completed board's collection and pages", async () => {
+  it("marks only newly found dinosaurs and updates the completed board's collection", async () => {
     const app = open({ found: ids.slice(0, 2) });
     await playPairs(app.user);
     await playDealt(app.user, app.clock, names);
@@ -65,12 +65,11 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     const count = document.querySelector(".catalogue-found");
     expect(count && [count.textContent, symbolOf(count)]).toEqual([`${ids.length} / ${SHIPPED_PALS.length}`, "copy"]);
     const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
-    const stamped = within(catalogue).getAllByRole("button").filter((card) => within(card).queryByRole("img", { name: "FOUND" }));
-    expect(stamped.map((card) => card.getAttribute("aria-label")).sort()).toEqual(board.pals.map(({ name }) => name.en).sort());
+    expect(within(catalogue).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
     const first = board.pals[0];
     if (!first) throw new Error("No dinosaur on the board");
     await app.user.click(within(catalogue).getByRole("button", { name: first.name.en }));
-    expect(symbolOf(screen.getByRole("img", { name: "FOUND" }))).toBe("copy");
+    expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
   });
 
   it("finds nothing from a partly finished board", async () => {

@@ -4536,7 +4536,7 @@ body:has(.result) #version {
 }
 
 /* Found dinosaurs in the catalogue: the count is of those found, on the
-   navy, and each found card and page is stamped. */
+   navy. */
 .catalogue-count.catalogue-found {
   background: #1f2b4d;
   color: #f6f2e9;
@@ -4544,37 +4544,6 @@ body:has(.result) #version {
 
 .catalogue-found svg {
   color: #e39b2d;
-}
-
-.catalogue-art {
-  position: relative;
-}
-
-.found-stamp {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  left: 10px;
-  width: 52px;
-  height: 52px;
-  box-sizing: border-box;
-  display: grid;
-  place-items: center;
-  border: 3px solid #fffdf8;
-  border-radius: 50%;
-  background: #1f2b4d;
-  color: #e39b2d;
-}
-
-.dinosaur-found-stamp {
-  top: 24px;
-  left: 24px;
-  width: 64px;
-  height: 64px;
-  border-color: #ffffff;
-  background: #e39b2d;
-  color: #1f2b4d;
-  animation: stamp-in var(--motion-standard) var(--ease-overshoot) both;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the
@@ -5997,8 +5966,7 @@ body:has(.result) #version {
 [data-theme="dark"] .pairs-tile-back,
 [data-theme="dark"] .pairs-hero-back,
 [data-theme="dark"] .pair-card-back,
-[data-theme="dark"] .catalogue-count.catalogue-found,
-[data-theme="dark"] .found-stamp {
+[data-theme="dark"] .catalogue-count.catalogue-found {
   background: #2c3b66;
 }
 
@@ -6010,8 +5978,7 @@ body:has(.result) #version {
 }
 
 [data-theme="dark"] .pairs-play-button,
-[data-theme="dark"] .pairs-new-badge,
-[data-theme="dark"] .dinosaur-found-stamp {
+[data-theme="dark"] .pairs-new-badge {
   background: #f2b24b;
 }
 
@@ -6043,18 +6010,8 @@ body:has(.result) #version {
 [data-theme="dark"] .pairs-stars svg,
 [data-theme="dark"] .pairs-result-hand,
 [data-theme="dark"] .pairs-result-star,
-[data-theme="dark"] .catalogue-found svg,
-[data-theme="dark"] .found-stamp {
+[data-theme="dark"] .catalogue-found svg {
   color: #f2b24b;
-}
-
-[data-theme="dark"] .found-stamp {
-  border-color: #181e2e;
-}
-
-[data-theme="dark"] .dinosaur-found-stamp {
-  border-color: #ffffff;
-  color: #1f2b4d;
 }
 
 [data-theme="dark"] .pair-card[data-state="found"] .pair-card-face {

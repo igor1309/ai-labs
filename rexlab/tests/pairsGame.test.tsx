@@ -647,7 +647,7 @@ describe("dinosaurs found", () => {
     expect(storedPairs(app.storage)).toMatchObject({ found: ["triceratops"] });
   });
 
-  it("are counted and stamped in the catalogue, the page of each stamped too", async () => {
+  it("are counted in the catalogue, without covering its artwork", async () => {
     const { user } = openPairsApp({ storage: stored({ found: ["triceratops", "stegosaurus"] }) });
 
     await user.click(button("ALL DINOSAURS"));
@@ -655,14 +655,9 @@ describe("dinosaurs found", () => {
     const count = foundCount();
     expect([count.textContent, symbolOf(count)]).toEqual([`2 / ${SHIPPED_PALS.length}`, "copy"]);
     const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
-    const stamped = within(grid)
-      .getAllByRole("button")
-      .filter((card) => within(card).queryByRole("img", { name: "FOUND" }))
-      .map((card) => card.getAttribute("aria-label"));
-    expect(stamped.sort()).toEqual(["Stegosaurus", "Triceratops"]);
-    expect(symbolOf(within(grid).getAllByRole("img", { name: "FOUND" })[0] ?? grid)).toBe("copy");
+    expect(within(grid).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
     await user.click(within(grid).getByRole("button", { name: "Triceratops" }));
-    expect(symbolOf(screen.getByRole("img", { name: "FOUND" }))).toBe("copy");
+    expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "NEXT" }));
     expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
   });
