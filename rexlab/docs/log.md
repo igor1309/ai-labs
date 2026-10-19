@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- The catalogue list is one row of HOME and the food chips, with no title or count: ALL is a filter symbol alone, a card's food tag is its colour and symbols without the word, a card's chips stay on one line, and the list runs to the screen's edge so its scrollbar shows there (LAB-350).
 - The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
 - Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).

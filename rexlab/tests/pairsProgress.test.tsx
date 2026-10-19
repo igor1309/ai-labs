@@ -18,11 +18,11 @@ const entry = (progress: Partial<StoredPairs> = {}): StoredPairs => ({ stars: 0,
 const picked = (level: AgeLevel) => ({ level, revision: `picked-${level}` });
 const ordered = (ids: readonly string[]) => SHIPPED_PALS.filter(({ id }) => ids.includes(id)).map(({ id }) => id);
 
-function expectFound(ids: readonly string[]) {
-  const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
-  const count = document.querySelector(".catalogue-found");
-  expect(count?.textContent ?? null).toBe(ids.length ? `${ids.length} / ${SHIPPED_PALS.length}` : null);
-  expect(within(catalogue).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
+// The catalogue marks no dinosaur found, by a count or a stamp: the
+// found are kept in storage only.
+function expectCatalogueUnmarked() {
+  screen.getByRole("group", { name: "ALL DINOSAURS" });
+  expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
 }
 
 describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
@@ -50,7 +50,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("1");
     await reopened.user.click(button("HOME"));
     await reopened.user.click(button("ALL DINOSAURS"));
-    expectFound(ids);
+    expectCatalogueUnmarked();
   });
 
   it("restores the saved stars, climb and bests, and found dinosaurs", async () => {
@@ -67,7 +67,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(localPairsProgress(() => storage).load()?.progress.best).toEqual({ 2: 6 });
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
-    expectFound(["triceratops"]);
+    expectCatalogueUnmarked();
   });
 
   it("preserves the other games and settings, and their saves preserve its progress and choice", async () => {
@@ -130,7 +130,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     await app.user.click(button("HOME"));
     expect(homeTile("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe("1");
     await app.user.click(button("ALL DINOSAURS"));
-    expectFound(ids);
+    expectCatalogueUnmarked();
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   });
 
@@ -145,7 +145,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], `BEST${ids.length + 2}${ids.length + 1}`]);
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
-    expectFound(ids);
+    expectCatalogueUnmarked();
     await app.user.click(button("HOME"));
     await app.user.click(button("FIND THE PAIR"));
     expect(screen.getByLabelText("STARS").textContent).toBe("3");
@@ -162,7 +162,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("2");
     await reopened.user.click(button("HOME"));
     await reopened.user.click(button("ALL DINOSAURS"));
-    expectFound([]);
+    expectCatalogueUnmarked();
     expect(storedPairs(storage)).toEqual(saved);
   });
 });
@@ -238,7 +238,7 @@ describe("the level's progress across screens", () => {
     expect(storedPairs(storage)).toEqual(saved);
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
-    expectFound(saved.found);
+    expectCatalogueUnmarked();
     await app.user.click(button("HOME"));
     await playPairs(app.user, "HATCHLING");
     expect(screen.getByLabelText("LEVEL").textContent).toBe("2");

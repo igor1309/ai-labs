@@ -62,8 +62,6 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     await app.user.click(button("HOME"));
     await app.user.click(button("ALL DINOSAURS"));
 
-    const count = document.querySelector(".catalogue-found");
-    expect(count && [count.textContent, symbolOf(count)]).toEqual([`${ids.length} / ${SHIPPED_PALS.length}`, "copy"]);
     const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
     expect(within(catalogue).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
     const first = board.pals[0];

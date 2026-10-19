@@ -87,13 +87,13 @@ async function choose(user: User, name: string) {
 }
 
 describe("the catalogue's food chips", () => {
-  it("are under the title, ALL, MEAT, PLANTS and BOTH, each with its symbols and count, ALL chosen, each a tap target at least 44 high", async () => {
+  it("are beside HOME, ALL a filter symbol alone, then MEAT, PLANTS and BOTH, each with its symbols and count, ALL chosen, each a tap target at least 44 high", async () => {
     const user = openApp();
     await openCatalogue(user);
 
-    expect(chipRow().previousElementSibling).toBe(screen.getByRole("heading", { level: 1 }).closest("header"));
+    expect(chipRow().previousElementSibling).toBe(screen.getByRole("button", { name: "HOME" }));
     expect(chips().map((each) => [each.getAttribute("aria-label"), symbolsOf(each), words(each)])).toEqual([
-      ["ALL", ["book-open"], "ALL42"],
+      ["ALL", ["funnel"], ""],
       ["MEAT", ["beef"], "MEAT16"],
       ["PLANTS", ["leaf"], "PLANTS23"],
       ["BOTH", ["beef", "leaf"], "BOTH3"]
@@ -126,8 +126,7 @@ describe("the catalogue's food chips", () => {
 
     expect(chosen()).toEqual(["MEAT"]);
     expect(cardNames()).toEqual(MEAT.map(({ name }) => name.en));
-    expect(within(grid()).getAllByText("MEAT")).toHaveLength(16);
-    expect(screen.getByLabelText("DINOSAURS").textContent).toBe("16");
+    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(16);
   });
 
   it("show every dinosaur again for ALL", async () => {
@@ -138,7 +137,6 @@ describe("the catalogue's food chips", () => {
     await user.click(chip("ALL"));
 
     expect(cardNames()).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
-    expect(screen.getByLabelText("DINOSAURS").textContent).toBe("42");
   });
 
   it("change nothing when the chosen chip is tapped again", async () => {
@@ -152,13 +150,11 @@ describe("the catalogue's food chips", () => {
     expect(cardNames()).toEqual(["Gallimimus", "Oviraptor", "Troodon"]);
   });
 
-  it("count the found among the dinosaurs shown without covering their artwork", async () => {
+  it("show no count of the found and no stamps over the artwork", async () => {
     const user = openApp({ found: ["tyrannosaurus", "velociraptor", "triceratops"] });
     await choose(user, "MEAT");
 
-    const count = screen.getAllByLabelText("FOUND").find((each) => each.tagName === "P");
-    expect([count && symbolsOf(count), count?.textContent]).toEqual([["copy"], "2 / 16"]);
-    expect(within(grid()).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
   it("make a page go round the dinosaurs shown, counting its place among them", async () => {

@@ -1528,58 +1528,24 @@ body:has(.result) #version {
 }
 
 /* The catalogue: its bar stays at the top while the cards, four to a row,
-   scroll under it. */
+   scroll under it, the list as wide as the screen so its scrollbar is at
+   the edge. */
 .catalogue {
   position: relative;
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 0;
+  padding: 40px 0 0;
   display: flex;
   flex-direction: column;
   gap: 28px;
 }
 
 .catalogue-bar {
+  padding: 0 56px;
   display: flex;
   align-items: center;
   gap: 24px;
-}
-
-.catalogue-title {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 40px;
-  font-weight: 700;
-}
-
-.catalogue-mark {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: #c9583d;
-  color: #ffffff;
-}
-
-.catalogue-count {
-  margin: 0;
-  height: 44px;
-  box-sizing: border-box;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 22px;
-  background: #e6e2d9;
-  font-size: 20px;
-  font-weight: 700;
 }
 
 /* The chips choosing the dinosaurs shown by their food look like the
@@ -1591,6 +1557,13 @@ body:has(.result) #version {
 .food-chips {
   display: flex;
   gap: 12px;
+}
+
+/* The chip for every dinosaur is its symbol alone, a round button. */
+.food-chip[data-food="all"] .food-chip-face {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
 }
 
 .food-chip {
@@ -1692,7 +1665,7 @@ body:has(.result) #version {
   min-height: 0;
   overflow-y: auto;
   box-sizing: border-box;
-  padding-bottom: 48px;
+  padding: 0 56px 48px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   /* Rows keep their cards' full height; the grid scrolls instead. */
@@ -1754,10 +1727,34 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The chips stay in one row: on a card too narrow for them all, as on a
+   smaller iPad, the height and weight drop their symbols and close up,
+   and the food tag keeps its size. */
 .catalogue-chips {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
+}
+
+.catalogue-chips .diet-tag {
+  flex-shrink: 0;
+}
+
+@container (max-width: 280px) {
+  .catalogue-footer {
+    padding-inline: 12px;
+  }
+
+  .catalogue-chips {
+    gap: 4px;
+  }
+
+  .catalogue-chip {
+    padding: 0 6px;
+  }
+
+  .catalogue-chip svg {
+    display: none;
+  }
 }
 
 .catalogue-chip {
@@ -1820,10 +1817,12 @@ body:has(.result) #version {
   font-size: 15px;
 }
 
+/* A small tag has no words, so no shade for them. */
 .diet-tag[data-size="small"] .diet-tag-face {
   height: 32px;
-  padding: 0 10px 0 8px;
+  padding: 0 8px;
   gap: 5px;
+  background: none;
 }
 
 .diet-tag[data-size="small"] .diet-tag-symbols {
@@ -4535,17 +4534,6 @@ body:has(.result) #version {
   animation: fade-out var(--motion-small) var(--ease-out) both;
 }
 
-/* Found dinosaurs in the catalogue: the count is of those found, on the
-   navy. */
-.catalogue-count.catalogue-found {
-  background: #1f2b4d;
-  color: #f6f2e9;
-}
-
-.catalogue-found svg {
-  color: #e39b2d;
-}
-
 /* The skeleton game's screens fill the screen under a bar like find the
    pair's: HOME, the title beside a bone, MUSEUM and, while building, the
    bones fitted. */
@@ -5533,7 +5521,6 @@ body:has(.result) #version {
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .sort-tile-best,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
-[data-theme="dark"] .catalogue-count,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
 [data-theme="dark"] .dinosaur-art,
@@ -5685,7 +5672,6 @@ body:has(.result) #version {
    green, so the tiles and tags there take the dark page's ink, as the
    marks do. */
 [data-theme="dark"] .catalogue-tile,
-[data-theme="dark"] .catalogue-mark,
 [data-theme="dark"] .diet-tag,
 [data-theme="dark"] .sort-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
@@ -5694,7 +5680,6 @@ body:has(.result) #version {
 }
 
 [data-theme="dark"] .catalogue-tile,
-[data-theme="dark"] .catalogue-mark,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
 [data-theme="dark"] .sort-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
@@ -5965,8 +5950,7 @@ body:has(.result) #version {
 
 [data-theme="dark"] .pairs-tile-back,
 [data-theme="dark"] .pairs-hero-back,
-[data-theme="dark"] .pair-card-back,
-[data-theme="dark"] .catalogue-count.catalogue-found {
+[data-theme="dark"] .pair-card-back {
   background: #2c3b66;
 }
 
@@ -6009,8 +5993,7 @@ body:has(.result) #version {
 [data-theme="dark"] .pair-card-back-frame,
 [data-theme="dark"] .pairs-stars svg,
 [data-theme="dark"] .pairs-result-hand,
-[data-theme="dark"] .pairs-result-star,
-[data-theme="dark"] .catalogue-found svg {
+[data-theme="dark"] .pairs-result-star {
   color: #f2b24b;
 }
 
