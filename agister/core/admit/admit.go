@@ -1,10 +1,11 @@
 // Package admit admits a call before it starts (ADR-001, "Core"; ADR-004,
-// rules 2 and 3): the worktree's HEAD is the revision its process pins,
-// its content is HEAD's where its process asks a clean worktree, and the
-// call holds the worktree, a writer alone and a reader shared, until it
-// ends. A call not admitted is refused, not queued. An admitted call's
-// worktree is told, read under its hold (ADR-004, rule 4): its HEAD when
-// admitted and its content at the call's end.
+// rules 2, 3 and 5): the worktree's HEAD is the revision its process pins,
+// a call continuing a session finds the worktree as the session's latest
+// call left it, its content is HEAD's where its process asks a clean
+// worktree, and the call holds the worktree, a writer alone and a reader
+// shared, until it ends. A call not admitted is refused, not queued. An
+// admitted call's worktree is told, read under its hold (ADR-004, rule 4):
+// its HEAD when admitted and its content at the call's end.
 package admit
 
 import (
@@ -14,10 +15,13 @@ import (
 )
 
 // Request is what a call's process declares of the worktree: the input
-// whose revision HEAD must be, nil for none; whether its content must be
-// HEAD's; and whether the call writes to it, declaring read-write access.
+// whose revision HEAD must be, nil for none; for a call continuing a
+// session, the worktree the session's latest call left, as admit told it,
+// nil for none; whether its content must be HEAD's; and whether the call
+// writes to it, declaring read-write access.
 type Request struct {
 	Pin    *Pin
+	Left   *Facts
 	Clean  bool
 	Writer bool
 }
@@ -78,7 +82,8 @@ func New(worktree Worktree, hold Hold) (*Admitter, error) {
 
 // Make admits the call request declares and, admitted, makes it through
 // made, holding the worktree until made returns, however it ends. It
-// checks, then holds: the pin first, then the content, then the hold. A
+// checks, then holds: the pin first, then the worktree a session's latest
+// call left, then the content, then the hold. A
 // call not admitted is its error, which says why: no hold is taken, made
 // is not called and told is not told. An admitted call's facts are told
 // once made returns, however it ends, before the hold is released: a fact
@@ -94,6 +99,11 @@ func (a *Admitter) Make(ctx context.Context, request Request, made func(ctx cont
 		}
 		if head != pin.Commit {
 			return fmt.Errorf("HEAD is %q, not the pinned %q", head, pin.Commit)
+		}
+	}
+	if left := request.Left; left != nil {
+		if err := a.asLeft(ctx, *left); err != nil {
+			return err
 		}
 	}
 	if request.Clean {
@@ -127,5 +137,33 @@ func (a *Admitter) Make(ctx context.Context, request Request, made func(ctx cont
 		told(Facts{Head: head, Content: content})
 	}()
 	made(ctx)
+	return nil
+}
+
+// asLeft is why the worktree is not as left, the facts a session's latest
+// call was told: its HEAD not the one that call was admitted at, or its
+// content not the one that call left; nil where it is. A fact left empty
+// was not read, and the worktree is not known to be as left.
+func (a *Admitter) asLeft(ctx context.Context, left Facts) error {
+	if left.Head != "" {
+		head, err := a.worktree.Head(ctx)
+		if err != nil {
+			return fmt.Errorf("the worktree's HEAD: %w", err)
+		}
+		if head != left.Head {
+			return fmt.Errorf("HEAD is %q, not the session's latest call's %q", head, left.Head)
+		}
+	}
+	notAsLeft := errors.New("the worktree is not as the session's latest call left it")
+	if left.Head == "" || left.Content == "" {
+		return notAsLeft
+	}
+	content, err := a.worktree.Content(ctx)
+	if err != nil {
+		return fmt.Errorf("the worktree's content: %w", err)
+	}
+	if content != left.Content {
+		return notAsLeft
+	}
 	return nil
 }

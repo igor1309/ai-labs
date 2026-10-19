@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -74,7 +75,8 @@ type turn struct {
 // step is doing is told to events. Each run that reaches core is recorded
 // in store (docs/run-implementation.md, "Records"); a run that continues
 // one store keeps is checked against it first, and its step resumes that
-// run's session ("Continuation").
+// run's session ("Continuation"); a step continuing an earlier step's
+// session resumes it ("A binding continuing a session").
 type runs struct {
 	home      string
 	links     links
@@ -186,6 +188,10 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if len(unrun) > 0 {
 		return cli.Result{}, refused(unrun)
 	}
+	built, refusal := sessionsContinued(built, read.documents)
+	if len(refusal) > 0 {
+		return cli.Result{}, refused(refusal)
+	}
 	if request.Continue != "" {
 		c, refusal, err := continuationOf(r.host.ctx, request.Continue, built, root, r.store, r.holding.facts, read.documents)
 		if err != nil {
@@ -216,7 +222,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if err != nil {
 		return cli.Result{}, err
 	}
-	runner, err := r.runner(built, launch, root, record, reused)
+	runner, err := r.runner(built, id, launch, root, record, reused)
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -228,15 +234,15 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	return record.end(runner.Run(ctx, built.workflow, request.Params)), nil
 }
 
-// runner is core's runner of built, its calls' turns taken in dir, the
-// worktree's root, over Agister's environment, each by the caller of its
+// runner is core's runner of built, in the run whose id is id, its calls'
+// turns taken in dir, the worktree's root, over Agister's environment, each by the caller of its
 // turn's contract, once core/admit has admitted it against that worktree,
 // and watched for staleness by core/watch, on the host's timer; its inputs
 // read by the sources, a path relative to launch, as the person gave it;
 // a call taken from reused's calls where it may be;
 // what each step is doing told to the run's events and to record, and each
 // call, as it ends, to record.
-func (r *runs) runner(built plan, launch, dir string, record *runRecord, reused runstore.Record) (*workflow.Runner, error) {
+func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reused runstore.Record) (*workflow.Runner, error) {
 	watcher, err := watch.New(watch.Timer(r.host.timer))
 	if err != nil {
 		return nil, err
@@ -266,6 +272,7 @@ func (r *runs) runner(built plan, launch, dir string, record *runRecord, reused 
 	if err != nil {
 		return nil, err
 	}
+	steps.run = id
 	steps.reuse = reusable{calls: reused.Calls, root: dir, facts: r.holding.facts}
 	return workflow.New(boundary{inputs: resolver, declared: built.boundary, records: record}, steps, bothEvents{r.events, record}, r.host.clock)
 }
@@ -386,7 +393,11 @@ type plan struct {
 
 // plannedCall is a step's call: its process and agent, by name; the
 // contract of the turn it is taken on; the id of the call whose session
-// it continues, "" for none; what its process declares, which
+// it continues, "" for none; whether it is of a session's chain inside the
+// run, continuing a session or continued by a step, which is made, never
+// taken by a reuse: what a session held is not compared, and a session the
+// earlier run went on in has moved past the call a reuse would take; what
+// its process declares, which
 // core/inputs resolves before the call starts; what it declares of the
 // worktree, which core/admit admits it by, but the commit of its pin,
 // which its inputs give; and the call core/call makes, but its environment
@@ -396,6 +407,7 @@ type plannedCall struct {
 	agent     string
 	contract  string
 	continues string
+	chained   bool
 	declared  inputs.Declared
 	admission admit.Request
 	step      call.Step
@@ -477,7 +489,11 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 			return workflow.Step{}, err
 		}
 		built.calls[item.Name] = planned
-		return workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings}, nil
+		step := workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings}
+		if session := item.Session; session != nil {
+			step.Session = session.Name
+		}
+		return step, nil
 	}
 	for _, item := range w.Steps {
 		if item.Parallel == nil {
@@ -506,6 +522,15 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 	if err != nil {
 		return plan{}, nil, err
 	}
+	for _, item := range stepsOf(w.Steps) {
+		if session := item.Session; session != nil {
+			for _, name := range []string{item.Name, session.Name} {
+				planned := built.calls[name]
+				planned.chained = true
+				built.calls[name] = planned
+			}
+		}
+	}
 	return built, nil, nil
 }
 
@@ -514,7 +539,7 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 // workflow's inputs; each of its items that is neither a step nor a
 // parallel, and each item a parallel holds that is not a step; a field
 // read within a parallel's outputs, which are a list; then, for each step,
-// a parallel's included, a runtime with no turn, its session, and what its
+// a parallel's included, a runtime with no turn, and what its
 // process declares that is not run, among them its instruction, its
 // guidance and its staleness limits on a runtime that takes no message and
 // reports no line, as bash does, and an input named as a document of its
@@ -558,9 +583,6 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		step := fmt.Sprintf("the step %q", item.Name)
 		if !turned {
 			unrun.add(step, fmt.Sprintf("the runtime %q's turn", runtime))
-		}
-		if item.Session != nil {
-			unrun.add(step, "the session")
 		}
 		definition, problems := docs.Process(item.Process.Value)
 		if len(problems) > 0 {
@@ -996,15 +1018,60 @@ type admission interface {
 // is told to records as it ends, with the inputs it was given, none for a
 // call whose inputs were refused, and the worktree's facts admit told of
 // it. A call is taken from the run reused, where it may be, and neither
-// admitted nor made.
+// admitted nor made; a call of a session's chain never is. A call
+// continuing a session is given it, continues the session's latest call
+// in the run whose id is run, and is admitted only where the worktree is
+// as that call left it (docs/run-implementation.md, "A binding continuing
+// a session").
 type stepCalls struct {
-	inputs  declaredResolver
-	admits  admission
-	callers map[string]turnCaller
-	clock   clock
-	calls   map[string]plannedCall
-	records callRecords
-	reuse   reusable
+	inputs   declaredResolver
+	admits   admission
+	callers  map[string]turnCaller
+	clock    clock
+	calls    map[string]plannedCall
+	records  callRecords
+	reuse    reusable
+	run      string
+	sessions sessionCalls
+}
+
+// sessionCalls is the latest call of each session in a run, by the
+// session: its id and the worktree admit told at its end. The facts are
+// the run's own, kept in memory: only the run's calls go on in its
+// sessions meanwhile, the caller running no two writers in one worktree
+// (ADR-004, rule 6). It is safe for concurrent use.
+type sessionCalls struct {
+	mu     sync.Mutex
+	latest map[string]sessionCall
+}
+
+// sessionCall is a session's latest call: its id, and the worktree it
+// left.
+type sessionCall struct {
+	id   string
+	left admit.Facts
+}
+
+// of is the latest call of session, false for none.
+func (s *sessionCalls) of(session string) (sessionCall, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	latest, ok := s.latest[session]
+	return latest, ok
+}
+
+// went keeps made as the latest call of each of sessions, but "".
+func (s *sessionCalls) went(made sessionCall, sessions ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.latest == nil {
+		s.latest = map[string]sessionCall{}
+	}
+	for _, session := range sessions {
+		if session != "" {
+			s.latest[session] = made
+		}
+	}
 }
 
 // callRecords is told each step's call as it ends. It is told from many
@@ -1032,19 +1099,20 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records}, nil
 }
 
-func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, report func(workflow.Report)) workflow.Result {
+func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	planned := s.calls[name]
 	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues}
-	ended.result = s.call(ctx, name, params, report, &ended)
+	ended.result = s.call(ctx, name, params, session, report, &ended)
 	s.records.Called(ended)
 	return ended.result
 }
 
-// call is the result of the step name's call, the inputs it is given and
-// its worktree's facts kept in ended where they are known. A call taken
-// from the run reused reports Reused and keeps the call it took in ended;
-// any other reports Started.
-func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Report), ended *endedCall) workflow.Result {
+// call is the result of the step name's call, continuing session, "" for
+// none, the inputs it is given, the call it continues and its worktree's
+// facts kept in ended where they are known. A call taken from the run
+// reused reports Reused and keeps the call it took in ended; any other
+// reports Started.
+func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report), ended *endedCall) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
 		report(workflow.Report{Started: true})
@@ -1056,7 +1124,11 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
 	ended.inputs = givenInputs(planned.declared.Inputs, resolved.Inputs)
-	earlier, taken, err := s.reuse.taken(ctx, *ended)
+	var earlier runstore.Call
+	var taken bool
+	if !planned.chained {
+		earlier, taken, err = s.reuse.taken(ctx, *ended)
+	}
 	if taken {
 		ended.taken = &earlier
 		report(workflow.Report{Reused: earlier.ID})
@@ -1079,6 +1151,15 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		}
 		request.Pin = &pinned
 	}
+	if session != "" {
+		latest, ok := s.sessions.of(session)
+		if !ok {
+			return s.refused(fmt.Sprintf("no call of the run went on in the session %q", session), planned.step.Warnings)
+		}
+		step.Session = session
+		ended.continues = latest.id
+		request.Left = &latest.left
+	}
 	var called call.Result
 	err = s.admits.Make(ctx, request, func(ctx context.Context) {
 		called = s.callers[planned.contract].Call(ctx, step, func(r call.Report) {
@@ -1095,6 +1176,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	if err != nil {
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
+	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts}, step.Session, called.Session)
 	var usage workflow.Usage
 	if u := called.Usage; u != nil {
 		usage = workflow.Usage(*u)

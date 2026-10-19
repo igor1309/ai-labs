@@ -3,14 +3,16 @@
 // a parallel of steps called at once, each step called through the one
 // port it declares (ADR-012, rule 1) with its process's params bound from
 // the workflow's params and inputs and the outputs of the items before it,
-// what each is doing told to its events; and its result, in the result
-// shape (ADR-001, invariant 3), read through its output mapping.
+// and the session of the step it continues, what each is doing told to its
+// events; and its result, in the result shape (ADR-001, invariant 3), read
+// through its output mapping.
 package workflow
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,8 +36,9 @@ const (
 type Class string
 
 const (
-	// Refused is a run whose inputs, a step's bindings or its output
-	// mapping could not be resolved: no later step starts.
+	// Refused is a run whose inputs, a step's bindings, the session it
+	// continues or its output mapping could not be resolved: no later step
+	// starts.
 	Refused Class = "refused"
 	// Cancelled is a run whose context ended: no later item starts.
 	Cancelled Class = "cancelled"
@@ -49,13 +52,15 @@ type Workflow struct {
 }
 
 // Step is an item of the workflow, by its name, unique in the workflow: a
-// step, the agent it runs on and its bindings, which give its process's
-// params; or, where Parallel is not nil, a parallel of the steps it holds,
-// called at once (ADR-011, rule 2).
+// step, the agent it runs on, its bindings, which give its process's
+// params, and the name of the step whose session it continues, "" for none
+// (ADR-011, rule 3); or, where Parallel is not nil, a parallel of the steps
+// it holds, called at once (ADR-011, rule 2).
 type Step struct {
 	Name     string
 	Agent    string
 	Bindings []Binding
+	Session  string
 	Parallel []Step
 }
 
@@ -105,12 +110,13 @@ type Resolver interface {
 }
 
 // Caller calls the step named step, its process's params given by name,
-// and gives report that the call starts, or the id of a call it took in
-// place of making one; then each tool call its turns report, each turn
-// that went stale and each turn at capacity. It is called from many
-// goroutines at once, one for each step of a parallel.
+// continuing session, "" for none, and gives report that the call starts,
+// or the id of a call it took in place of making one; then each tool call
+// its turns report, each turn that went stale and each turn at capacity.
+// It is called from many goroutines at once, one for each step of a
+// parallel.
 type Caller interface {
-	Call(ctx context.Context, step string, params map[string]string, report func(Report)) Result
+	Call(ctx context.Context, step string, params map[string]string, session string, report func(Report)) Result
 }
 
 // Report is what a step's call reports: that it starts, where Started;
@@ -253,8 +259,9 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 // item in order, until a step in sequence does not complete or the run is
 // cancelled, each step's start on its agent or the call it reused, tool
 // calls, stale turns, turns at capacity and end told to the events as its
-// caller reports
-// them. A parallel calls its steps at once and ends once
+// caller reports them. A step continuing a session is given the session
+// the call of the step it names reported; where it reported none, the run
+// is refused, the step not called. A parallel calls its steps at once and ends once
 // all have ended: completed, its outputs each step's end, in declaration
 // order, whatever each ended as; a run cancelled meanwhile ends with it,
 // interrupted, cancelled. The run's status, class and reason are its last
@@ -296,14 +303,15 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Reason = err.Error()
 		return refuse()
 	}
-	read := reader{boundary: boundary, outputs: map[string]any{}}
+	read := reader{boundary: boundary, outputs: map[string]any{}, sessions: result.Sessions}
 	for _, item := range w.Steps {
 		if ctx.Err() != nil {
 			return cancelled()
 		}
 		if item.Parallel != nil {
-			calls, ok := r.parallel(ctx, item.Parallel, read)
+			calls, reason, ok := r.parallel(ctx, item.Parallel, read)
 			if !ok {
+				result.Reason = reason
 				return refuse()
 			}
 			ends := make([]any, len(item.Parallel))
@@ -318,11 +326,12 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 			read.outputs[item.Name] = ends
 			continue
 		}
-		params, ok := read.params(item.Bindings)
+		params, session, reason, ok := read.call(item)
 		if !ok {
+			result.Reason = reason
 			return refuse()
 		}
-		called := r.call(ctx, item, params)
+		called := r.call(ctx, item, params, session)
 		count(item.Name, called)
 		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
 		if called.Status != Completed {
@@ -341,17 +350,19 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 	return finish()
 }
 
-// parallel calls each of steps at once, its params bound by read, and
-// gives each call's result, in declaration order, once all have ended. It
-// is false, nothing called, when a binding reads what is not there.
-func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Result, bool) {
+// parallel calls each of steps at once, its params and its session read
+// by read, and gives each call's result, in declaration order, once all
+// have ended. It is false, nothing called, when a step cannot be called,
+// reason saying why where it is a session.
+func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Result, string, bool) {
 	params := make([]map[string]string, len(steps))
+	sessions := make([]string, len(steps))
 	for i, step := range steps {
-		bound, ok := read.params(step.Bindings)
+		bound, session, reason, ok := read.call(step)
 		if !ok {
-			return nil, false
+			return nil, reason, false
 		}
-		params[i] = bound
+		params[i], sessions[i] = bound, session
 	}
 	calls := make([]Result, len(steps))
 	var all sync.WaitGroup
@@ -359,21 +370,21 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 		all.Add(1)
 		go func() {
 			defer all.Done()
-			calls[i] = r.call(ctx, step, params[i])
+			calls[i] = r.call(ctx, step, params[i], sessions[i])
 		}()
 	}
 	all.Wait()
-	return calls, true
+	return calls, "", true
 }
 
-// call calls step with params, its start or the call it reused, its tool
+// call calls step with params, continuing session, its start or the call it reused, its tool
 // calls, stale turns and turns at capacity told to the events by its name
 // as the caller reports them, and its end once it has ended, where it started.
-func (r *Runner) call(ctx context.Context, step Step, params map[string]string) Result {
+func (r *Runner) call(ctx context.Context, step Step, params map[string]string, session string) Result {
 	// A caller may report from a goroutine of its own, as a turn's tool
 	// calls come from the one reading its program's output.
 	var started atomic.Bool
-	called := r.caller.Call(ctx, step.Name, params, func(report Report) {
+	called := r.caller.Call(ctx, step.Name, params, session, func(report Report) {
 		switch {
 		case report.Started:
 			started.Store(true)
@@ -410,10 +421,30 @@ func endOf(called Result) map[string]any {
 
 // reader reads values from the workflow's boundary and the outputs of its
 // completed items: a step's its fields, a parallel's the list of its steps'
-// ends.
+// ends; and the session each step's call reported, by the step's name.
 type reader struct {
 	boundary Boundary
 	outputs  map[string]any
+	sessions map[string]string
+}
+
+// call is what step is called with: its params, bound from its bindings,
+// and the session it continues, "" for none. It is false where a binding
+// reads what is not there, or where the step it continues reported no
+// session, which reason then says.
+func (r reader) call(step Step) (params map[string]string, session, reason string, ok bool) {
+	params, ok = r.params(step.Bindings)
+	if !ok {
+		return nil, "", "", false
+	}
+	if step.Session == "" {
+		return params, "", "", true
+	}
+	session = r.sessions[step.Session]
+	if session == "" {
+		return nil, "", fmt.Sprintf("the step %q reported no session", step.Session), false
+	}
+	return params, session, "", true
 }
 
 // params is each binding's value, given as text: a value that is not text
