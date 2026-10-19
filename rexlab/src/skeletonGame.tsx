@@ -281,13 +281,14 @@ export function useSkeletonGame(
   };
 
   // Only time at the puzzle counts towards help: the count pauses while
-  // the child is away, and starts again from nothing as a piece fits.
-  // Nothing else restarts it: a turn or another dinosaur's bone changes
-  // the puzzle, and the tick counts on the puzzle as it is then. Its timer
-  // is the puzzle's, so leaving stops it at once, not once the screen it
-  // left has rendered.
+  // the child is away, and starts again from nothing as a piece fits, or
+  // on the ladder as a piece is touched. Nothing else restarts it: a turn
+  // or another dinosaur's bone dropped changes the puzzle, and the tick
+  // counts on the puzzle as it is then. Its timer is the puzzle's, so
+  // leaving stops it at once, not once the screen it left has rendered.
   const counting = puzzle !== undefined && awaitsHelp(puzzle);
   const since = puzzle?.fitted;
+  const touches = puzzle?.touches;
   useEffect(() => {
     const timers = puzzleTimers.current;
     if (!counting || away || timers === null) return;
@@ -295,14 +296,14 @@ export function useSkeletonGame(
     const tick = () => {
       stop = timers.start(HELP_TICK, () => {
         const now = live.current;
-        if (now === null || now.fitted !== since) return;
+        if (now === null || now.fitted !== since || now.touches !== touches) return;
         showPuzzle(now, wait(now, HELP_TICK));
         tick();
       });
     };
     tick();
     return () => stop();
-  }, [since, counting, away]);
+  }, [since, touches, counting, away]);
 
   // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
   // meanwhile, or a tap after a puzzle was asked for, changes nothing

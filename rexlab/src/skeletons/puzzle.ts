@@ -67,10 +67,16 @@ export type Puzzle = {
   fitted: readonly string[];
   // How long the child has been at the puzzle since a piece last fitted,
   // or since it started, in milliseconds. Drops that miss do not reset
-  // it, so trying again and again never puts help off.
+  // it, so trying again and again never puts help off; on the ladder a
+  // touch does, so help waits while the child is busy.
   waited: number;
   // Whether help climbs the ladder of steps rather than glowing once.
   ladder: boolean;
+  // On the ladder, the piece of the cut the child last touched, which
+  // help points at while it is unfitted, and how many times a touch has
+  // started the count again.
+  handled: string | undefined;
+  touches: number;
   // Other skeletons' bones mixed into the tray, which fit nowhere, and
   // the one last dropped, until another piece is touched, so the child is
   // told whose bone it is.
@@ -140,6 +146,8 @@ export function startPuzzle(
     fitted: [],
     waited: 0,
     ladder,
+    handled: undefined,
+    touches: 0,
     distractors: distractors ? (skeleton.distractors ?? []) : [],
     told: undefined,
     turning: turning !== undefined,
@@ -193,10 +201,14 @@ export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number
 }
 
 // `piece` touched in the tray: the line about another skeleton's bone
-// goes, unless it is that bone again.
+// goes, unless it is that bone again. On the ladder the child is busy, so
+// help showing hides and its count starts again, and a piece of the cut
+// becomes the one help will point at.
 export function touch(puzzle: Puzzle, piece: string): Puzzle {
-  if (puzzle.told === undefined || strayId(puzzle.told) === piece) return puzzle;
-  return { ...puzzle, told: undefined };
+  const told = puzzle.told === undefined || strayId(puzzle.told) === piece ? puzzle : { ...puzzle, told: undefined };
+  if (!puzzle.ladder || isComplete(puzzle)) return told;
+  const own = puzzle.cut.some(({ id }) => id === piece) && !puzzle.fitted.includes(piece);
+  return { ...told, waited: 0, touches: puzzle.touches + 1, handled: own ? piece : puzzle.handled };
 }
 
 export function isComplete(puzzle: Puzzle): boolean {
@@ -223,12 +235,14 @@ export function showLastStep(puzzle: Puzzle): Puzzle {
   return puzzle.lastStepShown ? puzzle : { ...puzzle, lastStepShown: true };
 }
 
-// The piece, and so its home, that help points at once it is due, the
-// first in the tray still to fit, and the step help has reached: one
-// more every HELP_AFTER on the ladder. Help never fits it for the child.
+// The piece, and so its home, that help points at once it is due, and
+// the step help has reached: one more every HELP_AFTER on the ladder. It
+// is the piece the child last handled while that is unfitted, or else
+// the first in the tray still to fit. Help never fits it for the child.
 export function help(puzzle: Puzzle): Help | undefined {
   const reached = Math.floor(puzzle.waited / HELP_AFTER);
-  const piece = puzzle.order.find((id) => !puzzle.fitted.includes(id));
+  const { handled, fitted } = puzzle;
+  const piece = handled !== undefined && !fitted.includes(handled) ? handled : puzzle.order.find((id) => !fitted.includes(id));
   if (reached === 0 || piece === undefined) return undefined;
   return { piece, step: puzzle.ladder ? (LADDER[Math.min(reached, LADDER.length) - 1] ?? "region") : "glow" };
 }

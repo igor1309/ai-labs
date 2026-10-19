@@ -47,6 +47,13 @@ export type ShownRegion = { left: number; top: number; width: number; height: nu
 // the body region it shows.
 export type ShownHint = { piece: ShownPiece; step: ShownHelpStep; region: ShownRegion | undefined };
 
+const STEPS: readonly ShownHelpStep[] = ["glow", "region", "ghost", "move"];
+
+// Whether help `now` shows no more than `before` did: none, or the same
+// piece at the same step or an earlier one.
+const within = (now: ShownHint | undefined, before: ShownHint | undefined) =>
+  now === undefined || (before !== undefined && now.piece === before.piece && STEPS.indexOf(now.step) <= STEPS.indexOf(before.step));
+
 export type SkeletonPuzzleScreenProps = {
   language: Language;
   // The dinosaur being built.
@@ -268,8 +275,9 @@ export function SkeletonPuzzleScreen({
   };
 
   // Help that falls due while a piece is held waits until it is let go,
-  // so nothing new lights up or moves under the child's finger.
-  const shownHint = held ? held.hint : hint;
+  // so nothing new lights up or moves under the child's finger; help that
+  // hides, as a touch hides it on the ladder, hides at once.
+  const shownHint = held && !within(hint, held.hint) ? held.hint : hint;
 
   // Help's last step moves its piece from its spot towards its home and
   // back, measured as the step shows, which is when the game learns it

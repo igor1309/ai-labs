@@ -1,14 +1,15 @@
 Feature: Skeleton assembly: help in steps
   Explorer and Paleontologist help in steps rather than with Hatchling's
   one glow (skeleton-assembly-help.feature, docs/skeleton-levels.md).
-  Every ten seconds at the puzzle without fitting a piece, help climbs a
-  step for the first piece left in the tray: its body region on the
-  outline, then a faint ghost of it at its home, last the piece itself
-  moving towards its home and back. Each step adds to the ones before,
-  and the piece's spot in the tray glows from the first step. Help never
-  fits a piece; a piece fitted starts the steps again from the first.
-  Time counts as Hatchling's does: only at the puzzle, and a drop that
-  misses never puts help off.
+  Every ten seconds at the puzzle without touching or fitting a piece,
+  help climbs a step for the piece last handled, or, until one is, the
+  first left in the tray: its body region on the outline, then a faint
+  ghost of it at its home, last the piece itself moving towards its home
+  and back. Each step adds to the ones before, and the piece's spot in
+  the tray glows from the first step. Help never fits a piece. A touch of
+  any piece in the tray hides help and starts the ten seconds again, so
+  help comes only once the child stops (LAB-346); a piece fitted starts
+  the steps again from the first. Time counts only at the puzzle.
 
   Background:
     Given an iPad in landscape
@@ -51,12 +52,23 @@ Feature: Skeleton assembly: help in steps
     When I fit the skull
     Then after 10 more seconds the neck's region and spot glow
 
-  Scenario: Help shown as I pick a piece up waits until I let it go
-    Given 19 seconds have passed
-    When I hold the tail for 2 seconds
-    Then the ghost does not show under my finger
+  Scenario: A touch hides help and counts again for the piece touched
+    Given 19 seconds have passed and the skull's region glows
+    When I pick up the tail
+    Then no help shows
+    When I let the tail go beside the board and 10 seconds pass
+    Then the tail's spot and the tail's region glow
+
+  Scenario: Help that falls due while I hold a piece waits until I let it go
+    When I hold the tail for 21 seconds
+    Then no help shows under my finger
     When I let the tail go beside the board
-    Then the skull's ghost shows
+    Then the tail's region and ghost show
+
+  Scenario: Help goes back to the first in the tray once the piece handled fits
+    Given I have let the hips go beside the board
+    When I fit the hips and 10 seconds pass
+    Then the skull's spot and the head's region glow
 
   Scenario: Paleontologist helps in the same steps
     Given the level switch shows Paleontologist chosen
