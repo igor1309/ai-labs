@@ -9,7 +9,7 @@ import { App, type AgeLevelStore } from "../src/App.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
-import { NO_SORTING, type Random } from "../src/sorting/index.ts";
+import type { Random } from "../src/sorting/index.ts";
 import { basketsShown, sortingRecord, sortByTrying, storedRecord, tray } from "./sorting.tsx";
 import {
   SHIPPED_CATALOGUE,
@@ -304,7 +304,8 @@ const LEVEL_CARDS = { hatchling: 6, explorer: 8, paleontologist: 10 } as const;
 const switchButton = (level: AgeLevel) => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getByRole("button", { name: TEXTS.en.ageLevels[level].name });
 const shownBest = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".best-score-value")?.textContent;
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
-const recordAt = (level: AgeLevel, entry: unknown = NO_SORTING) => memoryStorage({
+const EMPTY_SORTING_ENTRY = { bestScore: null, explorerBest: null, paleontologistBest: null, roundsPlayed: 0 };
+const recordAt = (level: AgeLevel, entry: unknown = EMPTY_SORTING_ENTRY) => memoryStorage({
   [AGE_LEVEL_KEY]: JSON.stringify({ level, revision: "parent-pick" }),
   [PROGRESS_KEY]: sortingRecord(entry)
 });
@@ -370,7 +371,7 @@ describe("the sorting levels across the app", () => {
   });
 
   it.each(["hatchling", "paleontologist"] as const)("keeps the finished result while choosing %s, then uses that choice on PLAY AGAIN, home and reopen", async (chosen) => {
-    const storage = recordAt("explorer", { ...NO_SORTING, explorerBest: 7 });
+    const storage = recordAt("explorer", { ...EMPTY_SORTING_ENTRY, explorerBest: 7 });
     const app = openStored(storage);
     await app.user.click(homeTile("SORT"));
     await finishWith(app.user, 5);
@@ -380,7 +381,7 @@ describe("the sorting levels across the app", () => {
     expect(screen.getByLabelText("SCORE").textContent).toBe("5/8");
     expect(shownBest()).toBe("7");
     expect(onBoard()).toBe(false);
-    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...NO_SORTING, explorerBest: 7, roundsPlayed: 1, levelChoice: { level: chosen, revision: "parent-pick" } });
+    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...EMPTY_SORTING_ENTRY, explorerBest: 7, roundsPlayed: 1, levelChoice: { level: chosen, revision: "parent-pick" } });
     await app.user.click(button("PLAY AGAIN"));
     expect(within(tray()).getAllByRole("button")).toHaveLength(LEVEL_CARDS[chosen]);
     await app.user.click(button("HOME"));
@@ -393,7 +394,7 @@ describe("the sorting levels across the app", () => {
   });
 
   it.each([undefined, "hatchling"] as const)("holds an unsavable choice for the visit over a saved choice of %s, then reloads the stored level", async (saved) => {
-    const entry = { ...NO_SORTING, ...(saved && { levelChoice: { level: saved, revision: "parent-pick" } }) };
+    const entry = { ...EMPTY_SORTING_ENTRY, ...(saved && { levelChoice: { level: saved, revision: "parent-pick" } }) };
     const original = recordAt("explorer", entry);
     const storage = memoryStorage(Object.fromEntries(original.items), { save: false });
     const before = storage.items.get(PROGRESS_KEY);
@@ -424,7 +425,7 @@ describe("the sorting levels across the app", () => {
   });
 
   it("drops the child's choice when a parent changes the age level, including a change back", async () => {
-    const storage = recordAt("explorer", { ...NO_SORTING, levelChoice: { level: "hatchling", revision: "parent-pick" } });
+    const storage = recordAt("explorer", { ...EMPTY_SORTING_ENTRY, levelChoice: { level: "hatchling", revision: "parent-pick" } });
     const { user } = openStored(storage);
     await user.click(homeTile("SORT"));
     expect(within(tray()).getAllByRole("button")).toHaveLength(6);
@@ -464,7 +465,7 @@ describe("the sorting levels across the app", () => {
       expect(localSortingProgress(() => storage).load()?.progress.roundsPlayed).toBe(at + 1);
     }
     expect(localSortingProgress(() => storage).load()).toEqual({
-      progress: { bestScore: 1, explorerBest: 2, paleontologistBest: 3, roundsPlayed: 3 },
+      progress: { best: { hatchling: 1, explorer: 2, paleontologist: 3 }, roundsPlayed: 3 },
       levelChoice: { level: "paleontologist", revision: "parent-pick" }
     });
   });
@@ -476,6 +477,6 @@ describe("the sorting levels across the app", () => {
     await finishWith(user, 5);
     expect(celebrations()).toEqual([]);
     expect(shownBest()).toBe("5");
-    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...NO_SORTING, bestScore: 5, roundsPlayed: 4 });
+    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...EMPTY_SORTING_ENTRY, bestScore: 5, roundsPlayed: 4 });
   });
 });

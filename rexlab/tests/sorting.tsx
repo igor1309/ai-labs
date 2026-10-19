@@ -8,7 +8,7 @@ import { OrientationGate, type Orientation } from "../src/OrientationGate.tsx";
 import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
-import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
+import { boardState, drop, startBoard, type CardState, type Sorting } from "../src/sorting/index.ts";
 import { SHIPPED_SORTABLES, fakeBodyPicture, manualOrientation, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
 import { withManualPictures, withPictures } from "./pictures.tsx";
 
@@ -214,7 +214,7 @@ export async function finishBoard(user: UserEvent, sorting: Sorting, right: numb
 
 // A stored record with the sorting game's entry, and the other games'
 // entries given.
-export const sortingRecord = (entry: SortingProgress | unknown, games: Record<string, unknown> = {}) =>
+export const sortingRecord = (entry: unknown, games: Record<string, unknown> = {}) =>
   JSON.stringify({ schemaVersion: 1, games: { ...games, "sort-dinosaurs": entry } });
 
 // The stored record now, undefined while none is.

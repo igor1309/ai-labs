@@ -19,20 +19,20 @@ describe("finishBoard", () => {
   it.each<[SortingProgress, number, Celebration | null, number | undefined]>([
     [NO_SORTING, 0, null, undefined],
     [NO_SORTING, 3, "first-best", undefined],
-    [{ ...NO_SORTING, bestScore: 0, roundsPlayed: 1 }, 1, "new-best", 0],
-    [{ ...NO_SORTING, bestScore: 4, roundsPlayed: 2 }, 6, "new-best", 4],
-    [{ ...NO_SORTING, bestScore: 5, roundsPlayed: 2 }, 3, null, 5]
+    [{ best: { ...NO_SORTING.best, hatchling: 0 }, roundsPlayed: 1 }, 1, "new-best", 0],
+    [{ best: { ...NO_SORTING.best, hatchling: 4 }, roundsPlayed: 2 }, 6, "new-best", 4],
+    [{ best: { ...NO_SORTING.best, hatchling: 5 }, roundsPlayed: 2 }, 3, null, 5]
   ])("from %j, asks the best-score rule about a board of %i right, and keeps the best it gives and its %s", (stored, right, celebration, previousBest) => {
     const scoring = scoringSpy<Beaten>({ best: 9, celebration });
 
     const result = finishBoard(sortedWith(right), stored, scoring.beatBest);
 
-    expect(scoring.asked).toEqual([[stored.bestScore, right]]);
+    expect(scoring.asked).toEqual([[stored.best.hatchling, right]]);
     expect(result).toEqual({
       level: "hatchling",
       score: right,
       total: 6,
-      progress: { ...stored, bestScore: 9, roundsPlayed: stored.roundsPlayed + 1 },
+      progress: { best: { ...stored.best, hatchling: 9 }, roundsPlayed: stored.roundsPlayed + 1 },
       previousBest,
       celebration
     });
@@ -47,13 +47,14 @@ describe("finishBoard", () => {
 });
 
 it.each([
-  ["hatchling", 5, { bestScore: 8, explorerBest: 6, paleontologistBest: null }],
-  ["explorer", 6, { bestScore: 5, explorerBest: 8, paleontologistBest: null }],
-  ["paleontologist", null, { bestScore: 5, explorerBest: 6, paleontologistBest: 8 }]
-] as const)("scores %s against only its own best and preserves its choice", (level, previousBest, bests) => {
-  const stored = { bestScore: 5, explorerBest: 6, paleontologistBest: null, roundsPlayed: 9, levelChoice: { level: "explorer" as const, revision: "parent" } };
+  ["hatchling", 5, { hatchling: 8, explorer: 6, paleontologist: null }],
+  ["explorer", 6, { hatchling: 5, explorer: 8, paleontologist: null }],
+  ["paleontologist", null, { hatchling: 5, explorer: 6, paleontologist: 8 }]
+] as const)("scores %s against only its own best and retains the other levels' bests", (level, previousBest, best) => {
+  const stored: SortingProgress = { best: { hatchling: 5, explorer: 6, paleontologist: null }, roundsPlayed: 9 };
   const scoring = scoringSpy<Beaten>({ best: 8, celebration: "new-best" });
   const result = finishBoard(sortedWith(3, level), stored, scoring.beatBest);
   expect(scoring.asked).toEqual([[previousBest, 3]]);
-  expect(result).toEqual({ level, score: 3, total: { hatchling: 6, explorer: 8, paleontologist: 10 }[level], previousBest: previousBest ?? undefined, celebration: "new-best", progress: { ...stored, ...bests, roundsPlayed: 10 } });
+  expect(result).toEqual({ level, score: 3, total: { hatchling: 6, explorer: 8, paleontologist: 10 }[level], previousBest: previousBest ?? undefined, celebration: "new-best", progress: { best, roundsPlayed: 10 } });
+  expect(stored).toEqual({ best: { hatchling: 5, explorer: 6, paleontologist: null }, roundsPlayed: 9 });
 });

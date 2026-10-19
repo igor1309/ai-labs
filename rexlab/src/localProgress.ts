@@ -32,22 +32,34 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
-  const entry = gameProgress<StoredSorting>(storage, "sort-dinosaurs", NO_SORTING, readSorting);
+  const entry = gameProgress<StoredSorting>(storage, "sort-dinosaurs", storedSorting(NO_SORTING, undefined), readSorting);
   return {
     load(): { progress: SortingProgress; levelChoice: LevelChoice | undefined } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
-      const { levelChoice, ...progress } = stored;
-      return { progress, levelChoice };
+      const { bestScore, explorerBest, paleontologistBest, roundsPlayed, levelChoice } = stored;
+      return { progress: { best: { hatchling: bestScore, explorer: explorerBest, paleontologist: paleontologistBest }, roundsPlayed }, levelChoice };
     },
 
     save({ progress, levelChoice }: { progress: SortingProgress; levelChoice: LevelChoice | undefined }): void {
-      entry.save({ ...progress, ...(levelChoice && { levelChoice }) });
+      entry.save(storedSorting(progress, levelChoice));
     }
   };
 }
 
-type StoredSorting = SortingProgress & { levelChoice?: LevelChoice };
+// The original bestScore field stays Hatchling's so progress saved before
+// levels keeps its meaning; the other levels have their own fields.
+type StoredSorting = {
+  bestScore: number | null;
+  explorerBest: number | null;
+  paleontologistBest: number | null;
+  roundsPlayed: number;
+  levelChoice?: LevelChoice;
+};
+
+function storedSorting({ best, roundsPlayed }: SortingProgress, levelChoice: LevelChoice | undefined): StoredSorting {
+  return { bestScore: best.hatchling, explorerBest: best.explorer, paleontologistBest: best.paleontologist, roundsPlayed, ...(levelChoice && { levelChoice }) };
+}
 
 function readSorting(entry: Entry): StoredSorting | undefined {
   const rounds = readRounds(entry);

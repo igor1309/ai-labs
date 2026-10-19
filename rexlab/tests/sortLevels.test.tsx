@@ -107,6 +107,7 @@ describe.each(LEVELS)("the $name board", (level) => {
 
     const columns = Number(tray(language).style.getPropertyValue("--columns"));
     expect([getComputedStyle(tray(language)).display, columns, Math.ceil(cards / columns)]).toEqual(["grid", cards > 6 ? cards / 2 : cards, cards > 6 ? 2 : 1]);
+    expect(getComputedStyle(tray(language)).gridTemplateColumns).toContain("repeat(var(--columns)");
   });
 
   it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
@@ -142,6 +143,7 @@ describe.each(LEVELS)("the $name board", (level) => {
 
           // The name breaks between its words, in at most two lines that
           // each fit beside the mark.
+          expect(getComputedStyle(name).whiteSpace).toBe("normal");
           const size = px(getComputedStyle(name).fontSize);
           let lines = 1;
           let used = 0;
@@ -224,5 +226,6 @@ describe("a board of six cards", () => {
 
     expect(baskets()).toHaveLength(2);
     expect([tray().style.getPropertyValue("--columns"), document.querySelector(".baskets")?.getAttribute("data-count")]).toEqual(["6", "2"]);
+    expect(getComputedStyle(tray()).gridTemplateColumns).toContain("repeat(var(--columns)");
   });
 });

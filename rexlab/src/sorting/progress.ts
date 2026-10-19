@@ -1,20 +1,15 @@
 import type { SortingLevel } from "./board.ts";
 
-// A best belongs to the level where it was earned. The original field
-// stays Hatchling's so progress saved before levels keeps its meaning.
+// A best belongs to the level where it was earned.
 export type SortingProgress = {
-  bestScore: number | null;
-  explorerBest: number | null;
-  paleontologistBest: number | null;
+  best: Record<SortingLevel, number | null>;
   roundsPlayed: number;
 };
 
-export const NO_SORTING: SortingProgress = { bestScore: null, explorerBest: null, paleontologistBest: null, roundsPlayed: 0 };
-
-const BEST_FIELDS = { hatchling: "bestScore", explorer: "explorerBest", paleontologist: "paleontologistBest" } as const;
+export const NO_SORTING: SortingProgress = { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 };
 
 export function bestForLevel(progress: SortingProgress, level: SortingLevel): number | null {
-  return progress[BEST_FIELDS[level]];
+  return progress.best[level];
 }
 
 export type Celebration = "first-best" | "new-best";
@@ -35,7 +30,7 @@ export type SortingOutcome = {
 export function finishRound(previous: SortingProgress, level: SortingLevel, score: number, beatBest: BeatBest): SortingOutcome {
   const { best, celebration } = beatBest(bestForLevel(previous, level), score);
   return {
-    progress: { ...previous, [BEST_FIELDS[level]]: best, roundsPlayed: previous.roundsPlayed + 1 },
+    progress: { best: { ...previous.best, [level]: best }, roundsPlayed: previous.roundsPlayed + 1 },
     celebration
   };
 }
