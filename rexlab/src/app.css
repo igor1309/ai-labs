@@ -2725,9 +2725,15 @@ body:has(.result) #version {
   top: 7.6%;
   width: 42%;
   height: 80%;
-  object-fit: contain;
   transform-origin: bottom center;
   animation: walk-in var(--motion-screen) var(--ease-out) both;
+}
+
+.visitor-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 @keyframes walk-in {
@@ -2904,6 +2910,8 @@ body:has(.result) #version {
 .given-picture {
   display: block;
   width: 100%;
+  /* Square whatever size its picture says it is. */
+  height: auto;
   aspect-ratio: 1;
   object-fit: contain;
 }
@@ -4030,13 +4038,14 @@ body:has(.result) #version {
 
 /* A silhouette is the picture's shape in ink. */
 .pair-silhouette {
-  filter: brightness(0);
   opacity: 0.85;
 }
 
-.pair-card-missing {
-  margin: auto;
-  color: #5c647a;
+/* The silhouette is of the picture only: its shimmer and failure look
+   keep their own colours. */
+.pair-silhouette[data-picture="appearing"],
+.pair-silhouette[data-picture="shown"] {
+  filter: brightness(0);
 }
 
 /* The name's size is the card's width over the longest name's, in ems:
@@ -4048,6 +4057,11 @@ body:has(.result) #version {
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
+}
+
+/* The name shown while the picture loaded goes as the picture fades in. */
+.pair-card-name[data-fading] {
+  animation: fade-out var(--motion-picture) var(--ease-out) forwards;
 }
 
 /* A found pair is outlined in green over the picture, and named, and
@@ -5529,10 +5543,6 @@ body:has(.result) #version {
   color: #1f2b4d;
 }
 
-[data-theme="dark"] .pair-card-missing {
-  color: #9ca3b6;
-}
-
 [data-theme="dark"] .pair-card[data-state="found"] .pair-card-face {
   outline-color: #63c98c;
 }
@@ -5541,7 +5551,8 @@ body:has(.result) #version {
   background: #f6f2e9;
 }
 
-[data-theme="dark"] .pair-silhouette {
+[data-theme="dark"] .pair-silhouette[data-picture="appearing"],
+[data-theme="dark"] .pair-silhouette[data-picture="shown"] {
   filter: brightness(0) invert(1);
 }
 

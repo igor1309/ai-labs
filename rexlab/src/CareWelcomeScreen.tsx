@@ -2,6 +2,7 @@ import { DoorOpen, Footprints, Heart, HeartHandshake, House, Trophy } from "luci
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 // The friends' faces on the FRIENDS card: two rows of three.
@@ -52,7 +53,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
         <button type="button" className="card new-visitor-card" aria-label={text.newVisitor} onClick={onNewVisitor} {...visitorPointer}>
           <span className="new-visitor-art" aria-hidden="true">
             <span className="new-visitor-glow" />
-            <img className="new-visitor-picture" src={visitorPicture} alt="" draggable={false} />
+            <Picture className="new-visitor-picture" src={visitorPicture} alt="" width={800} height={600} />
             <span className="knock-bubble">
               <DoorOpen size={56} />
             </span>
@@ -68,7 +69,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
           <span className="friend-faces" aria-hidden="true">
             {faces.map((picture, at) => (
               <span key={at} className="friend-face" style={{ "--face": at } as CSSProperties}>
-                {picture !== undefined && <img className="friend-face-picture" src={picture} alt="" draggable={false} />}
+                {picture !== undefined && <Picture className="friend-face-picture" src={picture} alt="" width={800} height={600} />}
               </span>
             ))}
           </span>

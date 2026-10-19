@@ -29,7 +29,8 @@ import {
   type PairsAppOptions,
   type StoredPairs
 } from "./pairsApp.tsx";
-import { SHIPPED_PALS, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualTimers } from "./support.ts";
+import { PICTURE_LIMIT } from "../src/Picture.tsx";
+import { SHIPPED_PALS, countedStarts, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -45,6 +46,9 @@ const pal = (id: string) => {
 const THREE = [pal("triceratops"), pal("stegosaurus"), pal("tyrannosaurus")];
 const NAMES = namesOf(dealt(1, { pals: THREE }));
 const [TRIKE, STEGO] = [placesOf(NAMES, "TRICERATOPS"), placesOf(NAMES, "STEGOSAURUS")];
+// Dinosaurs whose pictures the home page and the welcome screen do not
+// show, so they load only once dealt.
+const UNSEEN = [pal("velociraptor"), pal("ankylosaurus"), pal("spinosaurus"), pal("diplodocus")];
 
 const picked = (level: AgeLevel): AgeLevelSetting => ({ level, revision: `picked-${level}` });
 
@@ -144,37 +148,16 @@ describe("a board", () => {
     expect(resultNames().filter((name) => first.includes(name))).toEqual([]);
   });
 
-  it("waits for its pictures, with the welcome on screen until they have loaded", async () => {
+  it("is dealt at once, its pictures loading while its cards lie face down", async () => {
     const pictures = manualPictures();
-    const { user } = openPairsApp({ pals: THREE, clock: pictures });
+    const { user } = openPairsApp({ pals: UNSEEN, clock: pictures });
     await user.click(button("FIND THE PAIR"));
 
     await user.click(button("PLAY"));
 
-    const asked = pictures.loading();
-    expect(asked.sort()).toEqual(THREE.map(({ id }) => fakeBodyPicture(id)).sort());
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => asked.slice(1).forEach(pictures.finish));
-    expect(screen.queryByRole("group", { name: "CARDS" })).toBeNull();
-
-    act(() => pictures.finish(asked[0] ?? ""));
-
-    expect(pairCards()).toHaveLength(6);
-    expect(pictures.timers()).toEqual([]);
-  });
-
-  it("shows after a second when its pictures are slow, and is not dealt again when they arrive", async () => {
-    const pictures = manualPictures();
-    const { user } = openPairsApp({ pals: THREE, clock: pictures });
-    await user.click(button("FIND THE PAIR"));
-    await user.click(button("PLAY"));
-
-    act(() => pictures.fire(1000));
-
-    expect(pairCards()).toHaveLength(6);
-    const first = document.body.innerHTML;
-    act(() => pictures.loading().forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(first);
+    expect([pairCards().length, board().querySelectorAll("img").length]).toEqual([6, 0]);
+    const dealtPictures = dealt(1, { pals: UNSEEN }).pals.map(({ id }) => fakeBodyPicture(id));
+    expect(pictures.loading().filter((url) => UNSEEN.some(({ id }) => url === fakeBodyPicture(id))).sort()).toEqual(dealtPictures.sort());
   });
 
   it("is dealt once on a quick double tap of PLAY", async () => {
@@ -184,21 +167,22 @@ describe("a board", () => {
 
     await user.dblClick(button("PLAY"));
 
-    expect(pictures.loading()).toHaveLength(3);
-    expect(pictures.timers()).toEqual([1000]);
+    expect([pairCards().length, screen.getByLabelText("TRIES").textContent, pairCards().map((card) => card.dataset.state)]).toEqual([6, "0", Array<string>(6).fill("down")]);
   });
 
-  it("deals nothing once the child has gone home while its pictures load", async () => {
-    const pictures = manualPictures();
-    const { user } = openPairsApp({ pals: THREE, clock: pictures });
+  // In a browser the board shows after its transition, so a second PLAY
+  // can land on the welcome screen still shown: here both land in one act,
+  // before React renders. A key's click has no pointer's detail, so the
+  // double-tap filter lets both through to the game.
+  it("is dealt once, and counted once, for two PLAYs landing before the board shows", async () => {
+    const { counted, startCounter } = countedStarts();
+    const { user } = openPairsApp({ pals: THREE, startCounter });
     await user.click(button("FIND THE PAIR"));
-    await user.click(button("PLAY"));
+    const play = button("PLAY");
 
-    await user.click(button("HOME"));
-    act(() => pictures.loading().forEach(pictures.finish));
+    act(() => [play, play].forEach((each) => fireEvent.click(each, { detail: 0 })));
 
-    expect(button("FIND THE PAIR")).toBeDefined();
-    expect(screen.queryByRole("group", { name: "CARDS" })).toBeNull();
+    expect([pairCards().length, screen.getByLabelText("TRIES").textContent, counted]).toEqual([6, "0", ["pairs"]]);
   });
 });
 
@@ -399,26 +383,101 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect([pairCards().map((_, place) => stateAt(place)), triesShown()]).toEqual([before, "1"]);
   });
 
-});
+  // A card's picture's look and the name it shows.
+  const face = (place: number) => {
+    const card = pairCards()[place];
+    const picture = card?.querySelector<HTMLElement>("img");
+    return [picture?.dataset.picture, picture?.getAttribute("src"), card?.querySelector(".pair-card-name")?.textContent];
+  };
 
-describe("a board at any level", () => {
+  it("names a card while its picture loads, then fades the picture in, the name fading out with it", async () => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });
+    await playPairs(user);
+    const names = namesOf(dealt(3, { pals: UNSEEN }));
+    const [first = 0] = placesOf(names, names[0] ?? "");
+    const url = fakeBodyPicture(dealt(3, { pals: UNSEEN }).cards[first]?.pal.id ?? "");
+
+    await turnCard(user, first);
+
+    const name = () => pairCards()[first]?.querySelector<HTMLElement>(".pair-card-name")?.dataset.fading;
+    expect([face(first), name()]).toEqual([["loading", null, names[0]], undefined]);
+    act(() => pictures.finish(url));
+    expect([face(first), name()]).toEqual([["appearing", url, names[0]], "true"]);
+  });
+
+  it("keeps the names of a pair found while its picture loads, as the picture fades in", async () => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 1 }), clock: pictures });
+    await playPairs(user);
+    const names = namesOf(dealt(1, { pals: UNSEEN }));
+    const pair = placesOf(names, names[0] ?? "");
+    const url = fakeBodyPicture(dealt(1, { pals: UNSEEN }).cards[pair[0] ?? 0]?.pal.id ?? "");
+
+    for (const place of pair) await turnCard(user, place);
+    act(() => pictures.finish(url));
+
+    expect(pair.map((place) => [face(place), pairCards()[place]?.querySelector<HTMLElement>(".pair-card-name")?.dataset.fading])).toEqual(pair.map(() => [["appearing", url, names[0]], undefined]));
+  });
+
+  it("shimmers a silhouette card's place while its picture loads, the silhouette only its picture's", async () => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });
+    await playPairs(user);
+    const silhouette = dealt(3, { pals: UNSEEN }).cards.findIndex(({ face }) => face === "silhouette");
+
+    await turnCard(user, silhouette);
+
+    const picture = pairCards()[silhouette]?.querySelector<HTMLElement>("img");
+    expect([picture?.classList.contains("pair-silhouette"), picture?.dataset.picture]).toEqual([true, "loading"]);
+  });
+
+  it.each([
+    ["fails", (pictures: ManualPictures, url: string) => pictures.fail(url)],
+    ["loads past the limit", (pictures: ManualPictures) => pictures.fire(PICTURE_LIMIT)]
+  ])("names both cards of a dinosaur whose picture %s, by the failure look", async (_, end) => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ pals: UNSEEN, storage: stored({ level: 3 }), clock: pictures });
+    await playPairs(user);
+    const names = namesOf(dealt(3, { pals: UNSEEN }));
+    const [first = 0, second = 0] = placesOf(names, names[0] ?? "");
+    const url = fakeBodyPicture(dealt(3, { pals: UNSEEN }).cards[first]?.pal.id ?? "");
+
+    await turnCard(user, first);
+    act(() => end(pictures, url));
+    expect(face(first)).toEqual(["failed", null, names[0]]);
+    await turnCard(user, second);
+
+    // Loaded again as the second card shows it, its name shown meanwhile.
+    expect([face(second), pictures.loading().filter((each) => each === url)]).toEqual([["loading", null, names[0]], [url]]);
+    act(() => end(pictures, url));
+    expect([face(first), face(second)]).toEqual([
+      ["failed", null, names[0]],
+      ["failed", null, names[0]]
+    ]);
+  });
+
   it.each([
     ["Hatchling's climb level 3", { storage: stored({ level: 3 }) }, dealt(3)],
     ...LEVEL_BOARDS.slice(1)
-  ] as const)("names a dinosaur whose picture cannot be loaded on both its cards, by a dinosaur symbol, at %s", async (_, options, dealtBoard) => {
-    const { user, clock } = openPairsApp(options);
+  ] as const)("names both cards of a dinosaur whose picture fails, by the failure look, at %s", async (_, options, dealtBoard) => {
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ ...options, clock: pictures });
     await playPairs(user);
     const names = namesOf(dealtBoard);
-    const [first, second] = placesOf(names, names[0] ?? "");
+    const at = dealtBoard.cards.findIndex(({ pal }) => pictures.loading().includes(fakeBodyPicture(pal.id)));
+    const url = fakeBodyPicture(dealtBoard.cards[at]?.pal.id ?? "");
+    const [first = 0, second = 0] = placesOf(names, names[at] ?? "");
 
-    await turnCard(user, first ?? 0);
-    fireEvent.error(pairCards()[first ?? 0]?.querySelector("img") ?? board());
+    for (const place of [first, second]) {
+      await turnCard(user, place);
+      act(() => pictures.fail(url));
+    }
 
-    const missing = (place: number) => [symbolsOf(pairCards()[place] ?? board()), pairCards()[place]?.querySelector(".pair-card-name")?.textContent];
-    expect(missing(first ?? 0)).toEqual([["footprints"], names[0]]);
-    await turnCard(user, second ?? 0);
-    expect(missing(second ?? 0)).toEqual([["footprints"], names[0]]);
-    expect(clock.timers()).toEqual([]);
+    expect([face(first), face(second)]).toEqual([
+      ["failed", null, names[at]],
+      ["failed", null, names[at]]
+    ]);
   });
 });
 

@@ -70,11 +70,11 @@ export type PictureProps = {
   height?: number;
 };
 
-// A picture, its place laid out from the first render. Its source is
+// The look of a place showing `src`, which it asks for. Its source is
 // given to the image only once loaded and decoded, so it never draws in
 // part; until then the place shimmers, for up to PICTURE_LIMIT from when
 // it first showed this source.
-export function Picture({ src, alt, className, width, height }: PictureProps) {
+export function usePicture(src: string): PictureLook {
   const { store, startTimer } = usePictures();
   // A picture not yet asked for is loading: this place asks for it.
   const status = useSyncExternalStore(store.subscribe, () => store.status(src) ?? "loading");
@@ -91,19 +91,29 @@ export function Picture({ src, alt, className, width, height }: PictureProps) {
     return startTimer(PICTURE_LIMIT, () => setLate(src));
   }, [startTimer, src, status]);
 
-  const look: PictureLook =
-    status === "loaded" ? (waited === src ? "appearing" : "shown") : status === "failed" || late === src ? "failed" : "loading";
+  return status === "loaded" ? (waited === src ? "appearing" : "shown") : status === "failed" || late === src ? "failed" : "loading";
+}
+
+// A picture's place in the look given, for a place that shows more
+// than its picture as the look changes; any other uses `<Picture>`.
+export function PictureImage({ look, src, alt, className, width, height }: PictureProps & { look: PictureLook }) {
+  const loaded = look === "appearing" || look === "shown";
   return (
     <img
       className={`picture ${className}`}
       data-picture={look}
-      {...(status === "loaded" ? { src } : {})}
+      {...(loaded ? { src } : {})}
       alt={alt}
       width={width}
       height={height}
       draggable={false}
     />
   );
+}
+
+// A picture, its place laid out from the first render.
+export function Picture(props: PictureProps) {
+  return <PictureImage look={usePicture(props.src)} {...props} />;
 }
 
 // Starts loading pictures a screen may show next, so they are ready when

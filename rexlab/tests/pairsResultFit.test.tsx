@@ -4,6 +4,7 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
 import { NAME_EMS } from "./nameWidths.ts";
+import { withPictures } from "./pictures.tsx";
 import { SHIPPED_PALS, fakeBodyPicture } from "./support.ts";
 
 // jsdom does not lay out a page. Read the delivered CSS and budget its
@@ -71,7 +72,8 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
             onPlayAgain={() => {}}
             onHome={() => {}}
           />
-        </div>
+        </div>,
+        withPictures
       );
 
       const outer = style(".pairs-result");

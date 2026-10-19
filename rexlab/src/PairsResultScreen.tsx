@@ -1,8 +1,9 @@
-import { ArrowRight, ChartNoAxesColumnIncreasing, Footprints, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import { ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 
 export type PairsCelebration = keyof Texts["celebrations"];
 
@@ -37,8 +38,6 @@ const motion = (properties: Record<`--${string}`, number>) => properties as CSSP
 export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, onPlayAgain, onHome }: PairsResultScreenProps) {
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
-  // The dinosaurs whose picture cannot be loaded show a symbol instead.
-  const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   return (
     <main className="result pairs-result" data-large={pals.length > 6 || undefined}>
       {(celebration || levelUp) && <Festivity />}
@@ -47,17 +46,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
         {pals.map(({ id, name, picture, newlyFound }, index) => (
           <li key={id} className="pairs-found-card" style={motion({ "--card": index })}>
             <span className="pairs-found-art">
-              {missing.has(id) ? (
-                <Footprints className="pair-card-missing" size={48} aria-hidden="true" />
-              ) : (
-                <img
-                  className="pairs-found-picture"
-                  src={picture}
-                  alt=""
-                  draggable={false}
-                  onError={() => setMissing((known) => new Set([...known, id]))}
-                />
-              )}
+              <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
             </span>
             <span className="pairs-found-name">{name.toLocaleUpperCase(language)}</span>
             {newlyFound && (

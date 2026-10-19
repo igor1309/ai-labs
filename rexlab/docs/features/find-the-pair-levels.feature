@@ -91,6 +91,6 @@ Feature: Find the pair: age levels
     Then Explorer is chosen and nothing else changes
 
   Scenario: The level switch rests once "PLAY" is tapped
-    Given the next board's pictures are still loading after I tap "PLAY"
-    When I tap another level
-    Then nothing changes, and the board is dealt at the level shown when I tapped "PLAY"
+    When I tap "PLAY" and another level at the same moment
+    Then the board is dealt at once at the level shown when I tapped "PLAY"
+    And the other level is kept nowhere

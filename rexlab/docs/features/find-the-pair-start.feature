@@ -50,16 +50,11 @@ Feature: Find the pair: starting a board
     Then no two of its dinosaurs are from the same look-alike group
     And every dinosaur in the shared list belongs to exactly one look-alike group
 
-  Scenario: A board waits briefly for its pictures
-    Given the pictures of the next board are still loading
-    When I tap "PLAY"
-    Then the welcome screen stays until the pictures load, for at most a second
-    And then the board appears, its cards dealt one after the other
-
   Scenario: A quick double tap deals one board
     Given I am on the find-the-pair welcome screen
     When I tap "PLAY" twice quickly
     Then one board is dealt
+    And no card is turned over
 
   Scenario Outline: The game uses the chosen language
     Given the app is in <language>

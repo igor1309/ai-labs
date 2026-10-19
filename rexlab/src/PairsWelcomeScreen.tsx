@@ -4,6 +4,7 @@ import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 export type PairsWelcomeScreenProps = {
@@ -50,10 +51,10 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
             </span>
           </span>
           <span className="pairs-hero-card pairs-hero-silhouette">
-            <img className="pairs-hero-picture pair-silhouette" src={heroPicture} alt="" draggable={false} />
+            <Picture className="pairs-hero-picture pair-silhouette" src={heroPicture} alt="" width={800} height={600} />
           </span>
           <span className="pairs-hero-card pairs-hero-picture-card">
-            <img className="pairs-hero-picture" src={heroPicture} alt="" draggable={false} />
+            <Picture className="pairs-hero-picture" src={heroPicture} alt="" width={800} height={600} />
           </span>
         </div>
         <div className="pairs-start">

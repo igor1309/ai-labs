@@ -38,15 +38,6 @@ Feature: Dinosaur care: welcoming a visitor
     Then only one visit starts
     And I have 0 hearts for that visit
 
-  Scenario: A visitor waits briefly for its picture
-    Given I am on the care welcome screen
-    And the new visitor's picture is still loading
-    When I tap "NEW VISITOR"
-    Then the welcome screen stays visible until the picture loads, for at most a second
-    And then the visit starts
-    And a missing picture is replaced by a dinosaur symbol beside its name
-    And I can care for the visitor even if its picture never loads
-
   Scenario Outline: Care uses the chosen language
     Given the app is in <language>
     When I open care and start a visit

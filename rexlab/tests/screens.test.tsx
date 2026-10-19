@@ -132,6 +132,30 @@ describe("the screens kept by useScreens", () => {
     expect(result.current.screen).toBe(TWO);
     expect(vi.mocked(addTransitionType).mock.calls).toEqual([["slide"]]);
   });
+
+  // A second start, landing while the first one's transition is pending,
+  // keeps the screen asked for: React must not apply it, at once, to the
+  // screen still rendered, which would show a screen nobody asked for.
+  it("enqueues no change that keeps the screen asked for, while a transition is pending", () => {
+    vi.mocked(startTransition).mockClear();
+    const rendered: Shown[] = [];
+    const { result } = renderHook(() => {
+      const screens = useScreens<Shown, string>(ONE, (from, to) => (from.kind === to.kind ? undefined : "slide"));
+      rendered.push(screens.screen);
+      return screens;
+    });
+    const also = vi.fn();
+    const start = (current: Shown): Shown => (current.kind === "two" ? current : { kind: "two", count: rendered.length });
+
+    act(() => {
+      result.current.go(start, { also });
+      result.current.go(start, { also });
+    });
+
+    expect(new Set(rendered.filter((shown) => shown !== ONE)).size).toBe(1);
+    expect(result.current.screen.kind).toBe("two");
+    expect(also).toHaveBeenCalledOnce();
+  });
 });
 
 const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
