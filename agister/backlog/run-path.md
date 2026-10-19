@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first fourteen slices: the rest of the record, reaping, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first fifteen slices: the rest of the record, reaping, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -20,14 +20,14 @@ the eleventh ("Reuse") an earlier run's completed calls taken; the
 twelfth ("Capacity") a turn at capacity retried; the thirteenth
 ("A binding continuing a session") a step continuing an earlier step's
 session; the fourteenth ("A call's changes") the HEAD a call left and a
-pinned call's patch.
+pinned call's patch; the fifteenth ("Definitions") each call's
+definitions with their digests, compared by a reuse.
 What it leaves out, roughly in the
 order it is needed:
 
-- **The rest of the record**: definitions with their digests, the
+- **The rest of the record**: the workflow's definition, the
   process's environment, the permission plan (ADR-001, invariant 6);
-  other commands on runs; a reuse comparing a
-  call's definitions' digests ("Reuse").
+  other commands on runs.
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending
   what left a program's group, which the supervisor reads no longer
