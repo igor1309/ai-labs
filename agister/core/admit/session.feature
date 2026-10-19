@@ -13,11 +13,12 @@ Feature: A call continuing a session finds the worktree as it was left
     Then it <ends>
 
     Examples:
-      | head | content | ends                                                                 |
-      | "c1" | "t1"    | is admitted                                                          |
-      | "c2" | "t1"    | is refused: HEAD is "c1", not the session's latest call's "c2"       |
-      | "c1" | "t2"    | is refused: the worktree is not as the session's latest call left it |
-      | "c1" | empty   | is refused: the worktree is not as the session's latest call left it |
+      | head  | content | ends                                                                 |
+      | "c1"  | "t1"    | is admitted                                                          |
+      | "c2"  | "t1"    | is refused: HEAD is "c1", not the session's latest call's "c2"       |
+      | "c1"  | "t2"    | is refused: the worktree is not as the session's latest call left it |
+      | "c1"  | empty   | is refused: the worktree is not as the session's latest call left it |
+      | empty | "t1"    | is refused: the worktree is not as the session's latest call left it |
 
   Scenario: A pin is checked first
     Given HEAD is "c1", and a call pinning the input "rev" of "c2" and

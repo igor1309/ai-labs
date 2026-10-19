@@ -1045,11 +1045,14 @@ Decisions, each with its reason:
 A step of a workflow continues an earlier step's session, `session:
 {from: steps.<item>.session}` (ADR-001, rule 5; ADR-004, rule 5;
 ADR-011, rule 3; LAB-309): a summary goes on in the session of the
-judge that read the reviews. It is refused as not run no longer.
+judge that read the reviews. It is no longer refused as not run yet.
 
 **`settings/resolve`** refuses a step continuing the session of a step
 on another agent: a session belongs to its runtime, and one agent is
-the plainest same runtime, as a continuation's is.
+the plainest same runtime, as a continuation's is. It refuses two steps
+of one parallel continuing one session, each followed back through the
+steps it continues to the first: two turns at once in one session are
+not run.
 
 **`core/workflow`**'s step names the step whose session it continues,
 "" for none. The run gives its caller the session that step's call
@@ -1061,24 +1064,21 @@ none.
 **`core/admit`**'s request grows the worktree a call continuing a
 session must find: the HEAD the session's latest call was admitted at,
 and the content it left, as admit told them. Checked after the pin and
-before the hold, a HEAD not the worktree's now refuses the call, `HEAD
-is "<now>", not the session's latest call's "<head>"`; a content not
-the worktree's now, or left empty, refuses it, `the worktree is not as
-the session's latest call left it`.
+before the hold, a HEAD left not empty and not the worktree's now
+refuses the call, `HEAD is "<now>", not the session's latest call's
+"<head>"`; a content not the worktree's now, or either left empty,
+refuses it, `the worktree is not as the session's latest call left it`.
 
-**The composition** keeps, for the run, each session's latest call:
-its id and the HEAD and content admit told at its end. A step's call
+**The composition** keeps, for the run, each session's latest call: its
+id and the HEAD and content admit told at its end. A step's call
 continuing a session is given that session, the prompt `continuation`
 first among its documents, as a continuation's is, and admit the facts
 its latest call left, no clean worktree asked: the check takes its
-place; the record's call continues that call's id. A
-call continuing a session that another call of the run is making is
-refused, `the session of "<item>" is in another call`, nothing taken:
-two turns at once in one session are not run. A step that continues
+place; the record's call continues that call's id. A step that continues
 a session, or whose session a step of the workflow continues, is made,
-never taken by a reuse. Where the prompt
-`continuation` does not resolve, the run is refused before its record
-is first written, as a continuation's is.
+never taken by a reuse. Where the prompt `continuation` does not
+resolve, the run is refused before its record is first written, as a
+continuation's is.
 
 Decisions, each with its reason:
 
@@ -1092,10 +1092,8 @@ Decisions, each with its reason:
 - The HEAD compared is the one the latest call was admitted at, as a
   continuation's is (ADR-004, rule 5, "the same revision"): a step
   that commits leaves its session not to be continued in this slice.
-- Two calls in one session at once are refused, not queued or
-  serialized: a parallel binding one session twice is a settings
-  mistake met at run time, and no settings check is made for it until
-  one is needed.
+- Two steps of a parallel in one session are refused by settings, not
+  at run time: a check there holds whatever the turns' timing.
 - A step of a session's chain is never taken by a reuse: what a
   session held is not compared, and a session the earlier run went on
   in has moved past the call a reuse would take.

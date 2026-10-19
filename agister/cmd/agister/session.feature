@@ -35,14 +35,6 @@ Feature: The composition continues a session inside a run
     Then "second" is refused, its turn not made: the worktree is not as
       the session's latest call left it
 
-  Scenario: Two calls of a run are not made in one session at once
-    Given the workflow "both": the step "first", then a parallel of "x"
-      and "y", each continuing "first"'s session, "y" called only once
-      "x"'s turn has started, and "x"'s turn ending once "y" has ended
-    When "agister run both --param q=why" runs in "/r"
-    Then "y" is refused, its turn not made: the session of "first" is in
-      another call; and "x" is given the session "s1"
-
   Scenario: A session's steps are not taken by a reuse
     Given runstore keeps the run "R1" of "talk" in "/r", q "why", both
       completed, their root "/r", HEAD "c1" and content "t1"
