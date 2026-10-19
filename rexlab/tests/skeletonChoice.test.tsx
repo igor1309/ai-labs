@@ -1,14 +1,17 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
+import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
 
 const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS"];
+
+// The look of the outline's picture, then of each bone's in the tray.
+const looks = () => [board().querySelector(".skeleton-outline img"), ...within(tray()).getAllByRole("img")].map((picture) => (picture as HTMLElement | null)?.dataset.picture);
 
 // A touch target's least side, as app.css gives it: jsdom lays nothing
 // out, so it is read from the sizes and least sizes the stylesheet sets.
@@ -81,18 +84,17 @@ describe("the skeleton game's choice of dinosaurs", () => {
 
 describe("choosing a dinosaur", () => {
   it.each(SHIPPED_SKELETONS.map(({ id, name }, at) => [name.en, id, NAMES[at] ?? ""] as const))(
-    "starts the %s puzzle once its outline and pieces are loaded",
+    "starts the %s puzzle at once, its outline and pieces shimmering until they have loaded",
     async (_, id, shown) => {
       const { user, pictures } = openSkeletonsApp();
 
       await user.click(button(shown));
 
-      expect(pictures.loading()).toEqual(puzzlePictures(id));
-      expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-
+      // A picture the home page showed has loaded already.
+      const loading = puzzlePictures(id).map((url) => pictures.loading().includes(url));
+      expect([screen.getByRole("heading").textContent, looks()]).toEqual([shown, loading.map((still) => (still ? "loading" : "shown"))]);
       act(() => finishLoading(pictures));
-
-      expect(screen.getByRole("heading").textContent).toBe(shown);
+      expect(looks()).toEqual(loading.map((still) => (still ? "appearing" : "shown")));
     }
   );
 
@@ -102,9 +104,9 @@ describe("choosing a dinosaur", () => {
     await user.click(button("TRICERATOPS"));
     act(() => finishLoading(pictures));
 
-    const outline = board().querySelector(".skeleton-outline");
+    const outline = board().querySelector(".skeleton-outline img");
     expect(outline?.getAttribute("src")).toBe(fakeSkeletonPicture("triceratops", "skeleton"));
-    expect(Number(getComputedStyle(outline ?? document.body).opacity)).toBeLessThan(0.5);
+    expect(Number(getComputedStyle(outline?.parentElement ?? document.body).opacity)).toBeLessThan(0.5);
     const pieces = within(tray()).getAllByRole("img");
     expect(pieces.map((piece) => [piece.getAttribute("alt"), piece.getAttribute("src")])).toEqual(
       ["SKULL", "SPINE", "LEGS", "TAIL"].map((name) => [name, fakeSkeletonPicture("triceratops", name.toLowerCase())])
@@ -144,41 +146,30 @@ describe("choosing a dinosaur", () => {
     );
   });
 
-  it("starts the puzzle without the pictures once the wait runs out", async () => {
-    const { user, pictures } = openSkeletonsApp();
-
-    await user.click(button("TYRANNOSAURUS"));
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => pictures.fire(1000));
-
-    expect(screen.getByRole("heading").textContent).toBe("TYRANNOSAURUS");
-    expect(within(tray()).getAllByRole("img")).toHaveLength(4);
-  });
-
-  it("starts one puzzle on a quick double tap, earning no star or exhibit", async () => {
-    const { user, pictures, storage } = openSkeletonsApp();
+  it("starts one puzzle at once on a quick double tap, counted once, earning no star or exhibit", async () => {
+    const { counted, startCounter } = countedStarts();
+    const { user, storage } = openSkeletonsApp({ startCounter });
 
     await user.dblClick(button("TYRANNOSAURUS"));
-    await user.click(button("TRICERATOPS"));
 
-    expect(pictures.loading()).toEqual(puzzlePictures("tyrannosaurus"));
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => finishLoading(pictures));
-    expect(screen.getByRole("heading").textContent).toBe("TYRANNOSAURUS");
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["TYRANNOSAURUS", ["skeletons"]]);
     expect(slots().map(([, state]) => state)).toEqual(["empty", "empty", "empty", "empty"]);
     expect(within(tray()).getAllByRole("img")).toHaveLength(4);
     expect([...storage.items.keys()]).toEqual([]);
   });
 
-  it("starts nothing once the child has gone home while the pictures load", async () => {
-    const { user, pictures } = openSkeletonsApp();
+  // In a browser the puzzle shows after its transition, so a second choice
+  // can land on the choice screen still shown: here both land in one act,
+  // before React renders. A key's click has no pointer's detail, so the
+  // double-tap filter lets both through to the game.
+  it("starts one puzzle, the first tapped's, counted once, for two choices landing before the puzzle shows", () => {
+    const { counted, startCounter } = countedStarts();
+    openSkeletonsApp({ startCounter });
+    const tapped = [button("TYRANNOSAURUS"), button("TRICERATOPS")];
 
-    await user.click(button("TRICERATOPS"));
-    await user.click(button("HOME"));
-    act(() => finishLoading(pictures));
+    act(() => tapped.forEach((each) => fireEvent.click(each, { detail: 0 })));
 
-    expect(homeTile("COMPARE")).toBeDefined();
-    expect(screen.queryByRole("group", { name: "BONES" })).toBeNull();
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["TYRANNOSAURUS", ["skeletons"]]);
   });
 
   it("goes home from the puzzle on HOME", async () => {

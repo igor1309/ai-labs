@@ -38,8 +38,14 @@ Feature: Skeleton assembly: choosing a dinosaur
   Scenario: A quick double tap starts one puzzle
     Given I am on the skeleton selection screen
     When I tap Tyrannosaurus twice quickly
-    Then one Tyrannosaurus puzzle starts with four unplaced pieces
+    Then one Tyrannosaurus puzzle starts at once, whatever its pictures are doing, with four unplaced pieces
+    And it is counted as one puzzle started
     And no star or museum exhibit is earned yet
+
+  Scenario: Two choices tapped at the same moment start one puzzle
+    Given I am on the skeleton selection screen
+    When I tap Tyrannosaurus and, in the same moment, Triceratops
+    Then one Tyrannosaurus puzzle starts at once, counted as one puzzle started
 
   Scenario Outline: Skeleton screens use the chosen language
     Given the app is in <language>

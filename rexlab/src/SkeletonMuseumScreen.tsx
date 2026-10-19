@@ -2,6 +2,7 @@ import { Bone, Hammer, Landmark, RotateCcw, Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
 // A stand shows its skeleton once built; one still to build shows the
@@ -86,7 +87,7 @@ function StandCard({
         )}
       </div>
       <div className="skeleton-exhibit">
-        <img className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" draggable={false} />
+        <Picture className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" />
       </div>
       <div className="skeleton-plinth">
         {built ? (

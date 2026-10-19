@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
-import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
+import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
 import { droppedPiece, presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
@@ -15,7 +14,6 @@ import {
   knockDown,
   museumOf,
   openCollection,
-  PIECES,
   startPuzzle,
   wait,
   type KeptSkeletons,
@@ -49,16 +47,11 @@ export type SkeletonGameProps = {
   skeletonPicture: SkeletonPicture;
   skeletonProgress: SkeletonProgressStore;
   bodyPicture: (dinosaurId: string) => string;
-  loadPicture: LoadPicture;
   startTimer: StartTimer;
   presence: Presence;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
 };
-
-// The longest a puzzle waits for its pictures, in milliseconds, as a
-// question does for its pictures.
-const PICTURE_WAIT = 1000;
 
 // How often the time spent at a puzzle is counted towards help, in
 // milliseconds: a second away is lost at most, as the child leaves.
@@ -67,8 +60,7 @@ const HELP_TICK = 1000;
 // How long the finished skeleton shows on its board before the reveal, in
 // milliseconds, as app.css times it: the last piece slides into its slot
 // (--motion-standard), then the whole skeleton holds as long again; with
-// reduced motion only the piece's fade. The body picture is waited for
-// meanwhile, never longer than PICTURE_WAIT.
+// reduced motion only the piece's fade.
 export const REVEAL: Record<"motion" | "reduced", number> = { motion: 480, reduced: 160 };
 
 // A puzzle of a skeleton knocked down from its stand starts with its
@@ -90,7 +82,7 @@ export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string 
 // child back to the home page; `onStart` is told as each puzzle begins, a
 // rebuild's too.
 export function useSkeletonGame(
-  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion }: SkeletonGameProps,
+  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion }: SkeletonGameProps,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -108,12 +100,6 @@ export function useSkeletonGame(
   // The reveal and help timers of the puzzle in play, all stopped as the
   // child leaves it, and null from then on.
   const puzzleTimers = useRef<OwnedTimers | null>(null);
-  // A puzzle being started while its pictures load: a second tap
-  // meanwhile, on the same dinosaur or another, starts nothing more.
-  const starting = useRef(false);
-  // Counts each time the child leaves the game, so pictures that finish
-  // loading after the child has left start no puzzle.
-  const stay = useRef(0);
 
   const order = skeletons.map(({ id }) => id);
 
@@ -122,11 +108,9 @@ export function useSkeletonGame(
   const best = kept.readable ? (kept.progress.bestScore ?? undefined) : undefined;
 
   const leave = () => {
-    stay.current++;
     live.current = null;
     puzzleTimers.current?.stopAll();
     puzzleTimers.current = null;
-    starting.current = false;
   };
 
   // Each change is saved as it is made; unreadable progress is not saved
@@ -138,30 +122,25 @@ export function useSkeletonGame(
     if (next.readable) skeletonProgress.save(next.progress);
   };
 
-  // A puzzle shows once its outline and pieces are ready, or the wait
-  // runs out, so no bone pops in, and only if the child is still here. A
+  // A puzzle shows at once, its pictures shimmering until they load, and
+  // only over the screen it was asked from, so a second tap in the same
+  // moment, on the same dinosaur or another, starts nothing more. A
   // skeleton rebuilt is knocked down from its stand only as its puzzle
   // starts, its bones scattering from the outline, and its stand awaits
   // it from then on, however the rebuild is left.
   const start = (id: string, rebuild: boolean) => {
     const skeleton = skeletons.find((each) => each.id === id);
-    if (skeleton === undefined || starting.current) return;
-    starting.current = true;
-    const choosing = stay.current;
-    waitForPictures(
-      [skeletonPicture(id, "skeleton"), ...PIECES.map((piece) => skeletonPicture(id, piece))],
-      { loadPicture, startTimer, limit: PICTURE_WAIT },
-      () => {
-        if (stay.current !== choosing) return;
-        starting.current = false;
+    if (skeleton === undefined) return;
+    const from = screen;
+    const started = startPuzzle(skeleton);
+    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild } : current), {
+      also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
-        const started = startPuzzle(skeleton);
         live.current = started;
         puzzleTimers.current = ownedTimers(startTimer);
         onStart();
-        go({ kind: "puzzle", puzzle: started, scatter: rebuild });
       }
-    );
+    });
   };
 
   const choose = (id: string) => start(id, false);
@@ -193,25 +172,13 @@ export function useSkeletonGame(
   };
 
   // The finished skeleton shows whole for a moment, then the dinosaur is
-  // revealed once its body picture is ready, or the wait runs out, so a
-  // missing picture holds nothing back; only if the child is still here.
-  // The pause and the picture wait's limit are the puzzle's timers.
+  // revealed, its body picture fading in once loaded; only if the child
+  // is still here. The pause is the puzzle's timer, so leaving stops it.
   const reveal = (finished: Puzzle, result: SkeletonResult, timers: OwnedTimers) => {
-    const revealing = stay.current;
-    let pictured = false;
-    let held = false;
-    const showResult = () => {
-      if (!pictured || !held || stay.current !== revealing || live.current !== finished) return;
+    timers.start(REVEAL[reducedMotion() ? "reduced" : "motion"], () => {
+      if (live.current !== finished) return;
       live.current = null;
       go({ kind: "result", result });
-    };
-    waitForPictures([bodyPicture(finished.skeleton.id)], { loadPicture, startTimer: timers.start, limit: PICTURE_WAIT }, () => {
-      pictured = true;
-      showResult();
-    });
-    timers.start(REVEAL[reducedMotion() ? "reduced" : "motion"], () => {
-      held = true;
-      showResult();
     });
   };
 
@@ -239,16 +206,15 @@ export function useSkeletonGame(
     });
   }, [puzzle, away]);
 
-  // BUILD ANOTHER goes back to the choice of dinosaurs, leaving a rebuild
-  // still loading unstarted and its skeleton on its stand; a second tap
-  // meanwhile changes nothing more.
+  // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
+  // meanwhile, or a tap after a puzzle was asked for, changes nothing
+  // more, and leaves that puzzle in play.
   const buildAnother = () => {
-    leave();
-    go((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current));
+    go((current) => (current.kind === "result" || current.kind === "museum" ? { kind: "choice" } : current), { also: leave });
   };
 
   // MUSEUM leaves whatever the child was doing: an unfinished puzzle is
-  // dropped, earning nothing, and a puzzle still loading never starts.
+  // dropped, earning nothing.
   const museum = () => {
     leave();
     go({ kind: "museum" });

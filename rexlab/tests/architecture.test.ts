@@ -101,8 +101,6 @@ const AGE_LEVEL = "ageLevel.ts";
 const START_LEVEL = "startLevel.ts";
 // The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
-// What waits for pictures, given how to load them and keep time.
-const WAITING = ["pictureWait.ts"];
 // Where screens are kept and their transitions started.
 const SCREEN_STATE = "screens.ts";
 // The timers of a visit, a board or a puzzle, stopped together as it ends.
@@ -229,11 +227,7 @@ describe("the import graph", () => {
   });
 
   it("keeps adapters free of their consumers", () => {
-    expect(edges((file) => ADAPTERS.includes(file), (target) => [...SCREENS, ...COMPOSITION, ...WAITING].includes(target))).toEqual([]);
-  });
-
-  it("keeps the wait for pictures free of the rest of the app", () => {
-    expect(edges((file) => WAITING.includes(file), () => true)).toEqual([]);
+    expect(edges((file) => ADAPTERS.includes(file), (target) => [...SCREENS, ...COMPOSITION].includes(target))).toEqual([]);
   });
 
   it("keeps the screen state free of the rest of the app", () => {
@@ -263,11 +257,15 @@ const ROOT = "root.ts";
 // Each way of reading the clock or starting a timer.
 const CLOCKS = /\b(setTimeout|setInterval|Date\.now\(\)|performance\.now\(\)|new Date\(\s*\)|timeStamp)/g;
 
-// Each break, in the modules under `root`, of the Forbidden rules of
-// docs/tap-safety.md that LAB-298 and LAB-303 brought: a transition
-// started outside the screen state, state kept in a module that keeps
-// screens without its type written or with a screen's, and the clock or
-// a timer read outside the composition root.
+// The module whose picture store alone calls the loader.
+const PICTURES = "Picture.tsx";
+
+// Each break, in the modules under `root`, of these Forbidden rules of
+// docs/tap-safety.md: a transition started outside the screen state,
+// state kept in a module that keeps screens without its type written or
+// with a screen's, the clock or a timer read outside the composition
+// root, and a wait for pictures or a picture loader named outside the
+// picture store.
 function tapSafetyBreaks(root: string): string[] {
   const files = readdirSync(root, { recursive: true, encoding: "utf8" })
     .filter((file) => /\.tsx?$/.test(file))
@@ -286,7 +284,9 @@ function tapSafetyBreaks(root: string): string[] {
         })
       : [];
     const clocks = file === ROOT ? [] : [...source.matchAll(CLOCKS)].map(([name]) => `${file}: ${name} outside src/${ROOT}, see ${TAP_SAFETY}`);
-    return [...transitions, ...states, ...clocks];
+    const waits = [...source.matchAll(/\bwaitForPictures\b/g)].map(([name]) => `${file}: ${name}, a wait for pictures, see ${TAP_SAFETY}`);
+    const loaders = file === PICTURES ? [] : [...source.matchAll(/\bLoadPicture\b/g)].map(([name]) => `${file}: ${name} outside src/${PICTURES}, see ${TAP_SAFETY}`);
+    return [...transitions, ...states, ...clocks, ...waits, ...loaders];
   });
 }
 
@@ -320,18 +320,23 @@ describe("tap safety in the source", () => {
     ["SortScreen.tsx", "const pressedAt = Date.now();", `SortScreen.tsx: Date.now() outside src/root.ts, see ${TAP_SAFETY}`],
     ["tapFilter.ts", "const at = performance.now();", `tapFilter.ts: performance.now() outside src/root.ts, see ${TAP_SAFETY}`],
     ["HomePage.tsx", "const today = new Date();", `HomePage.tsx: new Date() outside src/root.ts, see ${TAP_SAFETY}`],
-    ["skeletons/drag.ts", "const time = event.timeStamp;", `skeletons/drag.ts: timeStamp outside src/root.ts, see ${TAP_SAFETY}`]
+    ["skeletons/drag.ts", "const time = event.timeStamp;", `skeletons/drag.ts: timeStamp outside src/root.ts, see ${TAP_SAFETY}`],
+    ["skeletonGame.tsx", "waitForPictures(urls, clock, start);", `skeletonGame.tsx: waitForPictures, a wait for pictures, see ${TAP_SAFETY}`],
+    ["Picture.tsx", 'export { waitForPictures } from "./pictureWait.ts";', `Picture.tsx: waitForPictures, a wait for pictures, see ${TAP_SAFETY}`],
+    ["App.tsx", 'import type { LoadPicture } from "./Picture.tsx";', `App.tsx: LoadPicture outside src/Picture.tsx, see ${TAP_SAFETY}`],
+    ["root.ts", "const loadPicture: LoadPicture = decodedPictures(window);", `root.ts: LoadPicture outside src/Picture.tsx, see ${TAP_SAFETY}`]
   ])("fails %s holding `%s`", (file, source, broken) => {
     expect(tapSafetyBreaks(sourceTree({ [file]: source }))).toEqual([broken]);
   });
 
-  it("allows transitions in the screen state, typed state in the modules that keep screens, any state elsewhere, the clock and timers in the composition root, and a date made from a time", () => {
+  it("allows transitions in the screen state, typed state in the modules that keep screens, any state elsewhere, the clock and timers in the composition root, a date made from a time, and the picture loader in the picture store", () => {
     const root = sourceTree({
       "root.ts": "setTimeout(fire, ms);\nconst now = () => new Date(Date.now());\nconst time = event.timeStamp;",
       "featured.ts": "const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());",
       "screens.ts": 'import { addTransitionType, startTransition } from "react";\nstartTransition(() => addTransitionType(type));',
       "App.tsx": "const [settling, setSettling] = useState<boolean>(false);\nconst [play, setPlay] = useState<Play>();",
-      "HomePage.tsx": "const [open, setOpen] = useState(false);"
+      "HomePage.tsx": "const [open, setOpen] = useState(false);",
+      "Picture.tsx": "export type LoadPicture = (url: string, done: (outcome: Outcome) => void) => void;"
     });
 
     expect(tapSafetyBreaks(root)).toEqual([]);

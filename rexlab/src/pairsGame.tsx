@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
-import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
+import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
 import {
   dealBoard,
   finishBoard,
@@ -25,7 +25,6 @@ import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { LoadAhead } from "./Picture.tsx";
-import type { StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";

@@ -23,10 +23,11 @@ import {
   type ManualOrientation,
   type MemoryStorage,
   unsetAgeLevel,
-  loadShownPictures
+  loadShownPictures,
+  type PictureClock
 } from "./support.ts";
 
-type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
+type Clock = PictureClock;
 
 export type CareAppOptions<C extends Clock> = {
   // Where progress, the language and the theme are kept: one storage, as
