@@ -66368,6 +66368,3973 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "FhCZe",
+      "x": 1664,
+      "y": 30120,
+      "name": "Skeletons · Choose — Light · Level switch · Explorer",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "EeBOx",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "SQeQn",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "nD87P",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "E729Zq",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GynVC",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vLVmq",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "eIITj",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kAIDH",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "BUILD A SKELETON",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KKwnK",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "gitbC",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "qXtdI",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jD1zE",
+              "name": "Best",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "iFeCP",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "YWKyQ",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "1/3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "B1RHUk",
+          "name": "Level Switch",
+          "width": 648,
+          "height": 72,
+          "fill": "$fm-surface-2",
+          "cornerRadius": 36,
+          "stroke": "$fm-line",
+          "strokeWidth": 1,
+          "gap": 4,
+          "padding": 6,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "LAcJe",
+              "name": "HATCHLING Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 30,
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ccJMT",
+                  "name": "HATCHLING Picture",
+                  "fill": "$fm-ink",
+                  "content": "🥚",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "P97z6",
+                  "name": "HATCHLING Name",
+                  "fill": "$fm-ink",
+                  "content": "HATCHLING",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "600",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "L4FLE",
+              "name": "EXPLORER Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-ink",
+              "cornerRadius": 30,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 10
+              },
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jnTOQ",
+                  "name": "EXPLORER Picture",
+                  "fill": "$fm-surface",
+                  "content": "🦖",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ZGeO7",
+                  "name": "EXPLORER Name",
+                  "fill": "$fm-surface",
+                  "content": "EXPLORER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dL1pj",
+              "name": "PALEONTOLOGIST Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 30,
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Zt4Ip",
+                  "name": "PALEONTOLOGIST Picture",
+                  "fill": "$fm-ink",
+                  "content": "🦴",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ApfG4",
+                  "name": "PALEONTOLOGIST Name",
+                  "fill": "$fm-ink",
+                  "content": "PALEONTOLOGIST",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "600",
+                  "letterSpacing": 0.5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sm2dL",
+          "name": "Choices",
+          "width": "fill_container",
+          "height": 628,
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Tp6mv",
+              "name": "Choice TYRANNOSAURUS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-amber",
+              "strokeWidth": 3,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 8
+                },
+                "blur": 24
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                24,
+                28,
+                28,
+                28
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qUzdy",
+                  "name": "Choice Art",
+                  "width": "fill_container",
+                  "height": 522,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/tyrannosaurus.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QKHR2",
+                      "name": "Built Star",
+                      "width": 52,
+                      "height": 52,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 26,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "IxYYK",
+                          "name": "Built Star Icon",
+                          "width": 28,
+                          "height": 28,
+                          "icon": "star",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VesjK",
+                  "name": "Choice Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LgzqE",
+                      "name": "Choice Name",
+                      "fill": "$fm-ink",
+                      "content": "TYRANNOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 30,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "R3KLe",
+              "name": "Choice TRICERATOPS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 8
+                },
+                "blur": 24
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                24,
+                28,
+                28,
+                28
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cYjgR",
+                  "name": "Choice Art",
+                  "width": "fill_container",
+                  "height": 522,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/triceratops.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "end"
+                },
+                {
+                  "type": "frame",
+                  "id": "rZ4rO",
+                  "name": "Choice Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kLGoK",
+                      "name": "Choice Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 30,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jaOfu",
+              "name": "Choice STEGOSAURUS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 8
+                },
+                "blur": 24
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                24,
+                28,
+                28,
+                28
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VqjCm",
+                  "name": "Choice Art",
+                  "width": "fill_container",
+                  "height": 522,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/stegosaurus.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "end"
+                },
+                {
+                  "type": "frame",
+                  "id": "sQHpZ",
+                  "name": "Choice Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zUroM",
+                      "name": "Choice Name",
+                      "fill": "$fm-ink",
+                      "content": "STEGOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 30,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Hrdcg",
+      "x": 3224,
+      "y": 30120,
+      "name": "Skeletons · Build — Light · Explorer · Triceratops · Bones coloured by body area",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "fjMwj",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "XPgK4",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "r57xr",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "VUiAx",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IylA5",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HwU0S",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "V8WtG2",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "eDc0L",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Qxo4J",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KW532",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "MsQiV",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Bh6WT",
+              "name": "Fitted Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ZTL5N",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "bone",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "Io8hS",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "2/6",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "d5W7p",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CJAdO",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vcPBY",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Outline",
+                  "opacity": 0.28,
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "V4mnH9",
+                  "x": 9,
+                  "y": 87,
+                  "name": "Fitted face",
+                  "width": 413,
+                  "height": 307,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-face.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "L0rLJ",
+                  "x": 231,
+                  "y": 39,
+                  "name": "Fitted frill",
+                  "width": 236,
+                  "height": 245,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-frill.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "gZPzI",
+                  "x": 291,
+                  "y": 205,
+                  "name": "Slot area spine · back",
+                  "opacity": 0.55,
+                  "width": 445,
+                  "height": 253,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-spine-area.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "kgp5f",
+                  "x": 135,
+                  "y": 276,
+                  "name": "Slot area front-legs · legs",
+                  "opacity": 0.55,
+                  "width": 348,
+                  "height": 376,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-front-legs-area.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "ZyUaN",
+                  "x": 483,
+                  "y": 270,
+                  "name": "Slot area hind-legs · legs",
+                  "opacity": 0.55,
+                  "width": 275,
+                  "height": 362,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-hind-legs-area.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "lFCiJ",
+                  "x": 736,
+                  "y": 378,
+                  "name": "Slot area tail · tail",
+                  "opacity": 0.55,
+                  "width": 178,
+                  "height": 102,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-tail-area.webp",
+                    "mode": "stretch"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z1dSN",
+              "name": "Tray",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 28,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CrrHR",
+                  "name": "Tray Spot spine · back",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#DCE6F3",
+                  "cornerRadius": 22,
+                  "stroke": "#4F78B0",
+                  "strokeWidth": 3,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "L0tQo",
+                      "name": "Tray spine",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops-spine.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hMLO5",
+                  "name": "Tray Spot front-legs · legs",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#D9EDE0",
+                  "cornerRadius": 22,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IO57H",
+                      "name": "Tray front-legs",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops-front-legs.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MKaDt",
+                  "name": "Tray Spot hind-legs · legs",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#D9EDE0",
+                  "cornerRadius": 22,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DPnC3",
+                      "name": "Tray hind-legs",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops-hind-legs.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KdTzw",
+                  "name": "Tray Spot tail · tail",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#F4DCE8",
+                  "cornerRadius": 22,
+                  "stroke": "#B5487A",
+                  "strokeWidth": 3,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "T3uW9",
+                      "name": "Tray tail",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops-tail.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "cwkvr",
+      "x": 4784,
+      "y": 30120,
+      "name": "Skeletons · Build — Light · Explorer · Triceratops · Help ladder: region, ghost, nudge",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "d6JLV",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "UDIFe",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "d5bKr",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "yGSiB",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FvS2E",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "W2ySZM",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "eiM6a",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "JBsmX",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "l8a4U",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ntMvV",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "pesOz",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "i7Iqvn",
+              "name": "Fitted Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "x0f2wJ",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "bone",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "TNqUw",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "5/6",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zIba2",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "eB4hy",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wF0j4",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Outline",
+                  "opacity": 0.28,
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "e07YMl",
+                  "x": 9,
+                  "y": 87,
+                  "name": "Fitted face",
+                  "width": 413,
+                  "height": 307,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-face.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "o5mAoE",
+                  "x": 231,
+                  "y": 39,
+                  "name": "Fitted frill",
+                  "width": 236,
+                  "height": 245,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-frill.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "icjrk",
+                  "x": 291,
+                  "y": 205,
+                  "name": "Fitted spine",
+                  "width": 445,
+                  "height": 253,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-spine.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "ClXcB",
+                  "x": 135,
+                  "y": 276,
+                  "name": "Fitted front-legs",
+                  "width": 348,
+                  "height": 376,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-front-legs.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "Ke5zg",
+                  "x": 483,
+                  "y": 270,
+                  "name": "Fitted hind-legs",
+                  "width": 275,
+                  "height": 362,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-hind-legs.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "RNDRP",
+                  "x": 736,
+                  "y": 378,
+                  "name": "Slot area tail · tail",
+                  "opacity": 0.55,
+                  "width": 178,
+                  "height": 102,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-tail-area.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "L03SD1",
+                  "x": 724,
+                  "y": 366,
+                  "name": "Help region · tail",
+                  "width": 202,
+                  "height": 126,
+                  "cornerRadius": 28,
+                  "stroke": "$fm-amber",
+                  "strokeWidth": 3,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#E39B2D59",
+                    "blur": 32
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "ykmlV",
+                  "x": 736,
+                  "y": 378,
+                  "name": "Help ghost · tail",
+                  "opacity": 0.35,
+                  "width": 178,
+                  "height": 102,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-tail.webp",
+                    "mode": "stretch"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d9MGU6",
+              "name": "Tray",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 28,
+              "layout": "vertical",
+              "gap": 24,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eHujo",
+                  "name": "Tray Spot fitted spine",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BcHse",
+                  "name": "Tray Spot fitted front-legs",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "HoH7j",
+                  "name": "Tray Spot fitted hind-legs",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Q6IDtK",
+                  "name": "Tray Spot tail · tail",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#F4DCE8",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-amber",
+                  "strokeWidth": 4,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#E39B2D80",
+                    "blur": 24
+                  },
+                  "padding": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "T3QJGL",
+                      "name": "Tray tail · nudged toward its slot",
+                      "rotation": -6.000000000000001,
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops-tail.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Yzd6s",
+      "x": 6344,
+      "y": 30120,
+      "name": "Skeletons · Build — Light · Paleontologist · T. rex · Silhouette, other skeletons' bones, told line",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "M0EowR",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "YzU1Z",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "TPVMa",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "sooln",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "R7OV8",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "V3YN48",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "A91FM9",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "M4IjSy",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "TYRANNOSAURUS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZXIee",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OVs6I",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "tcEX3",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Rfzr2",
+              "name": "Fitted Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rlnwZ",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "bone",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "k5PEyI",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/11",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "gKYpK",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "tG1HB",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wRs0D",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Outline · silhouette",
+                  "opacity": 0.28,
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus-silhouette.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "IPg7L",
+                  "x": 7,
+                  "y": 51,
+                  "name": "Fitted skull",
+                  "width": 266,
+                  "height": 224,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus-skull.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "Op0Jm",
+                  "x": 263,
+                  "y": 78,
+                  "name": "Fitted neck-bones",
+                  "width": 82,
+                  "height": 192,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus-neck-bones.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "m4UAmv",
+                  "x": 345,
+                  "y": 168,
+                  "name": "Fitted back",
+                  "width": 266,
+                  "height": 271,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus-back.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "x5zw6E",
+                  "x": 489,
+                  "y": 276,
+                  "name": "Fitted hips",
+                  "width": 161,
+                  "height": 109,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus-hips.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "DxeuP",
+                  "x": 0,
+                  "y": 618,
+                  "name": "Told",
+                  "width": 920,
+                  "height": 52,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Qakb5",
+                      "name": "Told Line",
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 22,
+                      "padding": [
+                        10,
+                        20
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "d4zjQ",
+                          "name": "Told Text",
+                          "fill": "$fm-ink",
+                          "content": "THAT'S THE TRICERATOPS FRILL!",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xwpjL",
+              "name": "Tray",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 28,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "svOPn",
+                  "name": "Tray Row 1",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "JHpWb",
+                      "name": "Tray Spot tyrannosaurus-arms",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "cMC67",
+                          "name": "Piece tyrannosaurus-arms",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-arms.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "H6MR7",
+                      "name": "Tray Spot triceratops-frill",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "R98yv",
+                          "name": "Piece triceratops-frill",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-frill.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kWecA",
+                  "name": "Tray Row 2",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "D8DWWr",
+                      "name": "Tray Spot tyrannosaurus-left-thigh",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TgETl",
+                          "name": "Piece tyrannosaurus-left-thigh",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-left-thigh.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hTQXE",
+                      "name": "Tray Spot tyrannosaurus-left-foot",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "g2R80G",
+                          "name": "Piece tyrannosaurus-left-foot",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-left-foot.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PUxBO",
+                  "name": "Tray Row 3",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "vtX99",
+                      "name": "Tray Spot stegosaurus-spikes",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CL4kF",
+                          "name": "Piece stegosaurus-spikes",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-stegosaurus-spikes.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Yo8Ug",
+                      "name": "Tray Spot tyrannosaurus-right-thigh",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sqMID",
+                          "name": "Piece tyrannosaurus-right-thigh",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-right-thigh.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Jv48F",
+                  "name": "Tray Row 4",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Rikp5",
+                      "name": "Tray Spot tyrannosaurus-right-foot",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "OCrIl",
+                          "name": "Piece tyrannosaurus-right-foot",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-right-foot.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "K39Uv",
+                      "name": "Tray Spot tyrannosaurus-tail-base",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "S6fv5",
+                          "name": "Piece tyrannosaurus-tail-base",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-tail-base.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "O2zDs",
+                  "name": "Tray Row 5",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gv27P",
+                      "name": "Tray Spot tyrannosaurus-tail-tip",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Yt2K5",
+                          "name": "Piece tyrannosaurus-tail-tip",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-tail-tip.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "RWC0c",
+                      "name": "Tray Cell Empty",
+                      "width": "fill_container",
+                      "height": "fill_container"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "d2xdsu",
+      "x": 1664,
+      "y": 31240,
+      "name": "Skeletons · Build — Dark · Paleontologist · Triceratops · Turned pieces with turn marks",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "S14Jk3",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kCZqT",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "dHjVC",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "a8bFR",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n3m4v",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VJ3n9",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "F6QCh",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "V4g3o",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wD250",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "kZRsZ",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "OaTr4",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "E4n8sb",
+              "name": "Fitted Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "P93YUF",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "bone",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "A91uC",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "3/10",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "O4kPxa",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "bo4nm",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "T5i2G",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Outline · silhouette",
+                  "opacity": 0.28,
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-silhouette-dark.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "teMkJ",
+                  "x": 9,
+                  "y": 87,
+                  "name": "Fitted horns",
+                  "width": 413,
+                  "height": 302,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-horns.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "vIXBM",
+                  "x": 231,
+                  "y": 39,
+                  "name": "Fitted frill",
+                  "width": 236,
+                  "height": 245,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-frill.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "bBHc1",
+                  "x": 291,
+                  "y": 205,
+                  "name": "Fitted ribs",
+                  "width": 227,
+                  "height": 253,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops-ribs.webp",
+                    "mode": "stretch"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BiXE2",
+              "name": "Tray",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface-2",
+              "cornerRadius": 28,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "aUgRC",
+                  "name": "Tray Row 1",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZhTpz",
+                      "name": "Tray Spot triceratops-backbone",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "U24V1T",
+                          "x": 12,
+                          "y": 12,
+                          "name": "Piece triceratops-backbone",
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-backbone.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pasBu",
+                      "name": "Tray Spot tyrannosaurus-skull · turned 90°",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ZqeZZ",
+                          "x": 125,
+                          "y": 13,
+                          "name": "Piece tyrannosaurus-skull",
+                          "rotation": -90,
+                          "width": 96,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus-skull.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "icon",
+                          "id": "W9InQ",
+                          "x": 126,
+                          "y": 8,
+                          "name": "Turn Mark",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "rotate-cw",
+                          "library": "lucide",
+                          "fill": "#9CA3B6"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nTg3F",
+                  "name": "Tray Row 2",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "w2ibCc",
+                      "name": "Tray Spot triceratops-left-front-leg",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "xz79w",
+                          "x": 12,
+                          "y": 12,
+                          "name": "Piece triceratops-left-front-leg",
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-left-front-leg.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "o09HRv",
+                      "name": "Tray Spot triceratops-right-front-leg · turned 180°",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VvmcA",
+                          "x": 142,
+                          "y": 109,
+                          "name": "Piece triceratops-right-front-leg",
+                          "rotation": -180,
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-right-front-leg.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "icon",
+                          "id": "P6PV58",
+                          "x": 126,
+                          "y": 8,
+                          "name": "Turn Mark",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "rotate-cw",
+                          "library": "lucide",
+                          "fill": "#9CA3B6"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LmxlW",
+                  "name": "Tray Row 3",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VVpYb",
+                      "name": "Tray Spot triceratops-beak · turned 90°",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "pyQGo",
+                          "x": 125,
+                          "y": 13,
+                          "name": "Piece triceratops-beak",
+                          "rotation": -90,
+                          "width": 96,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-beak.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "icon",
+                          "id": "y8l9C9",
+                          "x": 126,
+                          "y": 8,
+                          "name": "Turn Mark",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "rotate-cw",
+                          "library": "lucide",
+                          "fill": "#9CA3B6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ssiQF",
+                      "name": "Tray Spot triceratops-left-hind-leg",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "g44Dki",
+                          "x": 12,
+                          "y": 12,
+                          "name": "Piece triceratops-left-hind-leg",
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-left-hind-leg.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rDBir",
+                  "name": "Tray Row 4",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZZAU3",
+                      "name": "Tray Spot stegosaurus-back-plates",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Q2IFWu",
+                          "x": 12,
+                          "y": 12,
+                          "name": "Piece stegosaurus-back-plates",
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-stegosaurus-back-plates.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "neNeX",
+                      "name": "Tray Spot triceratops-right-hind-leg",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "W4CXZ",
+                          "x": 12,
+                          "y": 12,
+                          "name": "Piece triceratops-right-hind-leg",
+                          "width": 130,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-right-hind-leg.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Vw3Zg",
+                  "name": "Tray Row 5",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Z86qT",
+                      "name": "Tray Spot triceratops-tail · turned 270°",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "JOFb3",
+                          "x": 29,
+                          "y": 109,
+                          "name": "Piece triceratops-tail",
+                          "rotation": -270,
+                          "width": 96,
+                          "height": 96,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-triceratops-tail.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "icon",
+                          "id": "d0WzL",
+                          "x": 126,
+                          "y": 8,
+                          "name": "Turn Mark",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "rotate-cw",
+                          "library": "lucide",
+                          "fill": "#9CA3B6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bAczY",
+                      "name": "Tray Cell Empty",
+                      "width": "fill_container",
+                      "height": "fill_container"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "zyi5t",
+      "x": 3224,
+      "y": 31240,
+      "name": "Skeletons · Reveal — Light · Explorer · Triceratops · Explorer badge earned",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "IGK36",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "TNP4l",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "zkMus",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "TSzxT",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "F3ZIr",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QC9oa",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "J7LxEo",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SieeQ",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "o4lBMZ",
+              "name": "Best",
+              "height": 44,
+              "fill": "$fm-amber",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "r6joJ",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#FFFFFF"
+                },
+                {
+                  "type": "text",
+                  "id": "m0Clmu",
+                  "name": "Best Text",
+                  "fill": "#FFFFFF",
+                  "content": "2/3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KPKYC",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CMMQW",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tkoH1",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Skeleton Complete",
+                  "opacity": 0.25,
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops.webp",
+                    "mode": "stretch"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "DVriX",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Body Fades In",
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/triceratops.webp",
+                    "mode": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GE2GD",
+              "name": "Celebration",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 20,
+              "padding": 32,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J6Hqww",
+                  "name": "Reward",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "t2xnl3",
+                      "name": "Star Row",
+                      "gap": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "V7GYa",
+                          "name": "Star Badge",
+                          "width": 72,
+                          "height": 72,
+                          "fill": "$fm-amber",
+                          "cornerRadius": 36,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#E39B2D66",
+                            "offset": {
+                              "x": 0,
+                              "y": 6
+                            },
+                            "blur": 18
+                          },
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "dqErf",
+                              "name": "Star Icon",
+                              "width": 40,
+                              "height": 40,
+                              "icon": "star",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "z57Qg",
+                          "name": "New Best",
+                          "fill": "$fm-terra",
+                          "content": "NEW BEST!",
+                          "fontFamily": "Lexend",
+                          "fontSize": 28,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gQvpC",
+                      "name": "Badge Earned",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "e6Bg3",
+                          "name": "Level Badge · Explorer",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "#FFFDF8",
+                          "cornerRadius": 20,
+                          "stroke": "#1D27421F",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "epgH7",
+                              "name": "Level Badge Emoji",
+                              "fill": "$fm-ink",
+                              "content": "🦖",
+                              "fontFamily": "Lexend",
+                              "fontSize": 22,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "hkKXF",
+                          "name": "Badge Earned Text",
+                          "fill": "$fm-ink",
+                          "content": "EXPLORER BADGE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "N0tFC",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Xekk4",
+                      "name": "Fact",
+                      "width": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 20,
+                      "gap": 14,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "h4R0MQ",
+                          "name": "Fact Speaker",
+                          "width": 28,
+                          "height": 28,
+                          "icon": "volume-2",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "dYvSn",
+                          "name": "Fact Text",
+                          "fill": "$fm-ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
+                          "lineHeight": 1.3,
+                          "fontFamily": "Lexend",
+                          "fontSize": 24,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kFtRw",
+                  "name": "Actions",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "z5DXrx",
+                      "name": "BUILD ANOTHER",
+                      "width": "fill_container",
+                      "height": 72,
+                      "fill": "$fm-base",
+                      "cornerRadius": 20,
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "z0CBH",
+                          "name": "BUILD ANOTHER Icon",
+                          "width": 28,
+                          "height": 28,
+                          "icon": "bone",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "z2xcZJ",
+                          "name": "BUILD ANOTHER Text",
+                          "fill": "$fm-on-base",
+                          "content": "BUILD ANOTHER",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DN219",
+                      "name": "MUSEUM",
+                      "width": "fill_container",
+                      "height": 72,
+                      "fill": "$fm-surface",
+                      "cornerRadius": 20,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 2,
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "w0PYD",
+                          "name": "MUSEUM Icon",
+                          "width": 28,
+                          "height": 28,
+                          "icon": "landmark",
+                          "library": "lucide",
+                          "fill": "$fm-ink"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zBg07",
+                          "name": "MUSEUM Text",
+                          "fill": "$fm-ink",
+                          "content": "MUSEUM",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "frTml",
+      "x": 4784,
+      "y": 31240,
+      "name": "Skeletons · Museum — Light · Badges on the stands",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "dwxKj",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Y1vWyG",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "E2S5b",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "CUtyU",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YLcgw",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "o5cUV",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "CXG82",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "landmark",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "G6cCW",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AB2HF",
+              "name": "Build Another Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "crEee",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "bone",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "NasuR",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "BUILD ANOTHER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dlWkx",
+              "name": "Best",
+              "height": 44,
+              "fill": "$fm-amber",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "YnCwq",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#FFFFFF"
+                },
+                {
+                  "type": "text",
+                  "id": "E0nMz",
+                  "name": "Best Text",
+                  "fill": "#FFFFFF",
+                  "content": "2/3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hQU5f",
+          "name": "Hall",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-surface-2",
+          "cornerRadius": 32,
+          "gap": 32,
+          "padding": [
+            32,
+            32,
+            0,
+            32
+          ],
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "vDRvo",
+              "name": "Stand TYRANNOSAURUS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "l2jYPo",
+                  "name": "Stand Top",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o1VXZk",
+                      "name": "Stand Name",
+                      "fill": "$fm-ink",
+                      "content": "TYRANNOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jHoj6",
+                      "name": "Stand Star",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "hqSnP",
+                          "name": "Stand Star Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "star",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YKNVy",
+                  "name": "Exhibit",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZlZlH",
+                      "x": 314,
+                      "y": 0,
+                      "name": "Stand Badges",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "V27r83",
+                          "name": "Level Badge · Explorer",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "#FFFDF8",
+                          "cornerRadius": 20,
+                          "stroke": "#1D27421F",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "V8CNvo",
+                              "name": "Level Badge Emoji",
+                              "fill": "$fm-ink",
+                              "content": "🦖",
+                              "fontFamily": "Lexend",
+                              "fontSize": 22,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "y6KE7x",
+                          "name": "Level Badge · Paleontologist",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "#FFFDF8",
+                          "cornerRadius": 20,
+                          "stroke": "#1D27421F",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "RD91u",
+                              "name": "Level Badge Emoji",
+                              "fill": "$fm-ink",
+                              "content": "🦴",
+                              "fontFamily": "Lexend",
+                              "fontSize": 22,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z3FRIs",
+                  "name": "Plinth",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": [
+                    20,
+                    20,
+                    0,
+                    0
+                  ],
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "padding": [
+                    18,
+                    20,
+                    24,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "qWRpr",
+                      "name": "Rebuild Button",
+                      "width": "fill_container",
+                      "height": 64,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 18,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 2,
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "W3LqK",
+                          "name": "Button Icon",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "rotate-ccw",
+                          "library": "lucide",
+                          "fill": "$fm-ink"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Jn8lv",
+                          "name": "Button Text",
+                          "fill": "$fm-ink",
+                          "content": "REBUILD",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BZgQ2",
+              "name": "Stand TRICERATOPS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kr49c",
+                  "name": "Stand Top",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Srv3d",
+                      "name": "Stand Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Eshzz",
+                      "name": "Stand Star",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "oJS2K",
+                          "name": "Stand Star Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "star",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FbePa",
+                  "name": "Exhibit",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iw4I6",
+                      "x": 360,
+                      "y": 0,
+                      "name": "Stand Badges",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "mkEi2",
+                          "name": "Level Badge · Explorer",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "#FFFDF8",
+                          "cornerRadius": 20,
+                          "stroke": "#1D27421F",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "iwbTV",
+                              "name": "Level Badge Emoji",
+                              "fill": "$fm-ink",
+                              "content": "🦖",
+                              "fontFamily": "Lexend",
+                              "fontSize": 22,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "g5BDqA",
+                  "name": "Plinth",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": [
+                    20,
+                    20,
+                    0,
+                    0
+                  ],
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "padding": [
+                    18,
+                    20,
+                    24,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Q2sY8",
+                      "name": "Rebuild Button",
+                      "width": "fill_container",
+                      "height": 64,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 18,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 2,
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "L4l2A",
+                          "name": "Button Icon",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "rotate-ccw",
+                          "library": "lucide",
+                          "fill": "$fm-ink"
+                        },
+                        {
+                          "type": "text",
+                          "id": "tPoDi",
+                          "name": "Button Text",
+                          "fill": "$fm-ink",
+                          "content": "REBUILD",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HFQJc",
+              "name": "Stand STEGOSAURUS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AwmNw",
+                  "name": "Stand Top",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "si2Eh",
+                      "name": "Stand Name",
+                      "fill": "$fm-ink-soft",
+                      "content": "STEGOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rqAp1",
+                  "name": "Exhibit",
+                  "opacity": 0.22,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/silhouette-stegosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "hiARC",
+                  "name": "Plinth",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": [
+                    20,
+                    20,
+                    0,
+                    0
+                  ],
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "padding": [
+                    18,
+                    20,
+                    24,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZkhwH",
+                      "name": "Build Button",
+                      "width": "fill_container",
+                      "height": 64,
+                      "fill": "$fm-base",
+                      "cornerRadius": 18,
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "IAume",
+                          "name": "Button Icon",
+                          "width": 26,
+                          "height": 26,
+                          "icon": "bone",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "urPEh",
+                          "name": "Button Text",
+                          "fill": "$fm-on-base",
+                          "content": "BUILD",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
