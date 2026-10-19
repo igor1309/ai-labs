@@ -4,7 +4,10 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
   time, and once all three are found the child names the dinosaur from
   three body pictures. A round's clues take a telling kind
   (dig-spots.feature) among its spots first, where the dinosaur has
-  one, so the clues can tell it from the others.
+  one, so the clues can tell it from the others. A clue card names its
+  kind with its word over a disc of sand with a 🔍, and shows its
+  close-up of the picture only once its spot is found, so the detail is
+  seen by digging it up, not on the card.
 
   Background:
     Given an iPad in landscape
@@ -13,13 +16,13 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
   Scenario: One clue at a time
     When a round starts
     Then the title reads "WHO IS IT?" and no name shows
-    And beside the sand I see the first clue card, large: a round close-up of a spot with its word, and "1 / 3"
+    And beside the sand I see the first clue card, large: its word over a disc of sand with a 🔍, and "1 / 3"
     And below it a closed card for the clues to come
 
   Scenario: Finding a clue brings the next
     Given the first clue card shows SAIL
     When I brush more than half of the sail spot's cells clear
-    Then the SAIL card shrinks to a ticked row above, a small star pops by the spot and the spot sparkles once
+    Then the SAIL card shows its close-up, shrinks to a ticked row above, a small star pops by the spot and the spot sparkles once
     And the second clue card slides in, large, with "2 / 3"
     And with reduced motion the cards change with a short fade and nothing sparkles
 
@@ -50,7 +53,7 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
       | HORN, FRILL, FOOT | HORN or FRILL  |
 
   Scenario: Clues with no telling kind leave the others free
-    Given a dinosaur with no telling traits, whose clues are EYE, FOOT and TAIL
+    Given a round whose clues are EYE, FOOT and TAIL
     Then the other two are any two other dinosaurs
 
   Scenario: A wrong pick fades and the child picks again

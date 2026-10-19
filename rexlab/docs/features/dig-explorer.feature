@@ -52,7 +52,7 @@ Feature: Dig: Explorer finds three details
 
   Scenario Outline: The find cards fit and read in either language and theme
     Given the app is in <language> and uses the <theme> theme
-    When an Explorer round of Triceratops shows EYE, FOOT and TAIL on a 1024 by 768 screen
+    When an Explorer round of Tyrannosaurus shows EYE, FOOT and TAIL on a 1024 by 768 screen
     Then the board and the 3 cards show with no scrolling, each word on one line at 4.5:1 contrast
     And the words read <words>
 

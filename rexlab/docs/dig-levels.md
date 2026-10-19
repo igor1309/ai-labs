@@ -14,6 +14,8 @@ The one interaction at every level.
 
 - **Brushing.** A finger dragged over the sand clears a soft round path
   under it; a tap clears one round spot, so a child who taps still digs.
+  Taps go through the app's double-tap filter like any other, so a
+  second tap at once in the same place clears nothing more.
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
   level.
@@ -58,9 +60,12 @@ The one interaction at every level.
   `dig.json` lists each dinosaur's.
   Each dinosaur in the game has three to five spots, in
   `src/data/dig.json`; a round picks 3.
-  The close-up on a card is the picture itself, cropped round the spot,
-  so the card shows exactly what to find. Its word is a small caption
-  under it, not the cue.
+  The close-up on an Explorer card is the picture itself, cropped round
+  the spot, so the card shows exactly what to find. Its word is a small
+  caption under it, not the cue. A Paleontologist clue card names its
+  kind with its word over a disc of sand with a 🔍, and shows its
+  close-up once the spot is found, so the detail is dug up, not copied
+  from the card.
 - **Paleontologist's choice.** The clues take a telling trait first,
   where the dinosaur has one. The 3 pictures are the dinosaur and two
   others that each lack one of the clues' telling traits, so the clues
@@ -89,6 +94,12 @@ The one interaction at every level.
   Explorer's offers Paleontologist; Paleontologist offers nothing.
 - **Home.** The "DIG" tile, 🖌️ a brush over sand, joins the fourth column
   above "MORE COMING", which halves.
+
+- **A full collection.** Once all 42 are dug up the card keeps its 🏆
+  and a round's reward is its reveal; at Paleontologist the 🦴 badges
+  still collect. Suggested to the owner (2026-10-19): no further
+  collection until a playtest shows children dig on past 42, as 42
+  rounds is already a long goal at 5–7.
 
 ## Sub-issues
 

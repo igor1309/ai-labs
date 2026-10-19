@@ -69,3 +69,13 @@ Feature: Dig: the level switch on the reveal
       | saved                                      | reloaded  |
       | I have never used the level switch         | Explorer  |
       | my saved choice on the switch is Hatchling | Hatchling |
+
+  Scenario Outline: The level switch fits and reads in either language and theme
+    Given the app is in <language> and uses the <theme> theme
+    When I see a reveal with a new best on a 1024 by 768 screen
+    Then the switch reads <names>, each on one line, at 4.5:1 contrast, with no scrolling
+
+    Examples:
+      | language | theme | names                               |
+      | English  | light | HATCHLING, EXPLORER, PALEONTOLOGIST |
+      | Russian  | dark  | ДЕТЁНЫШ, ИССЛЕДОВАТЕЛЬ, ПАЛЕОНТОЛОГ |

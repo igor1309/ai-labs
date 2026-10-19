@@ -28,6 +28,10 @@ Feature: Dig: the spots of each dinosaur
     And one dinosaur has at most one spot of each kind
     And every telling kind among a dinosaur's spots is among its telling traits
 
+  Scenario: A dinosaur's telling traits are what its picture shows
+    Given a preview sheet of every dinosaur, its spots circled and its telling traits listed
+    Then a reviewer sees each listed trait in the picture, and no telling kind the picture shows left off the list
+
   Scenario: The dinosaur's cells match its picture
     Given the dig data and every dinosaur's body picture
     Then a dinosaur's cell is marked as its own exactly when the picture shows in more than a tenth of it
@@ -35,6 +39,7 @@ Feature: Dig: the spots of each dinosaur
   Scenario Outline: Each kind has its words and a close-up
     Given the app is in <language>
     Then a spot's card shows a round close-up of the picture cropped about the spot, with its word under it
+    And at Paleontologist the close-up shows once the spot is found (dig-paleontologist.feature)
     And the words are <words>
 
     Examples:

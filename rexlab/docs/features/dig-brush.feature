@@ -24,6 +24,12 @@ Feature: Dig: the brush, and Hatchling's free brushing
     When I tap the sand
     Then one soft round spot clears under the finger, a brush wide
 
+  Scenario: The sand takes taps through the double-tap filter
+    Given a Hatchling round has started
+    When I tap the sand, and tap again 600 ms after the release, 50 px away
+    Then two spots clear
+    But a second tap less than 500 ms after the first and less than 100 px from it clears nothing, as double-tap.feature says
+
   Scenario Outline: The brush is a size a finger can steer
     Given a <level> round has started
     Then the brush is <size> CSS pixels across, whatever the board's size

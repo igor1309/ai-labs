@@ -27,22 +27,28 @@ Feature: Dig: the offer of the next age level
       | Hatchling | TRY THE EXPLORER LEVEL?       | 🦖      |
       | Explorer  | TRY THE PALEONTOLOGIST LEVEL? | 🦴      |
 
-  Scenario: A round with help shown starts the count again
+  Scenario Outline: A round that is not strong at this level starts the count again
     Given I have finished 2 strong Explorer rounds in a row
-    When I finish an Explorer round after help thinned a spot
+    When I finish <round>
     Then I see no offer, and I need 3 strong Explorer rounds in a row for it
 
+    Examples:
+      | round                                       |
+      | an Explorer round after help thinned a spot |
+      | a Hatchling round                           |
+
   Scenario: "YES" plays the next level from then on
-    Given I see the offer of the Explorer level
+    Given I see the offer of the Explorer level on a Hatchling reveal
     When I tap "YES"
-    Then the offer goes and "DIG AGAIN" starts an Explorer round
-    And the level switch shows Explorer chosen when I next dig
+    Then the offer goes and the level switch shows Explorer chosen
+    And "DIG AGAIN" starts an Explorer round, and so does the "DIG" tile
 
   Scenario: "NOT NOW" waits for 5
     Given I see the offer of the Explorer level on a Hatchling reveal
     When I tap "NOT NOW"
     Then the level switch still shows Hatchling chosen
     And I need 5 strong Hatchling rounds in a row for the offer
+    But at Explorer 3 strong rounds in a row still offer Paleontologist
 
   Scenario: No offer at the top
     Given the level switch shows Paleontologist chosen
@@ -75,3 +81,16 @@ Feature: Dig: the offer of the next age level
       | answer  |
       | YES     |
       | NOT NOW |
+
+  Scenario Outline: Leaving before the offer rises in keeps it due
+    Given I have finished 2 strong Hatchling rounds in a row
+    And I finish a third
+    When I <leave> before the offer begins to rise in
+    Then the offer was not shown and does not count as unanswered
+    And my next strong Hatchling round offers the Explorer level
+
+    Examples:
+      | leave            |
+      | tap "DIG AGAIN"  |
+      | tap "HOME"       |
+      | reload the app   |

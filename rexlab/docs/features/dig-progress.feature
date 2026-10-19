@@ -1,25 +1,23 @@
 Feature: Dig: stored progress
   The dig game keeps, in the browser beside the other games' progress,
   the dinosaurs dug up, the dinosaurs named at the first pick at
-  Paleontologist, a count of finished rounds, the child's choice on the
-  level switch and its level offer (dig-level-offer.feature). Dug-up
-  dinosaurs are one collection across all levels (docs/age-levels.md,
-  "Same rewards").
+  Paleontologist, the child's choice on the level switch and its level
+  offer (dig-level-offer.feature). Dug-up dinosaurs are one collection
+  across all levels (docs/age-levels.md, "Same rewards").
 
   Background:
     Given an iPad in landscape
 
   Scenario: A finished round is recorded
-    Given I have finished 3 rounds of the dig game and dug up Stegosaurus
+    Given I have dug up Stegosaurus
     When I dig up Triceratops
-    Then my stored progress counts 4 finished rounds
-    And it holds Stegosaurus and Triceratops as dug up
+    Then my stored progress holds Stegosaurus and Triceratops as dug up
 
   Scenario: A round left early is not recorded
-    Given I have dug up 4 dinosaurs in 4 rounds
+    Given I have dug up 4 dinosaurs
     And I am in a round with all but the gust done
     When I tap "HOME"
-    Then I have still dug up 4 dinosaurs in 4 rounds
+    Then I have still dug up 4 dinosaurs, and the round counts towards no offer
 
   Scenario: Other games' progress is kept
     Given stored progress of every other game from before the dig game
