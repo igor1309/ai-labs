@@ -417,6 +417,20 @@ describe("leaving the result before the offer rises in", () => {
     expect(asked()).toBe(asks("paleontologist"));
   });
 
+  it("keeps the offer due after PLAY AGAIN while the next board's pictures load", async () => {
+    const session = await due();
+
+    await session.user.click(button("PLAY AGAIN"));
+    expect(session.clock.loading()).not.toEqual([]);
+    settle(session);
+    expect([asked(), savedOffer(session)]).toEqual([null, offerOf("explorer", 3)]);
+
+    act(() => session.clock.finishAll());
+    finish(session, dealt(EXPLORER, { previous: session.previous! }), 18);
+    settle(session);
+    expect(asked()).toBe(asks("paleontologist"));
+  });
+
   it("keeps the offer due after HOME", async () => {
     const session = await due();
 
