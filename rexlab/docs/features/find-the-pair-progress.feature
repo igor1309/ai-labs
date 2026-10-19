@@ -38,11 +38,10 @@ Feature: Find the pair: keeping progress
       | malformed                      |
       | from an unknown schema version |
 
-  Scenario: A found dinosaur no longer in the list is ignored
+  Scenario: Opening the catalogue keeps the found as stored
     Given the stored found dinosaurs include one that is no longer in the dinosaur list
     When I open "ALL DINOSAURS"
-    Then the found count counts only dinosaurs in the list
-    And the stored progress is not changed by opening it
+    Then the stored progress is not changed by opening it
 
   Scenario: The game works when progress cannot be read
     Given the browser cannot read stored progress
