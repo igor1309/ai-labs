@@ -10,7 +10,15 @@ const VERSION = `v${JSON.parse(readFileSync(PACKAGE_JSON, "utf8")).version}`;
 // can read it with a plain fetch, without running the page's scripts.
 export default defineConfig({
   build: {
-    outDir: "dist"
+    outDir: "dist",
+    // The care mission prototype (LAB-281) is a page of its own, linked
+    // from nowhere in the game.
+    rolldownOptions: {
+      input: {
+        main: "index.html",
+        careMission: "prototypes/care-mission.html"
+      }
+    }
   },
   plugins: [
     react(),

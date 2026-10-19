@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>RexLab · Care mission prototype</title>
+  </head>
+  <body>
+    <main id="mission"></main>
+    <script type="module">
+      import { startCareMission } from "./careMission.ts";
+      startCareMission(document.getElementById("mission"));
+    </script>
+  </body>
+</html>

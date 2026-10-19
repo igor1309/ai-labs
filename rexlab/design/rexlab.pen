@@ -70338,6 +70338,1923 @@
     },
     {
       "type": "frame",
+      "id": "mHHkU",
+      "x": 1664,
+      "y": 32360,
+      "name": "Care Mission · 1 Arrival — Light · T. rex is hungry, empty bowl",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "v3KOr",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Mqchx",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OzsdU",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "FOPC2",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "h5bFX",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "mwHvk",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "g82H6F",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "W9DWD",
+              "x": 640,
+              "y": 16,
+              "name": "Visitor Picture",
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/tyrannosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "n5G4o8",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "TYRANNOSAURUS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "sgHBR",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f0ft7t",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "mNSZ0",
+              "name": "Item PLANTS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fGAZb",
+                  "name": "Item Picture PLANTS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-plants.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "y0p9cB",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon PLANTS",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kL3XI",
+                  "name": "Item Label PLANTS",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ROFHB",
+              "name": "Item MEAT",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ElB9z",
+                  "name": "Item Picture MEAT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-meat.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "d1rGi",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon MEAT",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "OqjPH",
+                  "name": "Item Label MEAT",
+                  "fill": "$fm-ink",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ojatx",
+              "name": "Item WATER",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Q1KK5",
+                  "name": "Item Picture WATER",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-water.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "qrNV7",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon WATER",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "droplet",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "WwZgj",
+                  "name": "Item Label WATER",
+                  "fill": "$fm-ink",
+                  "content": "WATER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "QKj4s",
+      "x": 3224,
+      "y": 32360,
+      "name": "Care Mission · 2 Consequence — Light · T. rex leans to the offered meat, not eaten yet",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "OWP7e",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "oairb",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Vi74q",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "mP7Cn",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "VTjGj",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "Gp8iv",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "cuYNz",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "LsgGA",
+              "x": 500,
+              "y": 16,
+              "name": "Visitor Picture · leans to the meat",
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/tyrannosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "YhiV1",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "TYRANNOSAURUS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "qZmMs",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "SHVvQ",
+              "x": 500,
+              "y": 286,
+              "name": "Offered Food · meat",
+              "width": 150,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-meat.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "BL8BF",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "hrovp",
+              "name": "Item SERVE",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-amber",
+              "cornerRadius": 24,
+              "stroke": "$fm-amber",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QWd1v",
+                  "name": "Item Picture SERVE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kZd7w",
+                      "x": 231,
+                      "y": 50,
+                      "name": "Serve Bowl",
+                      "width": 170,
+                      "height": 95,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/care-bowl.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z3rRF",
+                      "x": 271,
+                      "y": 2,
+                      "name": "Serve Meat",
+                      "width": 90,
+                      "height": 90,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/care-meat.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "WiFUc",
+                  "name": "Item Label SERVE",
+                  "fill": "$fm-ink",
+                  "content": "SERVE",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aUjl7",
+              "name": "Item PLANTS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "xaamY",
+                  "name": "Item Picture PLANTS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-plants.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "LhEFy",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon PLANTS",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "JQYEx",
+                  "name": "Item Label PLANTS",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "t0Z8s",
+      "x": 4784,
+      "y": 32360,
+      "name": "Care Mission · 2 Consequence — Light · Triceratops turns away from the meat, bowl stays empty",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Y37jk",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "yiuEA",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "t6Jtb",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "eVUAa",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "oQAth",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "c7jrEJ",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "v4N1RG",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "idKtD",
+              "x": 1280,
+              "y": 16,
+              "name": "Visitor Picture · turned away",
+              "flipX": true,
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "S7O2l",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "TRICERATOPS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "xzfuH",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "cCAb9",
+              "x": 500,
+              "y": 286,
+              "name": "Offered Food · meat",
+              "width": 150,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-meat.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "RPgiq",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "t9xXFw",
+              "name": "Item PLANTS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Pax1y",
+                  "name": "Item Picture PLANTS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-plants.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "oe983",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon PLANTS",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "C0hqcf",
+                  "name": "Item Label PLANTS",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "F7Uqw",
+              "name": "Item MEAT",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "F4NQsJ",
+                  "name": "Item Picture MEAT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-meat.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "HP55Z",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon MEAT",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "HGxB3",
+                  "name": "Item Label MEAT",
+                  "fill": "$fm-ink",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CFmQe",
+              "name": "Item WATER",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "B3Jk2",
+                  "name": "Item Picture WATER",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-water.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "WsZUJ",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon WATER",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "droplet",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "P98gxK",
+                  "name": "Item Label WATER",
+                  "fill": "$fm-ink",
+                  "content": "WATER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "dH3XF",
+      "x": 6344,
+      "y": 32360,
+      "name": "Care Mission · 2 Consequence — Light · Gallimimus drinks the water, food bowl still empty",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "L0m6F",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Zo0t7",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bXLS5",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "eUJoh",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "V1kJ7",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "IdonJ",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "lJnHg",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "yGhKU",
+              "x": 520,
+              "y": 16,
+              "name": "Visitor Picture · drinking",
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/gallimimus.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "J4YL2l",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "GALLIMIMUS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "kdr41",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "gYofj",
+              "x": 510,
+              "y": 306,
+              "name": "Offered Water",
+              "width": 180,
+              "height": 130,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-water.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WPjiG",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "rTnc5",
+              "name": "Item PLANTS",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nird9",
+                  "name": "Item Picture PLANTS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-plants.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "NIPIl",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon PLANTS",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "leaf",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xCLLN",
+                  "name": "Item Label PLANTS",
+                  "fill": "$fm-ink",
+                  "content": "PLANTS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UzwcM",
+              "name": "Item MEAT",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "sW6u3",
+                  "name": "Item Picture MEAT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-meat.webp",
+                    "mode": "contain"
+                  },
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Y2NT8",
+                      "x": 18,
+                      "y": 18,
+                      "name": "Item Icon MEAT",
+                      "enabled": false,
+                      "width": 44,
+                      "height": 44,
+                      "icon": "beef",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "I3Cdc",
+                  "name": "Item Label MEAT",
+                  "fill": "$fm-ink",
+                  "content": "MEAT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "WqWBk",
+      "x": 1664,
+      "y": 33480,
+      "name": "Care Mission · 3 Result — Light · Triceratops ate the plants, empty bowl, relaxed",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Nptwd",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "yRtmI",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "a4Znk",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "TwYlt",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Q0urfz",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "N1stP8",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "BIwXa",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "iA5Jm",
+              "x": 380,
+              "y": 36,
+              "name": "Visitor Picture · relaxed by the empty bowl",
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "AI3VA",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "TRICERATOPS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "uX7rG",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl · empty after eating",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f18rN",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "RyA4R",
+              "name": "Item PLAY AGAIN",
+              "width": 560,
+              "height": "fill_container",
+              "fill": "$fm-amber",
+              "cornerRadius": 24,
+              "stroke": "$fm-amber",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bmwgH",
+                  "name": "Item Picture PLAY AGAIN",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "gap": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "etAVP",
+                      "name": "PLAY AGAIN Icon",
+                      "width": 56,
+                      "height": 56,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Qa2fa",
+                      "name": "PLAY AGAIN Art",
+                      "width": 220,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/gallimimus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "J0VdO",
+                  "name": "Item Label PLAY AGAIN",
+                  "fill": "$fm-ink",
+                  "content": "PLAY AGAIN",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "f7Lal",
+      "x": 3224,
+      "y": 33480,
+      "name": "Care Mission · 3 Result — Light · T. rex leaves the served plants, try another dish",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        40,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "J1oCk",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "S87KaC",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "eRcqD",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "xsdxI",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "VttMe",
+          "name": "Stage",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$fm-base",
+          "cornerRadius": 32,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "pZtwU",
+              "x": 300,
+              "y": -60,
+              "name": "Stage Glow",
+              "opacity": 0.12,
+              "fill": "$fm-sky",
+              "width": 560,
+              "height": 560
+            },
+            {
+              "type": "rectangle",
+              "id": "Y6BXVH",
+              "x": 0,
+              "y": 396,
+              "name": "Ground",
+              "fill": "#00000026",
+              "width": 1328,
+              "height": 110
+            },
+            {
+              "type": "frame",
+              "id": "uayZF",
+              "x": 1300,
+              "y": 16,
+              "name": "Visitor Picture · turned away",
+              "flipX": true,
+              "width": 600,
+              "height": 450,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/tyrannosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "text",
+              "id": "KUNAw",
+              "x": 40,
+              "y": 30,
+              "name": "Visitor Name",
+              "fill": "$fm-on-base",
+              "content": "TYRANNOSAURUS",
+              "fontFamily": "Lexend",
+              "fontSize": 36,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "WceJV",
+              "x": 330,
+              "y": 246,
+              "name": "Served Plants in Bowl",
+              "width": 160,
+              "height": 110,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-plants.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "j14lfT",
+              "x": 300,
+              "y": 296,
+              "name": "Bowl",
+              "width": 220,
+              "height": 150,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "UhKsv",
+          "name": "Tray",
+          "width": "fill_container",
+          "height": 210,
+          "gap": 24,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "h5eTYs",
+              "name": "Item ANOTHER DISH",
+              "width": 560,
+              "height": "fill_container",
+              "fill": "$fm-amber",
+              "cornerRadius": 24,
+              "stroke": "$fm-amber",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                10,
+                10,
+                16,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "p8N6N",
+                  "name": "Item Picture ANOTHER DISH",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "gap": 20,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "TBBnT",
+                      "name": "ANOTHER DISH Icon",
+                      "width": 56,
+                      "height": 56,
+                      "icon": "undo-2",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "BlORs",
+                      "name": "ANOTHER DISH Art",
+                      "width": 220,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/care-bowl.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "abfSS",
+                  "name": "Item Label ANOTHER DISH",
+                  "fill": "$fm-ink",
+                  "content": "ANOTHER DISH",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
       "id": "OfLCl",
       "x": 1664,
       "y": 32360,
