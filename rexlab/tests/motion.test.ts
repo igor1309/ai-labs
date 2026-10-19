@@ -213,6 +213,11 @@ describe("care's motion", () => {
     expect(leaving).toMatch(/walk-off var\(--motion-screen\)/);
   });
 
+  it("moves the visitor's place, never its picture, so the picture's shimmer and fade play inside", () => {
+    expect(RULES.filter(({ body, prelude }) => /(^|[^-])visitor-picture/.test(prelude + body)).map(({ prelude }) => prelude)).toEqual([".visitor-picture"]);
+    expect(declarationsOf(PLAIN.find(({ prelude }) => prelude === ".visitor-picture")?.body ?? "").map(({ property }) => property)).toEqual(["display", "width", "height", "object-fit"]);
+  });
+
   it("flies the item given to the visitor, and its hearts from there to the counter", () => {
     expect([".given", ".hearts-pop", ".need-bubble", ".knock-bubble"].map((selector) => animations.get(selector))).toEqual(["fly-in", "pop-in", "pop-in", "pop-in"]);
     const hearts = PLAIN.find(({ prelude }) => prelude === ".hearts-pop")?.body ?? "";
@@ -500,6 +505,18 @@ describe("a picture's place", () => {
     expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
       ['.more-coming-picture[data-picture="appearing"]', '.more-coming-picture[data-picture="shown"]'],
       ['[data-theme="dark"] .more-coming-picture[data-picture="appearing"]', '[data-theme="dark"] .more-coming-picture[data-picture="shown"]']
+    ]);
+  });
+
+  it("fades a pair card's name out over the picture's fade-in", () => {
+    expect(bodyOf(".pair-card-name[data-fading]")).toEqual([{ property: "animation", value: "fade-out var(--motion-picture) var(--ease-out) forwards" }]);
+  });
+
+  it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
+    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
+    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
+      ['.pair-silhouette[data-picture="appearing"]', '.pair-silhouette[data-picture="shown"]'],
+      ['[data-theme="dark"] .pair-silhouette[data-picture="appearing"]', '[data-theme="dark"] .pair-silhouette[data-picture="shown"]']
     ]);
   });
 

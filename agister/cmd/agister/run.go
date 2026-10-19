@@ -19,6 +19,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/watch"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
+	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
@@ -195,6 +196,17 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 		}
 		built = continued(built, c)
 	}
+	var reused runstore.Record
+	if request.Reuse != "" {
+		var refusal []string
+		reused, refusal, err = reuseOf(request.Reuse, request, r.store)
+		if err != nil {
+			return cli.Result{}, err
+		}
+		if len(refusal) > 0 {
+			return cli.Result{}, refused(refusal)
+		}
+	}
 	started := r.host.clock.Now()
 	id, err := runIDOf(started, r.host.random)
 	if err != nil {
@@ -204,7 +216,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if err != nil {
 		return cli.Result{}, err
 	}
-	runner, err := r.runner(built, launch, root, record)
+	runner, err := r.runner(built, launch, root, record, reused)
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -221,9 +233,10 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 // turn's contract, once core/admit has admitted it against that worktree,
 // and watched for staleness by core/watch, on the host's timer; its inputs
 // read by the sources, a path relative to launch, as the person gave it;
+// a call taken from reused's calls where it may be;
 // what each step is doing told to the run's events and to record, and each
 // call, as it ends, to record.
-func (r *runs) runner(built plan, launch, dir string, record *runRecord) (*workflow.Runner, error) {
+func (r *runs) runner(built plan, launch, dir string, record *runRecord, reused runstore.Record) (*workflow.Runner, error) {
 	watcher, err := watch.New(watch.Timer(r.host.timer))
 	if err != nil {
 		return nil, err
@@ -253,6 +266,7 @@ func (r *runs) runner(built plan, launch, dir string, record *runRecord) (*workf
 	if err != nil {
 		return nil, err
 	}
+	steps.reuse = reusable{calls: reused.Calls, root: dir, facts: r.holding.facts}
 	return workflow.New(boundary{inputs: resolver, declared: built.boundary, records: record}, steps, bothEvents{r.events, record}, r.host.clock)
 }
 
@@ -981,7 +995,8 @@ type admission interface {
 // as on bash, has every count of it unknown. Each call, refused or made,
 // is told to records as it ends, with the inputs it was given, none for a
 // call whose inputs were refused, and the worktree's facts admit told of
-// it.
+// it. A call is taken from the run reused, where it may be, and neither
+// admitted nor made.
 type stepCalls struct {
 	inputs  declaredResolver
 	admits  admission
@@ -989,6 +1004,7 @@ type stepCalls struct {
 	clock   clock
 	calls   map[string]plannedCall
 	records callRecords
+	reuse   reusable
 }
 
 // callRecords is told each step's call as it ends. It is told from many
@@ -1025,17 +1041,31 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 }
 
 // call is the result of the step name's call, the inputs it is given and
-// its worktree's facts kept in ended where they are known.
+// its worktree's facts kept in ended where they are known. A call taken
+// from the run reused reports Reused and keeps the call it took in ended;
+// any other reports Started.
 func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, report func(workflow.Report), ended *endedCall) workflow.Result {
 	planned, ok := s.calls[name]
 	if !ok {
+		report(workflow.Report{Started: true})
 		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
 	}
 	resolved, err := s.inputs.Resolve(ctx, planned.declared, params)
 	if err != nil {
+		report(workflow.Report{Started: true})
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
 	ended.inputs = givenInputs(planned.declared.Inputs, resolved.Inputs)
+	earlier, taken, err := s.reuse.taken(ctx, *ended)
+	if taken {
+		ended.taken = &earlier
+		report(workflow.Report{Reused: earlier.ID})
+		return reusedResult(earlier)
+	}
+	report(workflow.Report{Started: true})
+	if err != nil {
+		return s.refused(err.Error(), planned.step.Warnings)
+	}
 	step := planned.step
 	step.Environment = resolved.Environment
 	for _, input := range ended.inputs {

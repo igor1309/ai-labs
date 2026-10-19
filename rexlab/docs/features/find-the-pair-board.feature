@@ -70,12 +70,6 @@ Feature: Find the pair: turning cards
     When I turn the iPad back to landscape
     Then I see the same cards, open and face down as before, and the same tries
 
-  Scenario: A missing picture still lets the board be played
-    Given the picture of Stegosaurus cannot be loaded
-    When I turn over a Stegosaurus card
-    Then I see a dinosaur symbol and "STEGOSAURUS" on the card
-    And its silhouette card, if any, shows the same symbol and name
-
   Scenario: Cards turn smoothly or fade
     When I turn over cards, find a pair and miss a pair
     Then cards flip with the shared motion tokens

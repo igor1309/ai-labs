@@ -24,7 +24,7 @@ import { CareWelcomeScreen } from "./CareWelcomeScreen.tsx";
 import { FriendsScreen } from "./FriendsScreen.tsx";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
+import type { StartTimer } from "./pictureWait.ts";
 import { presentCareResult, presentFriend, presentVisit } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { VisitScreen, type CareItem } from "./VisitScreen.tsx";
@@ -44,7 +44,6 @@ export type CareGameProps = {
   // The URL of the picture of each care item, and of the empty bowl.
   itemPicture: (name: string) => string;
   random: Random;
-  loadPicture: LoadPicture;
   startTimer: StartTimer;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
@@ -54,10 +53,6 @@ const GIVEN: Record<CareItem, Item> = { plants: "plants", meat: "meat", water: "
 
 // The dinosaur waiting at the door on the NEW VISITOR card.
 const DOORSTEP = "brachiosaurus";
-
-// The longest a visit waits for its visitor's picture, in milliseconds, as
-// a question does for its pictures.
-const PICTURE_WAIT = 1000;
 
 // How long each reaction plays before the visit goes on, in milliseconds,
 // as app.css times it: an item flies to the visitor (--motion-screen),
@@ -88,7 +83,7 @@ export function transitionFor(from: CareScreen, to: CareScreen): string | undefi
 // the iPad pauses a visit without losing it. `onHome` takes the child
 // back to the home page; `onStart` is told as each visit begins.
 export function useCareGame(
-  { visitors, careProgress, bodyPicture, itemPicture, random, loadPicture, startTimer, reducedMotion }: CareGameProps,
+  { visitors, careProgress, bodyPicture, itemPicture, random, startTimer, reducedMotion }: CareGameProps,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -109,47 +104,32 @@ export function useCareGame(
   // The reaction and departure timers of the visit in play, all stopped as
   // the child leaves it, and null from then on.
   const visitTimers = useRef<OwnedTimers | null>(null);
-  // A visit being started while its visitor's picture loads: a second tap
-  // meanwhile starts nothing more.
-  const starting = useRef(false);
-  // Counts each time the child leaves care, so a picture that finishes
-  // loading after the child has left starts no visit.
-  const stay = useRef(0);
   // The visitor of the last visit started, so the next one is another.
   const lastVisitor = useRef<string | undefined>(undefined);
 
   const timings = () => REACTIONS[reducedMotion() ? "reduced" : "motion"];
 
   const leave = () => {
-    stay.current++;
     live.current = null;
     visitTimers.current?.stopAll();
     visitTimers.current = null;
-    starting.current = false;
   };
 
-  // A visit starts once its visitor's picture is ready, or the wait runs
-  // out, and only if the child is still in care.
+  // A visit starts at once, its visitor's picture loading as it walks
+  // in. A second tap in the same change starts no other visit.
   const welcome = (visitor: Visitor) => {
-    if (starting.current) return;
-    starting.current = true;
-    const visiting = stay.current;
-    waitForPictures([bodyPicture(visitor.id)], { loadPicture, startTimer, limit: PICTURE_WAIT }, () => {
-      if (stay.current !== visiting) return;
-      starting.current = false;
-      const visit = startVisit(visitor);
-      live.current = visit;
-      visitTimers.current = ownedTimers(startTimer);
-      lastVisitor.current = visitor.id;
-      onStart();
-      go({ kind: "visit", visit, leaving: false });
+    const visit = startVisit(visitor);
+    go((current) => (current.kind === "visit" ? current : { kind: "visit", visit, leaving: false }), {
+      also: () => {
+        live.current = visit;
+        visitTimers.current = ownedTimers(startTimer);
+        lastVisitor.current = visitor.id;
+        onStart();
+      }
     });
   };
 
-  const newVisitor = () => {
-    if (starting.current) return;
-    welcome(pickVisitor(visitors, random, lastVisitor.current));
-  };
+  const newVisitor = () => welcome(pickVisitor(visitors, random, lastVisitor.current));
 
   // The visit is recorded the moment its last need is met, before the
   // visitor dances away: leaving, or reloading, during the departure

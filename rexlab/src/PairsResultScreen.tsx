@@ -1,4 +1,4 @@
-import { ArrowRight, ChartNoAxesColumnIncreasing, Check, Footprints, Hand, House, RotateCcw, Sparkles, Star, Trophy, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChartNoAxesColumnIncreasing, Check, Hand, House, RotateCcw, Sparkles, Star, Trophy, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -7,6 +7,7 @@ import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 
 export type PairsCelebration = keyof Texts["celebrations"];
 
@@ -50,8 +51,6 @@ const motion = (properties: Record<`--${string}`, number>) => properties as CSSP
 export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onHome }: PairsResultScreenProps) {
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
-  // The dinosaurs whose picture cannot be loaded show a symbol instead.
-  const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   const result = useRef<HTMLElement>(null);
   const [offerPhase, setOfferPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<PairsResultScreenProps["offer"]>(null);
@@ -80,17 +79,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
           {pals.map(({ id, name, picture, newlyFound }, index) => (
             <li key={id} className="pairs-found-card" style={motion({ "--card": index })}>
               <span className="pairs-found-art">
-                {missing.has(id) ? (
-                  <Footprints className="pair-card-missing" size={48} aria-hidden="true" />
-                ) : (
-                  <img
-                    className="pairs-found-picture"
-                    src={picture}
-                    alt=""
-                    draggable={false}
-                    onError={() => setMissing((known) => new Set([...known, id]))}
-                  />
-                )}
+                <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
               </span>
               <span className="pairs-found-name">{name.toLocaleUpperCase(language)}</span>
               {newlyFound && (

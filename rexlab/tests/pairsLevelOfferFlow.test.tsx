@@ -7,7 +7,7 @@ import { NO_LEVEL_OFFER, type LevelOffer } from "../src/levelOffer.ts";
 import { PROGRESS_KEY, localPairsProgress } from "../src/localProgress.ts";
 import type { Board, BoardLevel } from "../src/pairs/index.ts";
 import { MISS, dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, placesOf, storedPairs, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, fakeBodyPicture, manualPictures, memoryStorage, type MemoryStorage } from "./support.ts";
+import { manualPictures, memoryStorage, type MemoryStorage } from "./support.ts";
 
 // find-the-pair-level-offer.feature, and the leaving-early outline of
 // find-the-pair-level-offer-result.feature: what makes find the pair offer
@@ -61,12 +61,12 @@ async function reload(session: Session) {
   return begin({ storage: session.storage, settingsStorage: session.ageLevels });
 }
 
-// Taps `label` and reads the board dealt from the pictures it asks for.
+// Taps `label`, which shows the board dealt at once, and lets its
+// pictures load.
 async function deal(session: Session, label: "PLAY" | "PLAY AGAIN", level: BoardLevel) {
   await session.user.click(button(label));
-  const ids = session.clock.loading().map((url) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url)?.id);
   const board = dealt(level, session.previous ? { previous: session.previous } : {});
-  expect(ids).toEqual(board.pals.map(({ id }) => id));
+  expect(pairCards()).toHaveLength(board.pals.length * 2);
   act(() => session.clock.finishAll());
   session.previous = board;
   return board;
@@ -413,20 +413,6 @@ describe("leaving the result before the offer rises in", () => {
     expect([asked(), savedOffer(session)]).toEqual([null, offerOf("explorer", 3)]);
 
     finish(session, next, 18);
-    settle(session);
-    expect(asked()).toBe(asks("paleontologist"));
-  });
-
-  it("keeps the offer due after PLAY AGAIN while the next board's pictures load", async () => {
-    const session = await due();
-
-    await session.user.click(button("PLAY AGAIN"));
-    expect(session.clock.loading()).not.toEqual([]);
-    settle(session);
-    expect([asked(), savedOffer(session)]).toEqual([null, offerOf("explorer", 3)]);
-
-    act(() => session.clock.finishAll());
-    finish(session, dealt(EXPLORER, { previous: session.previous! }), 18);
     settle(session);
     expect(asked()).toBe(asks("paleontologist"));
   });

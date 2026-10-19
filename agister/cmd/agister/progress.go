@@ -70,6 +70,11 @@ func (p *progress) Stale(step string, stale workflow.Stale) {
 	p.line(step, what)
 }
 
+// Reused prints the call taken in place of the step's start and end.
+func (p *progress) Reused(step, call string) {
+	p.line(step, "reused "+inLine(call))
+}
+
 func (p *progress) Ended(step string, ended workflow.Ended) {
 	how := string(ended.Status)
 	if ended.Class != "" {
