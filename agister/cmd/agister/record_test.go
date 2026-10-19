@@ -105,7 +105,8 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 	result := calls[0].Result
 	// Its inputs are runs.feature's, proved there.
 	calls[0].Result, calls[0].Inputs = runstore.CallResult{}, nil
-	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", Content: "t1"}
+	endHead := "c1"
+	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1"}
 	if !reflect.DeepEqual(calls[0], want) {
 		t.Errorf("the record's call %+v, want %+v", calls[0], want)
 	}
@@ -226,7 +227,7 @@ func TestARefusalByAdmissionIsRecorded(t *testing.T) {
 	if last.Status != "failed" || last.Result == nil || !refused(last.Result.Outcome) {
 		t.Errorf("the record %s, its result %+v; want failed, refused as the worktree is not clean", last.Status, last.Result)
 	}
-	if len(last.Calls) != 1 || !refused(last.Calls[0].Result.Outcome) || last.Calls[0].Head != "" || last.Calls[0].Content != "" {
+	if len(last.Calls) != 1 || !refused(last.Calls[0].Result.Outcome) || last.Calls[0].Head != "" || last.Calls[0].EndHead == nil || *last.Calls[0].EndHead != "" || last.Calls[0].Content != "" || last.Calls[0].Patch != nil {
 		t.Errorf("the record holds the calls %+v, want implement's, refused, its HEAD and content empty", last.Calls)
 	}
 }

@@ -22,6 +22,8 @@ import (
 type recordStore interface {
 	Write(record runstore.Record) error
 	Append(id string, event runstore.Event) error
+	WritePatch(id, step string, patch []byte) (string, error)
+	Patch(path string) ([]byte, error)
 }
 
 // runStoreAt is the store of the runs kept under folder.
@@ -133,6 +135,7 @@ func (r *runRecord) Called(ended endedCall) {
 		Agent:   ended.agent,
 		Root:    r.root,
 		Head:    ended.facts.Head,
+		EndHead: &ended.facts.EndHead,
 		Content: ended.facts.Content,
 		Inputs:  recordInputs(ended.inputs),
 		Result:  runstore.CallResult{Outcome: outcomeOf(ended.result)},
@@ -146,9 +149,36 @@ func (r *runRecord) Called(ended endedCall) {
 	if taken := ended.taken; taken != nil {
 		call = *taken
 		call.ID, call.Continues, call.Reuses = callID(r.record.ID, ended.step), nil, &taken.ID
+		head := leftHead(*taken)
+		call.EndHead = &head
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	patch := ended.facts.Patch
+	patchError := ended.facts.PatchError
+	if taken := ended.taken; taken != nil {
+		call.Patch = nil
+		if taken.Patch != nil {
+			data, err := r.store.Patch(*taken.Patch)
+			if err != nil {
+				patchError = err.Error()
+			} else {
+				text := string(data)
+				patch = &text
+			}
+		}
+	}
+	if patch != nil {
+		path, err := r.store.WritePatch(r.record.ID, ended.step, []byte(*patch))
+		if err != nil {
+			patchError = err.Error()
+		} else {
+			call.Patch = &path
+		}
+	}
+	if patchError != "" {
+		r.warn(fmt.Sprintf("the patch of %q could not be kept: %s", ended.step, patchError))
+	}
 	r.record.Calls = append(r.record.Calls, call)
 	if err := r.store.Write(r.written()); err != nil {
 		r.warn("the run's record could not be written: " + err.Error())

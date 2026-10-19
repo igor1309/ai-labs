@@ -24,12 +24,12 @@ func TestTheWorktreeIsCheckedAgainstWhatWasLeft(t *testing.T) {
 		contentErr error
 		refused    string
 	}{
-		{"as left", admit.Facts{Head: "c1", Content: "t1"}, nil, ""},
-		{"another HEAD", admit.Facts{Head: "c2", Content: "t1"}, nil, `HEAD is "c1", not the session's latest call's "c2"`},
-		{"another content", admit.Facts{Head: "c1", Content: "t2"}, nil, notAsLeft},
-		{"no content left", admit.Facts{Head: "c1"}, nil, notAsLeft},
+		{"as left", admit.Facts{EndHead: "c1", Content: "t1"}, nil, ""},
+		{"another HEAD", admit.Facts{EndHead: "c2", Content: "t1"}, nil, `HEAD is "c1", not the session's latest call's "c2"`},
+		{"another content", admit.Facts{EndHead: "c1", Content: "t2"}, nil, notAsLeft},
+		{"no content left", admit.Facts{EndHead: "c1"}, nil, notAsLeft},
 		{"no HEAD left", admit.Facts{Content: "t1"}, nil, notAsLeft},
-		{"a content that cannot be read", admit.Facts{Head: "c1", Content: "t1"}, errors.New("broken"), "the worktree's content: broken"},
+		{"a content that cannot be read", admit.Facts{EndHead: "c1", Content: "t1"}, errors.New("broken"), "the worktree's content: broken"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -52,7 +52,7 @@ func TestTheWorktreeIsCheckedAgainstWhatWasLeft(t *testing.T) {
 // session.feature, "A pin is checked first".
 func TestAPinIsCheckedFirst(t *testing.T) {
 	t.Parallel()
-	request := admit.Request{Pin: &admit.Pin{Input: "rev", Source: "git.revision", Commit: "c2"}, Left: &admit.Facts{Head: "c3", Content: "t1"}}
+	request := admit.Request{Pin: &admit.Pin{Input: "rev", Source: "git.revision", Commit: "c2"}, Left: &admit.Facts{EndHead: "c3", Content: "t1"}}
 	err := admitter(t, &worktreeSpy{head: "c1", content: "t1"}, &holdSpy{}).Make(context.Background(), request,
 		func(context.Context) {}, ignored)
 	if want := `HEAD is "c1", not the pinned "c2"`; err == nil || err.Error() != want {
@@ -67,7 +67,7 @@ func TestACallRefusedSoTakesNoHoldAndStartsNothing(t *testing.T) {
 	asked := &trail{}
 	told := &toldSpy{trail: asked}
 	worktree := &worktreeSpy{head: "c1", content: "t1", trail: asked}
-	err := admitter(t, worktree, &holdSpy{trail: asked}).Make(context.Background(), admit.Request{Left: &admit.Facts{Head: "c2", Content: "t1"}},
+	err := admitter(t, worktree, &holdSpy{trail: asked}).Make(context.Background(), admit.Request{Left: &admit.Facts{EndHead: "c2", Content: "t1"}},
 		func(context.Context) { asked.add("made") }, told.told)
 	if err == nil {
 		t.Fatal("the call was admitted, want refused")
@@ -83,12 +83,12 @@ func TestASessionsWorktreeIsCheckedBeforeTheHold(t *testing.T) {
 	t.Parallel()
 	asked := &trail{}
 	worktree := &worktreeSpy{head: "c1", content: "t1", trail: asked}
-	err := admitter(t, worktree, &holdSpy{trail: asked}).Make(context.Background(), admit.Request{Left: &admit.Facts{Head: "c1", Content: "t1"}},
+	err := admitter(t, worktree, &holdSpy{trail: asked}).Make(context.Background(), admit.Request{Left: &admit.Facts{EndHead: "c1", Content: "t1"}},
 		func(context.Context) { asked.add("made") }, ignored)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := asked.all(), []string{"head", "content", "take", "head", "made", "content", "release"}; !slices.Equal(got, want) {
+	if got, want := asked.all(), []string{"head", "content", "take", "head", "made", "head", "content", "release"}; !slices.Equal(got, want) {
 		t.Errorf("asked %q, want %q", got, want)
 	}
 }

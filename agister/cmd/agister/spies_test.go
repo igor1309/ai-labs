@@ -485,16 +485,20 @@ func (s *sourcesSpy) sourcing() sourcing {
 // its test sets its fields before the run, and changes the worktree
 // meanwhile through write.
 type holdingSpy struct {
-	root     string
-	head     string
-	clean    bool
-	content  string
-	contents []string
-	lockErr  error
-	mu       sync.Mutex
-	asked    []lockAsked
-	alone    int
-	shared   int
+	root         string
+	head         string
+	clean        bool
+	content      string
+	contents     []string
+	patch        string
+	changesErr   error
+	contentErr   error
+	changesAsked []string
+	lockErr      error
+	mu           sync.Mutex
+	asked        []lockAsked
+	alone        int
+	shared       int
 }
 
 // write leaves the worktree's content content, no longer HEAD's.
@@ -534,6 +538,9 @@ func (s *holdingSpy) Content(_ context.Context, dir string) (string, error) {
 	if dir != s.root {
 		return "", errors.New("git spy: no worktree " + dir)
 	}
+	if s.contentErr != nil {
+		return "", s.contentErr
+	}
 	if len(s.contents) > 0 {
 		s.content = s.contents[0]
 		if len(s.contents) > 1 {
@@ -541,6 +548,16 @@ func (s *holdingSpy) Content(_ context.Context, dir string) (string, error) {
 		}
 	}
 	return s.content, nil
+}
+
+func (s *holdingSpy) Changes(_ context.Context, dir, commit, content string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changesAsked = append(s.changesAsked, dir+" "+commit+" "+content)
+	if dir != s.root {
+		return "", errors.New("git spy: no worktree " + dir)
+	}
+	return s.patch, s.changesErr
 }
 
 func (s *holdingSpy) Lock(file string, alone bool) (func() error, error) {
@@ -613,15 +630,19 @@ func (s *admissionSpy) asked() []admit.Request {
 // The runs it gives as kept are those of kept, by id, and no other: a
 // record written is not read back. It is safe for concurrent use.
 type storeSpy struct {
-	failWrite  int
-	failAppend bool
-	failExport error
-	kept       map[string]runstore.Record
-	mu         sync.Mutex
-	folders    []string
-	records    []runstore.Record
-	events     []storedEvent
-	exports    []storedExport
+	failWrite             int
+	failAppend            bool
+	failExport            error
+	failPatch             error
+	patches               map[string]string
+	patchWrites           []string
+	patchesMissingAtWrite []string
+	kept                  map[string]runstore.Record
+	mu                    sync.Mutex
+	folders               []string
+	records               []runstore.Record
+	events                []storedEvent
+	exports               []storedExport
 }
 
 // storedExport is a run exported, by its id, and the folder it was
@@ -650,11 +671,43 @@ func (s *storeSpy) Write(record runstore.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	record.Calls = slices.Clone(record.Calls)
+	for _, call := range record.Calls {
+		if call.Patch != nil {
+			if _, ok := s.patches[*call.Patch]; !ok {
+				s.patchesMissingAtWrite = append(s.patchesMissingAtWrite, *call.Patch)
+			}
+		}
+	}
 	s.records = append(s.records, record)
 	if len(s.records) == s.failWrite {
 		return errFull
 	}
 	return nil
+}
+
+func (s *storeSpy) WritePatch(id, step string, patch []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	path := id + "/patches/" + step + ".patch"
+	s.patchWrites = append(s.patchWrites, path)
+	if s.failPatch != nil {
+		return "", s.failPatch
+	}
+	if s.patches == nil {
+		s.patches = map[string]string{}
+	}
+	s.patches[path] = string(patch)
+	return path, nil
+}
+
+func (s *storeSpy) Patch(path string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	patch, ok := s.patches[path]
+	if !ok {
+		return nil, fs.ErrNotExist
+	}
+	return []byte(patch), nil
 }
 
 func (s *storeSpy) Append(id string, event runstore.Event) error {

@@ -51,10 +51,11 @@ type Request struct {
 }
 
 // Call is a call of a run, as it ended: its id, its step, process and
-// agent; its worktree's root, the commit HEAD was when it was admitted and
-// its content at its end, "" where it was refused; the id of the call
+// agent; its worktree's root, HEAD when admitted and at its end, and its
+// final content, empty where refused; its patch's path, nil for none; the id of the call
 // whose session it continues, nil for none; the id of the call it reuses,
 // nil for none; the inputs it was given, as resolved; and its result.
+// EndHead is nil only for a record from before end_head was kept.
 type Call struct {
 	ID        string     `json:"id"`
 	Step      string     `json:"step"`
@@ -62,6 +63,8 @@ type Call struct {
 	Agent     string     `json:"agent"`
 	Root      string     `json:"root"`
 	Head      string     `json:"head"`
+	EndHead   *string    `json:"end_head,omitempty"`
+	Patch     *string    `json:"patch"`
 	Content   string     `json:"content"`
 	Continues *string    `json:"continues"`
 	Reuses    *string    `json:"reuses"`
@@ -263,23 +266,58 @@ func (s *Store) Write(record Record) error {
 	if err := encoder.Encode(record); err != nil {
 		return fmt.Errorf("runstore: the record of %q: %w", record.ID, err)
 	}
-	if err := os.MkdirAll(folder, 0o755); err != nil {
-		return fmt.Errorf("runstore: the record of %q: %w", record.ID, err)
-	}
-	temp, err := os.CreateTemp(folder, ".record-*.json")
-	if err != nil {
-		return fmt.Errorf("runstore: the record of %q: %w", record.ID, err)
-	}
-	_, err = temp.Write(data.Bytes())
-	err = errors.Join(err, temp.Close())
-	if err == nil {
-		err = os.Rename(temp.Name(), filepath.Join(folder, "record.json"))
-	}
-	if err != nil {
-		_ = os.Remove(temp.Name())
+	if err := writeWhole(filepath.Join(folder, "record.json"), data.Bytes()); err != nil {
 		return fmt.Errorf("runstore: the record of %q: %w", record.ID, err)
 	}
 	return nil
+}
+
+// writeWhole replaces path atomically, leaving no temporary file behind.
+func writeWhole(path string, data []byte) error {
+	folder := filepath.Dir(path)
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		return err
+	}
+	temp, err := os.CreateTemp(folder, ".write-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temp.Name())
+	_, err = temp.Write(data)
+	err = errors.Join(err, temp.Close())
+	if err != nil {
+		return err
+	}
+	return os.Rename(temp.Name(), path)
+}
+
+// WritePatch writes the step's patch whole and gives its path under the
+// runs folder, suitable for a call's record and for Patch.
+func (s *Store) WritePatch(id, step string, patch []byte) (string, error) {
+	folder, err := s.run(id)
+	if err != nil {
+		return "", err
+	}
+	if step == "" || step == "." || step == ".." || strings.ContainsAny(step, `/\`) {
+		return "", fmt.Errorf("runstore: %q is no step's name", step)
+	}
+	path := filepath.Join("patches", step+".patch")
+	if err := writeWhole(filepath.Join(folder, path), patch); err != nil {
+		return "", fmt.Errorf("runstore: the patch of %q of %q: %w", step, id, err)
+	}
+	return filepath.ToSlash(filepath.Join(id, path)), nil
+}
+
+// Patch reads a patch by its path under the runs folder.
+func (s *Store) Patch(path string) ([]byte, error) {
+	if !filepath.IsLocal(path) {
+		return nil, fmt.Errorf("runstore: %q is no patch's path", path)
+	}
+	data, err := os.ReadFile(filepath.Join(s.folder, path))
+	if err != nil {
+		return nil, fmt.Errorf("runstore: the patch %q: %w", path, err)
+	}
+	return data, nil
 }
 
 // Record gives the record of the run id names. Its error for a run not
@@ -330,7 +368,7 @@ func (s *Store) Runs() ([]string, error) {
 }
 
 // Export copies the run id names into a folder of its id under folder:
-// its record.json, and its events.jsonl where it has one, each folder made
+// its record.json, events.jsonl and patches where present, each folder made
 // where missing and a copy already there written over. A run not kept is
 // an error that is, or wraps, fs.ErrNotExist, and nothing is copied. Each
 // file is read whole before anything is written: a record is as it was
@@ -349,6 +387,18 @@ func (s *Store) Export(id, folder string) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
 	}
+	patches := map[string][]byte{}
+	entries, err := os.ReadDir(filepath.Join(from, "patches"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("runstore: the export of %q: %w", id, err)
+	}
+	for _, entry := range entries {
+		data, err := os.ReadFile(filepath.Join(from, "patches", entry.Name()))
+		if err != nil {
+			return fmt.Errorf("runstore: the export of %q: %w", id, err)
+		}
+		patches[entry.Name()] = data
+	}
 	to := filepath.Join(folder, id)
 	if err := os.MkdirAll(to, 0o755); err != nil {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
@@ -358,6 +408,11 @@ func (s *Store) Export(id, folder string) error {
 	}
 	if hasEvents {
 		if err := os.WriteFile(filepath.Join(to, "events.jsonl"), events, 0o600); err != nil {
+			return fmt.Errorf("runstore: the export of %q: %w", id, err)
+		}
+	}
+	for name, data := range patches {
+		if err := writeWhole(filepath.Join(to, "patches", name), data); err != nil {
 			return fmt.Errorf("runstore: the export of %q: %w", id, err)
 		}
 	}

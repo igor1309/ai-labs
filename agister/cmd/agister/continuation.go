@@ -86,8 +86,8 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if err != nil {
 		return continuation{}, nil, err
 	}
-	if head != latest.Head {
-		return refuse("HEAD is %q, not %q's %q", head, latest.ID, latest.Head)
+	if head != leftHead(latest) {
+		return refuse("HEAD is %q, not %q's %q", head, latest.ID, leftHead(latest))
 	}
 	content, err := facts.Content(ctx, root)
 	if err != nil {
@@ -191,4 +191,13 @@ func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
 	}
 	built.calls = calls
 	return built, nil
+}
+
+// leftHead reads legacy records at their admitted HEAD. A present empty
+// end_head means it could not be read, so it must not fall back.
+func leftHead(c runstore.Call) string {
+	if c.EndHead != nil {
+		return *c.EndHead
+	}
+	return c.Head
 }
