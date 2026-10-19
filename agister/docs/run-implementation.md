@@ -985,22 +985,22 @@ other classes; codex a `turn.failed` whose message says "at capacity",
 before its other classes.
 
 **`core/call`** retries a turn that ends by a reply of the class
-`capacity`, while the call has made fewer than three turns of that end,
-and neither its context nor its time limit has ended: it waits on its
-timer, 30 seconds after the first such turn, 60 after the second, then
-makes the turn as the step gives it, in the session the failed turn
-reported, else in the session that turn was given, a continued call's
-first turn included. A capacity turn that reported a session other than
-the one it resumed is not retried: it fails the call, `runtime_error`,
-as any turn that strayed does. A wait the
-time limit ends ends the call interrupted, `timeout`; one the caller's
-context ends, interrupted, `cancelled`. A retry spends none of the
-step's recovery, and what follows it follows it as it would any turn, a
-recovery turn included. The call's cost, usage and session are its
-turns', as a recovered call's are. A call whose third capacity turn
-ends it fails, `capacity`, its reason the turn's, after "3 turns at
-capacity: ". Its report grows a turn at capacity: its
-reason, and the wait before its retry, none where none follows.
+`capacity`, while the call has made fewer than three turns of that end:
+it waits on its timer, 30 seconds after the first such turn, 60 after
+the second, then makes that turn again as it was given, its message and
+all, in the session it reported, else in the session it was given. A
+capacity turn that reported a session other than the one it resumed is
+not retried: it fails the call, `runtime_error`, as any turn that
+strayed does. No wait starts where the call's context has ended, or
+where its time limit, read on its clock, leaves less than the wait; a
+wait the caller's context ends ends the call interrupted, `cancelled`.
+A retry spends none of the step's recovery, and what follows it follows
+it as it would any turn, a recovery turn included. The call's cost,
+usage and session are its turns', as a recovered call's are. A call
+whose last turn is at capacity, not retried, fails, `capacity`, its
+reason the turn's, after "<n> of 3 turns at capacity: ". Its report grows a
+turn at capacity: its reason, and the wait before its retry, none where
+none follows.
 
 **`core/workflow`** gives a call's capacity report to its events port,
 which grows a capacity event, by the step's name, as it gives a stale
@@ -1025,8 +1025,12 @@ Decisions, each with its reason:
   own: the session holds the work done, and the task given again is
   what a message telling it to go on would say, from settings Agister
   already has.
-- The wait is fixed, not drawn at random: calls side by side that hit
-  capacity together are few, and a fixed wait is tested on a timer.
+- The wait is fixed, not drawn at random: the load is the provider's,
+  which the few calls of a run retrying together do not change, and the
+  owner chose one policy.
+- A wait the time limit would cut is not started: the call ends at
+  capacity, its cause, not at a timeout a caller would answer by raising
+  the limit.
 - Each turn at capacity is an event, not an entry in `record.json`, as
   a stale turn is: events are the run's history. The event keeps
   whether a retry follows, not its wait: the wait is the policy's, by
