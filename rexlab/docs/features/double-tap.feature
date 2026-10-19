@@ -95,6 +95,6 @@ Feature: A double tap counts as one tap
     Then once it shows, ALL DINOSAURS has counted one more start
 
     Examples:
-      | open                                                                       |
-      | focus the ALL DINOSAURS tile and press Enter twice                         |
-      | tap the ALL DINOSAURS tile and then the large card, more than 100 CSS pixels away |
+      | open                                                          |
+      | focus the large card and press Enter twice                    |
+      | tap the large card twice, more than 100 CSS pixels apart      |

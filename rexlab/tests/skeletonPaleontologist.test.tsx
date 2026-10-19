@@ -57,7 +57,9 @@ describe("Paleontologist's puzzle", () => {
   it.each([
     ["TYRANNOSAURUS", "tyrannosaurus", 11, ["triceratops/frill", "stegosaurus/spikes", "stegosaurus/front-plates"]],
     ["TRICERATOPS", "triceratops", 10, ["tyrannosaurus/head", "stegosaurus/back-plates"]],
-    ["STEGOSAURUS", "stegosaurus", 10, ["tyrannosaurus/head", "triceratops/frill", "tyrannosaurus/arms"]]
+    ["STEGOSAURUS", "stegosaurus", 10, ["tyrannosaurus/head", "triceratops/frill", "tyrannosaurus/arms"]],
+    ["BRACHIOSAURUS", "brachiosaurus", 10, ["tyrannosaurus/head", "spinosaurus/front-sail", "stegosaurus/spikes"]],
+    ["SPINOSAURUS", "spinosaurus", 10, ["triceratops/frill", "brachiosaurus/upper-neck", "stegosaurus/spikes"]]
   ] as const)("is %s's own cut, with other dinosaurs' bones spread among its pieces in the tray", async (name, id, count, others) => {
     await openPaleontologist(name);
 
@@ -158,12 +160,14 @@ describe("Paleontologist's puzzle", () => {
     expect(told()).toBe("");
   });
 
-  it("never puts help off with another dinosaur's bone", async () => {
+  it("counts help again from nothing as another dinosaur's bone is touched, then helps the first piece in the tray", async () => {
     const { pictures } = await openPaleontologist("TYRANNOSAURUS");
 
     spend(pictures, 9);
     dragTo("triceratops/frill", homeOf(skeletonOf("tyrannosaurus"), "head"));
     spend(pictures, 1);
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
 
     expect(hints()).toEqual(["spot head"]);
     expect(board().querySelector(".skeleton-region")).not.toBeNull();

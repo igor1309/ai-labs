@@ -1,4 +1,4 @@
-import { ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { afterResultAnimations } from "./resultAnimation.ts";
@@ -34,13 +34,15 @@ export type PairsResultScreenProps = {
   // ordinary result; each result mount can show its offer only once.
   offer?: LevelOfferProps | null;
   onPlayAgain: () => void;
+  // Back to the game's welcome screen.
+  onBack: () => void;
   onHome: () => void;
 };
 
 // Custom properties the stylesheet staggers by.
 const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
 
-export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onHome }: PairsResultScreenProps) {
+export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
   const result = useRef<HTMLElement>(null);
@@ -135,6 +137,10 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
             <button type="button" className="play-again-button" disabled={blocked} onClick={onPlayAgain}>
               <RotateCcw size={28} aria-hidden="true" />
               {text.playAgain}
+            </button>
+            <button type="button" className="home-button" disabled={blocked} onClick={onBack}>
+              <ArrowLeft size={28} aria-hidden="true" />
+              {text.back}
             </button>
             <button type="button" className="home-button" disabled={blocked} onClick={onHome}>
               <House size={28} aria-hidden="true" />

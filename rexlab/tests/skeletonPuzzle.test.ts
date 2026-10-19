@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitsHelp, drop, help, HELP_AFTER, isComplete, showLastStep, startPuzzle, strayId, trayOf, turn, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { awaitsHelp, drop, help, HELP_AFTER, isComplete, showLastStep, startPuzzle, strayId, touch, trayOf, turn, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
 import { PIECES, type Piece } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
 
@@ -190,6 +190,30 @@ describe("help on the ladder", () => {
     const tried = drop(at(2 * HELP_AFTER - 1000), "spine", { x: 0, y: 399 }, 30);
 
     expect(help(at(1000, tried))).toEqual({ piece: "skull", step: "ghost" });
+  });
+
+  it("hides as a piece is touched, and comes again a wait later for the piece last touched while it is unfitted", () => {
+    const touched = touch(at(3 * HELP_AFTER), "legs");
+    const fitLegs = drop(at(HELP_AFTER, touched), "legs", CENTRES.legs, 1);
+
+    expect([help(touched), help(at(HELP_AFTER - 1, touched)), help(at(HELP_AFTER, touched)), help(at(HELP_AFTER, fitLegs))]).toEqual([
+      undefined,
+      undefined,
+      { piece: "legs", step: "region" },
+      { piece: "skull", step: "region" }
+    ]);
+  });
+
+  it("keeps pointing at the piece last touched when the next touch is of a fitted piece or of none in the cut", () => {
+    const touched = ["skull", "nowhere"].reduce(touch, touch(fitted(["skull"], ladder()), "tail"));
+
+    expect([touched.waited, touched.touches, help(at(HELP_AFTER, touched))]).toEqual([0, 3, { piece: "tail", step: "region" }]);
+  });
+
+  it("leaves Hatchling's help as it is when a piece is touched", () => {
+    const waited = wait(start(), HELP_AFTER);
+
+    expect(touch(waited, "legs")).toBe(waited);
   });
 
   it("leaves Hatchling's help its one glow, however long the child waits", () => {

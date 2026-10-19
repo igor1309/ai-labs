@@ -4,14 +4,14 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
+import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, gameDoor } from "./support.ts";
 
 // The names of Hatchling's four pieces, in the tray's order.
 const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕП", "ПОЗВОНОЧНИК", "НОГИ", "ХВОСТ"] };
 
 const button = (name: string) => screen.getByRole("button", { name });
 
-const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS"];
+const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS", "BRACHIOSAURUS", "SPINOSAURUS"];
 
 // The look of the outline's picture, then of each bone's in the tray.
 const looks = () => [board().querySelector(".skeleton-outline img"), ...within(tray()).getAllByRole("img")].map((picture) => (picture as HTMLElement | null)?.dataset.picture);
@@ -25,14 +25,15 @@ const leastSide = (element: Element) => {
 };
 
 describe("the skeleton game's choice of dinosaurs", () => {
-  it("offers three dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
-    openSkeletonsApp();
+  it("offers five dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
+    const { pictures } = openSkeletonsApp();
+    act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
     expect(choices().map((choice) => choice.getAttribute("aria-label"))).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector(".skeleton-choice-name")?.textContent)).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector("img")?.getAttribute("src"))).toEqual(
-      ["tyrannosaurus", "triceratops", "stegosaurus"].map(fakeBodyPicture)
+      ["tyrannosaurus", "triceratops", "stegosaurus", "brachiosaurus", "spinosaurus"].map(fakeBodyPicture)
     );
     expect(choices().filter((choice) => choice.hasAttribute("disabled") || symbolOf(choice) !== undefined)).toEqual([]);
   });
@@ -67,12 +68,23 @@ describe("the skeleton game's choice of dinosaurs", () => {
     expect(names.filter((each) => !((NAME_EMS[each] ?? Infinity) <= ems))).toEqual([]);
   });
 
+  it("lays the dinosaurs in rows of three, a card a third of the row however many there are, the last row centred", () => {
+    openSkeletonsApp();
+
+    const row = getComputedStyle(choices()[0]?.parentElement ?? document.body);
+    const gap = parseFloat(row.gap.split(" ").at(-1) ?? "");
+    expect([row.flexWrap, row.justifyContent]).toEqual(["wrap", "center"]);
+    expect(choices().map((choice) => [getComputedStyle(choice).flexBasis, getComputedStyle(choice).flexGrow])).toEqual(
+      choices().map(() => [`calc(${1 / 3}*(100% - ${2 * gap}px))`, "0"])
+    );
+  });
+
   it("goes home on HOME", async () => {
     const { user } = openSkeletonsApp();
 
     await user.click(button("HOME"));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in the device's language, %s, its names in capitals", (language) => {
@@ -182,7 +194,7 @@ describe("choosing a dinosaur", () => {
 
     await user.click(button("HOME"));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its title the dinosaur's name in capitals", async (language) => {

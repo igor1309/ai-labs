@@ -213,6 +213,13 @@ export function usePairsGame(
     onHome();
   };
 
+  // BACK leaves a board, or its result, for the welcome screen: a board
+  // left earns nothing, and its timers stop.
+  const back = () => {
+    leave();
+    go({ kind: "welcome" });
+  };
+
   const content = (language: Language) => {
     switch (screen.kind) {
       case "welcome":
@@ -237,6 +244,7 @@ export function usePairsGame(
               {...presentPairsBoard(screen.board, language, bodyPicture)}
               finished={screen.finished}
               onTurn={turnCard}
+              onBack={back}
               onHome={home}
             />
           </>
@@ -254,7 +262,7 @@ export function usePairsGame(
             },
             onNotNow: () => go((current) => current.kind === "result" ? { ...current, offer: null } : current)
           } : null}
-          onPlayAgain={play} onHome={home} />;
+          onPlayAgain={play} onBack={back} onHome={home} />;
       }
     }
   };

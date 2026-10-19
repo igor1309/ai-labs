@@ -14,7 +14,7 @@ Feature: Find the pair: starting a board
   Scenario: The home page offers the game
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
-    And it starts the column after the "SORT" card's, over the "SKELETONS" tile and as tall
+    And on a day COMPARE is featured it stands under the "SORT" card and as tall, before the "SKELETONS" tile
     And its title sits beside its symbol, on two lines at most
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"

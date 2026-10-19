@@ -1,7 +1,7 @@
 Feature: The home page's game tiles
-  Beside the large card every game stands in a row of columns, two tiles
-  to a column, every column as wide as the others, in a fixed order
-  whichever game the large card features (home-featured-card.feature).
+  Beside the large card every other game stands in a row of columns, two
+  tiles to a column, every column as wide as the others, in a fixed order
+  less the game the large card features (home-featured-card.feature).
   The columns do not all fit beside the large card on any iPad, so the
   row scrolls sideways under the finger, and the next column peeks in at
   the edge to show there is more.
@@ -10,11 +10,12 @@ Feature: The home page's game tiles
     Given an iPad in landscape
 
   Scenario: The tiles stand in equal columns of two beside the large card
+    Given the large card features COMPARE
     When I open the home page
-    Then beside the large card I see "COMPARE" over "ALL DINOSAURS"
-    And then "CARE" over "SORT"
-    And then "FIND THE PAIR" over "SKELETONS"
-    And then "DIG" over "MORE COMING", last
+    Then beside the large card I see "ALL DINOSAURS" over "CARE"
+    And then "SORT" over "FIND THE PAIR"
+    And then "SKELETONS" over "DIG"
+    And then "MORE COMING", last
     And every column of tiles is as wide as the others
     And every tile, "MORE COMING" too, is as tall as the others, half its column
 

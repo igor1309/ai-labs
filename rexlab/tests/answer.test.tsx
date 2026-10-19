@@ -30,7 +30,7 @@ import {
   surfaceOf,
   symbolOf,
   type ManualPictures,
-  homeTile,
+  gameDoor,
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
@@ -81,7 +81,7 @@ function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof l
   // Taps COMPARE and, with manual pictures, lets the first question's
   // pictures finish loading.
   const start = async () => {
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     if ("finish" in pictures) act(() => pictures.loading().forEach(pictures.finish));
   };
   return { user, start };

@@ -75,10 +75,10 @@ Feature: Find the pair: age levels
 
   Scenario Outline: A large board and its result fit the iPad
     When a <level> board is dealt on a <width> by <height> screen
-    Then all its cards and "HOME" are on the screen at once, with no scrolling
+    Then all its cards, "BACK" and "HOME" are on the screen at once, with no scrolling
     And every card is at least <size> by <size> CSS pixels
     When I finish it
-    Then its result shows every dinosaur's name, my tries, stars and best, "PLAY AGAIN" and "HOME" with no scrolling
+    Then its result shows every dinosaur's name, my tries, stars and best, "PLAY AGAIN", "BACK" and "HOME" with no scrolling
 
     Examples:
       | level          | width | height | size |

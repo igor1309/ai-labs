@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { TEXTS } from "../src/language/texts.ts";
 import { join } from "node:path";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
@@ -64,12 +65,6 @@ const LEVEL_BOARDS: [string, PairsAppOptions<ManualTimers>, Board][] = [
 const button = (name: string) => screen.getByRole("button", { name });
 const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress }, games) });
-// The catalogue's count of dinosaurs found.
-const foundCount = () => {
-  const count = screen.getAllByLabelText("FOUND").find((each) => each.tagName === "P");
-  if (!count) throw new Error("No found count in the catalogue");
-  return count;
-};
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 // The names of the result's dinosaurs, whatever the language.
@@ -338,10 +333,28 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
   });
 
-  // The tap and the timers read in one act, before React renders the home
-  // page: the board's timers stop as the child leaves, not as the game is
+  it("goes back from a board to the welcome screen, BACK before HOME, without asking, and the board earns nothing", async () => {
+    const { user, storage } = await open();
+    await turnCard(user, FIRST[0] ?? 0);
+    await turnCard(user, FIRST[1] ?? 0);
+    const bar = document.querySelector(".pairs-bar");
+    expect([...(bar?.querySelectorAll("button") ?? [])].map((each) => [each.textContent, symbolOf(each)])).toEqual([
+      ["BACK", "arrow-left"],
+      ["HOME", "house"]
+    ]);
+
+    await user.click(button("BACK"));
+
+    expect([screen.getByRole("heading").textContent, symbolOf(button("PLAY"))]).toEqual(["FIND THE PAIR", "play"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(storedPairs(storage)).toBeUndefined();
+    expect(screen.getByLabelText("STARS").textContent).toBe("0");
+  });
+
+  // The tap and the timers read in one act, before React renders the next
+  // screen: the board's timers stop as the child leaves, not as the game is
   // taken off the screen.
-  it.each(["miss", "celebration"] as const)("stops the %s as the child goes home, and the next board is not moved on by it, delivered all the same", async (during) => {
+  it.each((["miss", "celebration"] as const).flatMap((during) => (["HOME", "BACK"] as const).map((leave) => [during, leave] as const)))("stops the %s as the child taps %s, and the next board is not moved on by it, delivered all the same", async (during, leave) => {
     const { user, clock } = openPairsApp(options);
     await playPairs(user);
     if (during === "miss") await showMiss(user);
@@ -351,10 +364,11 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
 
     let running: number[] = [];
     act(() => {
-      fireEvent.click(button("HOME"));
+      fireEvent.click(button(leave));
       running = clock.timers();
     });
-    await playPairs(user);
+    if (leave === "HOME") await playPairs(user);
+    else await user.click(button("PLAY"));
     act(() => clock.deliverStopped(timer));
 
     expect(running).toEqual([]);
@@ -516,7 +530,7 @@ describe("find the pair's motion", () => {
 });
 
 describe("the result", () => {
-  it("shows the tries by a hand, the stars earned, the board's dinosaurs and PLAY AGAIN and HOME", async () => {
+  it("shows the tries by a hand, the stars earned, the board's dinosaurs and PLAY AGAIN, BACK and HOME", async () => {
     const app = openPairsApp({ pals: THREE, storage: stored({ stars: 4 }) });
 
     await finishThree(app, 7);
@@ -526,7 +540,17 @@ describe("the result", () => {
     expect(screen.getByLabelText("STARS").textContent).toBe("★5");
     expect(resultNames()).toEqual(["TRICERATOPS", "STEGOSAURUS", "TYRANNOSAURUS"].filter((name) => NAMES.includes(name)).sort((a, b) => NAMES.indexOf(a) - NAMES.indexOf(b)));
     expect(screen.getByRole("heading").textContent).toBe("WELL DONE!");
-    expect([symbolOf(button("PLAY AGAIN")), symbolOf(button("HOME"))]).toEqual(["rotate-ccw", "house"]);
+    expect(["PLAY AGAIN", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["rotate-ccw", "arrow-left", "house"]);
+  });
+
+  it("goes back from the result to the welcome screen, its stars and level switch there", async () => {
+    const app = openPairsApp({ pals: THREE, storage: stored({ stars: 4 }) });
+    await finishThree(app, 7);
+
+    await app.user.click(button("BACK"));
+
+    expect([screen.getByRole("heading").textContent, screen.getByLabelText("STARS").textContent]).toEqual(["FIND THE PAIR", "5"]);
+    expect(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).toBeDefined();
   });
 
   it("sets and celebrates the level's first best", async () => {
@@ -647,43 +671,23 @@ describe("dinosaurs found", () => {
     expect(storedPairs(app.storage)).toMatchObject({ found: ["triceratops"] });
   });
 
-  it("are counted and stamped in the catalogue, the page of each stamped too", async () => {
+  it("are neither counted nor stamped in the catalogue or on a page", async () => {
     const { user } = openPairsApp({ storage: stored({ found: ["triceratops", "stegosaurus"] }) });
 
     await user.click(button("ALL DINOSAURS"));
 
-    const count = foundCount();
-    expect([count.textContent, symbolOf(count)]).toEqual([`2 / ${SHIPPED_PALS.length}`, "copy"]);
-    const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
-    const stamped = within(grid)
-      .getAllByRole("button")
-      .filter((card) => within(card).queryByRole("img", { name: "FOUND" }))
-      .map((card) => card.getAttribute("aria-label"));
-    expect(stamped.sort()).toEqual(["Stegosaurus", "Triceratops"]);
-    expect(symbolOf(within(grid).getAllByRole("img", { name: "FOUND" })[0] ?? grid)).toBe("copy");
-    await user.click(within(grid).getByRole("button", { name: "Triceratops" }));
-    expect(symbolOf(screen.getByRole("img", { name: "FOUND" }))).toBe("copy");
-    await user.click(screen.getByRole("button", { name: "NEXT" }));
-    expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
+    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Triceratops" }));
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
-  it("show no count and no stamps before any is found", async () => {
-    const { user } = openPairsApp();
-
-    await user.click(button("ALL DINOSAURS"));
-
-    expect(document.querySelector(".catalogue-found")).toBeNull();
-    expect(screen.queryAllByRole("img", { name: "FOUND" })).toEqual([]);
-  });
-
-  it("count only those still in the dinosaur list, and the catalogue changes nothing stored", async () => {
+  it("are not changed in storage by opening the catalogue", async () => {
     const storage = stored({ found: ["triceratops", "gone"] });
     const before = storage.items.get(PROGRESS_KEY);
     const { user } = openPairsApp({ storage });
 
     await user.click(button("ALL DINOSAURS"));
 
-    expect(foundCount().textContent).toBe(`1 / ${SHIPPED_PALS.length}`);
     expect(storage.items.get(PROGRESS_KEY)).toBe(before);
   });
 });

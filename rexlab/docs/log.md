@@ -1,12 +1,21 @@
 # rexlab — Change Log
 
-## 2026-10-19
+## 2026-10-20
 
 - DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
 - DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).
 - DIG at Explorer shows three find cards, each a close-up of a detail on the dinosaur, ticked with a star as the child brushes it clear in any order; after ten quiet seconds the next detail shows through the sand, and the gust comes once all three are found (LAB-343).
 - DIG's reveal names the dinosaur with a star on its DUG UP card, out of all 42, with the best-score celebrations, a 🏆 once all are dug up, and the level switch above DIG AGAIN; the dinosaurs dug up and the child's level choice are kept (LAB-341).
-- A new game, DIG: a tile over MORE COMING starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
+- A new game, DIG: its tile, the last of the games, starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
+- The skeleton game has five dinosaurs: Brachiosaurus and Spinosaurus join, each cut at every level with its own fact and other dinosaurs' bones at Paleontologist. The choice and the museum lay them out three above and two centred below, and the collection counts to five (LAB-334).
+
+## 2026-10-19
+
+- Find the pair and the skeleton game have a BACK button beside HOME: from a board or its result back to Find the pair's welcome screen, and from a puzzle back to the choice of dinosaurs (LAB-345).
+- The home page no longer repeats today's featured game as a small tile: the large card stands in its place, and the other tiles keep their order (LAB-348).
+- The catalogue list is one row of HOME and the food chips, with no title or count: ALL is a filter symbol alone, a card's food tag is its colour and symbols without the word, a card's chips stay on one line, and the list runs to the screen's edge so its scrollbar shows there (LAB-350).
+- The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
+- Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
 - Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
 - A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).

@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import { Funnel } from "lucide-react";
 import { DIET_SYMBOLS, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -11,9 +11,9 @@ export type Food = "all" | Diet;
 export type FoodChoice = { food: Food; count: number };
 
 // Each chip by its symbols, as the tags show the food types, so a child
-// who cannot read the word still picks one; every dinosaur is the
-// catalogue's book.
-const SYMBOLS = { all: [BookOpen], ...DIET_SYMBOLS };
+// who cannot read the word still picks one. The chip for every dinosaur
+// is a filter symbol alone, with no word or count.
+const SYMBOLS = { all: [Funnel], ...DIET_SYMBOLS };
 
 export type FoodChipsProps = {
   language: Language;
@@ -39,8 +39,12 @@ export function FoodChips({ language, choices, chosen, onChoose }: FoodChipsProp
                   <Symbol key={index} size={22} />
                 ))}
               </span>
-              {word}
-              <span className="food-chip-count">{count}</span>
+              {food !== "all" && (
+                <>
+                  {word}
+                  <span className="food-chip-count">{count}</span>
+                </>
+              )}
             </span>
           </button>
         );

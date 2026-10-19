@@ -6,7 +6,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { SCREEN_CHANGE } from "../src/screens.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
-import { PALETTE, contrast, homeTile, symbolOf } from "./support.ts";
+import { PALETTE, contrast, gameDoor, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 
 // home-museum.feature
@@ -93,18 +93,18 @@ describe("the museum on the home page", () => {
 
     await user.click(museumButton());
     expect(within(hall() ?? document.body).getByRole("region", { name: "TRICERATOPS" }).getAttribute("data-state")).toBe("built");
-    expect(screen.getByLabelText("STARS").textContent).toBe("1/3");
+    expect(screen.getByLabelText("STARS").textContent).toBe("1/5");
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
     expect(onHomePage()).toBe(true);
 
-    await user.click(homeTile("SKELETONS"));
-    expect([hall(), choices().length]).toEqual([null, 3]);
+    await user.click(gameDoor("SKELETONS"));
+    expect([hall(), choices().length]).toEqual([null, 5]);
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
     await user.click(museumButton());
     await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
-    expect([hall(), choices().length]).toEqual([null, 3]);
+    expect([hall(), choices().length]).toEqual([null, 5]);
   });
 
   // The museum opens at once, so a double tap's second tap lands on the

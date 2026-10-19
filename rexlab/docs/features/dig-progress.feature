@@ -57,7 +57,8 @@ Feature: Dig: stored progress
 
   Scenario: The tile and the featured card show the count
     Given I have dug up 7 dinosaurs
-    Then the "DIG" tile shows 7, and so does the large card on a day it features DIG
+    Then the "DIG" tile shows 7 on a day another game is featured
+    And the large card shows 7 on a day it features DIG, where DIG has no tile
 
   Scenario: Digging shows nowhere outside the dig game and the home page
     Given I have dug up Triceratops, and named it at the first pick at Paleontologist

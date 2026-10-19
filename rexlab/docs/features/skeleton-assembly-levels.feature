@@ -29,7 +29,7 @@ Feature: Skeleton assembly: age levels
     And it is the switch find the pair shows (find-the-pair-levels.feature), its pictures 🥚, 🦖 and 🦴
     And the chosen level stands out from the other two by more than colour
     And each level is at least 48 by 48 CSS pixels to tap
-    And the three dinosaurs, "MUSEUM" and "HOME" are on a 1024 by 768 screen at once, with no scrolling
+    And the five dinosaurs, three above and two centred below, "MUSEUM" and "HOME" are on a 1024 by 768 screen at once, with no scrolling
 
   Scenario Outline: The level switch reads in either language and theme
     Given the app is in <language> and uses the <theme> theme

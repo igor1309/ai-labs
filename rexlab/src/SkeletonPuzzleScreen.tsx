@@ -47,6 +47,13 @@ export type ShownRegion = { left: number; top: number; width: number; height: nu
 // the body region it shows.
 export type ShownHint = { piece: ShownPiece; step: ShownHelpStep; region: ShownRegion | undefined };
 
+const STEPS: readonly ShownHelpStep[] = ["glow", "region", "ghost", "move"];
+
+// Whether help `now` shows no more than `before` did: none, or the same
+// piece at the same step or an earlier one.
+const within = (now: ShownHint | undefined, before: ShownHint | undefined) =>
+  now === undefined || (before !== undefined && now.piece === before.piece && STEPS.indexOf(now.step) <= STEPS.indexOf(before.step));
+
 export type SkeletonPuzzleScreenProps = {
   language: Language;
   // The dinosaur being built.
@@ -94,6 +101,8 @@ export type SkeletonPuzzleScreenProps = {
   // Help's last step has shown: a piece moved towards its home.
   onLastStep: () => void;
   onMuseum: () => void;
+  // Back to the choice of dinosaurs.
+  onBack: () => void;
   onHome: () => void;
 };
 
@@ -164,6 +173,7 @@ export function SkeletonPuzzleScreen({
   onTurn,
   onLastStep,
   onMuseum,
+  onBack,
   onHome
 }: SkeletonPuzzleScreenProps) {
   const text = TEXTS[language];
@@ -268,8 +278,9 @@ export function SkeletonPuzzleScreen({
   };
 
   // Help that falls due while a piece is held waits until it is let go,
-  // so nothing new lights up or moves under the child's finger.
-  const shownHint = held ? held.hint : hint;
+  // so nothing new lights up or moves under the child's finger; help that
+  // hides, as a touch hides it on the ladder, hides at once.
+  const shownHint = held && !within(hint, held.hint) ? held.hint : hint;
 
   // Help's last step moves its piece from its spot towards its home and
   // back, measured as the step shows, which is when the game learns it
@@ -305,7 +316,7 @@ export function SkeletonPuzzleScreen({
   return (
     <main className="skeleton-screen" onContextMenu={(event) => event.preventDefault()}>
       <div className="stratum stratum-1" aria-hidden="true" />
-      <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onHome={onHome}>
+      <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onBack={onBack} onHome={onHome}>
         <p className="skeleton-chip" aria-label={text.fitted}>
           <Bone size={20} aria-hidden="true" />
           {fitted}/{slots.length}

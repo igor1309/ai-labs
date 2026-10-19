@@ -89,9 +89,9 @@ const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
 // The words and symbols of each chip on a card: its height, its weight and
-// its food tag.
+// its food tag, whose word is only read out.
 const chipsOf = (card: HTMLElement) =>
-  [...card.querySelectorAll<HTMLElement>(".catalogue-chip, .diet-tag")].map((chip) => ({ symbols: symbolsOf(chip), words: words(chip) }));
+  [...card.querySelectorAll<HTMLElement>(".catalogue-chip, .diet-tag")].map((chip) => ({ symbols: symbolsOf(chip), words: words(chip) || `(${chip.getAttribute("aria-label")})` }));
 
 async function openCatalogue(user: ReturnType<typeof userEvent.setup>, language: Language = "en") {
   await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
@@ -103,7 +103,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, under the COMPARE tile, before the CARE tile", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the CARE tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -112,24 +112,28 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(42);
-    expect(homeTile("COMPARE").nextElementSibling).toBe(tile);
+    expect(tile.parentElement?.firstElementChild).toBe(tile);
     expect(tile.nextElementSibling).toBe(homeTile("CARE"));
   });
 });
 
 describe("the list of every dinosaur", () => {
-  it("opens from the tile with its title, its count and a card for every dinosaur, four to a row, in the list's order", async () => {
+  it("opens from the tile with HOME and the food chips in one row, no title or count, and a card for every dinosaur, four to a row, in the list's order", async () => {
     const user = openApp();
 
     await openCatalogue(user);
 
-    const title = screen.getByRole("heading", { level: 1 });
-    expect(words(title)).toBe("ALL DINOSAURS");
-    expect(symbolOf(title)).toBe("book-open");
-    const count = screen.getByLabelText("DINOSAURS");
-    expect([symbolOf(count), count.textContent]).toEqual(["footprints", "42"]);
+    const bar = screen.getByRole("button", { name: "HOME" }).parentElement;
+    expect([...(bar?.children ?? [])].map((each) => each.getAttribute("aria-label") ?? words(each as HTMLElement))).toEqual(["HOME", "FOOD"]);
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(screen.queryByLabelText("DINOSAURS")).toBeNull();
     expect(cards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
     expect(getComputedStyle(grid()).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
+    // The list is as wide as the screen, its scrollbar at the edge, the
+    // cards kept in from it by the list's own padding.
+    const page = grid().closest("main") ?? grid();
+    expect([getComputedStyle(page).paddingLeft, getComputedStyle(page).paddingRight]).toEqual(["0px", "0px"]);
+    expect([getComputedStyle(grid()).paddingLeft, getComputedStyle(grid()).paddingRight]).toEqual(["56px", "56px"]);
   });
 
   it("goes back to the home page by its HOME button", async () => {
@@ -140,7 +144,7 @@ describe("the list of every dinosaur", () => {
 
     await user.click(home);
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(homeTile("ALL DINOSAURS")).toBeDefined();
     expect(screen.queryByRole("group", { name: "ALL DINOSAURS" })).toBeNull();
   });
 
@@ -153,11 +157,12 @@ describe("the list of every dinosaur", () => {
       expect(card.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture(dinosaur.id));
       expect(card.querySelector(".catalogue-name")?.textContent).toBe(dinosaur.name.en.toUpperCase());
       expect(chipsOf(card).map(({ symbols }) => symbols[0])).toEqual(["ruler", "weight", dinosaur.diet === "plants" ? "leaf" : "beef"]);
-      expect(chipsOf(card)[2]?.words).toBe(TEXTS.en.diets[dinosaur.diet]);
+      expect(chipsOf(card)[2]?.words).toBe(`(${TEXTS.en.diets[dinosaur.diet]})`);
+      expect(getComputedStyle(card.querySelector(".catalogue-chips") ?? card).flexWrap).not.toBe("wrap");
     }
-    expect(chipsOf(cardOf("tyrannosaurus")).map(({ words }) => words)).toEqual(["3.1 M", "8 T", "MEAT"]);
-    expect(chipsOf(cardOf("velociraptor")).map(({ words }) => words)).toEqual(["0.6 M", "15 KG", "MEAT"]);
-    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["3.4 M", "50 T", "PLANTS"]);
+    expect(chipsOf(cardOf("tyrannosaurus")).map(({ words }) => words)).toEqual(["3.1 M", "8 T", "(MEAT)"]);
+    expect(chipsOf(cardOf("velociraptor")).map(({ words }) => words)).toEqual(["0.6 M", "15 KG", "(MEAT)"]);
+    expect(chipsOf(cardOf("brachiosaurus")).map(({ words }) => words)).toEqual(["3.4 M", "50 T", "(PLANTS)"]);
   });
 
   it.each([
@@ -167,7 +172,7 @@ describe("the list of every dinosaur", () => {
     ["dark", "tyrannosaurus", "terra", ["beef"], "MEAT"],
     ["dark", "triceratops", "good", ["leaf"], "PLANTS"],
     ["dark", "oviraptor", "amber", ["beef", "leaf"], "BOTH"]
-  ] as const)("in the %s theme tags %s in the design's %s, with %j and the word %s", async (theme, id, colour, symbols, word) => {
+  ] as const)("in the %s theme tags %s in the design's %s, with %j and no word, %s read out", async (theme, id, colour, symbols, word) => {
     const user = openApp({ theme });
     await openCatalogue(user);
 
@@ -175,7 +180,7 @@ describe("the list of every dinosaur", () => {
     if (!tag) throw new Error(`No food tag on ${id}`);
     expect(sameColour(getComputedStyle(tag).backgroundColor, PALETTE[theme][colour] ?? "")).toBe(true);
     expect(symbolsOf(tag)).toEqual(symbols);
-    expect(words(tag)).toBe(word);
+    expect([words(tag), tag.getAttribute("role"), tag.getAttribute("aria-label")]).toEqual(["", "img", word]);
   });
 });
 
@@ -349,7 +354,7 @@ describe("a dinosaur's page", () => {
 });
 
 describe("the catalogue in Russian", () => {
-  it("reads its tile, its title, its food tags and its descriptions in Russian, the tile's title short", async () => {
+  it("reads its tile, its food tags and its descriptions in Russian, the tile's title short", async () => {
     const user = openApp({ language: "ru" });
     expect(words(screen.getByRole("button", { name: "ВСЕ" }))).toBe("ВСЕ42");
 
@@ -360,8 +365,8 @@ describe("the catalogue in Russian", () => {
     expect(document.querySelector(".dinosaur-description")?.textContent).toBe(entry("gallimimus").description.ru);
     expect(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" })).toBeDefined();
     await user.click(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }));
-    expect(chipsOf(cardOf("tyrannosaurus", "ru")).map(({ words }) => words)).toEqual(["3,1 М", "8 Т", "МЯСО"]);
-    expect(chipsOf(cardOf("triceratops", "ru"))[2]?.words).toBe("РАСТЕНИЯ");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("ВСЕ ДИНОЗАВРЫ");
+    expect(chipsOf(cardOf("tyrannosaurus", "ru")).map(({ words }) => words)).toEqual(["3,1 М", "8 Т", "(МЯСО)"]);
+    expect(chipsOf(cardOf("triceratops", "ru"))[2]?.words).toBe("(РАСТЕНИЯ)");
+    expect(grid("ru")).toBeDefined();
   });
 });

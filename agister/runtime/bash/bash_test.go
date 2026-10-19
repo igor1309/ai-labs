@@ -44,6 +44,7 @@ func TestItsFacts(t *testing.T) {
 		Model:        false,
 		Efforts:      nil,
 		ToolCalls:    false,
+		Budget:       false,
 		ToolCommands: false,
 		Inputs:       bash.InEnvironment,
 	}

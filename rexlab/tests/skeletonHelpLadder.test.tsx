@@ -146,19 +146,44 @@ describe("Explorer's help in steps", () => {
     expect(shown("neck")).toEqual({ ...NONE, hints: ["spot neck"], region: true, fitted: ["head"] });
   });
 
-  it("holds a step that falls due while a piece is held until it is let go", async () => {
+  it("hides as a piece is picked up, and counts again from nothing for that piece", async () => {
     const { pictures } = await openExplorer();
     spend(pictures, 19);
     const spot = spotOf("tail-bones");
     const { left, top } = spot.getBoundingClientRect();
 
     press(spot, { clientX: left + 40, clientY: top + 40 });
+    expect(shown()).toEqual(NONE);
+    release(AWAY);
+    spend(pictures, 9);
+    expect(shown("tail-bones")).toEqual(NONE);
+    spend(pictures, 1);
+    expect(shown("tail-bones")).toEqual({ ...NONE, hints: ["spot tail-bones"], region: true });
+  });
+
+  it("holds a step that falls due while a piece is held until it is let go", async () => {
+    const { pictures } = await openExplorer();
+    const spot = spotOf("tail-bones");
+    const { left, top } = spot.getBoundingClientRect();
+
+    press(spot, { clientX: left + 40, clientY: top + 40 });
     moveTo({ clientX: BOARD_AT.left + 10, clientY: BOARD_AT.top + 10 });
-    spend(pictures, 2);
-    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true });
+    spend(pictures, 21);
+    expect(shown("tail-bones")).toEqual(NONE);
 
     release(AWAY);
-    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true, ghost: true });
+    expect(shown("tail-bones")).toEqual({ ...NONE, hints: ["spot tail-bones"], region: true, ghost: true });
+  });
+
+  it("points at the piece last handled until it fits, then at the first in the tray", async () => {
+    const { pictures } = await openExplorer();
+    dragTo("hips", AWAY);
+    spend(pictures, 10);
+    expect(hints()).toEqual(["spot hips"]);
+
+    fit(TYRANNOSAURUS, "hips");
+    spend(pictures, 10);
+    expect(hints()).toEqual(["spot head"]);
   });
 });
 
@@ -235,7 +260,7 @@ function clockOn(pictures: ManualPictures) {
 }
 
 describe("help's time at Paleontologist", () => {
-  it("keeps counting while the child turns pieces and drops other dinosaurs' bones, never fitting one", async () => {
+  it("waits while the child turns pieces and drops other dinosaurs' bones, then comes for the piece last turned", async () => {
     const { pictures, pass } = clockOn(manualPictures());
     await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf("paleontologist"), pictures });
     const [stray = ""] = spotPieces().filter((piece) => piece.includes("/"));
@@ -245,8 +270,11 @@ describe("help's time at Paleontologist", () => {
       if (quarter % 2 === 0) tap("arms");
       else dragTo(stray, AWAY);
     }
-
-    expect(shown()).toEqual({ ...NONE, hints: ["spot head"], region: true });
+    expect(shown("arms")).toEqual(NONE);
+    for (let second = 0; second < 9; second++) pass(1000);
+    expect(shown("arms")).toEqual(NONE);
+    pass(1000);
+    expect(shown("arms")).toEqual({ ...NONE, hints: ["spot arms"], region: true });
   });
 });
 

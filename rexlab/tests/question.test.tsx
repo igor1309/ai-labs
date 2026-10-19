@@ -24,7 +24,7 @@ import {
   seededRandom,
   symbolOf,
   words,
-  homeTile,
+  gameDoor,
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
@@ -123,7 +123,7 @@ describe("a round", () => {
     const orientation = manualOrientation("landscape");
     render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
     const user = userEvent.setup();
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     await answerAndGoOn(user);
     await answerAndGoOn(user);
     expect(progress()).toBe("3/10");
@@ -143,7 +143,7 @@ describe("a round", () => {
   it("marks the questions done, the one on screen and those to come on its steps", async () => {
     render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
     const user = userEvent.setup();
-    await user.click(homeTile("COMPARE"));
+    await user.click(gameDoor("COMPARE"));
     await answerAndGoOn(user);
     await answerAndGoOn(user);
 
@@ -159,7 +159,7 @@ describe("a round", () => {
     const user = userEvent.setup();
 
     async function playRound() {
-      await user.click(homeTile("COMPARE"));
+      await user.click(gameDoor("COMPARE"));
       const asked = [];
       for (let number = 1; number <= 10; number++) {
         expect(progress()).toBe(`${number}/10`);

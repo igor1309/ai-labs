@@ -9,7 +9,7 @@ import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { board, brushAll, clearCells, drag, openDigApp, placeBoard } from "./digApp.tsx";
 import { badgeOf } from "./homePage.tsx";
-import { fakeBodyPicture, featuredCard, homeTile, manualPictures, memoryStorage, SHIPPED_DIG, symbolOf } from "./support.ts";
+import { fakeBodyPicture, featuredCard, gameDoor, homeTile, manualPictures, memoryStorage, SHIPPED_DIG, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 
 const record = (dig: object, featured = "dig") => ({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: {
@@ -40,16 +40,19 @@ it("offers committed sand art with the brush, and brightens and presses the tile
   expect(level()).toBe("explorer");
 });
 
-it("shows the stored count on both home doors, ignores retired ids and updates both after a round", () => {
+it.each(["compare", "dig"])("shows the stored count on DIG's door with %s featured, ignores retired ids and updates it after a round", (featured) => {
   const dug = SHIPPED_DIG.filter(({ id }) => id !== "tyrannosaurus").slice(0, 7).map(({ id }) => id);
-  const app = openDigApp({ storage: memoryStorage(record({ dug: [...dug, "retired"], badges: [] })) });
-  expect([badgeOf(homeTile("DIG")), badgeOf(featuredCard())].map((b) => [b?.textContent, symbolOf(b!)] )).toEqual([["7", "star"], ["7", "star"]]);
-  fireEvent.click(featuredCard()); finish(app); fireEvent.click(button("HOME"));
-  expect([badgeOf(homeTile("DIG"))?.textContent, badgeOf(featuredCard())?.textContent]).toEqual(["8", "8"]);
+  const app = openDigApp({ storage: memoryStorage(record({ dug: [...dug, "retired"], badges: [] }, featured)) });
+  // On DIG's day the large card is its only door.
+  const door = () => gameDoor("DIG");
+  expect(door() === featuredCard()).toBe(featured === "dig");
+  expect([badgeOf(door())?.textContent, symbolOf(badgeOf(door())!)]).toEqual(["7", "star"]);
+  fireEvent.click(door()); finish(app); fireEvent.click(button("HOME"));
+  expect(badgeOf(door())?.textContent).toBe("8");
 });
 
 it.each(["tile", "featured", "DIG AGAIN"])("a quick double tap from %s counts one start and brushes no sand", (door) => {
-  const app = openDigApp({ storage: memoryStorage(record({ dug: [], badges: [] })), ageLevel: { level: "hatchling", revision: "parent" } });
+  const app = openDigApp({ storage: memoryStorage(record({ dug: [], badges: [] }, door === "featured" ? "dig" : "compare")), ageLevel: { level: "hatchling", revision: "parent" } });
   if (door === "DIG AGAIN") { fireEvent.click(homeTile("DIG")); finish(app); }
   const before = app.featured.history().timesStarted.get("dig") ?? 0;
   const target = door === "tile" ? homeTile("DIG") : door === "featured" ? featuredCard() : button("DIG AGAIN");

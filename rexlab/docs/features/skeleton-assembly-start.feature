@@ -15,13 +15,16 @@ Feature: Skeleton assembly: choosing a dinosaur
     Then I see the dinosaur selection screen
     And I see "MUSEUM" with a museum symbol and "HOME" with a house symbol
 
-  Scenario: Three different body shapes are available from the start
+  Scenario: Five different body shapes are available from the start
     Given I am on the skeleton selection screen for the first time
     Then I can choose each of these dinosaurs without unlocking it
       | dinosaur      | distinguishing shape           |
       | Tyrannosaurus | large skull and two large legs |
       | Triceratops   | horned skull and four legs     |
       | Stegosaurus   | small skull and plated back    |
+      | Brachiosaurus | long neck and long front legs  |
+      | Spinosaurus   | long snout and tall back sail  |
+    And the choices stand three above and two centred below
     And each choice has its own dinosaur picture and name in large capitals
     And each card and button has a touch target of at least 48 by 48 CSS pixels
 
@@ -77,3 +80,12 @@ Feature: Skeleton assembly: choosing a dinosaur
       | theme |
       | light |
       | dark  |
+
+  Scenario: Back leaves a puzzle for the choice of dinosaurs
+    Given a skeleton puzzle is unfinished
+    Then its bar shows "BACK" with an arrow symbol, before "HOME"
+    And the dinosaur's whole name still fits beside them
+    When I tap "BACK"
+    Then I see the dinosaur selection screen without being asked to confirm
+    And the unfinished puzzle is not counted as complete
+    And its help no longer counts towards a hint

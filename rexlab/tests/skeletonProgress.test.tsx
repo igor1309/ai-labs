@@ -21,7 +21,7 @@ import {
   trayPieces,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { memoryStorage, type MemoryStorage, homeTile } from "./support.ts";
+import { memoryStorage, type MemoryStorage, gameDoor, symbolOf } from "./support.ts";
 
 // skeleton-assembly-progress.feature
 
@@ -126,8 +126,8 @@ describe("keeping the collection", () => {
 
     await visitMuseum(reopen(storage));
 
-    expect([starsChip(), bestScore()]).toEqual(["2/3", "2/3"]);
-    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), BUILT("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect([starsChip(), bestScore()]).toEqual(["2/5", "2/5"]);
+    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), BUILT("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
   });
 
@@ -136,8 +136,21 @@ describe("keeping the collection", () => {
       "taps HOME, without being asked to confirm",
       async (opened) => {
         await opened.user.click(button("HOME"));
-        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog"), homeTile("COMPARE")]).toEqual([[], [], expect.anything()]);
+        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog"), gameDoor("COMPARE")]).toEqual([[], [], expect.anything()]);
         await opened.user.click(button("SKELETONS"));
+        return opened;
+      }
+    ],
+    [
+      "taps BACK, before HOME, without being asked to confirm",
+      async (opened) => {
+        const bar = document.querySelector(".skeleton-bar");
+        expect([...(bar?.querySelectorAll("button") ?? [])].slice(0, 2).map((each) => [each.textContent, symbolOf(each)])).toEqual([
+          ["BACK", "arrow-left"],
+          ["HOME", "house"]
+        ]);
+        await opened.user.click(button("BACK"));
+        expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog")]).toEqual([[], []]);
         return opened;
       }
     ],
@@ -152,11 +165,11 @@ describe("keeping the collection", () => {
     const back = await leave(opened, storage);
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([true, false, false]);
+    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([true, false, false, false, false]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
     await visitMuseum(back);
-    expect([starsChip(), bestScore()]).toEqual(["1/3", "1/3"]);
-    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect([starsChip(), bestScore()]).toEqual(["1/5", "1/5"]);
+    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     await startPuzzle(back, within(stand("TRICERATOPS")).getByRole("button"));
     expect([fittedPieces(), trayPieces()]).toEqual([[], ["SKULL", "SPINE", "LEGS", "TAIL"]]);
   });
@@ -173,9 +186,9 @@ describe("keeping the collection", () => {
     const back = reopen(storage);
     await visitMuseum(back);
 
-    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), REBUILDING("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), REBUILDING("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     expect(stand("TRICERATOPS").querySelector(".skeleton-exhibit-picture")?.classList.contains("skeleton-silhouette")).toBe(true);
-    expect([starsChip(), bestScore()]).toEqual(["1/3", "1/3"]);
+    expect([starsChip(), bestScore()]).toEqual(["1/5", "1/5"]);
     await startPuzzle(back, within(stand("TRICERATOPS")).getByRole("button", { name: "CONTINUE" }));
     expect([screen.getByRole("heading").textContent, fittedPieces(), trayPieces()]).toEqual(["TRICERATOPS", [], ["SKULL", "SPINE", "LEGS", "TAIL"]]);
 
@@ -185,7 +198,7 @@ describe("keeping the collection", () => {
     expect(within(reveal() ?? document.body).getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(false);
     expect(screen.queryByRole("status")).toBeNull();
     await back.user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
-    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), BUILT("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), BUILT("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
   });
 
@@ -222,8 +235,8 @@ describe("keeping the collection", () => {
     const opened = openSkeletonsApp({ storage });
     expect(bestScore()).toBeUndefined();
     await visitMuseum(opened);
-    expect([starsChip(), bestScore()]).toEqual(["0/3", undefined]);
-    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect([starsChip(), bestScore()]).toEqual(["0/5", undefined]);
+    expect(stands()).toEqual([EMPTY("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     await opened.user.click(button("BUILD ANOTHER"));
 
     await build(opened, "tyrannosaurus");
@@ -232,7 +245,7 @@ describe("keeping the collection", () => {
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
     if (othersReadable) expect(others(storage).slice(0, 4)).toEqual(OTHERS.slice(0, 4));
     reopen(storage);
-    expect(bestScore()).toBe("1/3");
+    expect(bestScore()).toBe("1/5");
   });
 
   it("gives a dinosaur saved twice one stand and one star, and one with no skeleton none, counting only the different dinosaurs with a skeleton", async () => {
@@ -240,9 +253,9 @@ describe("keeping the collection", () => {
 
     await visitMuseum(openSkeletonsApp({ storage }));
 
-    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS")]);
+    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
-    expect([starsChip(), bestScore()]).toEqual(["1/3", "1/3"]);
+    expect([starsChip(), bestScore()]).toEqual(["1/5", "1/5"]);
   });
 
   it("still plays when stored progress cannot be read: the reveal and its star, the stand built while the app is open, and no best or celebration", async () => {
@@ -253,12 +266,12 @@ describe("keeping the collection", () => {
 
     expect([within(reveal() ?? document.body).getByRole("img", { name: "STAR" }).hasAttribute("data-new"), starsChip(), bestScore(), screen.queryByRole("status")]).toEqual([
       true,
-      "1/3",
+      "1/5",
       undefined,
       null
     ]);
     await opened.user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
-    expect([stands()[1], starsChip(), bestScore()]).toEqual([BUILT("TRICERATOPS"), "1/3", undefined]);
+    expect([stands()[1], starsChip(), bestScore()]).toEqual([BUILT("TRICERATOPS"), "1/5", undefined]);
     await opened.user.click(button("BUILD ANOTHER"));
     expect(within(choices()[1] ?? document.body).getByRole("img", { name: "STAR" })).toBeDefined();
     expect(storage.items.size).toBe(0);
@@ -271,21 +284,21 @@ describe("keeping the collection", () => {
 
     await build(opened, "stegosaurus");
 
-    expect([screen.getByRole("status").getAttribute("aria-label"), bestScore()]).toEqual(["NEW BEST SCORE", "BEST12/3"]);
+    expect([screen.getByRole("status").getAttribute("aria-label"), bestScore()]).toEqual(["NEW BEST SCORE", "BEST12/5"]);
     await opened.user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
-    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), BUILT("STEGOSAURUS")]);
+    expect(stands()).toEqual([BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), BUILT("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")]);
     for (const name of ["TYRANNOSAURUS", "STEGOSAURUS"]) {
       const skeleton = skeletonOf(name.toLowerCase());
       await startPuzzle(opened, within(stand(name)).getByRole("button", { name: "REBUILD" }));
       fitAll(skeleton);
       revealNow(opened.pictures, skeleton.id);
-      expect([within(reveal() ?? document.body).getByRole("img", { name: "STAR" }).hasAttribute("data-new"), starsChip(), screen.queryByRole("status")]).toEqual([false, "2/3", null]);
+      expect([within(reveal() ?? document.body).getByRole("img", { name: "STAR" }).hasAttribute("data-new"), starsChip(), screen.queryByRole("status")]).toEqual([false, "2/5", null]);
       await opened.user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
     }
-    expect([stands(), starsChip(), bestScore()]).toEqual([[BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), BUILT("STEGOSAURUS")], "2/3", "2/3"]);
+    expect([stands(), starsChip(), bestScore()]).toEqual([[BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), BUILT("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")], "2/5", "2/5"]);
 
     await visitMuseum(reopen(storage));
 
-    expect([stands(), starsChip(), bestScore()]).toEqual([[BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS")], "1/3", "1/3"]);
+    expect([stands(), starsChip(), bestScore()]).toEqual([[BUILT("TYRANNOSAURUS"), EMPTY("TRICERATOPS"), EMPTY("STEGOSAURUS"), EMPTY("BRACHIOSAURUS"), EMPTY("SPINOSAURUS")], "1/5", "1/5"]);
   });
 });

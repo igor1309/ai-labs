@@ -9,7 +9,7 @@ import type { Cut, Skeleton } from "../src/skeletons/index.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { openMenu } from "./menus.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, PIECES, savedSkeletons, skeletonOf, slots, type SkeletonsAppOptions } from "./skeletonsApp.tsx";
-import { contrast, homeTile, memoryStorage, seenOn, SHIPPED_SKELETONS, surfaceOf } from "./support.ts";
+import { contrast, gameDoor, memoryStorage, seenOn, SHIPPED_SKELETONS, surfaceOf } from "./support.ts";
 
 // skeleton-assembly-levels.feature: the selection screen's level switch,
 // the choice on it kept in the skeleton game's progress, and the cut each
@@ -207,7 +207,7 @@ describe("the choice on the level switch", () => {
     await reopened.user.click(button("HOME"));
     const menu = await openMenu(reopened.user, "Age level");
     await reopened.user.click(within(menu).getByRole("menuitemradio", { name: /PALEONTOLOGIST/ }));
-    fireEvent.click(homeTile("SKELETONS"));
+    fireEvent.click(gameDoor("SKELETONS"));
 
     expect(chosen()).toEqual(["PALEONTOLOGIST"]);
   });
@@ -219,7 +219,7 @@ describe("the choice on the level switch", () => {
 
     await user.click(button("PALEONTOLOGIST"));
     await user.click(button("HOME"));
-    fireEvent.click(homeTile("SKELETONS"));
+    fireEvent.click(gameDoor("SKELETONS"));
 
     expect(chosen()).toEqual(["PALEONTOLOGIST"]);
     unmount();
@@ -232,6 +232,6 @@ describe("the choice on the level switch", () => {
 
     expect(chosen()).toEqual(["PALEONTOLOGIST"]);
     expect(within(button("TYRANNOSAURUS")).queryByRole("img", { name: TEXTS.en.star })).not.toBeNull();
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("1/3");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("1/5");
   });
 });

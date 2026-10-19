@@ -8,8 +8,8 @@ specified under `features/`; this note is the plan they follow.
 
 Today's game becomes Hatchling, as it is (demote, never delete):
 
-- **Pieces.** The child picks one of three dinosaurs: Tyrannosaurus,
-  Triceratops and Stegosaurus. Its skeleton is cut into four pieces (skull,
+- **Pieces.** The child picks one of five dinosaurs: Tyrannosaurus,
+  Triceratops, Stegosaurus, Brachiosaurus and Spinosaurus. Its skeleton is cut into four pieces (skull,
   spine, legs, tail), each cut from one whole `skeleton.webp`.
 - **The puzzle.**
   - The pieces wait in a tray, the right way up, beside a full outline.
@@ -60,3 +60,7 @@ rebuild and the collection score.
   draws, cut by `scripts/recut-skeletons.ts`; Hatchling's four stay cut
   straight, so the pieces the levels shared are now each level's own
   (LAB-323).
+- Explorer's and Paleontologist's help waits while the child is busy: a
+  touch of any piece hides it and counts its ten seconds again, and it
+  comes for the piece last handled rather than the first in the tray.
+  Hatchling's help is as it was, never put off by trying (LAB-346).

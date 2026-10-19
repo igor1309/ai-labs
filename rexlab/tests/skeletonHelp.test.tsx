@@ -25,7 +25,7 @@ import {
   spotOf,
   trayPieces
 } from "./skeletonsApp.tsx";
-import { words, type ManualPictures, homeTile } from "./support.ts";
+import { words, type ManualPictures, gameDoor } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
 
@@ -147,23 +147,23 @@ describe("help after waiting", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(pictures.timers()).toEqual([]);
   });
 
   // The tap and the timers read in one act, while the puzzle is still on
   // the screen: help's timer stops as the child leaves, not as the puzzle
   // is taken off the screen.
-  it("stops as the child goes home, and the next puzzle's help is not moved on by the tick, delivered all the same", async () => {
+  it.each(["HOME", "BACK"])("stops as the child taps %s, and the next puzzle's help is not moved on by the tick, delivered all the same", async (leave) => {
     const { pictures, user } = await openPuzzle("TYRANNOSAURUS");
     spend(pictures, 9);
 
     let left: [number[], boolean] = [[], false];
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+      fireEvent.click(screen.getByRole("button", { name: leave }));
       left = [pictures.timers(), document.contains(board())];
     });
-    fireEvent.click(homeTile("SKELETONS"));
+    if (leave === "HOME") fireEvent.click(gameDoor("SKELETONS"));
     await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
     act(() => finishLoading(pictures));
     layOutPuzzle();
@@ -217,14 +217,14 @@ describe("help after waiting", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(screen.getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(true);
     expect([screen.getByLabelText("STARS").textContent, screen.queryByLabelText("BEST SCORE")?.textContent, screen.queryByRole("status")?.getAttribute("aria-label")]).toEqual([
-      "2/3",
-      "BEST12/3",
+      "2/5",
+      "BEST12/5",
       "NEW BEST SCORE"
     ]);
 
     await user.click(within(reveal() ?? document.body).getByRole("button", { name: "MUSEUM" }));
 
-    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty"]);
+    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty", "empty", "empty"]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
   });
 });

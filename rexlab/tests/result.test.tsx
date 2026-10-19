@@ -24,7 +24,7 @@ import {
   seededRandom,
   symbolOf,
   type MemoryStorage,
-  homeTile,
+  gameDoor,
   unsetAgeLevel
 } from "./support.ts";
 
@@ -88,7 +88,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
 // `correct` of them right and the rest wrong, moving on after each but the
 // last question of the round.
 async function answer(user: UserEvent, correct: number, count = 10) {
-  await user.click(homeTile("COMPARE"));
+  await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= count; number++) {
     const question = shownQuestion();
     const larger = largerOf(question);
@@ -162,7 +162,7 @@ describe("the result", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(screen.queryByLabelText("SCORE")).toBeNull();
   });
 });
@@ -241,7 +241,7 @@ describe("stored progress", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(confirm).not.toHaveBeenCalled();
     expect(storage.items.get(PROGRESS_KEY)).toBe(kept);
   });

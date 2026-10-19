@@ -4,8 +4,8 @@ Feature: The level a game starts at
   child's own choice in a game wins until a parent picks a different
   level. Rewards are the same at every level, and each level keeps its
   own best score (docs/age-levels.md); a best saved before a game had
-  levels is its Hatchling best, shown on its tile and, when it is
-  featured, on the large card.
+  levels is its Hatchling best, shown on its tile or, when it is
+  featured, on the large card in its place.
 
   Find the pair, the sorting game, the skeleton game and the dig game
   have levels (find-the-pair-levels.feature, sort-dinosaurs-levels.feature,

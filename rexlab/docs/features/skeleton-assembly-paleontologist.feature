@@ -24,6 +24,8 @@ Feature: Skeleton assembly: Paleontologist
       | Tyrannosaurus | 11    | 3      |
       | Triceratops   | 10    | 2      |
       | Stegosaurus   | 10    | 3      |
+      | Brachiosaurus | 10    | 3      |
+      | Spinosaurus   | 10    | 3      |
 
   Scenario: The outline shows the skeleton's shape, not its bones
     When I tap Tyrannosaurus
@@ -57,11 +59,19 @@ Feature: Skeleton assembly: Paleontologist
     When I press the Triceratops frill in the tray
     Then the line still reads "THAT'S THE TRICERATOPS FRILL!"
 
-  Scenario: Another dinosaur's bone never puts help off
+  Scenario: Another dinosaur's bone touched counts help's time again
     Given 9 seconds have passed
     When I drop the Triceratops frill on the outline
     And another second passes
-    Then help's first step shows for the skull, as Explorer's does
+    Then no help shows
+    When 9 more seconds pass
+    Then help's first step shows for the head, as Explorer's does
+
+  Scenario: Help waits while I turn a piece, then comes for it
+    When I tap the arms again and again for 10 seconds
+    Then no help shows
+    When 10 seconds pass without a touch
+    Then help's first step shows for the arms
 
   Scenario: The skeleton is complete once its own bones fit
     Given I am building Triceratops with nine of its pieces fitted

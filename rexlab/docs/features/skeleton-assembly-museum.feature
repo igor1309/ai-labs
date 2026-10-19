@@ -10,7 +10,7 @@ Feature: Skeleton assembly: the museum and rebuilding
   Scenario: An empty museum shows what the child can build
     Given I have never finished a skeleton
     When I open "MUSEUM"
-    Then I see a museum hall with three empty stands showing the silhouettes and names of the skeletons still to build
+    Then I see a museum hall with five empty stands, three above and two centred below, showing the silhouettes and names of the skeletons still to build
     And my collection score is "0/3" beside a star symbol
     And each empty stand offers building its dinosaur with a bone picture
     And I see "BUILD ANOTHER" and "HOME" with their symbols
