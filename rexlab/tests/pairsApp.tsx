@@ -3,6 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type AppProps } from "../src/App.tsx";
 import { dealBoard, type Board, type BoardLevel, type ClimbLevel, type LargeLevel, type Pal, type Random } from "../src/pairs/index.ts";
+import type { LevelOffer } from "../src/levelOffer.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -118,6 +119,7 @@ export type StoredPairs = {
   best: Partial<Record<ClimbLevel | LargeLevel, number>>;
   found: readonly string[];
   levelChoice?: { level: string; revision: string | null };
+  offer?: LevelOffer;
 };
 
 // A stored record with find the pair's entry, and the other games'

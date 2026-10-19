@@ -115,6 +115,7 @@ export type Texts = {
   newLevel: (level: number) => string;
   // The badge of a dinosaur found for the first time.
   newlyFound: string;
+  levelOffer: { question: (level: string) => string; yes: string; notNow: string };
   // The dinosaurs found in find the pair, read out on the catalogue's
   // count and stamps.
   found: string;
