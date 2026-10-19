@@ -95,7 +95,6 @@ export const ru: Texts = {
   museum: "МУЗЕЙ",
   skeleton: "СКЕЛЕТ",
   bones: "КОСТИ",
-  pieces: { skull: "ЧЕРЕП", spine: "ПОЗВОНОЧНИК", legs: "НОГИ", tail: "ХВОСТ" },
   fitted: "КОСТИ НА МЕСТЕ",
   star: "ЗВЕЗДА",
   buildAnother: "СОБРАТЬ ДРУГОЙ",

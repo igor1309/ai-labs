@@ -1,7 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { AWAY, BOARD_AT, fit, fitAll, fittedPieces, homeOf, layOutPuzzle, lifted, moveTo, openSkeletonsApp, press, release, reveal, revealNow, skeletonOf, slotOf, spotOf, trayPieces } from "./skeletonsApp.tsx";
+import { AWAY, BOARD_AT, fit, fitAll, fittedPieces, homeOf, layOutPuzzle, placeOf, lifted, moveTo, openSkeletonsApp, press, release, reveal, revealNow, skeletonOf, slotOf, spotOf, trayPieces } from "./skeletonsApp.tsx";
 import { fakeSkeletonPicture, type ManualPictures } from "./support.ts";
 
 // skeleton-assembly-pictures.feature: a bone whose picture is still
@@ -37,7 +37,7 @@ const asked = (pictures: ManualPictures) => pictures.loading().filter((url) => u
 // Where the lifted skull is drawn, and where it is with the finger at
 // `clientX`, `clientY`.
 const scale = BOARD_AT.width / TYRANNOSAURUS.frame.width;
-const { width, height } = TYRANNOSAURUS.places.skull;
+const { width, height } = placeOf(TYRANNOSAURUS, "skull");
 const held = () => lifted()?.style.translate.split(" ").map(parseFloat);
 const heldAt = (clientX: number, clientY: number) => [expect.closeTo(clientX - (width * scale) / 2), expect.closeTo(clientY - (height * scale) / 2)];
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
-import { droppedPiece, presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
+import { presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
 import { SkeletonMuseumScreen } from "./SkeletonMuseumScreen.tsx";
@@ -132,7 +132,7 @@ export function useSkeletonGame(
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined) return;
     const from = screen;
-    const started = startPuzzle(skeleton);
+    const started = startPuzzle(skeleton, skeleton.cuts.hatchling);
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
@@ -188,7 +188,7 @@ export function useSkeletonGame(
     const from = live.current;
     const timers = puzzleTimers.current;
     if (from === null || timers === null) return;
-    const to = drop(from, droppedPiece(piece), centre, reach);
+    const to = drop(from, piece, centre, reach);
     if (to === from) return;
     showPuzzle(from, to);
     if (isComplete(to)) reveal(to, record(to), timers);

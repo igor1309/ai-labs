@@ -91,7 +91,6 @@ export const en: Texts = {
   museum: "MUSEUM",
   skeleton: "SKELETON",
   bones: "BONES",
-  pieces: { skull: "SKULL", spine: "SPINE", legs: "LEGS", tail: "TAIL" },
   fitted: "BONES IN PLACE",
   star: "STAR",
   buildAnother: "BUILD ANOTHER",

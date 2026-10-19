@@ -124,10 +124,9 @@ export type Texts = {
   skeletons: string;
   skeletonTitle: string;
   museum: string;
-  // The skeleton being built, its tray of bones and each bone by its name.
+  // The skeleton being built and its tray of bones.
   skeleton: string;
   bones: string;
-  pieces: { skull: string; spine: string; legs: string; tail: string };
   // The bones fitted so far, read out on their chip.
   fitted: string;
   // The star a finished skeleton earns, read out on its badge, and the

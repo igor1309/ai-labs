@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { finishSkeleton, knockDown, museumOf, NO_SKELETONS, openCollection, PIECES, startPuzzle, type KeptSkeletons, type Puzzle, type SkeletonProgress } from "../src/skeletons/index.ts";
+import { finishSkeleton, knockDown, museumOf, NO_SKELETONS, openCollection, startPuzzle, type KeptSkeletons, type Puzzle, type SkeletonProgress } from "../src/skeletons/index.ts";
 import { SHIPPED_SKELETONS, scoringSpy } from "./support.ts";
 
 const ORDER = ["tyrannosaurus", "triceratops", "stegosaurus"];
@@ -8,7 +8,7 @@ const ORDER = ["tyrannosaurus", "triceratops", "stegosaurus"];
 function finished(id: string): Puzzle {
   const skeleton = SHIPPED_SKELETONS.find((each) => each.id === id);
   if (!skeleton) throw new Error(`No ${id} skeleton is shipped`);
-  return { ...startPuzzle(skeleton), fitted: [...PIECES] };
+  return { ...startPuzzle(skeleton, skeleton.cuts.hatchling), fitted: skeleton.cuts.hatchling.map(({ id }) => id) };
 }
 
 // Kept progress of these stars and best, with the stands of `rebuilding`

@@ -5,12 +5,15 @@ import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
-export type ShownPiece = "skull" | "spine" | "legs" | "tail";
+// A piece, by its id in its cut.
+export type ShownPiece = string;
 
 // Where a piece goes on the outline, as fractions of the outline's width
-// and height, and whether it is fitted there.
+// and height, and whether it is fitted there, with the piece's name and
+// picture.
 export type SkeletonSlotView = {
   piece: ShownPiece;
+  name: string;
   picture: string;
   left: number;
   top: number;
@@ -209,7 +212,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                     shimmer and fade never replace the movement. */}
                 {slot.fitted && (
                   <span className="skeleton-fitted" data-snapped={release ? true : undefined} style={release && fromStyle(release.slot)}>
-                    <Picture className="skeleton-fitted-picture" src={slot.picture} alt={text.pieces[slot.piece]} />
+                    <Picture className="skeleton-fitted-picture" src={slot.picture} alt={slot.name} />
                   </span>
                 )}
               </span>
@@ -251,7 +254,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                     data-scattering={scattering ? true : undefined}
                     style={release ? fromStyle(release.spot) : scattering && ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)}
                   >
-                    <Picture className="skeleton-piece-picture" src={slot.picture} alt={text.pieces[slot.piece]} />
+                    <Picture className="skeleton-piece-picture" src={slot.picture} alt={slot.name} />
                   </span>
                 )}
               </span>

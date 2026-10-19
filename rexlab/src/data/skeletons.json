@@ -9,29 +9,53 @@
         "en": "T. REX HAD TINY ARMS BUT HUGE LEGS.",
         "ru": "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ И ОГРОМНЫЕ НОГИ."
       },
-      "skull": {
-        "x": 6,
-        "y": 44,
-        "width": 231,
-        "height": 195
-      },
-      "spine": {
-        "x": 170,
-        "y": 68,
-        "width": 361,
-        "height": 314
-      },
-      "legs": {
-        "x": 149,
-        "y": 240,
-        "width": 490,
-        "height": 329
-      },
-      "tail": {
-        "x": 565,
-        "y": 266,
-        "width": 225,
-        "height": 89
+      "cuts": {
+        "hatchling": [
+          {
+            "id": "skull",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 6,
+            "y": 44,
+            "width": 231,
+            "height": 195
+          },
+          {
+            "id": "spine",
+            "name": {
+              "en": "SPINE",
+              "ru": "ПОЗВОНОЧНИК"
+            },
+            "x": 170,
+            "y": 68,
+            "width": 361,
+            "height": 314
+          },
+          {
+            "id": "legs",
+            "name": {
+              "en": "LEGS",
+              "ru": "НОГИ"
+            },
+            "x": 149,
+            "y": 240,
+            "width": 490,
+            "height": 329
+          },
+          {
+            "id": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 565,
+            "y": 266,
+            "width": 225,
+            "height": 89
+          }
+        ]
       }
     },
     "triceratops": {
@@ -39,29 +63,53 @@
         "en": "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
         "ru": "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА И КОСТЯНОЙ ВОРОТНИК."
       },
-      "skull": {
-        "x": 8,
-        "y": 34,
-        "width": 398,
-        "height": 309
-      },
-      "spine": {
-        "x": 253,
-        "y": 178,
-        "width": 387,
-        "height": 220
-      },
-      "legs": {
-        "x": 117,
-        "y": 235,
-        "width": 542,
-        "height": 332
-      },
-      "tail": {
-        "x": 640,
-        "y": 329,
-        "width": 155,
-        "height": 89
+      "cuts": {
+        "hatchling": [
+          {
+            "id": "skull",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 8,
+            "y": 34,
+            "width": 398,
+            "height": 309
+          },
+          {
+            "id": "spine",
+            "name": {
+              "en": "SPINE",
+              "ru": "ПОЗВОНОЧНИК"
+            },
+            "x": 253,
+            "y": 178,
+            "width": 387,
+            "height": 220
+          },
+          {
+            "id": "legs",
+            "name": {
+              "en": "LEGS",
+              "ru": "НОГИ"
+            },
+            "x": 117,
+            "y": 235,
+            "width": 542,
+            "height": 332
+          },
+          {
+            "id": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 640,
+            "y": 329,
+            "width": 155,
+            "height": 89
+          }
+        ]
       }
     },
     "stegosaurus": {
@@ -69,29 +117,53 @@
         "en": "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.",
         "ru": "У СТЕГОЗАВРА ВДОЛЬ СПИНЫ БЫЛИ БОЛЬШИЕ ПЛАСТИНЫ."
       },
-      "skull": {
-        "x": 4,
-        "y": 220,
-        "width": 143,
-        "height": 133
-      },
-      "spine": {
-        "x": 111,
-        "y": 10,
-        "width": 481,
-        "height": 372
-      },
-      "legs": {
-        "x": 56,
-        "y": 262,
-        "width": 570,
-        "height": 325
-      },
-      "tail": {
-        "x": 555,
-        "y": 218,
-        "width": 244,
-        "height": 213
+      "cuts": {
+        "hatchling": [
+          {
+            "id": "skull",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 4,
+            "y": 220,
+            "width": 143,
+            "height": 133
+          },
+          {
+            "id": "spine",
+            "name": {
+              "en": "SPINE",
+              "ru": "ПОЗВОНОЧНИК"
+            },
+            "x": 111,
+            "y": 10,
+            "width": 481,
+            "height": 372
+          },
+          {
+            "id": "legs",
+            "name": {
+              "en": "LEGS",
+              "ru": "НОГИ"
+            },
+            "x": 56,
+            "y": 262,
+            "width": 570,
+            "height": 325
+          },
+          {
+            "id": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 555,
+            "y": 218,
+            "width": 244,
+            "height": 213
+          }
+        ]
       }
     }
   }

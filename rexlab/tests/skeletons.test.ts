@@ -8,7 +8,8 @@ import { skeletonPictures } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
-import { HELP_AFTER, PIECES, startPuzzle, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
+import { HELP_AFTER, startPuzzle, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
+import { PIECES, placeOf } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS, browserDocument, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -20,26 +21,43 @@ const NAMES = [
 
 const place = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 
+const NAMED = {
+  skull: { en: "SKULL", ru: "ЧЕРЕП" },
+  spine: { en: "SPINE", ru: "ПОЗВОНОЧНИК" },
+  legs: { en: "LEGS", ru: "НОГИ" },
+  tail: { en: "TAIL", ru: "ХВОСТ" }
+};
+
 const PLACES = { skull: place(0, 0, 100, 80), spine: place(80, 10, 300, 200), legs: place(90, 150, 300, 250), tail: place(380, 120, 20, 60) };
+
+// Hatchling's cut as the file writes it: each piece's id, name and place.
+const FILED = PIECES.map((id) => ({ id, name: NAMED[id], ...PLACES[id] }));
+
+// The same cut as it is read.
+const CUT = PIECES.map((id) => ({ id, name: NAMED[id], place: PLACES[id] }));
 
 const FACT = { en: "TRICERATOPS HAD THREE HORNS.", ru: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА." };
 
-const ENTRY = { fact: FACT, ...PLACES };
+const ENTRY = { fact: FACT, cuts: { hatchling: FILED } };
+
+// The entry with its Hatchling piece at `at` replaced by `piece`.
+const withPiece = (at: number, piece: unknown) => ({ ...ENTRY, cuts: { hatchling: FILED.map((each, index) => (index === at ? piece : each)) } });
 
 const file = (dinosaurs: SkeletonsFile["dinosaurs"]): SkeletonsFile => ({ frame: { width: 400, height: 400 }, dinosaurs });
 
 describe("readSkeletons", () => {
-  it("names each skeleton as its dinosaur is named, in the file's order, with its fact, frame and pieces' places", () => {
+  it("names each skeleton as its dinosaur is named, in the file's order, with its fact, frame and Hatchling's cut", () => {
     const tyrannosaurus = { en: "T. REX HAD TINY ARMS.", ru: "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ." };
+    const three = [FILED[0], FILED[1], { id: "tail", name: NAMED.tail, ...place(0, 300, 400, 100) }];
 
-    expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { ...ENTRY, fact: tyrannosaurus, tail: place(0, 300, 400, 100) } }))).toEqual([
-      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, frame: { width: 400, height: 400 }, places: PLACES },
+    expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { fact: tyrannosaurus, cuts: { hatchling: three } } }))).toEqual([
+      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, frame: { width: 400, height: 400 }, cuts: { hatchling: CUT } },
       {
         id: "tyrannosaurus",
         name: { en: "Tyrannosaurus", ru: "Тираннозавр" },
         fact: tyrannosaurus,
         frame: { width: 400, height: 400 },
-        places: { ...PLACES, tail: place(0, 300, 400, 100) }
+        cuts: { hatchling: [CUT[0], CUT[1], { id: "tail", name: NAMED.tail, place: place(0, 300, 400, 100) }] }
       }
     ]);
   });
@@ -59,18 +77,39 @@ describe("readSkeletons", () => {
   });
 
   it.each<[string, unknown, string]>([
-    ["missing", undefined, "triceratops has no legs in its 400×400 frame: undefined"],
-    ["not a place", "under the spine", 'triceratops has no legs in its 400×400 frame: "under the spine"'],
+    ["with no cuts", undefined, "triceratops has no hatchling cut: undefined"],
+    ["with no Hatchling cut", {}, "triceratops has no hatchling cut: undefined"],
+    ["with a Hatchling cut of no pieces", { hatchling: [] }, "triceratops has no hatchling cut: []"],
+    ["with a Hatchling cut that is not a list", { hatchling: "four bones" }, 'triceratops has no hatchling cut: "four bones"'],
+    ["with a cut of no level", { hatchling: FILED, champion: FILED }, "triceratops has a cut of no level: champion"]
+  ])("fails when it is made on a skeleton %s", (_, cuts, message) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts } }))).toThrow(message);
+  });
+
+  it.each<[string, unknown, string]>([
+    ["of no id", { name: NAMED.legs, ...PLACES.legs }, "triceratops's hatchling piece 3 has no id of its own: undefined"],
+    ["of an empty id", { id: " ", name: NAMED.legs, ...PLACES.legs }, 'triceratops\'s hatchling piece 3 has no id of its own: " "'],
+    ["of another piece's id", { id: "skull", name: NAMED.legs, ...PLACES.legs }, 'triceratops\'s hatchling piece 3 has no id of its own: "skull"'],
+    ["named for the whole skeleton's picture", { id: "skeleton", name: NAMED.legs, ...PLACES.legs }, 'triceratops\'s hatchling piece 3 has no id of its own: "skeleton"'],
+    ["not a piece", "legs", "triceratops's hatchling piece 3 has no id of its own: undefined"],
+    ["with no name", { id: "legs", ...PLACES.legs }, "triceratops's legs has no name in every language: undefined"],
+    ["named in one language only", { id: "legs", name: { en: "LEGS" }, ...PLACES.legs }, 'triceratops\'s legs has no name in every language: {"en":"LEGS"}']
+  ])("fails when it is made on a piece %s", (_, piece, message) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, piece) }))).toThrow(message);
+  });
+
+  it.each<[string, unknown, string]>([
+    ["missing", {}, "triceratops has no legs in its 400×400 frame: {}"],
     ["of no size", place(10, 10, 0, 50), "triceratops has no legs in its 400×400 frame"],
     ["before the frame", place(-1, 10, 50, 50), "triceratops has no legs in its 400×400 frame"],
     ["past its right edge", place(351, 10, 50, 50), "triceratops has no legs in its 400×400 frame"],
     ["past its bottom edge", place(10, 351, 50, 50), "triceratops has no legs in its 400×400 frame"],
     ["of a size in words", { x: 0, y: 0, width: "wide", height: 50 }, "triceratops has no legs in its 400×400 frame"]
-  ])("fails when it is made on a piece %s", (_, legs, message) => {
-    expect(() => readSkeletons(NAMES, file({ triceratops: { ...ENTRY, legs } }))).toThrow(message);
+  ])("fails when it is made on a piece's place %s", (_, at, message) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, { id: "legs", name: NAMED.legs, ...(at as object) }) }))).toThrow(message);
   });
 
-  it("reads every shipped skeleton, Tyrannosaurus, Triceratops and Stegosaurus, each with all four pieces in its frame", () => {
+  it("reads every shipped skeleton, Tyrannosaurus, Triceratops and Stegosaurus, each with Hatchling's four pieces in its frame", () => {
     const shipped = readSkeletons(records, skeletonPlaces);
 
     expect(shipped.map(({ id, name }) => [id, name.en])).toEqual([
@@ -78,7 +117,9 @@ describe("readSkeletons", () => {
       ["triceratops", "Triceratops"],
       ["stegosaurus", "Stegosaurus"]
     ]);
-    expect(shipped.map(({ frame, places }) => [frame, Object.keys(places)])).toEqual(shipped.map(() => [{ width: 800, height: 600 }, [...PIECES]]));
+    expect(shipped.map(({ frame, cuts }) => [frame, cuts.hatchling.map(({ id, name }) => [id, name])])).toEqual(
+      shipped.map(() => [{ width: 800, height: 600 }, PIECES.map((id) => [id, NAMED[id]])])
+    );
   });
 
   // skeleton-assembly-fact.feature
@@ -103,23 +144,22 @@ describe("skeletonPictures", () => {
         "./assets/skeletons/triceratops/skeleton.webp": "/assets/skeleton-a1.webp",
         "./assets/skeletons/triceratops/skull.webp": "/assets/skull-b2.webp"
       },
-      ["triceratops"],
-      PARTS
+      { triceratops: PARTS }
     );
 
     expect([pictureOf("triceratops", "skeleton"), pictureOf("triceratops", "skull")]).toEqual(["/assets/skeleton-a1.webp", "/assets/skull-b2.webp"]);
     expect(() => pictureOf("stegosaurus", "skull")).toThrow("No skeleton picture for stegosaurus/skull");
   });
 
-  it("fails when it is made, naming every part with no picture", () => {
+  it("fails when it is made, naming every part with no picture, each dinosaur with parts of its own", () => {
     const files = {
       "./assets/skeletons/triceratops/skeleton.webp": "/assets/skeleton-a1.webp",
       "./assets/skeletons/triceratops/skull.png": "/assets/skull-b2.png",
       "./assets/dinos/stegosaurus/skull.webp": "/assets/skull-c3.webp"
     };
 
-    expect(() => skeletonPictures(files, ["triceratops", "stegosaurus"], PARTS)).toThrow(
-      "No skeleton picture for triceratops/skull, stegosaurus/skeleton, stegosaurus/skull"
+    expect(() => skeletonPictures(files, { triceratops: PARTS, stegosaurus: ["skeleton", "skull", "plates"] })).toThrow(
+      "No skeleton picture for triceratops/skull, stegosaurus/skeleton, stegosaurus/skull, stegosaurus/plates"
     );
   });
 });
@@ -129,6 +169,9 @@ const skeletonOf = (id: string): Skeleton => {
   if (!found) throw new Error(`No ${id} skeleton is shipped`);
   return found;
 };
+
+// A new puzzle of the shipped skeleton of `id`, at Hatchling.
+const hatchlingPuzzle = (id: string) => startPuzzle(skeletonOf(id), skeletonOf(id).cuts.hatchling);
 
 describe("presenting the skeleton game", () => {
   it("shows each dinosaur to build by its body picture and name in the language, in the given order, starred once earned", () => {
@@ -177,19 +220,21 @@ describe("presenting the skeleton game", () => {
   });
 
   it("shows a new puzzle as its outline and four empty slots, each placed as a fraction of the frame", () => {
-    const { frame, places } = skeletonOf("triceratops");
+    const triceratops = skeletonOf("triceratops");
+    const { frame } = triceratops;
 
-    expect(presentPuzzle(startPuzzle(skeletonOf("triceratops")), "en", fakeSkeletonPicture)).toEqual({
+    expect(presentPuzzle(startPuzzle(triceratops, triceratops.cuts.hatchling), "en", fakeSkeletonPicture)).toEqual({
       name: "Triceratops",
       outline: fakeSkeletonPicture("triceratops", "skeleton"),
       frame,
       slots: PIECES.map((piece) => ({
         piece,
+        name: NAMED[piece].en,
         picture: fakeSkeletonPicture("triceratops", piece),
-        left: places[piece].x / frame.width,
-        top: places[piece].y / frame.height,
-        width: places[piece].width / frame.width,
-        height: places[piece].height / frame.height,
+        left: placeOf(triceratops, piece).x / frame.width,
+        top: placeOf(triceratops, piece).y / frame.height,
+        width: placeOf(triceratops, piece).width / frame.width,
+        height: placeOf(triceratops, piece).height / frame.height,
         fitted: false
       })),
       hint: undefined,
@@ -198,7 +243,7 @@ describe("presenting the skeleton game", () => {
   });
 
   it("points help at the first piece in the tray still to fit, once help is due, and at none before", () => {
-    const due = { ...startPuzzle(skeletonOf("tyrannosaurus")), fitted: ["skull", "legs"] as const, waited: HELP_AFTER };
+    const due = { ...hatchlingPuzzle("tyrannosaurus"), fitted: ["skull", "legs"] as const, waited: HELP_AFTER };
 
     expect([presentPuzzle(due, "en", fakeSkeletonPicture).hint, presentPuzzle({ ...due, waited: HELP_AFTER - 1 }, "en", fakeSkeletonPicture).hint]).toEqual([
       "spine",
@@ -207,7 +252,7 @@ describe("presenting the skeleton game", () => {
   });
 
   it("reports the skeleton complete once every piece is fitted, and not before", () => {
-    const puzzle = { ...startPuzzle(skeletonOf("stegosaurus")), fitted: ["tail", "skull", "legs"] as const };
+    const puzzle = { ...hatchlingPuzzle("stegosaurus"), fitted: ["tail", "skull", "legs"] as const };
 
     expect([presentPuzzle(puzzle, "en", fakeSkeletonPicture).complete, presentPuzzle({ ...puzzle, fitted: [...puzzle.fitted, "spine"] }, "en", fakeSkeletonPicture).complete]).toEqual([
       false,
@@ -216,7 +261,7 @@ describe("presenting the skeleton game", () => {
   });
 
   it("marks the slots of fitted pieces, and only those", () => {
-    const puzzle = { ...startPuzzle(skeletonOf("stegosaurus")), fitted: ["tail", "skull"] as const };
+    const puzzle = { ...hatchlingPuzzle("stegosaurus"), fitted: ["tail", "skull"] as const };
 
     expect(presentPuzzle(puzzle, "en", fakeSkeletonPicture).slots.map(({ piece, fitted }) => [piece, fitted])).toEqual([
       ["skull", true],
@@ -240,23 +285,23 @@ describe("every shipped skeleton", () => {
 
   it("is given to the app, each with its outline and pieces from its own folder", () => {
     expect(skeletons).toEqual(SHIPPED_SKELETONS);
-    for (const { id } of skeletons) {
-      for (const part of ["skeleton", ...PIECES] as const) {
+    for (const { id, cuts } of skeletons) {
+      for (const part of ["skeleton", ...cuts.hatchling.map((piece) => piece.id)]) {
         expect(fileOf(skeletonPicture(id, part))).toBe(join(ROOT, "src/assets/skeletons", id, `${part}.webp`));
       }
     }
   });
 
   it("has an outline as big as its frame and each piece as big as its place, all with alpha", () => {
-    const sizes = skeletons.map(({ id }) => [
+    const sizes = skeletons.map(({ id, cuts }) => [
       readWebp(readFileSync(fileOf(skeletonPicture(id, "skeleton")))),
-      ...PIECES.map((piece) => readWebp(readFileSync(fileOf(skeletonPicture(id, piece)))))
+      ...cuts.hatchling.map((piece) => readWebp(readFileSync(fileOf(skeletonPicture(id, piece.id)))))
     ]);
 
     expect(sizes).toEqual(
-      skeletons.map(({ frame, places }) => [
+      skeletons.map(({ frame, cuts }) => [
         { ...frame, alpha: true },
-        ...PIECES.map((piece) => ({ width: places[piece].width, height: places[piece].height, alpha: true }))
+        ...cuts.hatchling.map(({ place }) => ({ width: place.width, height: place.height, alpha: true }))
       ])
     );
   });
@@ -272,9 +317,9 @@ describe("every shipped skeleton", () => {
       [0, -1]
     ] as const;
     const measured = await Promise.all(
-      skeletons.map(async ({ id, places }) => {
+      skeletons.map(async ({ id, cuts }) => {
         const whole = await alphaOf(fileOf(skeletonPicture(id, "skeleton")));
-        const pieces = await Promise.all(PIECES.map(async (piece) => ({ ...places[piece], ...(await alphaOf(fileOf(skeletonPicture(id, piece)))) })));
+        const pieces = await Promise.all(cuts.hatchling.map(async (piece) => ({ ...piece.place, ...(await alphaOf(fileOf(skeletonPicture(id, piece.id)))) })));
         return {
           id,
           rebuilt: unmatched(whole, pieces) <= TOLERANCE,
@@ -284,7 +329,7 @@ describe("every shipped skeleton", () => {
       })
     );
 
-    expect(measured).toEqual(skeletons.map(({ id }) => ({ id, rebuilt: true, inPlace: PIECES.map(() => true), offByAPixel: PIECES.map(() => true) })));
+    expect(measured).toEqual(skeletons.map(({ id, cuts }) => ({ id, rebuilt: true, inPlace: cuts.hatchling.map(() => true), offByAPixel: cuts.hatchling.map(() => true) })));
   });
 
   it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {

@@ -31,7 +31,7 @@ import {
   unsetAgeLevel,
   loadShownPictures
 } from "./support.ts";
-import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
+import type { Place, Skeleton } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
 
 export type SkeletonsAppOptions = {
@@ -169,10 +169,21 @@ export function layOutPuzzle() {
 
 export type At = { clientX: number; clientY: number };
 
+// Hatchling's pieces, in their order in the tray.
+export const PIECES = ["skull", "spine", "legs", "tail"] as const;
+export type Piece = (typeof PIECES)[number];
+
+// Where a piece of Hatchling's cut fits in its skeleton's frame.
+export function placeOf(skeleton: Skeleton, piece: string): Place {
+  const found = skeleton.cuts.hatchling.find(({ id }) => id === piece);
+  if (found === undefined) throw new Error(`${skeleton.id} has no ${piece}`);
+  return found.place;
+}
+
 // Where on the screen a piece's centre sits in its home, moved by `dx`
 // and `dy` CSS pixels.
 export function homeOf(skeleton: Skeleton, piece: Piece, dx = 0, dy = 0): At {
-  const { x, y, width, height } = skeleton.places[piece];
+  const { x, y, width, height } = placeOf(skeleton, piece);
   const scale = BOARD_AT.width / skeleton.frame.width;
   return { clientX: BOARD_AT.left + (x + width / 2) * scale + dx, clientY: BOARD_AT.top + (y + height / 2) * scale + dy };
 }
