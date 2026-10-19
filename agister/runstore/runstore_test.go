@@ -52,6 +52,7 @@ func ended(id string) runstore.Record {
 	record.Ended, record.Status, record.Request.Continue = &end, "completed", &continued
 	record.Inputs = []runstore.Input{{Name: "goal", Value: "# g\n\n<x> & y\n", Identity: "d1"}}
 	record.Calls = []runstore.Call{{ID: id + "/a", Step: "a", Process: "ask", Agent: "claude-opus", Root: "/r",
+		Permissions: emptyPermissions(), Environment: []runstore.Variable{},
 		Head: "c1", Content: "t1", Continues: &continues, Inputs: []runstore.Input{{Name: "q", Value: "why", Identity: "d2"}},
 		Result: runstore.CallResult{Outcome: outcome, Session: &session}}}
 	failed := outcome
@@ -196,7 +197,8 @@ func TestAReuseIsWrittenAsTheIDsItReuses(t *testing.T) {
 	record := lost("x")
 	run, call := "r0", "r0/a"
 	record.Request.Reuse = &run
-	record.Calls = []runstore.Call{{ID: "x/a", Step: "a", Reuses: &call, Inputs: []runstore.Input{}}}
+	record.Calls = []runstore.Call{{ID: "x/a", Step: "a", Reuses: &call, Inputs: []runstore.Input{},
+		Permissions: emptyPermissions(), Environment: []runstore.Variable{}}}
 	if err := s.Write(record); err != nil {
 		t.Fatal(err)
 	}

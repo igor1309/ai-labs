@@ -129,6 +129,7 @@ func (d *decoder) yamlNode(n *yaml.Node, place string, origin Origin, what strin
 	switch n.Kind {
 	case yaml.MappingNode:
 		entries := make(map[string]Node, len(n.Content)/2)
+		order := make([]string, 0, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			name, value := n.Content[i], n.Content[i+1]
 			at := Origin{Path: origin.Path, Line: name.Line}
@@ -141,8 +142,9 @@ func (d *decoder) yamlNode(n *yaml.Node, place string, origin Origin, what strin
 				continue
 			}
 			entries[name.Value] = d.yamlNode(value, key(place, name.Value), at, "the key")
+			order = append(order, name.Value)
 		}
-		return NewMap(entries, origin)
+		return Node{kind: Map, origin: origin, entries: entries, order: order}
 	case yaml.SequenceNode:
 		items := make([]Node, 0, len(n.Content))
 		for i, inner := range n.Content {

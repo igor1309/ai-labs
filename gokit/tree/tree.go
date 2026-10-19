@@ -66,6 +66,7 @@ type Node struct {
 	boolean bool
 	items   []Node
 	entries map[string]Node
+	order   []string
 }
 
 // NewMap is a map of entries, from origin. The map is copied.
@@ -116,6 +117,16 @@ func (n Node) Keys() []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// DeclaredKeys are a map's keys in declaration order where the decoder
+// keeps it (YAML), otherwise sorted. A merged map puts the upper map's
+// keys first, then the keys only the lower map declares.
+func (n Node) DeclaredKeys() []string {
+	if n.order != nil {
+		return slices.Clone(n.order)
+	}
+	return n.Keys()
 }
 
 // Get is a map's value of key, and whether it has one.

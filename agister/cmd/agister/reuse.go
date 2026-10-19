@@ -47,7 +47,8 @@ type reusable struct {
 
 // taken is the earlier call that ended's call takes: of the same step,
 // completed, of the same process and agent, given inputs of the same names,
-// in the same order, with the same identities, its root the worktree's,
+// in the same order, with the same identities, and the same process
+// environment, variable for variable; its root the worktree's,
 // and the worktree's HEAD and content, not empty, its own; false for none.
 func (r reusable) taken(ctx context.Context, ended endedCall) (runstore.Call, bool, error) {
 	i := slices.IndexFunc(r.calls, func(c runstore.Call) bool { return c.Step == ended.step })
@@ -56,7 +57,8 @@ func (r reusable) taken(ctx context.Context, ended endedCall) (runstore.Call, bo
 	}
 	earlier := r.calls[i]
 	if earlier.Result.Status != string(workflow.Completed) || earlier.Process != ended.process ||
-		earlier.Agent != ended.agent || !sameDefinitions(earlier.Definitions, ended.definitions) || earlier.Root != r.root || earlier.Content == "" || leftHead(earlier) == "" ||
+		earlier.Agent != ended.agent || !sameDefinitions(earlier.Definitions, ended.definitions) ||
+		!slices.Equal(earlier.Environment, ended.environment) || earlier.Root != r.root || earlier.Content == "" || leftHead(earlier) == "" ||
 		!slices.EqualFunc(earlier.Inputs, ended.inputs, func(kept runstore.Input, given givenInput) bool {
 			return kept.Name == given.name && kept.Identity == given.Identity
 		}) {
