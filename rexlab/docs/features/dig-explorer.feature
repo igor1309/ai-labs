@@ -2,7 +2,10 @@ Feature: Dig: Explorer finds three details
   Explorer adds looking for a shown detail: three find cards beside the
   sand, each a round close-up of a spot of the dinosaur
   (dig-spots.feature), found in any order. The child still brushes
-  where they like.
+  where they like. The small star of a found detail counts towards
+  nothing: the round's one star is its dinosaur's (dig-reveal.feature).
+  Help counts only time the round shows, in landscape with the app
+  shown, as the skeleton game's help does.
 
   Background:
     Given an iPad in landscape

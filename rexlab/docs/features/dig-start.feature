@@ -35,12 +35,13 @@ Feature: Dig: starting a round and the board
     Then the title reads "DIG" with the 🖌️ symbol
     When a Paleontologist round starts
     Then the title reads "WHO IS IT?" with the 🖌️ symbol
+    And on the reveal, at every level, the title reads "DIG" with the 🖌️ symbol
 
   Scenario: A round digs up a dinosaur not dug up yet
     Given I have dug up 4 of the dinosaurs
     When a round starts
     Then its dinosaur is one of the other 38, at random
-    But once I have dug up every dinosaur, a round digs up any of them but the last round's
+    But once I have dug up every dinosaur, a round digs up any of them but the last round finished while the app is open
 
   Scenario: The sand covers the whole picture at the start
     When a round starts

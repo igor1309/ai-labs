@@ -66,8 +66,9 @@ The one interaction at every level.
   kind with its word over a disc of sand with a 🔍, and shows its
   close-up once the spot is found, so the detail is dug up, not copied
   from the card.
-- **Paleontologist's choice.** The clues take a telling trait first,
-  where the dinosaur has one. The 3 pictures are the dinosaur and two
+- **Paleontologist's choice.** The clues are as many of the
+  dinosaur's telling spots as it has, up to 3, then others, in a random
+  order. The 3 pictures are the dinosaur and two
   others that each lack one of the clues' telling traits, so the clues
   tell it apart; with no telling clue, any two others.
 
@@ -85,7 +86,7 @@ The one interaction at every level.
   when it grows; it is the same at every level (`age-levels.md`, "Same
   rewards"). The last dinosaur dug up adds a 🏆 to the card.
 - **Explorer and Paleontologist** also pop a small star for each detail
-  found. Paleontologist's dinosaur named at the first pick earns its
+  found, which counts towards nothing. Paleontologist's dinosaur named at the first pick earns its
   🦴 badge, shown on the "DUG UP" card of its reveals.
 - **The result.** The reveal is the result: the level switch above
   "DIG AGAIN" with 🔄, and "HOME" with 🏠, as the sorting game's.

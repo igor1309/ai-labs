@@ -2,9 +2,12 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
   Paleontologist adds order and deduction, never speed: three clues,
   spots of the unnamed dinosaur (dig-spots.feature), come one at a
   time, and once all three are found the child names the dinosaur from
-  three body pictures. A round's clues take a telling kind
-  (dig-spots.feature) among its spots first, where the dinosaur has
-  one, so the clues can tell it from the others. A clue card names its
+  three body pictures. A round's clues are as many of its telling spots
+  (dig-spots.feature) as it has, up to three, then others at random,
+  coming in a random order, so the clues can tell it from the others.
+  Small stars and help are as Explorer's (dig-explorer.feature). During
+  the choice the board takes no brushing; sand brushed off past the
+  clues before it is an accepted cost. A clue card names its
   kind with its word over a disc of sand with a 🔍, and shows its
   close-up of the picture only once its spot is found, so the detail is
   seen by digging it up, not on the card.
@@ -45,7 +48,7 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
 
   Scenario Outline: The two other dinosaurs each lack a telling clue
     Given the clues are <clues>
-    Then each of the other two dinosaurs lacks <lacks> among its telling traits
+    Then each of the other two dinosaurs lacks <lacks> among its telling traits, and the clues come in a random order
 
     Examples:
       | clues             | lacks          |

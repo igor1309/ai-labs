@@ -17,7 +17,8 @@ Feature: Dig: stored progress
     Given I have dug up 4 dinosaurs
     And I am in a round with all but the gust done
     When I tap "HOME"
-    Then I have still dug up 4 dinosaurs, and the round counts towards no offer
+    Then I have still dug up 4 dinosaurs
+    And the level offer's count of strong rounds is as it was before that round, neither grown nor restarted
 
   Scenario: Other games' progress is kept
     Given stored progress of every other game from before the dig game

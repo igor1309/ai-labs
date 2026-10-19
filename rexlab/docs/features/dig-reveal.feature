@@ -41,6 +41,11 @@ Feature: Dig: the reveal and its star
     Then I see the new best score celebration, "42/42" and a 🏆 on the "DUG UP" card
     And every later reveal shows "42/42" with the 🏆
 
+  Scenario: The reveal takes taps once its star has landed
+    Given I am dabbing the sand as the gust blows
+    When I tap where "DIG AGAIN" or the level switch shows, before the star has landed on the "DUG UP" card
+    Then nothing happens, and once the star has landed the next tap works
+
   Scenario: Home from the reveal returns to the home page
     Given I am on the reveal
     When I tap "HOME"
@@ -48,8 +53,8 @@ Feature: Dig: the reveal and its star
 
   Scenario Outline: The reveal fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
-    When I see a reveal of PACHYCEPHALOSAURUS with a new best on a 1024 by 768 screen
-    Then the name, the "<dug>" card with its count and "<new>", the switch, "<again>" and "<home>" all show with no scrolling
+    When I see the reveal of PACHYCEPHALOSAURUS, the 42nd dug up, named at the first pick, on a 1024 by 768 screen
+    Then the name, the "<dug>" card with its count, "<new>", the 🏆 and the 🦴 badge, the switch, "<again>" and "<home>" all show with no scrolling
     And the name shows whole on one line, as large as fits
     And every word keeps at least 4.5:1 contrast with its background
 

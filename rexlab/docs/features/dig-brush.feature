@@ -3,9 +3,13 @@ Feature: Dig: the brush, and Hatchling's free brushing
   dinosaur's body picture. The sand counts in cells, 40 by 30 over the
   picture's 800 by 600 frame; only the cells over the dinosaur, where
   its picture shows, count towards uncovering it. A cell is clear once
-  the brush has passed over more than half of it. At Hatchling the
+  more than half of it has lain under the brush's full width; the soft
+  edge is only how the brush looks. At Hatchling the
   child brushes freely, and once 70% of the dinosaur's cells are clear
-  the rest of the sand blows away in one gust. The brush is a component
+  the rest of the sand blows away in one gust. Taps on the sand go
+  through the double-tap filter (double-tap.feature); an accepted cost is
+  that a stroke begun within 500 ms and 100 px of a tap's release
+  brushes nothing. The brush is a component
   of its own, so the skeleton game's dig (LAB-283) can brush the same
   sand.
 
@@ -28,7 +32,8 @@ Feature: Dig: the brush, and Hatchling's free brushing
     Given a Hatchling round has started
     When I tap the sand, and tap again 600 ms after the release, 50 px away
     Then two spots clear
-    But a second tap less than 500 ms after the first and less than 100 px from it clears nothing, as double-tap.feature says
+    But a press less than 500 ms after a tap's release and less than 100 px from it clears nothing, its whole touch, as double-tap.feature says
+    And a stroke begun after a drag is never swallowed, as a drag opens no window
 
   Scenario Outline: The brush is a size a finger can steer
     Given a <level> round has started
