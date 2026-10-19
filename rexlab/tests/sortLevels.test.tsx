@@ -102,11 +102,11 @@ describe.each(LEVELS)("the $name board", (level) => {
     expect([symbolsOf(mark), words(mark)]).toEqual([level.third.pictures, level.third.words]);
   });
 
-  it.each(LANGUAGES)("lays its cards out in %s as the design does: one row up to eight cards, otherwise two rows of five", (language) => {
+  it.each(LANGUAGES)("lays its cards out in %s as the design does: one row up to six cards, otherwise two rows of equal length", (language) => {
     openBoard(dealt(level), language);
 
     const columns = Number(tray(language).style.getPropertyValue("--columns"));
-    expect([getComputedStyle(tray(language)).display, columns, Math.ceil(cards / columns)]).toEqual(["grid", cards > 8 ? 5 : cards, cards > 8 ? 2 : 1]);
+    expect([getComputedStyle(tray(language)).display, columns, Math.ceil(cards / columns)]).toEqual(["grid", cards > 6 ? cards / 2 : cards, cards > 6 ? 2 : 1]);
   });
 
   it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(

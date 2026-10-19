@@ -14,8 +14,8 @@ const Horn = createLucideIcon("horn", [["path", { d: "M5 20C5 12 11 5 19 3C14 7 
 const DRAG_START = 8;
 
 // The most cards the tray lays out in one row; more go in two rows of
-// equal length.
-const ROW_CARDS = 8;
+// equal length, so eight cards on a 1024-wide screen still read.
+const ROW_CARDS = 6;
 
 export type SortCardView = {
   id: string;
