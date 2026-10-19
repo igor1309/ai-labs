@@ -66,3 +66,15 @@ describe.each(SCREENS)("every picture of %s", (_, element, places) => {
     expect(looks().every(([, , src]) => asked.includes(src ?? ""))).toBe(true);
   });
 });
+
+describe("the item given", () => {
+  // Its picture's own height, 300, would stretch the square box it flies
+  // in, unless app.css sets the height to follow the width.
+  it("keeps its picture square, its height following its width", () => {
+    const rule = [...document.styleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((each): each is CSSStyleRule => each instanceof CSSStyleRule && each.selectorText === ".given-picture");
+
+    expect([rule?.style.height, rule?.style.aspectRatio]).toEqual(["auto", "1 / 1"]);
+  });
+});
