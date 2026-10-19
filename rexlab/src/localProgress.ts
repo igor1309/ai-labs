@@ -1,6 +1,7 @@
 import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import type { FeaturedHistory, Featuring } from "./featured.ts";
+import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
@@ -42,18 +43,18 @@ function readRounds({ bestScore, roundsPlayed }: Entry) {
 // Find the pair's progress and the child's last choice on its level
 // switch, beside the others in the same record.
 export function localPairsProgress(storage: () => KeyValueStorage) {
-  const entry = gameProgress<StoredPairs>(storage, "find-the-pair", storedPairs(NO_PAIRS, undefined), readPairs);
+  const entry = gameProgress<StoredPairs>(storage, "find-the-pair", storedPairs(NO_PAIRS, undefined, NO_LEVEL_OFFER), readPairs);
   return {
     // Undefined when storage cannot be read at all.
-    load(): { progress: PairsProgress; levelChoice: LevelChoice | undefined } | undefined {
+    load(): { progress: PairsProgress; levelChoice: LevelChoice | undefined; offer: LevelOffer } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
-      const { level, boardsOnLevel, levelChoice, ...rest } = stored;
-      return { progress: { ...rest, climbLevel: level, boardsOnClimbLevel: boardsOnLevel }, levelChoice };
+      const { level, boardsOnLevel, levelChoice, offer, ...rest } = stored;
+      return { progress: { ...rest, climbLevel: level, boardsOnClimbLevel: boardsOnLevel }, levelChoice, offer };
     },
 
-    save({ progress, levelChoice }: { progress: PairsProgress; levelChoice: LevelChoice | undefined }): void {
-      entry.save(storedPairs(progress, levelChoice));
+    save({ progress, levelChoice, offer }: { progress: PairsProgress; levelChoice: LevelChoice | undefined; offer: LevelOffer }): void {
+      entry.save(storedPairs(progress, levelChoice, offer));
     }
   };
 }
@@ -72,13 +73,14 @@ type StoredPairs = {
   best: PairsProgress["best"];
   found: readonly string[];
   levelChoice?: LevelChoice;
+  offer: LevelOffer;
 };
 
-function storedPairs({ climbLevel, boardsOnClimbLevel, ...rest }: PairsProgress, levelChoice: LevelChoice | undefined): StoredPairs {
-  return { ...rest, level: climbLevel, boardsOnLevel: boardsOnClimbLevel, ...(levelChoice && { levelChoice }) };
+function storedPairs({ climbLevel, boardsOnClimbLevel, ...rest }: PairsProgress, levelChoice: LevelChoice | undefined, offer: LevelOffer): StoredPairs {
+  return { ...rest, level: climbLevel, boardsOnLevel: boardsOnClimbLevel, ...(levelChoice && { levelChoice }), offer };
 }
 
-function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice }: Entry): StoredPairs | undefined {
+function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice, offer }: Entry): StoredPairs | undefined {
   const usable =
     isCount(stars) &&
     isClimbLevel(level) &&
@@ -88,10 +90,18 @@ function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice }: En
     Array.isArray(found) &&
     found.every((id) => typeof id === "string");
   if (!usable) return undefined;
-  const progress = { stars, level, boardsOnLevel, best: { ...best }, found: [...found] };
+  const progress = { stars, level, boardsOnLevel, best: { ...best }, found: [...found], offer: readOffer(offer) };
   if (levelChoice === undefined) return progress;
   const choice = choiceOf(levelChoice);
   return choice && { ...progress, levelChoice: choice };
+}
+
+// An optional offer must never make otherwise readable progress unusable.
+function readOffer(raw: unknown): LevelOffer {
+  if (!isObject(raw)) return NO_LEVEL_OFFER;
+  const { level, strong, declined } = raw;
+  if (!(level === null || isAgeLevel(level)) || !isCount(strong) || (level === null && strong !== 0) || !Array.isArray(declined) || !declined.every(isAgeLevel)) return NO_LEVEL_OFFER;
+  return { level, strong, declined: [...new Set(declined)] };
 }
 
 // A choice is an age level and the revision it was made under, null while
