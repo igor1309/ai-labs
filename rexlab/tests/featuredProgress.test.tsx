@@ -260,7 +260,6 @@ describe("starting a game", () => {
 type Start = [start: string, game: HomeGame, way: Array<() => HTMLElement>, begin: () => HTMLElement];
 
 const WAITING: Start[] = [
-  ["a sorting round", "sort", [], () => homeTile("SORT")],
   ["a skeleton puzzle", "skeletons", [() => homeTile("SKELETONS")], () => firstIn("DINOSAURS")],
   ["a skeleton rebuilt", "skeletons", [() => homeTile("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")]
 ];
@@ -292,7 +291,9 @@ describe("a start that waits for its pictures", () => {
 const AT_ONCE: Start[] = [
   ["a care visit", "care", [() => homeTile("CARE")], () => button("NEW VISITOR")],
   ["a friend called back", "care", [() => homeTile("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
-  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")]
+  ["a board", "pairs", [() => homeTile("FIND THE PAIR")], () => button("PLAY")],
+  ["a sorting round", "sort", [], () => homeTile("SORT")],
+  ["a sorting round over a board left unfinished", "sort", [() => homeTile("SORT"), () => button("HOME")], () => homeTile("SORT")]
 ];
 
 describe("a start that does not wait for its pictures", () => {
@@ -302,6 +303,7 @@ describe("a start that does not wait for its pictures", () => {
     const { user } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({}, PLAYED) }), { clock: pictures, startCounter });
     loadShownPictures(pictures);
     for (const step of way) await user.click(step());
+    const before = counted.length;
     const starting = begin();
 
     act(() => {
@@ -309,9 +311,47 @@ describe("a start that does not wait for its pictures", () => {
       starting.click();
     });
 
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
     act(() => pictures.finishAll());
-    expect(counted).toEqual([game]);
+    expect(counted.slice(before)).toEqual([game]);
+  });
+});
+
+// Each way a sorting round starts, the game featured meanwhile, the steps
+// on the way and the button that starts it.
+const SORT_STARTS: Array<[start: string, featured: HomeGame, way: (user: UserEvent) => Promise<void>, begin: () => HTMLElement]> = [
+  ["SORT", "compare", async () => {}, () => homeTile("SORT")],
+  ["the featured card", "sort", async () => {}, () => featuredCard()],
+  [
+    "PLAY AGAIN",
+    "compare",
+    async (user) => {
+      await user.click(homeTile("SORT"));
+      await sortByTrying(user);
+      await user.click(button("SEE RESULT"));
+    },
+    () => button("PLAY AGAIN")
+  ]
+];
+
+describe("a sorting round started twice before React renders", () => {
+  it.each(SORT_STARTS)("starts one fresh round from %s, counted once", async (_, game, way, begin) => {
+    const pictures = manualPictures();
+    const { counted, startCounter } = countedStarts();
+    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game } } } }) });
+    const { user } = openApp(storage, { clock: pictures, startCounter });
+    loadShownPictures(pictures);
+    await way(user);
+    const before = counted.length;
+    const starting = begin();
+
+    act(() => {
+      starting.click();
+      starting.click();
+    });
+
+    const cards = within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+    expect([counted.slice(before), cards.map((card) => card.getAttribute("aria-pressed"))]).toEqual([["sort"], Array<string>(6).fill("false")]);
   });
 });
 

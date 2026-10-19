@@ -6,6 +6,7 @@
 
 ## 2026-10-18
 
+- Sorting no longer waits for pictures: a round starts at once, each card named over its picture's shimmer until it fades in, and sorted the same while its picture loads or is missing (LAB-307).
 - Care and find the pair no longer wait for pictures: a visit and a board start at once, each picture shimmering until it fades in; a turned card shows its dinosaur's name until its picture shows, and a missing picture shows footprints (LAB-306).
 - Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).
 - A level switch on find the pair's welcome screen starts at the age level and keeps the child's choice until a parent picks a different level (LAB-296).

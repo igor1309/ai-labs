@@ -49,10 +49,10 @@ Feature: Home page: the featured card and the tiles
     And <game> counts one more start
 
     Examples:
-      | game          | destination                                    |
-      | COMPARE       | question "1/10"                                |
-      | ALL DINOSAURS | the dinosaur list                              |
-      | SORT          | a sorting round, once its pictures have loaded |
+      | game          | destination                                               |
+      | COMPARE       | question "1/10"                                           |
+      | ALL DINOSAURS | the dinosaur list                                         |
+      | SORT          | a sorting round, at once, whatever its pictures are doing |
 
 
   Scenario Outline: The featured card opens a game's first screen

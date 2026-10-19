@@ -1,7 +1,6 @@
 import { useCallback, useRef } from "react";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -21,17 +20,11 @@ export type SortingGameProps = {
   sortingProgress: SortingProgressStore;
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
-  loadPicture: LoadPicture;
-  startTimer: StartTimer;
 };
 
 // The dinosaur cheering the child on at the end of a board, as on the
 // quiz's result.
 const HERO = "tyrannosaurus";
-
-// The longest a board waits for its pictures, in milliseconds, as a
-// question does for its pictures.
-const PICTURE_WAIT = 1000;
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
@@ -46,7 +39,7 @@ export function transitionFor(from: SortingScreen | undefined, to: SortingScreen
 // until a board is started. `onHome` takes the child back to the home
 // page; `onStart` is told as each board begins.
 export function useSortingGame(
-  { sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }: SortingGameProps,
+  { sortables, sortingProgress, bodyPicture, random }: SortingGameProps,
   onHome: () => void,
   onStart: () => void
 ) {
@@ -54,42 +47,22 @@ export function useSortingGame(
   // The board last shown, so the next one sorts by another property. It
   // is kept only while the app is open.
   const last = useRef<Sorting | undefined>(undefined);
-  // A board being started while its pictures load: a second tap meanwhile
-  // starts nothing more.
-  const starting = useRef(false);
-  // Counts each time the child leaves the game or a board being started is
-  // cancelled, so pictures that finish loading after the child has gone
-  // elsewhere show no board.
-  const stay = useRef(0);
 
-  // A new board shows once its six pictures are ready, or the wait runs
-  // out, so none pops in. `shown` runs in the same screen change, so the
-  // owner can bring the game on screen with its board.
+  // A new board shows at once, its pictures shimmering until they load,
+  // and only over the screen it was asked from, so a second tap in the
+  // same moment starts nothing more. `shown` runs in the same screen
+  // change, so the owner can bring the game on screen with its board.
   const start = (shown?: () => void) => {
-    if (starting.current) return;
-    starting.current = true;
-    const visiting = stay.current;
+    const from = screen;
     const sorting = startBoard(sortables, random, last.current);
-    const pictures = boardState(sorting).cards.map(({ dinosaur }) => bodyPicture(dinosaur.id));
-    waitForPictures(pictures, { loadPicture, startTimer, limit: PICTURE_WAIT }, () => {
-      if (stay.current !== visiting) return;
-      starting.current = false;
-      last.current = sorting;
-      onStart();
-      go({ kind: "board", sorting }, { intent: "start", also: shown });
+    go((current) => (current === from ? { kind: "board", sorting } : current), {
+      intent: "start",
+      also: () => {
+        last.current = sorting;
+        onStart();
+        shown?.();
+      }
     });
-  };
-
-  // Drops the board being started, if any: its pictures, once ready, show
-  // nothing, and the next start waits for its own.
-  const cancel = () => {
-    stay.current++;
-    starting.current = false;
-  };
-
-  const home = () => {
-    cancel();
-    onHome();
   };
 
   // Each drop moves from the board as it is, not as last rendered, so a
@@ -120,7 +93,7 @@ export function useSortingGame(
             language={language}
             {...presentBoard(boardState(sorting), language, bodyPicture)}
             onDrop={onDrop}
-            onHome={home}
+            onHome={onHome}
             onSeeResult={() => seeResult(sorting)}
           />
         );
@@ -132,11 +105,11 @@ export function useSortingGame(
             {...presentSortingResult(screen.result)}
             hero={bodyPicture(HERO)}
             onPlayAgain={() => start()}
-            onHome={home}
+            onHome={onHome}
           />
         );
     }
   };
 
-  return { start, cancel, content };
+  return { start, content };
 }

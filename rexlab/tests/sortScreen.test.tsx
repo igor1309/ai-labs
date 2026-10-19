@@ -1,10 +1,11 @@
 import { act, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { boardState, score, type CardState, type Property, type Sorting } from "../src/sorting/index.ts";
 import { AWAY, basketButton, centreOf, dragTo, latest, layOutBaskets, openBoard, otherBasket, tray, trayCard } from "./sorting.tsx";
-import { fakeBodyPicture, sortingBy, symbolOf, words } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
+import { fakeBodyPicture, manualPictures, sortingBy, symbolOf, words, type ManualPictures } from "./support.ts";
 
 const cardsOf = (sorting: Sorting) => boardState(sorting).cards;
 
@@ -90,7 +91,8 @@ describe("a new board", () => {
         onDrop={nothing}
         onHome={nothing}
         onSeeResult={nothing}
-      />
+      />,
+      withPictures
     );
 
     const names = [...document.querySelectorAll<HTMLElement>(".sort-name, .sorted-name")];
@@ -239,6 +241,100 @@ describe("dragging a card", () => {
     ]);
 
     expect(boardState(latest(opened)).landed.map(({ dinosaur }) => dinosaur.id)).toEqual([first.dinosaur.id]);
+  });
+});
+
+// How a card's picture is not shown: still loading, or failed. A sorted
+// card is a place of its own, so a failed picture is loaded again there.
+const NOT_SHOWN = [
+  ["still loading", () => {}, (pictures: ManualPictures, url: string) => pictures.finish(url), ["loading", "appearing"]],
+  ["failed", (pictures: ManualPictures, url: string) => pictures.fail(url), (pictures: ManualPictures, url: string) => pictures.fail(url), ["loading", "failed"]]
+] as const;
+
+// Each way a card is moved to a basket.
+const MOVES = [
+  ["a drag", async (user: UserEvent, sorting: Sorting, card: HTMLElement, basket: Basket) => dragTo(user, card, centreOf(sorting, basket))],
+  [
+    "taps",
+    async (user: UserEvent, _: Sorting, card: HTMLElement, basket: Basket) => {
+      await user.click(card);
+      await user.click(basketButton(basket));
+    }
+  ]
+] as const;
+
+const lookIn = (element: Element | null) => element?.querySelector<HTMLElement>(".picture")?.dataset.picture;
+
+describe("a card whose picture is not shown", () => {
+  it("shows the failure look on the tray once its picture has failed, its name below", () => {
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    openBoard(sorting, "en", pictures);
+    const card = nthCard(sorting, 1);
+
+    act(() => pictures.fail(fakeBodyPicture(card.dinosaur.id)));
+
+    const shown = trayCard(card);
+    expect([lookIn(shown), words(shown.querySelector(".sort-name") as HTMLElement)]).toEqual(["failed", card.dinosaur.name.en.toUpperCase()]);
+  });
+
+  it.each(NOT_SHOWN.flatMap((shown) => MOVES.map((move) => [...shown, ...move] as const)))(
+    "lands, its picture %s, in its right basket by %s, named and counted right, its place there shimmering, then as the picture ends",
+    async (_, before, after, looks, __, move) => {
+      const user = userEvent.setup();
+      const pictures = manualPictures();
+      const sorting = sortingBy("diet");
+      const opened = openBoard(sorting, "en", pictures);
+      layOutBaskets(sorting);
+      const card = nthCard(sorting, 1);
+      const url = fakeBodyPicture(card.dinosaur.id);
+      act(() => before(pictures, url));
+      const right = card.basket as Basket;
+
+      await move(user, sorting, trayCard(card), right);
+
+      const sorted = basketButton(right).querySelector(".sorted-card");
+      expect([sortedIn(right), score(latest(opened)), lookIn(sorted)]).toEqual([[card.dinosaur.name.en.toUpperCase()], 1, looks[0]]);
+      act(() => after(pictures, url));
+      expect(lookIn(sorted)).toBe(looks[1]);
+    }
+  );
+
+  it.each(NOT_SHOWN)("slides back to its place on a miss, its picture %s, named and hinted, its place shimmering, and glows its right basket", async (_, before, after, looks) => {
+    const user = userEvent.setup();
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    openBoard(sorting, "en", pictures);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 1);
+    const url = fakeBodyPicture(card.dinosaur.id);
+    act(() => before(pictures, url));
+    const right = card.basket as Basket;
+
+    await dragTo(user, trayCard(card), centreOf(sorting, otherBasket(sorting, right)));
+
+    const back = trayCard(card);
+    expect([back.hasAttribute("data-returning"), words(back.querySelector(".sort-name") as HTMLElement), back.querySelector(".sort-hint")?.getAttribute("data-basket"), lookIn(back)]).toEqual([true, card.dinosaur.name.en.toUpperCase(), right, looks[0]]);
+    expect(basketButton(right).querySelector(".basket-glow")).not.toBeNull();
+    act(() => after(pictures, url));
+    expect(lookIn(trayCard(card))).toBe(looks[1]);
+  });
+
+  it.each(NOT_SHOWN)("slides back to its place when let go away from the baskets, its picture %s, its place shimmering, and nothing counts", async (_, before, after, looks) => {
+    const user = userEvent.setup();
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    const opened = openBoard(sorting, "en", pictures);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 1);
+    const url = fakeBodyPicture(card.dinosaur.id);
+    act(() => before(pictures, url));
+
+    await dragTo(user, trayCard(card), AWAY);
+
+    expect([trayCard(card).hasAttribute("data-returning"), lookIn(trayCard(card)), opened.seen]).toEqual([true, looks[0], [sorting]]);
+    act(() => after(pictures, url));
+    expect(lookIn(trayCard(card))).toBe(looks[1]);
   });
 });
 

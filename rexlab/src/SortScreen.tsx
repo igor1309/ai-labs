@@ -2,6 +2,7 @@ import { Check, createLucideIcon, Drumstick, Feather, Footprints, House, Leaf, S
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 
 export type Basket = keyof Texts["baskets"];
 
@@ -191,7 +192,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
                 onClick={tapCard(card.id)}
               >
                 <span className="sort-art">
-                  <img className="sort-picture" src={card.picture} alt={card.name} width={800} height={600} draggable={false} />
+                  <Picture className="sort-picture" src={card.picture} alt={card.name} width={800} height={600} />
                   {card.hint && (
                     <span className="sort-hint" data-basket={card.hint} role="img" aria-label={text.baskets[card.hint]}>
                       <BasketSymbol basket={card.hint} size={22} />
@@ -240,7 +241,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               {cards.map((card) => (
                 <span key={card.id} className="sorted-card">
                   <span className="sorted-art">
-                    <img className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} draggable={false} />
+                    <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
                     <span className="sorted-check" role="img" aria-label={text.marks.correct}>
                       <Check size={20} strokeWidth={3} />
                     </span>
