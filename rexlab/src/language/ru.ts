@@ -106,5 +106,6 @@ export const ru: Texts = {
   stands: "СТЕНДЫ",
   build: "СОБРАТЬ",
   rebuild: "СОБРАТЬ ЗАНОВО",
-  keepBuilding: "ДОСТРОИТЬ"
+  keepBuilding: "ДОСТРОИТЬ",
+  spotKinds: { eye: "ГЛАЗ", foot: "ЛАПА", tail: "ХВОСТ", horn: "РОГ", plate: "ПЛАСТИНА", claw: "КОГОТЬ", crest: "ГРЕБЕНЬ", sail: "ПАРУС", frill: "ВОРОТНИК", beak: "КЛЮВ" }
 };

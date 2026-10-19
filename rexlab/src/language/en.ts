@@ -102,5 +102,6 @@ export const en: Texts = {
   stands: "STANDS",
   build: "BUILD",
   rebuild: "REBUILD",
-  keepBuilding: "CONTINUE"
+  keepBuilding: "CONTINUE",
+  spotKinds: { eye: "EYE", foot: "FOOT", tail: "TAIL", horn: "HORN", plate: "PLATE", claw: "CLAW", crest: "CREST", sail: "SAIL", frill: "FRILL", beak: "BEAK" }
 };
