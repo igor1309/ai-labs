@@ -3,9 +3,14 @@ import type { Language } from "../language/language.ts";
 // A piece's home on the outline, in pixels of the skeleton's frame.
 export type Place = { x: number; y: number; width: number; height: number };
 
+// The parts of a body a piece of skeleton belongs to, head to tail.
+export const BODY_AREAS = ["head", "neck", "back", "hips", "legs", "tail"] as const;
+
+export type BodyArea = (typeof BODY_AREAS)[number];
+
 // A piece of a skeleton: its id, which is also its picture's name and is
-// unique in its cut, its name, and its home on the outline.
-export type Piece = { id: string; name: Record<Language, string>; place: Place };
+// unique in its cut, its name, its body area and its home on the outline.
+export type Piece = { id: string; name: Record<Language, string>; area: BodyArea; place: Place };
 
 // A skeleton cut into pieces, in the order the tray shows them.
 export type Cut = readonly Piece[];

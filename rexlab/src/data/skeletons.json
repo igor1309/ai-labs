@@ -13,6 +13,7 @@
         "hatchling": [
           {
             "id": "skull",
+            "area": "head",
             "name": {
               "en": "SKULL",
               "ru": "ЧЕРЕП"
@@ -24,6 +25,7 @@
           },
           {
             "id": "spine",
+            "area": "back",
             "name": {
               "en": "SPINE",
               "ru": "ПОЗВОНОЧНИК"
@@ -35,6 +37,7 @@
           },
           {
             "id": "legs",
+            "area": "legs",
             "name": {
               "en": "LEGS",
               "ru": "НОГИ"
@@ -46,6 +49,93 @@
           },
           {
             "id": "tail",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 565,
+            "y": 266,
+            "width": 225,
+            "height": 89
+          }
+        ],
+        "explorer": [
+          {
+            "id": "skull",
+            "area": "head",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 6,
+            "y": 44,
+            "width": 231,
+            "height": 195
+          },
+          {
+            "id": "neck",
+            "area": "neck",
+            "name": {
+              "en": "NECK AND ARMS",
+              "ru": "ШЕЯ И ЛАПЫ"
+            },
+            "x": 170,
+            "y": 68,
+            "width": 130,
+            "height": 295
+          },
+          {
+            "id": "back",
+            "area": "back",
+            "name": {
+              "en": "BACK AND RIBS",
+              "ru": "СПИНА И РЁБРА"
+            },
+            "x": 300,
+            "y": 146,
+            "width": 231,
+            "height": 236
+          },
+          {
+            "id": "hips",
+            "area": "hips",
+            "name": {
+              "en": "HIPS",
+              "ru": "ТАЗ"
+            },
+            "x": 425,
+            "y": 240,
+            "width": 140,
+            "height": 95
+          },
+          {
+            "id": "left-leg",
+            "area": "legs",
+            "name": {
+              "en": "LEFT LEG",
+              "ru": "ЛЕВАЯ НОГА"
+            },
+            "x": 149,
+            "y": 318,
+            "width": 194,
+            "height": 245
+          },
+          {
+            "id": "right-leg",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT LEG",
+              "ru": "ПРАВАЯ НОГА"
+            },
+            "x": 427,
+            "y": 335,
+            "width": 212,
+            "height": 234
+          },
+          {
+            "id": "tail",
+            "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
@@ -67,6 +157,7 @@
         "hatchling": [
           {
             "id": "skull",
+            "area": "head",
             "name": {
               "en": "SKULL",
               "ru": "ЧЕРЕП"
@@ -78,6 +169,7 @@
           },
           {
             "id": "spine",
+            "area": "back",
             "name": {
               "en": "SPINE",
               "ru": "ПОЗВОНОЧНИК"
@@ -89,6 +181,7 @@
           },
           {
             "id": "legs",
+            "area": "legs",
             "name": {
               "en": "LEGS",
               "ru": "НОГИ"
@@ -100,6 +193,81 @@
           },
           {
             "id": "tail",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 640,
+            "y": 329,
+            "width": 155,
+            "height": 89
+          }
+        ],
+        "explorer": [
+          {
+            "id": "face",
+            "area": "head",
+            "name": {
+              "en": "FACE AND HORNS",
+              "ru": "МОРДА И РОГА"
+            },
+            "x": 8,
+            "y": 76,
+            "width": 359,
+            "height": 267
+          },
+          {
+            "id": "frill",
+            "area": "head",
+            "name": {
+              "en": "FRILL",
+              "ru": "ВОРОТНИК"
+            },
+            "x": 201,
+            "y": 34,
+            "width": 205,
+            "height": 213
+          },
+          {
+            "id": "spine",
+            "area": "back",
+            "name": {
+              "en": "BACK AND RIBS",
+              "ru": "СПИНА И РЁБРА"
+            },
+            "x": 253,
+            "y": 178,
+            "width": 387,
+            "height": 220
+          },
+          {
+            "id": "front-legs",
+            "area": "legs",
+            "name": {
+              "en": "FRONT LEGS",
+              "ru": "ПЕРЕДНИЕ НОГИ"
+            },
+            "x": 117,
+            "y": 240,
+            "width": 303,
+            "height": 327
+          },
+          {
+            "id": "hind-legs",
+            "area": "legs",
+            "name": {
+              "en": "HIND LEGS",
+              "ru": "ЗАДНИЕ НОГИ"
+            },
+            "x": 420,
+            "y": 235,
+            "width": 239,
+            "height": 315
+          },
+          {
+            "id": "tail",
+            "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
@@ -121,6 +289,7 @@
         "hatchling": [
           {
             "id": "skull",
+            "area": "head",
             "name": {
               "en": "SKULL",
               "ru": "ЧЕРЕП"
@@ -132,6 +301,7 @@
           },
           {
             "id": "spine",
+            "area": "back",
             "name": {
               "en": "SPINE",
               "ru": "ПОЗВОНОЧНИК"
@@ -143,6 +313,7 @@
           },
           {
             "id": "legs",
+            "area": "legs",
             "name": {
               "en": "LEGS",
               "ru": "НОГИ"
@@ -154,6 +325,7 @@
           },
           {
             "id": "tail",
+            "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
@@ -162,6 +334,92 @@
             "y": 218,
             "width": 244,
             "height": 213
+          }
+        ],
+        "explorer": [
+          {
+            "id": "skull",
+            "area": "head",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 4,
+            "y": 220,
+            "width": 143,
+            "height": 133
+          },
+          {
+            "id": "plates",
+            "area": "back",
+            "name": {
+              "en": "PLATES",
+              "ru": "ПЛАСТИНЫ"
+            },
+            "x": 133,
+            "y": 10,
+            "width": 447,
+            "height": 195
+          },
+          {
+            "id": "ribs",
+            "area": "back",
+            "name": {
+              "en": "BACK AND RIBS",
+              "ru": "СПИНА И РЁБРА"
+            },
+            "x": 111,
+            "y": 205,
+            "width": 481,
+            "height": 177
+          },
+          {
+            "id": "front-legs",
+            "area": "legs",
+            "name": {
+              "en": "FRONT LEGS",
+              "ru": "ПЕРЕДНИЕ НОГИ"
+            },
+            "x": 56,
+            "y": 262,
+            "width": 304,
+            "height": 325
+          },
+          {
+            "id": "hind-legs",
+            "area": "legs",
+            "name": {
+              "en": "HIND LEGS",
+              "ru": "ЗАДНИЕ НОГИ"
+            },
+            "x": 360,
+            "y": 278,
+            "width": 266,
+            "height": 296
+          },
+          {
+            "id": "tail-base",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 555,
+            "y": 218,
+            "width": 125,
+            "height": 203
+          },
+          {
+            "id": "spikes",
+            "area": "tail",
+            "name": {
+              "en": "TAIL SPIKES",
+              "ru": "ШИПЫ"
+            },
+            "x": 680,
+            "y": 301,
+            "width": 119,
+            "height": 130
           }
         ]
       }

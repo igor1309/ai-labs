@@ -38,7 +38,7 @@ const px = (value: string) => Number.parseFloat(value) || 0;
 const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
 
 // A cut of these pieces, side by side across the frame.
-const cutOf = (ids: readonly string[]): Cut => ids.map((id, at) => ({ id, name: { en: id.toUpperCase(), ru: id.toUpperCase() }, place: { x: at * 100, y: 0, width: 100, height: 100 } }));
+const cutOf = (ids: readonly string[]): Cut => ids.map((id, at) => ({ id, name: { en: id.toUpperCase(), ru: id.toUpperCase() }, area: "back", place: { x: at * 100, y: 0, width: 100, height: 100 } }));
 
 // The shipped skeletons, Triceratops and Stegosaurus with an Explorer cut
 // of their own and Paleontologist's of Stegosaurus only, as a level's
@@ -65,7 +65,7 @@ describe("the level switch", () => {
   });
 
   it("starts at Explorer while no age level is picked", () => {
-    openSkeletonsApp();
+    openSkeletonsApp({ ageLevels: memoryStorage() });
 
     expect(chosen()).toEqual(["EXPLORER"]);
   });
@@ -82,7 +82,7 @@ describe("the level switch", () => {
   });
 
   it("sets the chosen level apart by more than colour, and gives each level at least 48 by 48 to tap", () => {
-    openSkeletonsApp();
+    openSkeletonsApp({ ageLevels: memoryStorage() });
 
     const styles = within(levelSwitch()).getAllByRole("button").map((level) => getComputedStyle(level));
     expect(styles.map(({ fontWeight }) => fontWeight)).toEqual(["600", "700", "600"]);

@@ -8,6 +8,7 @@ Feature: Skeleton assembly: keeping the collection
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
 
   Scenario: Earned stars and completed exhibits survive reopening
     Given I have finished Tyrannosaurus and Triceratops

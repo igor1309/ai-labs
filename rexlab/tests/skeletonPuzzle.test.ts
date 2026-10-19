@@ -6,7 +6,7 @@ import { SHIPPED_SKELETONS } from "./support.ts";
 const place = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 
 // A cut of these pieces, each at its place, named by its id.
-const cutOf = (places: Readonly<Record<string, Place>>): Cut => Object.entries(places).map(([id, at]) => ({ id, name: { en: id.toUpperCase(), ru: id.toUpperCase() }, place: at }));
+const cutOf = (places: Readonly<Record<string, Place>>): Cut => Object.entries(places).map(([id, at]) => ({ id, name: { en: id.toUpperCase(), ru: id.toUpperCase() }, area: "back", place: at }));
 
 // Homes whose centres are (50, 40), (230, 110), (240, 275) and (390, 150).
 const SKELETON: Skeleton = {

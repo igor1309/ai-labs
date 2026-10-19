@@ -18,7 +18,7 @@ import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
-import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
+import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -344,7 +344,7 @@ const skeletonPuzzle =
   async ({ theme, user }: Walk) => {
     await user.click(screen.getByRole("button", { name: "SKELETONS" }));
     await user.click(screen.getByRole("button", { name }));
-    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);
     expectScreenIn(theme);
   };
 
@@ -355,16 +355,17 @@ async function skeletonAtWork({ theme, user, timers }: Walk) {
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
   layOutPuzzle();
-  fit(stegosaurus, "spine");
-  const spot = spotOf("tail");
+  const [first = "", second = ""] = spotPieces();
+  fit(stegosaurus, second);
+  const spot = spotOf(spotPieces().at(-1) ?? "");
   const { left, top } = spot.getBoundingClientRect();
   press(spot, { clientX: left + 40, clientY: top + 40 });
   moveTo(AWAY);
-  expect([fittedPieces(), lifted()]).toEqual([["spine"], expect.anything()]);
+  expect([fittedPieces(), lifted()]).toEqual([[second], expect.anything()]);
   expectScreenIn(theme);
   release(AWAY);
   for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
-  expect(hints()).toEqual(["slot skull", "spot skull"]);
+  expect(hints()).toEqual([`slot ${first}`, `spot ${first}`]);
   expectScreenIn(theme);
 }
 
@@ -409,7 +410,7 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
   expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "REBUILD" }));
-  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "MUSEUM" }));
   expect(screen.getByRole("button", { name: "CONTINUE" })).toBeDefined();

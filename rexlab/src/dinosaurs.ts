@@ -4,7 +4,7 @@ import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import { LANGUAGES, type Language } from "./language/language.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
-import type { Cut, Place, Skeleton } from "./skeletons/index.ts";
+import { BODY_AREAS, type BodyArea, type Cut, type Place, type Skeleton } from "./skeletons/index.ts";
 import type { Dinosaur as Sortable } from "./sorting/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
@@ -140,19 +140,21 @@ export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
 
 // A cut is the pieces of its level, at least one: each with an id of its
 // own in the cut, never "skeleton", the name of the whole skeleton's
-// picture, its name in every language and its place within the frame.
+// picture, its name in every language, its body area and its place within
+// the frame.
 function readCut(id: string, level: string, pieces: unknown, frame: { width: number; height: number }): Cut {
   if (!Array.isArray(pieces) || pieces.length === 0) throw new Error(`${id} has no ${level} cut: ${JSON.stringify(pieces)}`);
   const ids = new Set<string>();
   return pieces.map((piece: unknown, at) => {
-    const { id: own, name, ...place } = (typeof piece === "object" && piece !== null ? piece : {}) as Record<string, unknown>;
+    const { id: own, name, area, ...place } = (typeof piece === "object" && piece !== null ? piece : {}) as Record<string, unknown>;
     if (!isText(own) || own === "skeleton" || ids.has(own)) throw new Error(`${id}'s ${level} piece ${at + 1} has no id of its own: ${JSON.stringify(own)}`);
     ids.add(own);
     if (!isInEveryLanguage(name)) throw new Error(`${id}'s ${own} has no name in every language: ${JSON.stringify(name)}`);
+    if (!(BODY_AREAS as readonly unknown[]).includes(area)) throw new Error(`${id}'s ${own} has no body area: ${JSON.stringify(area)}`);
     if (!isPlace(place) || place.x + place.width > frame.width || place.y + place.height > frame.height) {
       throw new Error(`${id} has no ${own} in its ${frame.width}×${frame.height} frame: ${JSON.stringify(place)}`);
     }
-    return { id: own, name: { en: name.en, ru: name.ru }, place: { x: place.x, y: place.y, width: place.width, height: place.height } };
+    return { id: own, name: { en: name.en, ru: name.ru }, area: area as BodyArea, place: { x: place.x, y: place.y, width: place.width, height: place.height } };
   });
 }
 

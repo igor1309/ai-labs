@@ -8,7 +8,7 @@ import { skeletonPictures } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
-import { HELP_AFTER, startPuzzle, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
+import { HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
 import { PIECES, placeOf } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS, browserDocument, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
@@ -28,13 +28,15 @@ const NAMED = {
   tail: { en: "TAIL", ru: "ХВОСТ" }
 };
 
+const AREAS = { skull: "head", spine: "back", legs: "legs", tail: "tail" } as const;
+
 const PLACES = { skull: place(0, 0, 100, 80), spine: place(80, 10, 300, 200), legs: place(90, 150, 300, 250), tail: place(380, 120, 20, 60) };
 
 // Hatchling's cut as the file writes it: each piece's id, name and place.
-const FILED = PIECES.map((id) => ({ id, name: NAMED[id], ...PLACES[id] }));
+const FILED = PIECES.map((id) => ({ id, name: NAMED[id], area: AREAS[id], ...PLACES[id] }));
 
 // The same cut as it is read.
-const CUT = PIECES.map((id) => ({ id, name: NAMED[id], place: PLACES[id] }));
+const CUT = PIECES.map((id) => ({ id, name: NAMED[id], area: AREAS[id], place: PLACES[id] }));
 
 const FACT = { en: "TRICERATOPS HAD THREE HORNS.", ru: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА." };
 
@@ -48,7 +50,7 @@ const file = (dinosaurs: SkeletonsFile["dinosaurs"]): SkeletonsFile => ({ frame:
 describe("readSkeletons", () => {
   it("names each skeleton as its dinosaur is named, in the file's order, with its fact, frame and Hatchling's cut", () => {
     const tyrannosaurus = { en: "T. REX HAD TINY ARMS.", ru: "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ." };
-    const three = [FILED[0], FILED[1], { id: "tail", name: NAMED.tail, ...place(0, 300, 400, 100) }];
+    const three = [FILED[0], FILED[1], { id: "tail", name: NAMED.tail, area: "tail", ...place(0, 300, 400, 100) }];
 
     expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { fact: tyrannosaurus, cuts: { hatchling: three } } }))).toEqual([
       { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, frame: { width: 400, height: 400 }, cuts: { hatchling: CUT } },
@@ -57,21 +59,21 @@ describe("readSkeletons", () => {
         name: { en: "Tyrannosaurus", ru: "Тираннозавр" },
         fact: tyrannosaurus,
         frame: { width: 400, height: 400 },
-        cuts: { hatchling: [CUT[0], CUT[1], { id: "tail", name: NAMED.tail, place: place(0, 300, 400, 100) }] }
+        cuts: { hatchling: [CUT[0], CUT[1], { id: "tail", name: NAMED.tail, area: "tail", place: place(0, 300, 400, 100) }] }
       }
     ]);
   });
 
   it("reads a cut of Explorer's and Paleontologist's own beside Hatchling's, and none where the file has none", () => {
-    const two = [FILED[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, ...place(80, 10, 320, 390) }];
+    const two = [FILED[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, area: "back", ...place(80, 10, 320, 390) }];
     const [read] = readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts: { hatchling: FILED, paleontologist: two } } }));
 
-    expect(read?.cuts).toEqual({ hatchling: CUT, paleontologist: [CUT[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, place: place(80, 10, 320, 390) }] });
+    expect(read?.cuts).toEqual({ hatchling: CUT, paleontologist: [CUT[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, area: "back", place: place(80, 10, 320, 390) }] });
   });
 
   it.each<[string, unknown, string]>([
     ["of no pieces", { hatchling: FILED, explorer: [] }, "triceratops has no explorer cut: []"],
-    ["with a piece past the frame", { hatchling: FILED, paleontologist: [{ id: "skull", name: NAMED.skull, ...place(350, 0, 100, 80) }] }, "triceratops has no skull in its 400×400 frame"]
+    ["with a piece past the frame", { hatchling: FILED, paleontologist: [{ id: "skull", name: NAMED.skull, area: "head", ...place(350, 0, 100, 80) }] }, "triceratops has no skull in its 400×400 frame"]
   ])("fails when it is made on another level's cut %s", (_, cuts, message) => {
     expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts } }))).toThrow(message);
   });
@@ -107,7 +109,9 @@ describe("readSkeletons", () => {
     ["named for the whole skeleton's picture", { id: "skeleton", name: NAMED.legs, ...PLACES.legs }, 'triceratops\'s hatchling piece 3 has no id of its own: "skeleton"'],
     ["not a piece", "legs", "triceratops's hatchling piece 3 has no id of its own: undefined"],
     ["with no name", { id: "legs", ...PLACES.legs }, "triceratops's legs has no name in every language: undefined"],
-    ["named in one language only", { id: "legs", name: { en: "LEGS" }, ...PLACES.legs }, 'triceratops\'s legs has no name in every language: {"en":"LEGS"}']
+    ["named in one language only", { id: "legs", name: { en: "LEGS" }, ...PLACES.legs }, 'triceratops\'s legs has no name in every language: {"en":"LEGS"}'],
+    ["of no body area", { id: "legs", name: NAMED.legs, ...PLACES.legs }, "triceratops's legs has no body area: undefined"],
+    ["of a body area not in the list", { id: "legs", name: NAMED.legs, area: "wings", ...PLACES.legs }, 'triceratops\'s legs has no body area: "wings"']
   ])("fails when it is made on a piece %s", (_, piece, message) => {
     expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, piece) }))).toThrow(message);
   });
@@ -120,7 +124,7 @@ describe("readSkeletons", () => {
     ["past its bottom edge", place(10, 351, 50, 50), "triceratops has no legs in its 400×400 frame"],
     ["of a size in words", { x: 0, y: 0, width: "wide", height: 50 }, "triceratops has no legs in its 400×400 frame"]
   ])("fails when it is made on a piece's place %s", (_, at, message) => {
-    expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, { id: "legs", name: NAMED.legs, ...(at as object) }) }))).toThrow(message);
+    expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, { id: "legs", name: NAMED.legs, area: "legs", ...(at as object) }) }))).toThrow(message);
   });
 
   it("reads every shipped skeleton, Tyrannosaurus, Triceratops and Stegosaurus, each with Hatchling's four pieces in its frame", () => {
@@ -297,10 +301,13 @@ const fileOf = (url: string) => join(ROOT, url.replace(/\?.*$/, ""));
 describe("every shipped skeleton", () => {
   const { skeletons, skeletonPicture } = shippedApp();
 
-  it("is given to the app, each with its outline and pieces from its own folder", () => {
+  // Every level's cut, Hatchling's four pieces and Explorer's own.
+  const piecesOf = (cuts: Cuts) => Object.values(cuts).flat();
+
+  it("is given to the app, each with its outline and every cut's pieces from its own folder", () => {
     expect(skeletons).toEqual(SHIPPED_SKELETONS);
     for (const { id, cuts } of skeletons) {
-      for (const part of ["skeleton", ...cuts.hatchling.map((piece) => piece.id)]) {
+      for (const part of ["skeleton", ...piecesOf(cuts).map((piece) => piece.id)]) {
         expect(fileOf(skeletonPicture(id, part))).toBe(join(ROOT, "src/assets/skeletons", id, `${part}.webp`));
       }
     }
@@ -309,13 +316,13 @@ describe("every shipped skeleton", () => {
   it("has an outline as big as its frame and each piece as big as its place, all with alpha", () => {
     const sizes = skeletons.map(({ id, cuts }) => [
       readWebp(readFileSync(fileOf(skeletonPicture(id, "skeleton")))),
-      ...cuts.hatchling.map((piece) => readWebp(readFileSync(fileOf(skeletonPicture(id, piece.id)))))
+      ...piecesOf(cuts).map((piece) => readWebp(readFileSync(fileOf(skeletonPicture(id, piece.id)))))
     ]);
 
     expect(sizes).toEqual(
       skeletons.map(({ frame, cuts }) => [
         { ...frame, alpha: true },
-        ...cuts.hatchling.map(({ place }) => ({ width: place.width, height: place.height, alpha: true }))
+        ...piecesOf(cuts).map(({ place }) => ({ width: place.width, height: place.height, alpha: true }))
       ])
     );
   });
@@ -323,7 +330,7 @@ describe("every shipped skeleton", () => {
   // The places are checked against the pictures themselves, not the file
   // the app reads them from: a piece a pixel off in x or y already strays
   // past the tolerance.
-  it("is rebuilt by its four pieces drawn at their places, each a pixel off showing", async () => {
+  it("is rebuilt by each cut's pieces drawn at their places, each a pixel off showing", async () => {
     const SHIFTS = [
       [1, 0],
       [-1, 0],
@@ -331,19 +338,33 @@ describe("every shipped skeleton", () => {
       [0, -1]
     ] as const;
     const measured = await Promise.all(
-      skeletons.map(async ({ id, cuts }) => {
+      skeletons.flatMap(({ id, cuts }) => Object.entries(cuts).map(async ([level, cut]) => {
         const whole = await alphaOf(fileOf(skeletonPicture(id, "skeleton")));
-        const pieces = await Promise.all(cuts.hatchling.map(async (piece) => ({ ...piece.place, ...(await alphaOf(fileOf(skeletonPicture(id, piece.id)))) })));
+        const pieces = await Promise.all(cut.map(async (piece) => ({ ...piece.place, ...(await alphaOf(fileOf(skeletonPicture(id, piece.id)))) })));
         return {
           id,
+          level,
           rebuilt: unmatched(whole, pieces) <= TOLERANCE,
           inPlace: pieces.map((piece) => stray(whole, piece) <= TOLERANCE),
           offByAPixel: pieces.map((piece) => SHIFTS.every(([dx, dy]) => stray(whole, { ...piece, x: piece.x + dx, y: piece.y + dy }) > TOLERANCE))
         };
-      })
+      }))
     );
 
-    expect(measured).toEqual(skeletons.map(({ id, cuts }) => ({ id, rebuilt: true, inPlace: cuts.hatchling.map(() => true), offByAPixel: cuts.hatchling.map(() => true) })));
+    expect(measured).toEqual(
+      skeletons.flatMap(({ id, cuts }) => Object.entries(cuts).map(([level, cut]) => ({ id, level, rebuilt: true, inPlace: cut.map(() => true), offByAPixel: cut.map(() => true) })))
+    );
+  });
+
+  // A piece in two cuts is one picture, so it lies at one place in both.
+  it("is cut for Explorer into six to eight pieces, a piece Hatchling's cut shares at the same place", () => {
+    const explorer = skeletons.map(({ id, cuts }) => ({
+      id,
+      sixToEight: (cuts.explorer?.length ?? 0) >= 6 && (cuts.explorer?.length ?? 0) <= 8,
+      samePlaces: (cuts.explorer ?? []).every((piece) => cuts.hatchling.every((same) => same.id !== piece.id || JSON.stringify(same.place) === JSON.stringify(piece.place)))
+    }));
+
+    expect(explorer).toEqual(skeletons.map(({ id }) => ({ id, sixToEight: true, samePlaces: true })));
   });
 
   it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {

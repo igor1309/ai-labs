@@ -16,7 +16,7 @@ Feature: Skeleton assembly: pictures that load
     Given I am on <screen>
     And the pictures of Tyrannosaurus's skeleton are still loading
     When I tap <control>
-    Then the puzzle starts at once, its outline and four bones shimmering
+    Then the puzzle starts at once, its outline and every bone shimmering
     And <scatter>
     When a bone's picture has loaded
     Then it fades in over 200 ms, wherever the bone is
@@ -74,3 +74,10 @@ Feature: Skeleton assembly: pictures that load
       | an empty stand              | cannot load      | the failure look, in the colour of the stand that holds it | it stays so                                                                                  |
       | a stand awaiting rebuilding | is still loading | the shimmer                                                | once it loads, the picture is turned into its silhouette, dark in the light theme and light in the dark |
       | a stand awaiting rebuilding | cannot load      | the failure look, in the colour of the stand that holds it | it stays so                                                                                  |
+
+  Scenario: Explorer's bones are cut from the same skeleton
+    Given the level switch shows Explorer chosen
+    When I tap any dinosaur
+    Then its skeleton is cut into six to eight bones, each of one body area: head, neck, back, hips, legs or tail
+    And the bones drawn at their homes make up its whole outline, each a pixel off showing
+    And a bone it shares with Hatchling's cut, such as a skull, is the same picture at the same home
