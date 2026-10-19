@@ -1414,7 +1414,10 @@ refuses on them, as on any problem of no document.
 **`core/call`**'s step is given the day's budget and what the day has
 spent before the call, none where home sets no budget. What is left of
 the day is the budget less the day's spend and the call's known cost
-so far. Each turn is given as its budget the least of what is left of
+so far. A call whose day has spent the budget as it starts takes no
+turn, on any runtime: it ends failed, `budget_exhausted`, its reason
+"the daily budget <budget> is spent: <spend>". Each turn is given as its
+budget the least of what is left of
 its cost limit and of the day; a runtime that takes none ignores it.
 No retry at capacity starts once the day's spend and the call's known
 cost reach the budget; the call ends failed, `budget_exhausted`, its
@@ -1424,7 +1427,8 @@ Where both the limit and the day are spent, the limit's reason is
 given.
 
 **The composition** reads the day's spend before each call it makes,
-after a reuse is ruled out and before the call is admitted: the sum of
+after a reuse is ruled out and before the call is admitted, and gives
+its step the budget and the spend: the sum of
 the known costs of the calls whose `timing.started` is on the day, by
 the host's clock and its time zone, from midnight, kept in home's runs;
 a call taken by a reuse, or of an unknown cost, spends nothing. Only the
@@ -1432,13 +1436,10 @@ runs whose id is from midnight of the day before or later are read, the
 run's own among them, its ended calls recorded. A run or a list of runs
 that cannot be read spends nothing, and the call is given the warning
 "the runs could not be read: <error>; they spend nothing of the day".
-A call whose day has spent the budget is not made, nor admitted, on any
-runtime: it ends failed, `budget_exhausted`, its reason "the daily
-budget <budget> is spent: <spend>", no turn taken, and is recorded as a
-refused call is, its inputs given, its HEAD and content empty; a run of
-it ends failed, as a failed step ends it. Otherwise its step is given
-the budget and the day's spend. A call taken by a reuse is taken on a
-spent day: it makes nothing.
+It refuses no call itself: a call on a spent day is admitted and made,
+core/call failing it with no turn taken, and is recorded as any call
+core ends; a run of it ends failed, as a failed step ends it. A call
+taken by a reuse is taken on a spent day: it makes nothing.
 
 Decisions, each with its reason:
 
@@ -1456,6 +1457,10 @@ Decisions, each with its reason:
   reused call spent on the day it was made. Records that cannot be
   read spend nothing as well, with a warning: one bad record must not
   stop every run.
+- The check in core/call, not the composition: only what core emits is
+  recorded (ADR-001, rule 4). The call is admitted first, its worktree
+  held for no turn: a refusal before admission would be the
+  composition's.
 - Every call stops on a spent day, a call on codex or bash too, though
   it spends nothing of it: the day is spent, as a run starts no child
   once its budget is spent (ADR-001, `core/workflow`).

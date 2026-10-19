@@ -29,11 +29,11 @@ Feature: The composition keeps calls to the day's budget
       started 2026-10-20 06:00 UTC, its cost 1
     When "agister run --process <process> --agent <agent> --param
       <param>" runs in "/r"
-    Then <runtime> is given no turn, and git is asked no admission
+    Then <runtime> is given no turn
     And the result is failed, class "budget_exhausted", the reason "the
       daily budget 20 is spent: 20", and it exits 1
     And the record holds the call failed, "budget_exhausted", its inputs
-      <param>, its HEAD and content empty
+      <param>, its HEAD "c1" and content "t1"
 
     Examples:
       | process | agent       | param   | runtime     |
@@ -52,8 +52,9 @@ Feature: The composition keeps calls to the day's budget
   Scenario: A call taken by a reuse is taken on a spent day
     Given runstore keeps as well "20261020T060000Z-eeeeee", a call
       started 2026-10-20 06:00 UTC, its cost 1, of "ask" on
-      "claude-opus" given q=why, completed, at HEAD "c1" and content
-      "t1"
+      "claude-opus" given q=why, completed, its root "/r", HEAD "c1" and
+      content "t1", holding the definitions and environment this run's
+      call has
     When "agister run --process ask --agent claude-opus --param q=why
       --reuse 20261020T060000Z-eeeeee" runs in "/r"
     Then claude-code is given no turn, the call is reused, and it exits 0

@@ -36,16 +36,19 @@ cannot set one: given more, it would raise the owner's ceiling.
 
 ### 2. The day's spend is what the records hold
 
-The day is the host's, by its clock and time zone. Its spend is the
-reported cost of the calls that started on it, read from the runs'
-records. An unknown cost spends nothing (ADR-001, invariant 3); a call
-taken by a reuse spent on its own day.
+The day is the host's local day. Its spend is the reported cost of the
+calls that started on it, read from the records of the runs that
+started on it or the day before; a run started earlier is not read.
+An unknown cost spends nothing (ADR-001, invariant 3); a call taken by
+a reuse spent on its own day.
 
 ### 3. A call does not start on a spent day
 
-A call is checked as it starts: on a day that has spent the budget it
-fails, no turn taken. A call running is not ended for the day; a
-runtime that takes a budget is given no more than is left.
+Core checks a call as it starts: on a day that has spent the budget it
+fails, no turn taken, as core records any failure (ADR-001, rule 4).
+The composition only reads the day's spend from the records. A call
+running is not ended for the day; a runtime that takes a budget is
+given no more than is left.
 
 ### 4. A deliberate exception to independence
 
@@ -58,8 +61,9 @@ from calls it is not continuing, binding or reusing (ADR-001, invariant
 - A runaway of many runs stops at the day's ceiling, the next day
   starting afresh.
 - On a runtime that reports no cost, the budget bounds only the calls
-  around it: codex's and bash's spend nothing of it.
-- Best effort: calls that start together may all pass the check.
+  around it: a runtime that reports no cost spends nothing of it.
+- Best effort: calls that start together may all pass the check, and a
+  run longer than a day may spend unread.
 
 ## Non-Goals
 

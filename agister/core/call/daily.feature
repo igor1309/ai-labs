@@ -30,6 +30,19 @@ Feature: A call is kept to what is left of the day
     When the call is made
     Then the first turn is given the budget 1, and the second 0.75
 
+  Scenario Outline: A call on a spent day takes no turn
+    Given a <step> under the daily budget 20 of which the day has spent
+      <spent>
+    When the call is made
+    Then it makes no turn and ends failed, class "budget_exhausted", the
+      reason "the daily budget 20 is spent: <spent>"
+
+    Examples:
+      | step                           | spent |
+      | model step                     | 20    |
+      | model step                     | 21.5  |
+      | step on a runtime with no cost | 20    |
+
   Scenario: No retry starts once the day is spent
     Given a model step under the daily budget 20 of which the day has
       spent 19, whose first turn reports the session "s1", its cost 1.5,

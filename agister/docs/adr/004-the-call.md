@@ -13,7 +13,8 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
   worktree, what it leaves, how a continuation resumes, who declares
   its limits, and a turn at capacity retried
 - **Decision type:** Architecture
-- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
+- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-014
+  (2026-10-20)
 
 ## Context
 
