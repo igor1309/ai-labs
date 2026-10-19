@@ -3,8 +3,9 @@ Feature: A child's own level choice in a game
   there, and it wins over the age level (age-level.feature) until a
   parent picks a different level (docs/age-levels.md). Find the pair has
   a switch (find-the-pair-levels.feature), and remembers its choice
-  (find-the-pair-level-progress.feature); so does the sorting game, on
-  its result screen (sort-dinosaurs-level-switch.feature). These rules are
+  (find-the-pair-level-progress.feature); so do the sorting game, on
+  its result screen (sort-dinosaurs-level-switch.feature), and the
+  skeleton game (skeleton-assembly-levels.feature). These rules are
   checked on the shared rule of age-level-start.feature, given the
   child's choice and the level it was made under.
 

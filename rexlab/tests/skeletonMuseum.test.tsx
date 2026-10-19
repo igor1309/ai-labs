@@ -17,13 +17,15 @@ import {
   reveal,
   revealNow,
   savedSkeletons,
+  PIECES,
+  placeOf,
   skeletonOf,
   slots,
   tray,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
 import { countedStarts, fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, homeTile } from "./support.ts";
-import { PIECES, type Skeleton } from "../src/skeletons/index.ts";
+import type { Skeleton } from "../src/skeletons/index.ts";
 
 // skeleton-assembly-museum.feature
 
@@ -466,7 +468,7 @@ function layOutScatter() {
 
 // A piece's home on the board, on the screen, in CSS pixels.
 function homeRect(skeleton: Skeleton, piece: (typeof PIECES)[number]) {
-  const { x, y, width, height } = skeleton.places[piece];
+  const { x, y, width, height } = placeOf(skeleton, piece);
   const scale = BOARD_AT.width / skeleton.frame.width;
   return { left: BOARD_AT.left + x * scale, top: BOARD_AT.top + y * scale, width: width * scale, height: height * scale };
 }

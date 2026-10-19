@@ -5,6 +5,7 @@ Feature: Skeleton assembly: the museum and rebuilding
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
 
   Scenario: An empty museum shows what the child can build
     Given I have never finished a skeleton

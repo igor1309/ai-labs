@@ -1,10 +1,13 @@
 Feature: Skeleton assembly: no-fail help
   After about ten seconds without fitting a piece, one correct slot
   glows to invite the next move. Help never places a piece for the child
-  or reduces the reward. There is no time limit or attempt limit.
+  or reduces the reward. There is no time limit or attempt limit. This is
+  Hatchling's help; Explorer and Paleontologist help in steps instead
+  (skeleton-assembly-help-ladder.feature).
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen
     And a skeleton puzzle is in progress
 
   Scenario: Waiting offers a matching piece and slot

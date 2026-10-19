@@ -8,6 +8,7 @@ Feature: Skeleton assembly: placing bones
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
     And a skeleton puzzle is in progress
 
   Scenario: A child can pick up and drag a large bone piece

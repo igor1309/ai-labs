@@ -2,15 +2,16 @@ import { Bone, Hammer, Landmark, RotateCcw, Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
 import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
 // A stand shows its skeleton once built; one still to build shows the
 // skeleton's silhouette, and so does one knocked down to be built again,
-// with the star it keeps.
+// with the star it keeps. A stand shows its skeleton's level badges.
 export type ShownStand = "built" | "rebuilding" | "empty";
 
-export type SkeletonStandView = { id: string; name: string; skeleton: string; state: ShownStand };
+export type SkeletonStandView = { id: string; name: string; skeleton: string; state: ShownStand; badges: readonly ShownBadge[] };
 
 export type SkeletonMuseumScreenProps = {
   language: Language;
@@ -87,6 +88,13 @@ function StandCard({
         )}
       </div>
       <div className="skeleton-exhibit">
+        {stand.badges.length > 0 && (
+          <span className="skeleton-stand-badges">
+            {stand.badges.map((badge) => (
+              <LevelBadge key={badge} language={language} badge={badge} />
+            ))}
+          </span>
+        )}
         <Picture className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" />
       </div>
       <div className="skeleton-plinth">

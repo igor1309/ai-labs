@@ -14,16 +14,20 @@ import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionSc
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { ShownBadge } from "./LevelBadge.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
-import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
   help,
   isComplete,
-  PIECES,
+  strayId,
+  trayOf,
+  type Badge,
   type Celebration as SkeletonCelebration,
   type Museum,
-  type Piece,
+  type BodyArea,
+  type HelpStep,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
@@ -270,58 +274,98 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "frame" | "slots" | "strays" | "tray" | "told" | "turning" | "turns" | "hint" | "complete">;
 
-const DROPPED_PIECES: Record<ShownPiece, Piece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+// The pictures of a skeleton: the whole of it, "skeleton", or one of its
+// pieces, by the piece's id.
+export type SkeletonPicture = (dinosaurId: string, part: string) => string;
 
-// The piece the child dropped on the puzzle's board.
-export function droppedPiece(piece: ShownPiece): Piece {
-  return DROPPED_PIECES[piece];
+// Each body area, as the puzzle screen colours it.
+const SHOWN_AREAS: Record<BodyArea, ShownArea> = { head: "head", neck: "neck", back: "back", hips: "hips", legs: "legs", tail: "tail" };
+
+const SHOWN_STEPS: Record<HelpStep, ShownHelpStep> = { glow: "glow", region: "region", ghost: "ghost", move: "move" };
+
+// The body region the ladder's help shows for `piece`: around every piece
+// of its cut in the same body area, as fractions of the frame.
+function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undefined {
+  const area = cut.find(({ id }) => id === piece)?.area;
+  const places = cut.filter((each) => each.area === area).map(({ place }) => place);
+  if (places.length === 0) return undefined;
+  const left = Math.min(...places.map(({ x }) => x));
+  const top = Math.min(...places.map(({ y }) => y));
+  const right = Math.max(...places.map(({ x, width }) => x + width));
+  const bottom = Math.max(...places.map(({ y, height }) => y + height));
+  const { width, height } = skeleton.frame;
+  return { left: left / width, top: top / height, width: (right - left) / width, height: (bottom - top) / height };
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots" | "hint" | "complete">;
-
-// The pictures of a skeleton: the whole of it, or one of its pieces.
-export type SkeletonPicture = (dinosaurId: string, part: "skeleton" | Piece) => string;
-
 // Each slot is placed as a fraction of the frame, so the outline and its
-// pieces scale together to any board.
-export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
-  const { skeleton, fitted } = puzzle;
-  const { id, name, frame, places } = skeleton;
-  const helped = help(puzzle);
+// pieces scale together to any board. A puzzle `coloured` by body area
+// gives each slot its piece's area; one on a `silhouette` shows its
+// outline as the skeleton's shape alone. Other skeletons' bones wait in
+// the tray among the pieces, each its own skeleton's picture, sized as
+// the pieces are. A puzzle that turns shows how each piece lies.
+export function presentPuzzle(
+  puzzle: Puzzle,
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  { coloured = false, silhouette = false }: { coloured?: boolean; silhouette?: boolean } = {}
+): SkeletonPuzzleView {
+  const { skeleton, cut, fitted, distractors, told, turning, turns } = puzzle;
+  const { id, name, frame } = skeleton;
   return {
     name: name[language],
     outline: skeletonPicture(id, "skeleton"),
+    silhouette,
     frame,
-    slots: PIECES.map((piece) => {
-      const { x, y, width, height } = places[piece];
+    strays: distractors.map((distractor) => ({
+      piece: strayId(distractor),
+      name: distractor.name[language],
+      picture: skeletonPicture(distractor.skeleton, distractor.id),
+      width: distractor.place.width / frame.width,
+      height: distractor.place.height / frame.height
+    })),
+    tray: trayOf(puzzle),
+    told: told?.name[language],
+    turning,
+    turns,
+    slots: cut.map((piece) => {
+      const { x, y, width, height } = piece.place;
       return {
-        piece: SHOWN_PIECES[piece],
-        picture: skeletonPicture(id, piece),
+        piece: piece.id,
+        name: piece.name[language],
+        picture: skeletonPicture(id, piece.id),
+        area: coloured ? SHOWN_AREAS[piece.area] : undefined,
         left: x / frame.width,
         top: y / frame.height,
         width: width / frame.width,
         height: height / frame.height,
-        fitted: fitted.includes(piece)
+        fitted: fitted.includes(piece.id)
       };
     }),
-    hint: helped && SHOWN_PIECES[helped],
+    hint: hintOf(puzzle),
     complete: isComplete(puzzle)
   };
+}
+
+// Help as the screen shows it: the ladder's steps with their region.
+function hintOf(puzzle: Puzzle): ShownHint | undefined {
+  const shown = help(puzzle);
+  if (shown === undefined) return undefined;
+  return { piece: shown.piece, step: SHOWN_STEPS[shown.step], region: shown.step === "glow" ? undefined : regionOf(puzzle, shown.piece) };
 }
 
 const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
 export type SkeletonResultView = Pick<
   SkeletonResultScreenProps,
-  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar"
+  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar" | "badge"
 >;
 
 // A finished skeleton is revealed as its dinosaur, its body picture over
 // the whole skeleton in the frame they share.
 export function presentSkeletonResult(
-  { skeleton, score, total, best, previousBest, celebration, newStar }: SkeletonResult,
+  { skeleton, score, total, best, previousBest, celebration, newStar, badge }: SkeletonResult,
   language: Language,
   skeletonPicture: SkeletonPicture,
   bodyPicture: (dinosaurId: string) => string
@@ -339,11 +383,14 @@ export function presentSkeletonResult(
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
-    newStar
+    newStar,
+    badge: badge && SHOWN_BADGES[badge]
   };
 }
 
 const STANDS: Record<StandState, ShownStand> = { built: "built", rebuilding: "rebuilding", empty: "empty" };
+
+const SHOWN_BADGES: Record<Badge, ShownBadge> = { explorer: "explorer", paleontologist: "paleontologist" };
 
 export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "score" | "total" | "best">;
 
@@ -351,7 +398,13 @@ export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "sco
 // not standing there.
 export function presentSkeletonMuseum({ stands, score, total, best }: Museum, language: Language, skeletonPicture: SkeletonPicture): SkeletonMuseumView {
   return {
-    stands: stands.map(({ skeleton: { id, name }, state }) => ({ id, name: name[language], skeleton: skeletonPicture(id, "skeleton"), state: STANDS[state] })),
+    stands: stands.map(({ skeleton: { id, name }, state, badges }) => ({
+      id,
+      name: name[language],
+      skeleton: skeletonPicture(id, "skeleton"),
+      state: STANDS[state],
+      badges: badges.map((badge) => SHOWN_BADGES[badge])
+    })),
     score,
     total,
     best

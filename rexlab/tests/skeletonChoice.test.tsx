@@ -6,6 +6,9 @@ import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, homeTile } from "./support.ts";
 
+// The names of Hatchling's four pieces, in the tray's order.
+const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕП", "ПОЗВОНОЧНИК", "НОГИ", "ХВОСТ"] };
+
 const button = (name: string) => screen.getByRole("button", { name });
 
 const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS"];
@@ -133,11 +136,11 @@ describe("choosing a dinosaur", () => {
 
     const stegosaurus = SHIPPED_SKELETONS.find(({ id }) => id === "stegosaurus");
     if (!stegosaurus) throw new Error("No stegosaurus skeleton is shipped");
-    const { frame, places } = stegosaurus;
+    const { frame, cuts } = stegosaurus;
     const percent = (part: number, whole: number) => `${(part / whole) * 100}%`;
     const shown = [...board().querySelectorAll<HTMLElement>(".skeleton-slot")].map(({ style }) => [style.left, style.top, style.width, style.height]);
     expect(shown).toEqual(
-      [places.skull, places.spine, places.legs, places.tail].map(({ x, y, width, height }) => [
+      cuts.hatchling.map(({ place: { x, y, width, height } }) => [
         percent(x, frame.width),
         percent(y, frame.height),
         percent(width, frame.width),
@@ -191,7 +194,7 @@ describe("choosing a dinosaur", () => {
     act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe(triceratops);
-    expect(within(tray(text.bones)).getAllByRole("img").map((piece) => piece.getAttribute("alt"))).toEqual(Object.values(text.pieces));
+    expect(within(tray(text.bones)).getAllByRole("img").map((piece) => piece.getAttribute("alt"))).toEqual(HATCHLING_NAMES[language]);
     expect(screen.getByLabelText(text.fitted).textContent).toBe("0/4");
     expect([button(text.museum), button(text.home)]).toHaveLength(2);
     expect(board(text.skeleton)).toBeDefined();

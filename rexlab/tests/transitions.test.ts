@@ -11,7 +11,7 @@ import { NEXT_QUESTION } from "../src/QuestionScreen.tsx";
 import { choose, finishPlay, next, startRound } from "../src/quiz/index.ts";
 import { SCREEN_CHANGE } from "../src/screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
-import { finishSkeleton, openCollection, PIECES, startPuzzle, wait } from "../src/skeletons/index.ts";
+import { finishSkeleton, openCollection, startPuzzle, wait } from "../src/skeletons/index.ts";
 import { transitionFor as skeletonTransitionFor } from "../src/skeletonGame.tsx";
 import { drop, finishBoard as finishSorting, startBoard } from "../src/sorting/index.ts";
 import { transitionFor as sortingTransitionFor } from "../src/sortingGame.tsx";
@@ -158,12 +158,12 @@ describe("the skeleton game's transition for each change", () => {
   type SkeletonScreen = Parameters<typeof skeletonTransitionFor>[0];
   const skeleton = SHIPPED_SKELETONS[0];
   if (!skeleton) throw new Error("Expected a skeleton");
-  const puzzle = startPuzzle(skeleton);
+  const puzzle = startPuzzle(skeleton, skeleton.cuts.hatchling);
   const order = SHIPPED_SKELETONS.map(({ id }) => id);
   const screens: SkeletonScreen[] = [
     { kind: "choice" },
-    { kind: "puzzle", puzzle, scatter: false },
-    { kind: "result", result: finishSkeleton(openCollection(undefined, order), { ...puzzle, fitted: [...PIECES] }, order, beatBest).result },
+    { kind: "puzzle", puzzle, scatter: false, look: { coloured: false, silhouette: false } },
+    { kind: "result", result: finishSkeleton(openCollection(undefined, order), { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) }, order, beatBest).result },
     { kind: "museum" }
   ];
 
@@ -172,6 +172,6 @@ describe("the skeleton game's transition for each change", () => {
   });
 
   it("changes a puzzle at once as time counts towards help", () => {
-    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false })).toBeUndefined();
+    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { coloured: false, silhouette: false } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { coloured: false, silhouette: false } })).toBeUndefined();
   });
 });

@@ -54,7 +54,11 @@ const tokensOf = (rules: Rule[]) =>
   );
 
 const TIMING = /^(animation|transition)(-duration|-delay|-timing-function)?$/;
-const MOVING = /\b(transform|translate|scale|height|width)\b/;
+const MOVING = /\b(transform|translate|rotate|scale|height|width)\b/;
+
+// A rule's declarations, by property.
+const declared = (rules: Rule[], selector: string) =>
+  Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
 describe("the motion", () => {
   it("is built from the shared tokens", () => {
@@ -276,14 +280,10 @@ describe("find the pair's motion", () => {
     );
   });
 
-  // A rule's declarations, by property.
-  const declared = (rules: Rule[], selector: string) =>
-    Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
-
   it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
-    expect(declared(PLAIN, ".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
-    expect(declared(PLAIN, ".pairs-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
-    expect(declared(REDUCED, ".pairs-level-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
+    expect(declared(PLAIN, ".level-switch-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".level-switch-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".level-switch-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
   });
 
   it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
@@ -372,6 +372,42 @@ describe("the skeleton puzzle's motion", () => {
 
   it("fades help's glow in", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
+  });
+
+  // skeleton-assembly-badges.feature: the reveal's earned badge rises in.
+  it("rises the earned badge in on the reveal", () => {
+    expect(animations.get(".skeleton-badge-earned")).toBe("rise-in");
+  });
+
+  // skeleton-assembly-turning.feature: a tapped piece turns in its spot,
+  // and shows turned at once with reduced motion.
+  it("turns a tapped piece a quarter, and only at once with reduced motion", () => {
+    expect(declared(PLAIN, ".skeleton-tray[data-turning] .skeleton-piece").transition).toBe("rotate var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".skeleton-tray[data-turning] .skeleton-piece")).toEqual({ "transition-property": "none" });
+  });
+
+  // skeleton-assembly-paleontologist.feature: the line saying whose
+  // another dinosaur's bone is rises in, as a spot in the tray does.
+  it("rises the line saying whose bone it is in", () => {
+    expect([animations.get(".skeleton-told-line"), animations.get(".skeleton-tray-spot")]).toEqual(["rise-in", "rise-in"]);
+  });
+
+  // skeleton-assembly-help-ladder.feature: the ladder's region and ghost
+  // fade in, and its last step moves the piece part of the way towards
+  // its home and back once, or with reduced motion fades it out and back.
+  it("fades the ladder's region and ghost in, and moves its piece towards its home and back, fading instead with reduced motion", () => {
+    expect([".skeleton-region", ".skeleton-ghost", ".skeleton-piece[data-nudge]"].map((selector) => animations.get(selector))).toEqual(["fade-in", "fade-in", "nudge"]);
+    expect(PLAIN.find(({ prelude }) => prelude === ".skeleton-piece[data-nudge]")?.body ?? "").toMatch(/nudge calc\(var\(--motion-screen\) \* 3\) var\(--ease-out\) both/);
+    const nudge = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes nudge")?.body ?? "").map(({ prelude, body: frame }) => [prelude, declarationsOf(frame)]);
+    expect(nudge).toEqual([
+      [
+        "50%",
+        [
+          { property: "opacity", value: "calc(1 - 0.7 * (1 - var(--motion-amount)))" },
+          { property: "translate", value: "calc(var(--nudge-x) * 0.6 * var(--motion-amount)) calc(var(--nudge-y) * 0.6 * var(--motion-amount))" }
+        ]
+      ]
+    ]);
   });
 
   it("scatters a knocked-down skeleton's bones from their homes to the tray one after the other, each spinning on its way, its spots already there", () => {

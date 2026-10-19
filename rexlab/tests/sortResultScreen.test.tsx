@@ -16,7 +16,7 @@ const result = {
 } as const;
 
 function openResult(props: Partial<SortResultScreenProps> = {}) {
-  const callbacks = { onChoose: vi.fn(), onPlayAgain: vi.fn(), onHome: vi.fn() };
+  const callbacks = { onLevel: vi.fn(), onPlayAgain: vi.fn(), onHome: vi.fn() };
   const given: SortResultScreenProps = { ...result, level: "explorer", ...callbacks, ...props };
   const view = render(<SortResultScreen {...given} />, withPictures);
   return { ...view, ...callbacks, given };
@@ -54,7 +54,7 @@ describe("the sorting result's level switch", () => {
 
     await user.click(within(levelSwitch()).getByRole("button", { name: TEXTS.en.ageLevels[level].name }));
 
-    expect(view.onChoose.mock.calls).toEqual([[level]]);
+    expect(view.onLevel.mock.calls).toEqual([[level]]);
     expect([view.onPlayAgain.mock.calls, view.onHome.mock.calls]).toEqual([[], []]);
     expect(within(levelSwitch()).getByRole("button", { pressed: true }).textContent).toBe("🦖EXPLORER");
     view.rerender(<SortResultScreen {...view.given} level={level} />);
@@ -62,11 +62,11 @@ describe("the sorting result's level switch", () => {
     expect([screen.getByLabelText("SCORE").textContent, screen.getByLabelText("BEST SCORE").textContent]).toEqual(["5/8", "BEST7"]);
     expect(within(levelSwitch()).getByRole("button", { pressed: true }).textContent).toBe(`${{ hatchling: "🥚", explorer: "🦖", paleontologist: "🦴" }[level]}${TEXTS.en.ageLevels[level].name}`);
     expect(levelSwitch().style.getPropertyValue("--chosen")).toBe(String(AGE_LEVELS.indexOf(level)));
-    expect(style(".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(style(".level-switch-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
 
     await user.click(screen.getByRole("button", { name: "PLAY AGAIN" }));
     await user.click(screen.getByRole("button", { name: "HOME" }));
-    expect([view.onPlayAgain.mock.calls.length, view.onHome.mock.calls.length, view.onChoose.mock.calls.length]).toEqual([1, 1, 1]);
+    expect([view.onPlayAgain.mock.calls.length, view.onHome.mock.calls.length, view.onLevel.mock.calls.length]).toEqual([1, 1, 1]);
   });
 
   it.each([6, 8, 10].flatMap((total) => [0, total - 2, total].map((score) => [score, total])))("shows %i won stars out of %i, with their reward stagger", (score, total) => {
@@ -130,8 +130,8 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
       const levels = within(levelSwitch(language)).getAllByRole("button");
       for (const button of levels) {
         const s = getComputedStyle(button);
-        const name = button.querySelector(".pairs-level-name");
-        const picture = button.querySelector(".pairs-level-picture");
+        const name = button.querySelector(".level-switch-name");
+        const picture = button.querySelector(".level-switch-picture");
         if (!name || !picture) throw new Error("A level without its name or picture");
         const words = name.textContent ?? "";
         const needed = (LEVEL_EMS[words] ?? NaN) * pixels(s.fontSize) + pixels(s.letterSpacing) * words.length;

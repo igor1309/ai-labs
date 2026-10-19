@@ -3917,10 +3917,10 @@ body:has(.result) #version {
   min-width: 0;
 }
 
-/* The level switch: the age levels side by side, youngest first, across
-   the column. The chosen level is filled in ink, bolder and raised, and a
+/* A game's level switch, find the pair's and the skeleton game's: the age
+   levels side by side, youngest first, across its column. The chosen level is filled in ink, bolder and raised, and a
    mark of the same ink slides to it from the level chosen before. */
-.pairs-levels {
+.level-switch {
   position: relative;
   isolation: isolate;
   align-self: stretch;
@@ -3934,7 +3934,7 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
-.pairs-level-mark {
+.level-switch-mark {
   position: absolute;
   z-index: -1;
   top: 6px;
@@ -3947,7 +3947,7 @@ body:has(.result) #version {
   transition: translate var(--motion-standard) var(--ease-out);
 }
 
-.pairs-level {
+.level-switch-level {
   height: 58px;
   min-width: 0;
   padding: 0 6px;
@@ -3968,7 +3968,7 @@ body:has(.result) #version {
     background-color var(--motion-standard) var(--ease-out);
 }
 
-.pairs-level[aria-pressed="true"] {
+.level-switch-level[aria-pressed="true"] {
   background-color: #1d2742;
   color: #fffdf8;
   font-weight: 700;
@@ -3976,7 +3976,7 @@ body:has(.result) #version {
 }
 
 /* An age level's picture, as in the age level menu. */
-.pairs-level-picture {
+.level-switch-picture {
   flex-shrink: 0;
   width: 22px;
   font-size: 22px;
@@ -4017,26 +4017,26 @@ body:has(.result) #version {
 }
 
 /* The result is navy in either theme, with a pale chosen mark. */
-.result-with-levels .pairs-levels,
-[data-theme="dark"] .result-with-levels .pairs-levels {
+.result-with-levels .level-switch,
+[data-theme="dark"] .result-with-levels .level-switch {
   background: #00000033;
   border-color: #ffffff40;
 }
 
-.result-with-levels .pairs-level,
-[data-theme="dark"] .result-with-levels .pairs-level {
+.result-with-levels .level-switch-level,
+[data-theme="dark"] .result-with-levels .level-switch-level {
   color: #f6f2e9;
 }
 
-.result-with-levels .pairs-level-mark,
-.result-with-levels .pairs-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .pairs-level-mark,
-[data-theme="dark"] .result-with-levels .pairs-level[aria-pressed="true"] {
+.result-with-levels .level-switch-mark,
+.result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-mark,
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
   background-color: #f6f2e9;
 }
 
-.result-with-levels .pairs-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .pairs-level[aria-pressed="true"] {
+.result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
   color: #1f2b4d;
   box-shadow: 0 4px 10px #00000066;
 }
@@ -4658,6 +4658,17 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The level switch, centred between the bar and the dinosaurs, as wide as
+   find the pair's column so every level's name fits on one line. */
+.skeleton-levels {
+  flex-shrink: 0;
+  align-self: center;
+  width: 648px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* The three dinosaurs side by side, each a big card of its picture over
    its name, rising in one after the other. */
 .skeleton-choices {
@@ -4789,6 +4800,15 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
+/* Paleontologist's tray of ten to twelve pieces and other skeletons'
+   bones stands in two columns. */
+.skeleton-tray[data-columns="2"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(48px, 1fr);
+  gap: 16px;
+}
+
 .skeleton-tray-spot {
   position: relative;
   flex: 1 1 0;
@@ -4822,11 +4842,99 @@ body:has(.result) #version {
   opacity: 0;
 }
 
+/* Paleontologist's piece turns a quarter in its spot at a tap. */
+.skeleton-tray[data-turning] .skeleton-piece {
+  transition: rotate var(--motion-standard) var(--ease-out);
+}
+
+/* A turned piece's mark that it turns, in its spot's corner. */
+.skeleton-turn-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  color: #5c647a;
+  pointer-events: none;
+}
+
 /* While a piece is held, its slot shows faintly where it goes. */
 .skeleton-slot[data-target] {
   border-radius: 20px;
   outline: 2px solid #5c647a59;
   outline-offset: -1px;
+}
+
+/* Explorer colours each piece by its body area, as a cue to where it
+   goes: its spot in the tray is tinted with the area's pale tint and
+   ringed in its colour, and its empty slot shows the bone's shape in that
+   colour, the piece's own picture as the mask. A fitted piece shows as
+   itself, and its spot, empty, is plain again. */
+.skeleton-tray-spot[data-area] {
+  outline-width: 3px;
+  outline-offset: -1.5px;
+}
+
+.skeleton-slot-area {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  mask: var(--piece-picture) center / 100% 100% no-repeat;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-tray-spot[data-area="head"] {
+  outline-color: #c9583d;
+  background: #f6ddd4;
+}
+
+.skeleton-slot[data-area="head"] .skeleton-slot-area {
+  background: #c9583d;
+}
+
+.skeleton-tray-spot[data-area="neck"] {
+  outline-color: #a86a0c;
+  background: #f7e8c9;
+}
+
+.skeleton-slot[data-area="neck"] .skeleton-slot-area {
+  background: #a86a0c;
+}
+
+.skeleton-tray-spot[data-area="back"] {
+  outline-color: #4f78b0;
+  background: #dce6f3;
+}
+
+.skeleton-slot[data-area="back"] .skeleton-slot-area {
+  background: #4f78b0;
+}
+
+.skeleton-tray-spot[data-area="hips"] {
+  outline-color: #7e62b8;
+  background: #e5def3;
+}
+
+.skeleton-slot[data-area="hips"] .skeleton-slot-area {
+  background: #7e62b8;
+}
+
+.skeleton-tray-spot[data-area="legs"] {
+  outline-color: #2e7d4f;
+  background: #d9ede0;
+}
+
+.skeleton-slot[data-area="legs"] .skeleton-slot-area {
+  background: #2e7d4f;
+}
+
+.skeleton-tray-spot[data-area="tail"] {
+  outline-color: #b5487a;
+  background: #f4dce8;
+}
+
+.skeleton-slot[data-area="tail"] .skeleton-slot-area {
+  background: #b5487a;
 }
 
 /* A piece let go floats back to its spot in the tray, and one that fits
@@ -4885,6 +4993,84 @@ body:has(.result) #version {
 .skeleton-tray-spot .skeleton-glow {
   inset: 0;
   border-radius: 22px;
+}
+
+/* Paleontologist's partial outline: the skeleton's shape in one flat
+   colour, with no bone drawn in it, once its picture has loaded. */
+.skeleton-outline-silhouette {
+  position: absolute;
+  inset: 0;
+}
+
+.skeleton-outline-silhouette[data-picture="appearing"],
+.skeleton-outline-silhouette[data-picture="shown"] {
+  background: #5c647a;
+  mask: var(--outline-picture) center / 100% 100% no-repeat;
+}
+
+/* The line that says whose another skeleton's bone is, at the foot of
+   the board, over the outline but never in the way of a drop. */
+.skeleton-told {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.skeleton-told-line {
+  padding: 10px 20px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  color: #1d2742;
+  font-size: 22px;
+  font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+/* The ladder of help, each step adding to the ones before: the piece's
+   body region on the outline ringed in amber, then a faint ghost of the
+   piece at its home, then the piece moving from its spot part of the way
+   towards its home and back, once. With reduced motion it fades out and
+   back in its spot instead. */
+.skeleton-region {
+  position: absolute;
+  border-radius: 28px;
+  outline: 3px dashed #e39b2d;
+  outline-offset: -1.5px;
+  box-shadow: 0 0 32px #e39b2d59;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-ghost {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-ghost-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-piece[data-nudge] {
+  position: relative;
+  z-index: 1;
+  animation: nudge calc(var(--motion-screen) * 3) var(--ease-out) both;
+}
+
+@keyframes nudge {
+  50% {
+    opacity: calc(1 - 0.7 * (1 - var(--motion-amount)));
+    translate: calc(var(--nudge-x) * 0.6 * var(--motion-amount)) calc(var(--nudge-y) * 0.6 * var(--motion-amount));
+  }
 }
 
 /* A dinosaur built: its star sits on its card in the choice. */
@@ -5130,11 +5316,48 @@ body:has(.result) #version {
 }
 
 .skeleton-exhibit {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   align-self: stretch;
   display: flex;
   border-radius: 20px;
+}
+
+/* A level badge: its level's picture in a round mark. */
+.level-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* A stand's badges sit in its exhibit's top corner, over the skeleton. */
+.skeleton-stand-badges {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 6px;
+}
+
+/* The reveal names the badge the skeleton earned. */
+.skeleton-badge-earned {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
 }
 
 .skeleton-exhibit-picture {
@@ -5245,7 +5468,7 @@ body:has(.result) #version {
 
   /* The chosen mark does not travel: the chosen level's own fill fades in
      where it is. */
-  .pairs-level-mark {
+  .level-switch-mark {
     visibility: hidden;
     transition-property: none;
   }
@@ -5260,6 +5483,11 @@ body:has(.result) #version {
      the two only cross-fade, in place. */
   ::view-transition-group(.dinosaur-share) {
     animation: none;
+  }
+
+  /* A piece shows turned at once. */
+  .skeleton-tray[data-turning] .skeleton-piece {
+    transition-property: none;
   }
 }
 
@@ -5781,21 +6009,21 @@ body:has(.result) #version {
   box-shadow: 0 18px 40px #00000066;
 }
 
-[data-theme="dark"] .pairs-levels {
+[data-theme="dark"] .level-switch {
   border-color: #ece8de1f;
   background: #222a3d;
 }
 
-[data-theme="dark"] .pairs-level {
+[data-theme="dark"] .level-switch-level {
   color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-level-mark,
-[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+[data-theme="dark"] .level-switch-mark,
+[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
   background-color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-level[aria-pressed="true"] {
+[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
   color: #181e2e;
   box-shadow: 0 4px 10px #00000066;
 }
@@ -5842,6 +6070,10 @@ body:has(.result) #version {
   background: #222a3d;
 }
 
+[data-theme="dark"] .skeleton-turn-mark {
+  color: #9ca3b6;
+}
+
 [data-theme="dark"] .skeleton-choice,
 [data-theme="dark"] .skeleton-board,
 [data-theme="dark"] .skeleton-tray-spot {
@@ -5857,8 +6089,77 @@ body:has(.result) #version {
   filter: drop-shadow(0 18px 24px #00000066);
 }
 
+[data-theme="dark"] .skeleton-tray-spot[data-area="head"] {
+  outline-color: #e57a5d;
+  background: #3d2620;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="head"] .skeleton-slot-area {
+  background: #e57a5d;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="neck"] {
+  outline-color: #f2b24b;
+  background: #3b3120;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="neck"] .skeleton-slot-area {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="back"] {
+  outline-color: #7fa3d9;
+  background: #1f2e48;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="back"] .skeleton-slot-area {
+  background: #7fa3d9;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="hips"] {
+  outline-color: #a68be0;
+  background: #2c2545;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="hips"] .skeleton-slot-area {
+  background: #a68be0;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="legs"] {
+  outline-color: #63c98c;
+  background: #1e3429;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="legs"] .skeleton-slot-area {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="tail"] {
+  outline-color: #e07ba8;
+  background: #3d2232;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="tail"] .skeleton-slot-area {
+  background: #e07ba8;
+}
+
 [data-theme="dark"] .skeleton-slot[data-target] {
   outline-color: #9ca3b659;
+}
+
+[data-theme="dark"] .skeleton-outline-silhouette[data-picture="appearing"],
+[data-theme="dark"] .skeleton-outline-silhouette[data-picture="shown"] {
+  background: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-told-line {
+  background: #222a3d;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .skeleton-region {
+  outline-color: #f2b24b;
+  box-shadow: 0 0 32px #f2b24b59;
 }
 
 [data-theme="dark"] .skeleton-glow {
@@ -5873,6 +6174,11 @@ body:has(.result) #version {
 
 [data-theme="dark"] .skeleton-fact {
   background: #222a3d;
+}
+
+[data-theme="dark"] .level-badge {
+  outline-color: #ece8de1f;
+  background: #181e2e;
 }
 
 [data-theme="dark"] .skeleton-fact svg,

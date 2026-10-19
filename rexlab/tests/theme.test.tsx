@@ -18,7 +18,7 @@ import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
-import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf } from "./skeletonsApp.tsx";
+import { AWAY, dragTo as dragBone, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -344,27 +344,45 @@ const skeletonPuzzle =
   async ({ theme, user }: Walk) => {
     await user.click(screen.getByRole("button", { name: "SKELETONS" }));
     await user.click(screen.getByRole("button", { name }));
-    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+    expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);
     expectScreenIn(theme);
   };
 
 // A puzzle at work: a bone fitted, another lifted from the tray, and,
-// once the child has waited, help glowing on a slot and its bone.
+// once the child has waited, each step of help on the bone to fit next.
 async function skeletonAtWork({ theme, user, timers }: Walk) {
   const stegosaurus = skeletonOf("stegosaurus");
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
   await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
   layOutPuzzle();
-  fit(stegosaurus, "spine");
-  const spot = spotOf("tail");
+  const [first = "", second = ""] = spotPieces();
+  fit(stegosaurus, second);
+  const spot = spotOf(spotPieces().at(-1) ?? "");
   const { left, top } = spot.getBoundingClientRect();
   press(spot, { clientX: left + 40, clientY: top + 40 });
   moveTo(AWAY);
-  expect([fittedPieces(), lifted()]).toEqual([["spine"], expect.anything()]);
+  expect([fittedPieces(), lifted()]).toEqual([[second], expect.anything()]);
   expectScreenIn(theme);
   release(AWAY);
-  for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
-  expect(hints()).toEqual(["slot skull", "spot skull"]);
+  // Explorer's help climbs its steps: the region, the ghost, the move.
+  for (const step of [".skeleton-region", ".skeleton-ghost", ".skeleton-piece[data-nudge]"]) {
+    for (let second = 0; second < HELP_AFTER / 1000; second++) act(() => timers.fire(1000));
+    expect([hints(), document.querySelector(step) !== null]).toEqual([[`spot ${first}`], true]);
+    expectScreenIn(theme);
+  }
+}
+
+// Paleontologist's Tyrannosaurus on its silhouette, a bone fitted and
+// another dinosaur's bone dropped, its line saying whose it is.
+async function skeletonPaleontologist({ theme, user }: Walk) {
+  const tyrannosaurus = skeletonOf("tyrannosaurus");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "PALEONTOLOGIST" }));
+  await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
+  layOutPuzzle();
+  fit(tyrannosaurus, "skull");
+  dragBone("triceratops/frill", AWAY);
+  expect([document.querySelector(".skeleton-outline-silhouette") !== null, screen.getByRole("status").textContent]).toEqual([true, "THAT'S THE TRICERATOPS FRILL!"]);
   expectScreenIn(theme);
 }
 
@@ -393,9 +411,10 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
-// The museum empty, then with a skeleton on its stand, its puzzle as the
-// skeleton is knocked down and its bones scatter, and the museum with that
-// stand awaiting it.
+// The museum empty, then with a skeleton on its stand with its Explorer
+// badge, built at Explorer, the level none was picked at, without help;
+// its puzzle as the skeleton is knocked down and its bones scatter, and
+// the museum with that stand awaiting it.
 async function skeletonMuseum({ theme, user, timers }: Walk) {
   const triceratops = skeletonOf("triceratops");
   await user.click(screen.getByRole("button", { name: "SKELETONS" }));
@@ -406,10 +425,10 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
   fitAll(triceratops);
   act(() => timers.fire(REVEAL.motion));
   await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: "MUSEUM" }));
-  expect(screen.getAllByRole("img", { name: "STAR" })).toHaveLength(1);
+  expect([screen.getAllByRole("img", { name: "STAR" }), screen.getAllByRole("img", { name: "EXPLORER BADGE" })].map((shown) => shown.length)).toEqual([1, 1]);
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "REBUILD" }));
-  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(4);
+  expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);
   expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "MUSEUM" }));
   expect(screen.getByRole("button", { name: "CONTINUE" })).toBeDefined();
@@ -470,7 +489,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Tyrannosaurus puzzle as it starts", skeletonPuzzle("TYRANNOSAURUS")],
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
-      ["a puzzle with a bone fitted, one lifted and help glowing", skeletonAtWork],
+      ["a puzzle with a bone fitted, one lifted and each step of help", skeletonAtWork],
+      ["Paleontologist's puzzle on its silhouette, with another dinosaur's bone told", skeletonPaleontologist],
       ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]
