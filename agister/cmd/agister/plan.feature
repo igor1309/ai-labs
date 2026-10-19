@@ -2,9 +2,9 @@
 # plan"; ADR-001, invariant 6; ADR-003, rule 4), with spies in place of
 # the wrappers (ADR-009, rule 4). Settings as record.feature gives them:
 # the repository's process "ask", its permissions requiring
-# repository.read, as model.feature gives it, but its environment B=2
-# then A from the param a. The run's id is "R"; git gives "/r" HEAD "c1"
-# and the content "t1".
+# repository.read, as model.feature gives it, but declaring the param a
+# and its environment B=2 then A from the param a. The run's id is "R";
+# git gives "/r" HEAD "c1" and the content "t1".
 
 Feature: The composition records a call's plan
 
@@ -17,7 +17,8 @@ Feature: The composition records a call's plan
       "1"}]
 
   Scenario: A call whose inputs were refused records its plan alone
-    Given the param q's source cannot give its value
+    Given the process "ask" also takes the input "f" from the source
+      file, of the param q, and "/r" holds no file "why"
     When "agister run --process ask --agent claude-opus --param q=why
       --param a=1" runs in "/r"
     Then the record's call is refused, holds its permissions, and the

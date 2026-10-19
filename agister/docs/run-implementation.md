@@ -938,7 +938,8 @@ which a sum skips: this run spent none. Any other call reports
 `Started`, its inputs refused or not, and is made as it would be. The
 record's request names the run reused, `"reuse"`; a call taken is
 recorded as its earlier entry, cost and usage included, its id this
-run's, its `"continues"` null, with `"reuses"`, the earlier call's id:
+run's, its `"continues"` null, with `"reuses"`, the earlier call's id
+(its permissions and environment this call's, "A call's plan"):
 
 ```json
 {"request": {"reuse": "<run id>"},
@@ -1195,7 +1196,8 @@ them; the run's request records its workflow's:
 A reuse takes a call only where the earlier entry's `"definitions"` are
 this call's, file for file; an entry with none, a record from before,
 is never taken. A call taken keeps the earlier entry's definitions, as
-it keeps the rest of that entry.
+it keeps the rest of that entry (but its permissions and environment,
+"A call's plan").
 
 Decisions, each with its reason:
 
@@ -1294,3 +1296,6 @@ Decisions, each with its reason:
   another value.
 - A call taken records this call's plan, not the earlier entry's: an
   entry from before has none, and would record a call given nothing.
+- The environment a call inherits from its caller is neither recorded
+  nor compared: it may hold secrets, it is the caller's (ADR-004), and
+  whoever reuses chose the run and the shell it runs from.
