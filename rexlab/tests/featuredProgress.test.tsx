@@ -317,6 +317,44 @@ describe("a start that does not wait for its pictures", () => {
   });
 });
 
+// Each way a sorting round starts, the game featured meanwhile, the steps
+// on the way and the button that starts it.
+const SORT_STARTS: Array<[start: string, featured: HomeGame, way: (user: UserEvent) => Promise<void>, begin: () => HTMLElement]> = [
+  ["SORT", "compare", async () => {}, () => homeTile("SORT")],
+  ["the featured card", "sort", async () => {}, () => featuredCard()],
+  [
+    "PLAY AGAIN",
+    "compare",
+    async (user) => {
+      await user.click(homeTile("SORT"));
+      await sortByTrying(user);
+      await user.click(button("SEE RESULT"));
+    },
+    () => button("PLAY AGAIN")
+  ]
+];
+
+describe("a sorting round started twice before React renders", () => {
+  it.each(SORT_STARTS)("starts one fresh round from %s, counted once", async (_, game, way, begin) => {
+    const pictures = manualPictures();
+    const { counted, startCounter } = countedStarts();
+    const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game } } } }) });
+    const { user } = openApp(storage, { clock: pictures, startCounter });
+    loadShownPictures(pictures);
+    await way(user);
+    const before = counted.length;
+    const starting = begin();
+
+    act(() => {
+      starting.click();
+      starting.click();
+    });
+
+    const cards = within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+    expect([counted.slice(before), cards.map((card) => card.getAttribute("aria-pressed"))]).toEqual([["sort"], Array<string>(6).fill("false")]);
+  });
+});
+
 describe("a browser that cannot keep progress", () => {
   // A draw of 0.1 falls to COMPARE only while every game has the same
   // weight: with COMPARE's 9 starts read, it would fall to ALL DINOSAURS.
