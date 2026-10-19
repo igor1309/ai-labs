@@ -24,10 +24,11 @@ import {
   type ManualTimers,
   type MemoryStorage,
   unsetAgeLevel,
-  loadShownPictures
+  loadShownPictures,
+  type PictureClock
 } from "./support.ts";
 
-type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
+type Clock = PictureClock;
 
 // Timers a test fires itself.
 type Timers = Pick<ManualTimers, "timers" | "fire">;

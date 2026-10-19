@@ -1,7 +1,15 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { LoadPicture, PictureOutcome, StartTimer } from "./pictureWait.ts";
+import type { StartTimer } from "./ownedTimers.ts";
 
 // docs/features/pictures.feature: a screen never waits for its pictures.
+
+// How loading a picture ended.
+export type PictureOutcome = "loaded" | "failed";
+
+// Loads the picture at `url` and calls `done` once, when it has loaded or
+// failed to, saying which. Only the store loads pictures: nothing else
+// takes one (docs/tap-safety.md).
+export type LoadPicture = (url: string, done: (outcome: PictureOutcome) => void) => void;
 
 // Where a picture's loading is: asked for and not yet ended, or how it
 // ended.

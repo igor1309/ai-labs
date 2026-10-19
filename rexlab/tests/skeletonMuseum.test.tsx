@@ -1,4 +1,4 @@
-import { act, cleanup, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -22,7 +22,7 @@ import {
   tray,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, homeTile } from "./support.ts";
+import { countedStarts, fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, homeTile } from "./support.ts";
 import { PIECES, type Skeleton } from "../src/skeletons/index.ts";
 
 // skeleton-assembly-museum.feature
@@ -85,12 +85,14 @@ const REBUILDING = (id: string, name: string) => ({
 });
 
 // The pieces in the tray scattering from the outline, in its order.
-const scattering = () => [...tray().querySelectorAll(".skeleton-piece[data-scattering]")].map((piece) => piece.getAttribute("alt"));
+const scattering = () => [...tray().querySelectorAll(".skeleton-piece[data-scattering]")].map((piece) => piece.querySelector("img")?.getAttribute("alt"));
 
-// The app opened on the museum, from the choice of dinosaurs.
+// The app opened on the museum, from the choice of dinosaurs, its
+// pictures loaded.
 async function openMuseum(options: SkeletonsAppOptions = {}) {
   const opened = openSkeletonsApp(options);
   await opened.user.click(button("MUSEUM"));
+  act(() => finishLoading(opened.pictures));
   return opened;
 }
 
@@ -198,15 +200,14 @@ describe("opening the museum", () => {
 });
 
 describe("an empty stand", () => {
-  it("starts a fresh puzzle of its dinosaur once on a double tap, its four pieces in the tray, the stars and other stands as they were", async () => {
+  it("starts a fresh puzzle of its dinosaur at once and once on a double tap, counted once, its four pieces in the tray, the stars and other stands as they were", async () => {
     const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
-    const { user, pictures } = await openMuseum({ storage });
+    const { counted, startCounter } = countedStarts();
+    const { user } = await openMuseum({ storage, startCounter });
 
     await user.dblClick(within(stand("STEGOSAURUS")).getByRole("button", { name: "BUILD" }));
 
-    expect(pictures.loading()).toEqual(puzzlePictures("stegosaurus"));
-    act(() => finishLoading(pictures));
-    expect(screen.getByRole("heading").textContent).toBe("STEGOSAURUS");
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["STEGOSAURUS", ["skeletons"]]);
     expect(slots().map(([, state]) => state)).toEqual(["empty", "empty", "empty", "empty"]);
     expect(within(tray()).getAllByRole("img")).toHaveLength(4);
     expect(scattering()).toEqual([]);
@@ -214,6 +215,36 @@ describe("an empty stand", () => {
 
     await user.click(button("MUSEUM"));
     expect(stands().map(({ state }) => state)).toEqual(["built", "empty", "empty"]);
+  });
+});
+
+// skeleton-assembly-pictures.feature: a silhouette turns only its
+// picture, faint whatever its place shows.
+describe("a silhouette whose picture is not shown", () => {
+  const SILHOUETTE = { light: "brightness(0)", dark: "brightness(0) invert(1)" };
+
+  it.each([
+    ["an empty stand", [], "loading"],
+    ["an empty stand", [], "failed"],
+    ["a stand awaiting rebuilding", ["tyrannosaurus"], "loading"],
+    ["a stand awaiting rebuilding", ["tyrannosaurus"], "failed"]
+  ] as const)("keeps %s faint, its picture %s and not turned, in both themes", async (_, rebuilding, ends) => {
+    for (const appearance of ["light", "dark"] as const) {
+      const outline = fakeSkeletonPicture("tyrannosaurus", "skeleton");
+      const storage = keptSkeletons({ earned: [...rebuilding], bestScore: rebuilding.length, rebuilding: [...rebuilding] });
+      const { user, pictures } = openSkeletonsApp({ storage, appearance });
+      await user.click(button("MUSEUM"));
+      act(() => new Set(pictures.loading()).forEach((url) => (url !== outline ? pictures.finish(url) : ends === "failed" && pictures.fail(url))));
+      const picture = stand("TYRANNOSAURUS").querySelector<HTMLElement>(".skeleton-exhibit-picture") ?? document.body;
+
+      expect([picture.dataset.picture, picture.classList.contains("skeleton-silhouette"), getComputedStyle(picture).opacity]).toEqual([ends, true, "0.22"]);
+      expect(getComputedStyle(picture).filter).not.toContain("brightness");
+      if (ends === "loading") {
+        act(() => pictures.finish(outline));
+        expect(getComputedStyle(picture).filter).toBe(SILHOUETTE[appearance]);
+      }
+      cleanup();
+    }
   });
 });
 
@@ -230,7 +261,7 @@ describe("rebuilding", () => {
     act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe("TRICERATOPS");
-    expect(board().querySelector(".skeleton-outline")?.getAttribute("src")).toBe(fakeSkeletonPicture("triceratops", "skeleton"));
+    expect(board().querySelector(".skeleton-outline img")?.getAttribute("src")).toBe(fakeSkeletonPicture("triceratops", "skeleton"));
     expect(slots().map(([, state]) => state)).toEqual(["empty", "empty", "empty", "empty"]);
     expect(scattering()).toEqual(["SKULL", "SPINE", "LEGS", "TAIL"]);
     expect(tray().hasAttribute("data-scatter")).toBe(true);
@@ -274,16 +305,14 @@ describe("rebuilding", () => {
     );
   });
 
-  it("rebuilds once on a quick double tap, its star and stand earned exactly once", async () => {
+  it("rebuilds at once and once on a quick double tap, counted once, its star and stand earned exactly once", async () => {
     const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
-    const { user, pictures } = await openMuseum({ storage });
+    const { counted, startCounter } = countedStarts();
+    const { user } = await openMuseum({ storage, startCounter });
 
     await user.dblClick(within(stand("TYRANNOSAURUS")).getByRole("button", { name: "REBUILD" }));
 
-    expect(pictures.loading()).toEqual(puzzlePictures("tyrannosaurus"));
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => finishLoading(pictures));
-    expect(scattering()).toHaveLength(4);
+    expect([screen.getByRole("heading").textContent, scattering(), counted]).toEqual(["TYRANNOSAURUS", ["SKULL", "SPINE", "LEGS", "TAIL"], ["skeletons"]]);
 
     await user.click(button("MUSEUM"));
     expect(stands()[0]).toEqual(REBUILDING("tyrannosaurus", "TYRANNOSAURUS"));
@@ -348,20 +377,20 @@ describe("rebuilding", () => {
     expect([starsChip().textContent, bestScore()]).toEqual(["1/3", undefined]);
   });
 
-  it("starts no rebuild still loading as BUILD ANOTHER goes back to the choice, the skeleton left standing", async () => {
-    const storage = keptSkeletons({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
-    const { user, pictures } = await openMuseum({ storage });
-    await user.click(within(stand("TRICERATOPS")).getByRole("button", { name: "REBUILD" }));
+  // In a browser the puzzle shows after its transition, so a second tap
+  // can land on the museum still shown: here both land in one act, before
+  // React renders. A key's click has no pointer's detail, so the
+  // double-tap filter lets both through to the game.
+  it("starts one puzzle, the first tapped's, counted once, for REBUILD and another stand's BUILD landing before the puzzle shows", async () => {
+    const storage = keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
+    const { counted, startCounter } = countedStarts();
+    await openMuseum({ storage, startCounter });
+    const tapped = [within(stand("TYRANNOSAURUS")).getByRole("button", { name: "REBUILD" }), within(stand("STEGOSAURUS")).getByRole("button", { name: "BUILD" })];
 
-    await user.click(button("BUILD ANOTHER"));
-    act(() => finishLoading(pictures));
+    act(() => tapped.forEach((each) => fireEvent.click(each, { detail: 0 })));
 
-    expect(choices().map((choice) => choice.getAttribute("aria-label"))).toEqual(NAMES);
-    expect(screen.queryByRole("group", { name: "BONES" })).toBeNull();
-    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [] });
-
-    await user.click(button("MUSEUM"));
-    expect(stands()).toEqual([EMPTY("tyrannosaurus", "TYRANNOSAURUS"), BUILT("triceratops", "TRICERATOPS"), EMPTY("stegosaurus", "STEGOSAURUS")]);
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["TYRANNOSAURUS", ["skeletons"]]);
+    expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: ["tyrannosaurus"] });
   });
 });
 

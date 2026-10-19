@@ -14,6 +14,7 @@ import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
+import { pictureStore } from "./Picture.tsx";
 import { PIECES } from "./skeletons/index.ts";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
 
@@ -128,7 +129,7 @@ export function appProps(browser: Browser): AppProps {
     now: () => new Date(browser.Date.now()),
     featuredStore: featured,
     startCounter: featured,
-    loadPicture: decodedPictures(() => new browser.Image()),
+    pictures: pictureStore(decodedPictures(() => new browser.Image())),
     startTimer: (ms, fire) => {
       const id = browser.setTimeout(fire, ms);
       return () => browser.clearTimeout(id);

@@ -2,6 +2,7 @@ import { Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
@@ -56,7 +57,7 @@ function ChoiceCard({ language, choice, index, onChoose }: { language: Language;
       {...pointer}
     >
       <span className="skeleton-choice-art">
-        <img className="skeleton-choice-picture" src={choice.picture} alt="" draggable={false} />
+        <Picture className="skeleton-choice-picture" src={choice.picture} alt="" width={800} height={600} />
         {choice.earned && (
           <span className="skeleton-choice-star" role="img" aria-label={TEXTS[language].star}>
             <Star size={28} aria-hidden="true" />

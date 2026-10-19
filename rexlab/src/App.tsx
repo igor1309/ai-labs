@@ -10,9 +10,9 @@ import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
+import type { StartTimer } from "./ownedTimers.ts";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
-import { LoadAhead, pictureStore, PicturesProvider, type PictureStore } from "./Picture.tsx";
-import type { LoadPicture, StartTimer } from "./pictureWait.ts";
+import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
 import {
@@ -102,7 +102,9 @@ export type AppProps = CareGameProps &
     appearance: Appearance;
     themeStore: ThemeStore;
     ageLevelStore: AgeLevelStore;
-    loadPicture: LoadPicture;
+    // Every picture the screens show, each loaded once, made where the
+    // browser is.
+    pictures: PictureStore;
     startTimer: StartTimer;
     // The device's clock: the time now.
     now: () => Date;
@@ -184,7 +186,7 @@ export function App({
   appearance,
   themeStore,
   ageLevelStore,
-  loadPicture,
+  pictures,
   startTimer,
   now,
   featuredStore,
@@ -251,9 +253,6 @@ export function App({
     ageLevelStore.save(picked);
   };
 
-  // Every picture the screens show, each loaded once.
-  const [pictures] = useState<PictureStore>(() => pictureStore(loadPicture));
-
   // A round opens at once, its pictures shimmering until they load. It is
   // counted with the change, so a second COMPARE or PLAY AGAIN before the
   // question shows finds a round already asked for and starts nothing.
@@ -318,7 +317,7 @@ export function App({
   );
 
   const skeletonGame = useSkeletonGame(
-    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, loadPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion },
     home,
     counting("skeletons")
   );

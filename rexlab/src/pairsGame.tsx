@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Language } from "./language/language.ts";
-import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
+import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
 import {
   dealBoard,
   finishBoard,
@@ -21,7 +21,6 @@ import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { LoadAhead } from "./Picture.tsx";
-import type { StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 

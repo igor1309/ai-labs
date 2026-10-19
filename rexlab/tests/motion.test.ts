@@ -381,8 +381,8 @@ describe("the skeleton reveal's motion", () => {
   const bodyOf = (selector: string) => PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "";
 
   it("holds the whole skeleton through the screen change, then fades the body in over it as the bones fade back", () => {
-    expect([".skeleton-reveal-bones", ".skeleton-reveal-body"].map((selector) => animations.get(selector))).toEqual(["fade-back", "fade-in"]);
-    for (const selector of [".skeleton-reveal-bones", ".skeleton-reveal-body"]) {
+    expect([".skeleton-reveal-bones", ".picture.skeleton-reveal-body"].map((selector) => animations.get(selector))).toEqual(["fade-back", "fade-in"]);
+    for (const selector of [".skeleton-reveal-bones", ".picture.skeleton-reveal-body"]) {
       expect(bodyOf(selector)).toMatch(/calc\(var\(--motion-screen\) \* 2\) var\(--ease-out\) var\(--motion-screen\) both/);
     }
     const back = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes fade-back")?.body ?? "";

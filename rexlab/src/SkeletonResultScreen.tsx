@@ -1,8 +1,9 @@
 import { ArrowRight, Bone, Landmark, Lightbulb, Star, Trophy } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture, PictureImage, usePicture } from "./Picture.tsx";
 import { CelebrationChip, type Celebration } from "./ResultParts.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
@@ -53,9 +54,11 @@ export function SkeletonResultScreen({
 }: SkeletonResultScreenProps) {
   const text = TEXTS[language];
   const shownName = name.toLocaleUpperCase(language);
-  // A body picture that cannot be loaded leaves the skeleton whole, so the
-  // reward never waits on it.
-  const [missing, setMissing] = useState(false);
+  // The whole skeleton stands in for the body picture until it loads, so
+  // the reward never waits on it: the body fades in over its bones once
+  // loaded, and one that fails leaves the skeleton whole.
+  const bodyLook = usePicture(body);
+  const bodyShown = bodyLook === "appearing" || bodyLook === "shown";
   return (
     <main className="skeleton-screen skeleton-result">
       {celebration && <Festivity />}
@@ -73,8 +76,10 @@ export function SkeletonResultScreen({
           aria-label={shownName}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
         >
-          <img className="skeleton-reveal-bones" src={skeleton} alt="" draggable={false} data-alone={missing || undefined} />
-          {!missing && <img className="skeleton-reveal-body" src={body} alt="" draggable={false} onError={() => setMissing(true)} />}
+          <span className="skeleton-reveal-bones" data-alone={!bodyShown || undefined}>
+            <Picture className="skeleton-reveal-bones-picture" src={skeleton} alt="" />
+          </span>
+          {bodyShown && <PictureImage look={bodyLook} className="skeleton-reveal-body" src={body} alt="" />}
         </div>
         <section className="skeleton-reward">
           <div className="skeleton-reward-row">

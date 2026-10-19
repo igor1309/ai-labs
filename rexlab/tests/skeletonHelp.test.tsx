@@ -28,8 +28,6 @@ import {
 import { words, type ManualPictures, homeTile } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
-// The longest the reveal waits for the body picture.
-const PICTURE_WAIT = 1000;
 
 // `seconds` seconds at the puzzle: the game counts its time towards help
 // by a timer of a second, started anew each time it fires.
@@ -88,7 +86,7 @@ describe("help after waiting", () => {
 
     release(AWAY);
 
-    expect(spotOf("spine").querySelector("img")?.hasAttribute("data-returning")).toBe(true);
+    expect(spotOf("spine").querySelector(".skeleton-piece")?.hasAttribute("data-returning")).toBe(true);
     expect(hints()).toEqual(["slot skull", "spot skull"]);
   });
 
@@ -209,9 +207,8 @@ describe("help after waiting", () => {
     expect(board().hasAttribute("data-complete")).toBe(true);
     expect(fittedPieces()).toEqual(["skull", "spine", "legs", "tail"]);
     expect(hints()).toEqual([]);
-    // Only the reveal's pause and its wait for the body picture: help
-    // counts no more time.
-    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
+    // Only the reveal's pause: help counts no more time.
+    expect(pictures.timers()).toEqual([REVEAL.motion]);
     expect(document.body.textContent).toBe(before?.replace("0/4", "4/4"));
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
 

@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-19
+
+- Skeletons no longer wait for pictures: a puzzle starts at once, each bone fitted the same while its picture shimmers or is missing, and the result shows once the skeleton has held, the body fading in whenever it loads; nothing in the app waits for a picture any more (LAB-308).
+
 ## 2026-10-18
 
 - Sorting no longer waits for pictures: a round starts at once, each card named over its picture's shimmer until it fades in, and sorted the same while its picture loads or is missing (LAB-307).
