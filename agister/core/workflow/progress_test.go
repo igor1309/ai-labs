@@ -99,6 +99,28 @@ func TestAStepsStaleTurnIsAnEvent(t *testing.T) {
 	}
 }
 
+// progress.feature, "A step's turn at capacity is an event": by the
+// step's name, between its start and its end, with its wait or with none.
+func TestAStepsTurnAtCapacityIsAnEvent(t *testing.T) {
+	t.Parallel()
+	for _, retry := range []time.Duration{30 * time.Second, 0} {
+		t.Run(fmt.Sprint(retry), func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": ends(workflow.Completed, "", time.Second)})
+			f.caller.capacity = map[string][]workflow.Capacity{"a": {{Reason: "at capacity", Retry: retry}}}
+			f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a", Agent: "claude-opus"}}}, nil)
+			want := []string{
+				"a started on claude-opus",
+				fmt.Sprintf(`a at capacity "at capacity" retrying in %v`, retry),
+				`a ended completed "" in 1s`,
+			}
+			if !reflect.DeepEqual(f.events.told, want) {
+				t.Errorf("told\n%q\nwant\n%q", f.events.told, want)
+			}
+		})
+	}
+}
+
 // startingCaller is a caller that keeps the events told by the time it is
 // asked, then reports its call's start and completes it.
 type startingCaller struct {

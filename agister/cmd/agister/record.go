@@ -185,8 +185,8 @@ func (r *runRecord) warn(warning string) {
 	}
 }
 
-// Started, Tool, Stale, Reused and Ended answer core/workflow's events: each is
-// appended to the run's events at the clock's time.
+// Started, Tool, Stale, Capacity, Reused and Ended answer core/workflow's
+// events: each is appended to the run's events at the clock's time.
 func (r *runRecord) Started(step, agent string) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Started, Agent: agent})
 }
@@ -197,6 +197,13 @@ func (r *runRecord) Tool(step string, tool workflow.Tool) {
 
 func (r *runRecord) Stale(step string, stale workflow.Stale) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Stale, What: stale.What, Recovering: stale.Recovering})
+}
+
+// Capacity keeps whether the turn is made again, not its wait: the wait
+// is the policy's, by the turn's place, and the next event's time shows
+// it.
+func (r *runRecord) Capacity(step string, capacity workflow.Capacity) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Capacity, Reason: capacity.Reason, Retrying: capacity.Retry > 0})
 }
 
 func (r *runRecord) Reused(step, call string) {
@@ -264,6 +271,12 @@ func (b bothEvents) Tool(step string, tool workflow.Tool) {
 func (b bothEvents) Stale(step string, stale workflow.Stale) {
 	for _, events := range b {
 		events.Stale(step, stale)
+	}
+}
+
+func (b bothEvents) Capacity(step string, capacity workflow.Capacity) {
+	for _, events := range b {
+		events.Capacity(step, capacity)
 	}
 }
 

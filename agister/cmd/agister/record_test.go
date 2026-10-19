@@ -184,6 +184,26 @@ func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
 	}
 }
 
+// A turn at capacity is appended as runstore's capacity event, at the
+// clock's time: its reason, and whether the turn is made again.
+func TestATurnAtCapacityIsAppendedAsACapacityEvent(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Capacity("ask", workflow.Capacity{Reason: "Overloaded", Retry: 30 * time.Second})
+	record.Capacity("ask", workflow.Capacity{Reason: "Overloaded"})
+	want := []storedEvent{
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Capacity, Reason: "Overloaded", Retrying: true}},
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Capacity, Reason: "Overloaded"}},
+	}
+	if _, _, events := store.given(); !reflect.DeepEqual(events, want) {
+		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
+	}
+}
+
 // record.feature, "A refusal by admission is recorded".
 //
 // Contract test: the files home holds, as Agister ships them.

@@ -70,6 +70,16 @@ func (p *progress) Stale(step string, stale workflow.Stale) {
 	p.line(step, what)
 }
 
+// Capacity prints a turn at capacity, and "; retrying in <wait>" where
+// the turn is made again.
+func (p *progress) Capacity(step string, capacity workflow.Capacity) {
+	what := "at capacity"
+	if capacity.Retry > 0 {
+		what += "; retrying in " + took(capacity.Retry)
+	}
+	p.line(step, what)
+}
+
 // Reused prints the call taken in place of the step's start and end.
 func (p *progress) Reused(step, call string) {
 	p.line(step, "reused "+inLine(call))

@@ -263,6 +263,7 @@ func TestATurnFailedIsClassedByItsWords(t *testing.T) {
 		message string
 		class   codex.Class
 	}{
+		{"Selected model is at capacity", codex.Capacity},
 		{"You've hit your usage limit", codex.RateLimited},
 		{"Rate limit reached", codex.RateLimited},
 		{"unexpected status 429 Too Many Requests", codex.RateLimited},

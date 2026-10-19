@@ -231,6 +231,12 @@ func TestAFailedResultIsClassedByItsFields(t *testing.T) {
 		class  claudecode.Class
 		reason string
 	}{
+		{"status 529", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":529,"result":"API Error: 529"}`,
+			claudecode.Capacity, "API Error: 529"},
+		{"overloaded", initLine, `{"type":"result","subtype":"success","is_error":true,"result":"Overloaded"}`,
+			claudecode.Capacity, "Overloaded"},
+		{"overloaded, its rate limit rejected", rejectedLine, `{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["Overloaded"]}`,
+			claudecode.Capacity, "Overloaded"},
 		{"status 429", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"API Error: 429 rate limited"}`,
 			claudecode.RateLimited, "API Error: 429 rate limited"},
 		{"a rejected rate limit", rejectedLine, duringExecutionLine, claudecode.RateLimited, "the request was rejected"},
