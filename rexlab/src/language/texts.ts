@@ -94,6 +94,10 @@ export type Texts = {
     "no-horns": string;
     feathers: string;
     "no-feathers": string;
+    // The third basket a level adds to a board.
+    both: string;
+    "two-or-four": string;
+    "not-known-yet": string;
   };
   // The home tile of the games still to come.
   moreComing: string;

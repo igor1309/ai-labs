@@ -5,7 +5,24 @@ export type Property = "legs" | "diet" | "size" | "horns" | "feathers";
 
 export const PROPERTIES: readonly Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
-export type Basket = "two-legs" | "four-legs" | "plants" | "meat" | "big" | "small" | "horns" | "no-horns" | "feathers" | "no-feathers";
+export type Basket =
+  | "two-legs"
+  | "four-legs"
+  | "plants"
+  | "meat"
+  | "big"
+  | "small"
+  | "horns"
+  | "no-horns"
+  | "feathers"
+  | "no-feathers"
+  | "both"
+  | "two-or-four"
+  | "not-known-yet";
+
+// The baskets of a board, in the order it shows them: two, or three where
+// a level adds a third.
+export type Baskets = readonly [Basket, Basket] | readonly [Basket, Basket, Basket];
 
 // The two baskets of each property, in the order the board shows them.
 export const BASKETS: Record<Property, readonly [Basket, Basket]> = {
@@ -39,6 +56,7 @@ export type Card = {
 
 export type Board = {
   property: Property;
+  baskets: Baskets;
   // The cards in their places on the tray.
   cards: readonly Card[];
 };
@@ -90,7 +108,7 @@ export function generateBoard(dinosaurs: readonly Dinosaur[], random: Random, pr
     ...sample(random, firsts, count).map((dinosaur) => ({ dinosaur, basket: first })),
     ...sample(random, seconds, BOARD_SIZE - count).map((dinosaur) => ({ dinosaur, basket: second }))
   ];
-  return { property, cards: sample(random, cards, cards.length) };
+  return { property, baskets: [first, second], cards: sample(random, cards, cards.length) };
 }
 
 // `count` different items of `items`, in a random order.

@@ -1,10 +1,10 @@
 // The sorting game's API: its use cases and the types the app speaks with
 // it. Everything else under sorting/ is reached only through this file.
-import { BASKETS, generateBoard, type Basket, type Dinosaur, type Property, type Random } from "./board.ts";
+import { generateBoard, type Basket, type Baskets, type Dinosaur, type Property, type Random } from "./board.ts";
 import { isFinished, score, startSorting, type Sorting } from "./play.ts";
 import { finishRound, type BeatBest, type Celebration, type SortingProgress } from "./progress.ts";
 
-export type { Basket, Diet, Dinosaur, Property, Random } from "./board.ts";
+export type { Basket, Baskets, Diet, Dinosaur, Property, Random } from "./board.ts";
 export type { BeatBest, Celebration, Sorting, SortingProgress };
 export type { Beaten } from "./progress.ts";
 export { drop, score } from "./play.ts";
@@ -22,7 +22,7 @@ export type CardState = {
 
 export type BoardState = {
   property: Property;
-  baskets: readonly [Basket, Basket];
+  baskets: Baskets;
   // Every card, in its place on the tray, landed or not.
   cards: CardState[];
   // The landed cards, in the order they landed.
@@ -64,7 +64,7 @@ export function boardState(sorting: Sorting): BoardState {
   const missed = cardOf(misses.at(-1));
   return {
     property: board.property,
-    baskets: BASKETS[board.property],
+    baskets: board.baskets,
     cards,
     landed: landed.flatMap((id) => cardOf(id) ?? []),
     lastMiss: missed && { basket: missed.basket, misses: misses.length },

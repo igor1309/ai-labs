@@ -102,10 +102,12 @@ export const otherBasket = (sorting: Sorting, basket: Basket): Basket => {
 };
 
 // Where things are on the iPad's screen: jsdom lays nothing out, so each
-// basket is given its place, side by side under the tray.
+// basket is given its place, side by side under the tray. A third basket
+// has the place beyond the two's.
 export const BASKET_PLACES = [
   { left: 56, right: 664, top: 420, bottom: 852 },
-  { left: 688, right: 1384, top: 420, bottom: 852 }
+  { left: 688, right: 1384, top: 420, bottom: 852 },
+  { left: 1408, right: 2000, top: 420, bottom: 852 }
 ] as const;
 
 export const CARD_AT = { clientX: 200, clientY: 300 };
