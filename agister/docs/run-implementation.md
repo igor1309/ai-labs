@@ -605,7 +605,8 @@ Decisions, each with its reason:
 - Not yet in the record: the definitions with their digests, the
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
   the continuation needs none of them. ("Runs" adds the inputs, "A
-  call's changes" the HEAD a call left and its patch.)
+  call's changes" the HEAD a call left and its patch, "Definitions"
+  the definitions.)
 - A record starts `lost` and is rewritten as calls end: a run that dies
   reads as lost, never as running (invariant 7), its ended calls kept,
   with no reaper.
@@ -815,7 +816,7 @@ Decisions, each with its reason:
 - Not yet in the record: the definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch
   (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
-  adds the patch.)
+  adds the patch, "Definitions" the definitions.)
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
@@ -925,7 +926,8 @@ first written, checks a reuse, each failure a refusal on stderr, exit
 Each step's call, once its inputs resolve and before it is admitted, is
 taken from the earlier run when that run holds a call of the same step
 that completed, of the same process and agent, given inputs of the same
-names, in the same order, with the same identities, and the worktree is
+names, in the same order, with the same identities, under the same
+definitions ("Definitions"), and the worktree is
 as that call left it: the root of the worktree holding the launch
 directory is its root, the root's HEAD the one it left and its content
 its content, not empty. A call taken is not admitted and not made: it
@@ -964,10 +966,8 @@ Decisions, each with its reason:
   that writes changes what the steps after it read.
 - A call that failed is never taken: a failure is what a run again is
   for.
-- The settings a call ran under are not compared: the record does not
-  hold definitions or their digests yet (`run-path.md`, "The rest of
-  the record"). A prompt or schema changed since is a risk taken;
-  whoever reuses chose the run.
+- The settings a call ran under are compared as "Definitions" gives
+  them.
 - Each call's cost and usage count once (ADR-011, rule 6) in a run's
   result: a run's are what it spent; a call taken keeps the earlier
   ones in its entry, which a sum over records skips.
@@ -1157,3 +1157,58 @@ Decisions, each with its reason:
   from (ADR-004, rule 4).
 - A record from before is read with its `"head"` as the HEAD it left,
   as runs then were checked; the record is read, never rewritten.
+
+## Definitions
+
+Each call's record names the settings it was made from: every file of
+every document its plan read, by layer, path and SHA-256 digest
+(ADR-001, invariant 6; LAB-321). A reuse takes a call only where they
+are the same: a prompt or schema changed since is run again.
+
+**`settings/documents`** gives a document's files: for a tree, each
+layer's file that composes it, nearest first, then the files of the
+document it extends, the same way; for a blob, the nearest layer's file
+alone, the one whose bytes it is. Each file is its layer, `home`,
+`repository` or `project`, its path and the SHA-256 digest of its
+bytes, as lowercase hex. A document with problems gives its problems,
+no files.
+
+**`runstore`**'s call grows `"definitions"`: each document, its kind,
+name and files, in order of kind, then name. The request grows
+`"definitions"` the same way: the documents the workflow's plan reads
+outside its steps, the workflow's own and each brief its inputs are
+checked against; `[]` for a step requested alone.
+
+**The composition**, as it plans a step's call, gathers its documents:
+its process, its agent and the agent's runtime; and each prompt, schema
+and brief its plan reads, the prompt `continuation` included where the
+call continues a session. Each call's entry, refused or made, records
+them; the run's request records its workflow's:
+
+```json
+{"calls": [{"definitions": [{"kind": "process", "name": "implement",
+  "files": [{"layer": "home", "path": "", "digest": ""}]}]}],
+ "request": {"definitions": []}}
+```
+
+A reuse takes a call only where the earlier entry's `"definitions"` are
+this call's, file for file; an entry with none, a record from before,
+is never taken. A call taken keeps the earlier entry's definitions, as
+it keeps the rest of that entry.
+
+Decisions, each with its reason:
+
+- The files, not the composed definitions: a digest of each file is
+  what was read, and the record does not keep a second decoding of
+  settings that may change.
+- Paths and digests, not the bytes: a file changed since is known
+  changed, not what it held; keeping the bytes is left
+  (`run-path.md`, "The rest of the record").
+- `"digest"`, as a stream's: one name for a SHA-256 in the record.
+- The documents a plan read, not every document of the snapshot: a
+  change to a process another step runs is no reason to run this one
+  again.
+- A record from before is never reused: what it ran under is not known.
+- The workflow's files are the run's, not each call's: a reuse does
+  not compare them, as a change to another step is no reason to run
+  this one again; each call's own documents say what it ran under.

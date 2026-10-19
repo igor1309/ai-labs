@@ -218,7 +218,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if err != nil {
 		return cli.Result{}, err
 	}
-	record, err := newRunRecord(r.store, r.host.clock, id, started, request, launch, root)
+	record, err := newRunRecord(r.store, r.host.clock, id, started, request, built.definitions, launch, root)
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -376,6 +376,7 @@ func (k *knownRoots) Root(dir string) (string, error) {
 // not hold, a param's default, an input's source, a brief form's parts, a
 // time limit, a prompt's text, and what this slice does not run.
 type runDocuments interface {
+	Files(kind documents.Kind, name string) ([]documents.File, []documents.Problem)
 	Workflow(name string) (documents.WorkflowDefinition, []documents.Problem)
 	Process(name string) (documents.ProcessDefinition, []documents.Problem)
 	Brief(name string) (documents.BriefDefinition, []documents.Problem)
@@ -386,9 +387,10 @@ type runDocuments interface {
 // and inputs, which core/inputs resolves at its boundary; its workflow; and
 // each step's call, by the step's name.
 type plan struct {
-	boundary inputs.Declared
-	workflow workflow.Workflow
-	calls    map[string]plannedCall
+	definitions []runstore.Definition
+	boundary    inputs.Declared
+	workflow    workflow.Workflow
+	calls       map[string]plannedCall
 }
 
 // plannedCall is a step's call: its process and agent, by name; the
@@ -403,14 +405,15 @@ type plan struct {
 // which its inputs give; and the call core/call makes, but its environment
 // and inputs, which those give.
 type plannedCall struct {
-	process   string
-	agent     string
-	contract  string
-	continues string
-	chained   bool
-	declared  inputs.Declared
-	admission admit.Request
-	step      call.Step
+	definitions []runstore.Definition
+	process     string
+	agent       string
+	contract    string
+	continues   string
+	chained     bool
+	declared    inputs.Declared
+	admission   admit.Request
+	step        call.Step
 }
 
 // planOf is the run of resolved, the workflow name, "" for one made of a
@@ -457,7 +460,19 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		}
 		params = definition.Params.Value
 	}
-	built := plan{calls: map[string]plannedCall{}}
+	built := plan{calls: map[string]plannedCall{}, definitions: []runstore.Definition{}}
+	if name != "" {
+		named := []runstore.Definition{{Kind: "workflow", Name: name}}
+		for _, input := range w.Inputs {
+			for _, form := range input.Forms {
+				named = append(named, runstore.Definition{Kind: "brief", Name: form.Value})
+			}
+		}
+		built.definitions, err = definitionsOf(docs, named)
+		if err != nil {
+			return plan{}, nil, err
+		}
+	}
 	defaults := declaredParams(params)
 	for _, param := range w.Params {
 		built.boundary.Params = append(built.boundary.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
@@ -774,6 +789,26 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 		if warning.Origin == item.Origin {
 			planned.step.Warnings = append(planned.step.Warnings, problemLine(warning.Origin, warning.Message))
 		}
+	}
+	named := []runstore.Definition{{Kind: "process", Name: item.Process.Value}, {Kind: "agent", Name: item.Agent.Value}, {Kind: "runtime", Name: agent.Runtime.Value}}
+	if prompt := process.Prompt.Value; prompt != "" {
+		named = append(named, runstore.Definition{Kind: "prompt", Name: prompt})
+	}
+	for _, guidance := range process.Guidance {
+		named = append(named, runstore.Definition{Kind: "prompt", Name: guidance.Value})
+	}
+	if schema := process.Schema.Value; schema != "" {
+		named = append(named, runstore.Definition{Kind: "schema", Name: schema})
+	}
+	for _, input := range process.Inputs {
+		for _, form := range input.Forms {
+			named = append(named, runstore.Definition{Kind: "brief", Name: form.Value})
+		}
+	}
+	var err error
+	planned.definitions, err = definitionsOf(docs, named)
+	if err != nil {
+		return plannedCall{}, err
 	}
 	return planned, nil
 }
@@ -1101,7 +1136,7 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	planned := s.calls[name]
-	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues}
+	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues, definitions: planned.definitions}
 	ended.result = s.call(ctx, name, params, session, report, &ended)
 	s.records.Called(ended)
 	return ended.result

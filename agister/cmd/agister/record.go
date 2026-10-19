@@ -58,6 +58,7 @@ func callID(run, step string) string {
 // refused; its worktree's facts, none for a call refused; the earlier call
 // it took, nil for one made; and its result.
 type endedCall struct {
+	definitions          []runstore.Definition
 	step, process, agent string
 	continues            string
 	taken                *runstore.Call
@@ -87,7 +88,7 @@ type runRecord struct {
 // newRunRecord is the record of the run id, started at started, of request,
 // asked in launch, its calls made in the worktree whose root is root, kept
 // by store.
-func newRunRecord(store recordStore, clock clock, id string, started time.Time, request cli.Request, launch, root string) (*runRecord, error) {
+func newRunRecord(store recordStore, clock clock, id string, started time.Time, request cli.Request, definitions []runstore.Definition, launch, root string) (*runRecord, error) {
 	switch {
 	case store == nil:
 		return nil, errors.New("run record: no store")
@@ -95,7 +96,7 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 		return nil, errors.New("run record: no clock")
 	}
 	asked := runstore.Request{Workflow: request.Workflow, Process: request.Process, Agent: request.Agent,
-		Params: maps.Clone(request.Params), Dir: launch}
+		Params: maps.Clone(request.Params), Dir: launch, Definitions: slices.Clone(definitions)}
 	if continues := request.Continue; continues != "" {
 		asked.Continue = &continues
 	}
@@ -129,16 +130,17 @@ func (r *runRecord) Resolved(given []givenInput) {
 // Called records ended among the run's calls, and writes the record again.
 func (r *runRecord) Called(ended endedCall) {
 	call := runstore.Call{
-		ID:      callID(r.record.ID, ended.step),
-		Step:    ended.step,
-		Process: ended.process,
-		Agent:   ended.agent,
-		Root:    r.root,
-		Head:    ended.facts.Head,
-		EndHead: &ended.facts.EndHead,
-		Content: ended.facts.Content,
-		Inputs:  recordInputs(ended.inputs),
-		Result:  runstore.CallResult{Outcome: outcomeOf(ended.result)},
+		Definitions: slices.Clone(ended.definitions),
+		ID:          callID(r.record.ID, ended.step),
+		Step:        ended.step,
+		Process:     ended.process,
+		Agent:       ended.agent,
+		Root:        r.root,
+		Head:        ended.facts.Head,
+		EndHead:     &ended.facts.EndHead,
+		Content:     ended.facts.Content,
+		Inputs:      recordInputs(ended.inputs),
+		Result:      runstore.CallResult{Outcome: outcomeOf(ended.result)},
 	}
 	if continues := ended.continues; continues != "" {
 		call.Continues = &continues

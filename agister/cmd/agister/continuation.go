@@ -33,9 +33,10 @@ type continuedWorktree interface {
 // session, the id of its latest call, and the text of home's prompt
 // "continuation".
 type continuation struct {
-	session   string
-	continues string
-	prompt    string
+	session     string
+	continues   string
+	prompt      string
+	definitions []runstore.Definition
 }
 
 // continuationOf is the continuation of the run named run by built, asked
@@ -96,21 +97,25 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if latest.Content == "" || content != latest.Content {
 		return refuse("the worktree is not as %q left it", latest.ID)
 	}
-	prompt, refusal := continuationPrompt(docs)
+	prompt, definitions, refusal := continuationPrompt(docs)
 	if len(refusal) > 0 {
 		return continuation{}, refusal, nil
 	}
-	return continuation{session: session, continues: latest.ID, prompt: prompt}, nil, nil
+	return continuation{session: session, continues: latest.ID, prompt: prompt, definitions: definitions}, nil, nil
 }
 
 // continuationPrompt is the text of the prompt "continuation" in docs, or
 // why it does not resolve.
-func continuationPrompt(docs runDocuments) (string, []string) {
+func continuationPrompt(docs runDocuments) (string, []runstore.Definition, []string) {
 	prompt, problems := docs.Blob(documents.Prompt, "continuation")
 	if len(problems) > 0 {
-		return "", []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
+		return "", nil, []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
 	}
-	return string(prompt.Bytes), nil
+	definitions, err := definitionsOf(docs, []runstore.Definition{{Kind: "prompt", Name: "continuation"}})
+	if err != nil {
+		return "", nil, []string{err.Error()}
+	}
+	return string(prompt.Bytes), definitions, nil
 }
 
 // latestCall is the latest call made of session, first the call of the
@@ -145,7 +150,7 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 func continued(built plan, c continuation) plan {
 	calls := maps.Clone(built.calls)
 	for name, planned := range calls {
-		planned = continuing(planned, c.prompt)
+		planned = continuing(planned, c.prompt, c.definitions)
 		planned.continues = c.continues
 		planned.step.Session = c.session
 		calls[name] = planned
@@ -158,8 +163,9 @@ func continued(built plan, c continuation) plan {
 // prompt "continuation", as its first document, and admitted with no clean
 // worktree asked, the checks of the worktree the session left taking its
 // place (ADR-004, rule 5).
-func continuing(planned plannedCall, prompt string) plannedCall {
+func continuing(planned plannedCall, prompt string, definitions []runstore.Definition) plannedCall {
 	planned.step.Documents = append([]call.Named{{Name: "continuation", Text: prompt}}, planned.step.Documents...)
+	planned.definitions = orderedDefinitions(slices.Concat(planned.definitions, definitions))
 	planned.admission.Clean = false
 	return planned
 }
@@ -181,13 +187,13 @@ func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
 	if len(names) == 0 {
 		return built, nil
 	}
-	prompt, refusal := continuationPrompt(docs)
+	prompt, definitions, refusal := continuationPrompt(docs)
 	if len(refusal) > 0 {
 		return plan{}, refusal
 	}
 	calls := maps.Clone(built.calls)
 	for _, name := range names {
-		calls[name] = continuing(calls[name], prompt)
+		calls[name] = continuing(calls[name], prompt, definitions)
 	}
 	built.calls = calls
 	return built, nil

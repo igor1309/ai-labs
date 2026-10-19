@@ -1,7 +1,7 @@
 # runstore, a wrapper (docs/run-implementation.md, "Records",
-# "Continuation", "Runs" and "A call's changes"; ADR-001, "Runs"): runs
-# kept under a folder, each a folder of its id. Contract tests against
-# real files, in a temporary folder (ADR-009, rule 3).
+# "Continuation", "Runs", "A call's changes" and "Definitions";
+# ADR-001, "Runs"): runs kept under a folder, each a folder of its id.
+# Contract tests against real files, in a temporary folder (ADR-009, rule 3).
 
 Feature: runstore keeps runs
 
@@ -61,3 +61,10 @@ Feature: runstore keeps runs
     Given the patch "p1" of the step "a" of the run "x" written
     When the patch "x/patches/a.patch" is asked
     Then it gives "p1"
+
+  Scenario: A call's definitions are written and given back
+    Given runstore over the folder "runs"
+    When the record of the run "x" is written, its call "a" holding the
+      process "p", its home file "/h/p.yaml", digest "d1"
+    Then "runs/x/record.json"'s call holds "definitions": the kind
+      "process", the name "p" and that file, given back by "x"

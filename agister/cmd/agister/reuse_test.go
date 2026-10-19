@@ -51,10 +51,10 @@ func identity(value string) string {
 // keptReview is the call "R1/<step>" of R1, "ask" on "codex-sol-61" given
 // q "why", in "/r" at HEAD "c1" and the content "t1", completed with its
 // step's name as its output's "by", its cost 1 and 100 tokens in.
-func keptReview(step string) runstore.Call {
+func keptReview(step string, settings map[string]string) runstore.Call {
 	cost, in, session := 1.0, int64(100), "s-"+step
 	return runstore.Call{ID: "R1/" + step, Step: step, Process: "ask", Agent: "codex-sol-61", Root: "/r", Head: "c1",
-		Content: "t1", Inputs: []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}},
+		Content: "t1", Definitions: askDefinitions(settings, "codex-sol-61"), Inputs: []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}},
 		Result: runstore.CallResult{Session: &session, Outcome: runstore.Outcome{Status: "completed",
 			Output: map[string]any{"ok": true, "by": step}, Cost: &cost, Usage: runstore.Usage{Input: &in}}}}
 }
@@ -73,7 +73,7 @@ func newReuseFixture(t *testing.T) *runFixture {
 		Content: "t1", Result: runstore.CallResult{Outcome: runstore.Outcome{Status: "failed", Class: &class}}}
 	f.store.kept = map[string]runstore.Record{"R1": {Schema: runstore.Schema, ID: "R1", Status: "failed",
 		Request: runstore.Request{Workflow: "review", Params: map[string]string{"q": "why"}, Dir: "/r"},
-		Calls:   []runstore.Call{keptReview("a"), keptReview("b"), judge}}}
+		Calls:   []runstore.Call{keptReview("a", f.settings), keptReview("b", f.settings), judge}}}
 	f.runtimes.codex.answer = codexReply(codex.Reply{Output: []byte(`{"ok":true}`)})
 	cost := 0.5
 	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Cost: &cost,
@@ -122,7 +122,7 @@ func TestAJudgeThatFailedRunsAloneOnTheReviewsKept(t *testing.T) {
 		if call.Reuses == nil {
 			continue
 		}
-		kept := keptReview(call.Step)
+		kept := keptReview(call.Step, f.settings)
 		if call.ID != last.ID+"/"+call.Step || call.Continues != nil || !reflect.DeepEqual(call.Result, kept.Result) {
 			t.Errorf("the record's call %+v, want its id this run's, continuing none, its result %+v", call, kept.Result)
 		}
@@ -166,10 +166,10 @@ func TestAJudgeThatFailedRunsAloneOnTheReviewsKept(t *testing.T) {
 func TestAContinuationGoesOnFromACallMadeNotOneReused(t *testing.T) {
 	t.Parallel()
 	f := newReuseFixture(t)
-	r2 := keptReview("a")
+	r2 := keptReview("a", f.settings)
 	continues := "R1/a"
 	r2.ID, r2.Content, r2.Continues = "R2/a", "t2", &continues
-	r3 := keptReview("a")
+	r3 := keptReview("a", f.settings)
 	r3.ID, r3.Reuses = "R3/a", &continues
 	f.store.kept["R2"] = keptRun("R2", r2)
 	f.store.kept["R3"] = keptRun("R3", r3)
