@@ -75,6 +75,15 @@ trusted for that alone.
   aside, and for the meat-eaters whose skin impressions show scales
   (Allosaurus and Carnotaurus); for the other meat-eaters and the
   omnivores drawn without feathers they are `null`.
+- The sorting game's Paleontologist level (LAB-295) sorts two of those
+  unclear groups into a third basket, so they get values of their own:
+  `legs` is `either` for the dinosaurs the sources say walked on two
+  legs or four (Iguanodon, Plateosaurus, Psittacosaurus and the
+  duck-billed dinosaurs), and `feathers` is `unknown` for the
+  meat-eaters and omnivores drawn without feathers whose feathers no
+  fossil shows. Spinosaurus's legs (its posture is argued over, not
+  known to vary) and the bristles of Psittacosaurus and
+  Heterodontosaurus stay `null`, on no board of that property.
 - Size is `big` only for a dinosaur of 3000 kg or more and `small` only
   for one of 500 kg or less, and only when no source's estimate crosses
   that line; it is `null` in between and when the estimates cross a line

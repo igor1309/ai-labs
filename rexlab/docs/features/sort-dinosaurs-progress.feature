@@ -1,6 +1,8 @@
 Feature: Sort dinosaurs: stored progress
   The sorting game keeps a best score and a count of finished rounds of
-  its own, beside the compare quiz's, in the browser.
+  its own, beside the compare quiz's, in the browser, with a best for
+  each level and the child's choice on the level switch
+  (sort-dinosaurs-level-switch.feature).
 
   Background:
     Given an iPad in landscape

@@ -1,7 +1,8 @@
 Feature: Sort dinosaurs: the result and the best score
   A sorted board ends on the compare quiz's result screen: the score,
   one star for each card with a won star for each right one, and the
-  best-score celebrations.
+  best-score celebrations. Its scenarios play Hatchling's six cards;
+  each level keeps its own best (sort-dinosaurs-level-switch.feature).
 
   Background:
     Given an iPad in landscape
