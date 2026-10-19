@@ -3,9 +3,9 @@ Feature: Sort dinosaurs: the level switch and its progress
   at the level it starts at (age-level-start.feature). Its result
   screen shows the level switch above "PLAY AGAIN", the child's own
   choice in this game (age-level-choice.feature), kept in the game's
-  progress (sort-dinosaurs-progress.feature). Each level keeps its own
-  best (sort-dinosaurs-progress.feature). It has no level offer: a child moves up on
-  the switch, and the offer stays with find the pair (owner, LAB-295).
+  progress with each level's own best (sort-dinosaurs-progress.feature).
+  It has no level offer: a child moves up on the switch, and the offer
+  stays with find the pair (owner, LAB-295).
 
   Background:
     Given an iPad in landscape

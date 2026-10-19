@@ -76,13 +76,17 @@ trusted for that alone.
   plant-eaters drawn without them, Psittacosaurus, with its tail
   bristles, and Heterodontosaurus, whose close relatives had bristles,
   aside (both `null`), and for the meat-eaters whose skin impressions
-  show scales: Allosaurus, Carnotaurus and Tyrannosaurus, whose scaly
-  skin NHM and AMNH report, with no direct evidence of feathers. For the
-  other meat-eaters and the omnivores drawn without feathers no fossil
-  shows either way, and feathers are `unknown`.
+  show scales and nothing else (Allosaurus and Carnotaurus). For the
+  other meat-eaters and the omnivores drawn without feathers feathers
+  are `unknown`: no fossil settles it, Tyrannosaurus included, whose
+  scaly skin NHM reports while leaving feathers on its back open.
 - The sorting game (LAB-295) deals `either` and `unknown` only on the
   Paleontologist level's legs and feathers boards, into TWO OR FOUR and
   NOT KNOWN YET; every other board leaves them out, as it does `null`.
+  Paleontologist's feathers board deals only the dinosaurs drawn with
+  feathers and the meat-eaters and omnivores, the ones a fossil can
+  answer for, so its NO FEATHERS means skin that shows scales, not a
+  plant-eater merely drawn without feathers.
 - Size is `big` only for a dinosaur of 3000 kg or more and `small` only
   for one of 500 kg or less, and only when no source's estimate crosses
   that line; it is `null` in between and when the estimates cross a line

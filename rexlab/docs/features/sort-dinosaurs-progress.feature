@@ -74,7 +74,7 @@ Feature: Sort dinosaurs: stored progress
 
   Scenario: The SORT tile and the featured SORT card show the level's best
     Given my Hatchling best is 5 and my Explorer best is 7
-    When the sorting game plays Explorer
+    When the next sorting round would start at Explorer, by the child's choice or else the age level
     Then the "SORT" tile shows 7, and so does the large card on a day it features SORT
 
   Scenario: A best saved before levels is the Hatchling best
@@ -82,3 +82,5 @@ Feature: Sort dinosaurs: stored progress
     When I finish a Hatchling round with 5 right
     Then I see no celebration, and my Hatchling best stays 5
     And my Explorer and Paleontologist bests are none
+    And the finished rounds saved before levels are kept, with one more
+    And there is no level choice, so the first round played the age level

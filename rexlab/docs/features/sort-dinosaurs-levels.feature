@@ -1,13 +1,13 @@
 Feature: Sort dinosaurs: age levels
-  The sorting game has a mode for each age level (docs/age-levels.md).
-  Its Hatchling mode is today's game: two baskets and six cards, by any
-  property (sort-dinosaurs-start.feature). Explorer deals eight cards,
-  and a diet board has a third basket, BOTH. Paleontologist deals ten
-  cards, sorts only by legs or feathers, and always has a third basket:
-  TWO OR FOUR for the dinosaurs that walked both ways, NOT KNOWN YET for
-  those whose feathers no fossil shows (docs/sources.md). Drops, hints
-  and stars work alike at every level (sort-dinosaurs-play.feature). With
-  three omnivores, every Explorer diet board deals two or three of them.
+  Each age level has a mode (docs/age-levels.md). Hatchling is today's
+  game: two baskets, six cards, any property (sort-dinosaurs-start.feature).
+  Explorer deals eight cards; its diet board adds BOTH, dealing two or
+  three of the 3 omnivores. Paleontologist deals ten, sorts by legs or
+  feathers only, and adds TWO OR FOUR for those that walked both ways or
+  NOT KNOWN YET for the meat-eaters and omnivores whose feathers no
+  fossil settles. Its feathers board deals only those drawn with feathers
+  and the meat-eaters and omnivores, so NO FEATHERS there means a fossil
+  shows scales (docs/sources.md). Drops, hints and stars work alike.
 
   Background:
     Given an iPad in landscape
@@ -68,8 +68,8 @@ Feature: Sort dinosaurs: age levels
     Given the dinosaur list the app ships with
     Then BOTH holds exactly Gallimimus, Oviraptor and Troodon, and no two-basket diet board deals them
     And TWO OR FOUR holds exactly Iguanodon, Plateosaurus, Parasaurolophus, Edmontosaurus, Maiasaura and Corythosaurus
-    And NOT KNOWN YET holds exactly Spinosaurus, Compsognathus, Gallimimus, Dilophosaurus, Giganotosaurus, Coelophysis, Baryonyx and Ceratosaurus
-    And Tyrannosaurus, whose skin shows scales, goes in NO FEATHERS
+    And NOT KNOWN YET holds exactly Tyrannosaurus, Spinosaurus, Compsognathus, Gallimimus, Dilophosaurus, Giganotosaurus, Coelophysis, Baryonyx and Ceratosaurus
+    And a Paleontologist feathers board's NO FEATHERS holds only Allosaurus and Carnotaurus, and it deals no plant-eater drawn without feathers
     And the legs of Spinosaurus and Psittacosaurus and the feathers of Psittacosaurus and Heterodontosaurus are on no board
 
   Scenario Outline: The result scores the level's cards
