@@ -35,27 +35,29 @@ Feature: A call is kept to its cost limit
     When the call is made
     Then its turn is given no budget
 
-  Scenario Outline: No further turn starts once the limit is spent
+  Scenario Outline: No retry starts once the limit is spent
     Given a model step of the cost limit 1, whose first turn reports the
-      session "s1", its cost <cost>, then <ends>, and whose second turn
-      completes
+      session "s1", its cost <cost>, then fails at capacity, and whose
+      second turn completes
     When the call is made
     Then it makes one turn, no wait started, and ends failed, class
       "budget_exhausted", the reason "the cost limit 1 is spent: <cost>"
+    And its report of the turn at capacity has no retry
 
     Examples:
-      | cost | ends              |
-      | 1    | fails at capacity |
-      | 1.5  | goes stale        |
+      | cost |
+      | 1    |
+      | 1.5  |
 
-  Scenario: No further turn starts once a turn's cost is unknown
+  Scenario: No recovery turn starts once a turn's cost is unknown
     Given a model step of the cost limit 1, whose first turn reports the
-      session "s1", then goes stale, reporting no reply, and whose
-      recovery turn completes
+      session "s1", then goes stale, giving no reply, and whose recovery
+      turn completes
     When the call is made
     Then it makes one turn, and ends failed, class "budget_exhausted",
       the reason "the cost limit 1 cannot be kept: a turn's cost is
       unknown"
+    And its report of the stale turn is not recovering
 
   Scenario: A turn ended at its budget ends the call
     Given a model step of the cost limit 1, whose turn fails

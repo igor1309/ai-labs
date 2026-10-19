@@ -36,7 +36,8 @@ leaves out, roughly in the order it is needed:
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
   turn on pi; skills
   given to a turn; codex's cost through `ccusage`, and a cost limit on
-  codex; the version warning (ADR-003, rule 8), from the version the
+  codex, and codex's usage on a resumed thread counted once; the
+  version warning (ADR-003, rule 8), from the version the
   turn reports.
 - **Staleness on bash**: the no-event limit on every runtime (ADR-012,
   rule 6), bash's lines reported as the models' are.

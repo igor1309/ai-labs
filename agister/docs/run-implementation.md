@@ -761,7 +761,8 @@ Decisions, each with its reason:
   hung `Bash` commands are one thing; with home's one resume, it does
   not matter.
 - No cost is left to check: no cost limit is run yet. ("A call's
-  cost" stops a recovery turn at it.)
+  cost" stops a recovery turn at it, or where a turn's cost is
+  unknown, as a stale turn's is.)
 - End to end, a turn made stale in seconds, by a tool command limit
   of a few seconds and a prompt that sleeps, proves that each runtime
   resumes a session whose program was ended mid-tool.
@@ -1323,19 +1324,23 @@ reported cost less the session's before, unknown where that is unknown
 or the report is less; it also gives the session's cost, the reported
 cost whole. A budget is passed as `--max-budget-usd`, after the
 effort's argument. A result of the subtype `error_max_budget_usd` is
-the class `budget_exhausted`. Its facts say it keeps a cost limit.
+the class `budget_exhausted`. Its facts say it takes a budget; codex's
+and bash's say they do not.
 
 **`core/call`**'s step is given its cost limit, none where not given,
 and the cost of the session it continues before the call. Each turn is
-given the session's cost before it: the step's for the call's first
-turn, none for a new session, zero, then the session's cost the last
-turn that reported one in that session gave, unknown after a turn that
-gave no reply. Each turn under a limit is given as its budget the limit
-less the call's cost so far. No retry at capacity or recovery turn
+given the session's cost before it: zero for a turn given no session;
+else the step's for the call's first turn, and for each later turn the
+session's cost the turn before it gave, unknown where it gave none. A
+stale turn is ended by a signal and gives no reply, so the turn after
+it is given an unknown cost. Each turn under a limit is given as its
+budget the limit less the call's cost so far. No retry at capacity or recovery turn
 starts where the call's cost so far has reached the limit or is
 unknown; the call ends failed, `budget_exhausted`, its reason "the cost
 limit <limit> is spent: <cost>", or "the cost limit <limit> cannot be
-kept: a turn's cost is unknown". A turn the runtime ended at its budget
+kept: a turn's cost is unknown". The report of the turn at capacity
+then has no retry, and the stale turn's report is not recovering. A
+turn the runtime ended at its budget
 ends the call failed, `budget_exhausted`, its reason the runtime's. The
 call's result gives the session's cost its last turn reported, none
 where that turn reported none.
@@ -1350,7 +1355,7 @@ before, with no such field, is read as `null`.
 
 **The composition** gives a step its process's cost limit, and refuses
 it before anything runs, as not run yet, on a runtime whose facts do not
-keep one: "the cost limit on codex", "the cost limit on bash". A call
+take a budget: "the cost limit on codex", "the cost limit on bash". A call
 continuing a session, by `--continue` or a binding, is given the
 `"session_cost"` of the session's latest call, the call its worktree is
 checked against; unknown where that entry has none. Each entry records
@@ -1372,8 +1377,17 @@ Decisions, each with its reason:
   budget between requests. Agister kills no turn for its cost.
 - No turn starts once a turn's cost is unknown under a limit: what is
   left cannot be told, and a limit is never loosened (ADR-004, rule 7).
+  So on claude-code a process with both a cost limit and a recovery is
+  never recovered: a stale turn's cost is unknown. Home's processes set
+  no cost limit; whether a killed claude keeps its spend in the
+  session's cost, which would let a recovery turn tell it, is not
+  known.
 - `budget_exhausted` for a spent cost limit, as the archive had it: the
   class says the call spent its budget, its reason which; a repeated
   tool call keeps the class.
-- Codex and bash report no cost, so a limit on them is refused, not
-  ignored. Codex's cost through `ccusage` stays in the backlog.
+- A limit on codex or bash is not run yet, as a staleness limit on
+  bash is: codex's waits for its cost through `ccusage`, in the
+  backlog; bash reports no cost, and whether a limit on it is kept,
+  spending nothing (ADR-012, rule 5), or refused waits with it.
+- The facts are the wrapper's, read by the composition as it reads how a
+  runtime takes its inputs; resolve does not refuse a cost limit.
