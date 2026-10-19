@@ -65,15 +65,15 @@ Feature: Resolve checks that every reference reads what is there
 
   Scenario Outline: A step continues the session of a step
     Given the workflow "c" has the <item> "d", then the step "s"
-    And "s" continues "<reads>"
+    And "s", on the agent "a1", continues "<reads>"
     When resolve is asked for the workflow "c"
     Then it refuses: the problem at "steps[1].session": <problem>
 
     Examples:
-      | item          | reads           | problem                                     |
-      | workflow item | steps.d.session | the item "d" is no step, and has no session |
-      | step          | steps.d.outputs | it reads a step's session                   |
-      | step on "a2"  | steps.d.session | the step "d" runs on another agent, "a2"    |
+      | item           | reads           | problem                                     |
+      | workflow item  | steps.d.session | the item "d" is no step, and has no session |
+      | step           | steps.d.outputs | it reads a step's session                   |
+      | step, on "a2", | steps.d.session | the step "d" runs on another agent, "a2"    |
 
   Scenario Outline: A process's references read its own params and inputs
     Given the process "p" declares the param "base" and the input "rev"

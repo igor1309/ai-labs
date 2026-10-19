@@ -1059,17 +1059,19 @@ not called. Its caller port grows the session a step continues, "" for
 none.
 
 **`core/admit`**'s request grows the worktree a call continuing a
-session must find: the HEAD and content the session's latest call left
-it with. Checked after the pin and before the hold, either not the
-worktree's now, or the content left empty, refuses the call: `the
-worktree is not as the session's latest call left it`. A request with
-it asks no clean worktree: the check takes its place.
+session must find: the HEAD the session's latest call was admitted at,
+and the content it left, as admit told them. Checked after the pin and
+before the hold, a HEAD not the worktree's now refuses the call, `HEAD
+is "<now>", not the session's latest call's "<head>"`; a content not
+the worktree's now, or left empty, refuses it, `the worktree is not as
+the session's latest call left it`.
 
 **The composition** keeps, for the run, each session's latest call:
 its id and the HEAD and content admit told at its end. A step's call
 continuing a session is given that session, the prompt `continuation`
 first among its documents, as a continuation's is, and admit the facts
-its latest call left; the record's call continues that call's id. A
+its latest call left, no clean worktree asked: the check takes its
+place; the record's call continues that call's id. A
 call continuing a session that another call of the run is making is
 refused, `the session of "<item>" is in another call`, nothing taken:
 two turns at once in one session are not run. A step that continues
@@ -1087,9 +1089,9 @@ Decisions, each with its reason:
 - Admission checks the worktree, as ADR-001's table of parts says, not
   the composition, as a continuation's: here the facts are the run's
   own, kept in memory, and the hold is taken right after.
-- A step that ended otherwise than completed still has its session:
-  continuing it is the binding's to choose, as a recovery turn resumes
-  a stale one.
+- The HEAD compared is the one the latest call was admitted at, as a
+  continuation's is (ADR-004, rule 5, "the same revision"): a step
+  that commits leaves its session not to be continued in this slice.
 - Two calls in one session at once are refused, not queued or
   serialized: a parallel binding one session twice is a settings
   mistake met at run time, and no settings check is made for it until

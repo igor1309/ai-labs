@@ -29,16 +29,16 @@ Feature: The composition continues a session inside a run
     Then "second" is admitted, and given the session "s1"
 
   Scenario: A worktree changed since the latest call refuses the step
-    Given git gives "/r" the content "t2" once "first" has ended, though
-      admit told "first"'s end "t1"
+    Given git gives "/r" the content "t1" when "first" ends, and "t2"
+      when "second" is admitted
     When "agister run talk --param q=why" runs in "/r"
     Then "second" is refused, its turn not made: the worktree is not as
       the session's latest call left it
 
   Scenario: Two calls of a run are not made in one session at once
     Given the workflow "both": the step "first", then a parallel of "x"
-      and "y", each continuing "first"'s session, "x"'s turn ending once
-      "y" has ended
+      and "y", each continuing "first"'s session, "y" called only once
+      "x"'s turn has started, and "x"'s turn ending once "y" has ended
     When "agister run both --param q=why" runs in "/r"
     Then "y" is refused, its turn not made: the session of "first" is in
       another call; and "x" is given the session "s1"
