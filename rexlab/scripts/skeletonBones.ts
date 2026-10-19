@@ -20,8 +20,21 @@ const SPECK = 30;
 
 // Shapes the art draws as one though they are two bones, each with
 // points inside its parts: a part reaches as far as the faint line drawn
-// between it and the next. Triceratops's skull runs into its frill.
+// between it and the next. Triceratops's skull runs into its frill;
+// Brachiosaurus's ribs run into its far front leg's forearm.
 export const SEAMS: Readonly<Record<string, readonly Seam[]>> = {
+  brachiosaurus: [
+    [
+      [
+        [400, 330],
+        [450, 380]
+      ],
+      [
+        [330, 480],
+        [340, 520]
+      ]
+    ]
+  ],
   triceratops: [
     [
       [

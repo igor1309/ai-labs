@@ -24,6 +24,8 @@ Feature: Skeleton assembly: Paleontologist
       | Tyrannosaurus | 11    | 3      |
       | Triceratops   | 10    | 2      |
       | Stegosaurus   | 10    | 3      |
+      | Brachiosaurus | 10    | 3      |
+      | Spinosaurus   | 10    | 3      |
 
   Scenario: The outline shows the skeleton's shape, not its bones
     When I tap Tyrannosaurus

@@ -497,7 +497,9 @@ describe("the home page", () => {
     expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
       "TYRANNOSAURUS",
       "TRICERATOPS",
-      "STEGOSAURUS"
+      "STEGOSAURUS",
+      "BRACHIOSAURUS",
+      "SPINOSAURUS"
     ]);
     expect([symbolOf(screen.getByRole("button", { name: "MUSEUM" })), symbolOf(screen.getByRole("button", { name: "HOME" }))]).toEqual(["landmark", "house"]);
   });

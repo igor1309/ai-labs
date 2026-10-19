@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-20
+
+- The skeleton game has five dinosaurs: Brachiosaurus and Spinosaurus join, each cut at every level with its own fact and other dinosaurs' bones at Paleontologist. The choice and the museum lay them out three above and two centred below, and the collection counts to five (LAB-334).
+
 ## 2026-10-19
 
 - Find the pair and the skeleton game have a BACK button beside HOME: from a board or its result back to Find the pair's welcome screen, and from a puzzle back to the choice of dinosaurs (LAB-345).

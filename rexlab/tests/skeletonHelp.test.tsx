@@ -217,14 +217,14 @@ describe("help after waiting", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(screen.getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(true);
     expect([screen.getByLabelText("STARS").textContent, screen.queryByLabelText("BEST SCORE")?.textContent, screen.queryByRole("status")?.getAttribute("aria-label")]).toEqual([
-      "2/3",
-      "BEST12/3",
+      "2/5",
+      "BEST12/5",
       "NEW BEST SCORE"
     ]);
 
     await user.click(within(reveal() ?? document.body).getByRole("button", { name: "MUSEUM" }));
 
-    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty"]);
+    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty", "empty", "empty"]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
   });
 });
