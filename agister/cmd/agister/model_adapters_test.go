@@ -81,11 +81,11 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 		{name: "a reply", result: claudecode.Result{
 			Ended:   claudecode.Ended{Code: 1, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: claudecode.Stream{Head: "eh"}},
 			Session: "s1",
-			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
+			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25),
 				Usage:   claudecode.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 				Failure: claudecode.RateLimited, Reason: "429"}},
 			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"}, Session: "s1",
-				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
+				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25),
 					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 					Failure: call.RateLimited, Reason: "429"}}},
 		{name: "a signal", result: claudecode.Result{Ended: claudecode.Ended{Signal: "killed"}, Session: "s1"}, want: call.Ended{Signal: "killed", Session: "s1"}},
@@ -102,7 +102,9 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 				t.Fatal(err)
 			}
 			var reported []call.Report
-			got, err := turns.Turn(endedContext(), modelTurn, func(r call.Report) { reported = append(reported, r) })
+			given := modelTurn
+			given.SessionCostBefore, given.Budget = usd(1), usd(0.75)
+			got, err := turns.Turn(endedContext(), given, func(r call.Report) { reported = append(reported, r) })
 			if want := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}; !reflect.DeepEqual(reported, want) {
 				t.Errorf("reported %+v, want %+v", reported, want)
 			}
@@ -110,7 +112,7 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
 			want := []claudecode.Turn{{Message: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
-				Options: []string{"Read"}, Schema: []byte("{}"), Session: "s0"}}
+				Options: []string{"Read"}, Schema: []byte("{}"), Session: "s0", SessionCostBefore: usd(1), Budget: usd(0.75)}}
 			if !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
 			}

@@ -128,7 +128,7 @@ func TestTheTurnIsGivenTheScriptTheDirectoryAndTheEnvironment(t *testing.T) {
 		Environment: map[string]string{"A": "1", "B": "2"},
 		Inputs:      []call.Named{{Name: "B", Text: "3"}},
 	}, discard)
-	want := []call.Turn{{Prompt: "s", Dir: "/r", Env: []string{"PATH=/bin", "A=1", "B=3"}}}
+	want := []call.Turn{{Prompt: "s", Dir: "/r", SessionCostBefore: dollars(0), Env: []string{"PATH=/bin", "A=1", "B=3"}}}
 	if !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
 	}
