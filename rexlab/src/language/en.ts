@@ -92,6 +92,7 @@ export const en: Texts = {
   skeleton: "SKELETON",
   bones: "BONES",
   fitted: "BONES IN PLACE",
+  otherBone: (name) => `THAT'S THE ${name}!`,
   star: "STAR",
   buildAnother: "BUILD ANOTHER",
   stands: "STANDS",

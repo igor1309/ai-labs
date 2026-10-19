@@ -20,6 +20,8 @@ import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
   help,
   isComplete,
+  strayId,
+  trayOf,
   type Celebration as SkeletonCelebration,
   type Museum,
   type BodyArea,
@@ -266,7 +268,7 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots" | "hint" | "complete">;
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "frame" | "slots" | "strays" | "tray" | "told" | "hint" | "complete">;
 
 // The pictures of a skeleton: the whole of it, "skeleton", or one of its
 // pieces, by the piece's id.
@@ -293,14 +295,32 @@ function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undef
 
 // Each slot is placed as a fraction of the frame, so the outline and its
 // pieces scale together to any board. A puzzle `coloured` by body area
-// gives each slot its piece's area.
-export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture, { coloured = false }: { coloured?: boolean } = {}): SkeletonPuzzleView {
-  const { skeleton, cut, fitted } = puzzle;
+// gives each slot its piece's area; one on a `silhouette` shows its
+// outline as the skeleton's shape alone. Other skeletons' bones wait in
+// the tray among the pieces, each its own skeleton's picture, sized as
+// the pieces are.
+export function presentPuzzle(
+  puzzle: Puzzle,
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  { coloured = false, silhouette = false }: { coloured?: boolean; silhouette?: boolean } = {}
+): SkeletonPuzzleView {
+  const { skeleton, cut, fitted, distractors, told } = puzzle;
   const { id, name, frame } = skeleton;
   return {
     name: name[language],
     outline: skeletonPicture(id, "skeleton"),
+    silhouette,
     frame,
+    strays: distractors.map((distractor) => ({
+      piece: strayId(distractor),
+      name: distractor.name[language],
+      picture: skeletonPicture(distractor.skeleton, distractor.id),
+      width: distractor.place.width / frame.width,
+      height: distractor.place.height / frame.height
+    })),
+    tray: trayOf(puzzle),
+    told: told?.name[language],
     slots: cut.map((piece) => {
       const { x, y, width, height } = piece.place;
       return {

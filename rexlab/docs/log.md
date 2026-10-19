@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).
 - Skeletons at Paleontologist are cut into ten to twelve plain bones from the same skeleton pictures (LAB-316).
 - Skeletons at Explorer and Paleontologist help in steps, ten seconds apart, until a bone fits: the bone's body region on the outline, then a faint ghost at its home, then the bone moving towards its home and back, fading instead under reduced motion; Hatchling keeps its one glow (LAB-315).
 - Skeletons at Explorer colour each bone and its empty slot by body area, head to tail, in both themes, as a cue to where it goes; Hatchling stays plain (LAB-314).

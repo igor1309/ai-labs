@@ -126,8 +126,9 @@ describe("the other levels", () => {
   ])("build %s's puzzle of %i plain pieces", async (level, count) => {
     await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level) });
 
-    expect(spotPieces()).toEqual((skeletonOf("triceratops").cuts[level] ?? []).map(({ id }) => id));
-    expect([...spotAreas(), ...slotAreas()]).toEqual(Array(2 * count).fill(null));
+    expect(slots().map(([piece]) => piece)).toEqual((skeletonOf("triceratops").cuts[level] ?? []).map(({ id }) => id));
+    expect(slotAreas()).toEqual(Array(count).fill(null));
+    expect(spotAreas().filter((area) => area !== null)).toEqual([]);
     expect(document.querySelectorAll(".skeleton-slot-area")).toHaveLength(0);
   });
 });

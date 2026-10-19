@@ -8,7 +8,7 @@ import { skeletonPictures } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
-import { HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
+import { drop, HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
 import { PIECES, placeOf } from "./skeletonsApp.tsx";
 import { PALETTE, SHIPPED_SKELETONS, browserDocument, contrast, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
@@ -280,20 +280,68 @@ describe("presenting the skeleton game", () => {
     expect(presentPuzzle(startPuzzle(triceratops, triceratops.cuts.hatchling), "en", fakeSkeletonPicture)).toEqual({
       name: "Triceratops",
       outline: fakeSkeletonPicture("triceratops", "skeleton"),
+      silhouette: false,
       frame,
       slots: PIECES.map((piece) => ({
         piece,
         name: NAMED[piece].en,
         picture: fakeSkeletonPicture("triceratops", piece),
+        area: undefined,
         left: placeOf(triceratops, piece).x / frame.width,
         top: placeOf(triceratops, piece).y / frame.height,
         width: placeOf(triceratops, piece).width / frame.width,
         height: placeOf(triceratops, piece).height / frame.height,
         fitted: false
       })),
+      strays: [],
+      tray: [...PIECES],
+      told: undefined,
       hint: undefined,
       complete: false
     });
+  });
+
+  it("shows Paleontologist's puzzle on its silhouette, other skeletons' bones in the tray among its pieces, each its own skeleton's picture", () => {
+    const tyrannosaurus = skeletonOf("tyrannosaurus");
+    const { frame, distractors = [] } = tyrannosaurus;
+    const shown = presentPuzzle(startPuzzle(tyrannosaurus, tyrannosaurus.cuts.paleontologist ?? [], { ladder: true, distractors: true }), "ru", fakeSkeletonPicture, {
+      silhouette: true
+    });
+
+    expect([shown.silhouette, shown.told]).toEqual([true, undefined]);
+    expect(shown.strays).toEqual([
+      { piece: "triceratops/frill", name: "ВОРОТНИК ТРИЦЕРАТОПСА", picture: fakeSkeletonPicture("triceratops", "frill"), width: placeOf(skeletonOf("triceratops"), "frill").width / frame.width, height: placeOf(skeletonOf("triceratops"), "frill").height / frame.height },
+      expect.objectContaining({ piece: "stegosaurus/spikes", name: "ШИПЫ СТЕГОЗАВРА", picture: fakeSkeletonPicture("stegosaurus", "spikes") }),
+      expect.objectContaining({ piece: "stegosaurus/front-plates", name: "ПЛАСТИНЫ СТЕГОЗАВРА", picture: fakeSkeletonPicture("stegosaurus", "front-plates") })
+    ]);
+    expect(distractors).toHaveLength(3);
+    expect(shown.tray).toEqual([
+      "skull",
+      "neck-bones",
+      "arms",
+      "triceratops/frill",
+      "back",
+      "hips",
+      "left-thigh",
+      "stegosaurus/spikes",
+      "left-foot",
+      "right-thigh",
+      "stegosaurus/front-plates",
+      "right-foot",
+      "tail-base",
+      "tail-tip"
+    ]);
+  });
+
+  it("names the other skeleton's bone last dropped, and leaves the tray to the skeleton's own pieces once it is complete", () => {
+    const triceratops = skeletonOf("triceratops");
+    const cut = triceratops.cuts.paleontologist ?? [];
+    const started = startPuzzle(triceratops, cut, { distractors: true });
+    const told = drop(started, "tyrannosaurus/skull", { x: 0, y: 0 }, 30);
+    const complete = { ...told, fitted: cut.map(({ id }) => id) };
+
+    expect([presentPuzzle(told, "en", fakeSkeletonPicture).told, presentPuzzle(told, "ru", fakeSkeletonPicture).told]).toEqual(["TYRANNOSAURUS SKULL", "ЧЕРЕП ТИРАННОЗАВРА"]);
+    expect(presentPuzzle(complete, "en", fakeSkeletonPicture).tray).toEqual(cut.map(({ id }) => id));
   });
 
   it("points help at the first piece in the tray still to fit, once help is due, and at none before", () => {

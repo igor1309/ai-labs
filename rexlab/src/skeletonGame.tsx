@@ -63,13 +63,18 @@ export type SkeletonGameProps = {
 // of its own plays Hatchling's.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 
-// How each level plays its puzzle: whether each piece and its slot are
-// coloured by body area, Explorer's cue to where a bone goes, and whether
-// help climbs the ladder of steps rather than Hatchling's one glow.
-const MODES: Record<AgeLevel, { coloured: boolean; ladder: boolean }> = {
-  hatchling: { coloured: false, ladder: false },
-  explorer: { coloured: true, ladder: true },
-  paleontologist: { coloured: false, ladder: true }
+// How a puzzle looks: whether each piece and its slot are coloured by
+// body area, Explorer's cue to where a bone goes, and whether its outline
+// is the skeleton's silhouette alone, Paleontologist's partial outline.
+type Look = { coloured: boolean; silhouette: boolean };
+
+// How each level plays its puzzle: its look, whether help climbs the
+// ladder of steps rather than Hatchling's one glow, and whether other
+// skeletons' bones wait in the tray.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean }> = {
+  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false },
+  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false },
+  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -88,11 +93,11 @@ const HELP_TICK = 1000;
 export const REVEAL: Record<"motion" | "reduced", number> = { motion: 480, reduced: 160 };
 
 // A puzzle of a skeleton knocked down from its stand starts with its
-// bones scattering from the outline to the tray; one coloured by body
-// area keeps its colours until it is left.
+// bones scattering from the outline to the tray; each keeps its level's
+// look until it is left.
 type SkeletonScreen =
   | { kind: "choice" }
-  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; coloured: boolean }
+  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; look: Look }
   | { kind: "result"; result: SkeletonResult }
   | { kind: "museum" };
 
@@ -179,9 +184,9 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { coloured, ladder } = MODES[at];
-    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder });
-    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, coloured } : current), {
+    const { look, ladder, distractors } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors });
+    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
         live.current = started;
@@ -294,7 +299,7 @@ export function useSkeletonGame(
         return (
           <SkeletonPuzzleScreen
             language={language}
-            {...presentPuzzle(screen.puzzle, language, skeletonPicture, { coloured: screen.coloured })}
+            {...presentPuzzle(screen.puzzle, language, skeletonPicture, screen.look)}
             scatter={screen.scatter}
             onDrop={onDrop}
             onMuseum={museum}

@@ -96,6 +96,7 @@ export const ru: Texts = {
   skeleton: "СКЕЛЕТ",
   bones: "КОСТИ",
   fitted: "КОСТИ НА МЕСТЕ",
+  otherBone: (name) => `ЭТО ${name}!`,
   star: "ЗВЕЗДА",
   buildAnother: "СОБРАТЬ ДРУГОЙ",
   stands: "СТЕНДЫ",

@@ -27,6 +27,10 @@ export type SkeletonSlotView = {
   fitted: boolean;
 };
 
+// Another skeleton's bone in the tray, which fits nowhere: its name, its
+// picture and its size, as fractions of the outline's width and height.
+export type ShownStray = { piece: ShownPiece; name: string; picture: string; width: number; height: number };
+
 // A point on the outline, in pixels of the skeleton's frame.
 export type FramePoint = { x: number; y: number };
 
@@ -47,14 +51,23 @@ export type SkeletonPuzzleScreenProps = {
   language: Language;
   // The dinosaur being built.
   name: string;
-  // The whole skeleton, drawn faint as the outline the pieces fit on, and
-  // its frame's size.
+  // The whole skeleton, drawn faint as the outline the pieces fit on, or
+  // as its `silhouette` alone, with no bone drawn in it, and its frame's
+  // size.
   outline: string;
+  silhouette: boolean;
   frame: { width: number; height: number };
-  // Every piece's slot, in the tray's order: a piece not yet fitted waits
+  // Every piece's slot, in the cut's order: a piece not yet fitted waits
   // in its spot in the tray, and a fitted one leaves its spot empty, so
   // the other pieces never move.
   slots: readonly SkeletonSlotView[];
+  // Other skeletons' bones in the tray, and the order of every spot in
+  // it, the pieces' and theirs.
+  strays: readonly ShownStray[];
+  tray: readonly ShownPiece[];
+  // The name of the other skeleton's bone last dropped, until the next
+  // drop, so a line says whose bone it is.
+  told: string | undefined;
   // The help showing, if any: Hatchling's glow on the piece and its slot
   // alike, or the ladder's steps.
   hint: ShownHint | undefined;
@@ -69,6 +82,13 @@ export type SkeletonPuzzleScreenProps = {
   onMuseum: () => void;
   onHome: () => void;
 };
+
+// A spot in the tray: a piece of the cut, or another skeleton's bone,
+// which is never fitted and has no body area.
+type TraySpot = Pick<SkeletonSlotView, "piece" | "name" | "picture" | "area" | "fitted">;
+
+// The most spots the tray stacks in one column before it needs two.
+const TRAY_COLUMN = 8;
 
 // How near its home a dropped piece's centre fits, in CSS pixels:
 // generous, so a child's near miss still fits.
@@ -97,7 +117,7 @@ const fromStyle = ({ dx, dy }: Offset) => ({ "--from-x": `${dx}px`, "--from-y": 
 // tray, and how much larger it is drawn in its home than there.
 type Scattered = Offset & { scale: number };
 
-export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hint, complete, scatter, onDrop, onMuseum, onHome }: SkeletonPuzzleScreenProps) {
+export function SkeletonPuzzleScreen({ language, name, outline, silhouette, frame, slots, strays, tray, told, hint, complete, scatter, onDrop, onMuseum, onHome }: SkeletonPuzzleScreenProps) {
   const text = TEXTS[language];
   const fitted = slots.filter((slot) => slot.fitted).length;
   const [held, setHeld] = useState<Hold>();
@@ -116,12 +136,14 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
 
   const boardRect = () => boardElement.current?.getBoundingClientRect() ?? NO_RECT;
 
-  // The rectangle of a piece's slot on the screen.
+  // The rectangle of a piece's slot on the screen. Another skeleton's
+  // bone has no slot, only its size on the board.
   const slotRect = (piece: ShownPiece) => {
     const board = boardRect();
-    const slot = slots.find((each) => each.piece === piece);
+    const slot: Omit<ShownStray, "name" | "picture"> & { left?: number; top?: number } | undefined = slots.find((each) => each.piece === piece) ?? strays.find((each) => each.piece === piece);
     if (!slot) return NO_RECT;
-    return { left: board.left + slot.left * board.width, top: board.top + slot.top * board.height, width: slot.width * board.width, height: slot.height * board.height };
+    const { left = 0, top = 0, width, height } = slot;
+    return { left: board.left + left * board.width, top: board.top + top * board.height, width: width * board.width, height: height * board.height };
   };
 
   // Only the puzzle as it starts scatters: each piece is measured where
@@ -205,7 +227,14 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
     setNudge({ piece: moving, dx, dy });
   }, [moving]);
 
-  const lifted = held && slots.find((slot) => slot.piece === held.piece);
+  // Each spot in the tray, in its order: a piece of the cut, or another
+  // skeleton's bone, which is never fitted.
+  const spots = tray.flatMap((piece): TraySpot[] => {
+    const slot = slots.find((each) => each.piece === piece);
+    if (slot) return [slot];
+    return strays.filter((stray) => stray.piece === piece).map(({ name, picture }) => ({ piece, name, picture, area: undefined, fitted: false }));
+  });
+  const lifted = held && spots.find((spot) => spot.piece === held.piece);
   const glowing = shownHint?.step === "glow" ? shownHint.piece : undefined;
   const ghost = shownHint?.step === "ghost" || shownHint?.step === "move" ? shownHint.piece : undefined;
   const region = shownHint?.region;
@@ -230,8 +259,12 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
         >
           {/* The outline is faint and comes in with the screen on a wrapper,
               so its picture's shimmer and fade never replace either. */}
-          <span className="skeleton-outline">
-            <Picture className="skeleton-outline-picture" src={outline} alt="" />
+          <span className="skeleton-outline" data-silhouette={silhouette || undefined}>
+            {silhouette ? (
+              <span className="skeleton-silhouette" style={{ "--outline-picture": `url("${outline}")` } as CSSProperties} />
+            ) : (
+              <Picture className="skeleton-outline-picture" src={outline} alt="" />
+            )}
           </span>
           {region && (
             <span
@@ -275,9 +308,20 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
               </span>
             );
           })}
+          {/* Whose bone another skeleton's bone is, said once it is
+              dropped, until the next drop. */}
+          {strays.length > 0 && (
+            <p className="skeleton-told" role="status">
+              {told !== undefined && (
+                <span key={told} className="skeleton-told-line">
+                  {text.otherBone(told)}
+                </span>
+              )}
+            </p>
+          )}
         </div>
-        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined}>
-          {slots.map((slot, index) => {
+        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined} data-columns={spots.length > TRAY_COLUMN ? 2 : undefined}>
+          {spots.map((slot, index) => {
             const release = releases[slot.piece];
             // A piece once let go floats back from where it was let go
             // instead.

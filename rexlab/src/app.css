@@ -4650,6 +4650,15 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
+/* Paleontologist's tray of ten to twelve pieces and other skeletons'
+   bones stands in two columns. */
+.skeleton-tray[data-columns="2"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(48px, 1fr);
+  gap: 16px;
+}
+
 .skeleton-tray-spot {
   position: relative;
   flex: 1 1 0;
@@ -4819,6 +4828,38 @@ body:has(.result) #version {
 .skeleton-tray-spot .skeleton-glow {
   inset: 0;
   border-radius: 22px;
+}
+
+/* Paleontologist's partial outline: the skeleton's shape in one flat
+   colour, with no bone drawn in it. */
+.skeleton-silhouette {
+  position: absolute;
+  inset: 0;
+  background: #5c647a;
+  mask: var(--outline-picture) center / 100% 100% no-repeat;
+}
+
+/* The line that says whose another skeleton's bone is, at the foot of
+   the board, over the outline but never in the way of a drop. */
+.skeleton-told {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.skeleton-told-line {
+  padding: 10px 20px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  color: #1d2742;
+  font-size: 22px;
+  font-weight: 700;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
 }
 
 /* The ladder of help, each step adding to the ones before: the piece's
@@ -5889,6 +5930,15 @@ body:has(.result) #version {
 
 [data-theme="dark"] .skeleton-slot[data-target] {
   outline-color: #9ca3b659;
+}
+
+[data-theme="dark"] .skeleton-silhouette {
+  background: #9ca3b6;
+}
+
+[data-theme="dark"] .skeleton-told-line {
+  background: #222a3d;
+  color: #ece8de;
 }
 
 [data-theme="dark"] .skeleton-region {

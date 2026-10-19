@@ -129,6 +129,9 @@ export type Texts = {
   bones: string;
   // The bones fitted so far, read out on their chip.
   fitted: string;
+  // The line that says whose bone another dinosaur's bone in the tray
+  // is, by its name, once it is dropped.
+  otherBone: (name: string) => string;
   // The star a finished skeleton earns, read out on its badge, and the
   // way back to the choice of dinosaurs.
   star: string;

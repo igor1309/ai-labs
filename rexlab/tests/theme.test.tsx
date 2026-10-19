@@ -18,7 +18,7 @@ import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
-import { AWAY, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
+import { AWAY, dragTo as dragBone, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import {
   OVERLAYS,
@@ -372,6 +372,20 @@ async function skeletonAtWork({ theme, user, timers }: Walk) {
   }
 }
 
+// Paleontologist's Tyrannosaurus on its silhouette, a bone fitted and
+// another dinosaur's bone dropped, its line saying whose it is.
+async function skeletonPaleontologist({ theme, user }: Walk) {
+  const tyrannosaurus = skeletonOf("tyrannosaurus");
+  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(screen.getByRole("button", { name: "PALEONTOLOGIST" }));
+  await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
+  layOutPuzzle();
+  fit(tyrannosaurus, "skull");
+  dragBone("triceratops/frill", AWAY);
+  expect([document.querySelector(".skeleton-silhouette") !== null, screen.getByRole("status").textContent]).toEqual([true, "THAT'S THE TRICERATOPS FRILL!"]);
+  expectScreenIn(theme);
+}
+
 // A skeleton's reveal with a first best, the choice with its star, a
 // second skeleton's reveal with the best it beat, and the home page with
 // the best on the SKELETONS tile.
@@ -475,6 +489,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the Triceratops puzzle as it starts", skeletonPuzzle("TRICERATOPS")],
       ["the Stegosaurus puzzle as it starts", skeletonPuzzle("STEGOSAURUS")],
       ["a puzzle with a bone fitted, one lifted and each step of help", skeletonAtWork],
+      ["Paleontologist's puzzle on its silhouette, with another dinosaur's bone told", skeletonPaleontologist],
       ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]

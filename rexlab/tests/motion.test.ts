@@ -374,6 +374,12 @@ describe("the skeleton puzzle's motion", () => {
     expect(animations.get(".skeleton-glow")).toBe("fade-in");
   });
 
+  // skeleton-assembly-paleontologist.feature: the line saying whose
+  // another dinosaur's bone is rises in, as a spot in the tray does.
+  it("rises the line saying whose bone it is in", () => {
+    expect([animations.get(".skeleton-told-line"), animations.get(".skeleton-tray-spot")]).toEqual(["rise-in", "rise-in"]);
+  });
+
   // skeleton-assembly-help-ladder.feature: the ladder's region and ghost
   // fade in, and its last step moves the piece part of the way towards
   // its home and back once, or with reduced motion fades it out and back.

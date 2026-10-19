@@ -26,6 +26,10 @@ export type Cuts = { hatchling: Cut; explorer?: Cut; paleontologist?: Cut };
 // size, named with the dinosaur it belongs to.
 export type Distractor = Piece & { skeleton: string };
 
+// A distractor's id in the puzzle's tray: its skeleton's and its own, so
+// it never shares one with a piece of the puzzle's cut.
+export const strayId = ({ skeleton, id }: Distractor) => `${skeleton}/${id}`;
+
 // A point on the outline, in pixels of the skeleton's frame.
 export type Point = { x: number; y: number };
 
@@ -59,6 +63,11 @@ export type Puzzle = {
   waited: number;
   // Whether help climbs the ladder of steps rather than glowing once.
   ladder: boolean;
+  // Other skeletons' bones mixed into the tray, which fit nowhere, and
+  // the one last dropped, until the next drop, so the child is told whose
+  // bone it is.
+  distractors: readonly Distractor[];
+  told: Distractor | undefined;
 };
 
 // How long the child works at the puzzle without fitting a piece before
@@ -78,9 +87,21 @@ export type HelpStep = "glow" | (typeof LADDER)[number];
 export type Help = { piece: string; step: HelpStep };
 
 // A puzzle starts with every piece of its cut in the tray, the right way
-// up, its help the ladder's when `ladder` says so.
-export function startPuzzle(skeleton: Skeleton, cut: Cut, { ladder = false }: { ladder?: boolean } = {}): Puzzle {
-  return { skeleton, cut, fitted: [], waited: 0, ladder };
+// up, its help the ladder's when `ladder` says so, and the skeleton's
+// distractors among them when `distractors` says so.
+export function startPuzzle(skeleton: Skeleton, cut: Cut, { ladder = false, distractors = false }: { ladder?: boolean; distractors?: boolean } = {}): Puzzle {
+  return { skeleton, cut, fitted: [], waited: 0, ladder, distractors: distractors ? (skeleton.distractors ?? []) : [], told: undefined };
+}
+
+// The tray's order: the cut's pieces, with the distractors spread evenly
+// among them, until the skeleton is complete and they leave.
+export function trayOf(puzzle: Puzzle): string[] {
+  const pieces = puzzle.cut.map(({ id }) => id);
+  if (isComplete(puzzle)) return pieces;
+  const { distractors } = puzzle;
+  // The piece each distractor follows, counted from one.
+  const after = (at: number) => Math.max(1, Math.round(((at + 1) * pieces.length) / (distractors.length + 1)));
+  return pieces.flatMap((id, at) => [id, ...distractors.filter((_, each) => after(each) === at + 1).map(strayId)]);
 }
 
 // How long help takes to reach its last step.
@@ -89,13 +110,18 @@ const lastHelpAt = (puzzle: Puzzle) => (puzzle.ladder ? LADDER.length : 1) * HEL
 // A piece dropped with its centre at `centre` fits its own home, and no
 // other, when its centre is within `reach` of its home's centre. Any
 // other drop leaves the puzzle as it is: the piece goes back to the tray
-// with nothing lost, and a fitted piece stays fitted.
+// with nothing lost, and a fitted piece stays fitted. A distractor fits
+// nowhere: dropped anywhere it goes back, and the puzzle tells whose bone
+// it is until the next drop. Neither puts help off.
 export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number): Puzzle {
+  const stray = puzzle.distractors.find((distractor) => strayId(distractor) === piece);
+  if (stray !== undefined) return puzzle.told === stray ? puzzle : { ...puzzle, told: stray };
+  const missed = puzzle.told === undefined ? puzzle : { ...puzzle, told: undefined };
   const home = puzzle.cut.find(({ id }) => id === piece);
-  if (home === undefined || puzzle.fitted.includes(piece)) return puzzle;
+  if (home === undefined || puzzle.fitted.includes(piece)) return missed;
   const { x, y, width, height } = home.place;
-  if (Math.hypot(centre.x - (x + width / 2), centre.y - (y + height / 2)) > reach) return puzzle;
-  return { ...puzzle, fitted: [...puzzle.fitted, piece], waited: 0 };
+  if (Math.hypot(centre.x - (x + width / 2), centre.y - (y + height / 2)) > reach) return missed;
+  return { ...puzzle, fitted: [...puzzle.fitted, piece], waited: 0, told: undefined };
 }
 
 export function isComplete(puzzle: Puzzle): boolean {

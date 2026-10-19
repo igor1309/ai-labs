@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitsHelp, drop, help, HELP_AFTER, isComplete, startPuzzle, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { awaitsHelp, drop, help, HELP_AFTER, isComplete, startPuzzle, strayId, trayOf, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
 import { PIECES, type Piece } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
 
@@ -194,5 +194,55 @@ describe("help on the ladder", () => {
 
   it("leaves Hatchling's help its one glow, however long the child waits", () => {
     expect([help(wait(start(), HELP_AFTER)), wait(start(), 3 * HELP_AFTER).waited]).toEqual([{ piece: "skull", step: "glow" }, HELP_AFTER]);
+  });
+});
+
+// skeleton-assembly-paleontologist.feature: other skeletons' bones in
+// the tray, which fit nowhere.
+describe("other skeletons' bones", () => {
+  const bone = (skeleton: string, id: string, at: Place = place(0, 0, 100, 80)) => ({ id, skeleton, name: { en: `${skeleton} ${id}`.toUpperCase(), ru: id }, area: "head" as const, place: at });
+  // The frill sits where SKELETON's skull's home is, so even a drop there
+  // fits nothing.
+  const WITH_BONES: Skeleton = { ...SKELETON, distractors: [bone("tyrannosaurus", "skull"), bone("stegosaurus", "spikes")] };
+  const paleontologist = (cut: Cut = WITH_BONES.cuts.hatchling) => startPuzzle(WITH_BONES, cut, { ladder: true, distractors: true });
+
+  it("wait in the tray only when the puzzle asks for them", () => {
+    expect([startPuzzle(WITH_BONES, WITH_BONES.cuts.hatchling).distractors, paleontologist().distractors.map(strayId)]).toEqual([[], ["tyrannosaurus/skull", "stegosaurus/spikes"]]);
+  });
+
+  it.each([
+    [1, ["a", "x/1", "x/2", "x/3"]],
+    [4, ["a", "x/1", "b", "x/2", "c", "x/3", "d"]],
+    [10, ["a", "b", "c", "x/1", "d", "e", "x/2", "f", "g", "h", "x/3", "i", "j"]]
+  ] as const)("are spread evenly among a cut of %i pieces, none before its first", (count, tray) => {
+    const cut = cutOf(Object.fromEntries("abcdefghij".slice(0, count).split("").map((id, at) => [id, place(at * 10, 0, 10, 10)])));
+    const puzzle = startPuzzle({ ...SKELETON, distractors: ["1", "2", "3"].map((id) => bone("x", id)) }, cut, { distractors: true });
+
+    expect(trayOf(puzzle)).toEqual(tray);
+  });
+
+  it("fit nowhere: a bone dropped even on a home is told, nothing fitted and help's wait kept", () => {
+    const waited = wait(paleontologist(), 9000);
+    const told = drop(waited, "tyrannosaurus/skull", CENTRES.skull, 30);
+
+    expect([told.fitted, told.waited, told.told?.id, awaitsHelp(told)]).toEqual([[], 9000, "skull", true]);
+    expect(help(wait(told, 1000))).toEqual({ piece: "skull", step: "region" });
+  });
+
+  it("are told until the next drop, which tells the next bone, or none when a piece fits or misses", () => {
+    const told = drop(paleontologist(), "stegosaurus/spikes", CENTRES.tail, 30);
+
+    expect(drop(told, "stegosaurus/spikes", CENTRES.legs, 30)).toBe(told);
+    expect(drop(told, "tyrannosaurus/skull", CENTRES.legs, 30).told?.skeleton).toBe("tyrannosaurus");
+    expect([drop(told, "spine", { x: 0, y: 399 }, 30).told, drop(told, "spine", CENTRES.spine, 30).told]).toEqual([undefined, undefined]);
+    expect(drop(paleontologist(), "spine", { x: 0, y: 399 }, 30)).toEqual(paleontologist());
+  });
+
+  it("leave the tray once the skeleton's own pieces fit, which is all it takes to complete it", () => {
+    const complete = fitted(["skull", "spine", "legs"], drop(paleontologist(), "tyrannosaurus/skull", CENTRES.skull, 30));
+    const done = fitted(["tail"], complete);
+
+    expect([isComplete(complete), trayOf(complete)]).toEqual([false, ["skull", "tyrannosaurus/skull", "spine", "legs", "stegosaurus/spikes", "tail"]]);
+    expect([isComplete(done), trayOf(done), done.told]).toEqual([true, ["skull", "spine", "legs", "tail"], undefined]);
   });
 });
