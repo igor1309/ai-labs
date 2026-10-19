@@ -38,8 +38,8 @@ Feature: Dig: the spots of each dinosaur
 
   Scenario Outline: Each kind has its words and a close-up
     Given the app is in <language>
-    Then a spot's card shows a round close-up of the picture cropped about the spot, with its word under it
-    And at Paleontologist the close-up shows once the spot is found (dig-paleontologist.feature)
+    Then an Explorer find card shows a round close-up of the picture cropped about its spot, with its word under it
+    And a Paleontologist clue card shows the same close-up only once its spot is found (dig-paleontologist.feature)
     And the words are <words>
 
     Examples:

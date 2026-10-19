@@ -19,7 +19,7 @@ Feature: Dig: pictures that load
     Then it fades in over 200 ms under the brushed sand
 
   Scenario: A round whose picture failed plays to its end
-    Given a round whose body picture has failed to load
+    Given a Hatchling round whose body picture has failed to load
     When I brush 70% of the dinosaur's cells clear
     Then the failure look shows beneath the brushed sand, and the gust and the reveal follow as in any round
     And the reveal shows the failure look in the dinosaur's place, its name large, and its star counts
