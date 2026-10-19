@@ -18,5 +18,11 @@ func (n Node) Over(under Node) Node {
 	for key, value := range n.entries {
 		merged[key] = value.Over(under.entries[key])
 	}
-	return Node{kind: Map, origin: n.origin, entries: merged}
+	order := n.DeclaredKeys()
+	for _, key := range under.DeclaredKeys() {
+		if _, present := n.entries[key]; !present {
+			order = append(order, key)
+		}
+	}
+	return Node{kind: Map, origin: n.origin, entries: merged, order: order}
 }

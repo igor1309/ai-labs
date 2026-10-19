@@ -172,6 +172,7 @@ func TestReuseComparesAllDefinitionFiles(t *testing.T) {
 			earlier := keptCall("R1/ask", "t1", "s1")
 			earlier.Inputs = []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}}
 			earlier.Definitions = askDefinitions(settings, "claude-opus")
+			earlier.Environment = []runstore.Variable{{Name: "A", Value: "1"}}
 			switch change {
 			case "unrelated document":
 				f.settings["/r/.agister/prompts/unrelated.md"] = "other step changed"

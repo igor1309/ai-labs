@@ -106,7 +106,8 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 	// Its inputs are runs.feature's, proved there.
 	calls[0].Result, calls[0].Inputs = runstore.CallResult{}, nil
 	endHead := "c1"
-	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1", Definitions: askDefinitions(f.settings, "claude-opus")}
+	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1", Definitions: askDefinitions(f.settings, "claude-opus"),
+		Permissions: askPermissions(), Environment: []runstore.Variable{{Name: "A", Value: "1"}}}
 	if !reflect.DeepEqual(calls[0], want) {
 		t.Errorf("the record's call %+v, want %+v", calls[0], want)
 	}

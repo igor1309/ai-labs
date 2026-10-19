@@ -55,10 +55,13 @@ type Request struct {
 // agent; its worktree's root, HEAD when admitted and at its end, and its
 // final content, empty where refused; its patch's path, nil for none; the id of the call
 // whose session it continues, nil for none; the id of the call it reuses,
-// nil for none; the inputs it was given, as resolved; and its result.
+// nil for none; its permission plan and resolved process environment;
+// the inputs it was given, as resolved; and its result.
 // EndHead is nil only for a record from before end_head was kept.
 type Call struct {
 	Definitions []Definition `json:"definitions"`
+	Permissions Permissions  `json:"permissions"`
+	Environment []Variable   `json:"environment"`
 	ID          string       `json:"id"`
 	Step        string       `json:"step"`
 	Process     string       `json:"process"`
@@ -72,6 +75,25 @@ type Call struct {
 	Reuses      *string      `json:"reuses"`
 	Inputs      []Input      `json:"inputs"`
 	Result      CallResult   `json:"result"`
+}
+
+// Permissions is the permission plan of a step, in resolve's meanings:
+// options taken, permissions required, allowed, granted, granted beyond
+// the allowed, and withheld. Each list is empty for none.
+type Permissions struct {
+	Options  []string `json:"options"`
+	Required []string `json:"required"`
+	Allowed  []string `json:"allowed"`
+	Granted  []string `json:"granted"`
+	Extra    []string `json:"extra"`
+	Withheld []string `json:"withheld"`
+}
+
+// Variable is a process's environment variable as resolved for a call.
+// A call keeps its variables in the order its process declares them.
+type Variable struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // Definition identifies a document read by the plan, with its files in
@@ -258,7 +280,7 @@ func New(folder string) (*Store, error) {
 // any written before: whole, to a temporary file in the run's folder,
 // then renamed, so that a reader meets the one or the other, and no
 // temporary file is left behind. Calls, params and inputs that are none
-// are written as empty.
+// are written as empty, as are a call's permission lists and environment.
 func (s *Store) Write(record Record) error {
 	folder, err := s.run(record.ID)
 	if err != nil {
@@ -268,6 +290,15 @@ func (s *Store) Write(record Record) error {
 	for i, call := range record.Calls {
 		if call.Inputs == nil {
 			record.Calls[i].Inputs = []Input{}
+		}
+		if call.Environment == nil {
+			record.Calls[i].Environment = []Variable{}
+		}
+		p := &record.Calls[i].Permissions
+		for _, list := range []*[]string{&p.Options, &p.Required, &p.Allowed, &p.Granted, &p.Extra, &p.Withheld} {
+			if *list == nil {
+				*list = []string{}
+			}
 		}
 	}
 	if record.Inputs == nil {

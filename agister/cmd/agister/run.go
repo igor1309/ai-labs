@@ -404,10 +404,11 @@ type plan struct {
 // core/inputs resolves before the call starts; what it declares of the
 // worktree, which core/admit admits it by, but the commit of its pin,
 // which its inputs give; and the call core/call makes, but its environment
-// and inputs, which those give.
+// and inputs, which those give; and the permissions resolve planned.
 type plannedCall struct {
 	definitions     []runstore.Definition
 	definitionBytes map[string][]byte
+	permissions     runstore.Permissions
 	process         string
 	agent           string
 	contract        string
@@ -709,6 +710,16 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 	}
 	planned := plannedCall{process: item.Process.Value, agent: item.Agent.Value,
 		contract: resolved.Runtimes[agent.Runtime.Value].Contract.Value}
+	for _, p := range resolved.Plans {
+		if p.Workflow == name && p.Place == item.Origin.Place {
+			planned.permissions = runstore.Permissions{
+				Options: append([]string{}, p.Options...), Required: append([]string{}, p.Required...),
+				Allowed: append([]string{}, p.Allowed...), Granted: append([]string{}, p.Granted...),
+				Extra: append([]string{}, p.Extra...), Withheld: append([]string{}, p.Withheld...),
+			}
+			planned.step.Options = slices.Clone(p.Options)
+		}
+	}
 	workspace := definition.Workspace.Value
 	planned.admission.Writer = workspace.Access.Value == "read-write"
 	planned.admission.Clean = workspace.Clean.Given && workspace.Clean.Value
@@ -762,11 +773,6 @@ func plannedCallOf(name string, item resolve.Item, resolved resolve.Resolved, do
 		}
 		planned.step.Instruction = definition.Instruction.Value
 		planned.step.Model, planned.step.Effort = agent.Model.Value, agent.Effort.Value
-		for _, p := range resolved.Plans {
-			if p.Workflow == name && p.Place == item.Origin.Place {
-				planned.step.Options = slices.Clone(p.Options)
-			}
-		}
 		if schema := process.Schema.Value; schema != "" {
 			bytes, err := blob(documents.Schema, schema)
 			if err != nil {
@@ -1138,7 +1144,9 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	planned := s.calls[name]
-	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues, definitions: planned.definitions, definitionBytes: planned.definitionBytes}
+	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues,
+		definitions: planned.definitions, definitionBytes: planned.definitionBytes, permissions: planned.permissions,
+		environment: []runstore.Variable{}}
 	ended.result = s.call(ctx, name, params, session, report, &ended)
 	s.records.Called(ended)
 	return ended.result
@@ -1161,6 +1169,9 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
 	ended.inputs = givenInputs(planned.declared.Inputs, resolved.Inputs)
+	for _, variable := range planned.declared.Environment {
+		ended.environment = append(ended.environment, runstore.Variable{Name: variable.Name, Value: resolved.Environment[variable.Name]})
+	}
 	var earlier runstore.Call
 	var taken bool
 	if !planned.chained {

@@ -137,7 +137,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		Skills:      t.references("skills", optional, skill),
 		Params:      typeParams(t),
 		Inputs:      typeInputs(t),
-		Environment: t.bindings("environment", optional, processReads()),
+		Environment: t.bindingsBy("environment", optional, processReads(), tree.Node.DeclaredKeys),
 	}
 	if permissions := t.mapping("permissions", optional); permissions.Given {
 		p := permissions.Value
