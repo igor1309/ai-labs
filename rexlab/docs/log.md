@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
 - Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
 - A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).

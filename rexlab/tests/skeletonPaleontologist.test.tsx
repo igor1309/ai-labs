@@ -158,12 +158,14 @@ describe("Paleontologist's puzzle", () => {
     expect(told()).toBe("");
   });
 
-  it("never puts help off with another dinosaur's bone", async () => {
+  it("counts help again from nothing as another dinosaur's bone is touched, then helps the first piece in the tray", async () => {
     const { pictures } = await openPaleontologist("TYRANNOSAURUS");
 
     spend(pictures, 9);
     dragTo("triceratops/frill", homeOf(skeletonOf("tyrannosaurus"), "head"));
     spend(pictures, 1);
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
 
     expect(hints()).toEqual(["spot head"]);
     expect(board().querySelector(".skeleton-region")).not.toBeNull();
