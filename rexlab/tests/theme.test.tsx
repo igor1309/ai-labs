@@ -380,7 +380,7 @@ async function skeletonPaleontologist({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "PALEONTOLOGIST" }));
   await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
   layOutPuzzle();
-  fit(tyrannosaurus, "skull");
+  fit(tyrannosaurus, "head");
   dragBone("triceratops/frill", AWAY);
   expect([document.querySelector(".skeleton-outline-silhouette") !== null, screen.getByRole("status").textContent]).toEqual([true, "THAT'S THE TRICERATOPS FRILL!"]);
   expectScreenIn(theme);

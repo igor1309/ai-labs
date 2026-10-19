@@ -2,6 +2,8 @@
 
 ## 2026-10-19
 
+- Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
+
 - A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).
 - At Paleontologist about one skeleton piece in three arrives turned; a tap turns it a quarter, and it fits only the right way up (LAB-318).
 - Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).

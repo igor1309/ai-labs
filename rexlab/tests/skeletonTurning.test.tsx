@@ -37,23 +37,23 @@ describe("Paleontologist's turned pieces", () => {
   it("arrive turned as drawn, each with a mark that it turns, every other piece the right way up", async () => {
     await openDrawn("TYRANNOSAURUS", SKULL_AND_TAIL_TIP);
 
-    expect([lying("skull"), lying("tail-tip")]).toEqual([
+    expect([lying("head"), lying("tail-tip")]).toEqual([
       ["90deg", true],
       ["180deg", true]
     ]);
-    expect(spotPieces().filter((piece) => !["skull", "tail-tip"].includes(piece)).filter((piece) => lying(piece).join() !== ",false")).toEqual([]);
+    expect(spotPieces().filter((piece) => !["head", "tail-tip"].includes(piece)).filter((piece) => lying(piece).join() !== ",false")).toEqual([]);
     expect(tray().hasAttribute("data-turning")).toBe(true);
   });
 
   it("turn a quarter at a tap, in their spots, the mark gone once the right way up", async () => {
     await openDrawn("TYRANNOSAURUS", SKULL_AND_TAIL_TIP);
 
-    tap("skull");
-    expect([lying("skull"), pieceIn("skull")?.hasAttribute("data-returning"), lifted()]).toEqual([["180deg", true], false, null]);
+    tap("head");
+    expect([lying("head"), pieceIn("head")?.hasAttribute("data-returning"), lifted()]).toEqual([["180deg", true], false, null]);
 
-    tap("skull");
-    tap("skull");
-    expect([lying("skull"), pieceIn("skull")?.hasAttribute("data-turns")]).toEqual([["360deg", false], false]);
+    tap("head");
+    tap("head");
+    expect([lying("head"), pieceIn("head")?.hasAttribute("data-turns")]).toEqual([["360deg", false], false]);
   });
 
   it("keep turning on clockwise past the right way up", async () => {
@@ -67,7 +67,7 @@ describe("Paleontologist's turned pieces", () => {
 
   it("are picked up by a drag turned as they lie, and do not turn", async () => {
     await openDrawn("TYRANNOSAURUS", SKULL_AND_TAIL_TIP);
-    const spot = spotOf("skull");
+    const spot = spotOf("head");
     const { left, top } = spot.getBoundingClientRect();
 
     press(spot, { clientX: left + 40, clientY: top + 40 });
@@ -75,19 +75,19 @@ describe("Paleontologist's turned pieces", () => {
     expect(lifted()?.style.rotate).toBe("90deg");
     release(AWAY);
 
-    expect(lying("skull")).toEqual(["90deg", true]);
+    expect(lying("head")).toEqual(["90deg", true]);
   });
 
   it("fit only the right way up: dropped turned on their home they float back, still turned", async () => {
     await openDrawn("TYRANNOSAURUS", SKULL_AND_TAIL_TIP);
     const tyrannosaurus = skeletonOf("tyrannosaurus");
 
-    fit(tyrannosaurus, "skull");
-    expect([fittedPieces(), pieceIn("skull")?.hasAttribute("data-returning"), lying("skull")]).toEqual([[], true, ["90deg", true]]);
+    fit(tyrannosaurus, "head");
+    expect([fittedPieces(), pieceIn("head")?.hasAttribute("data-returning"), lying("head")]).toEqual([[], true, ["90deg", true]]);
 
-    for (const _ of [1, 2, 3]) tap("skull");
-    fit(tyrannosaurus, "skull");
-    expect(fittedPieces()).toEqual(["skull"]);
+    for (const _ of [1, 2, 3]) tap("head");
+    fit(tyrannosaurus, "head");
+    expect(fittedPieces()).toEqual(["head"]);
   });
 });
 

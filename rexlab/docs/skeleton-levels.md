@@ -53,3 +53,10 @@ rebuild and the collection score.
 - The dig stays LAB-283; the odd bone's "not mine" box stays LAB-285.
 - Explorer's colours carry the body-area cue, with no phase of sorting
   bones on its own.
+- Only Hatchling outlines a held bone's home; Explorer and Paleontologist
+  shuffle the tray for each puzzle, so neither the outline nor the order
+  gives a bone's place away (LAB-323).
+- Explorer's and Paleontologist's pieces follow the bones the picture
+  draws, cut by `scripts/recut-skeletons.ts`; Hatchling's four stay cut
+  straight, so the pieces the levels shared are now each level's own
+  (LAB-323).
