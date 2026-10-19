@@ -1,4 +1,4 @@
-import { ChartNoAxesColumnIncreasing, Copy, Footprints, Hand, House } from "lucide-react";
+import { ArrowLeft, ChartNoAxesColumnIncreasing, Copy, Footprints, Hand, House } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -31,18 +31,24 @@ export type PairsBoardScreenProps = {
   // The last pair is found: every card waves before the result.
   finished: boolean;
   onTurn: (place: number) => void;
+  // Back to the game's welcome screen.
+  onBack: () => void;
   onHome: () => void;
 };
 
 // A custom property the stylesheet staggers the cards by.
 const place = (index: number) => ({ "--card": index }) as CSSProperties;
 
-export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onHome }: PairsBoardScreenProps) {
+export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome }: PairsBoardScreenProps) {
   const text = TEXTS[language];
   return (
     <main className="pairs-board-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="pairs-bar">
+        <button type="button" className="home-button" onClick={onBack}>
+          <ArrowLeft size={24} aria-hidden="true" />
+          {text.back}
+        </button>
         <button type="button" className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}

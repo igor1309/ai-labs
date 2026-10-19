@@ -62,6 +62,14 @@ Feature: Find the pair: turning cards
     Then I am on the home page without being asked to confirm
     And that board earns no star, no level step and no found dinosaurs
 
+  Scenario: Back leaves a board for the game's welcome screen
+    Given I am partway through a board, with one card open
+    Then the board's bar shows "BACK" with an arrow symbol, before "HOME"
+    When I tap "BACK"
+    Then I see the game's welcome screen with its level switch, without being asked to confirm
+    And that board earns no star, no level step and no found dinosaurs
+    And its open card does not turn back over later
+
   Scenario: Portrait pauses a board without changing it
     Given I am partway through a board, with one card open
     When I turn the iPad to portrait

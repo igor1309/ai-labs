@@ -17,8 +17,8 @@ const FIT_TABLE = [
 ] as const;
 
 const WORD_EMS: Record<string, number> = {
-  "PLAY AGAIN": 7.2, HOME: 3.2, "WELL DONE!": 7.5, "FIRST BEST!": 7.6,
-  "ЕЩЁ РАЗ": 5.8, ДОМОЙ: 4.1, "МОЛОДЕЦ!": 6.8, "ПЕРВЫЙ РЕКОРД!": 10.8,
+  "PLAY AGAIN": 7.2, HOME: 3.2, BACK: 2.9, "WELL DONE!": 7.5, "FIRST BEST!": 7.6,
+  "ЕЩЁ РАЗ": 5.8, ДОМОЙ: 4.1, НАЗАД: 3.7, "МОЛОДЕЦ!": 6.8, "ПЕРВЫЙ РЕКОРД!": 10.8,
   BEST: 3.2, РЕКОРД: 5.2, NEW: 2.9, НОВЫЙ: 4.4
 };
 
@@ -70,6 +70,7 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
             celebration="first-best"
             levelUp={null}
             onPlayAgain={() => {}}
+            onBack={() => {}}
             onHome={() => {}}
           />
         </div>,
@@ -113,7 +114,7 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
       const hand = Number(element(".pairs-result-hand").getAttribute("height"));
       const title = style(".result-title");
       const actions = style(".result-actions");
-      const buttons = [screen.getByRole("button", { name: text.playAgain }), screen.getByRole("button", { name: text.home })];
+      const buttons = [text.playAgain, text.back, text.home].map((name) => screen.getByRole("button", { name }));
       const panelHeight = pixels(style(".celebration").height) + Math.max(digits, hand) + pixels(style(".pairs-result-stars").fontSize) + pixels(title.fontSize) * Number(title.lineHeight) + pixels(style(".best-score").height) + pixels(getComputedStyle(buttons[0] ?? document.body).height) + vertical(actions) + 5 * gap(panel, "row");
       expect(panelHeight).toBeLessThanOrEqual(room.height);
       expect(2 * 0.75 * digits + Number(element(".pairs-result-hand").getAttribute("width")) + gap(tries)).toBeLessThanOrEqual(right);

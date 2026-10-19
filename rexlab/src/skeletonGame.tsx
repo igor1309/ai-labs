@@ -305,6 +305,13 @@ export function useSkeletonGame(
     return () => stop();
   }, [since, touches, counting, away]);
 
+  // BACK leaves a puzzle for the choice of dinosaurs: unfinished, it is
+  // dropped, earning nothing, and its wait for help stops.
+  const back = () => {
+    leave();
+    go({ kind: "choice" });
+  };
+
   // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
   // meanwhile, or a tap after a puzzle was asked for, changes nothing
   // more, and leaves that puzzle in play.
@@ -352,6 +359,7 @@ export function useSkeletonGame(
             onTurn={onTurn}
             onLastStep={onLastStep}
             onMuseum={museum}
+            onBack={back}
             onHome={home}
           />
         );

@@ -101,6 +101,8 @@ export type SkeletonPuzzleScreenProps = {
   // Help's last step has shown: a piece moved towards its home.
   onLastStep: () => void;
   onMuseum: () => void;
+  // Back to the choice of dinosaurs.
+  onBack: () => void;
   onHome: () => void;
 };
 
@@ -171,6 +173,7 @@ export function SkeletonPuzzleScreen({
   onTurn,
   onLastStep,
   onMuseum,
+  onBack,
   onHome
 }: SkeletonPuzzleScreenProps) {
   const text = TEXTS[language];
@@ -313,7 +316,7 @@ export function SkeletonPuzzleScreen({
   return (
     <main className="skeleton-screen" onContextMenu={(event) => event.preventDefault()}>
       <div className="stratum stratum-1" aria-hidden="true" />
-      <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onHome={onHome}>
+      <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onBack={onBack} onHome={onHome}>
         <p className="skeleton-chip" aria-label={text.fitted}>
           <Bone size={20} aria-hidden="true" />
           {fitted}/{slots.length}

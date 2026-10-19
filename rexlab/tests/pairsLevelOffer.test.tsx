@@ -28,7 +28,7 @@ function open({ language = "en", theme = "light", level = "explorer", celebratio
 } = {}) {
   const clock = manualTimers();
   const offer = { level, onShown: vi.fn(), onYes: vi.fn(), onNotNow: vi.fn(), startTimer: clock.startTimer };
-  const props: PairsResultScreenProps = { language, pals: [], tries: 12, stars: 3, best: 12, beaten: 16, celebration, levelUp, offer, onHome: vi.fn(), onPlayAgain: vi.fn() };
+  const props: PairsResultScreenProps = { language, pals: [], tries: 12, stars: 3, best: 12, beaten: 16, celebration, levelUp, offer, onBack: vi.fn(), onHome: vi.fn(), onPlayAgain: vi.fn() };
   const content = (offerProp: NonNullable<PairsResultScreenProps["offer"]> | null) => <div data-theme={theme}><PairsResultScreen {...props} offer={offerProp} /></div>;
   const wrap = (offerProp: NonNullable<PairsResultScreenProps["offer"]> | null) => strict ? <StrictMode>{content(offerProp)}</StrictMode> : content(offerProp);
   const view = render(wrap(offer));
@@ -61,10 +61,12 @@ it("reports shown once through StrictMode and rerenders", () => {
   expect(screen.getByRole("dialog")).toBeTruthy();
 });
 
-it.each(["HOME", "PLAY AGAIN", "reload"])("can leave by %s before showing without reporting shown or answering", (leave) => {
+it.each(["HOME", "BACK", "PLAY AGAIN", "reload"])("can leave by %s before showing without reporting shown or answering", (leave) => {
   const app = open();
   if (leave !== "reload") fireEvent.click(screen.getByRole("button", { name: leave }));
-  expect([app.props.onHome, app.props.onPlayAgain].map((callback) => vi.mocked(callback).mock.calls.length)).toEqual([leave === "HOME" ? 1 : 0, leave === "PLAY AGAIN" ? 1 : 0]);
+  expect([app.props.onHome, app.props.onBack, app.props.onPlayAgain].map((callback) => vi.mocked(callback).mock.calls.length)).toEqual(
+    ["HOME", "BACK", "PLAY AGAIN"].map((name) => (leave === name ? 1 : 0))
+  );
   app.unmount();
   expect(app.clock.timers()).toEqual([]);
   act(() => app.clock.deliverStopped(560));
@@ -86,10 +88,13 @@ it.each(["YES", "NOT NOW"])("answers %s once, blocks the result through dismissa
   app.show();
   const again = screen.getByRole("button", { name: "PLAY AGAIN" });
   const home = screen.getByRole("button", { name: "HOME" });
+  const back = screen.getByRole("button", { name: "BACK" });
   expect(screen.getByRole("main").hasAttribute("inert")).toBe(true);
   fireEvent.click(again);
+  fireEvent.click(back);
   fireEvent.click(home);
   expect(app.props.onPlayAgain).not.toHaveBeenCalled();
+  expect(app.props.onBack).not.toHaveBeenCalled();
   expect(app.props.onHome).not.toHaveBeenCalled();
   const choice = screen.getByRole("button", { name: answer });
   filterTaps();

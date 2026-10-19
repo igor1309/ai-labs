@@ -21,7 +21,7 @@ Feature: Find the pair: the level offer on the result
     When I finish an Explorer board in 12 tries
     Then I first see the star fly in and the new best score celebration
     And then the offer rises in over the result
-    And the result's "PLAY AGAIN" and "HOME" cannot be tapped while it shows
+    And the result's "PLAY AGAIN", "BACK" and "HOME" cannot be tapped while it shows
 
   Scenario Outline: The offer fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
@@ -57,6 +57,7 @@ Feature: Find the pair: the level offer on the result
     Examples:
       | leave            |
       | tap "PLAY AGAIN" |
+      | tap "BACK"       |
       | tap "HOME"       |
       | reload the app   |
 
@@ -65,7 +66,7 @@ Feature: Find the pair: the level offer on the result
     When I double tap "<answer>" quickly
     Then the offer is answered "<answer>" once and goes
     And the second tap presses nothing on the result under it
-    And "PLAY AGAIN" and "HOME" can be tapped again
+    And "PLAY AGAIN", "BACK" and "HOME" can be tapped again
 
     Examples:
       | answer  |

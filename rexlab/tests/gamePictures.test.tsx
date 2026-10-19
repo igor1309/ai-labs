@@ -46,10 +46,10 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
   ["my friends", <FriendsScreen language="en" friends={[TRIKE]} nestPicture={fakeItemPicture("nest")} onFriend={none} onNewVisitor={none} onBack={none} onHome={none} />, ["friend-picture"]],
   ["my friends, with no friend yet", <FriendsScreen language="en" friends={[]} nestPicture={fakeItemPicture("nest")} onFriend={none} onNewVisitor={none} onBack={none} onHome={none} />, ["no-friends-nest"]],
   ["the find-the-pair welcome screen, its card and silhouette", <PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("triceratops")} onLevel={none} onPlay={none} onHome={none} />, ["pairs-hero-picture", "pairs-hero-picture"]],
-  ["a board, two cards turned over", <PairsBoardScreen language="en" {...presentPairsBoard(board, "en", fakeBodyPicture)} finished={false} onTurn={none} onHome={none} />, ["pair-card-picture", "pair-card-picture"]],
+  ["a board, two cards turned over", <PairsBoardScreen language="en" {...presentPairsBoard(board, "en", fakeBodyPicture)} finished={false} onTurn={none} onBack={none} onHome={none} />, ["pair-card-picture", "pair-card-picture"]],
   [
     "the result of a board",
-    <PairsResultScreen language="en" pals={[{ ...TRIKE, newlyFound: true }]} tries={3} stars={3} best={3} beaten={undefined} celebration={null} levelUp={null} onPlayAgain={none} onHome={none} />,
+    <PairsResultScreen language="en" pals={[{ ...TRIKE, newlyFound: true }]} tries={3} stars={3} best={3} beaten={undefined} celebration={null} levelUp={null} onPlayAgain={none} onBack={none} onHome={none} />,
     ["pairs-found-picture"]
   ],
   [

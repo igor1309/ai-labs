@@ -31,6 +31,7 @@ Feature: Skeleton assembly: keeping the collection
     Examples:
       | leave          |
       | tap "HOME"     |
+      | tap "BACK"     |
       | reload the app |
 
   Scenario: Home leaves a puzzle without confirmation

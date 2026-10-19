@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- Find the pair and the skeleton game have a BACK button beside HOME: from a board or its result back to Find the pair's welcome screen, and from a puzzle back to the choice of dinosaurs (LAB-345).
 - The home page no longer repeats today's featured game as a small tile: the large card stands in its place, and the other tiles keep their order (LAB-348).
 - The catalogue list is one row of HOME and the food chips, with no title or count: ALL is a filter symbol alone, a card's food tag is its colour and symbols without the word, a card's chips stay on one line, and the list runs to the screen's edge so its scrollbar shows there (LAB-350).
 - The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
