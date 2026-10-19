@@ -364,8 +364,8 @@ func (s staleCause) Error() string { return s.What }
 // again as it was given, in the session it reported, else in the one it
 // was given, once capacityWait times their count has passed on the timer;
 // unless it reported a session other than the one it resumed, ctx or the
-// time limit has ended, or the time limit leaves less than the wait, read
-// on the clock. A retry spends none of the step's recovery. A wait that
+// time limit has ended, or the time limit leaves no more than the wait,
+// read on the clock: a retry never starts as the limit passes. A retry spends none of the step's recovery. A wait that
 // the call's context ends ends the call interrupted. A turn whose context
 // the call ended ends the call interrupted, however its program then
 // exited; one that reported a session other than the one it resumed fails
@@ -404,7 +404,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 			atCapacity++
 			wait := time.Duration(atCapacity) * capacityWait
 			left := step.TimeLimit - c.clock.Now().Sub(started)
-			if atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left < wait {
+			if atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
 				wait = 0
 			}
 			report(Report{Capacity: &CapacityTurn{Reason: reason, Retry: wait}})

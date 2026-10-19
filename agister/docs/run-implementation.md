@@ -992,7 +992,7 @@ all, in the session it reported, else in the session it was given. A
 capacity turn that reported a session other than the one it resumed is
 not retried: it fails the call, `runtime_error`, as any turn that
 strayed does. No wait starts where the call's context has ended, or
-where its time limit, read on its clock, leaves less than the wait; a
+where its time limit, read on its clock, leaves no more than the wait; a
 wait the caller's context ends ends the call interrupted, `cancelled`.
 A retry spends none of the step's recovery, and what follows it follows
 it as it would any turn, a recovery turn included. The call's cost,

@@ -120,12 +120,26 @@ func TestThreeTurnsAtCapacityEndTheCall(t *testing.T) {
 	}
 }
 
-// capacity.feature, "A wait the time limit would cut is not started".
+// capacity.feature, "A wait the time limit would cut is not started";
+// and one that would end as the limit passes, where the retry would
+// start as the call is ended.
 func TestAWaitTheTimeLimitWouldCutIsNotStarted(t *testing.T) {
 	t.Parallel()
+	for _, failed := range []time.Duration{9*time.Minute + 45*time.Second, 9*time.Minute + 30*time.Second} {
+		t.Run(failed.String(), func(t *testing.T) {
+			t.Parallel()
+			waitNotStarted(t, failed)
+		})
+	}
+}
+
+// waitNotStarted is a call of the time limit 10m whose first turn fails at
+// capacity at failed, which makes no other.
+func waitNotStarted(t *testing.T, failed time.Duration) {
+	t.Helper()
 	clock := clocktest.NewClock(start)
 	spy := &runtimeSpy{turn: func(ctx context.Context) (call.Ended, error) {
-		clock.Advance(9*time.Minute + 45*time.Second)
+		clock.Advance(failed)
 		return atCapacity("")(ctx)
 	}}
 	var reported capacityTurns
