@@ -96,7 +96,7 @@ describe("the sorting game's best score", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("3");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedSorting(storage)).toEqual({ bestScore: 3, roundsPlayed: 1 });
+    expect(storedSorting(storage)).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 });
   });
 
   it("celebrates a new best score and keeps it", async () => {
@@ -110,7 +110,7 @@ describe("the sorting game's best score", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("5");
     expect(shownBeaten()).toEqual(["4", "arrow-right"]);
-    expect(storedSorting(storage)).toEqual({ bestScore: 5, roundsPlayed: 3 });
+    expect(storedSorting(storage)).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: 5, roundsPlayed: 3 });
   });
 
   it.each([5, 3])("does not celebrate %i against a best of 5, and the best stays 5", async (right) => {
@@ -124,7 +124,7 @@ describe("the sorting game's best score", () => {
     expect(confetti()).toBe(0);
     expect(shownBest()).toBe("5");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedSorting(storage)).toEqual({ bestScore: 5, roundsPlayed: 3 });
+    expect(storedSorting(storage)).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: 5, roundsPlayed: 3 });
   });
 
   it("does not celebrate a first board of 0, which shows six stars, none won, and still sets the best", async () => {
@@ -138,7 +138,7 @@ describe("the sorting game's best score", () => {
     const stars = screen.getByRole("img", { name: "0 OF 6 STARS" });
     expect([stars.children.length, stars.querySelectorAll(".star-won").length]).toEqual([6, 0]);
     expect(shownBest()).toBe("0");
-    expect(storedSorting(storage)).toEqual({ bestScore: 0, roundsPlayed: 1 });
+    expect(storedSorting(storage)).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: 0, roundsPlayed: 1 });
   });
 });
 
@@ -149,7 +149,7 @@ describe("the sorting game's stored progress", () => {
 
     await finishBoard(user, board, 2);
 
-    expect(storedSorting(storage)).toEqual({ bestScore: 5, roundsPlayed: 4 });
+    expect(storedSorting(storage)).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: 5, roundsPlayed: 4 });
   });
 
   it("does not record a board left early", async () => {
@@ -175,13 +175,13 @@ describe("the sorting game's stored progress", () => {
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(storedRecord(storage)).toEqual({
       schemaVersion: 1,
-      games: { "compare-dinosaurs": QUIZ, "dinosaur-care": CARE, "sort-dinosaurs": { bestScore: 2, roundsPlayed: 1 } }
+      games: { "compare-dinosaurs": QUIZ, "dinosaur-care": CARE, "sort-dinosaurs": { explorerBest: null, paleontologistBest: null, bestScore: 2, roundsPlayed: 1 } }
     });
   });
 
   it.each([
     ["unreadable", "{not json"],
-    ["from an unknown schema version", JSON.stringify({ schemaVersion: 2, games: { "sort-dinosaurs": { bestScore: 6, roundsPlayed: 3 } } })]
+    ["from an unknown schema version", JSON.stringify({ schemaVersion: 2, games: { "sort-dinosaurs": { explorerBest: null, paleontologistBest: null, bestScore: 6, roundsPlayed: 3 } } })]
   ])("counts progress that is %s as none and replaces it with a readable record", async (_, bad) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: bad });
     const { user, board } = openGame(storage);
@@ -190,7 +190,7 @@ describe("the sorting game's stored progress", () => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(shownBest()).toBe("3");
-    expect(storedRecord(storage)).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 3, roundsPlayed: 1 } } });
+    expect(storedRecord(storage)).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { explorerBest: null, paleontologistBest: null, bestScore: 3, roundsPlayed: 1 } } });
   });
 
   // A child sees the stylesheet's counter, counting up to `--score`, not

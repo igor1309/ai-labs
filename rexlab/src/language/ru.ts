@@ -75,7 +75,10 @@ export const ru: Texts = {
     horns: "С РОГАМИ",
     "no-horns": "БЕЗ РОГОВ",
     feathers: "С ПЕРЬЯМИ",
-    "no-feathers": "БЕЗ ПЕРЬЕВ"
+    "no-feathers": "БЕЗ ПЕРЬЕВ",
+    both: "ВСЁ",
+    "two-or-four": "ДВЕ ИЛИ ЧЕТЫРЕ",
+    "not-known-yet": "ПОКА НЕИЗВЕСТНО"
   },
   pairs: "НАЙДИ ПАРУ",
   moreComing: "СКОРО ЕЩЁ",

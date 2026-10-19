@@ -1,3 +1,4 @@
+import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
@@ -208,10 +209,10 @@ export function scoringSpy<Beaten>(beaten: Beaten) {
 
 // A new board sorting by `property`. A board sorts by any property, so
 // boards are started until one does.
-export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1): Sorting {
+export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1, level: AgeLevel = "hatchling"): Sorting {
   const random = seededRandom(seed);
   for (let tries = 0; tries < 100; tries++) {
-    const sorting = startBoard(dinosaurs, random);
+    const sorting = startBoard(dinosaurs, level, random);
     if (boardState(sorting).property === property) return sorting;
   }
   throw new Error(`No board sorted by ${property}`);

@@ -1,7 +1,9 @@
 Feature: Sort dinosaurs: starting a round and the board
   A child puts six dinosaurs into two baskets by one property, such as
   two legs or four, and learns to notice and compare what dinosaurs
-  have. Each round is one board of six cards.
+  have. Each round is one board of six cards. This is the Hatchling
+  mode; Explorer and Paleontologist deal more cards and a third basket
+  (sort-dinosaurs-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -77,8 +79,8 @@ Feature: Sort dinosaurs: starting a round and the board
     And at least two of them for each basket
 
   Scenario: Only clear facts are asked
-    Given a dinosaur with no clear value for a property in the data, such as a null trait or a diet of both
-    When a round sorts by that property
+    Given a dinosaur with no clear value for a property in the data, such as a null trait, a diet of both, legs of either or feathers unknown
+    When a round with two baskets sorts by that property
     Then that dinosaur is not on the board
 
   Scenario: Size agrees with the mass the app shows

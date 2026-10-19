@@ -5,7 +5,8 @@ Feature: Sort dinosaurs: pictures that load
   picture is doing. A card whose picture fails shows the failure look of
   pictures.feature in its picture's place, its name still below; after a
   miss, its hint shows in the card's corner, apart from the failure
-  look's footprints at the centre.
+  look's footprints at the centre. Its rounds are Hatchling rounds of six
+  cards; every level's pictures load alike (sort-dinosaurs-levels.feature).
 
   Background:
     Given an iPad in landscape

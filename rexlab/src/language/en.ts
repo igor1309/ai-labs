@@ -71,7 +71,10 @@ export const en: Texts = {
     horns: "HORNS",
     "no-horns": "NO HORNS",
     feathers: "FEATHERS",
-    "no-feathers": "NO FEATHERS"
+    "no-feathers": "NO FEATHERS",
+    both: "BOTH",
+    "two-or-four": "TWO OR FOUR",
+    "not-known-yet": "NOT KNOWN YET"
   },
   pairs: "FIND THE PAIR",
   moreComing: "MORE COMING",
