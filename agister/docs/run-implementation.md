@@ -1382,3 +1382,76 @@ Decisions, each with its reason:
   Codex's cost through `ccusage` stays in the backlog.
 - The facts are the wrapper's, read by the composition as it reads how a
   runtime takes its inputs.
+
+## A daily budget
+
+Home may set a daily budget: what Agister's calls may spend in a day,
+across runs, on what their runtimes report. A call does not start once
+the day's spend has reached it, and a turn on claude-code is given no
+more than is left of it (ADR-001, invariant 3; ADR-004, rule 7;
+LAB-356).
+
+**`settings/layout`** reads home's folder's `budget.yaml`, as it reads
+the repository's `blocks.yaml`: its path and its bytes. A `budget.yaml`
+in the repository's or a project's folder is a problem of its file: "a
+budget belongs to the home folder alone"; one that cannot be read, a
+problem of the home layer naming its path and the read's error.
+
+**`settings/documents`** types it, decoded in YAML: a map whose one
+field `daily` is a map whose one field `cost` is an amount in US
+dollars, more than zero, required. A field no budget knows, a `cost`
+not a number more than zero, or a root not a map is a problem of no
+document, at its line, as a blocks file's is; an empty file is no
+budget.
+
+```yaml
+daily:
+  cost: 20
+```
+
+`agister check` reports its problems with layout's, and `agister run`
+refuses on them, as on any problem of no document.
+
+**`core/call`**'s step is given the day's budget and what the day has
+spent before the call, none where home sets no budget. What is left of
+the day is the budget less the day's spend and the call's known cost
+so far. Each turn on a runtime that takes a budget is given the least
+of what is left of its cost limit and of the day. No retry at capacity
+starts once the day's spend and the call's known cost reach the
+budget; the call ends failed, `budget_exhausted`, its reason "the daily
+budget <budget> is spent: <spend>", the spend the day's and the call's,
+and the turn at capacity's report has no retry. Where both the limit
+and the day are spent, the limit's reason is given.
+
+**The composition** reads the day's spend before each call it makes,
+after a reuse is ruled out and before the call is admitted: the sum of
+the known costs of the calls kept in home's runs that started on the
+day, by the host's clock and its time zone, from midnight; a call
+taken by a reuse, or of an unknown cost, spends nothing. Only runs
+whose id is from the day before or later are read. A call whose day
+has spent the budget is not made, nor admitted: it ends failed,
+`budget_exhausted`, its reason "the daily budget <budget> is spent:
+<spend>", no turn taken, and is recorded as a refused call is, its
+inputs given; a run of it ends failed, as a failed step ends it.
+Otherwise its step is given the budget and the day's spend.
+
+Decisions, each with its reason:
+
+- A file in home's folder, not a kind: there is one budget, the
+  owner's, and no document refers to it by name. Home alone: a
+  repository given more would raise the owner's ceiling (ADR-002, rule
+  7 lets a repository narrow what home allows, not widen it).
+- The day by the host's clock in its time zone: the owner's day, as the
+  owner reads it; a run's id is UTC, so the day before is read too.
+- Spend read from the records, not kept apart: the record already holds
+  each call's cost, and it is what the owner would add up.
+- An unknown or reused cost spends nothing (ADR-001, invariant 3): a
+  reused call spent on the day it was made.
+- Read before each call, not each run: a workflow's later steps stop
+  once its earlier ones spent the day.
+- Best effort: two runs that start together may both pass the check;
+  each turn on claude-code is still given what was left, and nothing
+  locks across runs. A run longer than a day is read for its last day
+  alone.
+- A call already running is not ended for the day: Agister kills no
+  turn for its cost.
