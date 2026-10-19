@@ -17,10 +17,15 @@ import {
   featuring,
   lightDevice,
   manualOrientation,
+  manualVisibility,
   manualTimers,
   memoryStorage,
   unreadVersion,
-  type MemoryStorage
+  type MemoryStorage,
+  type ManualOrientation,
+  type ManualVisibility,
+  type ManualPictures,
+  type ManualTimers
 } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 
@@ -29,15 +34,20 @@ export function openDigApp({
   ageLevel = { level: "explorer" as const, revision: null },
   reducedMotion = false,
   language = "en" as const,
-  theme = "light" as const
+  theme = "light" as const,
+  timers = manualTimers(),
+  orientation = manualOrientation("landscape"),
+  visibility = manualVisibility("visible")
 }: {
   storage?: MemoryStorage;
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
   reducedMotion?: boolean;
   language?: "en" | "ru";
   theme?: "light" | "dark";
+  timers?: ManualPictures | ManualTimers;
+  orientation?: ManualOrientation;
+  visibility?: ManualVisibility;
 } = {}) {
-  const timers = manualTimers();
   const local = () => storage;
   const view = render(
     <App
@@ -46,7 +56,7 @@ export function openDigApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={() => 0}
-      orientation={manualOrientation("landscape")}
+      orientation={orientation}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(local)}
@@ -57,6 +67,7 @@ export function openDigApp({
       {...emptyCare()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      pageVisibility={visibility}
       {...emptySorting()}
       digDinosaurs={SHIPPED_DIG}
       digProgress={localDigProgress(local)}
@@ -66,7 +77,7 @@ export function openDigApp({
     />
   );
   document.documentElement.dataset.theme = theme;
-  return { user: userEvent.setup(), timers, storage, unmount: view.unmount };
+  return { user: userEvent.setup(), timers, storage, orientation, visibility, unmount: view.unmount };
 }
 
 // The dig game's board, read and brushed as a test sees it.

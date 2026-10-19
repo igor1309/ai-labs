@@ -1,10 +1,12 @@
-import { Star } from "lucide-react";
+import { Check, Sparkles, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { DigBar } from "./DigBar.tsx";
-import { Picture } from "./Picture.tsx";
+import { Picture, PictureImage, usePicture } from "./Picture.tsx";
+
+export type DigSpotView = { id: string; word: string; x: number; y: number; r: number; found: boolean; helped: boolean };
 
 // A point on the body picture, in the pixels of its frame.
 export type SandPoint = { x: number; y: number };
@@ -31,6 +33,8 @@ export type DigBoardScreenProps = {
   cleared: number;
   // The gust has blown the rest of the sand away.
   blown: boolean;
+  spots: readonly DigSpotView[];
+  helpShown: boolean;
   // The age level the round plays.
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
@@ -111,6 +115,22 @@ type Puff = { id: number; left: number; top: number };
 
 const percent = (fraction: number) => `${fraction * 100}%`;
 
+// The same body picture, enlarged and offset in a round window. Loading
+// and failure occupy the disc itself, so their symbols remain readable.
+function SpotPicture({ picture, frame, spot }: { picture: string; frame: { width: number; height: number }; spot: DigSpotView }) {
+  const look = usePicture(picture);
+  return (
+    <span className="dig-spot-picture" style={{
+      "--crop-width": percent(frame.width / (2 * spot.r)),
+      "--crop-height": percent(frame.height / (2 * spot.r)),
+      "--crop-left": percent((spot.r - spot.x) / (2 * spot.r)),
+      "--crop-top": percent((spot.r - spot.y) / (2 * spot.r))
+    } as CSSProperties}>
+      <PictureImage look={look} src={picture} alt="" className="dig-close-up" />
+    </span>
+  );
+}
+
 export function DigBoardScreen({
   language,
   picture,
@@ -119,6 +139,8 @@ export function DigBoardScreen({
   clear,
   cleared,
   blown,
+  spots,
+  helpShown,
   level,
   brush,
   grains,
@@ -134,6 +156,14 @@ export function DigBoardScreen({
   const stroke = useRef<Stroke>(undefined);
   const [brushAt, setBrushAt] = useState<SandPoint>();
   const [puffs, setPuffs] = useState<Puff[]>([]);
+  const seenFinds = useRef(new Set(spots.filter(({ found }) => found).map(({ id }) => id)));
+  const [celebrating, setCelebrating] = useState<string[]>([]);
+  useEffect(() => {
+    const fresh = spots.filter(({ id, found }) => found && !seenFinds.current.has(id));
+    if (fresh.length === 0) return;
+    fresh.forEach(({ id }) => seenFinds.current.add(id));
+    setCelebrating((current) => [...current, ...fresh.map(({ id }) => id)]);
+  }, [spots]);
   // The listeners on the window and the redraw read the props as they
   // are now, not as they were when they were added.
   const latest = useRef({ marks, onBrush, grains, brush });
@@ -242,7 +272,7 @@ export function DigBoardScreen({
           </p>
         )}
       </DigBar>
-      <div className="dig-body">
+      <div className="dig-body" data-explorer={level === "explorer" || undefined}>
         <div
           ref={board}
           className="dig-board"
@@ -252,12 +282,29 @@ export function DigBoardScreen({
           data-cleared={cleared}
           data-blown={blown || undefined}
           data-level={level}
+          data-found={spots.filter(({ found }) => found).map(({ id }) => id).join(" ")}
+          data-helped={spots.filter(({ helped }) => helped).map(({ id }) => id).join(" ")}
+          data-help-shown={helpShown}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height, "--brush": `${brush}px` } as CSSProperties}
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
           <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />
           <canvas ref={canvas} className="dig-sand" aria-hidden="true" />
+          {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
+            <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"
+              style={{ left: percent((spot.x - spot.r) / frame.width), top: percent((spot.y - spot.r) / frame.height), width: percent(2 * spot.r / frame.width), height: percent(2 * spot.r / frame.height) }}>
+              <SpotPicture picture={picture} frame={frame} spot={spot} />
+            </span>
+          ))}
+          {spots.filter(({ id }) => celebrating.includes(id)).map((spot) => (
+            <span key={spot.id} className="dig-find-pop" aria-hidden="true" data-spot={spot.id} data-motion={grains || undefined}
+              style={{ left: percent(spot.x / frame.width), top: percent(spot.y / frame.height) }}
+              onAnimationEnd={(event) => { if (event.target === event.currentTarget) setCelebrating((current) => current.filter((id) => id !== spot.id)); }}>
+              <Star className="dig-detail-star" size={30} />
+              {grains && <Sparkles className="dig-detail-sparkle" size={48} />}
+            </span>
+          ))}
           {grains &&
             puffs.map((each) => (
               <span key={each.id} className="dig-puff" aria-hidden="true" style={{ left: percent(each.left), top: percent(each.top) }}>
@@ -268,6 +315,16 @@ export function DigBoardScreen({
             ))}
           {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
         </div>
+        {spots.length > 0 && <div className="dig-find-cards">
+          {spots.map((spot) => (
+            <div key={spot.id} className="dig-find-card" data-spot={spot.id} data-found={spot.found || undefined}
+              data-helped={spot.helped && !spot.found || undefined} data-pulse={grains && spot.helped && !spot.found || undefined}>
+              <SpotPicture picture={picture} frame={frame} spot={spot} />
+              <span className="dig-find-word">{spot.word}</span>
+              {spot.found && <Check className="dig-find-tick" data-motion={grains || undefined} size={28} aria-label="✓" />}
+            </div>
+          ))}
+        </div>}
       </div>
     </main>
   );

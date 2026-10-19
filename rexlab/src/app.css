@@ -4861,6 +4861,164 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
+.dig-body[data-explorer] {
+  gap: 28px;
+}
+
+.dig-body[data-explorer] .dig-board {
+  flex: 0 1 auto;
+  width: min(100%, calc((100dvh - 180px) * 4 / 3));
+  height: auto;
+  min-width: 0;
+  max-height: 100%;
+}
+
+.dig-find-cards {
+  flex: 0 0 152px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.dig-find-card {
+  position: relative;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid #5c647a;
+  border-radius: 22px;
+  color: #1d2742;
+  background: #fffdf8;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  transition: border-color var(--motion-standard) var(--ease-out), background-color var(--motion-standard) var(--ease-out);
+}
+
+.dig-find-card[data-found] {
+  border-color: #2e7d4f;
+}
+
+.dig-find-card[data-pulse] {
+  animation: dig-card-pulse calc(4 * var(--motion-screen)) var(--ease-out) infinite;
+}
+
+@keyframes dig-card-pulse {
+  50% { box-shadow: 0 0 0 calc(5px * var(--motion-amount)) #e39b2d80; }
+}
+
+.dig-spot-picture {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fffdf8;
+}
+
+.dig-find-card > .dig-spot-picture {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.dig-close-up {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.dig-close-up[data-picture="appearing"],
+.dig-close-up[data-picture="shown"] {
+  width: var(--crop-width);
+  height: var(--crop-height);
+  left: var(--crop-left);
+  top: var(--crop-top);
+}
+
+.dig-find-word {
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-find-tick {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 3px;
+  border-radius: 50%;
+  background: #2e7d4f;
+  color: #fffdf8;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-find-tick[data-motion] {
+  animation-name: pop-in;
+}
+
+/* A translucent copy of the same crop lets the detail show through the
+   sand without changing the brushed cells or the round's found count. */
+.dig-help-window {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.8;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-help-window[data-motion] {
+  animation-duration: calc(4 * var(--motion-screen));
+}
+
+.dig-find-pop {
+  position: absolute;
+  pointer-events: none;
+  color: #e39b2d;
+  translate: -50% -50%;
+  animation: dig-detail-fade calc(2 * var(--motion-small)) var(--ease-out) both;
+}
+
+.dig-find-pop[data-motion] {
+  animation: dig-detail-pop calc(2 * var(--motion-screen)) var(--ease-out) both;
+}
+
+.dig-detail-star {
+  fill: currentColor;
+}
+
+.dig-detail-sparkle {
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  animation: pop-in var(--motion-standard) var(--ease-out) both;
+}
+
+@keyframes dig-detail-pop {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.5 * var(--motion-amount));
+  }
+  30% {
+    opacity: 1;
+    scale: calc(1 + 0.1 * var(--motion-amount));
+  }
+  to {
+    opacity: 0;
+    translate: -50% calc(-50% - 100% * var(--motion-amount));
+  }
+}
+
+@keyframes dig-detail-fade {
+  from, to { opacity: 0; }
+  40% { opacity: 1; }
+}
+
 /* The gust blows the sand left over off to the side; with reduced motion
    it only fades. */
 .dig-board[data-blown] .dig-sand {
@@ -5839,6 +5997,22 @@ body:has(.result) #version {
     --motion-amount: 0;
   }
 
+  .dig-find-card[data-pulse] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-help-window[data-motion] {
+    animation-duration: var(--motion-small);
+  }
+
+  .dig-find-pop[data-motion] {
+    animation: dig-detail-fade calc(2 * var(--motion-small)) var(--ease-out) both;
+  }
+
+  .dig-detail-sparkle {
+    display: none;
+  }
+
   .pairs-offer-scrim,
   .pairs-offer {
     animation: fade-in var(--motion-small) var(--ease-out) both;
@@ -6663,6 +6837,29 @@ body:has(.result) #version {
 [data-theme="dark"] .dig-board {
   outline-color: #ece8de1f;
   background: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-card {
+  color: #ece8de;
+  background: #181e2e;
+  border-color: #9ca3b6;
+}
+
+[data-theme="dark"] .dig-find-card[data-found] {
+  border-color: #63c98c;
+}
+
+[data-theme="dark"] .dig-spot-picture {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-tick {
+  background: #63c98c;
+  color: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-pop {
+  color: #f2b24b;
 }
 
 [data-theme="dark"] .dig-reveal-screen {

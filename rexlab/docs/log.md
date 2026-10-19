@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- DIG at Explorer shows three find cards, each a close-up of a detail on the dinosaur, ticked with a star as the child brushes it clear in any order; after ten quiet seconds the next detail shows through the sand, and the gust comes once all three are found (LAB-343).
 - DIG's reveal names the dinosaur with a star on its DUG UP card, out of all 42, with the best-score celebrations, a 🏆 once all are dug up, and the level switch above DIG AGAIN; the dinosaurs dug up and the child's level choice are kept (LAB-341).
 - A new game, DIG: a tile over MORE COMING starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
 - A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).

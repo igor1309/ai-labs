@@ -25,8 +25,7 @@ import {
   manualTimers,
   memoryStorage,
   symbolOf,
-  unreadVersion,
-  unsetAgeLevel
+  unreadVersion
 } from "./support.ts";
 import { board, brushAll, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
@@ -57,7 +56,9 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       languageStore={localLanguage(() => storage)}
       nameVersion={unreadVersion}
       {...lightDevice()}
-      {...unsetAgeLevel()}
+      // These are Hatchling's free-brushing scenarios; Explorer has help
+      // timers and a finer brush of its own.
+      ageLevelStore={{ load: () => ({ level: "hatchling", revision: null }), save: () => {} }}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}

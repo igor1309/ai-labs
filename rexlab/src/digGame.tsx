@@ -1,14 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import {
   BRUSH_SIZES,
+  awaitsHelp,
   brushRound,
   digUp,
   dugUpOf,
   mergeProgress,
   NO_DIG,
   startRound,
+  waitForHelp,
   type DigDinosaur,
   type DigProgress,
   type DigReward,
@@ -46,16 +48,15 @@ export type DigGameProps = {
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
   startTimer: StartTimer;
+  presence: { isAway(): boolean; subscribe(onChange: () => void): () => void };
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
   sandContext: SandContext;
 };
 
-// The dig game has a mode for every age level. Each round plays
-// Hatchling's free brushing, with its brush, until Explorer's and
-// Paleontologist's tasks are built.
+// Paleontologist uses free brushing until its clues and choice are built.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
-const BRUSH = BRUSH_SIZES.hatchling;
+const HELP_TICK = 1000;
 
 // How long the gust blows the sand away before the reveal, in
 // milliseconds: the gust's animation of twice --motion-screen, and its
@@ -90,11 +91,12 @@ export function transitionFor(from: DigScreen | undefined, to: DigScreen | undef
 // the game starts at until the child chooses another level on its
 // switch. `onHome` takes the child back to the home page.
 export function useDigGame(
-  { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, reducedMotion, sandContext }: DigGameProps,
+  { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion, sandContext }: DigGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void
 ) {
   const { screen, go } = useScreens<DigScreen | undefined, "start">(undefined, transitionFor);
+  const away = useSyncExternalStore(presence.subscribe, presence.isAway);
   const ids = digDinosaurs.map(({ id }) => id);
   // Progress is read once, as the app opens, and kept from then on, so a
   // dinosaur dug up counts while the app is open even when it cannot be
@@ -144,6 +146,40 @@ export function useDigGame(
     roundTimers.current?.stopAll();
     roundTimers.current = null;
   };
+
+  useEffect(() => {
+    return () => {
+      live.current = null;
+      roundTimers.current?.stopAll();
+    };
+  }, []);
+
+  const round = screen?.kind === "board" ? screen.round : undefined;
+  const counting = round !== undefined && awaitsHelp(round);
+  const found = round?.found;
+  const helped = round?.helped;
+  useEffect(() => {
+    const timers = roundTimers.current;
+    if (!counting || away || timers === null) return;
+    let active = true;
+    let stop = () => {};
+    const tick = () => {
+      stop = timers.start(HELP_TICK, () => {
+        const from = live.current;
+        // A stopped callback may still arrive after a find, pause or leave.
+        if (!active || presence.isAway() || roundTimers.current !== timers || from === null || from.found !== found || from.helped !== helped || !awaitsHelp(from)) return;
+        const to = waitForHelp(from, HELP_TICK);
+        live.current = to;
+        go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
+        if (awaitsHelp(to)) tick();
+      });
+    };
+    tick();
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [counting, away, found, helped, presence, go]);
 
   // A new round shows at once, and only over the screen it was asked
   // from, so a second tap in the same moment starts nothing more. `shown`
@@ -204,9 +240,9 @@ export function useDigGame(
         return (
           <DigBoardScreen
             language={language}
-            {...presentDigBoard(screen.round, bodyPicture)}
+            {...presentDigBoard(screen.round, bodyPicture, language)}
             level={screen.round.level}
-            brush={BRUSH}
+            brush={BRUSH_SIZES[screen.round.level]}
             grains={!reducedMotion()}
             dugUp={kept.readable ? dugUpOf(kept.progress, ids) : undefined}
             total={ids.length}

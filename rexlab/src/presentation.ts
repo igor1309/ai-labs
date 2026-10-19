@@ -8,6 +8,7 @@ import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
@@ -415,13 +416,15 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
   };
 }
 
-type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown">;
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "helpShown">;
 
 // A dig round's board: its dinosaur's picture under the sand, every mark
 // brushed, and which cells are clear, as rows of 0 and 1, as dig.json
 // gives the dinosaur's own.
-export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: string) => string): DigBoardView {
+export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: string) => string, language: Language): DigBoardView {
   return {
+    spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, word: TEXTS[language].spotKinds[kind], x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
+    helpShown: round.helpShown,
     picture: bodyPicture(round.dinosaur.id),
     frame: FRAME,
     marks: round.sand.marks,

@@ -352,7 +352,7 @@ export function App({
   };
 
   const dig = useDigGame(
-    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion, sandContext },
+    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion: careProps.reducedMotion, sandContext },
     ageLevel,
     home
   );
