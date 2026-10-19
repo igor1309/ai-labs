@@ -34,6 +34,9 @@ pictures follow `docs/tap-safety.md`.
   (`docs/age-levels.md`). A redesign issue says which of its modes is
   Hatchling, Explorer and Paleontologist; removing a mode a 4-year-old can
   play needs an explicit decision on the issue.
+- A game's progress shows only in its own screens and on its home tile
+  and featured card, never on the catalogue or the dinosaur pages
+  (LAB-347).
 
 ## Specs
 

@@ -2,6 +2,11 @@
 
 ## 2026-10-20
 
+- DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
+- DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).
+- DIG at Explorer shows three find cards, each a close-up of a detail on the dinosaur, ticked with a star as the child brushes it clear in any order; after ten quiet seconds the next detail shows through the sand, and the gust comes once all three are found (LAB-343).
+- DIG's reveal names the dinosaur with a star on its DUG UP card, out of all 42, with the best-score celebrations, a 🏆 once all are dug up, and the level switch above DIG AGAIN; the dinosaurs dug up and the child's level choice are kept (LAB-341).
+- A new game, DIG: its tile, the last of the games, starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
 - The skeleton game has five dinosaurs: Brachiosaurus and Spinosaurus join, each cut at every level with its own fact and other dinosaurs' bones at Paleontologist. The choice and the museum lay them out three above and two centred below, and the collection counts to five (LAB-334).
 
 ## 2026-10-19

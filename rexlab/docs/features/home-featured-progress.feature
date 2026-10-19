@@ -4,7 +4,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS
+    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
 
   Scenario Outline: What counts as starting a game
     When <action>
@@ -18,6 +18,7 @@ Feature: Home page: counting starts and keeping the featured choice
       | a sorting round starts from its card or from PLAY AGAIN         | SORT          |
       | a board is dealt from PLAY or PLAY AGAIN                        | FIND THE PAIR |
       | a skeleton puzzle starts, a rebuild included                    | SKELETONS     |
+      | a dig round starts from its tile, the large card or DIG AGAIN   | DIG           |
 
 
   Scenario: Leaving a game unfinished still counts its start

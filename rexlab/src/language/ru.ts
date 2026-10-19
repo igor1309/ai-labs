@@ -106,5 +106,13 @@ export const ru: Texts = {
   stands: "СТЕНДЫ",
   build: "СОБРАТЬ",
   rebuild: "СОБРАТЬ ЗАНОВО",
-  keepBuilding: "ДОСТРОИТЬ"
+  keepBuilding: "ДОСТРОИТЬ",
+  dig: "РАСКОПКИ",
+  whoIsIt: "КТО ЭТО?",
+  sand: "ПЕСОК",
+  dugUp: "ОТКОПАНО",
+  dugUpNew: "НОВЫЙ!",
+  digAgain: "КОПАТЬ ЕЩЁ",
+  allDugUp: "ВСЕ ДИНОЗАВРЫ ОТКОПАНЫ",
+  spotKinds: { eye: "ГЛАЗ", foot: "ЛАПА", tail: "ХВОСТ", horn: "РОГ", plate: "ПЛАСТИНА", claw: "КОГОТЬ", crest: "ГРЕБЕНЬ", sail: "ПАРУС", frill: "ВОРОТНИК", beak: "КЛЮВ" }
 };

@@ -16,6 +16,7 @@ import {
   SHIPPED_DINOSAURS,
   SHIPPED_PALS,
   emptyCare,
+  emptyDig,
   emptyProgress,
   emptySkeletons,
   emptySorting,
@@ -55,6 +56,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
+      {...emptyDig()}
     />
   );
   return userEvent.setup();

@@ -4,6 +4,8 @@ import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import digTile from "./assets/dig/tile.webp";
+import { useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -77,13 +79,15 @@ export type PageVisibility = {
 };
 
 export type { CareProgressStore } from "./careGame.tsx";
+export type { DigProgressStore, SandContext } from "./digGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
 export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
 export type AppProps = CareGameProps &
   PairsGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
-  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> & {
+  Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> &
+  Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
@@ -157,7 +161,9 @@ type Screen =
   // Find the pair, which keeps its own screens too.
   | { kind: "pairs" }
   // And the skeleton game.
-  | { kind: "skeletons" };
+  | { kind: "skeletons" }
+  // And the dig game.
+  | { kind: "dig" };
 
 // A new question animates only its pair of cards, and an answer chosen,
 // or a food, changes the screen at once. A dinosaur's page opens from its
@@ -198,6 +204,9 @@ export function App({
   skeletons,
   skeletonPicture,
   skeletonProgress,
+  digDinosaurs,
+  digProgress,
+  sandContext,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
@@ -334,6 +343,24 @@ export function App({
     go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
 
+  const dinosaurName = (dinosaurId: string, chosen: Language) => {
+    const dinosaur = dinosaurs.find(({ id }) => id === dinosaurId);
+    if (!dinosaur) throw new Error(`No dinosaur ${dinosaurId} to name`);
+    return dinosaur.name[chosen];
+  };
+
+  const dig = useDigGame(
+    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion: careProps.reducedMotion, sandContext },
+    ageLevel,
+    home,
+    counting("dig")
+  );
+
+  // A round starts at once from the tile, with no choice screen.
+  const openDig = () => {
+    dig.start(() => set({ kind: "dig" }));
+  };
+
   // The next question shows at once, and only if the round is still where
   // Next was tapped: a second tap changes nothing more.
   const goOn = (from: Play) => {
@@ -467,6 +494,8 @@ export function App({
         return pairs.content(language);
       case "skeletons":
         return skeletonGame.content(language);
+      case "dig":
+        return dig.content(language);
       case "home":
         return (
           <HomePage
@@ -485,6 +514,7 @@ export function App({
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
+            dig={{ picture: digTile, dugUp: dig.dugUp }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
@@ -493,6 +523,7 @@ export function App({
             onPairs={openPairs}
             onSkeletons={openSkeletons}
             onMuseum={openMuseum}
+            onDig={openDig}
           />
         );
     }

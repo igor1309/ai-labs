@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -15,10 +15,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -54,6 +54,9 @@ export type HomePageProps = {
   // The skeleton game's tile: the skeleton on it and the best collection
   // score, undefined while there is none to show.
   skeletons: { picture: string; best: number | undefined };
+  // The dig game's tile: the dinosaur on it and how many dinosaurs have
+  // been dug up, undefined until one has.
+  dig: { picture: string; dugUp: number | undefined };
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
   moreComing: string;
@@ -65,6 +68,7 @@ export type HomePageProps = {
   onSkeletons: () => void;
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
+  onDig: () => void;
 };
 
 type Menu = "language" | "theme" | "ageLevel";
@@ -85,6 +89,7 @@ export function HomePage({
   sort,
   pairs,
   skeletons,
+  dig,
   moreComing,
   onCompareDinosaurs,
   onCatalogue,
@@ -92,7 +97,8 @@ export function HomePage({
   onSort,
   onPairs,
   onSkeletons,
-  onMuseum
+  onMuseum,
+  onDig
 }: HomePageProps) {
   const text = TEXTS[language];
   const featuredPointer = usePointerState();
@@ -103,6 +109,7 @@ export function HomePage({
   const pairsPointer = usePointerState();
   const skeletonsPointer = usePointerState();
   const museumPointer = usePointerState();
+  const digPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -155,6 +162,13 @@ export function HomePage({
       picture: <Picture className="skeletons-tile-picture" src={skeletons.picture} alt="" width={800} height={600} />,
       badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
       onOpen: onSkeletons
+    },
+    dig: {
+      name: text.dig,
+      symbol: Brush,
+      picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
+      badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
+      onOpen: onDig
     }
   };
   // Each game's tile. The large card's game has none in the row, so no
@@ -235,6 +249,18 @@ export function HomePage({
           <span className="skeletons-tile-title">{games.skeletons.name}</span>
         </span>
         <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
+      </button>
+    ),
+    dig: (
+      <button key="dig" type="button" className="card dig-tile" aria-label={games.dig.name} onClick={games.dig.onOpen} {...digPointer}>
+        {games.dig.picture}
+        <span className="dig-tile-row">
+          <span className="dig-tile-symbol" aria-hidden="true">
+            <Brush size={20} />
+          </span>
+          <span className="dig-tile-title">{games.dig.name}</span>
+        </span>
+        <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
       </button>
     )
   };

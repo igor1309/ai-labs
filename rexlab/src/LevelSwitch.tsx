@@ -9,6 +9,9 @@ export type LevelSwitchProps = {
   // The age level the game is played at, chosen on the switch.
   level: AgeLevel;
   onLevel: (level: AgeLevel) => void;
+  // A result can hold the switch until its reward has landed; disabled
+  // buttons make that boundary apply to keyboard and assistive input too.
+  disabled?: boolean;
 };
 
 // The place of the chosen level on the switch, which the stylesheet slides
@@ -18,13 +21,13 @@ const chosenAt = (level: AgeLevel) => ({ "--chosen": AGE_LEVELS.indexOf(level) }
 // A game's own level switch: the age levels side by side, youngest first,
 // each with its picture from the age level menu, and the chosen one
 // marked.
-export function LevelSwitch({ language, level, onLevel }: LevelSwitchProps) {
+export function LevelSwitch({ language, level, onLevel, disabled = false }: LevelSwitchProps) {
   const text = TEXTS[language];
   return (
     <div className="level-switch" role="group" aria-label={text.ageLevelSwitch} style={chosenAt(level)}>
       <span className="level-switch-mark" aria-hidden="true" />
       {AGE_LEVELS.map((each) => (
-        <button key={each} type="button" className="level-switch-level" aria-pressed={each === level} onClick={() => onLevel(each)}>
+        <button key={each} type="button" className="level-switch-level" aria-pressed={each === level} disabled={disabled} onClick={() => onLevel(each)}>
           <span className="level-switch-picture" aria-hidden="true">
             {AGE_LEVEL_PICTURES[each]}
           </span>
