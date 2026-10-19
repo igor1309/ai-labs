@@ -25,7 +25,7 @@ import {
   spotOf,
   trayPieces
 } from "./skeletonsApp.tsx";
-import { words, type ManualPictures, homeTile } from "./support.ts";
+import { words, type ManualPictures, gameDoor } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
 
@@ -147,7 +147,7 @@ describe("help after waiting", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(pictures.timers()).toEqual([]);
   });
 
@@ -163,7 +163,7 @@ describe("help after waiting", () => {
       fireEvent.click(screen.getByRole("button", { name: "HOME" }));
       left = [pictures.timers(), document.contains(board())];
     });
-    fireEvent.click(homeTile("SKELETONS"));
+    fireEvent.click(gameDoor("SKELETONS"));
     await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
     act(() => finishLoading(pictures));
     layOutPuzzle();

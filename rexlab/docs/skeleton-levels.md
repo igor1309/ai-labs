@@ -60,3 +60,7 @@ rebuild and the collection score.
   draws, cut by `scripts/recut-skeletons.ts`; Hatchling's four stay cut
   straight, so the pieces the levels shared are now each level's own
   (LAB-323).
+- Explorer's and Paleontologist's help waits while the child is busy: a
+  touch of any piece hides it and counts its ten seconds again, and it
+  comes for the piece last handled rather than the first in the tray.
+  Hatchling's help is as it was, never put off by trying (LAB-346).

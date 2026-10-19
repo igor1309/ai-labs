@@ -24,7 +24,7 @@ import {
   tray,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { countedStarts, fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, homeTile } from "./support.ts";
+import { countedStarts, fakeSkeletonPicture, memoryStorage, symbolOf, SHIPPED_SKELETONS, gameDoor } from "./support.ts";
 import type { Skeleton } from "../src/skeletons/index.ts";
 
 // skeleton-assembly-museum.feature
@@ -181,7 +181,7 @@ describe("opening the museum", () => {
 
     await user.click(button("MUSEUM"));
     await user.click(button("HOME"));
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its names in capitals", async (language) => {

@@ -32,3 +32,6 @@ generate with the style prompt below plus that line.
   (ImageMagick and `cwebp`): run it with the dinosaur's id to make one,
   or with none to make every dinosaur's. A test checks that every
   dinosaur in the list has a picture of the agreed size, with alpha.
+
+Skeletons, traced from these pictures and cut into pieces, follow
+`skeletons.md`.

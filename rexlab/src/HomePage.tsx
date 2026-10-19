@@ -157,6 +157,88 @@ export function HomePage({
       onOpen: onSkeletons
     }
   };
+  // Each game's tile. The large card's game has none in the row, so no
+  // game is on the page twice.
+  const tiles: Record<HomeGame, ReactNode> = {
+    compare: (
+      <button key="compare" type="button" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen} {...comparePointer}>
+        {games.compare.picture}
+        <span className="compare-tile-row">
+          <span className="compare-tile-symbol" aria-hidden="true">
+            <Scale size={20} />
+          </span>
+          <span className="compare-tile-title">{games.compare.name}</span>
+        </span>
+        <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
+      </button>
+    ),
+    catalogue: (
+      <button key="catalogue" type="button" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen} {...cataloguePointer}>
+        {games.catalogue.picture}
+        {/* The book sits in the picture's other corner: beside the
+            title it would leave ALL DINOSAURS too little of the row on
+            the smallest iPad. */}
+        <span className="catalogue-tile-symbol" aria-hidden="true">
+          <BookOpen size={20} />
+        </span>
+        <span className="catalogue-tile-row">
+          <span className="catalogue-tile-title">{games.catalogue.name}</span>
+        </span>
+        {/* The counts sit in the tiles' corners, over the pictures: the
+            rows keep their width for the titles. */}
+        <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
+      </button>
+    ),
+    care: (
+      <button key="care" type="button" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen} {...carePointer}>
+        {games.care.picture}
+        <span className="care-tile-row">
+          <span className="care-tile-symbol" aria-hidden="true">
+            <Heart size={20} />
+          </span>
+          <span className="care-tile-title">{games.care.name}</span>
+        </span>
+        <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
+      </button>
+    ),
+    sort: (
+      <button key="sort" type="button" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen} {...sortPointer}>
+        {games.sort.picture}
+        <span className="sort-tile-row">
+          <span className="sort-tile-symbol" aria-hidden="true">
+            <Shapes size={20} />
+          </span>
+          <span className="sort-tile-title">{games.sort.name}</span>
+        </span>
+        <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
+      </button>
+    ),
+    pairs: (
+      <button key="pairs" type="button" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen} {...pairsPointer}>
+        {games.pairs.picture}
+        <span className="pairs-tile-row">
+          <span className="pairs-tile-symbol" aria-hidden="true">
+            <Copy size={24} />
+          </span>
+          <span className="pairs-tile-title">{games.pairs.name}</span>
+        </span>
+        <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
+      </button>
+    ),
+    skeletons: (
+      <button key="skeletons" type="button" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen} {...skeletonsPointer}>
+        {games.skeletons.picture}
+        <span className="skeletons-tile-row">
+          <span className="skeletons-tile-symbol" aria-hidden="true">
+            <Bone size={20} />
+          </span>
+          <span className="skeletons-tile-title">{games.skeletons.name}</span>
+        </span>
+        <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
+      </button>
+    )
+  };
+  const shown = HOME_GAMES.filter((game) => game !== featured);
   const today = games[featured];
   const FeaturedSymbol = today.symbol;
   return (
@@ -237,9 +319,8 @@ export function HomePage({
       </div>
       <h1 className="greeting">{text.greeting}</h1>
       <div className="games">
-        {/* The large card is an extra door to today's game, which keeps its
-            own tile in its place, so a child who cannot read finds every
-            game where it was. It stays as the tiles scroll. */}
+        {/* The large card is today's game's door, its tile left out of
+            the row. It stays as the tiles scroll. */}
         <button
           type="button"
           className="card featured-card"
@@ -259,74 +340,11 @@ export function HomePage({
               the tiles: the footer keeps its width for the name. */}
           <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
         </button>
-        {/* Every game stands in columns of two, in a fixed order, and
-            scrolls sideways beside the large card when they do not fit. */}
+        {/* The other games stand in columns of two, in a fixed order, and
+            scroll sideways beside the large card when they do not fit. The
+            games still to come stand under the last of them. */}
         <div className="games-tiles">
-          <button type="button" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen} {...comparePointer}>
-            {games.compare.picture}
-            <span className="compare-tile-row">
-              <span className="compare-tile-symbol" aria-hidden="true">
-                <Scale size={20} />
-              </span>
-              <span className="compare-tile-title">{games.compare.name}</span>
-            </span>
-            <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
-          </button>
-          <button type="button" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen} {...cataloguePointer}>
-            {games.catalogue.picture}
-            {/* The book sits in the picture's other corner: beside the
-                title it would leave ALL DINOSAURS too little of the row on
-                the smallest iPad. */}
-            <span className="catalogue-tile-symbol" aria-hidden="true">
-              <BookOpen size={20} />
-            </span>
-            <span className="catalogue-tile-row">
-              <span className="catalogue-tile-title">{games.catalogue.name}</span>
-            </span>
-            {/* The counts sit in the tiles' corners, over the pictures: the
-                rows keep their width for the titles. */}
-            <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
-          </button>
-          <button type="button" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen} {...carePointer}>
-            {games.care.picture}
-            <span className="care-tile-row">
-              <span className="care-tile-symbol" aria-hidden="true">
-                <Heart size={20} />
-              </span>
-              <span className="care-tile-title">{games.care.name}</span>
-            </span>
-            <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
-          </button>
-          <button type="button" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen} {...sortPointer}>
-            {games.sort.picture}
-            <span className="sort-tile-row">
-              <span className="sort-tile-symbol" aria-hidden="true">
-                <Shapes size={20} />
-              </span>
-              <span className="sort-tile-title">{games.sort.name}</span>
-            </span>
-            <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
-          </button>
-          <button type="button" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen} {...pairsPointer}>
-            {games.pairs.picture}
-            <span className="pairs-tile-row">
-              <span className="pairs-tile-symbol" aria-hidden="true">
-                <Copy size={24} />
-              </span>
-              <span className="pairs-tile-title">{games.pairs.name}</span>
-            </span>
-            <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
-          </button>
-          <button type="button" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen} {...skeletonsPointer}>
-            {games.skeletons.picture}
-            <span className="skeletons-tile-row">
-              <span className="skeletons-tile-symbol" aria-hidden="true">
-                <Bone size={20} />
-              </span>
-              <span className="skeletons-tile-title">{games.skeletons.name}</span>
-            </span>
-            <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
-          </button>
+          {shown.map((game) => tiles[game])}
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}
           <div className="more-coming">

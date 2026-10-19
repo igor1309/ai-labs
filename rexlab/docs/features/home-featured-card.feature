@@ -1,34 +1,29 @@
 Feature: Home page: the featured card and the tiles
-  The large card on the left of the home page features one game a day, as
-  an extra door beside that game's own tile. Every tile keeps a fixed place,
-  so a child who cannot read yet finds a game by its picture where it was
-  last time, whichever game is featured. When this is built it replaces the
-  fixed COMPARE card of compare-dinosaurs-start.feature; COMPARE then
-  takes the first tile of the row, and the layout scenarios of
-  home-tiles.feature and of each game's start feature change with it. The
-  row scrolls and fits its words as home-tiles.feature says. The choice is
-  in home-featured-choice.feature.
+  The large card on the left of the home page features one game a day,
+  in place of that game's tile: no game is on the page twice. The other
+  tiles keep their order, each moving up one place where the featured
+  game's tile would stand. The row scrolls and fits its words as
+  home-tiles.feature says. The choice is in home-featured-choice.feature.
 
   Background:
     Given an iPad in landscape
     And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS
 
-  Scenario: The featured card is an extra door; every tile keeps its place
+  Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
     When I open the home page
     Then the large card on the left shows CARE with its picture and its name in large capitals
-    And the tiles show COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS in that order, then "MORE COMING"
+    And the tiles show COMPARE, ALL DINOSAURS, SORT, FIND THE PAIR and SKELETONS in that order, then "MORE COMING"
     When SKELETONS is featured on another day
-    Then every tile is in the same place as before
+    Then the tiles show COMPARE, ALL DINOSAURS, CARE, SORT and FIND THE PAIR in that order, then "MORE COMING"
 
 
-  Scenario Outline: The featured card shows what its tile shows
-    Given <game> is today's featured game
-    And its tile shows <badge>
-    When I open the home page
+  Scenario Outline: The featured card shows what its tile would show
+    Given <game>'s tile shows <badge> on a day another game is featured
+    When <game> is today's featured game and I open the home page
     Then the large card shows <badge> too
     When I play it and come back home
-    Then the large card and the tile show the same value, updated if playing changed it
+    Then the large card shows the value its tile would, updated if playing changed it
 
     Examples:
       | game          | badge                                       |

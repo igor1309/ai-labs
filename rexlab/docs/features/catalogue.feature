@@ -14,18 +14,20 @@ Feature: The dinosaur catalogue
   Scenario: The tile opens the list of every dinosaur
     Given I am on the home page
     When I tap the "ALL DINOSAURS" tile
-    Then I see the title "ALL DINOSAURS" with a 📖 symbol and the count "42"
+    Then I see a "HOME" button with a 🏠 symbol and the food chips beside it, in one row
+    And I see no title and no count above the cards
     And I see 42 dinosaur cards, four to a row, in the order of the dinosaur list
-    And I see a "HOME" button with a 🏠 symbol
+    And the list is as wide as the screen, so its scrollbar is at the screen's edge
 
   Scenario: Each card shows its dinosaur
     Given I am on the list of every dinosaur
     Then each card shows the dinosaur's picture and its name in large capital letters
-    And under the name its height with a 📏 symbol, its weight with a ⚖️ symbol and its food tag
+    And under the name its height with a 📏 symbol, its weight with a ⚖️ symbol and its food tag, all in one row
+    But on a card too narrow for them, as on a smaller iPad, the height and weight drop their symbols to stay in the row
 
-  Scenario Outline: A food tag shows what a dinosaur ate in colour, symbol and word
+  Scenario Outline: A food tag on a card shows what a dinosaur ate in colour and symbol alone
     Given I am on the list of every dinosaur
-    Then the card of <dinosaur> has a <colour> tag with <symbols> and the word "<word>"
+    Then the card of <dinosaur> has a <colour> tag with <symbols> and no word, "<word>" only read out
 
     Examples:
       | dinosaur      | colour     | symbols | word   |
@@ -74,7 +76,7 @@ Feature: The dinosaur catalogue
     Given the app is in <language>
     Then the catalogue's tile on the home page reads "<tile>", short enough for a tile among many
     When I open the page of Gallimimus
-    Then I see "<title>", the food tag "<food>" and the description in <language>
+    Then I see the button "<title>", the food tag "<food>" and the description in <language>
 
     Examples:
       | language | tile          | title         | food |

@@ -21,7 +21,7 @@ import {
   welcomeVisitor
 } from "./careApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf, homeTile, tilesRow, type ManualPictures } from "./support.ts";
+import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -37,15 +37,16 @@ const visitorLook = () => {
 };
 
 describe("the CARE tile", () => {
-  it("starts the row's second column, above SORT, with a heart and a dinosaur", () => {
+  it("stands under ALL DINOSAURS, before SORT, with a heart and a dinosaur", () => {
     openCareApp();
 
-    const tile = homeTile("CARE");
+    const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
-    // The row fills two tiles to a column: the third tile tops the second.
-    expect([...tilesRow().children].indexOf(tile)).toBe(2);
-    expect(tile.nextElementSibling).toBe(homeTile("SORT"));
+    // The row fills two tiles to a column, COMPARE's tile left out for
+    // the large card: the second tile is under the first.
+    expect([...tilesRow().children].indexOf(tile)).toBe(1);
+    expect(tile.nextElementSibling).toBe(gameDoor("SORT"));
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
@@ -232,7 +233,7 @@ describe("leaving a visit", () => {
     await user.click(button("HOME"));
     act(() => clock.settle());
 
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(storedCare(storage)).toBeUndefined();
     await user.click(button("CARE"));
     expect(button("NEW VISITOR")).toBeDefined();

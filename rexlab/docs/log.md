@@ -2,8 +2,12 @@
 
 ## 2026-10-19
 
+- The home page no longer repeats today's featured game as a small tile: the large card stands in its place, and the other tiles keep their order (LAB-348).
+- The catalogue list is one row of HOME and the food chips, with no title or count: ALL is a filter symbol alone, a card's food tag is its colour and symbols without the word, a card's chips stay on one line, and the list runs to the screen's edge so its scrollbar shows there (LAB-350).
+- The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
+- Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
+- A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
 - Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
-
 - A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).
 - At Paleontologist about one skeleton piece in three arrives turned; a tap turns it a quarter, and it fits only the right way up (LAB-318).
 - Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).

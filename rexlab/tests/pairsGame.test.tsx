@@ -64,12 +64,6 @@ const LEVEL_BOARDS: [string, PairsAppOptions<ManualTimers>, Board][] = [
 const button = (name: string) => screen.getByRole("button", { name });
 const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress }, games) });
-// The catalogue's count of dinosaurs found.
-const foundCount = () => {
-  const count = screen.getAllByLabelText("FOUND").find((each) => each.tagName === "P");
-  if (!count) throw new Error("No found count in the catalogue");
-  return count;
-};
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 // The names of the result's dinosaurs, whatever the language.
@@ -647,43 +641,23 @@ describe("dinosaurs found", () => {
     expect(storedPairs(app.storage)).toMatchObject({ found: ["triceratops"] });
   });
 
-  it("are counted and stamped in the catalogue, the page of each stamped too", async () => {
+  it("are neither counted nor stamped in the catalogue or on a page", async () => {
     const { user } = openPairsApp({ storage: stored({ found: ["triceratops", "stegosaurus"] }) });
 
     await user.click(button("ALL DINOSAURS"));
 
-    const count = foundCount();
-    expect([count.textContent, symbolOf(count)]).toEqual([`2 / ${SHIPPED_PALS.length}`, "copy"]);
-    const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
-    const stamped = within(grid)
-      .getAllByRole("button")
-      .filter((card) => within(card).queryByRole("img", { name: "FOUND" }))
-      .map((card) => card.getAttribute("aria-label"));
-    expect(stamped.sort()).toEqual(["Stegosaurus", "Triceratops"]);
-    expect(symbolOf(within(grid).getAllByRole("img", { name: "FOUND" })[0] ?? grid)).toBe("copy");
-    await user.click(within(grid).getByRole("button", { name: "Triceratops" }));
-    expect(symbolOf(screen.getByRole("img", { name: "FOUND" }))).toBe("copy");
-    await user.click(screen.getByRole("button", { name: "NEXT" }));
-    expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
+    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Triceratops" }));
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
-  it("show no count and no stamps before any is found", async () => {
-    const { user } = openPairsApp();
-
-    await user.click(button("ALL DINOSAURS"));
-
-    expect(document.querySelector(".catalogue-found")).toBeNull();
-    expect(screen.queryAllByRole("img", { name: "FOUND" })).toEqual([]);
-  });
-
-  it("count only those still in the dinosaur list, and the catalogue changes nothing stored", async () => {
+  it("are not changed in storage by opening the catalogue", async () => {
     const storage = stored({ found: ["triceratops", "gone"] });
     const before = storage.items.get(PROGRESS_KEY);
     const { user } = openPairsApp({ storage });
 
     await user.click(button("ALL DINOSAURS"));
 
-    expect(foundCount().textContent).toBe(`1 / ${SHIPPED_PALS.length}`);
     expect(storage.items.get(PROGRESS_KEY)).toBe(before);
   });
 });

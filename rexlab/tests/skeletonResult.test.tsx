@@ -24,7 +24,7 @@ import {
   savedSkeletons,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage, homeTile } from "./support.ts";
+import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage, gameDoor } from "./support.ts";
 
 const GAME = "skeleton-assembly";
 
@@ -166,7 +166,7 @@ describe("earning a star", () => {
     revealNow(pictures, "tyrannosaurus");
 
     expect(reveal()).toBeNull();
-    expect(homeTile("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
   });
 
@@ -182,7 +182,7 @@ describe("earning a star", () => {
       fireEvent.click(button("HOME"));
       running = pictures.timers();
     });
-    fireEvent.click(homeTile("SKELETONS"));
+    fireEvent.click(gameDoor("SKELETONS"));
     await user.click(button("TYRANNOSAURUS"));
     act(() => finishLoading(pictures));
     layOutPuzzle();
