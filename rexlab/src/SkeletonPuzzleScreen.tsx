@@ -56,6 +56,9 @@ export type SkeletonPuzzleScreenProps = {
   // size.
   outline: string;
   silhouette: boolean;
+  // Whether a held piece's home is outlined, so the youngest see where it
+  // goes; older children find it themselves.
+  homeShown: boolean;
   frame: { width: number; height: number };
   // Every piece's slot, in the cut's order: a piece not yet fitted waits
   // in its spot in the tray, and a fitted one leaves its spot empty, so
@@ -84,6 +87,8 @@ export type SkeletonPuzzleScreenProps = {
   // A piece let go with its centre at `centre`, and how far from its home
   // it still fits, both in pixels of the frame.
   onDrop: (piece: ShownPiece, centre: FramePoint, reach: number) => void;
+  // A piece pressed in the tray, as it is picked up.
+  onTouch: (piece: ShownPiece) => void;
   // A piece of the cut tapped in the tray, on a puzzle that turns.
   onTurn: (piece: ShownPiece) => void;
   // Help's last step has shown: a piece moved towards its home.
@@ -97,7 +102,7 @@ export type SkeletonPuzzleScreenProps = {
 type TraySpot = Pick<SkeletonSlotView, "piece" | "name" | "picture" | "area" | "fitted">;
 
 // The most spots the tray stacks in one column before it needs two.
-const TRAY_COLUMN = 8;
+const TRAY_COLUMN = 4;
 
 // How near its home a dropped piece's centre fits, in CSS pixels:
 // generous, so a child's near miss still fits.
@@ -143,6 +148,7 @@ export function SkeletonPuzzleScreen({
   name,
   outline,
   silhouette,
+  homeShown,
   frame,
   slots,
   strays,
@@ -154,6 +160,7 @@ export function SkeletonPuzzleScreen({
   complete,
   scatter,
   onDrop,
+  onTouch,
   onTurn,
   onLastStep,
   onMuseum,
@@ -257,6 +264,7 @@ export function SkeletonPuzzleScreen({
     if (hold.current || event.button !== 0) return;
     const { width, height } = slotRect(piece);
     holdPiece({ pointerId: event.pointerId, piece, x: event.clientX, y: event.clientY, from: { x: event.clientX, y: event.clientY }, width, height, hint });
+    onTouch(piece);
   };
 
   // Help that falls due while a piece is held waits until it is let go,
@@ -295,7 +303,7 @@ export function SkeletonPuzzleScreen({
   const quartersOf = (piece: ShownPiece) => (turns[piece] ?? 0) + QUARTERS * (laps[piece] ?? 0);
 
   return (
-    <main className="skeleton-screen">
+    <main className="skeleton-screen" onContextMenu={(event) => event.preventDefault()}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onHome={onHome}>
         <p className="skeleton-chip" aria-label={text.fitted}>
@@ -337,7 +345,7 @@ export function SkeletonPuzzleScreen({
                 className="skeleton-slot"
                 data-piece={slot.piece}
                 data-state={slot.fitted ? "fitted" : "empty"}
-                data-target={held?.piece === slot.piece || undefined}
+                data-target={(homeShown && held?.piece === slot.piece) || undefined}
                 data-hint={glowing === slot.piece || undefined}
                 data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ left: percent(slot.left), top: percent(slot.top), width: percent(slot.width), height: percent(slot.height) }}

@@ -274,7 +274,7 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "frame" | "slots" | "strays" | "tray" | "told" | "turning" | "turns" | "hint" | "complete">;
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "homeShown" | "frame" | "slots" | "strays" | "tray" | "told" | "turning" | "turns" | "hint" | "complete">;
 
 // The pictures of a skeleton: the whole of it, "skeleton", or one of its
 // pieces, by the piece's id.
@@ -302,14 +302,15 @@ function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undef
 // Each slot is placed as a fraction of the frame, so the outline and its
 // pieces scale together to any board. A puzzle `coloured` by body area
 // gives each slot its piece's area; one on a `silhouette` shows its
-// outline as the skeleton's shape alone. Other skeletons' bones wait in
+// outline as the skeleton's shape alone; one with `homeShown` outlines a
+// held piece's home. Other skeletons' bones wait in
 // the tray among the pieces, each its own skeleton's picture, sized as
 // the pieces are. A puzzle that turns shows how each piece lies.
 export function presentPuzzle(
   puzzle: Puzzle,
   language: Language,
   skeletonPicture: SkeletonPicture,
-  { coloured = false, silhouette = false }: { coloured?: boolean; silhouette?: boolean } = {}
+  { coloured = false, silhouette = false, homeShown = false }: { coloured?: boolean; silhouette?: boolean; homeShown?: boolean } = {}
 ): SkeletonPuzzleView {
   const { skeleton, cut, fitted, distractors, told, turning, turns } = puzzle;
   const { id, name, frame } = skeleton;
@@ -317,6 +318,7 @@ export function presentPuzzle(
     name: name[language],
     outline: skeletonPicture(id, "skeleton"),
     silhouette,
+    homeShown,
     frame,
     strays: distractors.map((distractor) => ({
       piece: strayId(distractor),
