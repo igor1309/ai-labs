@@ -4,12 +4,13 @@ import { TEXTS } from "../src/language/texts.ts";
 import { chooseFrom } from "./menus.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App, type AgeLevelStore } from "../src/App.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import type { Random } from "../src/sorting/index.ts";
+import type { SortingProgressStore, SortingSaved } from "../src/sortingGame.tsx";
 import { basketsShown, sortingRecord, sortByTrying, storedRecord, tray } from "./sorting.tsx";
 import {
   SHIPPED_CATALOGUE,
@@ -43,13 +44,15 @@ function openApp({
   random = seededRandom(11),
   pictures = loadedPictures(),
   featured = "compare",
-  ageLevelStore = { load: () => ({ level: "hatchling", revision: null }), save: () => {} }
+  ageLevelStore = { load: () => ({ level: "hatchling", revision: null }), save: () => {} },
+  sortingProgress = localSortingProgress(() => storage)
 }: {
   storage?: MemoryStorage;
   random?: Random;
   pictures?: ReturnType<typeof loadedPictures>;
   featured?: HomeGame;
   ageLevelStore?: AgeLevelStore;
+  sortingProgress?: SortingProgressStore;
 } = {}) {
   const view = render(
     <App
@@ -67,7 +70,7 @@ function openApp({
       {...emptyPairs()}
       {...emptySkeletons()}
       sortables={SHIPPED_SORTABLES}
-      sortingProgress={localSortingProgress(() => storage)}
+      sortingProgress={sortingProgress}
       {...pictures}
     />
   );
@@ -340,6 +343,87 @@ async function finishWith(user: UserEvent, right: number) {
 }
 
 describe("the sorting levels across the app", () => {
+  it("compares a finished Explorer board against progress saved by another tab after mount", async () => {
+    let saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const { user } = openApp({
+      ageLevelStore: { load: () => ({ level: "explorer", revision: "parent-pick" }), save: () => {} },
+      sortingProgress: { load: () => saved, save: (next) => { saved = next; } }
+    });
+    await user.click(homeTile("SORT"));
+    saved = { progress: { best: { hatchling: 6, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "hatchling", revision: "parent-pick" } };
+
+    await finishWith(user, 5);
+
+    expect(saved).toEqual({ progress: { best: { hatchling: 6, explorer: 8, paleontologist: 9 }, roundsPlayed: 5 }, levelChoice: undefined });
+    expect(shownBest()).toBe("8");
+    expect(celebrations()).toEqual([]);
+    expect(switchButton("explorer").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("saves this tab's level choice with newer progress saved by another tab", async () => {
+    let saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const { user } = openApp({ sortingProgress: { load: () => saved, save: (next) => { saved = next; } } });
+    await user.click(homeTile("SORT"));
+    await finishWith(user, 5);
+    saved = { progress: { best: { hatchling: 3, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "explorer", revision: null } };
+
+    await user.click(switchButton("paleontologist"));
+
+    expect(saved).toEqual({ progress: { best: { hatchling: 5, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "paleontologist", revision: null } });
+    expect(switchButton("paleontologist").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("keeps this tab's best and count through another round when saves fail", async () => {
+    const saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load: () => saved, save } });
+    await user.click(homeTile("SORT"));
+    await finishWith(user, 5);
+    await user.click(button("PLAY AGAIN"));
+
+    await finishWith(user, 3);
+
+    expect(shownBest()).toBe("5");
+    expect(celebrations()).toEqual([]);
+    expect(save.mock.calls.map(([next]) => next)).toEqual([
+      { progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 1 }, levelChoice: undefined },
+      { progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 2 }, levelChoice: undefined }
+    ]);
+    expect(saved.progress).toEqual({ best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 });
+  });
+
+  it("neither compares nor saves over progress that becomes unreadable after mount", async () => {
+    let saved: SortingSaved | undefined = { progress: { best: { hatchling: 6, explorer: null, paleontologist: null }, roundsPlayed: 4 }, levelChoice: undefined };
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load: () => saved, save } });
+    await user.click(homeTile("SORT"));
+    saved = undefined;
+
+    await finishWith(user, 5);
+    await user.click(switchButton("explorer"));
+
+    expect([shownBest(), celebrations()]).toEqual([undefined, []]);
+    expect(save).not.toHaveBeenCalled();
+    expect(switchButton("explorer").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("does not save a round when progress becomes unreadable between scoring and saving", async () => {
+    const saved: SortingSaved = { progress: { best: { hatchling: 6, explorer: null, paleontologist: null }, roundsPlayed: 4 }, levelChoice: undefined };
+    const load = vi.fn<SortingProgressStore["load"]>()
+      .mockReturnValueOnce(saved)
+      .mockReturnValueOnce(saved)
+      .mockReturnValue(undefined);
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load, save } });
+    await user.click(homeTile("SORT"));
+
+    await finishWith(user, 5);
+
+    expect(shownBest()).toBe("6");
+    expect(celebrations()).toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it.each(AGE_LEVELS.flatMap((level) => (["tile", "featured"] as const).map((entry) => [level, entry] as const)))(
     "starts %s from the %s at the age level and marks it on the result switch",
     async (level, entry) => {

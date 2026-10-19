@@ -1,6 +1,6 @@
-import type { AgeLevel } from "../src/ageLevel.ts";
+import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { describe, expect, it } from "vitest";
-import { boardState, drop, finishBoard, NO_SORTING, type Basket, type Beaten, type Celebration, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
+import { boardState, drop, finishBoard, mergeProgress, NO_SORTING, type Basket, type Beaten, type Celebration, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
 import { scoringSpy, sortingBy } from "./support.ts";
 
 // A board sorted to the end, the first `right` cards on their first drop
@@ -16,6 +16,19 @@ function sortedWith(right: number, level: AgeLevel = "hatchling"): Sorting {
 }
 
 describe("finishBoard", () => {
+  it.each(AGE_LEVELS.flatMap((level) => {
+    const total = { hatchling: 6, explorer: 8, paleontologist: 10 }[level];
+    return Array.from({ length: total + 1 }, (_, right) => [level, right, total] as const);
+  }))("derives %s's score of %i and passes it to the best-score rule", (level, right, total) => {
+    const scoring = scoringSpy<Beaten>({ best: right, celebration: null });
+
+    const result = finishBoard(sortedWith(right, level), NO_SORTING, scoring.beatBest);
+
+    expect(result.score).toBe(right);
+    expect(result.total).toBe(total);
+    expect(scoring.asked).toEqual([[null, right]]);
+  });
+
   it.each<[SortingProgress, number, Celebration | null, number | undefined]>([
     [NO_SORTING, 0, null, undefined],
     [NO_SORTING, 3, "first-best", undefined],
@@ -43,6 +56,29 @@ describe("finishBoard", () => {
 
     expect(finishBoard(sortedWith(4), undefined, scoring.beatBest)).toEqual({ level: "hatchling", score: 4, total: 6, progress: undefined, previousBest: undefined, celebration: null });
     expect(scoring.asked).toEqual([]);
+  });
+});
+
+describe("mergeProgress", () => {
+  const bests = [
+    [null, null, null], [null, 0, 0], [0, null, 0], [0, 0, 0],
+    [null, 5, 5], [5, null, 5], [3, 5, 5], [5, 3, 5], [5, 5, 5]
+  ] as const;
+
+  it.each(AGE_LEVELS.flatMap((level) => bests.map((bests) => [level, ...bests] as const)))(
+    "merges %s's kept best %s and stored best %s into %s without changing either input",
+    (level, keptBest, storedBest, best) => {
+      const kept: SortingProgress = { best: { hatchling: 2, explorer: 4, paleontologist: 6, [level]: keptBest }, roundsPlayed: 3 };
+      const stored: SortingProgress = { best: { hatchling: 1, explorer: 5, paleontologist: 7, [level]: storedBest }, roundsPlayed: 4 };
+      const before = structuredClone([kept, stored]);
+
+      expect(mergeProgress(kept, stored)).toEqual({ best: { hatchling: 2, explorer: 5, paleontologist: 7, [level]: best }, roundsPlayed: 4 });
+      expect([kept, stored]).toEqual(before);
+    }
+  );
+
+  it.each([[0, 0, 0], [4, 1, 4], [1, 4, 4], [4, 4, 4]])("keeps the higher round count from %i and %i", (kept, stored, roundsPlayed) => {
+    expect(mergeProgress({ ...NO_SORTING, roundsPlayed: kept }, { ...NO_SORTING, roundsPlayed: stored }).roundsPlayed).toBe(roundsPlayed);
   });
 });
 

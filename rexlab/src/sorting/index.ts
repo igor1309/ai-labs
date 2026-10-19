@@ -8,7 +8,7 @@ export type { Basket, Baskets, Diet, Dinosaur, Property, Random, SortingLevel } 
 export type { BeatBest, Celebration, Sorting, SortingProgress };
 export type { Beaten } from "./progress.ts";
 export { drop, score } from "./play.ts";
-export { bestForLevel, NO_SORTING } from "./progress.ts";
+export { bestForLevel, mergeProgress, NO_SORTING } from "./progress.ts";
 
 // One card of the board, where it is now.
 export type CardState = {

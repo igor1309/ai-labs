@@ -12,6 +12,19 @@ export function bestForLevel(progress: SortingProgress, level: SortingLevel): nu
   return progress.best[level];
 }
 
+// A visit may hold unsaved scores while another tab saves newer progress.
+export function mergeProgress(kept: SortingProgress, stored: SortingProgress): SortingProgress {
+  const higher = (left: number | null, right: number | null) => left === null ? right : right === null ? left : Math.max(left, right);
+  return {
+    best: {
+      hatchling: higher(kept.best.hatchling, stored.best.hatchling),
+      explorer: higher(kept.best.explorer, stored.best.explorer),
+      paleontologist: higher(kept.best.paleontologist, stored.best.paleontologist)
+    },
+    roundsPlayed: Math.max(kept.roundsPlayed, stored.roundsPlayed)
+  };
+}
+
 export type Celebration = "first-best" | "new-best";
 
 // The best after a board, and what the board celebrates.
