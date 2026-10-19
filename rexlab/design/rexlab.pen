@@ -72257,7 +72257,7 @@
       "type": "frame",
       "id": "OfLCl",
       "x": 1664,
-      "y": 32360,
+      "y": 34600,
       "name": "Dig · Hatchling — Light · Stegosaurus · Brushing",
       "theme": {
         "mode": "light"
@@ -72557,7 +72557,7 @@
       "type": "frame",
       "id": "C3WbPa",
       "x": 3224,
-      "y": 32360,
+      "y": 34600,
       "name": "Dig · Explorer — Light · Triceratops · EYE found, help thins the TAIL",
       "theme": {
         "mode": "light"
@@ -73022,7 +73022,7 @@
       "type": "frame",
       "id": "eCLER",
       "x": 4784,
-      "y": 32360,
+      "y": 34600,
       "name": "Dig · Paleontologist — Light · Unnamed dinosaur · Clue 2 of 3, CLAW",
       "theme": {
         "mode": "light"
@@ -73456,7 +73456,7 @@
       "type": "frame",
       "id": "I4GJtf",
       "x": 6344,
-      "y": 32360,
+      "y": 34600,
       "name": "Dig · Paleontologist — Light · Name it · Choice of 3, a wrong pick faded",
       "theme": {
         "mode": "light"
@@ -74021,7 +74021,7 @@
       "type": "frame",
       "id": "jSu9E",
       "x": 1664,
-      "y": 33480,
+      "y": 35720,
       "name": "Dig · Reveal — Light · Explorer · Triceratops dug up, new star 5/39 · Level switch above DIG AGAIN",
       "theme": {
         "mode": "light"
@@ -74417,7 +74417,7 @@
       "type": "frame",
       "id": "ETD0d",
       "x": 3224,
-      "y": 33480,
+      "y": 35720,
       "name": "Field Guide Midnight · Home — Light · Featured CARE · Tiles scrolled to the end · DIG tile",
       "theme": {
         "mode": "light"
@@ -75903,7 +75903,7 @@
       "type": "frame",
       "id": "Pzf01",
       "x": 4784,
-      "y": 33480,
+      "y": 35720,
       "name": "Dig · Explorer — Dark · Triceratops · EYE found, help thins the TAIL",
       "theme": {
         "mode": "dark"
