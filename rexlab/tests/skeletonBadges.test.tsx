@@ -2,7 +2,7 @@ import { act, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
-import { fit, keptSkeletons, openPuzzle, reveal, revealNow, savedSkeletons, skeletonOf } from "./skeletonsApp.tsx";
+import { fit, homeOf, keptSkeletons, moveTo, openPuzzle, press, release, reveal, revealNow, savedSkeletons, skeletonOf, spotOf } from "./skeletonsApp.tsx";
 import { memoryStorage, type ManualPictures } from "./support.ts";
 
 // skeleton-assembly-badges.feature: a skeleton built at Explorer or
@@ -53,6 +53,29 @@ describe("a level badge", () => {
     expect([badgesIn(reveal()), within(reveal() ?? document.body).getByRole("img", { name: "STAR" }).hasAttribute("data-new")]).toEqual([[], true]);
     expect(await standBadges(user, "STEGOSAURUS")).toEqual([]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["stegosaurus"], bestScore: 1, rebuilding: [] });
+  });
+
+  it.each<AgeLevel>(["explorer", "paleontologist"])("is earned at %s when the last step falls due only while the last piece is held, and it fits", async (level) => {
+    const storage = memoryStorage();
+    const triceratops = skeletonOf("triceratops");
+    const cut = triceratops.cuts[level] ?? [];
+    const last = cut.at(-1)?.id ?? "";
+    const { pictures, user } = await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level), storage });
+    for (const { id } of cut.slice(0, -1)) fit(triceratops, id);
+    spend(pictures, 29);
+    const { left, top } = spotOf(last).getBoundingClientRect();
+
+    press(spotOf(last), { clientX: left + 40, clientY: top + 40 });
+    moveTo(homeOf(triceratops, last));
+    spend(pictures, 2);
+    const moved = document.querySelector(".skeleton-piece[data-nudge]");
+    release(homeOf(triceratops, last));
+    revealNow(pictures, "triceratops");
+
+    const badge = level === "explorer" ? "EXPLORER BADGE" : "PALEONTOLOGIST BADGE";
+    expect([moved, badgesIn(reveal())]).toEqual([null, [badge]]);
+    expect(savedSkeletons(storage)).toEqual({ earned: ["triceratops"], bestScore: 1, rebuilding: [], badges: { triceratops: [level] } });
+    expect(await standBadges(user, "TRICERATOPS")).toEqual([badge]);
   });
 
   it("is kept after a later try with help", async () => {

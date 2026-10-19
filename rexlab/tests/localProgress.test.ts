@@ -543,6 +543,16 @@ describe("localSkeletonProgress", () => {
     expect(localSkeletonProgress(() => storage).load()).toEqual(saved({ ...SKELETONS, badges }));
   });
 
+  it("keeps the badges another tab saved meanwhile, beside those it saves", () => {
+    const storage = memoryStorage();
+    const [one, other] = [localSkeletonProgress(() => storage), localSkeletonProgress(() => storage)];
+
+    one.save(saved({ ...SKELETONS, badges: { triceratops: ["paleontologist"], stegosaurus: ["explorer"] } }));
+    other.save(saved({ ...SKELETONS, badges: { triceratops: ["explorer"] } }));
+
+    expect(one.load()).toEqual(saved({ ...SKELETONS, badges: { triceratops: ["explorer", "paleontologist"], stegosaurus: ["explorer"] } }));
+  });
+
   it.each<[string, unknown, SkeletonProgress["badges"]]>([
     ["that are not a record", ["explorer"], {}],
     ["of a skeleton that are not a list", { triceratops: "explorer" }, {}],

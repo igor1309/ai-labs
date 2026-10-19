@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitsHelp, drop, help, HELP_AFTER, isComplete, startPuzzle, strayId, trayOf, turn, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
+import { awaitsHelp, drop, help, HELP_AFTER, isComplete, showLastStep, startPuzzle, strayId, trayOf, turn, wait, type Cut, type Place, type Puzzle, type Skeleton } from "../src/skeletons/index.ts";
 import { PIECES, type Piece } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
 
@@ -301,15 +301,16 @@ describe("turned pieces", () => {
 describe("help's last step", () => {
   const ladder = () => startPuzzle(SKELETON, SKELETON.cuts.hatchling, { ladder: true, badge: "explorer" });
 
-  it("is marked once a piece has moved towards its home, and stays marked through every fit after", () => {
-    const steps = [1, 2, 3].map((step) => wait(ladder(), step * HELP_AFTER));
-    const moved = steps[2] ?? ladder();
+  it("is not marked by falling due, which the screen may hold back while a piece is held", () => {
+    const due = wait(ladder(), 3 * HELP_AFTER);
 
-    expect([ladder().lastStepShown, ...steps.map(({ lastStepShown }) => lastStepShown)]).toEqual([false, false, false, true]);
-    expect([help(moved)?.step, fitted(["skull"], moved).lastStepShown, ladder().badge]).toEqual(["move", true, "explorer"]);
+    expect([help(due)?.step, due.lastStepShown, wait(start(), 10 * HELP_AFTER).lastStepShown]).toEqual(["move", false, false]);
   });
 
-  it("is never marked by Hatchling's glow", () => {
-    expect(wait(start(), 10 * HELP_AFTER).lastStepShown).toBe(false);
+  it("is marked once shown, and stays marked through every fit after", () => {
+    const shown = showLastStep(wait(ladder(), 3 * HELP_AFTER));
+
+    expect([ladder().lastStepShown, shown.lastStepShown, fitted(["skull"], shown).lastStepShown, ladder().badge]).toEqual([false, true, true, "explorer"]);
+    expect(showLastStep(shown)).toBe(shown);
   });
 });

@@ -152,7 +152,8 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
 // best collection score, the dinosaurs whose skeleton earned a star and
 // those whose stand awaits its skeleton rebuilt, each skeleton's level
 // badges, kept only once one is earned, with the child's last choice on
-// its level switch, none until the switch is first used.
+// its level switch, none until the switch is first used. A badge is never
+// taken away, so saving keeps those another tab saved meanwhile.
 export function localSkeletonProgress(storage: () => KeyValueStorage) {
   const entry = gameProgress<StoredSkeletons>(storage, "skeleton-assembly", NO_SKELETONS, readSkeletons);
   return {
@@ -165,7 +166,8 @@ export function localSkeletonProgress(storage: () => KeyValueStorage) {
     },
 
     save({ progress, levelChoice }: { progress: SkeletonProgress; levelChoice: LevelChoice | undefined }): void {
-      const { badges, ...rest } = progress;
+      const { badges: earned, ...rest } = progress;
+      const badges = bothBadges(entry.load()?.badges ?? {}, earned);
       entry.save({ ...rest, ...(Object.keys(badges).length > 0 && { badges }), ...(levelChoice && { levelChoice }) });
     }
   };
@@ -193,6 +195,11 @@ function badgesOf(raw: unknown): SkeletonProgress["badges"] {
       return kept.length === 0 ? [] : [[id, kept]];
     })
   );
+}
+
+// Every badge of either, each skeleton's in the levels' order.
+function bothBadges(one: SkeletonProgress["badges"], other: SkeletonProgress["badges"]): SkeletonProgress["badges"] {
+  return Object.fromEntries([...new Set([...Object.keys(one), ...Object.keys(other)])].map((id) => [id, BADGES.filter((badge) => one[id]?.includes(badge) || other[id]?.includes(badge))]));
 }
 
 // The home page's start counts and the day's featured game, beside the

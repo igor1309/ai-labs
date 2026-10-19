@@ -382,7 +382,7 @@ async function skeletonPaleontologist({ theme, user }: Walk) {
   layOutPuzzle();
   fit(tyrannosaurus, "skull");
   dragBone("triceratops/frill", AWAY);
-  expect([document.querySelector(".skeleton-silhouette") !== null, screen.getByRole("status").textContent]).toEqual([true, "THAT'S THE TRICERATOPS FRILL!"]);
+  expect([document.querySelector(".skeleton-outline-silhouette") !== null, screen.getByRole("status").textContent]).toEqual([true, "THAT'S THE TRICERATOPS FRILL!"]);
   expectScreenIn(theme);
 }
 

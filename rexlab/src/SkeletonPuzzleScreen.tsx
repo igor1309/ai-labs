@@ -2,7 +2,7 @@ import { Bone, RotateCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { Picture } from "./Picture.tsx";
+import { Picture, usePicture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
 // A piece, by its id in its cut.
@@ -86,6 +86,8 @@ export type SkeletonPuzzleScreenProps = {
   onDrop: (piece: ShownPiece, centre: FramePoint, reach: number) => void;
   // A piece of the cut tapped in the tray, on a puzzle that turns.
   onTurn: (piece: ShownPiece) => void;
+  // Help's last step has shown: a piece moved towards its home.
+  onLastStep: () => void;
   onMuseum: () => void;
   onHome: () => void;
 };
@@ -153,6 +155,7 @@ export function SkeletonPuzzleScreen({
   scatter,
   onDrop,
   onTurn,
+  onLastStep,
   onMuseum,
   onHome
 }: SkeletonPuzzleScreenProps) {
@@ -261,7 +264,8 @@ export function SkeletonPuzzleScreen({
   const shownHint = held ? held.hint : hint;
 
   // Help's last step moves its piece from its spot towards its home and
-  // back, measured as the step is reached.
+  // back, measured as the step shows, which is when the game learns it
+  // has.
   const [nudge, setNudge] = useState<Offset & { piece: ShownPiece }>();
   const moving = shownHint?.step === "move" ? shownHint.piece : undefined;
   useLayoutEffect(() => {
@@ -273,6 +277,7 @@ export function SkeletonPuzzleScreen({
     const spot = spotElements.current.get(moving)?.getBoundingClientRect() ?? NO_RECT;
     const { dx, dy } = offsetFrom(home.left + home.width / 2, home.top + home.height / 2, spot);
     setNudge({ piece: moving, dx, dy });
+    onLastStep();
   }, [moving]);
 
   // Each spot in the tray, in its order: a piece of the cut, or another
@@ -311,7 +316,7 @@ export function SkeletonPuzzleScreen({
               so its picture's shimmer and fade never replace either. */}
           <span className="skeleton-outline" data-silhouette={silhouette || undefined}>
             {silhouette ? (
-              <span className="skeleton-silhouette" style={{ "--outline-picture": `url("${outline}")` } as CSSProperties} />
+              <Silhouette src={outline} />
             ) : (
               <Picture className="skeleton-outline-picture" src={outline} alt="" />
             )}
@@ -413,13 +418,10 @@ export function SkeletonPuzzleScreen({
                     data-nudge={nudge?.piece === slot.piece || undefined}
                     data-turns={turns[slot.piece] || undefined}
                     style={{
-                      ...(release
-                        ? fromStyle(release.spot)
-                        : scattering
-                          ? ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties)
-                          : nudge?.piece === slot.piece
-                            ? ({ "--nudge-x": `${nudge.dx}px`, "--nudge-y": `${nudge.dy}px` } as CSSProperties)
-                            : undefined),
+                      ...(release ? fromStyle(release.spot) : scattering ? ({ ...fromStyle(scattering), "--from-scale": scattering.scale } as CSSProperties) : undefined),
+                      // The nudge's own offsets, whatever the piece did
+                      // before: its animation follows the others'.
+                      ...(nudge?.piece === slot.piece ? ({ "--nudge-x": `${nudge.dx}px`, "--nudge-y": `${nudge.dy}px` } as CSSProperties) : undefined),
                       ...turnStyle(quartersOf(slot.piece))
                     }}
                   >
@@ -442,4 +444,13 @@ export function SkeletonPuzzleScreen({
       </div>
     </main>
   );
+}
+
+// Paleontologist's outline: the skeleton's shape alone, masked from its
+// picture once loaded, which shimmers, fades in and fails as every
+// picture does.
+function Silhouette({ src }: { src: string }) {
+  const look = usePicture(src);
+  const loaded = look === "appearing" || look === "shown";
+  return <span className="picture skeleton-outline-silhouette" data-picture={look} aria-hidden="true" style={loaded ? ({ "--outline-picture": `url("${src}")` } as CSSProperties) : undefined} />;
 }

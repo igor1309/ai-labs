@@ -106,9 +106,6 @@ export const LADDER = ["region", "ghost", "move"] as const;
 
 export type HelpStep = "glow" | (typeof LADDER)[number];
 
-// Help's last step on the ladder: a piece moving towards its home.
-const LAST_STEP: HelpStep = "move";
-
 // The piece help points at, and the step it has reached.
 export type Help = { piece: string; step: HelpStep };
 
@@ -200,8 +197,14 @@ export function awaitsHelp(puzzle: Puzzle): boolean {
 // `ms` more spent at the puzzle without fitting a piece.
 export function wait(puzzle: Puzzle, ms: number): Puzzle {
   if (!awaitsHelp(puzzle)) return puzzle;
-  const waited = { ...puzzle, waited: Math.min(puzzle.waited + ms, lastHelpAt(puzzle)) };
-  return { ...waited, lastStepShown: puzzle.lastStepShown || help(waited)?.step === LAST_STEP };
+  return { ...puzzle, waited: Math.min(puzzle.waited + ms, lastHelpAt(puzzle)) };
+}
+
+// Help's last step, a piece moving towards its home, has shown on the
+// screen. Its falling due is not enough: it waits while a piece is held,
+// and the piece may fit first.
+export function showLastStep(puzzle: Puzzle): Puzzle {
+  return puzzle.lastStepShown ? puzzle : { ...puzzle, lastStepShown: true };
 }
 
 // The piece, and so its home, that help points at once it is due, the

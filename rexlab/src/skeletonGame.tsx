@@ -16,6 +16,7 @@ import {
   knockDown,
   museumOf,
   openCollection,
+  showLastStep,
   startPuzzle,
   turn,
   wait,
@@ -260,17 +261,37 @@ export function useSkeletonGame(
     if (to !== from) showPuzzle(from, to);
   };
 
+  // Help's last step has shown, so the puzzle earns no badge.
+  const onLastStep = () => {
+    const from = live.current;
+    if (from === null) return;
+    const to = showLastStep(from);
+    if (to !== from) showPuzzle(from, to);
+  };
+
   // Only time at the puzzle counts towards help: the count pauses while
-  // the child is away, and starts again from nothing as a piece fits. Its
-  // timer is the puzzle's, so leaving stops it at once, not once the
-  // screen it left has rendered.
+  // the child is away, and starts again from nothing as a piece fits.
+  // Nothing else restarts it: a turn or another dinosaur's bone changes
+  // the puzzle, and the tick counts on the puzzle as it is then. Its timer
+  // is the puzzle's, so leaving stops it at once, not once the screen it
+  // left has rendered.
+  const counting = puzzle !== undefined && awaitsHelp(puzzle);
+  const since = puzzle?.fitted;
   useEffect(() => {
     const timers = puzzleTimers.current;
-    if (puzzle === undefined || away || !awaitsHelp(puzzle) || timers === null) return;
-    return timers.start(HELP_TICK, () => {
-      if (live.current === puzzle) showPuzzle(puzzle, wait(puzzle, HELP_TICK));
-    });
-  }, [puzzle, away]);
+    if (!counting || away || timers === null) return;
+    let stop = () => {};
+    const tick = () => {
+      stop = timers.start(HELP_TICK, () => {
+        const now = live.current;
+        if (now === null || now.fitted !== since) return;
+        showPuzzle(now, wait(now, HELP_TICK));
+        tick();
+      });
+    };
+    tick();
+    return () => stop();
+  }, [since, counting, away]);
 
   // BUILD ANOTHER goes back to the choice of dinosaurs; a second tap
   // meanwhile, or a tap after a puzzle was asked for, changes nothing
@@ -316,6 +337,7 @@ export function useSkeletonGame(
             scatter={screen.scatter}
             onDrop={onDrop}
             onTurn={onTurn}
+            onLastStep={onLastStep}
             onMuseum={museum}
             onHome={home}
           />

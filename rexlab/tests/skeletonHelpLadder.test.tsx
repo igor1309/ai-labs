@@ -1,9 +1,33 @@
-import { act } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
-import { AWAY, BOARD_AT, board, fit, fittedPieces, hints, homeOf, moveTo, openPuzzle, press, release, skeletonOf, slotOf, spotOf } from "./skeletonsApp.tsx";
-import { memoryStorage, type ManualPictures } from "./support.ts";
+import type { StartTimer } from "../src/ownedTimers.ts";
+import {
+  AWAY,
+  BOARD_AT,
+  board,
+  cancel,
+  dragTo,
+  finishLoading,
+  fit,
+  fittedPieces,
+  hints,
+  homeOf,
+  keptSkeletons,
+  layOutPuzzle,
+  moveTo,
+  openPuzzle,
+  openSkeletonsApp,
+  press,
+  release,
+  skeletonOf,
+  slotOf,
+  spotOf,
+  spotPieces,
+  tap
+} from "./skeletonsApp.tsx";
+import { manualPictures, memoryStorage, type ManualPictures } from "./support.ts";
 
 // skeleton-assembly-help-ladder.feature: Explorer's and Paleontologist's
 // help in steps, each ten seconds without a fit.
@@ -29,6 +53,18 @@ const shown = (piece = "skull") => ({ hints: hints(), region: region() !== null,
 const NONE = { hints: [], region: false, ghost: false, move: false, fitted: [] };
 
 const px = (value: string) => Number.parseFloat(value);
+
+// The nudge's offsets on the moving piece, and those from the centre of
+// `piece`'s spot to its home, which they should be.
+function nudgeOf(piece: string) {
+  const spot = spotOf(piece).getBoundingClientRect();
+  const home = homeOf(TYRANNOSAURUS, piece);
+  const style = nudged()?.style;
+  return {
+    shown: [px(style?.getPropertyValue("--nudge-x") ?? ""), px(style?.getPropertyValue("--nudge-y") ?? "")],
+    towards: [expect.closeTo(home.clientX - (spot.left + spot.width / 2), 5), expect.closeTo(home.clientY - (spot.top + spot.height / 2), 5)]
+  };
+}
 
 describe("Explorer's help in steps", () => {
   const openExplorer = () => openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf("explorer") });
@@ -83,13 +119,8 @@ describe("Explorer's help in steps", () => {
     spend(pictures, 30);
 
     expect(shown()).toEqual({ hints: ["spot skull"], region: true, ghost: true, move: true, fitted: [] });
-    const spot = spotOf("skull").getBoundingClientRect();
-    const home = homeOf(TYRANNOSAURUS, "skull");
-    const style = nudged()?.style;
-    expect([px(style?.getPropertyValue("--nudge-x") ?? ""), px(style?.getPropertyValue("--nudge-y") ?? "")]).toEqual([
-      expect.closeTo(home.clientX - (spot.left + spot.width / 2), 5),
-      expect.closeTo(home.clientY - (spot.top + spot.height / 2), 5)
-    ]);
+    const { shown: offsets, towards } = nudgeOf("skull");
+    expect(offsets).toEqual(towards);
     expect(nudged()?.closest(".skeleton-tray-spot")).toBe(spotOf("skull"));
     expect(pictures.timers()).toEqual([]);
   });
@@ -128,6 +159,94 @@ describe("Explorer's help in steps", () => {
 
     release(AWAY);
     expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true, ghost: true });
+  });
+});
+
+// What the child did with the skull before help's last step: a drop
+// that missed, a touch cancelled as the iPad turned, or nothing, the
+// skeleton knocked down from its stand in the museum to be built again,
+// its bones scattering.
+const BEFORE: Array<[string, (level: AgeLevel) => Promise<{ pictures: ManualPictures }>]> = [
+  [
+    "a drop of it that missed",
+    async (level) => {
+      const opened = await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf(level) });
+      dragTo("skull", AWAY);
+      return opened;
+    }
+  ],
+  [
+    "a touch on it that was cancelled",
+    async (level) => {
+      const opened = await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf(level) });
+      const { left, top } = spotOf("skull").getBoundingClientRect();
+      press(spotOf("skull"), { clientX: left + 40, clientY: top + 40 });
+      moveTo(homeOf(TYRANNOSAURUS, "spine"));
+      cancel(homeOf(TYRANNOSAURUS, "spine"));
+      return opened;
+    }
+  ],
+  [
+    "its skeleton knocked down in the museum",
+    async (level) => {
+      const opened = openSkeletonsApp({ ageLevels: levelOf(level), storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] }) });
+      await opened.user.click(screen.getByRole("button", { name: "MUSEUM" }));
+      act(() => finishLoading(opened.pictures));
+      await opened.user.click(within(screen.getByRole("region", { name: "TYRANNOSAURUS" })).getByRole("button", { name: "REBUILD" }));
+      act(() => finishLoading(opened.pictures));
+      layOutPuzzle();
+      return opened;
+    }
+  ]
+];
+
+describe("help's last step after a piece has moved", () => {
+  it.each((["explorer", "paleontologist"] as const).flatMap((level) => BEFORE.map(([before, open]) => [level, before, open] as const)))("moves the skull towards its home at %s after %s, the skull still in the tray", async (level, _, open) => {
+    const { pictures } = await open(level);
+
+    spend(pictures, 30);
+
+    const { shown: offsets, towards } = nudgeOf("skull");
+    expect([nudged()?.closest(".skeleton-tray-spot"), offsets, fittedPieces()]).toEqual([spotOf("skull"), towards, []]);
+  });
+});
+
+// A clock the test moves on, which fires each timer once its time has
+// passed, so a timer stopped and started again starts its time again.
+function clockOn(pictures: ManualPictures) {
+  let now = 0;
+  const running = new Set<{ at: number; fire: () => void }>();
+  const startTimer: StartTimer = (ms, fire) => {
+    const timer = { at: now + ms, fire };
+    running.add(timer);
+    return () => {
+      running.delete(timer);
+    };
+  };
+  const pass = (ms: number) =>
+    act(() => {
+      now += ms;
+      for (let due = [...running].find(({ at }) => at <= now); due !== undefined; due = [...running].find(({ at }) => at <= now)) {
+        running.delete(due);
+        due.fire();
+      }
+    });
+  return { pictures: { ...pictures, startTimer }, pass };
+}
+
+describe("help's time at Paleontologist", () => {
+  it("keeps counting while the child turns pieces and drops other dinosaurs' bones, never fitting one", async () => {
+    const { pictures, pass } = clockOn(manualPictures());
+    await openPuzzle("TYRANNOSAURUS", { ageLevels: levelOf("paleontologist"), pictures });
+    const [stray = ""] = spotPieces().filter((piece) => piece.includes("/"));
+
+    for (let quarter = 0; quarter < 40; quarter++) {
+      pass(250);
+      if (quarter % 2 === 0) tap("arms");
+      else dragTo(stray, AWAY);
+    }
+
+    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true });
   });
 });
 

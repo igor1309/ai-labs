@@ -4996,10 +4996,14 @@ body:has(.result) #version {
 }
 
 /* Paleontologist's partial outline: the skeleton's shape in one flat
-   colour, with no bone drawn in it. */
-.skeleton-silhouette {
+   colour, with no bone drawn in it, once its picture has loaded. */
+.skeleton-outline-silhouette {
   position: absolute;
   inset: 0;
+}
+
+.skeleton-outline-silhouette[data-picture="appearing"],
+.skeleton-outline-silhouette[data-picture="shown"] {
   background: #5c647a;
   mask: var(--outline-picture) center / 100% 100% no-repeat;
 }
@@ -6143,7 +6147,8 @@ body:has(.result) #version {
   outline-color: #9ca3b659;
 }
 
-[data-theme="dark"] .skeleton-silhouette {
+[data-theme="dark"] .skeleton-outline-silhouette[data-picture="appearing"],
+[data-theme="dark"] .skeleton-outline-silhouette[data-picture="shown"] {
   background: #9ca3b6;
 }
 

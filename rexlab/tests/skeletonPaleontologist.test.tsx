@@ -2,10 +2,30 @@ import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import type { Theme } from "../src/theme.ts";
-import { AWAY, board, dragTo, fit, fittedPieces, hints, homeOf, openPuzzle, reveal, revealNow, savedSkeletons, skeletonOf, slots, spotOf, spotPieces, tray, trayPieces } from "./skeletonsApp.tsx";
-import { PALETTE, memoryStorage, sameColour, type ManualPictures } from "./support.ts";
+import {
+  AWAY,
+  board,
+  dragTo,
+  fit,
+  fittedPieces,
+  hints,
+  homeOf,
+  openPuzzle,
+  openSkeletonsApp,
+  reveal,
+  revealNow,
+  savedSkeletons,
+  skeletonOf,
+  slots,
+  spotOf,
+  spotPieces,
+  tray,
+  trayPieces
+} from "./skeletonsApp.tsx";
+import { fakeSkeletonPicture, PALETTE, memoryStorage, sameColour, type ManualPictures } from "./support.ts";
 
 // skeleton-assembly-paleontologist.feature: Paleontologist's own cut on a
 // partial outline, with other dinosaurs' bones in the tray.
@@ -21,7 +41,11 @@ const strays = () => spotPieces().filter((piece) => piece.includes("/"));
 
 const told = () => screen.queryByRole("status")?.textContent;
 
-const silhouette = () => board().querySelector<HTMLElement>(".skeleton-silhouette");
+const silhouette = () => board().querySelector<HTMLElement>(".skeleton-outline-silhouette");
+
+// How the silhouette shows: its picture's look, and the picture it is
+// masked from, none until loaded.
+const silhouetteLook = () => [silhouette()?.getAttribute("data-picture"), silhouette()?.style.getPropertyValue("--outline-picture")];
 
 function spend(pictures: ManualPictures, seconds: number) {
   for (let second = 0; second < seconds; second++) act(() => pictures.fire(1000));
@@ -58,6 +82,28 @@ describe("Paleontologist's puzzle", () => {
     expect(sameColour(getComputedStyle(silhouette() ?? board()).backgroundColor, PALETTE[theme]["ink-soft"] ?? "")).toBe(true);
     expect(board().querySelector(".skeleton-outline")?.getAttribute("data-silhouette")).toBe("true");
     expect(board().querySelectorAll(".skeleton-outline img")).toHaveLength(0);
+  });
+
+  it("shimmers its silhouette while its picture loads, then fades it in, however late", async () => {
+    const { user, pictures } = openSkeletonsApp({ ageLevels: levelOf("paleontologist") });
+    await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
+    const outline = fakeSkeletonPicture("stegosaurus", "skeleton");
+
+    expect([...silhouetteLook(), silhouette()?.classList.contains("picture")]).toEqual(["loading", "", true]);
+    act(() => pictures.fire(PICTURE_LIMIT));
+    expect(silhouetteLook()).toEqual(["failed", ""]);
+
+    act(() => pictures.finish(outline));
+    expect(silhouetteLook()).toEqual(["appearing", `url("${outline}")`]);
+  });
+
+  it("shows the failure look on its silhouette when its picture fails", async () => {
+    const { user, pictures } = openSkeletonsApp({ ageLevels: levelOf("paleontologist") });
+    await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
+
+    act(() => pictures.fail(fakeSkeletonPicture("stegosaurus", "skeleton")));
+
+    expect(silhouetteLook()).toEqual(["failed", ""]);
   });
 
   it("floats another dinosaur's bone dropped on the outline back to its spot, saying whose it is, nothing fitted", async () => {

@@ -23,6 +23,12 @@ Feature: Skeleton assembly: level badges
     Then the reveal earns the Stegosaurus star and no badge
     And its stand shows no badge
 
+  Scenario: The last help step counts only once it has shown
+    Given the level switch shows Explorer chosen
+    And I hold Triceratops's last piece as help's last step falls due
+    When I fit it, so the last step never showed
+    Then the reveal says I earned the Explorer badge
+
   Scenario: A badge is kept after a later try with help
     Given the Triceratops stand shows the Explorer badge
     When I build Triceratops again at Explorer after a piece has moved towards its home
