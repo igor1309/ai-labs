@@ -605,7 +605,8 @@ Decisions, each with its reason:
 - Not yet in the record: the definitions with their digests, the
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
   the continuation needs none of them. ("Runs" adds the inputs, "A
-  call's changes" the HEAD a call left and its patch.)
+  call's changes" the HEAD a call left and its patch, "Definitions"
+  the definitions.)
 - A record starts `lost` and is rewritten as calls end: a run that dies
   reads as lost, never as running (invariant 7), its ended calls kept,
   with no reaper.
@@ -815,7 +816,7 @@ Decisions, each with its reason:
 - Not yet in the record: the definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch
   (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
-  adds the patch.)
+  adds the patch, "Definitions" the definitions.)
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
@@ -965,10 +966,8 @@ Decisions, each with its reason:
   that writes changes what the steps after it read.
 - A call that failed is never taken: a failure is what a run again is
   for.
-- The settings a call ran under are not compared: the record does not
-  hold definitions or their digests yet (`run-path.md`, "The rest of
-  the record"). A prompt or schema changed since is a risk taken;
-  whoever reuses chose the run. ("Definitions" compares them.)
+- The settings a call ran under are compared as "Definitions" gives
+  them.
 - Each call's cost and usage count once (ADR-011, rule 6) in a run's
   result: a run's are what it spent; a call taken keeps the earlier
   ones in its entry, which a sum over records skips.
@@ -1171,16 +1170,19 @@ layer's file that composes it, nearest first, then the files of the
 document it extends, the same way; for a blob, the nearest layer's file
 alone, the one whose bytes it is. Each file is its layer, `home`,
 `repository` or `project`, its path and the SHA-256 digest of its
-bytes. A document with problems gives its problems, no files.
+bytes, as lowercase hex. A document with problems gives its problems,
+no files.
 
 **`runstore`**'s call grows `"definitions"`: each document, its kind,
-name and files, in order of kind, then name.
+name and files, in order of kind, then name. The request grows
+`"definitions"` the same way: the workflow's document, when the request
+names a workflow, and none for a step requested alone.
 
 **The composition**, as it plans a step's call, gathers its documents:
 its process, its agent and the agent's runtime; and each prompt, schema
 and brief its plan reads, the prompt `continuation` included where the
 call continues a session. Each call's entry, refused or made, records
-them:
+them; the run's request records its workflow's:
 
 ```json
 {"calls": [{"definitions": [{"kind": "process", "name": "implement",
@@ -1203,5 +1205,6 @@ Decisions, each with its reason:
   change to a process another step runs is no reason to run this one
   again.
 - A record from before is never reused: what it ran under is not known.
-- The workflow's own files are not recorded yet: no reader needs them
-  (`run-path.md`, "The rest of the record").
+- The workflow's files are the run's, not each call's: a reuse does
+  not compare them, as a change to another step is no reason to run
+  this one again; each call's own documents say what it ran under.

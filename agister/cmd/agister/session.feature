@@ -37,7 +37,8 @@ Feature: The composition continues a session inside a run
 
   Scenario: A session's steps are not taken by a reuse
     Given runstore keeps the run "R1" of "talk" in "/r", q "why", both
-      completed, their root "/r", HEAD "c1" and content "t1"
+      completed, their root "/r", HEAD "c1", content "t1" and this run's
+      definitions
     When "agister run talk --param q=why --reuse R1" runs in "/r"
     Then "first" and "second" are made, neither reused, and "second"
       continues "R/first"

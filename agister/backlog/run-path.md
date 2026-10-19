@@ -25,8 +25,7 @@ definitions with their digests, compared by a reuse.
 What it leaves out, roughly in the
 order it is needed:
 
-- **The rest of the record**: the workflow's definition, the
-  process's environment, the permission plan (ADR-001, invariant 6);
+- **The rest of the record**: the process's environment, the permission plan (ADR-001, invariant 6);
   other commands on runs.
 - **Reaping**: the owner's identity and reaping what a dead owner's
   programs left running (ADR-012, rule 6); ending

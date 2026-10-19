@@ -9,8 +9,10 @@
 Feature: Documents gives the files a document is made from
 
   Scenario: A tree's files are its layers', nearest first
-    Given the process "a" has a home source "{x: 1}" and a project
-      source "{x: 2}"
+    Given the process "a" has the sources:
+      | source  | path                            | bytes  |
+      | home    | /home/.agister/processes/a.yaml | {x: 1} |
+      | project | /proj/.agister/processes/a.yaml | {x: 2} |
     When documents is asked the files of the process "a"
     Then it gives:
       | layer   | path                            | sha256      |
