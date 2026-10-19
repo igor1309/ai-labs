@@ -1,0 +1,495 @@
+{
+  "tyrannosaurus": {
+    "hatchling": [
+      {
+        "id": "skull",
+        "from": "skeleton",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" },
+        "region": [
+          [[0, 30], [236, 30], [236, 120], [228, 240], [0, 240]]
+        ]
+      },
+      {
+        "id": "spine",
+        "from": "skeleton",
+        "area": "back",
+        "name": { "en": "SPINE", "ru": "ПОЗВОНОЧНИК" }
+      },
+      {
+        "id": "legs",
+        "from": "skeleton",
+        "area": "legs",
+        "name": { "en": "LEGS", "ru": "НОГИ" },
+        "region": [
+          [[430, 240], [565, 240], [565, 400], [650, 430], [650, 580], [460, 580], [455, 400], [425, 330]],
+          [[232, 325], [335, 318], [350, 460], [340, 580], [130, 580], [130, 500], [232, 420]]
+        ]
+      },
+      {
+        "id": "tail",
+        "from": "skeleton",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" },
+        "region": [
+          [[565, 215], [800, 270], [800, 380], [565, 380]]
+        ]
+      }
+    ],
+    "explorer": [
+      {
+        "id": "skull",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
+      },
+      {
+        "id": "neck",
+        "from": "spine",
+        "area": "neck",
+        "name": { "en": "NECK AND ARMS", "ru": "ШЕЯ И ЛАПЫ" },
+        "region": [
+          [[0, 0], [299, 0], [299, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "back",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
+      },
+      {
+        "id": "hips",
+        "from": "legs",
+        "area": "hips",
+        "name": { "en": "HIPS", "ru": "ТАЗ" },
+        "region": [
+          [[410, 0], [799, 0], [799, 334], [410, 334]]
+        ]
+      },
+      {
+        "id": "left-leg",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "LEFT LEG", "ru": "ЛЕВАЯ НОГА" },
+        "region": [
+          [[0, 0], [409, 0], [409, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "right-leg",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "RIGHT LEG", "ru": "ПРАВАЯ НОГА" }
+      },
+      {
+        "id": "tail",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" }
+      }
+    ],
+    "paleontologist": [
+      {
+        "id": "skull",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
+      },
+      {
+        "id": "neck-bones",
+        "from": "neck",
+        "area": "neck",
+        "name": { "en": "NECK", "ru": "ШЕЯ" },
+        "region": [
+          [[0, 0], [799, 0], [799, 234], [0, 234]]
+        ]
+      },
+      {
+        "id": "arms",
+        "from": "neck",
+        "area": "neck",
+        "name": { "en": "ARMS", "ru": "ЛАПЫ" }
+      },
+      {
+        "id": "back",
+        "from": "back",
+        "area": "back",
+        "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
+      },
+      {
+        "id": "hips",
+        "from": "hips",
+        "area": "hips",
+        "name": { "en": "HIPS", "ru": "ТАЗ" }
+      },
+      {
+        "id": "left-thigh",
+        "from": "left-leg",
+        "area": "legs",
+        "name": { "en": "LEFT THIGH", "ru": "ЛЕВОЕ БЕДРО" },
+        "region": [
+          [[0, 0], [799, 0], [799, 449], [0, 449]]
+        ]
+      },
+      {
+        "id": "left-foot",
+        "from": "left-leg",
+        "area": "legs",
+        "name": { "en": "LEFT FOOT", "ru": "ЛЕВАЯ СТОПА" }
+      },
+      {
+        "id": "right-thigh",
+        "from": "right-leg",
+        "area": "legs",
+        "name": { "en": "RIGHT THIGH", "ru": "ПРАВОЕ БЕДРО" },
+        "region": [
+          [[0, 0], [799, 0], [799, 459], [0, 459]]
+        ]
+      },
+      {
+        "id": "right-foot",
+        "from": "right-leg",
+        "area": "legs",
+        "name": { "en": "RIGHT FOOT", "ru": "ПРАВАЯ СТОПА" }
+      },
+      {
+        "id": "tail-base",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" },
+        "region": [
+          [[0, 0], [679, 0], [679, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "tail-tip",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL TIP", "ru": "КОНЧИК ХВОСТА" }
+      }
+    ]
+  },
+  "triceratops": {
+    "hatchling": [
+      {
+        "id": "skull",
+        "from": "skeleton",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" },
+        "region": [
+          [[0, 25], [405, 25], [405, 195], [372, 240], [330, 288], [245, 300], [215, 305], [200, 345], [0, 350]]
+        ]
+      },
+      {
+        "id": "spine",
+        "from": "skeleton",
+        "area": "back",
+        "name": { "en": "SPINE", "ru": "ПОЗВОНОЧНИК" }
+      },
+      {
+        "id": "legs",
+        "from": "skeleton",
+        "area": "legs",
+        "name": { "en": "LEGS", "ru": "НОГИ" },
+        "region": [
+          [[0, 398], [640, 398], [640, 425], [690, 425], [690, 580], [0, 580]],
+          [[195, 300], [265, 300], [265, 398], [195, 398]],
+          [[330, 240], [412, 240], [412, 398], [330, 398]],
+          [[515, 235], [605, 235], [605, 398], [515, 398]]
+        ]
+      },
+      {
+        "id": "tail",
+        "from": "skeleton",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" },
+        "region": [
+          [[640, 265], [800, 330], [800, 425], [640, 425]]
+        ]
+      }
+    ],
+    "explorer": [
+      {
+        "id": "face",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "FACE AND HORNS", "ru": "МОРДА И РОГА" },
+        "region": [
+          [[0, 0], [120, 0], [719, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "frill",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "FRILL", "ru": "ВОРОТНИК" }
+      },
+      {
+        "id": "spine",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
+      },
+      {
+        "id": "front-legs",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "FRONT LEGS", "ru": "ПЕРЕДНИЕ НОГИ" },
+        "region": [
+          [[0, 0], [419, 0], [419, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "hind-legs",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "HIND LEGS", "ru": "ЗАДНИЕ НОГИ" }
+      },
+      {
+        "id": "tail",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" }
+      }
+    ],
+    "paleontologist": [
+      {
+        "id": "beak",
+        "from": "face",
+        "area": "head",
+        "name": { "en": "BEAK AND NOSE HORN", "ru": "КЛЮВ И НОСОВОЙ РОГ" },
+        "region": [
+          [[0, 180], [109, 180], [109, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "horns",
+        "from": "face",
+        "area": "head",
+        "name": { "en": "FACE AND HORNS", "ru": "МОРДА И РОГА" }
+      },
+      {
+        "id": "frill",
+        "from": "frill",
+        "area": "head",
+        "name": { "en": "FRILL", "ru": "ВОРОТНИК" }
+      },
+      {
+        "id": "ribs",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "RIBS", "ru": "РЁБРА" },
+        "region": [
+          [[0, 0], [449, 0], [449, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "backbone",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "BACKBONE", "ru": "ПОЗВОНОЧНИК" }
+      },
+      {
+        "id": "left-front-leg",
+        "from": "front-legs",
+        "area": "legs",
+        "name": { "en": "LEFT FRONT LEG", "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА" },
+        "region": [
+          [[0, 0], [279, 0], [279, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "right-front-leg",
+        "from": "front-legs",
+        "area": "legs",
+        "name": { "en": "RIGHT FRONT LEG", "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА" }
+      },
+      {
+        "id": "left-hind-leg",
+        "from": "hind-legs",
+        "area": "legs",
+        "name": { "en": "LEFT HIND LEG", "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА" },
+        "region": [
+          [[0, 0], [514, 0], [514, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "right-hind-leg",
+        "from": "hind-legs",
+        "area": "legs",
+        "name": { "en": "RIGHT HIND LEG", "ru": "ПРАВАЯ ЗАДНЯЯ НОГА" }
+      },
+      {
+        "id": "tail",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" }
+      }
+    ]
+  },
+  "stegosaurus": {
+    "hatchling": [
+      {
+        "id": "skull",
+        "from": "skeleton",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" },
+        "region": [
+          [[0, 220], [146, 220], [146, 375], [0, 375]]
+        ]
+      },
+      {
+        "id": "spine",
+        "from": "skeleton",
+        "area": "back",
+        "name": { "en": "SPINE", "ru": "ПОЗВОНОЧНИК" }
+      },
+      {
+        "id": "legs",
+        "from": "skeleton",
+        "area": "legs",
+        "name": { "en": "LEGS", "ru": "НОГИ" },
+        "region": [
+          [[0, 382], [592, 382], [592, 450], [650, 450], [650, 600], [0, 600]],
+          [[150, 330], [212, 330], [212, 382], [150, 382]],
+          [[225, 262], [302, 262], [302, 382], [225, 382]],
+          [[468, 278], [562, 278], [562, 382], [468, 382]]
+        ]
+      },
+      {
+        "id": "tail",
+        "from": "skeleton",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" },
+        "region": [
+          [[584, 200], [800, 200], [800, 445], [592, 445], [592, 320], [555, 290], [555, 240], [584, 222]]
+        ]
+      }
+    ],
+    "explorer": [
+      {
+        "id": "skull",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
+      },
+      {
+        "id": "plates",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "PLATES", "ru": "ПЛАСТИНЫ" },
+        "region": [
+          [[0, 0], [799, 0], [799, 204], [0, 204]]
+        ]
+      },
+      {
+        "id": "ribs",
+        "from": "spine",
+        "area": "back",
+        "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
+      },
+      {
+        "id": "front-legs",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "FRONT LEGS", "ru": "ПЕРЕДНИЕ НОГИ" },
+        "region": [
+          [[0, 0], [359, 0], [359, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "hind-legs",
+        "from": "legs",
+        "area": "legs",
+        "name": { "en": "HIND LEGS", "ru": "ЗАДНИЕ НОГИ" }
+      },
+      {
+        "id": "tail-base",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" },
+        "region": [
+          [[0, 0], [679, 0], [679, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "spikes",
+        "from": "tail",
+        "area": "tail",
+        "name": { "en": "TAIL SPIKES", "ru": "ШИПЫ" }
+      }
+    ],
+    "paleontologist": [
+      {
+        "id": "skull",
+        "from": "skull",
+        "area": "head",
+        "name": { "en": "SKULL", "ru": "ЧЕРЕП" }
+      },
+      {
+        "id": "front-plates",
+        "from": "plates",
+        "area": "back",
+        "name": { "en": "FRONT PLATES", "ru": "ПЕРЕДНИЕ ПЛАСТИНЫ" },
+        "region": [
+          [[0, 0], [359, 0], [359, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "back-plates",
+        "from": "plates",
+        "area": "back",
+        "name": { "en": "BACK PLATES", "ru": "ЗАДНИЕ ПЛАСТИНЫ" }
+      },
+      {
+        "id": "ribs",
+        "from": "ribs",
+        "area": "back",
+        "name": { "en": "BACK AND RIBS", "ru": "СПИНА И РЁБРА" }
+      },
+      {
+        "id": "left-front-leg",
+        "from": "front-legs",
+        "area": "legs",
+        "name": { "en": "LEFT FRONT LEG", "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА" },
+        "region": [
+          [[0, 0], [199, 0], [199, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "right-front-leg",
+        "from": "front-legs",
+        "area": "legs",
+        "name": { "en": "RIGHT FRONT LEG", "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА" }
+      },
+      {
+        "id": "left-hind-leg",
+        "from": "hind-legs",
+        "area": "legs",
+        "name": { "en": "LEFT HIND LEG", "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА" },
+        "region": [
+          [[0, 0], [469, 0], [469, 599], [0, 599]]
+        ]
+      },
+      {
+        "id": "right-hind-leg",
+        "from": "hind-legs",
+        "area": "legs",
+        "name": { "en": "RIGHT HIND LEG", "ru": "ПРАВАЯ ЗАДНЯЯ НОГА" }
+      },
+      {
+        "id": "tail-base",
+        "from": "tail-base",
+        "area": "tail",
+        "name": { "en": "TAIL", "ru": "ХВОСТ" }
+      },
+      {
+        "id": "spikes",
+        "from": "spikes",
+        "area": "tail",
+        "name": { "en": "TAIL SPIKES", "ru": "ШИПЫ" }
+      }
+    ]
+  }
+}
