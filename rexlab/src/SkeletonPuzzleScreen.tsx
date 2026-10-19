@@ -8,13 +8,18 @@ import { SkeletonBar } from "./SkeletonBar.tsx";
 // A piece, by its id in its cut.
 export type ShownPiece = string;
 
+// The body area whose colour a piece and its empty slot carry, as a cue
+// to where it goes.
+export type ShownArea = "head" | "neck" | "back" | "hips" | "legs" | "tail";
+
 // Where a piece goes on the outline, as fractions of the outline's width
 // and height, and whether it is fitted there, with the piece's name and
-// picture.
+// picture, and its body area when the puzzle is coloured by area.
 export type SkeletonSlotView = {
   piece: ShownPiece;
   name: string;
   picture: string;
+  area: ShownArea | undefined;
   left: number;
   top: number;
   width: number;
@@ -205,9 +210,13 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                 data-state={slot.fitted ? "fitted" : "empty"}
                 data-target={held?.piece === slot.piece || undefined}
                 data-hint={shownHint === slot.piece || undefined}
+                data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ left: percent(slot.left), top: percent(slot.top), width: percent(slot.width), height: percent(slot.height) }}
               >
                 {shownHint === slot.piece && <span className="skeleton-glow" aria-hidden="true" />}
+                {/* An empty slot of a coloured puzzle shows its bone's
+                    shape in its body area's colour. */}
+                {!slot.fitted && slot.area && <span className="skeleton-slot-area" aria-hidden="true" style={{ "--piece-picture": `url("${slot.picture}")` } as CSSProperties} />}
                 {/* The piece settles on a wrapper, so its picture's
                     shimmer and fade never replace the movement. */}
                 {slot.fitted && (
@@ -237,6 +246,7 @@ export function SkeletonPuzzleScreen({ language, name, outline, frame, slots, hi
                 className="skeleton-tray-spot"
                 data-piece={slot.piece}
                 data-hint={(!slot.fitted && shownHint === slot.piece) || undefined}
+                data-area={(!slot.fitted && slot.area) || undefined}
                 style={{ "--piece": index } as CSSProperties}
                 onPointerDown={slot.fitted ? undefined : press(slot.piece)}
               >

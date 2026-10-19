@@ -63,6 +63,10 @@ export type SkeletonGameProps = {
 // of its own plays Hatchling's.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 
+// The levels whose puzzle colours each piece and its slot by body area:
+// Explorer's, as a cue to where a bone goes.
+const COLOURED: Record<AgeLevel, boolean> = { hatchling: false, explorer: true, paleontologist: false };
+
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch, which holds while the app is open even when
 // it cannot be saved.
@@ -79,10 +83,11 @@ const HELP_TICK = 1000;
 export const REVEAL: Record<"motion" | "reduced", number> = { motion: 480, reduced: 160 };
 
 // A puzzle of a skeleton knocked down from its stand starts with its
-// bones scattering from the outline to the tray.
+// bones scattering from the outline to the tray; one coloured by body
+// area keeps its colours until it is left.
 type SkeletonScreen =
   | { kind: "choice" }
-  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean }
+  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; coloured: boolean }
   | { kind: "result"; result: SkeletonResult }
   | { kind: "museum" };
 
@@ -168,8 +173,9 @@ export function useSkeletonGame(
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined) return;
     const from = screen;
-    const started = startPuzzle(skeleton, cutAt(skeleton, startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)));
-    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild } : current), {
+    const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
+    const started = startPuzzle(skeleton, cutAt(skeleton, at));
+    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, coloured: COLOURED[at] } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
         live.current = started;
@@ -282,7 +288,7 @@ export function useSkeletonGame(
         return (
           <SkeletonPuzzleScreen
             language={language}
-            {...presentPuzzle(screen.puzzle, language, skeletonPicture)}
+            {...presentPuzzle(screen.puzzle, language, skeletonPicture, { coloured: screen.coloured })}
             scatter={screen.scatter}
             onDrop={onDrop}
             onMuseum={museum}

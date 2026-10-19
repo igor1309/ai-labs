@@ -15,13 +15,14 @@ import type { ResultScreenProps, Celebration as ShownCelebration } from "./Resul
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
-import type { SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import type { ShownArea, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
   help,
   isComplete,
   type Celebration as SkeletonCelebration,
   type Museum,
+  type BodyArea,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
@@ -272,7 +273,11 @@ export type SkeletonPicture = (dinosaurId: string, part: string) => string;
 
 // Each slot is placed as a fraction of the frame, so the outline and its
 // pieces scale together to any board.
-export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
+// Each body area, as the puzzle screen colours it.
+const SHOWN_AREAS: Record<BodyArea, ShownArea> = { head: "head", neck: "neck", back: "back", hips: "hips", legs: "legs", tail: "tail" };
+
+// A puzzle `coloured` by body area gives each slot its piece's area.
+export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture, { coloured = false }: { coloured?: boolean } = {}): SkeletonPuzzleView {
   const { skeleton, cut, fitted } = puzzle;
   const { id, name, frame } = skeleton;
   return {
@@ -285,6 +290,7 @@ export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPictur
         piece: piece.id,
         name: piece.name[language],
         picture: skeletonPicture(id, piece.id),
+        area: coloured ? SHOWN_AREAS[piece.area] : undefined,
         left: x / frame.width,
         top: y / frame.height,
         width: width / frame.width,

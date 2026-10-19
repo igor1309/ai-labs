@@ -10,7 +10,7 @@ import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "..
 import { appProps } from "../src/root.ts";
 import { HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
 import { PIECES, placeOf } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, browserDocument, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
+import { PALETTE, SHIPPED_SKELETONS, browserDocument, contrast, browserQueries, fakeBodyPicture, fakeSkeletonPicture, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -367,6 +367,27 @@ describe("every shipped skeleton", () => {
     expect(explorer).toEqual(skeletons.map(({ id }) => ({ id, sixToEight: true, samePlaces: true })));
   });
 
+  // skeleton-assembly-explorer.feature: a bone shows on its tinted spot by
+  // its dark outline in light, the darkest twentieth of it, and by its
+  // pale bone in dark, its median.
+  it("shows each Explorer bone at least 3:1 on its body area's tint, by its outline in light and its bone in dark", async () => {
+    const seen = await Promise.all(
+      skeletons.flatMap(({ id, cuts }) =>
+        (cuts.explorer ?? []).map(async (piece) => {
+          const shades = await shadesOf(fileOf(skeletonPicture(id, piece.id)));
+          const at = (share: number) => shades[Math.floor(shades.length * share)] ?? "#000000";
+          return {
+            piece: `${id}/${piece.id}`,
+            light: contrast(at(0.05), PALETTE.light[`area-${piece.area}-tint`] ?? "") >= 3,
+            dark: contrast(at(0.5), PALETTE.dark[`area-${piece.area}-tint`] ?? "") >= 3
+          };
+        })
+      )
+    );
+
+    expect(seen).toEqual(seen.map(({ piece }) => ({ piece, light: true, dark: true })));
+  });
+
   it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {
     const { bodyPicture } = shippedApp();
     const sizes = skeletons.map(({ id }) => {
@@ -385,6 +406,18 @@ const TOLERANCE = 0.005;
 type Alpha = { alpha: Uint8Array; width: number; height: number };
 
 // A picture's alpha channel, row by row, from 0 to 255.
+// The colours of a picture's opaque pixels, darkest first.
+async function shadesOf(file: string): Promise<string[]> {
+  const { data } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const shades: Array<{ colour: string; light: number }> = [];
+  for (let at = 0; at < data.length; at += 4) {
+    if ((data[at + 3] ?? 0) < 200) continue;
+    const [r = 0, g = 0, b = 0] = [data[at], data[at + 1], data[at + 2]];
+    shades.push({ colour: `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`, light: 0.2126 * r + 0.7152 * g + 0.0722 * b });
+  }
+  return shades.sort((a, b) => a.light - b.light).map(({ colour }) => colour);
+}
+
 async function alphaOf(file: string): Promise<Alpha> {
   const { data, info } = await sharp(file).extractChannel("alpha").raw().toBuffer({ resolveWithObject: true });
   return { alpha: data, width: info.width, height: info.height };

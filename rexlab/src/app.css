@@ -4690,6 +4690,79 @@ body:has(.result) #version {
   outline-offset: -1px;
 }
 
+/* Explorer colours each piece by its body area, as a cue to where it
+   goes: its spot in the tray is tinted with the area's pale tint and
+   ringed in its colour, and its empty slot shows the bone's shape in that
+   colour, the piece's own picture as the mask. A fitted piece shows as
+   itself, and its spot, empty, is plain again. */
+.skeleton-tray-spot[data-area] {
+  outline-width: 3px;
+  outline-offset: -1.5px;
+}
+
+.skeleton-slot-area {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  mask: var(--piece-picture) center / 100% 100% no-repeat;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-tray-spot[data-area="head"] {
+  outline-color: #c9583d;
+  background: #f6ddd4;
+}
+
+.skeleton-slot[data-area="head"] .skeleton-slot-area {
+  background: #c9583d;
+}
+
+.skeleton-tray-spot[data-area="neck"] {
+  outline-color: #a86a0c;
+  background: #f7e8c9;
+}
+
+.skeleton-slot[data-area="neck"] .skeleton-slot-area {
+  background: #a86a0c;
+}
+
+.skeleton-tray-spot[data-area="back"] {
+  outline-color: #4f78b0;
+  background: #dce6f3;
+}
+
+.skeleton-slot[data-area="back"] .skeleton-slot-area {
+  background: #4f78b0;
+}
+
+.skeleton-tray-spot[data-area="hips"] {
+  outline-color: #7e62b8;
+  background: #e5def3;
+}
+
+.skeleton-slot[data-area="hips"] .skeleton-slot-area {
+  background: #7e62b8;
+}
+
+.skeleton-tray-spot[data-area="legs"] {
+  outline-color: #2e7d4f;
+  background: #d9ede0;
+}
+
+.skeleton-slot[data-area="legs"] .skeleton-slot-area {
+  background: #2e7d4f;
+}
+
+.skeleton-tray-spot[data-area="tail"] {
+  outline-color: #b5487a;
+  background: #f4dce8;
+}
+
+.skeleton-slot[data-area="tail"] .skeleton-slot-area {
+  background: #b5487a;
+}
+
 /* A piece let go floats back to its spot in the tray, and one that fits
    slides into exact alignment with its slot, each from where it was let
    go. With reduced motion it does not travel: it fades in where it
@@ -5716,6 +5789,60 @@ body:has(.result) #version {
 
 [data-theme="dark"] .skeleton-lifted {
   filter: drop-shadow(0 18px 24px #00000066);
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="head"] {
+  outline-color: #e57a5d;
+  background: #3d2620;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="head"] .skeleton-slot-area {
+  background: #e57a5d;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="neck"] {
+  outline-color: #f2b24b;
+  background: #3b3120;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="neck"] .skeleton-slot-area {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="back"] {
+  outline-color: #7fa3d9;
+  background: #1f2e48;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="back"] .skeleton-slot-area {
+  background: #7fa3d9;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="hips"] {
+  outline-color: #a68be0;
+  background: #2c2545;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="hips"] .skeleton-slot-area {
+  background: #a68be0;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="legs"] {
+  outline-color: #63c98c;
+  background: #1e3429;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="legs"] .skeleton-slot-area {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .skeleton-tray-spot[data-area="tail"] {
+  outline-color: #e07ba8;
+  background: #3d2232;
+}
+
+[data-theme="dark"] .skeleton-slot[data-area="tail"] .skeleton-slot-area {
+  background: #e07ba8;
 }
 
 [data-theme="dark"] .skeleton-slot[data-target] {
