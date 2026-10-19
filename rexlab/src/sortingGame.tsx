@@ -136,7 +136,7 @@ export function useSortingGame(
             {...presentSortingResult(screen.result)}
             hero={bodyPicture(HERO)}
             level={level}
-            onChoose={chooseLevel}
+            onLevel={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
           />

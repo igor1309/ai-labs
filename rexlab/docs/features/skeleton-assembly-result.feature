@@ -5,6 +5,7 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
 
   Scenario: The final bone reveals the dinosaur
     Given three of the four pieces are fitted

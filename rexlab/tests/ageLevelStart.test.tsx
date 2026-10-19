@@ -96,21 +96,15 @@ function openApp(storage: MemoryStorage) {
 const button = (name: string) => screen.getByRole("button", { name });
 const group = () => screen.getByRole("group", { name: "DINOSAURS" });
 
-const firstDinosaur = () => {
-  const [first] = within(group()).getAllByRole("button");
-  if (!first) throw new Error("No dinosaur to choose");
-  return first;
-};
-
 // Games with only Hatchling retain their play at every age level
-// (age-level-start.feature). Sorting has its own levels and flow tests.
-// Each game, by its tile, and the taps that take it from its
+// (age-level-start.feature). Sorting and the skeleton game have their own
+// levels and flow tests. Each game, by its tile, and the taps that take
+// it from its
 // first screen into play.
 const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]> = [
   ["the compare quiz", "COMPARE", []],
   ["the catalogue", "ALL DINOSAURS", []],
-  ["the care game", "CARE", [() => button("NEW VISITOR")]],
-  ["the skeleton game", "SKELETONS", [firstDinosaur]]
+  ["the care game", "CARE", [() => button("NEW VISITOR")]]
 ];
 
 // What the app shows at each step from its tile into play, and what it

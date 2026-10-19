@@ -15,7 +15,6 @@ import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
 import { pictureStore } from "./Picture.tsx";
-import { PIECES } from "./skeletons/index.ts";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -119,11 +118,7 @@ export function appProps(browser: Browser): AppProps {
     pairsProgress: localPairsProgress(storage),
     itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),
     skeletons,
-    skeletonPicture: skeletonPictures(
-      SKELETON_PICTURES,
-      skeletons.map(({ id }) => id),
-      ["skeleton", ...PIECES]
-    ),
+    skeletonPicture: skeletonPictures(SKELETON_PICTURES, Object.fromEntries(skeletons.map(({ id, cuts }) => [id, ["skeleton", ...Object.values(cuts).flatMap((cut) => cut.map((piece) => piece.id))]]))),
     skeletonProgress: localSkeletonProgress(storage),
     reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
     now: () => new Date(browser.Date.now()),

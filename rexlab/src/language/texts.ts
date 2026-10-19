@@ -128,16 +128,20 @@ export type Texts = {
   skeletons: string;
   skeletonTitle: string;
   museum: string;
-  // The skeleton being built, its tray of bones and each bone by its name.
+  // The skeleton being built and its tray of bones.
   skeleton: string;
   bones: string;
-  pieces: { skull: string; spine: string; legs: string; tail: string };
   // The bones fitted so far, read out on their chip.
   fitted: string;
+  // The line that says whose bone another dinosaur's bone in the tray
+  // is, by its name, once it is dropped.
+  otherBone: (name: string) => string;
   // The star a finished skeleton earns, read out on its badge, and the
   // way back to the choice of dinosaurs.
   star: string;
   buildAnother: string;
+  // A level badge's name.
+  badges: { explorer: string; paleontologist: string };
   // The museum's stands, and a stand's ways to build its skeleton: the
   // first time, again from the start once it stands there, and on once it
   // has been knocked down.

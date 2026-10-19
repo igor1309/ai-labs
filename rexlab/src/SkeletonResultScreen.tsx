@@ -4,6 +4,7 @@ import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
+import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
 import { CelebrationChip, type Celebration } from "./ResultParts.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
@@ -30,6 +31,9 @@ export type SkeletonResultScreenProps = {
   // This skeleton earned its dinosaur's star, which pops in; a skeleton
   // built again shows the star it already had.
   newStar: boolean;
+  // The level badge this skeleton earned, built without help's last step,
+  // shown by its name.
+  badge: ShownBadge | undefined;
   onBuildAnother: () => void;
   onMuseum: () => void;
   onHome: () => void;
@@ -48,6 +52,7 @@ export function SkeletonResultScreen({
   beaten,
   celebration,
   newStar,
+  badge,
   onBuildAnother,
   onMuseum,
   onHome
@@ -88,6 +93,12 @@ export function SkeletonResultScreen({
             </span>
             {celebration && <CelebrationChip language={language} celebration={celebration} />}
           </div>
+          {badge && (
+            <p className="skeleton-badge-earned">
+              <LevelBadge language={language} badge={badge} />
+              <span aria-hidden="true">{text.badges[badge]}</span>
+            </p>
+          )}
           <h2 className="skeleton-reveal-name">{shownName}</h2>
           <p className="skeleton-fact">
             <Lightbulb size={28} aria-hidden="true" />

@@ -1,9 +1,11 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PIECES, type Piece } from "../src/skeletons/index.ts";
 import { SNAP } from "../src/SkeletonPuzzleScreen.tsx";
 import {
   AWAY,
+  PIECES,
+  placeOf,
+  type Piece,
   BOARD_AT,
   board,
   cancel,
@@ -55,7 +57,7 @@ describe("picking up a bone", () => {
 
   it("draws the piece pressed under the finger at its size on the board, the right way up, and moves it with the finger alone", async () => {
     await openPuzzle("TYRANNOSAURUS");
-    const { width, height } = TYRANNOSAURUS.places.spine;
+    const { width, height } = placeOf(TYRANNOSAURUS, "spine");
     const scale = BOARD_AT.width / TYRANNOSAURUS.frame.width;
 
     pickUp("spine");

@@ -1,8 +1,8 @@
 import { ChartNoAxesColumnIncreasing, Copy, Footprints, House, Play, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
-import { AgeLevelSwitch } from "./AgeLevelSwitch.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
@@ -71,7 +71,7 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
               {stars}
             </p>
           </div>
-          <AgeLevelSwitch language={language} level={level} onChoose={onLevel} />
+          <LevelSwitch language={language} level={level} onLevel={onLevel} />
           <button type="button" className="card pairs-play-button" onClick={onPlay} {...playPointer}>
             <Play size={44} aria-hidden="true" />
             {text.play}

@@ -1,8 +1,8 @@
 Feature: Skeleton assembly: choosing a dinosaur
   A child builds a dinosaur from large bone pieces, then keeps it in a
-  museum. The MVP uses the first difficulty level: a full outline and
-  four pieces, already the right way up. Digging, rotation, mystery
-  skeletons and odd bones belong to later levels.
+  museum. These scenarios are its Hatchling mode: a full outline and
+  four pieces, already the right way up (skeleton-assembly-levels.feature).
+  Digging, mystery skeletons and odd bones belong to later issues.
 
   Background:
     Given an iPad in landscape

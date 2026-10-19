@@ -107,7 +107,7 @@ async function result(session: Session, label: "PLAY" | "PLAY AGAIN", level: Boa
 
 const asked = () => screen.queryByRole("dialog")?.querySelector("h2")?.textContent ?? null;
 const savedOffer = (session: Session) => (storedPairs(session.storage) as StoredPairs).offer;
-const chosen = () => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getAllByRole("button", { pressed: true }).map((level) => level.querySelector(".pairs-level-name")?.textContent);
+const chosen = () => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getAllByRole("button", { pressed: true }).map((level) => level.querySelector(".level-switch-name")?.textContent);
 
 // Home and back to find the pair's welcome screen.
 async function toWelcome(session: Session) {

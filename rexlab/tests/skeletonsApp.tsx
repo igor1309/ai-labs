@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
 import { isLanguage } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -28,10 +29,9 @@ import {
   type ManualPictures,
   type ManualVisibility,
   type MemoryStorage,
-  unsetAgeLevel,
   loadShownPictures
 } from "./support.ts";
-import { PIECES, type Piece, type Skeleton } from "../src/skeletons/index.ts";
+import type { Place, Skeleton } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
 
 export type SkeletonsAppOptions = {
@@ -48,6 +48,15 @@ export type SkeletonsAppOptions = {
   appearance?: Theme;
   // Told each game whose start the app counts.
   startCounter?: AppProps["startCounter"];
+  // Where the parent's age level is kept, apart from progress, so a test
+  // that blocks progress still has the level it gives; none picked by
+  // default.
+  ageLevels?: MemoryStorage;
+  // The skeletons to build, the shipped ones by default.
+  skeletons?: readonly Skeleton[];
+  // The app's random source, always 0 by default: nothing drawn turns a
+  // piece.
+  random?: () => number;
   // Whether the home page's pictures load as it opens; if not, they load
   // only when the test finishes them.
   loadHome?: boolean;
@@ -64,13 +73,16 @@ export function openHomeApp({
   reducedMotion = false,
   appearance = "light",
   startCounter,
-  loadHome = true
+  ageLevels = memoryStorage(),
+  skeletons = SHIPPED_SKELETONS,
+  loadHome = true,
+  random = () => 0
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS,
     catalogue: SHIPPED_CATALOGUE,
     bodyPicture: fakeBodyPicture,
-    random: () => 0,
+    random,
     orientation,
     pageVisibility: visibility,
     progress: localProgress(() => storage),
@@ -79,7 +91,7 @@ export function openHomeApp({
     nameVersion: unreadVersion,
     appearance: manualAppearance(appearance),
     themeStore: localTheme(() => storage),
-    ...unsetAgeLevel(),
+    ageLevelStore: localAgeLevel(() => ageLevels),
     visitors: SHIPPED_VISITORS,
     careProgress: localCareProgress(() => storage),
     itemPicture: fakeItemPicture,
@@ -87,7 +99,7 @@ export function openHomeApp({
     pairsProgress: localPairsProgress(() => storage),
     sortables: SHIPPED_SORTABLES,
     sortingProgress: localSortingProgress(() => storage),
-    skeletons: SHIPPED_SKELETONS,
+    skeletons,
     skeletonPicture: fakeSkeletonPicture,
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
@@ -95,15 +107,20 @@ export function openHomeApp({
     ...(startCounter && { startCounter }),
     ...pictures
   };
-  render(<App {...props} />);
+  const view = render(<App {...props} />);
   if (loadHome) loadShownPictures(pictures);
-  return { user: userEvent.setup(), storage, pictures, orientation, visibility };
+  return { user: userEvent.setup(), storage, pictures, orientation, visibility, ageLevels, unmount: view.unmount };
 }
 
+// The age level a parent picked as Hatchling, whose puzzle of four pieces
+// the skeleton tests not about the levels play.
+export const hatchlingLevel = () => memoryStorage({ [AGE_LEVEL_KEY]: JSON.stringify({ level: "hatchling", revision: "hatchling" }) });
+
 // The app opened on the skeleton game's choice of dinosaurs by its home
-// tile, its pictures loading only when the test finishes them.
+// tile, its pictures loading only when the test finishes them, at
+// Hatchling unless the test gives its own age level.
 export function openSkeletonsApp(options: SkeletonsAppOptions = {}) {
-  const opened = openHomeApp(options);
+  const opened = openHomeApp({ ageLevels: hatchlingLevel(), ...options });
   fireEvent.click(screen.getByRole("button", { name: shownTexts().skeletons }));
   return opened;
 }
@@ -169,10 +186,24 @@ export function layOutPuzzle() {
 
 export type At = { clientX: number; clientY: number };
 
+// Hatchling's pieces, in their order in the tray.
+export const PIECES = ["skull", "spine", "legs", "tail"] as const;
+export type Piece = (typeof PIECES)[number];
+
+// Where a piece of any of its skeleton's cuts fits in its frame: a piece
+// two cuts share fits at one place.
+export function placeOf(skeleton: Skeleton, piece: string): Place {
+  const found = Object.values(skeleton.cuts)
+    .flat()
+    .find(({ id }) => id === piece);
+  if (found === undefined) throw new Error(`${skeleton.id} has no ${piece}`);
+  return found.place;
+}
+
 // Where on the screen a piece's centre sits in its home, moved by `dx`
 // and `dy` CSS pixels.
-export function homeOf(skeleton: Skeleton, piece: Piece, dx = 0, dy = 0): At {
-  const { x, y, width, height } = skeleton.places[piece];
+export function homeOf(skeleton: Skeleton, piece: string, dx = 0, dy = 0): At {
+  const { x, y, width, height } = placeOf(skeleton, piece);
   const scale = BOARD_AT.width / skeleton.frame.width;
   return { clientX: BOARD_AT.left + (x + width / 2) * scale + dx, clientY: BOARD_AT.top + (y + height / 2) * scale + dy };
 }
@@ -183,13 +214,13 @@ export const AWAY: At = { clientX: 1000, clientY: 860 };
 // Each spot in the tray, in order.
 export const spots = () => [...tray().querySelectorAll<HTMLElement>(".skeleton-tray-spot")];
 
-export const spotOf = (piece: Piece) => {
+export const spotOf = (piece: string) => {
   const spot = tray().querySelector<HTMLElement>(`.skeleton-tray-spot[data-piece="${piece}"]`);
   if (!spot) throw new Error(`The tray has no spot for the ${piece}`);
   return spot;
 };
 
-export const slotOf = (piece: Piece) => {
+export const slotOf = (piece: string) => {
   const slot = board().querySelector<HTMLElement>(`.skeleton-slot[data-piece="${piece}"]`);
   if (!slot) throw new Error(`The board has no slot for the ${piece}`);
   return slot;
@@ -221,7 +252,7 @@ export const release = (at: At, pointerId = 1) => point("pointerup", document.bo
 export const cancel = (at: At, pointerId = 1) => point("pointercancel", document.body, at, pointerId);
 
 // Picks a piece up from its spot in the tray and lets it go at `at`.
-export function dragTo(piece: Piece, at: At, pointerId = 1) {
+export function dragTo(piece: string, at: At, pointerId = 1) {
   const spot = spotOf(piece);
   const { left, top } = spot.getBoundingClientRect();
   press(spot, { clientX: left + 40, clientY: top + 40 }, pointerId);
@@ -229,13 +260,27 @@ export function dragTo(piece: Piece, at: At, pointerId = 1) {
   release(at, pointerId);
 }
 
-// Fits a piece in its home, dropped right on it.
-export const fit = (skeleton: Skeleton, piece: Piece) => dragTo(piece, homeOf(skeleton, piece));
+// Taps a piece in its spot in the tray: a press let go where it pressed.
+export function tap(piece: string) {
+  const spot = spotOf(piece);
+  const { left, top } = spot.getBoundingClientRect();
+  const at = { clientX: left + 40, clientY: top + 40 };
+  press(spot, at);
+  release(at);
+}
 
-// Fits every piece of a skeleton, `last` the last of them.
-export function fitAll(skeleton: Skeleton, last: Piece = "tail") {
-  for (const piece of PIECES.filter((each) => each !== last)) fit(skeleton, piece);
-  fit(skeleton, last);
+// Fits a piece in its home, dropped right on it.
+export const fit = (skeleton: Skeleton, piece: string) => dragTo(piece, homeOf(skeleton, piece));
+
+// The pieces in the tray's spots, in its order, whatever the cut.
+export const spotPieces = () => spots().map((spot) => spot.getAttribute("data-piece") ?? "");
+
+// Fits every piece in the tray, `last` the last of them when the cut has
+// it.
+export function fitAll(skeleton: Skeleton, last: string = "tail") {
+  const pieces = spotPieces();
+  for (const piece of pieces.filter((each) => each !== last)) fit(skeleton, piece);
+  if (pieces.includes(last)) fit(skeleton, last);
 }
 
 // The reveal of a finished skeleton, or null while it is not shown.
