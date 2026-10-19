@@ -34,9 +34,10 @@ an approximate age level next to the theme and language controls
   offer down at that level: from then on it takes 5 strong rounds in a
   row there, not 3, until "YES" is tapped there; other levels keep 3.
   Showing the card, a round that is not strong, or a round at another
-  level starts the count again. Each game says what a strong round is in
-  its own offer feature. Nothing moves a child down, and no words say a
-  round went badly; a game's top level offers nothing.
+  level starts the count again. Each game with an offer says what a strong
+  round is in its own offer feature; the sorting game has none
+  (LAB-295). Nothing moves a child down, and no words say a round went
+  badly; a game's top level offers nothing.
 - **Demote, never delete.** A game made harder keeps its current behaviour
   as its easiest level; the rule is in `../AGENTS.md`.
 

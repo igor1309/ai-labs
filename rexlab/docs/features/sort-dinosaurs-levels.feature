@@ -65,10 +65,11 @@ Feature: Sort dinosaurs: age levels
 
   Scenario: A third basket holds only what the sources say
     Given the dinosaur list the app ships with
-    Then BOTH holds exactly the dinosaurs that eat plants and meat
-    And TWO OR FOUR holds exactly those the sources say walked on two legs or four
-    And NOT KNOWN YET holds exactly the meat-eaters and omnivores drawn without feathers whose feathers are unknown
-    And a dinosaur left unclear for another reason, such as Spinosaurus's legs, is on no board of that property
+    Then BOTH holds exactly Gallimimus, Oviraptor and Troodon, and no two-basket diet board deals them
+    And TWO OR FOUR holds exactly Iguanodon, Plateosaurus, Parasaurolophus, Edmontosaurus, Maiasaura and Corythosaurus
+    And NOT KNOWN YET holds exactly Spinosaurus, Compsognathus, Gallimimus, Dilophosaurus, Giganotosaurus, Coelophysis, Baryonyx and Ceratosaurus
+    And Tyrannosaurus, whose skin shows scales, goes in NO FEATHERS
+    And the legs of Spinosaurus and Psittacosaurus and the feathers of Psittacosaurus and Heterodontosaurus are on no board
 
   Scenario Outline: The result scores the level's cards
     Given the sorting game plays <level>
@@ -82,14 +83,16 @@ Feature: Sort dinosaurs: age levels
 
   Scenario Outline: Three baskets and more cards fit and read in either language and theme
     Given the app is in <language> and uses the <theme> theme
-    When a Paleontologist round sorts by <property> on a 1024 by 768 screen
-    Then the 10 cards and 3 baskets all show with no scrolling
-    And each basket reads "<third>" in full and is at least 48 by 48 CSS pixels to drop on
+    When a <level> round sorts by <property> on a 1024 by 768 screen
+    Then the <cards> cards and 3 baskets all show with no scrolling
+    And every basket's name reads in full, the third basket's "<third>"
+    And each basket is at least 48 by 48 CSS pixels to drop on
     And each name keeps at least 4.5:1 contrast with its background
 
     Examples:
-      | language | theme | property | third           |
-      | English  | light | legs     | TWO OR FOUR     |
-      | English  | dark  | feathers | NOT KNOWN YET   |
-      | Russian  | light | feathers | ПОКА НЕИЗВЕСТНО |
-      | Russian  | dark  | legs     | ДВЕ ИЛИ ЧЕТЫРЕ  |
+      | language | theme | level          | property | cards | third           |
+      | English  | light | Paleontologist | legs     | 10    | TWO OR FOUR     |
+      | English  | dark  | Paleontologist | feathers | 10    | NOT KNOWN YET   |
+      | Russian  | light | Paleontologist | feathers | 10    | ПОКА НЕИЗВЕСТНО |
+      | Russian  | dark  | Paleontologist | legs     | 10    | ДВЕ ИЛИ ЧЕТЫРЕ  |
+      | Russian  | light | Explorer       | diet     | 8     | ВСЁ             |

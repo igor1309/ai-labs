@@ -1,5 +1,7 @@
 Feature: Sort dinosaurs: dragging cards into baskets
   A wrong drop slides back with a hint; a card is right when its first drop on a basket is.
+  Its rounds are Hatchling rounds of six cards; every level plays alike
+  (sort-dinosaurs-levels.feature).
 
   Background:
     Given an iPad in landscape

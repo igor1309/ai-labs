@@ -64033,7 +64033,7 @@
                     {
                       "type": "frame",
                       "id": "AUiyU",
-                      "name": "Sorted TYRANNOSAURUS",
+                      "name": "Sorted GIGANOTOSAURUS",
                       "clip": true,
                       "width": 136,
                       "height": 124,
@@ -64046,7 +64046,7 @@
                         {
                           "type": "frame",
                           "id": "UPuEi",
-                          "name": "Sorted Art TYRANNOSAURUS",
+                          "name": "Sorted Art GIGANOTOSAURUS",
                           "width": "fill_container",
                           "height": "fill_container",
                           "padding": 6,
@@ -64054,13 +64054,13 @@
                             {
                               "type": "frame",
                               "id": "L3usf0",
-                              "name": "Sorted Picture TYRANNOSAURUS",
+                              "name": "Sorted Picture GIGANOTOSAURUS",
                               "width": "fill_container",
                               "height": "fill_container",
                               "fill": {
                                 "type": "image",
                                 "enabled": true,
-                                "url": "images/tyrannosaurus.webp",
+                                "url": "images/giganotosaurus.webp",
                                 "mode": "contain"
                               }
                             },
@@ -64070,7 +64070,7 @@
                               "layoutPosition": "absolute",
                               "x": 6,
                               "y": 6,
-                              "name": "Sorted Mark TYRANNOSAURUS",
+                              "name": "Sorted Mark GIGANOTOSAURUS",
                               "width": 28,
                               "height": 28,
                               "fill": "$fm-good",
@@ -64081,7 +64081,7 @@
                                 {
                                   "type": "icon",
                                   "id": "QFpUW",
-                                  "name": "Sorted Check TYRANNOSAURUS",
+                                  "name": "Sorted Check GIGANOTOSAURUS",
                                   "width": 18,
                                   "height": 18,
                                   "icon": "check",
@@ -64095,7 +64095,7 @@
                         {
                           "type": "frame",
                           "id": "axGdA",
-                          "name": "Sorted Footer TYRANNOSAURUS",
+                          "name": "Sorted Footer GIGANOTOSAURUS",
                           "width": "fill_container",
                           "padding": [
                             4,
@@ -64106,9 +64106,9 @@
                             {
                               "type": "text",
                               "id": "Zk4Lv",
-                              "name": "Sorted Name TYRANNOSAURUS",
+                              "name": "Sorted Name GIGANOTOSAURUS",
                               "fill": "$fm-ink",
-                              "content": "TYRANNOSAURUS",
+                              "content": "GIGANOTOSAURUS",
                               "fontFamily": "Lexend",
                               "fontSize": 12,
                               "fontWeight": "700"

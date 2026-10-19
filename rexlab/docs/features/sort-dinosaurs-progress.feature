@@ -1,6 +1,6 @@
 Feature: Sort dinosaurs: stored progress
-  The sorting game keeps a best score and a count of finished rounds of
-  its own, beside the compare quiz's, in the browser, with a best for
+  The sorting game keeps a best score and a count of finished rounds,
+  one count across all its levels, of its own, beside the compare quiz's, in the browser, with a best for
   each level and the child's choice on the level switch
   (sort-dinosaurs-level-switch.feature).
 
@@ -51,6 +51,7 @@ Feature: Sort dinosaurs: stored progress
 
   Scenario: The game works when storage cannot be read
     Given the browser cannot read stored progress
+    And the sorting game plays Hatchling
     When I finish a round of the sorting game with 4 right
     Then I see "4/6"
     And I see no best score

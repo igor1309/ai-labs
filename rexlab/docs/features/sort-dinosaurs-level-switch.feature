@@ -4,7 +4,8 @@ Feature: Sort dinosaurs: the level switch and its progress
   screen shows the level switch above "PLAY AGAIN", the child's own
   choice in this game (age-level-choice.feature), kept in the game's
   progress (sort-dinosaurs-progress.feature). Each level keeps its own
-  best (docs/age-levels.md).
+  best (docs/age-levels.md). It has no level offer: a child moves up on
+  the switch, and the offer stays with find the pair (owner, LAB-295).
 
   Background:
     Given an iPad in landscape
@@ -70,10 +71,10 @@ Feature: Sort dinosaurs: the level switch and its progress
       | Explorer       | 5     | no celebration                 | 6    |
       | Paleontologist | 3     | a first best score celebration | 3    |
 
-  Scenario: The SORT tile shows the best of the level the game plays
+  Scenario: The SORT tile and the featured SORT card show the level's best
     Given my Hatchling best is 5 and my Explorer best is 7
     When the sorting game plays Explorer
-    Then the "SORT" card on the home page shows 7
+    Then the "SORT" tile shows 7, and so does the large card on a day it features SORT
 
   Scenario: A best saved before levels is the Hatchling best
     Given my sorting best of 5 was saved before the game had levels
@@ -83,8 +84,8 @@ Feature: Sort dinosaurs: the level switch and its progress
 
   Scenario Outline: The level switch fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
-    When I see the sorting result on a 1024 by 768 screen
-    Then the switch, "PLAY AGAIN" and "HOME" all show with no scrolling
+    When I see a Paleontologist result with a new best on a 1024 by 768 screen
+    Then its 10 stars, the switch, "PLAY AGAIN" and "HOME" all show with no scrolling
     And the switch reads <names>, each on one line, at 4.5:1 contrast
 
     Examples:
