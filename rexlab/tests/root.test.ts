@@ -90,13 +90,13 @@ describe("the app in a browser", () => {
     const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
     const props = appProps(given);
 
-    props.sortingProgress.save({ bestScore: 5, roundsPlayed: 2 });
+    props.sortingProgress.save({ progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 2 }, levelChoice: undefined });
 
     expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({
       schemaVersion: 1,
-      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 } }
+      games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "sort-dinosaurs": { explorerBest: null, paleontologistBest: null, bestScore: 5, roundsPlayed: 2 } }
     });
-    expect(appProps(given).sortingProgress.load()).toEqual({ bestScore: 5, roundsPlayed: 2 });
+    expect(appProps(given).sortingProgress.load()).toEqual({ progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 2 }, levelChoice: undefined });
   });
 
   it("keeps the skeleton game's stars, best and stands awaiting rebuild beside the other games' progress in local storage", () => {

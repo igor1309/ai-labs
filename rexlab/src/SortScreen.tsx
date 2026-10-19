@@ -13,6 +13,10 @@ const Horn = createLucideIcon("horn", [["path", { d: "M5 20C5 12 11 5 19 3C14 7 
 // in pixels.
 const DRAG_START = 8;
 
+// The most cards the tray lays out in one row; more go in two rows of
+// equal length, so eight cards on a 1024-wide screen still read.
+const ROW_CARDS = 6;
+
 export type SortCardView = {
   id: string;
   name: string;
@@ -35,7 +39,8 @@ export type SortScreenProps = {
   // The tray's places, in order: a card still to sort, or null where a
   // sorted card was, so the other cards never move.
   tray: ReadonlyArray<SortCardView | null>;
-  baskets: readonly [BasketView, BasketView];
+  // Two baskets, or three where the level adds one.
+  baskets: readonly [BasketView, BasketView] | readonly [BasketView, BasketView, BasketView];
   sorted: number;
   total: number;
   // The right basket of the last wrong drop, which glows for a moment;
@@ -64,6 +69,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   // A drag has just ended, so the click it ends with is not a tap.
   const dragged = useRef(false);
   const basketElements = useRef(new Map<Basket, HTMLElement>());
+  const rows = tray.length > ROW_CARDS ? 2 : 1;
 
   const holdCard = (next: Hold | undefined) => {
     hold.current = next;
@@ -143,7 +149,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   return (
     // A tap anywhere else, such as an empty slot or the space between,
     // puts the picked card down.
-    <main className="sort" onClick={() => setPicked(undefined)}>
+    <main className="sort" data-rows={rows} onClick={() => setPicked(undefined)}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="sort-bar">
         <button type="button" className="home-button" onClick={onHome}>
@@ -164,7 +170,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
         {text.sortPrompt}
       </h1>
       <div className="sort-tray-area">
-        <div className="sort-tray" role="group" aria-label={text.dinosaurs}>
+        <div className="sort-tray" role="group" aria-label={text.dinosaurs} style={{ "--columns": Math.ceil(tray.length / rows) } as CSSProperties}>
           {tray.map((card, place) => {
             if (!card) return <span key={`slot-${place}`} className="sort-slot" />;
             const back = returns[card.id];
@@ -213,7 +219,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
           </button>
         )}
       </div>
-      <div className="baskets">
+      <div className="baskets" data-count={baskets.length}>
         {baskets.map(({ basket, cards }, place) => (
           <button
             key={basket}
@@ -270,8 +276,9 @@ function Name({ name, language, className }: { name: string; language: Language;
 }
 
 // Each basket's symbol, as the design draws it: the number of legs beside
-// footprints, a big or a small footprint for size, and a horn or a
-// feather crossed out for none.
+// footprints, a big or a small footprint for size, a horn or a feather
+// crossed out for none, and for the third basket a leaf with a drumstick,
+// both leg counts, or a feather with a question mark.
 function BasketSymbol({ basket, size }: { basket: Basket; size: number }) {
   const cross = <path className="cross" d="m2 2 20 20" />;
   switch (basket) {
@@ -299,5 +306,26 @@ function BasketSymbol({ basket, size }: { basket: Basket; size: number }) {
       return <Feather size={size} />;
     case "no-feathers":
       return <Feather size={size}>{cross}</Feather>;
+    case "both":
+      return (
+        <>
+          <Leaf size={Math.round(size * 0.75)} />
+          <Drumstick size={Math.round(size * 0.75)} />
+        </>
+      );
+    case "two-or-four":
+      return (
+        <>
+          <span className="legs-count">2 4</span>
+          <Footprints size={size} />
+        </>
+      );
+    case "not-known-yet":
+      return (
+        <>
+          <Feather size={size} />
+          <span className="mark-question">?</span>
+        </>
+      );
   }
 }

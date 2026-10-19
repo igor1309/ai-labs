@@ -1,4 +1,5 @@
 import { House, RotateCcw } from "lucide-react";
+import type { ReactNode } from "react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -21,14 +22,17 @@ export type ResultScreenProps = {
   celebration: Celebration | null;
   // The picture of the dinosaur cheering the child on.
   hero: string;
+  // A game's level choice, above the actions; the round's reward stays
+  // the same while the caller chooses the next level.
+  levelSwitch?: ReactNode;
   onPlayAgain: () => void;
   onHome: () => void;
 };
 
-export function ResultScreen({ language, score, total, best, beaten, celebration, hero, onPlayAgain, onHome }: ResultScreenProps) {
+export function ResultScreen({ language, score, total, best, beaten, celebration, hero, levelSwitch, onPlayAgain, onHome }: ResultScreenProps) {
   const text = TEXTS[language];
   return (
-    <main className="result">
+    <main className={levelSwitch ? "result result-with-levels" : "result"}>
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
       <Picture className="result-hero" src={hero} alt="" width={800} height={600} />
@@ -45,6 +49,7 @@ export function ResultScreen({ language, score, total, best, beaten, celebration
         </p>
         <h1 className="result-title">{text.wellDone}</h1>
         {best !== undefined && <BestScore language={language} best={best} beaten={beaten} />}
+        {levelSwitch}
         <nav className="result-actions">
           <button type="button" className="play-again-button" onClick={onPlayAgain}>
             <RotateCcw size={28} aria-hidden="true" />

@@ -32,7 +32,43 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
-  return gameProgress<SortingProgress>(storage, "sort-dinosaurs", NO_SORTING, readRounds);
+  const entry = gameProgress<StoredSorting>(storage, "sort-dinosaurs", storedSorting(NO_SORTING, undefined), readSorting);
+  return {
+    load(): { progress: SortingProgress; levelChoice: LevelChoice | undefined } | undefined {
+      const stored = entry.load();
+      if (stored === undefined) return undefined;
+      const { bestScore, explorerBest, paleontologistBest, roundsPlayed, levelChoice } = stored;
+      return { progress: { best: { hatchling: bestScore, explorer: explorerBest, paleontologist: paleontologistBest }, roundsPlayed }, levelChoice };
+    },
+
+    save({ progress, levelChoice }: { progress: SortingProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save(storedSorting(progress, levelChoice));
+    }
+  };
+}
+
+// The original bestScore field stays Hatchling's so progress saved before
+// levels keeps its meaning; the other levels have their own fields.
+type StoredSorting = {
+  bestScore: number | null;
+  explorerBest: number | null;
+  paleontologistBest: number | null;
+  roundsPlayed: number;
+  levelChoice?: LevelChoice;
+};
+
+function storedSorting({ best, roundsPlayed }: SortingProgress, levelChoice: LevelChoice | undefined): StoredSorting {
+  return { bestScore: best.hatchling, explorerBest: best.explorer, paleontologistBest: best.paleontologist, roundsPlayed, ...(levelChoice && { levelChoice }) };
+}
+
+function readSorting(entry: Entry): StoredSorting | undefined {
+  const rounds = readRounds(entry);
+  const { explorerBest = null, paleontologistBest = null, levelChoice } = entry;
+  if (!rounds || !(explorerBest === null || isCount(explorerBest)) || !(paleontologistBest === null || isCount(paleontologistBest))) return undefined;
+  const progress = { ...rounds, explorerBest, paleontologistBest };
+  if (levelChoice === undefined) return progress;
+  const choice = choiceOf(levelChoice);
+  return choice && { ...progress, levelChoice: choice };
 }
 
 // The best score and finished rounds of a game that keeps only those.

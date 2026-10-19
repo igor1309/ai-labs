@@ -248,10 +248,10 @@ func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, discard); got.Class != "auth" {
+	if got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, "", discard); got.Class != "auth" {
 		t.Errorf("b gave %+v, want codex's answer", got)
 	}
-	if got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard); got.Status != "completed" {
+	if got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", discard); got.Status != "completed" {
 		t.Errorf("a gave %+v, want bash's answer", got)
 	}
 	if len(bashSpy.steps) != 1 || bashSpy.steps[0].Prompt != "b" || len(codexSpy.steps) != 1 || codexSpy.steps[0].Prompt != "c" {

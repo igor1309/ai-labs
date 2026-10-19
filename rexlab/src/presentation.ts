@@ -33,6 +33,7 @@ import {
   type SkeletonResult,
   type StandState
 } from "./skeletons/index.ts";
+import { bestForLevel } from "./sorting/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
@@ -172,7 +173,10 @@ const BASKETS: Record<SortBasket, ShownBasket> = {
   horns: "horns",
   "no-horns": "no-horns",
   feathers: "feathers",
-  "no-feathers": "no-feathers"
+  "no-feathers": "no-feathers",
+  both: "both",
+  "two-or-four": "two-or-four",
+  "not-known-yet": "not-known-yet"
 };
 
 const DROPPED = Object.fromEntries(Object.entries(BASKETS).map(([basket, shown]) => [shown, basket])) as Record<ShownBasket, SortBasket>;
@@ -189,14 +193,14 @@ export type BoardView = Pick<SortScreenProps, "tray" | "baskets" | "sorted" | "t
 export function presentBoard(board: BoardState, language: Language, bodyPicture: (dinosaurId: string) => string): BoardView {
   const { cards, landed, lastMiss } = board;
   const card = ({ dinosaur }: CardState) => ({ id: dinosaur.id, name: dinosaur.name[language], picture: bodyPicture(dinosaur.id) });
-  const [first, second] = board.baskets.map((basket) => ({
+  const [first, second, third] = board.baskets.map((basket) => ({
     basket: BASKETS[basket],
     cards: landed.filter((each) => each.basket === basket).map(card)
   }));
-  if (!first || !second) throw new Error("A board has two baskets");
+  if (!first || !second) throw new Error("A board has two or three baskets");
   return {
     tray: cards.map((each) => (each.landed ? null : { ...card(each), hint: each.missed ? BASKETS[each.basket] : undefined })),
-    baskets: [first, second],
+    baskets: third ? [first, second, third] : [first, second],
     sorted: landed.length,
     total: cards.length,
     glow: lastMiss && { basket: BASKETS[lastMiss.basket], count: lastMiss.misses }
@@ -206,8 +210,8 @@ export function presentBoard(board: BoardState, language: Language, bodyPicture:
 const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
 // A finished board shows on the quiz's result screen, a star for each card.
-export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
+export function presentSortingResult({ level, score, total, progress, previousBest, celebration }: SortingResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForLevel(progress, level) ?? undefined, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
 }
 
 const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };

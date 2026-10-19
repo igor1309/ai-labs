@@ -93,10 +93,10 @@ describe("readSortables", () => {
   // answer, and each food type, "both" among them.
   it.each([
     ...(["meat", "plants", "both"] as const).map((diet) => ["diet", { diet }, { diet }] as const),
-    ...([2, 4, null] as const).map((legs) => ["legs", { traits: { ...STEGOSAURUS.traits, legs } }, { legs }] as const),
+    ...([2, 4, "either", null] as const).map((legs) => ["legs", { traits: { ...STEGOSAURUS.traits, legs } }, { legs }] as const),
     ...(["big", "small", null] as const).map((size) => ["size", { traits: { ...STEGOSAURUS.traits, size } }, { size }] as const),
     ...([true, false, null] as const).map((horns) => ["horns", { traits: { ...STEGOSAURUS.traits, horns } }, { horns }] as const),
-    ...([true, false, null] as const).map((feathers) => ["feathers", { traits: { ...STEGOSAURUS.traits, feathers } }, { feathers }] as const)
+    ...([true, false, "unknown", null] as const).map((feathers) => ["feathers", { traits: { ...STEGOSAURUS.traits, feathers } }, { feathers }] as const)
   ])("reads %s as the record gives it: %j", (_, change, read) => {
     expect(readSortables([{ ...STEGOSAURUS, ...change }])).toEqual([{ ...STEGOSAURUS_SORTABLE, ...read }]);
   });
@@ -310,5 +310,20 @@ describe("the shipped dinosaur list", () => {
       expect(name).toMatch(word);
     }
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+// The explicit values and exclusions of docs/sources.md (LAB-295).
+describe("the sorting traits in the shipped sources", () => {
+  const ids = (test: (dinosaur: Sortable) => boolean) => SHIPPED_SORTABLES.filter(test).map(({ id }) => id).sort();
+  it("names exactly the omnivores, dinosaurs that walked either way, and unsettled feathers", () => {
+    expect(ids(({ diet }) => diet === "both")).toEqual(["gallimimus", "oviraptor", "troodon"]);
+    expect(ids(({ legs }) => legs === "either")).toEqual(["corythosaurus", "edmontosaurus", "iguanodon", "maiasaura", "parasaurolophus", "plateosaurus"]);
+    expect(ids(({ feathers }) => feathers === "unknown")).toEqual(["baryonyx", "ceratosaurus", "coelophysis", "compsognathus", "dilophosaurus", "gallimimus", "giganotosaurus", "spinosaurus", "tyrannosaurus"]);
+    expect(ids(({ feathers, diet }) => feathers === false && diet !== "plants")).toEqual(["allosaurus", "carnotaurus"]);
+  });
+  it("keeps ambiguous posture and bristles off the corresponding boards", () => {
+    expect(ids(({ legs }) => legs === null)).toEqual(["psittacosaurus", "spinosaurus"]);
+    expect(ids(({ feathers }) => feathers === null)).toEqual(["heterodontosaurus", "psittacosaurus"]);
   });
 });

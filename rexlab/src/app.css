@@ -3290,8 +3290,8 @@ body:has(.result) #version {
   font-size: 28px;
 }
 
-/* The sorting board: the prompt, a tray of six cards and the two
-   baskets, which take what is left of the screen. */
+/* The sorting board: the prompt, a tray of six to ten cards and the two or
+   three baskets, which take what is left of the screen. */
 .sort {
   position: relative;
   isolation: isolate;
@@ -3324,15 +3324,27 @@ body:has(.result) #version {
   height: 230px;
 }
 
+/* Ten cards go in two rows of five, which take more of the height. */
+.sort[data-rows="2"] .sort-tray-area {
+  height: 252px;
+}
+
+@media (min-height: 860px) {
+  .sort[data-rows="2"] .sort-tray-area {
+    height: 292px;
+  }
+}
+
 .sort-tray {
   height: 100%;
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 12px 16px;
 }
 
 /* A sorted card leaves its slot empty, so the other cards never move. */
 .sort-slot {
-  flex: 1 1 0;
   border-radius: 22px;
   outline: 2px solid #1d27421f;
   outline-offset: -1px;
@@ -3345,7 +3357,6 @@ body:has(.result) #version {
    it was let go. */
 .sort-card {
   position: relative;
-  flex: 1 1 0;
   min-width: 0;
   padding: 0;
   display: flex;
@@ -3433,6 +3444,14 @@ body:has(.result) #version {
   padding: 12px 14px;
 }
 
+.sort[data-rows="2"] .sort-art {
+  padding: 8px;
+}
+
+.sort[data-rows="2"] .sort-footer {
+  padding: 8px 10px;
+}
+
 .sort-name {
   font-size: min(18px, calc(100cqi / (var(--letters) * 0.75)));
   font-weight: 700;
@@ -3486,6 +3505,15 @@ body:has(.result) #version {
 
 .sort-hint .legs-count {
   font-size: 18px;
+}
+
+.mark-question {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.sort-hint .mark-question {
+  font-size: 16px;
 }
 
 .sort-finish {
@@ -3578,6 +3606,71 @@ body:has(.result) #version {
   font-size: 34px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* Three baskets share the row, so each is narrower: a name takes a smaller
+   size and may break between its words rather than be cut off. Ten cards
+   leave the baskets less height, so their marks are smaller too. */
+.baskets[data-count="3"] {
+  gap: 16px;
+}
+
+.baskets[data-count="3"] .basket {
+  padding: 22px;
+}
+
+.baskets[data-count="3"] .basket-name {
+  font-size: 28px;
+  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.baskets[data-count="3"] .basket-mark[data-basket="both"] {
+  gap: 0;
+  padding: 0 6px;
+}
+
+.sort[data-rows="2"] .baskets[data-count="3"] .basket {
+  gap: 12px;
+  padding: 18px 22px;
+}
+
+.sort[data-rows="2"] .baskets[data-count="3"] .basket-name {
+  font-size: 22px;
+}
+
+.sort[data-rows="2"] .basket-mark {
+  min-width: 52px;
+  height: 52px;
+}
+
+.sort[data-rows="2"] .basket-mark .legs-count,
+.sort[data-rows="2"] .basket-mark .mark-question {
+  font-size: 22px;
+}
+
+.sort[data-rows="2"] .basket-mark svg {
+  width: 26px;
+  height: 26px;
+}
+
+@media (min-width: 1280px) {
+  .baskets[data-count="3"] .basket {
+    padding: 22px 28px;
+  }
+
+  .baskets[data-count="3"] .basket-name {
+    font-size: 34px;
+  }
+
+  .sort[data-rows="2"] .baskets[data-count="3"] .basket {
+    padding: 18px 22px;
+  }
+
+  .sort[data-rows="2"] .baskets[data-count="3"] .basket-name {
+    font-size: 28px;
+  }
 }
 
 .basket-cards {
@@ -3889,6 +3982,63 @@ body:has(.result) #version {
   font-size: 22px;
   line-height: 1;
   text-align: center;
+}
+
+/* The result's switch keeps the names on one line at iPad width; the
+   dinosaur takes the room beside it. Rewards and actions share the
+   height even with ten stars and a celebration. */
+.result-with-levels {
+  padding: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 648px);
+}
+
+.result-with-levels .result-content {
+  gap: 16px;
+}
+
+.result-with-levels .celebration {
+  height: 52px;
+  font-size: 22px;
+}
+
+.result-with-levels .result-score-value {
+  font-size: min(180px, 20vh);
+}
+
+.result-with-levels .result-title {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.result-with-levels .play-again-button,
+.result-with-levels .result-actions .home-button {
+  height: 72px;
+  white-space: nowrap;
+}
+
+/* The result is navy in either theme, with a pale chosen mark. */
+.result-with-levels .level-switch,
+[data-theme="dark"] .result-with-levels .level-switch {
+  background: #00000033;
+  border-color: #ffffff40;
+}
+
+.result-with-levels .level-switch-level,
+[data-theme="dark"] .result-with-levels .level-switch-level {
+  color: #f6f2e9;
+}
+
+.result-with-levels .level-switch-mark,
+.result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-mark,
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+  background-color: #f6f2e9;
+}
+
+.result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+  color: #1f2b4d;
+  box-shadow: 0 4px 10px #00000066;
 }
 
 .pairs-play-button {

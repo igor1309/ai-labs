@@ -50,6 +50,7 @@ const SCREENS = [
   "SkeletonMuseumScreen.tsx",
   "SkeletonPuzzleScreen.tsx",
   "SkeletonResultScreen.tsx",
+  "SortResultScreen.tsx",
   "SortScreen.tsx",
   "VisitScreen.tsx"
 ];

@@ -10,6 +10,7 @@
 - Skeletons at Explorer colour each bone and its empty slot by body area, head to tail, in both themes, as a cue to where it goes; Hatchling stays plain (LAB-314).
 - Skeletons at Explorer are cut into six to eight bones along the body, from the same skeleton pictures (LAB-313).
 - Skeletons play at each age level: a level switch on the selection screen starts at the age level and keeps the child's choice until a parent picks a different level; for now every level builds Hatchling's four pieces, and stars stay one per skeleton (LAB-312).
+- Sorting plays all three age levels, with 6, 8 or 10 cards and the extra baskets, remembers the child’s level choice, and keeps a best for each level (LAB-295).
 - Skeletons no longer wait for pictures: a puzzle starts at once, each bone fitted the same while its picture shimmers or is missing, and the result shows once the skeleton has held, the body fading in whenever it loads; nothing in the app waits for a picture any more (LAB-308).
 - Find the pair offers the next age level after three strong boards in a row, or five after NOT NOW; YES keeps that level for the game and leaves the parents' setting alone (LAB-293).
 

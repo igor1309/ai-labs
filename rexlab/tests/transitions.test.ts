@@ -108,7 +108,7 @@ describe("dinosaur care's transition for each change", () => {
 
 describe("the sorting game's transition for each change", () => {
   type SortingScreen = Parameters<typeof sortingTransitionFor>[0];
-  const sorting = startBoard(SHIPPED_SORTABLES, seededRandom(1));
+  const sorting = startBoard(SHIPPED_SORTABLES, "hatchling", seededRandom(1));
   const screens: SortingScreen[] = [undefined, { kind: "board", sorting }, { kind: "result", result: finishSorting(sorting, undefined, beatBest) }];
 
   it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
@@ -123,7 +123,7 @@ describe("the sorting game's transition for each change", () => {
   });
 
   it("shows a board started over the board kept from before as the plain screen change", () => {
-    const next = startBoard(SHIPPED_SORTABLES, seededRandom(2), sorting);
+    const next = startBoard(SHIPPED_SORTABLES, "hatchling", seededRandom(2), sorting);
 
     expect(sortingTransitionFor({ kind: "board", sorting }, { kind: "board", sorting: next }, "start")).toBe(SCREEN_CHANGE);
     expect(sortingTransitionFor(undefined, { kind: "board", sorting: next }, "start")).toBe(SCREEN_CHANGE);

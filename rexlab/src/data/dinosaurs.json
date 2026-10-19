@@ -13,7 +13,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "big"
     },
     "lookAlike": "big-hunter",
@@ -151,7 +151,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "big"
     },
     "lookAlike": "sail-back",
@@ -195,7 +195,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": null,
       "feathers": false,
       "size": null
@@ -241,7 +241,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": false,
       "feathers": false,
       "size": "big"
@@ -266,7 +266,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "small"
     },
     "lookAlike": "small-runner",
@@ -289,7 +289,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "small"
     },
     "lookAlike": "beaked-runner",
@@ -404,7 +404,7 @@
     "traits": {
       "legs": 2,
       "horns": null,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "small"
     },
     "lookAlike": "big-hunter",
@@ -450,7 +450,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "big"
     },
     "lookAlike": "big-hunter",
@@ -494,7 +494,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": false,
       "feathers": false,
       "size": "big"
@@ -565,7 +565,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": "small"
     },
     "lookAlike": "small-runner",
@@ -657,7 +657,7 @@
     "traits": {
       "legs": 2,
       "horns": false,
-      "feathers": null,
+      "feathers": "unknown",
       "size": null
     },
     "lookAlike": "big-hunter",
@@ -703,7 +703,7 @@
     "traits": {
       "legs": 2,
       "horns": true,
-      "feathers": null,
+      "feathers": "unknown",
       "size": null
     },
     "lookAlike": "big-hunter",
@@ -885,7 +885,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": false,
       "feathers": false,
       "size": "big"
@@ -908,7 +908,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": false,
       "feathers": false,
       "size": null
@@ -931,7 +931,7 @@
     },
     "diet": "plants",
     "traits": {
-      "legs": null,
+      "legs": "either",
       "horns": null,
       "feathers": false,
       "size": "big"

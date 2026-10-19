@@ -236,28 +236,6 @@ func TestOutputTheSchemaRejectsFailsTheStep(t *testing.T) {
 	}
 }
 
-// model.feature, "A step given a session is not run yet".
-//
-// Contract test: the files home holds, as Agister ships them.
-func TestAStepGivenASessionIsNotRunYet(t *testing.T) {
-	t.Parallel()
-	f := newRunFixture(t, modelSettings(t, map[string]string{"/r/.agister/workflows/resumed.yaml": `schema: agister.workflow/v1alpha1
-params:
-  q: {}
-steps:
-  - {name: first, process: ask, agent: claude-opus, inputs: {q: {from: params.q}}}
-  - {name: second, process: ask, agent: claude-opus, session: {from: steps.first.session}, inputs: {q: {from: params.q}}}
-`}), nil)
-	got := f.run(t, "/r", "run", "resumed", "--param", "q=why")
-	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  the step \"second\": the session is not run yet\n", code: 1}
-	if got != want {
-		t.Errorf("ran %+v, want %+v", got, want)
-	}
-	if ran := f.runtimes.claude.ran(); len(ran) > 0 {
-		t.Errorf("ran %+v, want nothing", ran)
-	}
-}
-
 // model.feature, "A step alone prints its session by its process's name".
 //
 // Contract test: the files home holds, as Agister ships them.

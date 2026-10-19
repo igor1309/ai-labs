@@ -283,7 +283,7 @@ export function App({
     go({ kind: "care" }, { also: care.open });
   };
 
-  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, home, counting("sort"));
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, ageLevel, home, counting("sort"));
 
   const openSorting = () => {
     sorting.start(() => set({ kind: "sorting" }));
@@ -484,7 +484,7 @@ export function App({
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
-            sort={{ picture: bodyPicture(SORT_TILE), best: sortingProgress.load()?.bestScore ?? undefined }}
+            sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}
