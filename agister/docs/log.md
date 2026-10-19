@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-322: a run keeps the bytes of each settings file its record
+  names, beside the record, and its export takes them.
+
 - LAB-321: each call records the settings files it ran under, with
   their digests, and a reuse takes a call only under the same ones.
 

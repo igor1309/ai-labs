@@ -124,6 +124,7 @@ func TestAWorkflowRecordsItsInputBriefs(t *testing.T) {
 	if got := f.store.last(t).Request.Definitions; !reflect.DeepEqual(got, want) {
 		t.Errorf("definitions %+v, want %+v", got, want)
 	}
+	assertDefinitionBytes(t, f)
 }
 
 // definitions.feature, "A continuation names the prompt continuation";
@@ -152,6 +153,7 @@ func TestAContinuationRecordsItsPromptDefinition(t *testing.T) {
 					t.Errorf("%s definitions %+v, want %+v", call.Step, call.Definitions, want)
 				}
 			}
+			assertDefinitionBytes(t, f)
 		})
 	}
 }
