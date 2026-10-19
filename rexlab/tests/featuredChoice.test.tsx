@@ -27,8 +27,8 @@ import {
 } from "./support.ts";
 
 // The start counts of the feature's draw: COMPARE 9, ALL DINOSAURS 4,
-// CARE 2, SORT 5, FIND THE PAIR 3 and SKELETONS 2.
-const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, care: 2, sort: 5, pairs: 3, skeletons: 2 };
+// CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2.
+const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, care: 2, sort: 5, pairs: 3, skeletons: 2, dig: 2 };
 
 const TODAY = "2026-10-18";
 const YESTERDAY = "2026-10-17";
@@ -59,35 +59,27 @@ function shares<Game extends string>(games: readonly Game[], starts: Record<stri
 }
 
 describe("choosing the featured game", () => {
-  it("gives the games started least a weight of 2 and every other game 1: CARE and SKELETONS 2 chances in 8 each", () => {
+  it("gives the games started least a weight of 2 and every other game 1: CARE, SKELETONS and DIG 2 chances in 10 each", () => {
     const weights = weightsOf(HOME_GAMES.map((game) => STARTS[game]));
 
-    expect(weights).toEqual([1, 1, 2, 1, 1, 2]);
-    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 125, catalogue: 125, care: 250, sort: 125, pairs: 125, skeletons: 250 });
+    expect(weights).toEqual([1, 1, 2, 1, 1, 2, 2]);
+    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 100, catalogue: 100, care: 200, sort: 100, pairs: 100, skeletons: 200, dig: 200 });
   });
 
   it.each([
-    [0, "compare"],
-    [0.124, "compare"],
-    [0.125, "catalogue"],
-    [0.249, "catalogue"],
-    [0.25, "care"],
-    [0.499, "care"],
-    [0.5, "sort"],
-    [0.624, "sort"],
-    [0.625, "pairs"],
-    [0.749, "pairs"],
-    [0.75, "skeletons"],
-    [0.999, "skeletons"]
+    [0, "compare"], [0.099, "compare"], [0.1, "catalogue"], [0.199, "catalogue"],
+    [0.2, "care"], [0.399, "care"], [0.4, "sort"], [0.499, "sort"],
+    [0.5, "pairs"], [0.599, "pairs"], [0.6, "skeletons"], [0.799, "skeletons"],
+    [0.8, "dig"], [0.999, "dig"]
   ] as const)("maps the draw %s to %s, in tile order", (draw, game) => {
     expect(chooseFeatured(HOME_GAMES, { store: featuredSpy(record(STARTS)), random: () => draw, today: TODAY })).toBe(game);
   });
 
   it.each([
-    ["none started", [0, 0, 0, 0, 0, 0], [2, 2, 2, 2, 2, 2]],
-    ["all started 5 times", [5, 5, 5, 5, 5, 5], [2, 2, 2, 2, 2, 2]],
-    ["3, 0, 0, 7, 1, 4", [3, 0, 0, 7, 1, 4], [1, 2, 2, 1, 1, 1]],
-    ["1, 2, 3, 4, 5, 6", [1, 2, 3, 4, 5, 6], [2, 1, 1, 1, 1, 1]]
+    ["none started", [0, 0, 0, 0, 0, 0, 0], [2, 2, 2, 2, 2, 2, 2]],
+    ["all started 5 times", [5, 5, 5, 5, 5, 5, 5], [2, 2, 2, 2, 2, 2, 2]],
+    ["3, 0, 0, 7, 1, 4, 2", [3, 0, 0, 7, 1, 4, 2], [1, 2, 2, 1, 1, 1, 1]],
+    ["1, 2, 3, 4, 5, 6, 7", [1, 2, 3, 4, 5, 6, 7], [2, 1, 1, 1, 1, 1, 1]]
   ])("lets ties share the lowest count: %s", (_name, counts, weights) => {
     expect(weightsOf(counts)).toEqual(weights);
   });
@@ -124,17 +116,17 @@ describe("choosing the featured game", () => {
     const store: FeaturedStore = { history: () => record({ compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 }, { game: "care", on: TODAY }), feature: (featuring) => saved.push(featuring) };
     const { asked, random } = drawing(0.99);
 
-    expect(chooseFeatured([...HOME_GAMES, "fossils"], { store, random, today: TODAY })).toBe("care");
+    expect(chooseFeatured(HOME_GAMES, { store, random, today: TODAY })).toBe("care");
     expect(asked.times).toBe(0);
     expect(saved).toEqual([]);
   });
 
   it("gives a new game, never started, a weight of 2 from the next day", () => {
     const starts: Record<string, number> = { compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 };
-    const games = [...HOME_GAMES, "fossils"];
+    const games = HOME_GAMES;
 
     expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 1, 1, 2]);
-    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 125, catalogue: 125, care: 125, sort: 125, pairs: 125, skeletons: 125, fossils: 250 });
+    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 125, catalogue: 125, care: 125, sort: 125, pairs: 125, skeletons: 125, dig: 250 });
   });
 
   it.each([

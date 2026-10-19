@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import {
@@ -21,6 +21,8 @@ import {
 } from "./dig/index.ts";
 import { DigBoardScreen, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
 import { DigRevealScreen } from "./DigRevealScreen.tsx";
+import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
+import { usePicture, type PictureLook } from "./Picture.tsx";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
 import { presentDigBoard } from "./presentation.ts";
@@ -29,9 +31,9 @@ import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.t
 
 export type { SandContext } from "./DigBoardScreen.tsx";
 
-// What the dig game keeps: its progress, and the child's last choice on
-// its level switch, none until the switch is first used.
-export type DigSaved = { progress: DigProgress; levelChoice: LevelChoice | undefined };
+// What the dig game keeps: its collection, the child's level choice
+// and the run of strong rounds for its next level offer.
+export type DigSaved = { progress: DigProgress; levelChoice: LevelChoice | undefined; levelOffer: LevelOffer };
 
 export type DigProgressStore = {
   // What the dig game has kept so far, or undefined when it cannot be
@@ -72,11 +74,11 @@ export const STAR_LANDS: Record<"motion" | "reduced", number> = { motion: 640, r
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch; both hold while the app is open even when
 // they cannot be saved.
-type Kept = KeptDig & { levelChoice: LevelChoice | undefined };
+type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelOffer };
 
 // The reveal shows the round dug up and its reward; it takes taps once
 // its star has `landed`.
-type DigScreen = { kind: "board"; round: DigRound } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean };
+type DigScreen = { kind: "board"; round: DigRound } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
@@ -93,7 +95,8 @@ export function transitionFor(from: DigScreen | undefined, to: DigScreen | undef
 export function useDigGame(
   { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion, sandContext }: DigGameProps,
   ageLevel: AgeLevelSetting,
-  onHome: () => void
+  onHome: () => void,
+  onStart: () => void
 ) {
   const { screen, go } = useScreens<DigScreen | undefined, "start">(undefined, transitionFor);
   const away = useSyncExternalStore(presence.subscribe, presence.isAway);
@@ -103,7 +106,7 @@ export function useDigGame(
   // saved.
   const [kept, setKept] = useState<Kept>(() => {
     const stored = digProgress.load();
-    return { progress: stored?.progress ?? NO_DIG, levelChoice: stored?.levelChoice, readable: stored !== undefined };
+    return { progress: stored?.progress ?? NO_DIG, levelChoice: stored?.levelChoice, levelOffer: stored?.levelOffer ?? NO_LEVEL_OFFER, readable: stored !== undefined };
   });
   const keptNow = useRef(kept);
   // The level the next round plays: the child's choice on the switch
@@ -117,7 +120,7 @@ export function useDigGame(
     const merged = stored === undefined ? next : { ...next, progress: mergeProgress(next.progress, stored.progress) };
     keptNow.current = merged;
     setKept(merged);
-    if (merged.readable) digProgress.save({ progress: merged.progress, levelChoice: merged.levelChoice });
+    if (merged.readable) digProgress.save({ progress: merged.progress, levelChoice: merged.levelChoice, levelOffer: merged.levelOffer });
   };
   // A level chosen on the switch is kept under the age level it was
   // chosen at; the level already chosen, as on a double tap, changes
@@ -194,6 +197,7 @@ export function useDigGame(
         leave();
         live.current = round;
         roundTimers.current = ownedTimers(startTimer);
+        onStart();
         shown?.();
       }
     });
@@ -220,7 +224,9 @@ export function useDigGame(
     timers.start(GUST[timing], () => {
       if (live.current !== to) return;
       live.current = null;
-      go({ kind: "reveal", round: to, reward: dug.reward, landed: false });
+      const levelOffer = countBoard(keptNow.current.levelOffer, to.level, !to.helpShown);
+      keep({ ...keptNow.current, levelOffer });
+      go({ kind: "reveal", round: to, reward: dug.reward, landed: false, offer: offeredLevel(levelOffer) });
       timers.start(STAR_LANDS[timing], () =>
         go((current) => (current?.kind === "reveal" && current.round === to ? { ...current, landed: true } : current))
       );
@@ -235,7 +241,7 @@ export function useDigGame(
     onHome();
   };
 
-  const content = (language: Language) => {
+  const draw = (language: Language, pictureLook: PictureLook) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -243,6 +249,7 @@ export function useDigGame(
         return (
           <DigBoardScreen
             language={language}
+            pictureLook={pictureLook}
             {...presentDigBoard(screen.round, bodyPicture, language)}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}
@@ -260,12 +267,25 @@ export function useDigGame(
         return (
           <DigRevealScreen
             language={language}
+            pictureLook={pictureLook}
             name={dinosaurName(id, language)}
             picture={bodyPicture(id)}
             {...screen.reward}
             landed={screen.landed}
             level={level}
             onLevel={chooseLevel}
+            offer={screen.offer ? {
+              level: screen.offer,
+              startTimer,
+              onShown: () => keep({ ...keptNow.current, levelOffer: showOffer(keptNow.current.levelOffer) }),
+              onYes: () => {
+                const nextLevel = screen.offer;
+                if (!nextLevel) return;
+                keep({ ...keptNow.current, levelOffer: acceptOffer(keptNow.current.levelOffer), levelChoice: { level: nextLevel, revision: ageLevel.revision } });
+                go((current) => current?.kind === "reveal" ? { ...current, offer: undefined } : current);
+              },
+              onNotNow: () => go((current) => current?.kind === "reveal" ? { ...current, offer: undefined } : current)
+            } : null}
             onDigAgain={() => start()}
             onHome={home}
           />
@@ -274,8 +294,18 @@ export function useDigGame(
     }
   };
 
+  // One picture subscription spans the board and reveal, preserving a
+  // failed or timed-out picture's look through the gust.
+  const content = (language: Language) => screen === undefined ? null : (
+    <RoundPicture src={bodyPicture(screen.round.dinosaur.id)}>{(look) => draw(language, look)}</RoundPicture>
+  );
+
   const dugUp = kept.readable ? dugUpOf(kept.progress, ids) : 0;
   // The count on the game's home tile, undefined until a dinosaur is dug
   // up, or when stored progress cannot be read.
   return { start, content, dugUp: dugUp > 0 ? dugUp : undefined };
+}
+
+function RoundPicture({ src, children }: { src: string; children: (look: PictureLook) => ReactNode }) {
+  return children(usePicture(src));
 }

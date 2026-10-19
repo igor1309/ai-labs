@@ -153,7 +153,10 @@ describe("the choice and its badge", () => {
     expect(board().getAttribute("data-clear")).toBe(before);
     expect(app.timers.timers()).toEqual([]);
     expect(getComputedStyle(document.querySelector(".dig-choice-cards")!).animation).toContain(reducedMotion ? "fade-in" : "rise-in");
-    expect(app.storage.items.get(PROGRESS_KEY)).toBeUndefined();
+    // Starting is recorded immediately; digging is recorded only at the gust.
+    expect(JSON.parse(app.storage.items.get(PROGRESS_KEY)!).games).toEqual({
+      "home-featured": { starts: { dig: 1 }, featured: { day: "2026-10-18", game: "compare" } }
+    });
     const rejected = wrong();
     fireEvent.click(rejected);
     expect([rejected.disabled, getComputedStyle(rejected).opacity]).toEqual([true, "0.25"]);

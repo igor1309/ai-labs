@@ -153,32 +153,32 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
 // dinosaurs dug up and those with their 🦴 badge, by id, with the child's
 // last choice on its level switch, none until the switch is first used.
 export function localDigProgress(storage: () => KeyValueStorage) {
-  const entry = gameProgress<StoredDig>(storage, "dig", storedDig(NO_DIG, undefined), readDig);
+  const entry = gameProgress<StoredDig>(storage, "dig", storedDig(NO_DIG, undefined, NO_LEVEL_OFFER), readDig);
   return {
     // Undefined when storage cannot be read at all.
-    load(): { progress: DigProgress; levelChoice: LevelChoice | undefined } | undefined {
+    load(): { progress: DigProgress; levelChoice: LevelChoice | undefined; levelOffer: LevelOffer } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
-      const { levelChoice, ...progress } = stored;
-      return { progress, levelChoice };
+      const { levelChoice, levelOffer, ...progress } = stored;
+      return { progress, levelChoice, levelOffer };
     },
 
-    save({ progress, levelChoice }: { progress: DigProgress; levelChoice: LevelChoice | undefined }): void {
-      entry.save(storedDig(progress, levelChoice));
+    save({ progress, levelChoice, levelOffer }: { progress: DigProgress; levelChoice: LevelChoice | undefined; levelOffer: LevelOffer }): void {
+      entry.save(storedDig(progress, levelChoice, levelOffer));
     }
   };
 }
 
-type StoredDig = DigProgress & { levelChoice?: LevelChoice };
+type StoredDig = DigProgress & { levelChoice?: LevelChoice; levelOffer: LevelOffer };
 
-function storedDig({ dug, badges }: DigProgress, levelChoice: LevelChoice | undefined): StoredDig {
-  return { dug: [...dug], badges: [...badges], ...(levelChoice && { levelChoice }) };
+function storedDig({ dug, badges }: DigProgress, levelChoice: LevelChoice | undefined, levelOffer: LevelOffer): StoredDig {
+  return { dug: [...dug], badges: [...badges], levelOffer, ...(levelChoice && { levelChoice }) };
 }
 
 // As find the pair's, an entry whose choice cannot be read is unusable.
-function readDig({ dug, badges, levelChoice }: Entry): StoredDig | undefined {
+function readDig({ dug, badges, levelChoice, levelOffer }: Entry): StoredDig | undefined {
   if (!isIds(dug) || !isIds(badges)) return undefined;
-  const progress = { dug: [...dug], badges: [...badges] };
+  const progress = { dug: [...dug], badges: [...badges], levelOffer: readOffer(levelOffer) };
   if (levelChoice === undefined) return progress;
   const choice = choiceOf(levelChoice);
   return choice && { ...progress, levelChoice: choice };

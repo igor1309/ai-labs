@@ -649,7 +649,8 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
-.featured-card .skeletons-tile-picture {
+.featured-card .skeletons-tile-picture,
+.featured-card .dig-tile-picture {
   padding: 36px 32px 8px;
 }
 
@@ -718,6 +719,11 @@ body:has(.result) #version {
   background: #fffdf8;
 }
 
+.featured-card[data-game="dig"] {
+  background: #d0c5b2;
+  color: #1d2742;
+}
+
 .featured-card[data-game="pairs"] {
   background: #a9bcd6;
   color: #1d2742;
@@ -739,6 +745,7 @@ body:has(.result) #version {
   background: #ffffff33;
 }
 
+.featured-card[data-game="dig"] .featured-card-symbol,
 .featured-card[data-game="care"] .featured-card-symbol {
   background: #ffffff59;
 }
@@ -758,6 +765,7 @@ body:has(.result) #version {
   background: #00000026;
 }
 
+.featured-card[data-game="dig"] .featured-card-badge,
 .featured-card[data-game="care"] .featured-card-badge {
   background: #ffffff59;
 }
@@ -6933,12 +6941,15 @@ body:has(.result) #version {
   outline-color: #f2b24b;
 }
 
+[data-theme="dark"] .featured-card[data-game="dig"],
 [data-theme="dark"] .dig-tile {
   background: #1f273c;
   color: #ece8de;
   box-shadow: 0 8px 24px #00000066;
 }
 
+[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-badge,
 [data-theme="dark"] .dig-tile-symbol,
 [data-theme="dark"] .dig-tile-count {
   background: #ffffff1f;

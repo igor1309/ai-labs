@@ -154,12 +154,19 @@ describe("dig progress through the app", () => {
   });
 
   it("keeps every other game's progress as it was", () => {
-    const others = { pairs: { bestTries: 20, found: ["stegosaurus"] }, sort: { bestScore: 5, roundsPlayed: 2 } };
+    const others = {
+      "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 },
+      "dinosaur-care": { bestScore: 8, visitsFinished: 2, friends: ["stegosaurus"] },
+      "find-the-pair": { stars: 20, level: 1, boardsOnLevel: 1, best: {}, found: ["stegosaurus"] },
+      "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 },
+      "skeleton-assembly": { bestScore: 1, earned: ["stegosaurus"], rebuilding: [] }
+    };
     const storage = memoryStorage(record({ dug: [], badges: [] }, others));
     reveal({ storage });
 
-    const { dig, ...rest } = stored(storage).games;
-    expect([rest, dig.dug]).toEqual([others, ["tyrannosaurus"]]);
+    const { dig, "home-featured": featured, ...rest } = stored(storage).games;
+    // Starting a round saves its start beside the game progress.
+    expect([rest, dig.dug, featured.starts]).toEqual([others, ["tyrannosaurus"], { dig: 1 }]);
   });
 
   it.each([

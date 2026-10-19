@@ -63,6 +63,7 @@ const PRESENTATION = [
   "DietTag.tsx",
   "DigBar.tsx",
   "Festivity.tsx",
+  "LevelOfferDialog.tsx",
   "FoodChips.tsx",
   "ParentMenu.tsx",
   "Picture.tsx",

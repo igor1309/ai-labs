@@ -5,7 +5,7 @@ import { App } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
@@ -14,6 +14,7 @@ import { keptSkeletons } from "./skeletonsApp.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_DIG,
   emptyCare,
   emptyDig,
   emptyPairs,
@@ -47,9 +48,10 @@ function openHomePage(
   care = emptyCare(),
   sorting = emptySorting(),
   pairs = emptyPairs(),
-  skeletons = emptySkeletons()
+  skeletons = emptySkeletons(),
+  dig = emptyDig()
 ) {
-  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...emptyDig()} {...pictures} />);
+  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard(), tile: homeTile("COMPARE") };
 }
 
@@ -360,7 +362,8 @@ describe("the home page", () => {
         { ...emptyCare(), careProgress: localCareProgress(() => careStorage) },
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
         { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
-        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] }))
+        withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] })),
+        { ...emptyDig(), digProgress: localDigProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] } } }) })) }
       );
 
       const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
@@ -389,18 +392,19 @@ describe("the home page", () => {
       });
       expect(overflowing).toEqual([]);
 
-      const tiles = ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile);
-      const titled = [...tiles, homeTile("DIG")];
+      const tiles = ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"].map(homeTile);
+      const titled = tiles;
       expect(titled.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(titled.map(() => true));
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
-      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
+      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual([
         ["7", true, "absolute"],
         [String(SHIPPED_CATALOGUE.length), true, "absolute"],
         ["8", true, "absolute"],
         ["6", true, "absolute"],
         ["120", true, "absolute"],
-        ["3", true, "absolute"]
+        ["3", true, "absolute"],
+        ["7", true, "absolute"]
       ]);
       expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual(tiles.map(() => true));
       expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(tiles.map(() => "relative"));
@@ -731,7 +735,7 @@ describe("the large card", () => {
       const badges = [badgeOf(card), badgeOf(tile)].map((badge) => badge && [symbolOf(badge), badge.textContent]);
       expect(badges[0]).toEqual(badges[1]);
       expect(badges[0] !== null).toBe(scored || game === "catalogue");
-      expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([...HOME_GAMES.map(([, other]) => TEXTS.en[other]), TEXTS.en.dig]);
+      expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(HOME_GAMES.map(([, other]) => TEXTS.en[other]));
 
       await user.click(card);
       await user.click(tile);

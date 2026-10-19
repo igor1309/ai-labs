@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { DigBar } from "./DigBar.tsx";
-import { Picture, PictureImage, usePicture } from "./Picture.tsx";
+import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 
 export type DigSpotView = { id: string; word: string; x: number; y: number; r: number; found: boolean; helped: boolean };
 
@@ -23,6 +23,7 @@ export type DigBoardScreenProps = {
   language: Language;
   // The dinosaur's body picture, under the sand, and its frame's size.
   picture: string;
+  pictureLook?: PictureLook;
   frame: { width: number; height: number };
   // Every stroke brushed so far, in order.
   marks: readonly SandMark[];
@@ -136,6 +137,7 @@ function SpotPicture({ picture, frame, spot }: { picture: string; frame: { width
 export function DigBoardScreen({
   language,
   picture,
+  pictureLook,
   frame,
   marks,
   clear,
@@ -297,7 +299,7 @@ export function DigBoardScreen({
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
-          <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />
+          {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
           <canvas ref={canvas} className="dig-sand" aria-hidden="true" />
           {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
             <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"

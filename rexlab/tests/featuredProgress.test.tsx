@@ -341,7 +341,7 @@ describe("a browser that cannot keep progress", () => {
 
     expect(featuredCard().dataset.game).toBe("compare");
     expect(featured.history()).toEqual({ timesStarted: new Map(), lastFeatured: { game: "compare", on: "2026-10-18" } });
-    for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"]) {
+    for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"]) {
       await user.click(homeTile(name));
       expect(document.querySelector(".games-tiles")).toBeNull();
       await user.click(button("HOME"));

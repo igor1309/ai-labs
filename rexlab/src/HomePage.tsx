@@ -15,10 +15,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -162,6 +162,13 @@ export function HomePage({
       picture: <Picture className="skeletons-tile-picture" src={skeletons.picture} alt="" width={800} height={600} />,
       badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
       onOpen: onSkeletons
+    },
+    dig: {
+      name: text.dig,
+      symbol: Brush,
+      picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
+      badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
+      onOpen: onDig
     }
   };
   const today = games[featured];
@@ -334,17 +341,15 @@ export function HomePage({
             </span>
             <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
           </button>
-          {/* The dig game's tile stands over MORE COMING. It is not yet
-              among the games the large card features. */}
-          <button type="button" className="card dig-tile" aria-label={text.dig} onClick={onDig} {...digPointer}>
-            <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />
+          <button type="button" className="card dig-tile" aria-label={games.dig.name} onClick={games.dig.onOpen} {...digPointer}>
+            {games.dig.picture}
             <span className="dig-tile-row">
               <span className="dig-tile-symbol" aria-hidden="true">
                 <Brush size={20} />
               </span>
-              <span className="dig-tile-title">{text.dig}</span>
+              <span className="dig-tile-title">{games.dig.name}</span>
             </span>
-            <BadgeChip badge={dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp }} className="dig-tile-count" size={18} />
+            <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
           </button>
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}

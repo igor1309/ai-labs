@@ -4,6 +4,7 @@ import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import digTile from "./assets/dig/tile.webp";
 import { useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
@@ -135,9 +136,6 @@ const PAIRS_TILE = "stegosaurus";
 
 // The dinosaur whose skeleton stands on the skeleton game's tile.
 const SKELETONS_TILE = "triceratops";
-
-// The dinosaur on the dig game's tile.
-const DIG_TILE = "stegosaurus";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
@@ -354,7 +352,8 @@ export function App({
   const dig = useDigGame(
     { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion: careProps.reducedMotion, sandContext },
     ageLevel,
-    home
+    home,
+    counting("dig")
   );
 
   // A round starts at once from the tile, with no choice screen.
@@ -515,7 +514,7 @@ export function App({
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: bodyPicture(DIG_TILE), dugUp: dig.dugUp }}
+            dig={{ picture: digTile, dugUp: dig.dugUp }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={playNewRound}
             onCatalogue={openCatalogue}

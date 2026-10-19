@@ -1,7 +1,9 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HOME_GAMES } from "../src/HomePage.tsx";
+import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { App } from "../src/App.tsx";
-import { localDigProgress, localProgress } from "../src/localProgress.ts";
+import { localDigProgress, localFeatured, localProgress } from "../src/localProgress.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -14,7 +16,6 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
-  featuring,
   lightDevice,
   manualOrientation,
   manualVisibility,
@@ -37,7 +38,8 @@ export function openDigApp({
   theme = "light" as const,
   timers = manualTimers(),
   orientation = manualOrientation("landscape"),
-  visibility = manualVisibility("visible")
+  visibility = manualVisibility("visible"),
+  settingsStorage
 }: {
   storage?: MemoryStorage;
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
@@ -47,11 +49,17 @@ export function openDigApp({
   timers?: ManualPictures | ManualTimers;
   orientation?: ManualOrientation;
   visibility?: ManualVisibility;
+  settingsStorage?: MemoryStorage;
 } = {}) {
   const local = () => storage;
+  const settings = settingsStorage ?? memoryStorage({ [AGE_LEVEL_KEY]: JSON.stringify(ageLevel) });
+  const ageLevels = localAgeLevel(() => settings);
+  const featured = localFeatured(local, HOME_GAMES);
   const view = render(
     <App
-      {...featuring()}
+      now={() => new Date(2026, 9, 18, 9, 30)}
+      featuredStore={featured}
+      startCounter={featured}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -63,7 +71,7 @@ export function openDigApp({
       nameVersion={unreadVersion}
       appearance={lightDevice().appearance}
       themeStore={localTheme(local)}
-      ageLevelStore={{ load: () => ageLevel, save: () => {} }}
+      ageLevelStore={{ load: () => settingsStorage ? ageLevels.load() : ageLevel, save: ageLevels.save }}
       {...emptyCare()}
       {...emptyPairs()}
       {...emptySkeletons()}
@@ -77,7 +85,7 @@ export function openDigApp({
     />
   );
   document.documentElement.dataset.theme = theme;
-  return { user: userEvent.setup(), timers, storage, orientation, visibility, unmount: view.unmount };
+  return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, orientation, visibility, unmount: view.unmount };
 }
 
 // The dig game's board, read and brushed as a test sees it.
