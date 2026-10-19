@@ -145,8 +145,168 @@
             "width": 225,
             "height": 89
           }
+        ],
+        "paleontologist": [
+          {
+            "id": "skull",
+            "area": "head",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 6,
+            "y": 44,
+            "width": 231,
+            "height": 195
+          },
+          {
+            "id": "neck-bones",
+            "area": "neck",
+            "name": {
+              "en": "NECK",
+              "ru": "ШЕЯ"
+            },
+            "x": 229,
+            "y": 68,
+            "width": 71,
+            "height": 167
+          },
+          {
+            "id": "arms",
+            "area": "neck",
+            "name": {
+              "en": "ARMS",
+              "ru": "ЛАПЫ"
+            },
+            "x": 170,
+            "y": 235,
+            "width": 130,
+            "height": 128
+          },
+          {
+            "id": "back",
+            "area": "back",
+            "name": {
+              "en": "BACK AND RIBS",
+              "ru": "СПИНА И РЁБРА"
+            },
+            "x": 300,
+            "y": 146,
+            "width": 231,
+            "height": 236
+          },
+          {
+            "id": "hips",
+            "area": "hips",
+            "name": {
+              "en": "HIPS",
+              "ru": "ТАЗ"
+            },
+            "x": 425,
+            "y": 240,
+            "width": 140,
+            "height": 95
+          },
+          {
+            "id": "left-thigh",
+            "area": "legs",
+            "name": {
+              "en": "LEFT THIGH",
+              "ru": "ЛЕВОЕ БЕДРО"
+            },
+            "x": 236,
+            "y": 318,
+            "width": 105,
+            "height": 132
+          },
+          {
+            "id": "left-foot",
+            "area": "legs",
+            "name": {
+              "en": "LEFT FOOT",
+              "ru": "ЛЕВАЯ СТОПА"
+            },
+            "x": 149,
+            "y": 450,
+            "width": 194,
+            "height": 113
+          },
+          {
+            "id": "right-thigh",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT THIGH",
+              "ru": "ПРАВОЕ БЕДРО"
+            },
+            "x": 427,
+            "y": 335,
+            "width": 143,
+            "height": 125
+          },
+          {
+            "id": "right-foot",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT FOOT",
+              "ru": "ПРАВАЯ СТОПА"
+            },
+            "x": 475,
+            "y": 460,
+            "width": 164,
+            "height": 109
+          },
+          {
+            "id": "tail-base",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 565,
+            "y": 266,
+            "width": 115,
+            "height": 89
+          },
+          {
+            "id": "tail-tip",
+            "area": "tail",
+            "name": {
+              "en": "TAIL TIP",
+              "ru": "КОНЧИК ХВОСТА"
+            },
+            "x": 680,
+            "y": 295,
+            "width": 110,
+            "height": 58
+          }
         ]
-      }
+      },
+      "distractors": [
+        {
+          "skeleton": "triceratops",
+          "piece": "frill",
+          "name": {
+            "en": "TRICERATOPS FRILL",
+            "ru": "ВОРОТНИК ТРИЦЕРАТОПСА"
+          }
+        },
+        {
+          "skeleton": "stegosaurus",
+          "piece": "spikes",
+          "name": {
+            "en": "STEGOSAURUS TAIL SPIKES",
+            "ru": "ШИПЫ СТЕГОЗАВРА"
+          }
+        },
+        {
+          "skeleton": "stegosaurus",
+          "piece": "front-plates",
+          "name": {
+            "en": "STEGOSAURUS PLATES",
+            "ru": "ПЛАСТИНЫ СТЕГОЗАВРА"
+          }
+        }
+      ]
     },
     "triceratops": {
       "fact": {
@@ -277,8 +437,148 @@
             "width": 155,
             "height": 89
           }
+        ],
+        "paleontologist": [
+          {
+            "id": "beak",
+            "area": "head",
+            "name": {
+              "en": "BEAK AND NOSE HORN",
+              "ru": "КЛЮВ И НОСОВОЙ РОГ"
+            },
+            "x": 30,
+            "y": 180,
+            "width": 80,
+            "height": 163
+          },
+          {
+            "id": "horns",
+            "area": "head",
+            "name": {
+              "en": "FACE AND HORNS",
+              "ru": "МОРДА И РОГА"
+            },
+            "x": 8,
+            "y": 76,
+            "width": 359,
+            "height": 263
+          },
+          {
+            "id": "frill",
+            "area": "head",
+            "name": {
+              "en": "FRILL",
+              "ru": "ВОРОТНИК"
+            },
+            "x": 201,
+            "y": 34,
+            "width": 205,
+            "height": 213
+          },
+          {
+            "id": "ribs",
+            "area": "back",
+            "name": {
+              "en": "RIBS",
+              "ru": "РЁБРА"
+            },
+            "x": 253,
+            "y": 178,
+            "width": 197,
+            "height": 220
+          },
+          {
+            "id": "backbone",
+            "area": "back",
+            "name": {
+              "en": "BACKBONE",
+              "ru": "ПОЗВОНОЧНИК"
+            },
+            "x": 450,
+            "y": 178,
+            "width": 190,
+            "height": 220
+          },
+          {
+            "id": "left-front-leg",
+            "area": "legs",
+            "name": {
+              "en": "LEFT FRONT LEG",
+              "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА"
+            },
+            "x": 117,
+            "y": 300,
+            "width": 149,
+            "height": 253
+          },
+          {
+            "id": "right-front-leg",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT FRONT LEG",
+              "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА"
+            },
+            "x": 293,
+            "y": 240,
+            "width": 127,
+            "height": 327
+          },
+          {
+            "id": "left-hind-leg",
+            "area": "legs",
+            "name": {
+              "en": "LEFT HIND LEG",
+              "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА"
+            },
+            "x": 420,
+            "y": 398,
+            "width": 85,
+            "height": 135
+          },
+          {
+            "id": "right-hind-leg",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT HIND LEG",
+              "ru": "ПРАВАЯ ЗАДНЯЯ НОГА"
+            },
+            "x": 515,
+            "y": 235,
+            "width": 144,
+            "height": 315
+          },
+          {
+            "id": "tail",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 640,
+            "y": 329,
+            "width": 155,
+            "height": 89
+          }
         ]
-      }
+      },
+      "distractors": [
+        {
+          "skeleton": "tyrannosaurus",
+          "piece": "skull",
+          "name": {
+            "en": "TYRANNOSAURUS SKULL",
+            "ru": "ЧЕРЕП ТИРАННОЗАВРА"
+          }
+        },
+        {
+          "skeleton": "stegosaurus",
+          "piece": "back-plates",
+          "name": {
+            "en": "STEGOSAURUS PLATES",
+            "ru": "ПЛАСТИНЫ СТЕГОЗАВРА"
+          }
+        }
+      ]
     },
     "stegosaurus": {
       "fact": {
@@ -421,8 +721,156 @@
             "width": 119,
             "height": 130
           }
+        ],
+        "paleontologist": [
+          {
+            "id": "skull",
+            "area": "head",
+            "name": {
+              "en": "SKULL",
+              "ru": "ЧЕРЕП"
+            },
+            "x": 4,
+            "y": 220,
+            "width": 143,
+            "height": 133
+          },
+          {
+            "id": "front-plates",
+            "area": "back",
+            "name": {
+              "en": "FRONT PLATES",
+              "ru": "ПЕРЕДНИЕ ПЛАСТИНЫ"
+            },
+            "x": 133,
+            "y": 26,
+            "width": 227,
+            "height": 179
+          },
+          {
+            "id": "back-plates",
+            "area": "back",
+            "name": {
+              "en": "BACK PLATES",
+              "ru": "ЗАДНИЕ ПЛАСТИНЫ"
+            },
+            "x": 360,
+            "y": 10,
+            "width": 220,
+            "height": 195
+          },
+          {
+            "id": "ribs",
+            "area": "back",
+            "name": {
+              "en": "BACK AND RIBS",
+              "ru": "СПИНА И РЁБРА"
+            },
+            "x": 111,
+            "y": 205,
+            "width": 481,
+            "height": 177
+          },
+          {
+            "id": "left-front-leg",
+            "area": "legs",
+            "name": {
+              "en": "LEFT FRONT LEG",
+              "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА"
+            },
+            "x": 56,
+            "y": 330,
+            "width": 144,
+            "height": 238
+          },
+          {
+            "id": "right-front-leg",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT FRONT LEG",
+              "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА"
+            },
+            "x": 200,
+            "y": 262,
+            "width": 160,
+            "height": 325
+          },
+          {
+            "id": "left-hind-leg",
+            "area": "legs",
+            "name": {
+              "en": "LEFT HIND LEG",
+              "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА"
+            },
+            "x": 360,
+            "y": 278,
+            "width": 110,
+            "height": 277
+          },
+          {
+            "id": "right-hind-leg",
+            "area": "legs",
+            "name": {
+              "en": "RIGHT HIND LEG",
+              "ru": "ПРАВАЯ ЗАДНЯЯ НОГА"
+            },
+            "x": 470,
+            "y": 278,
+            "width": 156,
+            "height": 296
+          },
+          {
+            "id": "tail-base",
+            "area": "tail",
+            "name": {
+              "en": "TAIL",
+              "ru": "ХВОСТ"
+            },
+            "x": 555,
+            "y": 218,
+            "width": 125,
+            "height": 203
+          },
+          {
+            "id": "spikes",
+            "area": "tail",
+            "name": {
+              "en": "TAIL SPIKES",
+              "ru": "ШИПЫ"
+            },
+            "x": 680,
+            "y": 301,
+            "width": 119,
+            "height": 130
+          }
         ]
-      }
+      },
+      "distractors": [
+        {
+          "skeleton": "tyrannosaurus",
+          "piece": "skull",
+          "name": {
+            "en": "TYRANNOSAURUS SKULL",
+            "ru": "ЧЕРЕП ТИРАННОЗАВРА"
+          }
+        },
+        {
+          "skeleton": "triceratops",
+          "piece": "frill",
+          "name": {
+            "en": "TRICERATOPS FRILL",
+            "ru": "ВОРОТНИК ТРИЦЕРАТОПСА"
+          }
+        },
+        {
+          "skeleton": "tyrannosaurus",
+          "piece": "arms",
+          "name": {
+            "en": "TYRANNOSAURUS ARMS",
+            "ru": "ЛАПЫ ТИРАННОЗАВРА"
+          }
+        }
+      ]
     }
   }
 }

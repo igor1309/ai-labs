@@ -2,9 +2,9 @@ Feature: Skeleton assembly: age levels
   The skeleton game has a mode for each age level (docs/age-levels.md,
   docs/skeleton-levels.md). Its Hatchling mode is today's puzzle of four
   pieces. Each level plays its own cut of the skeleton: Explorer's is six
-  to eight pieces (skeleton-assembly-pictures.feature); a level with no
-  cut of its own yet plays Hatchling's, as Paleontologist does until
-  LAB-317. The selection screen's level switch is the
+  to eight pieces, Paleontologist's ten to twelve
+  (skeleton-assembly-pictures.feature); a level with no cut of its own
+  plays Hatchling's. The selection screen's level switch is the
   child's own choice in this game (age-level-choice.feature), kept in the
   skeleton game's progress (skeleton-assembly-progress.feature).
 

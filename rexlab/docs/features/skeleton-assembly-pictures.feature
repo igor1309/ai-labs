@@ -81,3 +81,11 @@ Feature: Skeleton assembly: pictures that load
     Then its skeleton is cut into six to eight bones, each of one body area: head, neck, back, hips, legs or tail
     And the bones drawn at their homes make up its whole outline, each a pixel off showing
     And a bone it shares with Hatchling's cut, such as a skull, is the same picture at the same home
+
+  Scenario: Paleontologist's bones are cut from the same skeleton
+    Given the level switch shows Paleontologist chosen
+    When I tap any dinosaur
+    Then its skeleton is cut into ten to twelve bones, each of one body area
+    And the bones drawn at their homes make up its whole outline, each a pixel off showing
+    And a bone it shares with another level's cut is the same picture at the same home
+    And two or three bones of the other dinosaurs, each named with its dinosaur, such as "TRICERATOPS FRILL", are pictures their own skeletons already ship

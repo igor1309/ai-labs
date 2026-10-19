@@ -71,6 +71,42 @@ describe("readSkeletons", () => {
     expect(read?.cuts).toEqual({ hatchling: CUT, paleontologist: [CUT[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, area: "back", place: place(80, 10, 320, 390) }] });
   });
 
+  it("reads each distractor as the piece of another skeleton's Paleontologist cut, named with its dinosaur, and none where the file has none", () => {
+    const frill = { id: "frill", name: { en: "FRILL", ru: "ВОРОТНИК" }, area: "head", ...place(0, 0, 120, 90) };
+    const named = { en: "TRICERATOPS FRILL", ru: "ВОРОТНИК ТРИЦЕРАТОПСА" };
+    const read = readSkeletons(
+      NAMES,
+      file({
+        triceratops: { fact: FACT, cuts: { hatchling: FILED, paleontologist: [...FILED, frill] } },
+        tyrannosaurus: { ...ENTRY, distractors: [{ skeleton: "triceratops", piece: "frill", name: named }] }
+      })
+    );
+
+    expect(read.map((skeleton) => skeleton.distractors)).toEqual([undefined, [{ id: "frill", name: named, area: "head", place: place(0, 0, 120, 90), skeleton: "triceratops" }]]);
+  });
+
+  it.each<[string, unknown, string]>([
+    ["not a list", "frill", 'tyrannosaurus has no distractors: "frill"'],
+    ["of none", [], "tyrannosaurus has no distractors: []"],
+    ["of its own skeleton", [{ skeleton: "tyrannosaurus", piece: "skull", name: NAMED.skull }], "tyrannosaurus's distractor 1 is no piece of another skeleton's paleontologist cut"],
+    ["of no skeleton in the file", [{ skeleton: "stegosaurus", piece: "skull", name: NAMED.skull }], "tyrannosaurus's distractor 1 is no piece of another skeleton's paleontologist cut"],
+    ["of a piece only another level's cut has", [{ skeleton: "triceratops", piece: "legs", name: NAMED.legs }], "tyrannosaurus's distractor 1 is no piece of another skeleton's paleontologist cut"],
+    [
+      "of the same piece twice",
+      [
+        { skeleton: "triceratops", piece: "skull", name: NAMED.skull },
+        { skeleton: "triceratops", piece: "skull", name: NAMED.skull }
+      ],
+      "tyrannosaurus's distractor 2 is no piece of another skeleton's paleontologist cut"
+    ],
+    ["not a piece", ["skull"], 'tyrannosaurus\'s distractor 1 is no piece of another skeleton\'s paleontologist cut: "skull"'],
+    ["named in one language only", [{ skeleton: "triceratops", piece: "skull", name: { en: "SKULL" } }], 'tyrannosaurus\'s distractor triceratops/skull has no name in every language: {"en":"SKULL"}']
+  ])("fails when it is made on distractors %s", (_, distractors, message) => {
+    const triceratops = { fact: FACT, cuts: { hatchling: FILED, paleontologist: [FILED[0]] } };
+
+    expect(() => readSkeletons(NAMES, file({ triceratops, tyrannosaurus: { ...ENTRY, distractors } }))).toThrow(message);
+  });
+
   it.each<[string, unknown, string]>([
     ["of no pieces", { hatchling: FILED, explorer: [] }, "triceratops has no explorer cut: []"],
     ["with a piece past the frame", { hatchling: FILED, paleontologist: [{ id: "skull", name: NAMED.skull, area: "head", ...place(350, 0, 100, 80) }] }, "triceratops has no skull in its 400×400 frame"]
@@ -323,7 +359,7 @@ const fileOf = (url: string) => join(ROOT, url.replace(/\?.*$/, ""));
 describe("every shipped skeleton", () => {
   const { skeletons, skeletonPicture } = shippedApp();
 
-  // Every level's cut, Hatchling's four pieces and Explorer's own.
+  // Every level's cut, Hatchling's four pieces and the other levels' own.
   const piecesOf = (cuts: Cuts) => Object.values(cuts).flat();
 
   it("is given to the app, each with its outline and every cut's pieces from its own folder", () => {
@@ -379,14 +415,35 @@ describe("every shipped skeleton", () => {
   });
 
   // A piece in two cuts is one picture, so it lies at one place in both.
-  it("is cut for Explorer into six to eight pieces, a piece Hatchling's cut shares at the same place", () => {
-    const explorer = skeletons.map(({ id, cuts }) => ({
+  it("is cut for Explorer into six to eight pieces and for Paleontologist into ten to twelve, a piece two cuts share at the same place", () => {
+    const sizes = skeletons.map(({ id, cuts }) => ({
       id,
-      sixToEight: (cuts.explorer?.length ?? 0) >= 6 && (cuts.explorer?.length ?? 0) <= 8,
-      samePlaces: (cuts.explorer ?? []).every((piece) => cuts.hatchling.every((same) => same.id !== piece.id || JSON.stringify(same.place) === JSON.stringify(piece.place)))
+      explorer: (cuts.explorer?.length ?? 0) >= 6 && (cuts.explorer?.length ?? 0) <= 8,
+      paleontologist: (cuts.paleontologist?.length ?? 0) >= 10 && (cuts.paleontologist?.length ?? 0) <= 12,
+      samePlaces: piecesOf(cuts).every((piece) => piecesOf(cuts).every((same) => same.id !== piece.id || JSON.stringify(same.place) === JSON.stringify(piece.place)))
     }));
 
-    expect(explorer).toEqual(skeletons.map(({ id }) => ({ id, sixToEight: true, samePlaces: true })));
+    expect(sizes).toEqual(skeletons.map(({ id }) => ({ id, explorer: true, paleontologist: true, samePlaces: true })));
+  });
+
+  // skeleton-assembly-paleontologist.feature: two or three bones of the
+  // other skeletons, each named with its dinosaur, a picture already
+  // shipped in their folder.
+  it("mixes two or three bones of other skeletons into Paleontologist's tray, each named with its dinosaur", () => {
+    const seen = skeletons.map(({ id, distractors = [] }) => ({
+      id,
+      twoOrThree: distractors.length >= 2 && distractors.length <= 3,
+      others: distractors.every((distractor) => distractor.skeleton !== id),
+      named: distractors.every(({ skeleton, name }) => {
+        const dinosaur = skeletons.find((each) => each.id === skeleton)?.name;
+        // In Russian the dinosaur follows, in the genitive, which each
+        // shipped name forms with "А".
+        return name.en.startsWith(`${dinosaur?.en.toUpperCase()} `) && name.ru.endsWith(` ${dinosaur?.ru.toUpperCase()}А`);
+      }),
+      pictures: distractors.every((distractor) => fileOf(skeletonPicture(distractor.skeleton, distractor.id)) === join(ROOT, "src/assets/skeletons", distractor.skeleton, `${distractor.id}.webp`))
+    }));
+
+    expect(seen).toEqual(skeletons.map(({ id }) => ({ id, twoOrThree: true, others: true, named: true, pictures: true })));
   });
 
   // skeleton-assembly-explorer.feature: a bone shows on its tinted spot by

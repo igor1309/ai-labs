@@ -137,7 +137,7 @@ describe("help at the other levels", () => {
 
     spend(pictures, 10);
 
-    expect(shown()).toEqual({ ...NONE, hints: ["spot skull"], region: true });
+    expect(shown("beak")).toEqual({ ...NONE, hints: ["spot beak"], region: true });
   });
 
   it("keeps Hatchling's one glow on the skull's slot and spot, however long the child waits", async () => {

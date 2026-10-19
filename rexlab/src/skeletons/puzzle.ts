@@ -21,6 +21,11 @@ export type Cut = readonly Piece[];
 // its own plays Hatchling's.
 export type Cuts = { hatchling: Cut; explorer?: Cut; paleontologist?: Cut };
 
+// A bone of another skeleton, which Paleontologist mixes into the tray:
+// the piece of that skeleton's Paleontologist cut, with its picture and
+// size, named with the dinosaur it belongs to.
+export type Distractor = Piece & { skeleton: string };
+
 // A point on the outline, in pixels of the skeleton's frame.
 export type Point = { x: number; y: number };
 
@@ -33,6 +38,8 @@ export type Skeleton = {
   // shares, and its cuts, each piece's home in it.
   frame: { width: number; height: number };
   cuts: Cuts;
+  // Paleontologist's bones of other skeletons, if any.
+  distractors?: readonly Distractor[];
 };
 
 // The cut a skeleton is built from at `level`: the level's own, or

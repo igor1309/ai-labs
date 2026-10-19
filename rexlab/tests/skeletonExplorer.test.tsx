@@ -120,11 +120,14 @@ describe("Explorer's puzzle", () => {
 });
 
 describe("the other levels", () => {
-  it.each<AgeLevel>(["hatchling", "paleontologist"])("build %s's puzzle of four plain pieces", async (level) => {
+  it.each<[AgeLevel, number]>([
+    ["hatchling", 4],
+    ["paleontologist", 10]
+  ])("build %s's puzzle of %i plain pieces", async (level, count) => {
     await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level) });
 
-    expect(spotPieces()).toEqual(["skull", "spine", "legs", "tail"]);
-    expect([...spotAreas(), ...slotAreas()]).toEqual(Array(8).fill(null));
+    expect(spotPieces()).toEqual((skeletonOf("triceratops").cuts[level] ?? []).map(({ id }) => id));
+    expect([...spotAreas(), ...slotAreas()]).toEqual(Array(2 * count).fill(null));
     expect(document.querySelectorAll(".skeleton-slot-area")).toHaveLength(0);
   });
 });

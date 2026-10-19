@@ -61,7 +61,7 @@ Feature: Skeleton assembly: help in steps
   Scenario: Paleontologist helps in the same steps
     Given the level switch shows Paleontologist chosen
     When I tap Triceratops and 10 seconds pass
-    Then the skull's spot and the head's region glow, as Explorer's first step
+    Then the beak's spot and the head's region glow, as Explorer's first step
 
   Scenario: Hatchling keeps its one glow
     Given the level switch shows Hatchling chosen

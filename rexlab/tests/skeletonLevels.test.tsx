@@ -41,11 +41,10 @@ const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-
 const cutOf = (ids: readonly string[]): Cut => ids.map((id, at) => ({ id, name: { en: id.toUpperCase(), ru: id.toUpperCase() }, area: "back", place: { x: at * 100, y: 0, width: 100, height: 100 } }));
 
 // The shipped skeletons, Triceratops and Stegosaurus with an Explorer cut
-// of their own and Paleontologist's of Stegosaurus only, as a level's
-// sub-issue adds them.
+// of their own and Paleontologist's of Stegosaurus only.
 const WITH_CUTS: readonly Skeleton[] = SHIPPED_SKELETONS.map((skeleton) =>
   skeleton.id === "triceratops"
-    ? { ...skeleton, cuts: { ...skeleton.cuts, explorer: cutOf(["head", "neck", "back", "hips", "legs", "tail"]) } }
+    ? { ...skeleton, cuts: { hatchling: skeleton.cuts.hatchling, explorer: cutOf(["head", "neck", "back", "hips", "legs", "tail"]) } }
     : skeleton.id === "stegosaurus"
       ? { ...skeleton, cuts: { ...skeleton.cuts, explorer: cutOf(["front", "back"]), paleontologist: cutOf(["a", "b", "c", "d", "e"]) } }
       : skeleton

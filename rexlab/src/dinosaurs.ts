@@ -4,7 +4,7 @@ import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import { LANGUAGES, type Language } from "./language/language.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
-import { BODY_AREAS, type BodyArea, type Cut, type Place, type Skeleton } from "./skeletons/index.ts";
+import { BODY_AREAS, type BodyArea, type Cut, type Distractor, type Place, type Skeleton } from "./skeletons/index.ts";
 import type { Dinosaur as Sortable } from "./sorting/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
@@ -103,12 +103,13 @@ export function readPals(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "nam
 }
 
 // The skeletons' file, `skeletons.json`, in its own format: the frame the
-// outlines are drawn in, and each dinosaur's fact and cuts, each a list of
-// pieces with its id, name and place, read as any values, as the JSON
+// outlines are drawn in, and each dinosaur's fact, cuts, each a list of
+// pieces with its id, name and place, and distractors, each a piece of
+// another skeleton with its name here, read as any values, as the JSON
 // gives them.
 export type SkeletonsFile = {
   frame: { width: number; height: number };
-  dinosaurs: Readonly<Record<string, Readonly<{ fact?: unknown; cuts?: unknown }>>>;
+  dinosaurs: Readonly<Record<string, Readonly<{ fact?: unknown; cuts?: unknown; distractors?: unknown }>>>;
 };
 
 // The skeleton game needs each skeleton's dinosaur, named as in the
@@ -117,8 +118,18 @@ export type SkeletonsFile = {
 // Hatchling's cut, or with a cut of no level or not whole, fails here,
 // when the app is put together, rather than as a puzzle no child can
 // finish or a reveal with nothing to say. The other levels' cuts are
-// optional: a level without one plays Hatchling's.
+// optional: a level without one plays Hatchling's. So are the
+// distractors, which must each be a piece of another skeleton's
+// Paleontologist cut.
 export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, file: SkeletonsFile): Skeleton[] {
+  const skeletons = readCuts(records, file);
+  return skeletons.map((skeleton) => {
+    const { distractors } = file.dinosaurs[skeleton.id] ?? {};
+    return distractors === undefined ? skeleton : { ...skeleton, distractors: readDistractors(skeleton.id, distractors, skeletons) };
+  });
+}
+
+function readCuts(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, file: SkeletonsFile): Skeleton[] {
   const { width, height } = file.frame;
   return Object.entries(file.dinosaurs).map(([id, { fact, cuts }]) => {
     const record = records.find((each) => each.id === id);
@@ -155,6 +166,25 @@ function readCut(id: string, level: string, pieces: unknown, frame: { width: num
       throw new Error(`${id} has no ${own} in its ${frame.width}×${frame.height} frame: ${JSON.stringify(place)}`);
     }
     return { id: own, name: { en: name.en, ru: name.ru }, area: area as BodyArea, place: { x: place.x, y: place.y, width: place.width, height: place.height } };
+  });
+}
+
+// Distractors are a list of other skeletons' pieces, at least one, each
+// once: the skeleton and the piece of its Paleontologist cut, named here
+// in every language with the dinosaur it belongs to.
+function readDistractors(id: string, distractors: unknown, skeletons: readonly Skeleton[]): Distractor[] {
+  if (!Array.isArray(distractors) || distractors.length === 0) throw new Error(`${id} has no distractors: ${JSON.stringify(distractors)}`);
+  const seen = new Set<string>();
+  return distractors.map((distractor: unknown, at) => {
+    const { skeleton, piece, name } = (typeof distractor === "object" && distractor !== null ? distractor : {}) as Record<string, unknown>;
+    const from = skeleton === id ? undefined : skeletons.find((each) => each.id === skeleton);
+    const bone = from?.cuts.paleontologist?.find((each) => each.id === piece);
+    if (!from || !bone || seen.has(`${from.id}/${bone.id}`)) {
+      throw new Error(`${id}'s distractor ${at + 1} is no piece of another skeleton's paleontologist cut: ${JSON.stringify(distractor)}`);
+    }
+    seen.add(`${from.id}/${bone.id}`);
+    if (!isInEveryLanguage(name)) throw new Error(`${id}'s distractor ${from.id}/${bone.id} has no name in every language: ${JSON.stringify(name)}`);
+    return { ...bone, name: { en: name.en, ru: name.ru }, skeleton: from.id };
   });
 }
 

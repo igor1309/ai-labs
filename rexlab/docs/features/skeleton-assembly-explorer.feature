@@ -7,7 +7,7 @@ Feature: Skeleton assembly: Explorer
   where it goes. The colours are a cue, not a key: there is no legend to
   learn, and a piece fits by its place alone. Pieces stay the right way
   up and fit as near their homes as Hatchling's do. Hatchling keeps its
-  four plain pieces, and Paleontologist plays them too until LAB-317.
+  four plain pieces, and Paleontologist's own cut is plain too.
 
   Background:
     Given an iPad in landscape
@@ -65,12 +65,12 @@ Feature: Skeleton assembly: Explorer
   Scenario Outline: Only Explorer is coloured
     Given the level switch shows <level> chosen
     When I tap Triceratops
-    Then its four pieces and their slots are plain, as today
+    Then its <count> pieces and their slots are plain
 
     Examples:
-      | level          |
-      | Hatchling      |
-      | Paleontologist |
+      | level          | count |
+      | Hatchling      | 4     |
+      | Paleontologist | 10    |
 
   Scenario: Finishing Explorer's puzzle earns the star
     Given I am building Stegosaurus with six pieces fitted
