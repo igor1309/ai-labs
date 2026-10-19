@@ -300,7 +300,8 @@ Decisions, each with its reason:
 - Codex's cost waits: the archive priced a thread through `ccusage`, a
   second program; an unknown cost is honest meanwhile (ADR-012, rule 5).
 - A cost limit is refused, not kept: core ends no call at its cost yet,
-  and codex reports none to end it by.
+  and codex reports none to end it by. ("A call's cost" keeps it on
+  claude-code.)
 - No version warning yet (ADR-003, rule 8), nor the model the runtime
   reports: both are to be read from the turn, never probed, and come
   with the record, which keeps what the turn reported.
@@ -759,7 +760,8 @@ Decisions, each with its reason:
   (rule 4). The watch names a tool, not what it was given, so two
   hung `Bash` commands are one thing; with home's one resume, it does
   not matter.
-- No cost is left to check: no cost limit is run yet.
+- No cost is left to check: no cost limit is run yet. ("A call's
+  cost" stops a recovery turn at it.)
 - End to end, a turn made stale in seconds, by a tool command limit
   of a few seconds and a prompt that sleeps, proves that each runtime
   resumes a session whose program was ended mid-tool.
@@ -1042,6 +1044,7 @@ Decisions, each with its reason:
 - A codex turn that failed reports no usage, so a retried codex call's
   usage is unknown: unknown, never zero (ADR-001, invariant 3).
 - No cost limit bounds the retries: none is run yet (`run-path.md`).
+  ("A call's cost" stops a retry at it.)
 
 ## A binding continuing a session
 
@@ -1299,3 +1302,78 @@ Decisions, each with its reason:
 - The environment a call inherits from its caller is neither recorded
   nor compared: it may hold secrets, it is the caller's (ADR-004), and
   whoever reuses chose the run and the shell it runs from.
+
+## A call's cost
+
+A call on claude-code is kept to its process's cost limit, and each turn
+counts its own cost, a resumed turn included (ADR-004, rule 7; ADR-012,
+rule 5; LAB-336).
+
+Claude reports a resumed session's cost to date as a turn's
+`total_cost_usd`, the session's earlier turns counted again; its usage
+is the turn's own. Its `--max-budget-usd` bounds what this program
+spends, checked between model requests, the session's earlier cost not
+counted. Both were seen live, on Haiku, 2026-10-19. Until now a call
+summed what its turns reported, so a call with a resumed turn, a retry
+at capacity, a recovery turn or a continuation, recorded too much.
+
+**`runtime/claudecode`**'s turn is given the session's cost before it,
+and a budget, each none where not given. Its reply's cost is the
+reported cost less the session's before, unknown where that is unknown
+or the report is less; it also gives the session's cost, the reported
+cost whole. A budget is passed as `--max-budget-usd`, after the
+effort's argument. A result of the subtype `error_max_budget_usd` is
+the class `budget_exhausted`. Its facts say it keeps a cost limit.
+
+**`core/call`**'s step is given its cost limit, none where not given,
+and the cost of the session it continues before the call. Each turn is
+given the session's cost before it: the step's for the call's first
+turn, none for a new session, zero, then the session's cost the last
+turn that reported one in that session gave, unknown after a turn that
+gave no reply. Each turn under a limit is given as its budget the limit
+less the call's cost so far. No retry at capacity or recovery turn
+starts where the call's cost so far has reached the limit or is
+unknown; the call ends failed, `budget_exhausted`, its reason "the cost
+limit <limit> is spent: <cost>", or "the cost limit <limit> cannot be
+kept: a turn's cost is unknown". A turn the runtime ended at its budget
+ends the call failed, `budget_exhausted`, its reason the runtime's. The
+call's result gives the session's cost its last turn reported, none
+where that turn reported none.
+
+**`runstore`**'s call result grows `"session_cost"`, the session's cost
+the call's last turn reported, `null` where it is unknown. An entry from
+before, with no such field, is read as `null`.
+
+```json
+{"calls": [{"result": {"cost": 0.5, "session_cost": 1.25}}]}
+```
+
+**The composition** gives a step its process's cost limit, and refuses
+it before anything runs, as not run yet, on a runtime whose facts do not
+keep one: "the cost limit on codex", "the cost limit on bash". A call
+continuing a session, by `--continue` or a binding, is given the
+`"session_cost"` of the session's latest call, the call its worktree is
+checked against; unknown where that entry has none. Each entry records
+its call's session cost; a call taken by a reuse records the earlier
+entry's.
+
+Decisions, each with its reason:
+
+- The wrapper takes the session's cost before, and core carries it: the
+  meaning of `total_cost_usd` is Claude's, which only the wrapper knows,
+  as it alone knows the provider's words for capacity.
+- The session's cost before a continuation from the record: no other
+  part knows what the session cost before this call. An entry from
+  before leaves one call's cost unknown, never too much (ADR-001,
+  invariant 3); the next call reads the session's cost it records.
+- The budget is the limit less the call's cost so far, not less the
+  session's: `--max-budget-usd` counts this program's spend only.
+- A call may spend past its limit by a model request: Claude checks the
+  budget between requests. Agister kills no turn for its cost.
+- No turn starts once a turn's cost is unknown under a limit: what is
+  left cannot be told, and a limit is never loosened (ADR-004, rule 7).
+- `budget_exhausted` for a spent cost limit, as the archive had it: the
+  class says the call spent its budget, its reason which; a repeated
+  tool call keeps the class.
+- Codex and bash report no cost, so a limit on them is refused, not
+  ignored. Codex's cost through `ccusage` stays in the backlog.
