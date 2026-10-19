@@ -26,7 +26,7 @@ Feature: Dig: starting a round and the board
     Given I am on the home page
     When I tap the "DIG" tile
     Then a round of the dig game starts at once
-    And I see a board of sand, 4 by 3, as large as fits beside what the level shows
+    And I see the sand board, the picture's 4:3 shape, as large as fits beside what the level shows
     And I see a "HOME" button with a 🏠 symbol, away from the board
     And I see a ⭐ count of the dinosaurs I have dug up, out of all of them, such as "4/42"
 
@@ -39,7 +39,7 @@ Feature: Dig: starting a round and the board
   Scenario: A round digs up a dinosaur not dug up yet
     Given I have dug up 4 of the dinosaurs
     When a round starts
-    Then its dinosaur is one of the others, at random
+    Then its dinosaur is one of the other 38, at random
     But once I have dug up every dinosaur, a round digs up any of them but the last round's
 
   Scenario: The sand covers the whole picture at the start
@@ -66,8 +66,8 @@ Feature: Dig: starting a round and the board
 
   Scenario Outline: The words read in either language
     Given the app is in <language>
-    When a Paleontologist round starts
-    Then the home tile reads "<dig>" and the title "<who>"
+    Then the home page's tile reads "<dig>"
+    And a Paleontologist round's title reads "<who>"
 
     Examples:
       | language | dig      | who        |

@@ -1,11 +1,16 @@
 Feature: Dig: the offer of the next age level
   After strong rounds in a row at one level, the reveal offers the next
-  level up, with find the pair's card and rules
+  level up, with find the pair's rules
   (find-the-pair-level-offer.feature, docs/age-levels.md): 3 strong
-  rounds in a row, 5 once that level's offer was turned down, and
-  showing the offer starts the count again. A strong round is one
-  finished with no help shown; every Hatchling round is strong, as
-  Hatchling has no help. Paleontologist offers nothing.
+  rounds in a row, 5 once that level's offer was turned down by "NOT
+  NOW" or left unanswered, and showing the offer starts the count again.
+  The offer is find the pair's card
+  (find-the-pair-level-offer-result.feature), over the reveal: the next
+  level's picture, the question, "YES" with a tick symbol and "NOT NOW"
+  with a cross symbol, rising in once the reveal's own rewards have
+  played, and while it shows the reveal under it cannot be tapped. A
+  strong round is one finished with no help shown; every Hatchling round
+  is strong, as Hatchling has no help. Paleontologist offers nothing.
 
   Background:
     Given an iPad in landscape
@@ -15,7 +20,7 @@ Feature: Dig: the offer of the next age level
     And I have no strong rounds in a row and have never turned down an offer
     When I finish 3 <level> rounds in a row with no help shown
     Then the first two reveals show no offer
-    And the third's offers "<question>" with <picture>
+    And the third's offers "<question>" with <picture>, "YES" with a tick and "NOT NOW" with a cross
 
     Examples:
       | level     | question                      | picture |
@@ -47,4 +52,26 @@ Feature: Dig: the offer of the next age level
   Scenario: The offer comes after the reveal's star
     Given my third strong Hatchling round digs up a new dinosaur
     When the reveal shows
-    Then the star flies to "DUG UP" and the celebration plays before the offer rises
+    Then the star flies onto the "DUG UP" card and the celebration plays before the offer rises
+
+  Scenario Outline: An offer left unanswered is turned down
+    Given I see the offer of the Explorer level on a Hatchling reveal
+    When I <leave> without answering it
+    Then the level switch still shows Hatchling chosen
+    And I need 5 strong Hatchling rounds in a row for the offer
+
+    Examples:
+      | leave            |
+      | reload the app   |
+      | close the app    |
+
+  Scenario Outline: A quick double tap answers once
+    Given I see the offer of the Explorer level on a Hatchling reveal
+    When I double tap "<answer>" quickly
+    Then the offer is answered "<answer>" once and goes
+    And the second tap presses nothing on the reveal under it
+
+    Examples:
+      | answer  |
+      | YES     |
+      | NOT NOW |

@@ -34,18 +34,29 @@ Feature: Dig: Explorer finds three details
 
   Scenario: Help shows the next detail through the sand
     Given a round has started
-    When 10 seconds pass with no detail found since the start or the last find
+    When 10 seconds pass with no detail found since the start, the last find or the last help
     Then the sand over the spot of the first unfound card not yet helped thins so the detail shows through it
     And the thinning fades in, slowly, with the shared motion tokens, or with a short fade under reduced motion
     And that card's frame pulses gently, but not under reduced motion
 
-  Scenario: Brushing where no spot lies does not hold help off
-    Given a round has started
-    When I keep brushing places where no spot lies for 20 seconds
-    Then help shows the first unfound spot after 10 seconds all the same
+  Scenario: Help comes again while nothing is found
+    Given a round shows the cards EYE, FOOT and TAIL
+    When I keep brushing places where no spot lies for 30 seconds
+    Then help thins the eye spot after 10 seconds, the foot spot after 20 and the tail spot after 30
 
   Scenario: Help that has shown stays until its detail is found
     Given help has thinned the sand over the foot spot
     When I find the eye instead
     Then the foot spot stays thinned
     And 10 seconds after finding the eye, help thins the next unfound spot, the tail's
+
+  Scenario Outline: The find cards fit and read in either language and theme
+    Given the app is in <language> and uses the <theme> theme
+    When an Explorer round of Triceratops shows EYE, FOOT and TAIL on a 1024 by 768 screen
+    Then the board and the 3 cards show with no scrolling, each word on one line at 4.5:1 contrast
+    And the words read <words>
+
+    Examples:
+      | language | theme | words             |
+      | English  | light | EYE, FOOT, TAIL   |
+      | Russian  | dark  | ГЛАЗ, ЛАПА, ХВОСТ |

@@ -1,11 +1,13 @@
-Feature: Dig: the reveal, its star and the level switch
+Feature: Dig: the reveal and its star
   When the gust has blown, the dinosaur stays whole with its name: the
-  reveal is the round's result. Each dinosaur dug up for the first
-  time, at any level, earns its star once; the collection score is the
-  number of dinosaurs dug up, out of all of them, with the best-score
-  celebrations of the other games when it grows. The reveal shows the
-  level switch above "DIG AGAIN", as the sorting game's result does
-  (sort-dinosaurs-level-switch.feature).
+  reveal is the round's result. Beside it is the "DUG UP" card: a ⭐,
+  the words "DUG UP" and the count of dinosaurs dug up, out of all of
+  them, such as "5/42". Each dinosaur dug up for the first time, at any
+  level, earns its star once, with the best-score celebrations of the
+  other games when the count grows. The 🦴 badge
+  (dig-paleontologist.feature) shows on the same card. Under them stand
+  the level switch (dig-level-switch.feature), "DIG AGAIN" with a 🔄
+  symbol and "HOME" with a 🏠 symbol.
 
   Background:
     Given an iPad in landscape
@@ -14,9 +16,9 @@ Feature: Dig: the reveal, its star and the level switch
     Given I have dug up 4 dinosaurs, not Triceratops
     When the gust blows the last sand off Triceratops
     Then I see the whole Triceratops and its name "TRICERATOPS", large
-    And a star flies to "DUG UP" and the count reads "5/42", with "NEW!"
+    And a star flies onto the "DUG UP" card, its count turns to "5/42", and "NEW!" shows on it
     And with reduced motion the star and the count appear with a short fade
-    And I see the level switch above "DIG AGAIN" with a 🔄 symbol, and "HOME" with a 🏠 symbol
+    And I see the level switch above "DIG AGAIN" and "HOME"
 
   Scenario: The first dinosaur dug up is the first best
     Given I have never dug up a dinosaur
@@ -31,25 +33,13 @@ Feature: Dig: the reveal, its star and the level switch
   Scenario: A dinosaur dug up again earns no new star
     Given I have dug up Triceratops before, among 5
     When I dig up Triceratops again, at any level
-    Then I see its name and "5/42", with no "NEW!", no flying star and no celebration
+    Then I see its name and "5/42" on the "DUG UP" card, with no "NEW!", no flying star and no celebration
 
-  Scenario: "DIG AGAIN" starts a new round at the level chosen
-    Given I am on the reveal of a Hatchling round
-    When I choose Explorer on the level switch and tap "DIG AGAIN"
-    Then an Explorer round starts
-    And the next round started from the "DIG" tile plays Explorer too
-
-  Scenario: Choosing a level does not leave the reveal
-    Given I am on the reveal with "5/42"
-    When I choose Paleontologist on the level switch
-    Then I still see the dinosaur and "5/42"
-    And no round starts until I tap "DIG AGAIN"
-
-  Scenario: The level switch reads as the other games' do
-    When I see the reveal
-    Then the switch shows HATCHLING, EXPLORER and PALEONTOLOGIST, youngest first, with 🥚, 🦖 and 🦴
-    And the chosen level stands out from the other two by more than colour
-    And each level is at least 48 by 48 CSS pixels to tap
+  Scenario: The last dinosaur completes the collection
+    Given I have dug up 41 of the 42 dinosaurs
+    When I dig up the last one
+    Then I see the new best score celebration, "42/42" and a 🏆 on the "DUG UP" card
+    And every later reveal shows "42/42" with the 🏆
 
   Scenario: Home from the reveal returns to the home page
     Given I am on the reveal
@@ -59,12 +49,13 @@ Feature: Dig: the reveal, its star and the level switch
   Scenario Outline: The reveal fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
     When I see a reveal of PACHYCEPHALOSAURUS with a new best on a 1024 by 768 screen
-    Then the name, the count, the switch, "<again>" and "<home>" all show with no scrolling
+    Then the name, the "<dug>" card with its count and "<new>", the switch, "<again>" and "<home>" all show with no scrolling
     And the name shows whole on one line, as large as fits
+    And every word keeps at least 4.5:1 contrast with its background
 
     Examples:
-      | language | theme | again      | home  |
-      | English  | light | DIG AGAIN  | HOME  |
-      | English  | dark  | DIG AGAIN  | HOME  |
-      | Russian  | light | КОПАТЬ ЕЩЁ | ДОМОЙ |
-      | Russian  | dark  | КОПАТЬ ЕЩЁ | ДОМОЙ |
+      | language | theme | dug      | new    | again      | home  |
+      | English  | light | DUG UP   | NEW!   | DIG AGAIN  | HOME  |
+      | English  | dark  | DUG UP   | NEW!   | DIG AGAIN  | HOME  |
+      | Russian  | light | ОТКОПАНО | НОВЫЙ! | КОПАТЬ ЕЩЁ | ДОМОЙ |
+      | Russian  | dark  | ОТКОПАНО | НОВЫЙ! | КОПАТЬ ЕЩЁ | ДОМОЙ |

@@ -9,7 +9,7 @@ Feature: The level a game starts at
 
   Find the pair, the sorting game, the skeleton game and the dig game
   have levels (find-the-pair-levels.feature, sort-dinosaurs-levels.feature,
-  skeleton-assembly-levels.feature, dig-start.feature). Each other
+  skeleton-assembly-levels.feature, dig-level-switch.feature). Each other
   game adopts them in its own issue, which removes its row from the
   first scenario and keeps the child's choice in its own progress; the
   catalogue has no levels and keeps its row. The rules below are checked

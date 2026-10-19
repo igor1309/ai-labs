@@ -2,7 +2,9 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
   Paleontologist adds order and deduction, never speed: three clues,
   spots of the unnamed dinosaur (dig-spots.feature), come one at a
   time, and once all three are found the child names the dinosaur from
-  three body pictures.
+  three body pictures. A round's clues take a telling kind
+  (dig-spots.feature) among its spots first, where the dinosaur has
+  one, so the clues can tell it from the others.
 
   Background:
     Given an iPad in landscape
@@ -30,6 +32,7 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
   Scenario: Help shows the clue's spot through the sand
     Given the second clue card has shown for 10 seconds with its spot not found
     Then the sand over its spot thins so the detail shows through it, as Explorer's help does (dig-explorer.feature)
+    And it stays thinned until the spot is found, with no more help for that clue
 
   Scenario: Three found clues bring the choice of three
     Given I have found the first two clues
@@ -37,10 +40,18 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
     Then the three ticked clues and the sand board, smaller, stand above three cards
     And each card shows a dinosaur's body picture, with no name: the one under the sand and two others, in a random order
 
-  Scenario: The two other dinosaurs differ in the clues where they can
-    Given the clues are SAIL, CLAW and EYE
-    Then each of the other two dinosaurs lacks at least one of the clues' kinds among its own spots, where enough dinosaurs do
-    And otherwise the others are any other dinosaurs
+  Scenario Outline: The two other dinosaurs each lack a telling clue
+    Given the clues are <clues>
+    Then each of the other two dinosaurs lacks <lacks> among its telling traits
+
+    Examples:
+      | clues             | lacks          |
+      | SAIL, CLAW, EYE   | SAIL           |
+      | HORN, FRILL, FOOT | HORN or FRILL  |
+
+  Scenario: Clues with no telling kind leave the others free
+    Given a dinosaur with no telling traits, whose clues are EYE, FOOT and TAIL
+    Then the other two are any two other dinosaurs
 
   Scenario: A wrong pick fades and the child picks again
     Given I see the choice of three
@@ -55,7 +66,7 @@ Feature: Dig: Paleontologist follows clues and names the dinosaur
 
   Scenario: Naming it at the first pick earns its badge
     When I pick the dinosaur under the sand at the first pick
-    Then the reveal shows the 🦴 Paleontologist badge beside "DUG UP"
+    Then the reveal shows the 🦴 Paleontologist badge on the "DUG UP" card
     And the next reveal of that dinosaur, at any level, shows the badge too
     But a dinosaur named after a wrong pick earns no badge, and keeps one it earned before
 
