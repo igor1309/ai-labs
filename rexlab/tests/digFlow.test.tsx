@@ -13,6 +13,13 @@ function reveal({ reducedMotion = false, storage = memoryStorage(), ageLevel }: 
   placeBoard(800);
   const startedLevel = document.querySelector(".dig-board")?.getAttribute("data-level");
   brushAll();
+  // Paleontologist finishes by naming the dinosaur after uncovering its clues.
+  if (ageLevel === "paleontologist") {
+    const picture = document.querySelector(".dig-board img")?.getAttribute("src");
+    const choice = [...document.querySelectorAll<HTMLButtonElement>(".dig-choice-card")].find((card) => card.querySelector("img")?.getAttribute("src") === picture);
+    if (!choice) throw new Error("No matching dinosaur choice");
+    fireEvent.click(choice);
+  }
   act(() => app.timers.fire(reducedMotion ? GUST.reduced : GUST.motion));
   return { ...app, storage, startedLevel };
 }

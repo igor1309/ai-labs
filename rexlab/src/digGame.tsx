@@ -9,6 +9,7 @@ import {
   dugUpOf,
   mergeProgress,
   NO_DIG,
+  pickRound,
   startRound,
   waitForHelp,
   type DigDinosaur,
@@ -54,7 +55,6 @@ export type DigGameProps = {
   sandContext: SandContext;
 };
 
-// Paleontologist uses free brushing until its clues and choice are built.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 const HELP_TICK = 1000;
 
@@ -204,17 +204,17 @@ export function useDigGame(
   // lose it, and the reveal follows once the gust has blown; a round left
   // before its gust is never recorded. The reveal takes taps once its
   // star has landed.
-  const brush = (mark: SandMark) => {
+  const advance = (update: (round: DigRound) => DigRound) => {
     const from = live.current;
     const timers = roundTimers.current;
     if (from === null || timers === null) return;
-    const to = brushRound(from, mark);
+    const to = update(from);
     if (to === from) return;
     live.current = to;
     go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
     if (!to.blown) return;
     last.current = to.dinosaur.id;
-    const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest);
+    const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest, to.level === "paleontologist" && to.rejected.length === 0);
     keep({ ...keptNow.current, ...dug.kept });
     const timing = reducedMotion() ? "reduced" : "motion";
     timers.start(GUST[timing], () => {
@@ -226,6 +226,9 @@ export function useDigGame(
       );
     });
   };
+
+  const brush = (mark: SandMark) => advance((round) => brushRound(round, mark));
+  const pick = (id: string) => advance((round) => pickRound(round, id));
 
   const home = () => {
     leave();
@@ -248,6 +251,7 @@ export function useDigGame(
             total={ids.length}
             sandContext={sandContext}
             onBrush={brush}
+            onPick={pick}
             onHome={home}
           />
         );

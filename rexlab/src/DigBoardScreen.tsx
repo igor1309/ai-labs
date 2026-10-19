@@ -35,6 +35,7 @@ export type DigBoardScreenProps = {
   blown: boolean;
   spots: readonly DigSpotView[];
   helpShown: boolean;
+  choices: readonly { id: string; picture: string; rejected: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
@@ -47,6 +48,7 @@ export type DigBoardScreenProps = {
   total: number;
   sandContext: SandContext;
   onBrush: (mark: SandMark) => void;
+  onPick?: (id: string) => void;
   onHome: () => void;
 };
 
@@ -141,6 +143,7 @@ export function DigBoardScreen({
   blown,
   spots,
   helpShown,
+  choices,
   level,
   brush,
   grains,
@@ -148,9 +151,14 @@ export function DigBoardScreen({
   total,
   sandContext,
   onBrush,
+  onPick,
   onHome
 }: DigBoardScreenProps) {
   const text = TEXTS[language];
+  const paleontologist = level === "paleontologist";
+  const choice = choices.length > 0;
+  const currentClue = spots.findIndex(({ found }) => !found);
+  const shownSpots = paleontologist && currentClue >= 0 ? spots.slice(0, currentClue + 1) : spots;
   const board = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
@@ -166,8 +174,8 @@ export function DigBoardScreen({
   }, [spots]);
   // The listeners on the window and the redraw read the props as they
   // are now, not as they were when they were added.
-  const latest = useRef({ marks, onBrush, grains, brush });
-  latest.current = { marks, onBrush, grains, brush };
+  const latest = useRef({ marks, onBrush, grains, brush, locked: blown || choice });
+  latest.current = { marks, onBrush, grains, brush, locked: blown || choice };
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const drawn = useRef(0);
 
@@ -192,7 +200,7 @@ export function DigBoardScreen({
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [sandContext, frame.width]);
+  }, [sandContext, frame.width, choice]);
 
   // Each new mark is taken off the sand already drawn.
   useLayoutEffect(() => {
@@ -218,7 +226,7 @@ export function DigBoardScreen({
   useEffect(() => {
     const move = (event: PointerEvent) => {
       const current = stroke.current;
-      if (!current || event.pointerId !== current.pointerId) return;
+      if (!current || latest.current.locked || event.pointerId !== current.pointerId) return;
       const at = toFrame(current.rect, event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
@@ -245,7 +253,7 @@ export function DigBoardScreen({
   // the frame's pixels follows the board's size as it is pressed.
   const press = (event: ReactPointerEvent) => {
     const rect = board.current?.getBoundingClientRect();
-    if (stroke.current || blown || event.button !== 0 || !rect || rect.width === 0) return;
+    if (stroke.current || blown || choice || event.button !== 0 || !rect || rect.width === 0) return;
     const at = toFrame(rect, event.clientX, event.clientY);
     const current = { pointerId: event.pointerId, rect, radius: (brush / 2) * (frame.width / rect.width), last: at, puffed: at };
     stroke.current = current;
@@ -254,17 +262,17 @@ export function DigBoardScreen({
     puff(current, at, true);
   };
 
-  // The gust ends any stroke: the sand is gone.
+  // The choice and the gust both end any stroke.
   useEffect(() => {
-    if (!blown) return;
+    if (!blown && !choice) return;
     stroke.current = undefined;
     setBrushAt(undefined);
-  }, [blown]);
+  }, [blown, choice]);
 
   return (
     <main className="dig-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
-      <DigBar language={language} onHome={onHome}>
+      <DigBar language={language} title={paleontologist ? text.whoIsIt : text.dig} onHome={onHome}>
         {dugUp !== undefined && (
           <p className="dig-chip" aria-label={text.dugUp}>
             <Star size={20} aria-hidden="true" />
@@ -272,7 +280,7 @@ export function DigBoardScreen({
           </p>
         )}
       </DigBar>
-      <div className="dig-body" data-explorer={level === "explorer" || undefined}>
+      <div className="dig-body" data-explorer={level === "explorer" || paleontologist || undefined} data-paleontologist={paleontologist || undefined} data-choice={choice || undefined}>
         <div
           ref={board}
           className="dig-board"
@@ -316,16 +324,28 @@ export function DigBoardScreen({
           {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
         </div>
         {spots.length > 0 && <div className="dig-find-cards">
-          {spots.map((spot) => (
+          {shownSpots.map((spot, at) => (
             <div key={spot.id} className="dig-find-card" data-spot={spot.id} data-found={spot.found || undefined}
+              data-clue={paleontologist || undefined} data-motion={grains || undefined}
               data-helped={spot.helped && !spot.found || undefined} data-pulse={grains && spot.helped && !spot.found || undefined}>
-              <SpotPicture picture={picture} frame={frame} spot={spot} />
+              {paleontologist && <span className="dig-clue-number">{at + 1} / 3</span>}
+              {(!paleontologist || spot.found) && <SpotPicture picture={picture} frame={frame} spot={spot} />}
               <span className="dig-find-word">{spot.word}</span>
+              {paleontologist && !spot.found && <span className="dig-clue-sand" aria-hidden="true">🔍</span>}
               {spot.found && <Check className="dig-find-tick" data-motion={grains || undefined} size={28} aria-label="✓" />}
             </div>
           ))}
+          {paleontologist && currentClue >= 0 && currentClue < spots.length - 1 && <div className="dig-clue-closed" aria-hidden="true">🔒</div>}
         </div>}
       </div>
+      {choice && <div className="dig-choice-cards" data-motion={grains || undefined} role="group" aria-label={text.whoIsIt}>
+        {choices.map((card, at) => (
+          <button key={card.id} type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
+            disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / 3`} onClick={() => onPick?.(card.id)}>
+            <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
+          </button>
+        ))}
+      </div>}
     </main>
   );
 }

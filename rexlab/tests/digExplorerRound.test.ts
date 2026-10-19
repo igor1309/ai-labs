@@ -92,8 +92,9 @@ describe("Explorer's help", () => {
     expect(waitForHelp(round, HELP_AFTER)).toBe(round);
   });
 
-  it.each(["hatchling", "paleontologist"] as const)("never offers Explorer help in %s", (level) => {
-    const round = startRound([dinosaur], [], undefined, () => 0, level);
+  // Paleontologist has sequential clue help; only Hatchling brushes freely.
+  it("never offers detail help in Hatchling", () => {
+    const round = startRound([dinosaur], [], undefined, () => 0, "hatchling");
     expect(awaitsHelp(round)).toBe(false);
     expect(waitForHelp(round, HELP_AFTER)).toBe(round);
     expect(round.spots).toEqual([]);

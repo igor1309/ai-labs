@@ -1,5 +1,5 @@
 import { brush, clearCells, clearShare, NEW_SAND, type Mark, type Sand } from "./sand.ts";
-import { spotCells, type Cells, type DigDinosaur, type Spot, type SpotKind } from "./spots.ts";
+import { spotCells, TELLING_KINDS, type Cells, type DigDinosaur, type Spot, type SpotKind } from "./spots.ts";
 
 // A source of numbers from 0 up to 1, as Math.random gives them.
 export type Random = () => number;
@@ -29,6 +29,8 @@ export type DigRound = {
   // Help remains recorded after its spot is found, for the level offer.
   helpShown: boolean;
   quietMs: number;
+  choices: readonly string[];
+  rejected: readonly string[];
 };
 
 export const HELP_AFTER = 10_000;
@@ -47,14 +49,61 @@ export function explorerSpots(spots: readonly Spot[], random: Random): Spot[] {
   return chosen;
 }
 
+// Telling spots get the places first; the final draw mixes them with any
+// ordinary details filling the remaining places.
+export function paleontologistSpots(spots: readonly Spot[], random: Random): Spot[] {
+  const telling = explorerSpots(spots.filter(({ kind }) => TELLING_KINDS.includes(kind)), random);
+  const others = explorerSpots(spots.filter(({ kind }) => !TELLING_KINDS.includes(kind)), random);
+  return explorerSpots([...telling, ...others.slice(0, 3 - telling.length)], random);
+}
+
+function draw<T>(pool: readonly T[], count: number, random: Random): T[] {
+  const remaining = [...pool];
+  const chosen: T[] = [];
+  while (chosen.length < count && remaining.length > 0) {
+    const [item] = remaining.splice(Math.min(remaining.length - 1, Math.floor(random() * remaining.length)), 1);
+    if (item !== undefined) chosen.push(item);
+  }
+  return chosen;
+}
+
+// Each distractor contradicts at least one telling clue, including traits
+// that its picture shows outside its own chosen spots.
+export function choiceDinosaurs(dinosaur: DigDinosaur, clues: readonly Spot[], dinosaurs: readonly DigDinosaur[], random: Random): string[] {
+  const telling = clues.filter(({ kind }) => TELLING_KINDS.includes(kind));
+  const pool = dinosaurs.filter(({ id, traits }) => id !== dinosaur.id && (telling.length === 0 || telling.some(({ kind }) => !traits.includes(kind))));
+  const others = draw(pool, 2, random);
+  if (others.length !== 2) throw new Error(`Not enough clue distractors for ${dinosaur.id}`);
+  return draw([dinosaur, ...others], 3, random).map(({ id }) => id);
+}
+
+// Already uncovered later clues stay closed until every earlier clue is found.
+export const clueIndex = (round: DigRound): number => {
+  const at = round.spots.findIndex(({ kind }) => !round.found.includes(kind));
+  return at < 0 ? round.spots.length : at;
+};
+
+export const choosing = (round: DigRound): boolean => round.level === "paleontologist" && !round.blown && clueIndex(round) === 3;
+
+export function pickRound(round: DigRound, id: string): DigRound {
+  if (!choosing(round) || !round.choices.includes(id) || round.rejected.includes(id)) return round;
+  return id === round.dinosaur.id ? { ...round, blown: true } : { ...round, rejected: [...round.rejected, id] };
+}
+
 // Only the dinosaur's cells inside the spot count; exactly half is not a find.
 export function spotFound(spot: Spot, cells: Cells, clear: Cells): boolean {
   const own = spotCells(spot, cells);
   return own.filter(([column, row]) => clear[row]?.[column] === true).length * 2 > own.length;
 }
 
-export const awaitsHelp = (round: DigRound): boolean =>
-  round.level === "explorer" && !round.blown && round.spots.some(({ kind }) => !round.found.includes(kind) && !round.helped.includes(kind));
+const helpSpot = (round: DigRound): Spot | undefined => round.level === "paleontologist"
+  ? round.spots[clueIndex(round)]
+  : round.level === "explorer" ? round.spots.find(({ kind }) => !round.found.includes(kind) && !round.helped.includes(kind)) : undefined;
+
+export const awaitsHelp = (round: DigRound): boolean => {
+  const spot = helpSpot(round);
+  return !round.blown && spot !== undefined && !round.helped.includes(spot.kind);
+};
 
 // Only shown, landscape time is supplied by the caller. Brushing elsewhere
 // never delays help, and help never clears cells or finds a detail.
@@ -62,7 +111,7 @@ export function waitForHelp(round: DigRound, ms: number): DigRound {
   if (!awaitsHelp(round)) return round;
   const quietMs = round.quietMs + ms;
   if (quietMs < HELP_AFTER) return { ...round, quietMs };
-  const next = round.spots.find(({ kind }) => !round.found.includes(kind) && !round.helped.includes(kind));
+  const next = helpSpot(round);
   return next ? { ...round, quietMs: 0, helped: [...round.helped, next.kind], helpShown: true } : round;
 }
 
@@ -74,9 +123,10 @@ export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly stri
   const pool = fresh.length > 0 ? fresh : others.length > 0 ? others : dinosaurs;
   const dinosaur = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
   if (dinosaur === undefined) throw new Error("No dinosaur to dig up");
+  const spots = level === "paleontologist" ? paleontologistSpots(dinosaur.spots, random) : level === "explorer" ? explorerSpots(dinosaur.spots, random) : [];
   return {
     level, dinosaur, sand: NEW_SAND, blown: false,
-    spots: level === "explorer" ? explorerSpots(dinosaur.spots, random) : [],
+    spots, choices: level === "paleontologist" ? choiceDinosaurs(dinosaur, spots, dinosaurs, random) : [], rejected: [],
     found: [], helped: [], helpShown: false, quietMs: 0
   };
 }
@@ -84,16 +134,18 @@ export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly stri
 // The share of the round's dinosaur that is clear.
 export const roundShare = ({ dinosaur, sand }: DigRound): number => clearShare(sand, dinosaur.cells);
 
-// Explorer's gust follows its third find, whatever sand remains. Other
-// levels use the free-brushing threshold. Blown sand takes no more marks.
+// Explorer's gust follows its third find; Paleontologist waits for a
+// correct choice. Neither the choice nor blown sand takes more marks.
 export function brushRound(round: DigRound, mark: Mark): DigRound {
-  if (round.blown) return round;
+  if (round.blown || choosing(round)) return round;
   const brushed = { ...round, sand: brush(round.sand, mark) };
-  if (round.level === "explorer") {
+  if (round.level !== "hatchling") {
     const clear = clearCells(brushed.sand);
     const newFinds = round.spots.filter((spot) => !round.found.includes(spot.kind) && spotFound(spot, round.dinosaur.cells, clear));
     const found = newFinds.length === 0 ? round.found : [...round.found, ...newFinds.map(({ kind }) => kind)];
-    return { ...brushed, found, quietMs: newFinds.length > 0 ? 0 : round.quietMs, blown: found.length === 3 };
+    const next = { ...brushed, found };
+    const advances = round.level === "paleontologist" ? clueIndex(next) !== clueIndex(round) : newFinds.length > 0;
+    return { ...next, quietMs: advances ? 0 : round.quietMs, blown: round.level === "explorer" && found.length === 3 };
   }
   return { ...brushed, blown: roundShare(brushed) >= GUST_SHARE };
 }

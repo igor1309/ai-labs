@@ -108,6 +108,7 @@ export const ru: Texts = {
   rebuild: "СОБРАТЬ ЗАНОВО",
   keepBuilding: "ДОСТРОИТЬ",
   dig: "РАСКОПКИ",
+  whoIsIt: "КТО ЭТО?",
   sand: "ПЕСОК",
   dugUp: "ОТКОПАНО",
   dugUpNew: "НОВЫЙ!",

@@ -47,9 +47,14 @@ export function mergeProgress(kept: DigProgress, stored: DigProgress): DigProgre
 // The progress with `dinosaurId` dug up, and its reward. Only a dinosaur
 // dug up for the first time earns a star, and the count it grows is
 // celebrated by the best-score rule; `ids` are the dinosaurs shipped.
-export function digUp(kept: KeptDig, dinosaurId: string, ids: readonly string[], beatBest: BeatBest): { kept: KeptDig; reward: DigReward } {
+// Naming at the first pick adds a badge, even on a repeat dig; later
+// reveals keep it regardless of the level or any wrong picks.
+export function digUp(kept: KeptDig, dinosaurId: string, ids: readonly string[], beatBest: BeatBest, namedFirst = false): { kept: KeptDig; reward: DigReward } {
   const newStar = !kept.progress.dug.includes(dinosaurId);
-  const progress = newStar ? { ...kept.progress, dug: [...kept.progress.dug, dinosaurId] } : kept.progress;
+  const progress = {
+    dug: newStar ? [...kept.progress.dug, dinosaurId] : kept.progress.dug,
+    badges: namedFirst && !kept.progress.badges.includes(dinosaurId) ? [...kept.progress.badges, dinosaurId] : kept.progress.badges
+  };
   const before = dugUpOf(kept.progress, ids);
   const after = dugUpOf(progress, ids);
   const { celebration } = beatBest(before === 0 ? null : before, after);
@@ -60,7 +65,7 @@ export function digUp(kept: KeptDig, dinosaurId: string, ids: readonly string[],
       total: ids.length,
       newStar,
       celebration: kept.readable ? celebration : null,
-      badge: kept.progress.badges.includes(dinosaurId)
+      badge: progress.badges.includes(dinosaurId)
     }
   };
 }

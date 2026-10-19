@@ -30,6 +30,19 @@ describe("a dinosaur dug up", () => {
     expect(reward).toEqual({ dugUp: 2, total: 5, newStar: false, celebration: null, badge: true });
   });
 
+  it.each([false, true])("keeps a first-pick badge once, including for an already dug dinosaur: %s", (alreadyDug) => {
+    const before = kept(alreadyDug ? ["triceratops"] : []);
+    const first = digUp(before, "triceratops", IDS, beatBest, true);
+    expect(first.kept.progress).toEqual({ dug: ["triceratops"], badges: ["triceratops"] });
+    expect(first.reward.badge).toBe(true);
+    const again = digUp(first.kept, "triceratops", IDS, beatBest, true);
+    expect(again.kept.progress.badges).toEqual(["triceratops"]);
+    const wrongFirst = digUp(again.kept, "triceratops", IDS, beatBest, false);
+    expect(wrongFirst.kept.progress.badges).toEqual(["triceratops"]);
+    expect(wrongFirst.reward.badge).toBe(true);
+    expect(before).toEqual(kept(alreadyDug ? ["triceratops"] : []));
+  });
+
   it("is counted only among the dinosaurs still shipped", () => {
     const { reward } = digUp(kept(["stegosaurus", "a-dinosaur-no-longer-shipped"]), "triceratops", IDS, beatBest);
 

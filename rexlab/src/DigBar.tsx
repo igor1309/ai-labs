@@ -6,7 +6,7 @@ import { TEXTS } from "./language/texts.ts";
 // The bar over every dig screen: HOME, unless the screen has its own, the
 // game's title beside a brush, and anything else the screen shows in the
 // bar after them.
-export function DigBar({ language, onHome, children }: { language: Language; onHome?: () => void; children?: ReactNode }) {
+export function DigBar({ language, title, onHome, children }: { language: Language; title?: string; onHome?: () => void; children?: ReactNode }) {
   const text = TEXTS[language];
   return (
     <header className="dig-bar">
@@ -20,7 +20,7 @@ export function DigBar({ language, onHome, children }: { language: Language; onH
         <span className="dig-mark" aria-hidden="true">
           <Brush size={28} />
         </span>
-        {text.dig}
+        {title ?? text.dig}
       </h1>
       {children}
     </header>

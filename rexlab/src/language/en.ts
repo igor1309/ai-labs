@@ -104,6 +104,7 @@ export const en: Texts = {
   rebuild: "REBUILD",
   keepBuilding: "CONTINUE",
   dig: "DIG",
+  whoIsIt: "WHO IS IT?",
   sand: "SAND",
   dugUp: "DUG UP",
   dugUpNew: "NEW!",

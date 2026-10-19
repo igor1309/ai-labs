@@ -154,6 +154,7 @@ export type Texts = {
   // dug up for the first time, the way to the next round, and the trophy
   // of every dinosaur dug up, read out.
   dig: string;
+  whoIsIt: string;
   sand: string;
   dugUp: string;
   dugUpNew: string;
