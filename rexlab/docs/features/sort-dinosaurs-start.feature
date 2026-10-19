@@ -40,6 +40,7 @@ Feature: Sort dinosaurs: starting a round and the board
       | on the tray |
       | in a basket |
 
+  # The featured card's double tap is in home-featured-card.feature.
   Scenario Outline: A quick double tap starts one round
     Given I am on <screen>
     When I tap "<button>" twice quickly

@@ -116,6 +116,17 @@ describe("the motion", () => {
     expect(moving.length).toBeGreaterThan(0);
     expect(moving.filter((selector) => MOVING.test(reducedTransitions.get(selector) ?? "transform"))).toEqual([]);
   });
+
+  it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
+    const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
+    const overridden = new Set(REDUCED.map(({ prelude }) => prelude));
+    const later = RULES.slice(reducedAt + 1)
+      .filter(({ prelude }) => overridden.has(prelude))
+      .map(({ prelude }) => prelude);
+
+    expect(RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)")).toHaveLength(1);
+    expect(later).toEqual([]);
+  });
 });
 
 // The animation each selector of a rule runs, from its `animation`
@@ -263,6 +274,24 @@ describe("find the pair's motion", () => {
         ["wave", "var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger))"]
       ])
     );
+  });
+
+  // A rule's declarations, by property.
+  const declared = (rules: Rule[], selector: string) =>
+    Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
+
+  it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-level-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".pairs-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, ".pairs-level-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
+  });
+
+  it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
+    expect(declared(PLAIN, ".pairs-climb").transition).toBe(
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+    );
+    expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
+    expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
   });
 
   it("bumps a new count of tries in, and pops the result's NEW badges and star in", () => {

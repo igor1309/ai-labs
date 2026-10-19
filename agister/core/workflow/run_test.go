@@ -34,15 +34,19 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 }
 
 // callerSpy answers each step by its test's answer for its name, once it
-// has given the call's report its test's tools for that name, in order,
-// then its stale turns; and
-// keeps each call's params, in the order called and by its step. A step it
-// has no answer for fails its test, and is answered with nothing. It is
-// safe for concurrent use; the trail is read once the run has ended.
+// has given the call's report its start, or, where its test gives one,
+// the call it reused for that name, or nothing where its test names the
+// step in silent; then its test's tools for that name, in order, then its
+// stale turns; and keeps each call's params, in the order called and by
+// its step. A step it has no answer for fails its test, and is answered
+// with nothing. It is safe for concurrent use; the trail is read once the
+// run has ended.
 type callerSpy struct {
 	t       *testing.T
 	trail   *trail
 	answers map[string]func() workflow.Result
+	reused  map[string]string
+	silent  []string
 	tools   map[string][]workflow.Tool
 	stale   map[string][]workflow.Stale
 	mu      sync.Mutex
@@ -59,6 +63,12 @@ func (s *callerSpy) Call(_ context.Context, step string, params map[string]strin
 	}
 	s.bound[step] = params
 	s.mu.Unlock()
+	switch reused := s.reused[step]; {
+	case reused != "":
+		report(workflow.Report{Reused: reused})
+	case !slices.Contains(s.silent, step):
+		report(workflow.Report{Started: true})
+	}
 	for _, tool := range s.tools[step] {
 		report(workflow.Report{Tool: &tool})
 	}
@@ -98,6 +108,10 @@ func (s *eventsSpy) tell(format string, args ...any) {
 
 func (s *eventsSpy) Started(step, agent string) {
 	s.tell("%s started on %s", step, agent)
+}
+
+func (s *eventsSpy) Reused(step, call string) {
+	s.tell("%s reused %s", step, call)
 }
 
 func (s *eventsSpy) Tool(step string, tool workflow.Tool) {

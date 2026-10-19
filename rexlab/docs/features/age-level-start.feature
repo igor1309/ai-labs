@@ -7,13 +7,13 @@ Feature: The level a game starts at
   levels is its Hatchling best, shown on its tile and, when it is
   featured, on the large card.
 
-  No game has levels yet: each adopts them in its own issue, which
-  removes its row from the first scenario and keeps the child's choice
-  in its own progress; the catalogue has no levels and keeps its row.
-  Until then the rules below are checked on the shared rule, which is
-  given the level, a game's modes and the child's choice in it, made
-  under the level as it then stood; the child's choice is in
-  age-level-choice.feature.
+  Find the pair has levels (find-the-pair-levels.feature). Each other
+  game adopts them in its own issue, which removes its row from the
+  first scenario and keeps the child's choice in its own progress; the
+  catalogue has no levels and keeps its row. The rules below are checked
+  on the shared rule, which is given the level, a game's modes and the
+  child's choice in it, made under the level as it then stood; the
+  child's choice is in age-level-choice.feature.
 
   Background:
     Given an iPad in landscape
@@ -28,7 +28,6 @@ Feature: The level a game starts at
       | the catalogue     |
       | the care game     |
       | the sorting game  |
-      | find the pair     |
       | the skeleton game |
 
   Scenario Outline: The same play earns the same reward at every level

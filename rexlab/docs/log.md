@@ -8,6 +8,9 @@
 
 - Sorting no longer waits for pictures: a round starts at once, each card named over its picture's shimmer until it fades in, and sorted the same while its picture loads or is missing (LAB-307).
 - Care and find the pair no longer wait for pictures: a visit and a board start at once, each picture shimmering until it fades in; a turned card shows its dinosaur's name until its picture shows, and a missing picture shows footprints (LAB-306).
+- Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).
+- A level switch on find the pair's welcome screen starts at the age level and keeps the child's choice until a parent picks a different level (LAB-296).
+- Reduced motion holds on every screen again: a card, a step or a sorting card only fades, where later rules had made it move (LAB-296).
 - The catalogue, the compare game and the home page no longer wait for pictures: a screen opens at once, each picture shimmering in its place until it fades in, and a picture that fails or takes over 8 seconds shows footprints instead (LAB-304).
 - A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
 - Tap safety is split into parts that land one by one, screen state and animation first; leaving a game now stops its pending timers at once (LAB-298).

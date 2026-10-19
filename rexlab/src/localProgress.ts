@@ -1,9 +1,11 @@
+import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import type { FeaturedHistory, Featuring } from "./featured.ts";
-import { LEVELS, NO_PAIRS, type Level, type PairsProgress } from "./pairs/index.ts";
+import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 import { NO_SKELETONS, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
+import type { LevelChoice } from "./startLevel.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
 
@@ -37,20 +39,67 @@ function readRounds({ bestScore, roundsPlayed }: Entry) {
   return (bestScore === null || isCount(bestScore)) && isCount(roundsPlayed) ? { bestScore, roundsPlayed } : undefined;
 }
 
-// Find the pair's progress, beside the others in the same record. Each
-// level's best is kept under the level's number.
+// Find the pair's progress and the child's last choice on its level
+// switch, beside the others in the same record.
 export function localPairsProgress(storage: () => KeyValueStorage) {
-  return gameProgress<PairsProgress>(storage, "find-the-pair", NO_PAIRS, ({ stars, level, boardsOnLevel, best, found }) =>
+  const entry = gameProgress<StoredPairs>(storage, "find-the-pair", storedPairs(NO_PAIRS, undefined), readPairs);
+  return {
+    // Undefined when storage cannot be read at all.
+    load(): { progress: PairsProgress; levelChoice: LevelChoice | undefined } | undefined {
+      const stored = entry.load();
+      if (stored === undefined) return undefined;
+      const { level, boardsOnLevel, levelChoice, ...rest } = stored;
+      return { progress: { ...rest, climbLevel: level, boardsOnClimbLevel: boardsOnLevel }, levelChoice };
+    },
+
+    save({ progress, levelChoice }: { progress: PairsProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save(storedPairs(progress, levelChoice));
+    }
+  };
+}
+
+// Find the pair's entry as stored. It keeps the names it had before the
+// game had levels: the climb level under `level`, the boards finished on
+// it under `boardsOnLevel`, and each climb level's best under the level's
+// number, with Explorer's and Paleontologist's bests under their names.
+// The child's choice on the level switch is kept beside them,
+// with the revision of the age level it was made under; an entry saved
+// before levels has none.
+type StoredPairs = {
+  stars: number;
+  level: ClimbLevel;
+  boardsOnLevel: number;
+  best: PairsProgress["best"];
+  found: readonly string[];
+  levelChoice?: LevelChoice;
+};
+
+function storedPairs({ climbLevel, boardsOnClimbLevel, ...rest }: PairsProgress, levelChoice: LevelChoice | undefined): StoredPairs {
+  return { ...rest, level: climbLevel, boardsOnLevel: boardsOnClimbLevel, ...(levelChoice && { levelChoice }) };
+}
+
+function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice }: Entry): StoredPairs | undefined {
+  const usable =
     isCount(stars) &&
-    isLevel(level) &&
+    isClimbLevel(level) &&
     isCount(boardsOnLevel) &&
     isObject(best) &&
-    Object.entries(best).every(([key, tries]) => isLevel(Number(key)) && isCount(tries) && tries > 0) &&
+    Object.entries(best).every(([key, tries]) => (isClimbLevel(Number(key)) || Object.hasOwn(LARGE_LEVELS, key)) && isCount(tries) && tries > 0) &&
     Array.isArray(found) &&
-    found.every((id) => typeof id === "string")
-      ? { stars, level, boardsOnLevel, best: { ...best }, found: [...found] }
-      : undefined
-  );
+    found.every((id) => typeof id === "string");
+  if (!usable) return undefined;
+  const progress = { stars, level, boardsOnLevel, best: { ...best }, found: [...found] };
+  if (levelChoice === undefined) return progress;
+  const choice = choiceOf(levelChoice);
+  return choice && { ...progress, levelChoice: choice };
+}
+
+// A choice is an age level and the revision it was made under, null while
+// no parent has picked a level on this device.
+function choiceOf(raw: unknown): LevelChoice | undefined {
+  if (!isObject(raw)) return undefined;
+  const { level, revision } = raw;
+  return isAgeLevel(level) && (revision === null || (typeof revision === "string" && revision !== "")) ? { level, revision } : undefined;
 }
 
 // The skeleton game's progress, beside the others in the same record: the
@@ -180,8 +229,8 @@ function isIds(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((id) => typeof id === "string");
 }
 
-function isLevel(value: unknown): value is Level {
-  return Object.hasOwn(LEVELS, String(value)) && Number.isInteger(value);
+function isClimbLevel(value: unknown): value is ClimbLevel {
+  return Object.hasOwn(CLIMB_LEVELS, String(value)) && Number.isInteger(value);
 }
 
 function isCount(value: unknown): value is number {

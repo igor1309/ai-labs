@@ -183,8 +183,8 @@ const usage = `usage:
   agister check [--dir <directory>]
   agister inspect processes|workflows|agents [--dir <directory>]
   agister inspect process|workflow|agent <name> [--dir <directory>]
-  agister run <workflow> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
-  agister run --process <name> --agent <name> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
+  agister run <workflow> [--param <name>=<value>]... [--continue <run id> | --reuse <run id>] [--dir <directory>]
+  agister run --process <name> --agent <name> [--param <name>=<value>]... [--continue <run id> | --reuse <run id>] [--dir <directory>]
   agister runs export <run id> --to <directory>
 `
 
@@ -296,12 +296,12 @@ func inspected(word string) (list, show Kind) {
 }
 
 // flags are the flags of a command: --dir; run's --process, --agent,
-// --continue and each --param, in the order given; runs' --to; and each
-// flag by its name, as it was given, in order.
+// --continue, --reuse and each --param, in the order given; runs' --to;
+// and each flag by its name, as it was given, in order.
 type flags struct {
-	dir, process, agent, continued, to string
-	params                             []string
-	given                              []givenFlag
+	dir, process, agent, continued, reused, to string
+	params                                     []string
+	given                                      []givenFlag
 }
 
 // givenFlag is a flag by its name, and as it was given.
@@ -331,7 +331,7 @@ func needs(flag string) string {
 		return "an agent"
 	case "param":
 		return "a param"
-	case "continue":
+	case "continue", "reuse":
 		return "a run id"
 	case "to":
 		return "a directory"
@@ -378,6 +378,8 @@ func parse(args []string) (command, error) {
 			f.params = append(f.params, value)
 		case "continue":
 			f.continued = value
+		case "reuse":
+			f.reused = value
 		case "to":
 			f.to = value
 		}
@@ -389,7 +391,7 @@ func parse(args []string) (command, error) {
 	cmd := command{dir: f.dir}
 	switch verb {
 	case "run":
-		if err := f.only("dir", "process", "agent", "param", "continue"); err != nil {
+		if err := f.only("dir", "process", "agent", "param", "continue", "reuse"); err != nil {
 			return command{}, err
 		}
 		request, err := parseRun(rest, f)

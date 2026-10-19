@@ -41,10 +41,14 @@ export function useScreens<Screen, Intent = never>(first: Screen, transitionFor:
   const go = useCallback(
     (next: Change<Screen>, { intent, also }: GoOptions<Intent> = {}) => {
       const { from, to, update } = ask(next);
+      // A change that keeps the screen asked for is never given to React:
+      // applied at once while a transition is pending, it would run on the
+      // screen still rendered and show one that was never asked for.
+      if (to === from) return;
       const type = transitionFor(from, to, intent);
       const change = () => {
         setScreen(update);
-        if (to !== from) also?.();
+        also?.();
       };
       if (type === undefined) {
         change();

@@ -15,7 +15,7 @@ import { shipped } from "./careApp.tsx";
 import { withManualPictures } from "./pictures.tsx";
 import { SHIPPED_PALS, fakeBodyPicture, fakeItemPicture, manualPictures } from "./support.ts";
 
-// dinosaur-care-pictures.feature and find-the-pair-start.feature: every
+// dinosaur-care-pictures.feature and find-the-pair-pictures.feature: every
 // picture of each screen of care and find the pair, shimmering in its
 // place until it has loaded, then fading in.
 
@@ -24,7 +24,7 @@ const T_REX = shipped("tyrannosaurus");
 const TRIKE = presentFriend(shipped("triceratops"), "en", fakeBodyPicture);
 const visit = startVisit(T_REX);
 // Two cards of a board at the level of silhouettes, turned over.
-const board = turn(turn(dealBoard(SHIPPED_PALS, 3, () => 0), 0), 1);
+const board = turn(turn(dealBoard(SHIPPED_PALS, { climbLevel: 3 }, () => 0), 0), 1);
 
 const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> = [
   [
@@ -41,7 +41,7 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
   ],
   ["my friends", <FriendsScreen language="en" friends={[TRIKE]} nestPicture={fakeItemPicture("nest")} onFriend={none} onNewVisitor={none} onBack={none} onHome={none} />, ["friend-picture"]],
   ["my friends, with no friend yet", <FriendsScreen language="en" friends={[]} nestPicture={fakeItemPicture("nest")} onFriend={none} onNewVisitor={none} onBack={none} onHome={none} />, ["no-friends-nest"]],
-  ["the find-the-pair welcome screen, its card and silhouette", <PairsWelcomeScreen language="en" level={1} stars={0} heroPicture={fakeBodyPicture("triceratops")} onPlay={none} onHome={none} />, ["pairs-hero-picture", "pairs-hero-picture"]],
+  ["the find-the-pair welcome screen, its card and silhouette", <PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("triceratops")} onLevel={none} onPlay={none} onHome={none} />, ["pairs-hero-picture", "pairs-hero-picture"]],
   ["a board, two cards turned over", <PairsBoardScreen language="en" {...presentPairsBoard(board, "en", fakeBodyPicture)} finished={false} onTurn={none} onHome={none} />, ["pair-card-picture", "pair-card-picture"]],
   [
     "the result of a board",
@@ -64,5 +64,17 @@ describe.each(SCREENS)("every picture of %s", (_, element, places) => {
     act(() => pictures.finishAll());
     expect(looks()).toEqual(places.map((place) => [place, "appearing", expect.any(String)]));
     expect(looks().every(([, , src]) => asked.includes(src ?? ""))).toBe(true);
+  });
+});
+
+describe("the item given", () => {
+  // Its picture's own height, 300, would stretch the square box it flies
+  // in, unless app.css sets the height to follow the width.
+  it("keeps its picture square, its height following its width", () => {
+    const rule = [...document.styleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((each): each is CSSStyleRule => each instanceof CSSStyleRule && each.selectorText === ".given-picture");
+
+    expect([rule?.style.height, rule?.style.aspectRatio]).toEqual(["auto", "1 / 1"]);
   });
 });
