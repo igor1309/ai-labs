@@ -1,7 +1,7 @@
 # runstore, a wrapper (docs/run-implementation.md, "Records",
-# "Continuation" and "Runs"; ADR-001, "Runs"): runs kept under a folder,
-# each a folder of its id. Contract tests against real files, in a temporary
-# folder (ADR-009, rule 3).
+# "Continuation", "Runs" and "A call's changes"; ADR-001, "Runs"): runs
+# kept under a folder, each a folder of its id. Contract tests against
+# real files, in a temporary folder (ADR-009, rule 3).
 
 Feature: runstore keeps runs
 
@@ -40,11 +40,24 @@ Feature: runstore keeps runs
     Then "out/x" holds <holds>, each as kept
 
     Examples:
-      | kept                          | out                         | holds                            |
-      | its record and events written | not yet made                | "record.json" and "events.jsonl" |
-      | its record alone written      | not yet made                | "record.json" alone              |
-      | its record and events written | "out/x" an older copy of it | "record.json" and "events.jsonl" |
+      | kept                           | out                         | holds                               |
+      | its record and events written  | not yet made                | "record.json" and "events.jsonl"    |
+      | its record alone written       | not yet made                | "record.json" alone                 |
+      | its record and a patch written | not yet made                | "record.json" and "patches/a.patch" |
+      | its record and events written  | "out/x" an older copy of it | "record.json" and "events.jsonl"    |
 
   Scenario: A run not kept is not exported
     When "x" is exported to "out", no run "x" kept
     Then it gives an error, and "out" holds nothing
+
+  Scenario: A call's patch is written whole under its run
+    Given runstore over the folder "runs"
+    When the patch "p1" of the step "a" of the run "x" is written, then
+      "p2"
+    Then it gives "x/patches/a.patch", and "runs/x/patches" holds
+      "a.patch" alone, "p2" whole
+
+  Scenario: A patch is given back by its path
+    Given the patch "p1" of the step "a" of the run "x" written
+    When the patch "x/patches/a.patch" is asked
+    Then it gives "p1"

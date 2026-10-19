@@ -17,6 +17,7 @@ type worktreeFacts interface {
 	Head(ctx context.Context, dir string) (string, error)
 	Clean(ctx context.Context, dir string) (bool, error)
 	Content(ctx context.Context, dir string) (string, error)
+	Changes(ctx context.Context, dir, commit, content string) (string, error)
 }
 
 // lockFiles is what core/admit's hold asks of files.
@@ -62,6 +63,10 @@ type worktreeAt struct {
 func (w worktreeAt) Head(ctx context.Context) (string, error)    { return w.facts.Head(ctx, w.root) }
 func (w worktreeAt) Clean(ctx context.Context) (bool, error)     { return w.facts.Clean(ctx, w.root) }
 func (w worktreeAt) Content(ctx context.Context) (string, error) { return w.facts.Content(ctx, w.root) }
+
+func (w worktreeAt) Changes(ctx context.Context, commit, content string) (string, error) {
+	return w.facts.Changes(ctx, w.root, commit, content)
+}
 
 // worktreeHold answers core/admit's hold from files' lock: the lock file
 // under folder named by the SHA-256 of root's path, its links resolved

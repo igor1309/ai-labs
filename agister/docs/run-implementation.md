@@ -604,7 +604,8 @@ Decisions, each with its reason:
 
 - Not yet in the record: the definitions with their digests, the
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
-  the continuation needs none of them.
+  the continuation needs none of them. ("Runs" adds the inputs, "A
+  call's changes" the HEAD a call left and its patch.)
 - A record starts `lost` and is rewritten as calls end: a run that dies
   reads as lost, never as running (invariant 7), its ended calls kept,
   with no reaper.
@@ -654,8 +655,8 @@ exit 1, nothing run and nothing recorded:
    a call whose session is that one.
 4. The agent of the request's one step is that call's; the root of the
    worktree holding the launch directory is that call's root; the
-   root's HEAD is that call's, and its content is the content that
-   call recorded, not empty.
+   root's HEAD is the one that call left, and its content is the
+   content that call recorded, not empty.
 5. The prompt `continuation` resolves.
 
 In its mapping to core, the composition gives the step's call the
@@ -813,7 +814,8 @@ Decisions, each with its reason:
   risk taken, inputs are text.
 - Not yet in the record: the definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch
-  (ADR-004, rule 4). No reader needs them yet.
+  (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
+  adds the patch.)
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
@@ -925,8 +927,8 @@ taken from the earlier run when that run holds a call of the same step
 that completed, of the same process and agent, given inputs of the same
 names, in the same order, with the same identities, and the worktree is
 as that call left it: the root of the worktree holding the launch
-directory is its root, the root's HEAD its HEAD and its content its
-content, not empty. A call taken is not admitted and not made: it
+directory is its root, the root's HEAD the one it left and its content
+its content, not empty. A call taken is not admitted and not made: it
 reports `Reused`, and its result to core is the earlier call's as
 recorded, but for its cost, zero, and its usage, every count unknown,
 which a sum skips: this run spent none. Any other call reports
@@ -959,8 +961,7 @@ Decisions, each with its reason:
 - A call is matched by what it was given, not by the earlier run's
   status: a run that failed, or was lost, gives the calls it completed.
 - The worktree is compared at each call, not once at the start: a step
-  that writes changes what the steps after it read. A writer whose
-  call moved HEAD is never taken: its HEAD is recorded as admitted.
+  that writes changes what the steps after it read.
 - A call that failed is never taken: a failure is what a run again is
   for.
 - The settings a call ran under are not compared: the record does not
@@ -1062,15 +1063,15 @@ not called. Its caller port grows the session a step continues, "" for
 none.
 
 **`core/admit`**'s request grows the worktree a call continuing a
-session must find: the HEAD the session's latest call was admitted at,
-and the content it left, as admit told them. Checked after the pin and
+session must find: the HEAD and the content the session's latest call
+left, as admit told them. Checked after the pin and
 before the hold, a HEAD left not empty and not the worktree's now
 refuses the call, `HEAD is "<now>", not the session's latest call's
 "<head>"`; a content not the worktree's now, or either left empty,
 refuses it, `the worktree is not as the session's latest call left it`.
 
 **The composition** keeps, for the run, each session's latest call: its
-id and the HEAD and content admit told at its end. A step's call
+id and the end HEAD and content admit told at its end. A step's call
 continuing a session is given that session, the prompt `continuation`
 first among its documents, as a continuation's is, and admit the facts
 its latest call left, no clean worktree asked: the check takes its
@@ -1089,9 +1090,6 @@ Decisions, each with its reason:
 - Admission checks the worktree, as ADR-001's table of parts says, not
   the composition, as a continuation's: here the facts are the run's
   own, kept in memory, and the hold is taken right after.
-- The HEAD compared is the one the latest call was admitted at, as a
-  continuation's is (ADR-004, rule 5, "the same revision"): a step
-  that commits leaves its session not to be continued in this slice.
 - Two steps of a parallel in one session are refused by settings, not
   at run time: a check there holds whatever the turns' timing.
 - A step of a session's chain is never taken by a reuse: what a
@@ -1099,3 +1097,63 @@ Decisions, each with its reason:
   in has moved past the call a reuse would take.
 - The step is given its process's inputs and documents as any call is,
   as a continued call is.
+
+## A call's changes
+
+Every call records, at its end, the HEAD it left besides its content,
+and a call that pinned its revision its changes from that revision as a
+patch (ADR-004, rule 4; LAB-320). A session goes on from where its
+latest call left the worktree, a commit included: an implement step that
+commits is continued by the step after it.
+
+**`git`** gives the changes between a commit and a tree, as `git diff
+--binary` gives them: a patch that applies to the commit, binary files
+included.
+
+**`core/admit`** tells, of an admitted call, the HEAD at its end too,
+read with its content, before the hold is released; empty where it
+cannot be read. Of a call admitted with a pin it tells the patch too:
+its worktree port, which grows the changes from a commit to a content,
+asked from the pinned commit to the content the call left, under the
+hold; or why there is none, the content not read or the changes not
+given. A call continuing a session is checked against the HEAD its
+latest call left, no longer the one it was admitted at.
+
+**`runstore`**'s call grows `"end_head"`, the HEAD it left, and
+`"patch"`, null for none, else the path of its patch under the runs
+folder, `<run id>/patches/<step>.patch`. It writes a call's patch whole,
+as it writes a record, gives one back by its path, and a run exported
+takes its patches. A refused call's `"end_head"` is empty, as its
+`"head"` and `"content"` are.
+
+**The composition** answers admit's changes from `git`, and writes the
+patch admit told before the call's entry; an empty change is an empty
+patch. A pinned call's patch that admit could not give, or runstore
+could not write, is a warning in the result, as a record's later write
+is, the entry's `"patch"` null. A call taken by a reuse has the earlier
+entry's patch written again under this run, its `"patch"` this run's:
+an export holds what its record names. Wherever a call is compared with
+the HEAD an earlier one left, a continuation, a session's latest call in
+a run and a reuse, the HEAD is its `"end_head"`, else, where its entry
+has no such field, a record from before, its `"head"`.
+
+```json
+{"calls": [{"head": "<admitted>", "end_head": "<left>", "content": "",
+  "patch": "<run id>/patches/<step>.patch"}]}
+```
+
+Decisions, each with its reason:
+
+- A patch is a file beside the record, not in it: the record is
+  written whole as each call ends, and a patch can be large.
+- The patch runs from the pinned commit to the content the call left,
+  commits included: what the call changed from what it was given,
+  whatever it committed on the way.
+- The patch is admit's to tell, through its port: core knows no git,
+  and the patch is an answer to its ports (ADR-004, "Consequences").
+  It is asked under the hold, as the content is: one git diff of two
+  objects, short beside the call.
+- An unpinned call keeps no patch: it was given no revision to diff
+  from (ADR-004, rule 4).
+- A record from before is read with its `"head"` as the HEAD it left,
+  as runs then were checked; the record is read, never rewritten.
