@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
 - A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).
 - At Paleontologist about one skeleton piece in three arrives turned; a tap turns it a quarter, and it fits only the right way up (LAB-318).
 - Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).

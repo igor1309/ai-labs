@@ -1,0 +1,304 @@
+/* The care mission prototype, drawn at the design frames' 1440 by 900
+   and scaled to the window. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-small: 160ms;
+  --motion-standard: 240ms;
+  --motion-screen: 320ms;
+  --motion-pose: 480ms;
+  --motion-amount: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-pose: 160ms;
+    --motion-amount: 0;
+  }
+}
+
+@keyframes walk-in {
+  from {
+    opacity: 0;
+    translate: calc(320px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(24px * var(--motion-amount));
+  }
+}
+
+@keyframes grow-in {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.6 * var(--motion-amount));
+  }
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #f2efe8;
+}
+
+/* A long press on a picture opens no menu and selects nothing. */
+body {
+  font-family: "Lexend Variable", system-ui, sans-serif;
+  color: #1d2742;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+#mission {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Scaling keeps the frame's own size for layout, so it is centred by
+   hand. */
+.mission-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1440px;
+  height: 900px;
+  translate: -50% -50%;
+  scale: var(--mission-scale, 1);
+}
+
+.mission-home {
+  position: absolute;
+  left: 56px;
+  top: 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 56px;
+  padding: 0 20px 0 16px;
+  border-radius: 16px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.mission-home svg {
+  width: 24px;
+  height: 24px;
+}
+
+.mission-stage {
+  position: absolute;
+  left: 56px;
+  top: 120px;
+  width: 1328px;
+  height: 506px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #1f2b4d;
+}
+
+.mission-glow {
+  position: absolute;
+  left: 300px;
+  top: -60px;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  background: #a9bcd6;
+  opacity: 0.18;
+}
+
+.mission-ground {
+  position: absolute;
+  left: 0;
+  top: 396px;
+  width: 100%;
+  height: 110px;
+  background: #00000026;
+}
+
+.mission-name {
+  position: absolute;
+  left: 40px;
+  top: 30px;
+  margin: 0;
+  color: #f6f2e9;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mission-bowl {
+  position: absolute;
+  left: 300px;
+  top: 296px;
+  width: 220px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.mission-offered {
+  position: absolute;
+  left: 500px;
+  top: 286px;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  animation: grow-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.mission-offered-water {
+  left: 510px;
+  top: 306px;
+  width: 180px;
+  height: 130px;
+}
+
+/* Each pose places the dinosaur as its design frame does, from where
+   it stands on arrival, left 640. */
+.mission-visitor {
+  position: absolute;
+  left: 640px;
+  top: 16px;
+  width: 600px;
+  height: 450px;
+  object-fit: contain;
+  transition:
+    translate var(--motion-pose) var(--ease-out),
+    rotate var(--motion-pose) var(--ease-out),
+    scale var(--motion-pose) var(--ease-out);
+  animation: walk-in var(--motion-screen) var(--ease-out) both;
+}
+
+.mission-visitor[data-pose="leaning"] {
+  translate: calc(-140px * var(--motion-amount)) 0;
+  rotate: calc(-4deg * var(--motion-amount));
+}
+
+.mission-visitor[data-pose="turned"] {
+  translate: calc(40px * var(--motion-amount)) 0;
+  scale: -1 1;
+}
+
+.mission-visitor[data-pose="drinking"] {
+  translate: calc(-120px * var(--motion-amount)) calc(10px * var(--motion-amount));
+  rotate: calc(-6deg * var(--motion-amount));
+}
+
+.mission-visitor[data-pose="full"] {
+  translate: calc(-260px * var(--motion-amount)) calc(20px * var(--motion-amount));
+}
+
+.mission-tray {
+  position: absolute;
+  left: 56px;
+  top: 650px;
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  width: 1328px;
+  height: 210px;
+}
+
+.mission-choice {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  max-width: 652px;
+  padding: 10px;
+  border: 0;
+  border-radius: 24px;
+  background: #fffdf8;
+  color: #1d2742;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 10px #1d274214;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+  transition: scale var(--motion-small) var(--ease-out);
+}
+
+.mission-choice:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.mission-choice:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.mission-choice:active {
+  scale: calc(1 - 0.04 * var(--motion-amount));
+}
+
+.mission-choice-serve,
+.mission-choice-again {
+  background: #e39b2d;
+}
+
+.mission-choice-again {
+  max-width: 560px;
+}
+
+.mission-choice-art {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.mission-choice-picture {
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.mission-serve-bowl {
+  width: 170px;
+  height: 95px;
+  margin-top: 40px;
+  object-fit: contain;
+}
+
+.mission-serve-food {
+  position: absolute;
+  top: 2px;
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+}
+
+.mission-choice-icon svg {
+  display: block;
+  width: 56px;
+  height: 56px;
+}
+
+.mission-again-visitor {
+  width: 220px;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mission-choice-label {
+  padding-top: 4px;
+  font-size: 26px;
+  font-weight: 700;
+}
