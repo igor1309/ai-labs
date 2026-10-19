@@ -180,7 +180,6 @@ function PairsLevelOffer({ language, offer, leaving, onShown, onAnswer, onGone }
   const text = TEXTS[language];
   const title = useId();
   const overlay = useRef<HTMLDivElement>(null);
-  const answered = useRef(false);
   const shown = useRef(false);
   const callbacks = useRef({ onShown, onGone });
   callbacks.current = { onShown, onGone };
@@ -197,11 +196,6 @@ function PairsLevelOffer({ language, offer, leaving, onShown, onAnswer, onGone }
       callbacks.current.onGone();
     });
   }, [leaving, offer.startTimer]);
-  const answer = (choice: "yes" | "not-now") => {
-    if (answered.current) return;
-    answered.current = true;
-    onAnswer(choice);
-  };
   return (
     <div ref={overlay} className="pairs-offer-scrim" data-leaving={leaving || undefined}>
       <section className="pairs-offer" role="dialog" aria-modal="true" aria-labelledby={title}
@@ -216,10 +210,10 @@ function PairsLevelOffer({ language, offer, leaving, onShown, onAnswer, onGone }
         <span className="pairs-offer-picture" aria-hidden="true">{AGE_LEVEL_PICTURES[offer.level]}</span>
         <h2 id={title} className="pairs-offer-question">{text.levelOffer.question(text.ageLevels[offer.level].name)}</h2>
         <div className="pairs-offer-answers">
-          <button type="button" className="pairs-offer-yes" disabled={leaving} onClick={() => answer("yes")}>
+          <button type="button" className="pairs-offer-yes" disabled={leaving} onClick={() => onAnswer("yes")}>
             <Check size={30} aria-hidden="true" />{text.levelOffer.yes}
           </button>
-          <button type="button" className="pairs-offer-not-now" disabled={leaving} onClick={() => answer("not-now")}>
+          <button type="button" className="pairs-offer-not-now" disabled={leaving} onClick={() => onAnswer("not-now")}>
             <X size={30} aria-hidden="true" />{text.levelOffer.notNow}
           </button>
         </div>
