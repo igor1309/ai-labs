@@ -6,7 +6,8 @@ Feature: Sort dinosaurs: age levels
   cards, sorts only by legs or feathers, and always has a third basket:
   TWO OR FOUR for the dinosaurs that walked both ways, NOT KNOWN YET for
   those whose feathers no fossil shows (docs/sources.md). Drops, hints
-  and stars work alike at every level (sort-dinosaurs-play.feature).
+  and stars work alike at every level (sort-dinosaurs-play.feature). With
+  three omnivores, every Explorer diet board deals two or three of them.
 
   Background:
     Given an iPad in landscape

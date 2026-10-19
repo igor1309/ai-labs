@@ -4,7 +4,7 @@ Feature: Sort dinosaurs: the level switch and its progress
   screen shows the level switch above "PLAY AGAIN", the child's own
   choice in this game (age-level-choice.feature), kept in the game's
   progress (sort-dinosaurs-progress.feature). Each level keeps its own
-  best (docs/age-levels.md). It has no level offer: a child moves up on
+  best (sort-dinosaurs-progress.feature). It has no level offer: a child moves up on
   the switch, and the offer stays with find the pair (owner, LAB-295).
 
   Background:
@@ -36,6 +36,16 @@ Feature: Sort dinosaurs: the level switch and its progress
     Then a Paleontologist round starts
     And the next round started from the "SORT" card plays Paleontologist too
 
+  Scenario Outline: Choosing a level moves
+    Given the device <motion>
+    When I choose another level on the switch
+    Then the chosen mark moves to it <how>
+
+    Examples:
+      | motion                          | how                           |
+      | does not ask for reduced motion | with the shared motion tokens |
+      | asks for reduced motion         | with short fades              |
+
   Scenario: Choosing a level does not leave the result
     Given I am on the result screen of an Explorer round with "5/8"
     When I choose Hatchling on the level switch
@@ -51,36 +61,17 @@ Feature: Sort dinosaurs: the level switch and its progress
     And I tap the "SORT" card
     Then the round plays Paleontologist
 
-  Scenario: A choice that cannot be saved holds while the app is open
-    Given the age level is Explorer and I have never used the level switch
+  Scenario Outline: A choice that cannot be saved holds while the app is open
+    Given the age level is Explorer and <saved>
     And the browser can read progress but cannot save it
     When I choose Paleontologist on the level switch and go home and tap "SORT"
     Then the round plays Paleontologist
-    But after reloading the round plays Explorer
-
-  Scenario Outline: Each level keeps its own best
-    Given my Hatchling best is 5 and my Explorer best is 6
-    And I have never finished a Paleontologist round
-    When I finish a <level> round with <right> right
-    Then I see <celebration>
-    And my <level> best becomes <best>, and my other bests are unchanged
+    But after reloading the round plays <reloaded>
 
     Examples:
-      | level          | right | celebration                    | best |
-      | Hatchling      | 6     | a new best score celebration   | 6    |
-      | Explorer       | 5     | no celebration                 | 6    |
-      | Paleontologist | 3     | a first best score celebration | 3    |
-
-  Scenario: The SORT tile and the featured SORT card show the level's best
-    Given my Hatchling best is 5 and my Explorer best is 7
-    When the sorting game plays Explorer
-    Then the "SORT" tile shows 7, and so does the large card on a day it features SORT
-
-  Scenario: A best saved before levels is the Hatchling best
-    Given my sorting best of 5 was saved before the game had levels
-    When I finish a Hatchling round with 5 right
-    Then I see no celebration, and my Hatchling best stays 5
-    And my Explorer and Paleontologist bests are none
+      | saved                                      | reloaded  |
+      | I have never used the level switch         | Explorer  |
+      | my saved choice on the switch is Hatchling | Hatchling |
 
   Scenario Outline: The level switch fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme
@@ -91,4 +82,6 @@ Feature: Sort dinosaurs: the level switch and its progress
     Examples:
       | language | theme | names                                       |
       | English  | light | HATCHLING, EXPLORER, PALEONTOLOGIST         |
+      | English  | dark  | HATCHLING, EXPLORER, PALEONTOLOGIST         |
+      | Russian  | light | ДЕТЁНЫШ, ИССЛЕДОВАТЕЛЬ, ПАЛЕОНТОЛОГ         |
       | Russian  | dark  | ДЕТЁНЫШ, ИССЛЕДОВАТЕЛЬ, ПАЛЕОНТОЛОГ         |
