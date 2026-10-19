@@ -1,7 +1,8 @@
 import { ChartNoAxesColumnIncreasing, Copy, Footprints, Hand, House } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { PictureImage, usePicture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 // A card on the board: face down, turned over, or one of a found pair.
@@ -38,9 +39,6 @@ const place = (index: number) => ({ "--card": index }) as CSSProperties;
 
 export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onHome }: PairsBoardScreenProps) {
   const text = TEXTS[language];
-  // The dinosaurs whose picture cannot be loaded: both their cards show a
-  // dinosaur symbol and the name instead.
-  const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   return (
     <main className="pairs-board-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
@@ -82,10 +80,8 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
               key={index}
               card={card}
               index={index}
-              missing={missing.has(card.id)}
               label={card.state === "down" ? text.card(index + 1) : card.name.toLocaleUpperCase(language)}
               onTurn={() => onTurn(index)}
-              onMissing={() => setMissing((known) => new Set([...known, card.id]))}
               language={language}
             />
           ))}
@@ -98,18 +94,16 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
 type PairCardProps = {
   card: PairCardView;
   index: number;
-  missing: boolean;
   label: string;
   language: Language;
   onTurn: () => void;
-  onMissing: () => void;
 };
 
 // A face-down card shows the same footprints as every other. Turned over,
 // it shows its picture or silhouette; found, a green border and the name.
 // A card whose picture cannot be loaded shows a dinosaur symbol and the
 // name instead.
-function PairCard({ card, index, missing, label, language, onTurn, onMissing }: PairCardProps) {
+function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
   const pointer = usePointerState();
   const name = card.name.toLocaleUpperCase(language);
   return (
@@ -122,22 +116,28 @@ function PairCard({ card, index, missing, label, language, onTurn, onMissing }: 
         </span>
       ) : (
         <span className="pair-card-face" aria-hidden="true">
-          <span className="pair-card-art">
-            {missing ? (
-              <Footprints className="pair-card-missing" size={56} />
-            ) : (
-              <img
-                className={card.face === "silhouette" ? "pair-card-picture pair-silhouette" : "pair-card-picture"}
-                src={card.picture}
-                alt=""
-                draggable={false}
-                onError={onMissing}
-              />
-            )}
-          </span>
-          {(card.state === "found" || missing) && <span className="pair-card-name">{name}</span>}
+          <PairCardFace card={card} name={name} />
         </span>
       )}
     </button>
+  );
+}
+
+// A card's face: its picture or silhouette, and its name once found or
+// while its picture is not shown, the name then telling the pair apart
+// and fading out as the picture fades in.
+function PairCardFace({ card, name }: { card: PairCardProps["card"]; name: string }) {
+  const look = usePicture(card.picture);
+  return (
+    <>
+      <span className="pair-card-art">
+        <PictureImage look={look} className={card.face === "silhouette" ? "pair-card-picture pair-silhouette" : "pair-card-picture"} src={card.picture} alt="" width={800} height={600} />
+      </span>
+      {(card.state === "found" || look !== "shown") && (
+        <span className="pair-card-name" data-fading={(card.state !== "found" && look === "appearing") || undefined}>
+          {name}
+        </span>
+      )}
+    </>
   );
 }

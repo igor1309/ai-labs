@@ -258,7 +258,6 @@ export function App({
   // counted with the change, so a second COMPARE or PLAY AGAIN before the
   // question shows finds a round already asked for and starts nothing.
   const playNewRound = () => {
-    sorting.cancel();
     const started = startRound(dinosaurs, random, lastPlay);
     go((current) => (current.kind === "question" ? current : { kind: "question", play: started }), {
       also: () => {
@@ -279,33 +278,26 @@ export function App({
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
-  const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home, counting("care"));
+  const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"));
 
   const openCare = () => {
-    leaveHome();
     go({ kind: "care" }, { also: care.open });
   };
 
-  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home, counting("sort"));
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, home, counting("sort"));
 
   const openSorting = () => {
     sorting.start(() => set({ kind: "sorting" }));
   };
 
-  // A board SORT started, still waiting for its pictures, is dropped as
-  // the child goes anywhere else, so it never opens over the screen they
-  // chose.
-  const leaveHome = () => sorting.cancel();
-
   const pairs = usePairsGame(
-    { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion },
+    { pals, pairsProgress, bodyPicture, random, startTimer, reducedMotion: careProps.reducedMotion },
     ageLevel,
     home,
     counting("pairs")
   );
 
   const openPairs = () => {
-    leaveHome();
     go({ kind: "pairs" }, { also: pairs.open });
   };
 
@@ -333,14 +325,12 @@ export function App({
   );
 
   const openSkeletons = () => {
-    leaveHome();
     go({ kind: "skeletons" });
   };
 
   // The museum opens from the home page straight into the skeleton game,
   // as a screen change and not a start: only building there starts one.
   const openMuseum = () => {
-    leaveHome();
     go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
 
@@ -371,7 +361,6 @@ export function App({
   // second ALL DINOSAURS, on its tile or the large card, before the
   // catalogue shows finds it already asked for and counts nothing.
   const openCatalogue = () => {
-    leaveHome();
     go((current) => (current.kind === "home" ? { kind: "catalogue", returning: undefined } : current), {
       also: () => {
         startCounter.countStart("catalogue");

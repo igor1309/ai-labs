@@ -1,3 +1,4 @@
+import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { act, cleanup, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
@@ -84,7 +85,7 @@ const CARE = { bestScore: 6, visitsFinished: 2, friends: ["triceratops"] };
 const SORTING = { bestScore: 9, roundsPlayed: 4 };
 // Find the pair's entry as stored, and as the game reads it.
 const PAIRS = { stars: 5, level: 2, boardsOnLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] };
-const PAIRS_SAVED: PairsSaved = { progress: { stars: 5, climbLevel: 2, boardsOnClimbLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] }, levelChoice: undefined };
+const PAIRS_SAVED: PairsSaved = { progress: { stars: 5, climbLevel: 2, boardsOnClimbLevel: 1, best: { 1: 6 }, found: ["stegosaurus"] }, levelChoice: undefined, offer: NO_LEVEL_OFFER };
 
 // Storage holding every other game's progress, a language and a theme,
 // and the skeleton game's own entry when there is one.

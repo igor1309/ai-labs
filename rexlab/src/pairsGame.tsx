@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
+import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 import { ownedTimers, type OwnedTimers } from "./ownedTimers.ts";
 import {
   dealBoard,
@@ -9,6 +10,7 @@ import {
   isFinished,
   isMiss,
   NO_PAIRS,
+  TOP_CLIMB_LEVEL,
   turn,
   turnBack,
   type Board,
@@ -22,14 +24,15 @@ import {
 import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
-import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
+import { LoadAhead } from "./Picture.tsx";
+import type { StartTimer } from "./pictureWait.ts";
 import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 // What find the pair keeps: its progress, and the child's last choice on
 // its level switch, none until the switch is first used.
-export type PairsSaved = { progress: PairsProgress; levelChoice: LevelChoice | undefined };
+export type PairsSaved = { progress: PairsProgress; levelChoice: LevelChoice | undefined; offer: LevelOffer };
 
 export type PairsProgressStore = {
   // What find the pair has kept so far, or undefined when it cannot be
@@ -44,7 +47,6 @@ export type PairsGameProps = {
   pairsProgress: PairsProgressStore;
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
-  loadPicture: LoadPicture;
   startTimer: StartTimer;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
@@ -55,10 +57,6 @@ const HERO = "triceratops";
 
 // Find the pair has a mode for every age level.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
-
-// The longest a board waits for its pictures, in milliseconds, as a
-// question does for its pictures.
-const PICTURE_WAIT = 1000;
 
 // How long a miss stays open before it turns back, in milliseconds, the
 // same with reduced motion: long enough to see both cards. And the motion
@@ -77,9 +75,9 @@ const waveOf = ({ flip, stagger, wave }: (typeof TIMINGS)["motion"], cards: numb
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch, which holds while the app is open even when
 // it cannot be saved.
-type Kept = KeptPairs & { levelChoice: LevelChoice | undefined };
+type Kept = KeptPairs & { levelChoice: LevelChoice | undefined; offer: LevelOffer };
 
-type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult };
+type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult; offer?: AgeLevel | null };
 
 // A card turned, or turned back, changes the board at once; every other
 // change is the plain screen change.
@@ -93,7 +91,7 @@ export function transitionFor(from: PairsScreen, to: PairsScreen): string | unde
 // level on its switch. `onHome` takes the child back to the home page;
 // `onStart` is told as each board is dealt.
 export function usePairsGame(
-  { pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion }: PairsGameProps,
+  { pals, pairsProgress, bodyPicture, random, startTimer, reducedMotion }: PairsGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
@@ -105,7 +103,7 @@ export function usePairsGame(
   // that cannot be saved.
   const [kept, setKept] = useState<Kept>(() => {
     const stored = pairsProgress.load();
-    return { progress: stored?.progress ?? NO_PAIRS, levelChoice: stored?.levelChoice, readable: stored !== undefined };
+    return { progress: stored?.progress ?? NO_PAIRS, levelChoice: stored?.levelChoice, offer: stored?.offer ?? NO_LEVEL_OFFER, readable: stored !== undefined };
   });
   const keptNow = useRef(kept);
   // The board in play, ahead of the screen: a second tap, or a timer, acts
@@ -115,12 +113,6 @@ export function usePairsGame(
   // The miss and celebration timers of the board in play, all stopped as
   // the child leaves it, and null from then on.
   const boardTimers = useRef<OwnedTimers | null>(null);
-  // A board being dealt while its pictures load: a second tap meanwhile
-  // deals nothing more.
-  const starting = useRef(false);
-  // Counts each time the child leaves the game, so pictures that finish
-  // loading after the child has left deal no board.
-  const stay = useRef(0);
   // The board dealt last, at whatever level, so the next one deals as few
   // of its dinosaurs as it can.
   const lastBoard = useRef<Board | undefined>(undefined);
@@ -134,51 +126,41 @@ export function usePairsGame(
   const keep = (next: Kept) => {
     keptNow.current = next;
     setKept(next);
-    if (next.readable) pairsProgress.save({ progress: next.progress, levelChoice: next.levelChoice });
+    if (next.readable) pairsProgress.save({ progress: next.progress, levelChoice: next.levelChoice, offer: next.offer });
   };
 
   // A level chosen on the switch is kept under the age level it was chosen
-  // at. The switch rests once PLAY is tapped, so the board is dealt at the
-  // level shown then; the level already chosen, as on a double tap, changes
-  // nothing.
+  // at. The switch rests once PLAY has dealt a board, so the board is dealt
+  // at the level shown then; the level already chosen, as on a double tap,
+  // changes nothing.
   const chooseLevel = (chosen: AgeLevel) => {
-    if (starting.current || chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    if (live.current !== null || chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
     keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
   };
 
   const timings = () => TIMINGS[reducedMotion() ? "reduced" : "motion"];
 
   const leave = () => {
-    stay.current++;
     live.current = null;
     boardTimers.current?.stopAll();
     boardTimers.current = null;
-    starting.current = false;
   };
 
   // A board is dealt at the level shown, Hatchling's at the climb level
-  // reached, and shows once its pictures are ready, or the wait runs out,
-  // only if the child is still here.
+  // reached, and shows at once, its pictures loading while its cards lie
+  // face down. A second PLAY in the same change deals nothing more.
   const play = () => {
-    if (starting.current) return;
-    starting.current = true;
     const shown = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
     const boardLevel: BoardLevel = shown === "hatchling" ? { climbLevel: keptNow.current.progress.climbLevel } : { large: shown };
     const board = dealBoard(pals, boardLevel, random, lastBoard.current);
-    const dealing = stay.current;
-    waitForPictures(
-      board.pals.map(({ id }) => bodyPicture(id)),
-      { loadPicture, startTimer, limit: PICTURE_WAIT },
-      () => {
-        if (stay.current !== dealing) return;
-        starting.current = false;
+    go((current) => (current.kind === "board" ? current : { kind: "board", board, finished: false }), {
+      also: () => {
         lastBoard.current = board;
         live.current = board;
         boardTimers.current = ownedTimers(startTimer);
         onStart();
-        go({ kind: "board", board, finished: false });
       }
-    );
+    });
   };
 
   // The board is recorded the moment its last pair is found, before the
@@ -190,7 +172,9 @@ export function usePairsGame(
       board,
       pals.map(({ id }) => id)
     );
-    keep({ ...keptNow.current, ...finished.kept });
+    const level = "climbLevel" in board.level ? "hatchling" : board.level.large;
+    const strong = board.tries <= 2 * board.pals.length && (!("climbLevel" in board.level) || board.level.climbLevel === TOP_CLIMB_LEVEL);
+    keep({ ...keptNow.current, ...finished.kept, offer: countBoard(keptNow.current.offer, level, strong) });
     return finished.result;
   };
 
@@ -220,7 +204,7 @@ export function usePairsGame(
       timers.start(waveOf(timing, to.cards.length), () => {
         if (live.current !== to) return;
         live.current = null;
-        go({ kind: "result", result });
+        go({ kind: "result", result, offer: offeredLevel(keptNow.current.offer) ?? null });
       });
     }
   };
@@ -247,16 +231,32 @@ export function usePairsGame(
         );
       case "board":
         return (
-          <PairsBoardScreen
-            language={language}
-            {...presentPairsBoard(screen.board, language, bodyPicture)}
-            finished={screen.finished}
-            onTurn={turnCard}
-            onHome={home}
-          />
+          <>
+            <LoadAhead urls={screen.board.pals.map(({ id }) => bodyPicture(id))} />
+            <PairsBoardScreen
+              language={language}
+              {...presentPairsBoard(screen.board, language, bodyPicture)}
+              finished={screen.finished}
+              onTurn={turnCard}
+              onHome={home}
+            />
+          </>
         );
-      case "result":
-        return <PairsResultScreen language={language} {...presentPairsResult(screen.result, language, bodyPicture)} onPlayAgain={play} onHome={home} />;
+      case "result": {
+        const nextLevel = screen.offer;
+        return <PairsResultScreen language={language} {...presentPairsResult(screen.result, language, bodyPicture)}
+          offer={nextLevel ? {
+            level: nextLevel,
+            startTimer,
+            onShown: () => keep({ ...keptNow.current, offer: showOffer(keptNow.current.offer) }),
+            onYes: () => {
+              keep({ ...keptNow.current, offer: acceptOffer(keptNow.current.offer), levelChoice: { level: nextLevel, revision: ageLevel.revision } });
+              go((current) => current.kind === "result" ? { ...current, offer: null } : current);
+            },
+            onNotNow: () => go((current) => current.kind === "result" ? { ...current, offer: null } : current)
+          } : null}
+          onPlayAgain={play} onHome={home} />;
+      }
     }
   };
 

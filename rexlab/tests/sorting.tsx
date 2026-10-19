@@ -9,8 +9,8 @@ import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, loadedPictures, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
-import { withPictures } from "./pictures.tsx";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualOrientation, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
+import { withManualPictures, withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
 // orientation gate, each drop played through the sorting game.
@@ -61,7 +61,9 @@ export type OpenBoard = {
   unmount: () => void;
 };
 
-export function openBoard(start: Sorting, language: Language = "en"): OpenBoard {
+// The board on its own, its pictures loaded the moment they are asked for
+// unless `pictures` loads them.
+export function openBoard(start: Sorting, language: Language = "en", pictures?: ManualPictures): OpenBoard {
   const orientation = manualOrientation("landscape");
   const seen = [start];
   const homes: number[] = [];
@@ -74,7 +76,8 @@ export function openBoard(start: Sorting, language: Language = "en"): OpenBoard 
       seen={seen}
       onHome={() => homes.push(1)}
       onSeeResult={() => results.push(1)}
-    />
+    />,
+    pictures ? withManualPictures(pictures) : withPictures
   );
   return { orientation, seen, homes, results, unmount };
 }
@@ -175,8 +178,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
     sortables: SHIPPED_SORTABLES,
     sortingProgress: localSortingProgress(() => storage),
     bodyPicture: fakeBodyPicture,
-    random: seededRandom(seed),
-    ...loadedPictures()
+    random: seededRandom(seed)
   };
   const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />, withPictures);
   act(() => owner.start?.());

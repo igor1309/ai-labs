@@ -3,6 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type AppProps } from "../src/App.tsx";
 import { dealBoard, type Board, type BoardLevel, type ClimbLevel, type LargeLevel, type Pal, type Random } from "../src/pairs/index.ts";
+import type { LevelOffer } from "../src/levelOffer.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -49,6 +50,8 @@ export type PairsAppOptions<C extends Clock> = {
   // Reuse the parent's saved setting across app reloads, independently
   // of progress storage that a test may make unreadable.
   settingsStorage?: MemoryStorage;
+  // Told each game whose start the app counts.
+  startCounter?: AppProps["startCounter"];
 };
 
 // The age level the climb is played at, so a test about the climb sees it.
@@ -71,12 +74,14 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   deviceLanguage = "en-GB",
   theme = "light",
   ageLevel = PICKED_HATCHLING,
-  settingsStorage
+  settingsStorage,
+  startCounter
 }: PairsAppOptions<C> = {}) {
   const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
     <App
       {...featuring()}
+      {...(startCounter && { startCounter })}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -114,6 +119,7 @@ export type StoredPairs = {
   best: Partial<Record<ClimbLevel | LargeLevel, number>>;
   found: readonly string[];
   levelChoice?: { level: string; revision: string | null };
+  offer?: LevelOffer;
 };
 
 // A stored record with find the pair's entry, and the other games'

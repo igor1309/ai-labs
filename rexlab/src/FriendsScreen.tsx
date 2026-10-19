@@ -2,6 +2,7 @@ import { ArrowLeft, Footprints, Heart, HeartHandshake, House } from "lucide-reac
 import type { CSSProperties } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { usePointerState } from "./usePointerState.ts";
 
 // The cards in a row of friends.
@@ -65,7 +66,7 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
       {empty ? (
         <div className="no-friends">
           <span className="no-friends-picture" aria-hidden="true">
-            <img className="no-friends-nest" src={nestPicture} alt="" draggable={false} />
+            <Picture className="no-friends-nest" src={nestPicture} alt="" width={400} height={300} />
             <span className="no-friends-bubble">
               <Heart size={60} fill="currentColor" />
             </span>
@@ -101,7 +102,7 @@ function FriendCard({ friend: { id, name, picture }, language, place, onFriend }
   return (
     <button type="button" className="card friend-card" aria-label={name} style={{ "--card": place } as CSSProperties} onClick={() => onFriend(id)} {...pointer}>
       <span className="friend-art">
-        <img className="friend-picture" src={picture} alt="" draggable={false} />
+        <Picture className="friend-picture" src={picture} alt="" width={800} height={600} />
       </span>
       <span className="friend-footer">
         <Heart size={20} fill="currentColor" aria-hidden="true" />

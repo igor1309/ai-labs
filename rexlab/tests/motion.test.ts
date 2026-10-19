@@ -213,6 +213,11 @@ describe("care's motion", () => {
     expect(leaving).toMatch(/walk-off var\(--motion-screen\)/);
   });
 
+  it("moves the visitor's place, never its picture, so the picture's shimmer and fade play inside", () => {
+    expect(RULES.filter(({ body, prelude }) => /(^|[^-])visitor-picture/.test(prelude + body)).map(({ prelude }) => prelude)).toEqual([".visitor-picture"]);
+    expect(declarationsOf(PLAIN.find(({ prelude }) => prelude === ".visitor-picture")?.body ?? "").map(({ property }) => property)).toEqual(["display", "width", "height", "object-fit"]);
+  });
+
   it("flies the item given to the visitor, and its hearts from there to the counter", () => {
     expect([".given", ".hearts-pop", ".need-bubble", ".knock-bubble"].map((selector) => animations.get(selector))).toEqual(["fly-in", "pop-in", "pop-in", "pop-in"]);
     const hearts = PLAIN.find(({ prelude }) => prelude === ".hearts-pop")?.body ?? "";
@@ -503,11 +508,44 @@ describe("a picture's place", () => {
     ]);
   });
 
+  it("fades a pair card's name out over the picture's fade-in", () => {
+    expect(bodyOf(".pair-card-name[data-fading]")).toEqual([{ property: "animation", value: "fade-out var(--motion-picture) var(--ease-out) forwards" }]);
+  });
+
+  it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
+    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
+    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
+      ['.pair-silhouette[data-picture="appearing"]', '.pair-silhouette[data-picture="shown"]'],
+      ['[data-theme="dark"] .pair-silhouette[data-picture="appearing"]', '[data-theme="dark"] .pair-silhouette[data-picture="shown"]']
+    ]);
+  });
+
   it("draws footprints on what holds it once failed, in each theme's soft ink, and never its name", () => {
     const failed = bodyOf('.picture[data-picture="failed"]').map(({ value }) => value).join("");
     const dark = bodyOf('[data-theme="dark"] .picture[data-picture="failed"]').map(({ value }) => value).join("");
     expect([failed, dark]).toEqual([expect.stringMatching(/^url\("data:image\/svg\+xml,.*stroke='%235c647a'.*"\) center \/ clamp\(32px, 30%, 96px\) no-repeat$/), expect.stringMatching(/^url\(.*stroke='%239ca3b6'.*\)$/)]);
     expect(failed.replace("%235c647a", "")).toBe(dark.replace("%239ca3b6", "") + " center / clamp(32px, 30%, 96px) no-repeat");
     expect(bodyOf('.picture[data-picture="loading"],\n.picture[data-picture="failed"]')).toEqual([{ property: "color", value: "transparent" }]);
+  });
+});
+
+
+describe("the level offer's motion", () => {
+  const animation = (rules: Rule[], selector: string) => rules
+    .filter(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector))
+    .flatMap(({ body }) => declarationsOf(body))
+    .find(({ property }) => property === "animation")?.value;
+
+  it("rises over a fading scrim and fades away with the shared tokens", () => {
+    expect(animation(PLAIN, ".pairs-offer")).toBe("rise-in var(--motion-screen) var(--ease-out) both");
+    expect(animation(PLAIN, ".pairs-offer-scrim")).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(animation(PLAIN, ".pairs-offer-scrim[data-leaving]")).toBe("fade-out var(--motion-small) var(--ease-out) both");
+  });
+
+  it("uses only short fades on arrival and dismissal under reduced motion", () => {
+    for (const selector of [".pairs-offer", ".pairs-offer-scrim"]) {
+      expect(animation(REDUCED, selector)).toBe("fade-in var(--motion-small) var(--ease-out) both");
+    }
+    expect(animation(REDUCED, ".pairs-offer-scrim[data-leaving]")).toBe("fade-out var(--motion-small) var(--ease-out) both");
   });
 });

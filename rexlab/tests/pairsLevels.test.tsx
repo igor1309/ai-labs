@@ -1,4 +1,5 @@
-import { act, isInaccessible, screen, within } from "@testing-library/react";
+import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
+import { act, fireEvent, isInaccessible, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
@@ -9,7 +10,7 @@ import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualPictures, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, contrast, fakeBodyPicture, homeTile, manualTimers, memoryStorage, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -193,21 +194,21 @@ describe("the level switch", () => {
 
     expect(chosen()).toEqual(["EXPLORER"]);
     expect(writes.mock.calls.filter(([key]) => key === PROGRESS_KEY)).toHaveLength(1);
-    expect(storedPairs(storage)).toEqual({ ...entry(), levelChoice: { level: "explorer", revision: "2" } });
+    expect(storedPairs(storage)).toEqual({ ...entry(), offer: NO_LEVEL_OFFER, levelChoice: { level: "explorer", revision: "2" } });
   });
 
-  it("rests once PLAY is tapped: the board is dealt at the level shown then", async () => {
-    const pictures = manualPictures();
+  it("rests once PLAY is tapped: the board is dealt at the level shown then, a level tapped in the same moment kept nowhere", async () => {
     const storage = memoryStorage();
-    const { user } = await openPairs({ storage, pals: pals("triceratops", "stegosaurus", "tyrannosaurus"), clock: pictures });
-    await user.click(button("PLAY"));
+    await openPairs({ storage, pals: pals("triceratops", "stegosaurus", "tyrannosaurus") });
+    const [play, explorer] = [button("PLAY"), button("EXPLORER")];
 
-    await user.click(button("EXPLORER"));
+    act(() => {
+      fireEvent.click(play);
+      fireEvent.click(explorer);
+    });
 
-    expect(chosen()).toEqual(["HATCHLING"]);
-    expect(storedPairs(storage)).toBeUndefined();
-    act(() => pictures.loading().forEach(pictures.finish));
     expect(pairCards()).toHaveLength(6);
+    expect(storedPairs(storage)).toBeUndefined();
   });
 });
 
@@ -216,7 +217,7 @@ describe("the choice on the level switch", () => {
     const storage = memoryStorage();
     const first = await openPairs({ storage, ageLevel: picked("explorer", "2") });
     await first.user.click(button("HATCHLING"));
-    expect(storedPairs(storage)).toEqual({ ...entry(), levelChoice: { level: "hatchling", revision: "2" } });
+    expect(storedPairs(storage)).toEqual({ ...entry(), offer: NO_LEVEL_OFFER, levelChoice: { level: "hatchling", revision: "2" } });
     first.unmount();
 
     const reopened = await openPairs({ storage, ageLevel: picked("explorer", "2") });
@@ -389,15 +390,16 @@ describe("a board at each level", () => {
     ["Hatchling", "Paleontologist", "hatchling", "paleontologist"]
   ] as const)("deals after a %s board a %s board, as few of the board before's dinosaurs as the look-alike rule allows", async (_, __, before, next) => {
     // A board is the board before once it is shown, played or not, so each
-    // board's dinosaurs are read from the pictures it waits for.
-    const pictures = manualPictures();
-    const { user } = await openPairs({ ageLevel: picked(before), random: seededRandom(296), clock: pictures });
-    act(() => pictures.finishAll());
+    // board's dinosaurs are read from the pictures it loads ahead: every
+    // picture fails, so a board asks again for each of its own.
+    const asked: string[] = [];
+    const clock: ManualTimers = { ...manualTimers(), loadPicture: (url, done) => (asked.push(url), done("failed")) };
+    const { user } = await openPairs({ ageLevel: picked(before), random: seededRandom(296), clock });
     const deal = async (...taps: string[]) => {
-      for (const tap of taps) await user.click(button(tap));
-      const ids = pictures.loading().map((url) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url)?.id);
-      act(() => pictures.finishAll());
-      return ids;
+      for (const tap of taps.slice(0, -1)) await user.click(button(tap));
+      const from = asked.length;
+      await user.click(button(taps.at(-1) ?? ""));
+      return [...new Set(asked.slice(from))].map((url) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url)?.id);
     };
 
     const first = await deal("PLAY");

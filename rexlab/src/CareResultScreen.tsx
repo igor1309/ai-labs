@@ -2,6 +2,7 @@ import { Footprints, Heart, HeartHandshake, House } from "lucide-react";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { BestScore, CelebrationChip, motion, ScoreCount, type Celebration } from "./ResultParts.tsx";
 
 export type CareCelebration = Celebration;
@@ -31,7 +32,7 @@ export function CareResultScreen({ language, visitor, score, total, best, beaten
     <main className="result care-result">
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
-      <img className="result-hero care-result-hero" src={visitor.picture} alt="" draggable={false} />
+      <Picture className="result-hero care-result-hero" src={visitor.picture} alt="" width={800} height={600} />
       <div className="result-content">
         {celebration && <CelebrationChip language={language} celebration={celebration} />}
         <ScoreCount language={language} score={score} total={total} />

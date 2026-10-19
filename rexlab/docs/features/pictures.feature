@@ -1,5 +1,5 @@
-Feature: The catalogue, compare and home never wait for their pictures
-  These screens change at once, whatever their pictures are doing
+Feature: Screens never wait for their pictures
+  The screens below change at once, whatever their pictures are doing
   (docs/tap-safety.md, part 5); the other games follow. While a picture
   loads, its place keeps the picture's own size and shimmers: its colour
   pulses slowly in place, in the colours of the theme shown. Once the
@@ -11,11 +11,11 @@ Feature: The catalogue, compare and home never wait for their pictures
   the colour of what holds it, with a footprints symbol at its centre,
   and a card or tile around it still shows its name. A picture that
   loads after that still fades in. A picture that failed is loaded again
-  when a screen shown later asks for it. A picture with a name keeps it
-  for screen readers, loading, failed or shown.
+  when a place shows it again or a screen loads it ahead. A picture with
+  a name keeps it for screen readers, loading, failed or shown.
 
   It covers every picture of the catalogue, the compare game, the home
-  page and a round's result, which sorting shares.
+  page, care, find the pair, sorting and a round's result.
 
   Background:
     Given an iPad in landscape
