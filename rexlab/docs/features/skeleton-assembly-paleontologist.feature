@@ -16,7 +16,7 @@ Feature: Skeleton assembly: Paleontologist
 
   Scenario Outline: The tray mixes in other dinosaurs' bones
     When I tap <dinosaur>
-    Then the tray shows its <count> pieces with <others> bones of other dinosaurs spread among them
+    Then the tray shows its <count> pieces, in an order shuffled for this puzzle, with <others> bones of other dinosaurs spread among them
     And the counter shows "0/<count>"
 
     Examples:
@@ -47,10 +47,15 @@ Feature: Skeleton assembly: Paleontologist
     And a line reads "THAT'S THE TRICERATOPS FRILL!"
     And nothing is fitted and nothing is lost
 
-  Scenario: The line goes with the next drop
+  Scenario: The line goes the moment another piece is touched
     Given the line reads "THAT'S THE TRICERATOPS FRILL!"
-    When I fit the skull
-    Then the line is gone
+    When I press the skull in the tray
+    Then the line is gone while I still hold the skull
+
+  Scenario: The line stays while the same bone is touched again
+    Given the line reads "THAT'S THE TRICERATOPS FRILL!"
+    When I press the Triceratops frill in the tray
+    Then the line still reads "THAT'S THE TRICERATOPS FRILL!"
 
   Scenario: Another dinosaur's bone never puts help off
     Given 9 seconds have passed

@@ -15,7 +15,7 @@ Feature: Skeleton assembly: Explorer
 
   Scenario Outline: Explorer's puzzle is the skeleton's own cut
     When I tap <dinosaur>
-    Then its full outline shows with <count> pieces in the tray, the right way up, in its cut's order
+    Then its full outline shows with <count> pieces in the tray, the right way up, in an order shuffled for this puzzle, so the tray never lists the bones head to tail
     And the counter shows "0/<count>"
 
     Examples:

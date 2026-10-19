@@ -55,11 +55,11 @@ describe("Explorer's puzzle", () => {
   it("shows a fitted piece as itself, its spot empty and plain, every other piece keeping its colour", async () => {
     await openExplorer("TYRANNOSAURUS");
 
-    fit(skeletonOf("tyrannosaurus"), "skull");
+    fit(skeletonOf("tyrannosaurus"), "head");
 
-    expect(fittedPieces()).toEqual(["skull"]);
-    expect([slotOf("skull").getAttribute("data-area"), shapeOf("skull"), slotOf("skull").querySelector(".skeleton-fitted-picture")?.getAttribute("alt")]).toEqual([null, null, "SKULL"]);
-    expect(spotOf("skull").getAttribute("data-area")).toBeNull();
+    expect(fittedPieces()).toEqual(["head"]);
+    expect([slotOf("head").getAttribute("data-area"), shapeOf("head"), slotOf("head").querySelector(".skeleton-fitted-picture")?.getAttribute("alt")]).toEqual([null, null, "SKULL"]);
+    expect(spotOf("head").getAttribute("data-area")).toBeNull();
     expect(spotAreas().slice(1)).toEqual(["neck", "back", "hips", "legs", "legs", "tail"]);
     expect(slots().slice(1).map(([piece]) => shapeOf(piece ?? "") !== null)).toEqual([true, true, true, true, true, true]);
   });
@@ -87,10 +87,10 @@ describe("Explorer's puzzle", () => {
     const triceratops = skeletonOf("triceratops");
 
     dragTo("frill", homeOf(triceratops, "frill", 40, 0));
-    dragTo("tail", AWAY);
+    dragTo("tail-bones", AWAY);
 
     expect(fittedPieces()).toEqual(["frill"]);
-    expect([spotOf("tail").getAttribute("data-area"), spotOf("tail").querySelector(".skeleton-piece[data-returning]") !== null]).toEqual(["tail", true]);
+    expect([spotOf("tail-bones").getAttribute("data-area"), spotOf("tail-bones").querySelector(".skeleton-piece[data-returning]") !== null]).toEqual(["tail", true]);
   });
 
   it("fits a piece by its place alone, never on another slot of its colour", async () => {

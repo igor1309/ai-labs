@@ -62,7 +62,7 @@
         ],
         "explorer": [
           {
-            "id": "skull",
+            "id": "head",
             "area": "head",
             "name": {
               "en": "SKULL",
@@ -70,8 +70,8 @@
             },
             "x": 6,
             "y": 44,
-            "width": 231,
-            "height": 195
+            "width": 234,
+            "height": 186
           },
           {
             "id": "neck",
@@ -82,8 +82,8 @@
             },
             "x": 170,
             "y": 68,
-            "width": 130,
-            "height": 295
+            "width": 141,
+            "height": 305
           },
           {
             "id": "back",
@@ -92,10 +92,10 @@
               "en": "BACK AND RIBS",
               "ru": "СПИНА И РЁБРА"
             },
-            "x": 300,
-            "y": 146,
-            "width": 231,
-            "height": 236
+            "x": 273,
+            "y": 152,
+            "width": 258,
+            "height": 238
           },
           {
             "id": "hips",
@@ -104,10 +104,10 @@
               "en": "HIPS",
               "ru": "ТАЗ"
             },
-            "x": 425,
-            "y": 240,
-            "width": 140,
-            "height": 95
+            "x": 510,
+            "y": 241,
+            "width": 61,
+            "height": 81
           },
           {
             "id": "left-leg",
@@ -117,9 +117,9 @@
               "ru": "ЛЕВАЯ НОГА"
             },
             "x": 149,
-            "y": 318,
+            "y": 314,
             "width": 194,
-            "height": 245
+            "height": 249
           },
           {
             "id": "right-leg",
@@ -128,27 +128,27 @@
               "en": "RIGHT LEG",
               "ru": "ПРАВАЯ НОГА"
             },
-            "x": 427,
-            "y": 335,
-            "width": 212,
-            "height": 234
+            "x": 456,
+            "y": 360,
+            "width": 183,
+            "height": 209
           },
           {
-            "id": "tail",
+            "id": "tail-bones",
             "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 565,
-            "y": 266,
-            "width": 225,
-            "height": 89
+            "x": 555,
+            "y": 274,
+            "width": 235,
+            "height": 81
           }
         ],
         "paleontologist": [
           {
-            "id": "skull",
+            "id": "head",
             "area": "head",
             "name": {
               "en": "SKULL",
@@ -156,8 +156,8 @@
             },
             "x": 6,
             "y": 44,
-            "width": 231,
-            "height": 195
+            "width": 234,
+            "height": 186
           },
           {
             "id": "neck-bones",
@@ -166,10 +166,10 @@
               "en": "NECK",
               "ru": "ШЕЯ"
             },
-            "x": 229,
+            "x": 222,
             "y": 68,
-            "width": 71,
-            "height": 167
+            "width": 89,
+            "height": 203
           },
           {
             "id": "arms",
@@ -179,9 +179,9 @@
               "ru": "ЛАПЫ"
             },
             "x": 170,
-            "y": 235,
-            "width": 130,
-            "height": 128
+            "y": 226,
+            "width": 136,
+            "height": 147
           },
           {
             "id": "back",
@@ -190,10 +190,10 @@
               "en": "BACK AND RIBS",
               "ru": "СПИНА И РЁБРА"
             },
-            "x": 300,
-            "y": 146,
-            "width": 231,
-            "height": 236
+            "x": 273,
+            "y": 152,
+            "width": 258,
+            "height": 238
           },
           {
             "id": "hips",
@@ -202,10 +202,10 @@
               "en": "HIPS",
               "ru": "ТАЗ"
             },
-            "x": 425,
-            "y": 240,
-            "width": 140,
-            "height": 95
+            "x": 510,
+            "y": 241,
+            "width": 61,
+            "height": 81
           },
           {
             "id": "left-thigh",
@@ -215,9 +215,9 @@
               "ru": "ЛЕВОЕ БЕДРО"
             },
             "x": 236,
-            "y": 318,
-            "width": 105,
-            "height": 132
+            "y": 314,
+            "width": 98,
+            "height": 142
           },
           {
             "id": "left-foot",
@@ -227,9 +227,9 @@
               "ru": "ЛЕВАЯ СТОПА"
             },
             "x": 149,
-            "y": 450,
+            "y": 443,
             "width": 194,
-            "height": 113
+            "height": 120
           },
           {
             "id": "right-thigh",
@@ -238,10 +238,10 @@
               "en": "RIGHT THIGH",
               "ru": "ПРАВОЕ БЕДРО"
             },
-            "x": 427,
-            "y": 335,
-            "width": 143,
-            "height": 125
+            "x": 456,
+            "y": 360,
+            "width": 114,
+            "height": 108
           },
           {
             "id": "right-foot",
@@ -251,9 +251,9 @@
               "ru": "ПРАВАЯ СТОПА"
             },
             "x": 475,
-            "y": 460,
+            "y": 454,
             "width": 164,
-            "height": 109
+            "height": 115
           },
           {
             "id": "tail-base",
@@ -262,10 +262,10 @@
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 565,
-            "y": 266,
-            "width": 115,
-            "height": 89
+            "x": 555,
+            "y": 274,
+            "width": 143,
+            "height": 81
           },
           {
             "id": "tail-tip",
@@ -274,10 +274,10 @@
               "en": "TAIL TIP",
               "ru": "КОНЧИК ХВОСТА"
             },
-            "x": 680,
+            "x": 692,
             "y": 295,
-            "width": 110,
-            "height": 58
+            "width": 98,
+            "height": 56
           }
         ]
       },
@@ -374,7 +374,7 @@
             },
             "x": 8,
             "y": 76,
-            "width": 359,
+            "width": 339,
             "height": 267
           },
           {
@@ -384,22 +384,22 @@
               "en": "FRILL",
               "ru": "ВОРОТНИК"
             },
-            "x": 201,
+            "x": 179,
             "y": 34,
-            "width": 205,
-            "height": 213
+            "width": 225,
+            "height": 258
           },
           {
-            "id": "spine",
+            "id": "back",
             "area": "back",
             "name": {
               "en": "BACK AND RIBS",
               "ru": "СПИНА И РЁБРА"
             },
-            "x": 253,
+            "x": 258,
             "y": 178,
-            "width": 387,
-            "height": 220
+            "width": 390,
+            "height": 235
           },
           {
             "id": "front-legs",
@@ -409,9 +409,9 @@
               "ru": "ПЕРЕДНИЕ НОГИ"
             },
             "x": 117,
-            "y": 240,
-            "width": 303,
-            "height": 327
+            "y": 234,
+            "width": 309,
+            "height": 333
           },
           {
             "id": "hind-legs",
@@ -420,22 +420,22 @@
               "en": "HIND LEGS",
               "ru": "ЗАДНИЕ НОГИ"
             },
-            "x": 420,
-            "y": 235,
-            "width": 239,
-            "height": 315
+            "x": 406,
+            "y": 238,
+            "width": 253,
+            "height": 312
           },
           {
-            "id": "tail",
+            "id": "tail-bones",
             "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 640,
-            "y": 329,
-            "width": 155,
-            "height": 89
+            "x": 637,
+            "y": 344,
+            "width": 158,
+            "height": 74
           }
         ],
         "paleontologist": [
@@ -447,9 +447,9 @@
               "ru": "КЛЮВ И НОСОВОЙ РОГ"
             },
             "x": 30,
-            "y": 180,
-            "width": 80,
-            "height": 163
+            "y": 196,
+            "width": 65,
+            "height": 145
           },
           {
             "id": "horns",
@@ -460,8 +460,8 @@
             },
             "x": 8,
             "y": 76,
-            "width": 359,
-            "height": 263
+            "width": 339,
+            "height": 267
           },
           {
             "id": "frill",
@@ -470,10 +470,10 @@
               "en": "FRILL",
               "ru": "ВОРОТНИК"
             },
-            "x": 201,
+            "x": 179,
             "y": 34,
-            "width": 205,
-            "height": 213
+            "width": 225,
+            "height": 258
           },
           {
             "id": "ribs",
@@ -482,10 +482,10 @@
               "en": "RIBS",
               "ru": "РЁБРА"
             },
-            "x": 253,
+            "x": 258,
             "y": 178,
-            "width": 197,
-            "height": 220
+            "width": 205,
+            "height": 229
           },
           {
             "id": "backbone",
@@ -494,10 +494,10 @@
               "en": "BACKBONE",
               "ru": "ПОЗВОНОЧНИК"
             },
-            "x": 450,
-            "y": 178,
-            "width": 190,
-            "height": 220
+            "x": 424,
+            "y": 183,
+            "width": 224,
+            "height": 230
           },
           {
             "id": "left-front-leg",
@@ -507,9 +507,9 @@
               "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА"
             },
             "x": 117,
-            "y": 300,
-            "width": 149,
-            "height": 253
+            "y": 288,
+            "width": 208,
+            "height": 265
           },
           {
             "id": "right-front-leg",
@@ -519,9 +519,9 @@
               "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА"
             },
             "x": 293,
-            "y": 240,
-            "width": 127,
-            "height": 327
+            "y": 234,
+            "width": 133,
+            "height": 333
           },
           {
             "id": "left-hind-leg",
@@ -530,10 +530,10 @@
               "en": "LEFT HIND LEG",
               "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА"
             },
-            "x": 420,
-            "y": 398,
-            "width": 85,
-            "height": 135
+            "x": 406,
+            "y": 395,
+            "width": 99,
+            "height": 138
           },
           {
             "id": "right-hind-leg",
@@ -542,29 +542,29 @@
               "en": "RIGHT HIND LEG",
               "ru": "ПРАВАЯ ЗАДНЯЯ НОГА"
             },
-            "x": 515,
-            "y": 235,
-            "width": 144,
-            "height": 315
+            "x": 511,
+            "y": 238,
+            "width": 148,
+            "height": 312
           },
           {
-            "id": "tail",
+            "id": "tail-bones",
             "area": "tail",
             "name": {
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 640,
-            "y": 329,
-            "width": 155,
-            "height": 89
+            "x": 637,
+            "y": 344,
+            "width": 158,
+            "height": 74
           }
         ]
       },
       "distractors": [
         {
           "skeleton": "tyrannosaurus",
-          "piece": "skull",
+          "piece": "head",
           "name": {
             "en": "TYRANNOSAURUS SKULL",
             "ru": "ЧЕРЕП ТИРАННОЗАВРА"
@@ -638,16 +638,16 @@
         ],
         "explorer": [
           {
-            "id": "skull",
+            "id": "head",
             "area": "head",
             "name": {
               "en": "SKULL",
               "ru": "ЧЕРЕП"
             },
             "x": 4,
-            "y": 220,
-            "width": 143,
-            "height": 133
+            "y": 217,
+            "width": 155,
+            "height": 136
           },
           {
             "id": "plates",
@@ -656,10 +656,10 @@
               "en": "PLATES",
               "ru": "ПЛАСТИНЫ"
             },
-            "x": 133,
+            "x": 163,
             "y": 10,
-            "width": 447,
-            "height": 195
+            "width": 417,
+            "height": 239
           },
           {
             "id": "ribs",
@@ -668,10 +668,10 @@
               "en": "BACK AND RIBS",
               "ru": "СПИНА И РЁБРА"
             },
-            "x": 111,
-            "y": 205,
-            "width": 481,
-            "height": 177
+            "x": 133,
+            "y": 176,
+            "width": 459,
+            "height": 231
           },
           {
             "id": "front-legs",
@@ -681,9 +681,9 @@
               "ru": "ПЕРЕДНИЕ НОГИ"
             },
             "x": 56,
-            "y": 262,
-            "width": 304,
-            "height": 325
+            "y": 233,
+            "width": 289,
+            "height": 354
           },
           {
             "id": "hind-legs",
@@ -692,10 +692,10 @@
               "en": "HIND LEGS",
               "ru": "ЗАДНИЕ НОГИ"
             },
-            "x": 360,
-            "y": 278,
-            "width": 266,
-            "height": 296
+            "x": 362,
+            "y": 251,
+            "width": 264,
+            "height": 323
           },
           {
             "id": "tail-base",
@@ -704,10 +704,10 @@
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 555,
+            "x": 553,
             "y": 218,
-            "width": 125,
-            "height": 203
+            "width": 127,
+            "height": 199
           },
           {
             "id": "spikes",
@@ -716,24 +716,24 @@
               "en": "TAIL SPIKES",
               "ru": "ШИПЫ"
             },
-            "x": 680,
+            "x": 671,
             "y": 301,
-            "width": 119,
+            "width": 128,
             "height": 130
           }
         ],
         "paleontologist": [
           {
-            "id": "skull",
+            "id": "head",
             "area": "head",
             "name": {
               "en": "SKULL",
               "ru": "ЧЕРЕП"
             },
             "x": 4,
-            "y": 220,
-            "width": 143,
-            "height": 133
+            "y": 217,
+            "width": 155,
+            "height": 136
           },
           {
             "id": "front-plates",
@@ -742,10 +742,10 @@
               "en": "FRONT PLATES",
               "ru": "ПЕРЕДНИЕ ПЛАСТИНЫ"
             },
-            "x": 133,
-            "y": 26,
-            "width": 227,
-            "height": 179
+            "x": 163,
+            "y": 54,
+            "width": 209,
+            "height": 165
           },
           {
             "id": "back-plates",
@@ -754,10 +754,10 @@
               "en": "BACK PLATES",
               "ru": "ЗАДНИЕ ПЛАСТИНЫ"
             },
-            "x": 360,
+            "x": 303,
             "y": 10,
-            "width": 220,
-            "height": 195
+            "width": 277,
+            "height": 239
           },
           {
             "id": "ribs",
@@ -766,10 +766,10 @@
               "en": "BACK AND RIBS",
               "ru": "СПИНА И РЁБРА"
             },
-            "x": 111,
-            "y": 205,
-            "width": 481,
-            "height": 177
+            "x": 133,
+            "y": 176,
+            "width": 459,
+            "height": 231
           },
           {
             "id": "left-front-leg",
@@ -779,9 +779,9 @@
               "ru": "ЛЕВАЯ ПЕРЕДНЯЯ НОГА"
             },
             "x": 56,
-            "y": 330,
-            "width": 144,
-            "height": 238
+            "y": 320,
+            "width": 166,
+            "height": 248
           },
           {
             "id": "right-front-leg",
@@ -790,10 +790,10 @@
               "en": "RIGHT FRONT LEG",
               "ru": "ПРАВАЯ ПЕРЕДНЯЯ НОГА"
             },
-            "x": 200,
-            "y": 262,
-            "width": 160,
-            "height": 325
+            "x": 210,
+            "y": 233,
+            "width": 135,
+            "height": 354
           },
           {
             "id": "left-hind-leg",
@@ -802,10 +802,10 @@
               "en": "LEFT HIND LEG",
               "ru": "ЛЕВАЯ ЗАДНЯЯ НОГА"
             },
-            "x": 360,
-            "y": 278,
-            "width": 110,
-            "height": 277
+            "x": 362,
+            "y": 350,
+            "width": 104,
+            "height": 205
           },
           {
             "id": "right-hind-leg",
@@ -814,10 +814,10 @@
               "en": "RIGHT HIND LEG",
               "ru": "ПРАВАЯ ЗАДНЯЯ НОГА"
             },
-            "x": 470,
-            "y": 278,
-            "width": 156,
-            "height": 296
+            "x": 455,
+            "y": 251,
+            "width": 171,
+            "height": 323
           },
           {
             "id": "tail-base",
@@ -826,10 +826,10 @@
               "en": "TAIL",
               "ru": "ХВОСТ"
             },
-            "x": 555,
+            "x": 553,
             "y": 218,
-            "width": 125,
-            "height": 203
+            "width": 127,
+            "height": 199
           },
           {
             "id": "spikes",
@@ -838,9 +838,9 @@
               "en": "TAIL SPIKES",
               "ru": "ШИПЫ"
             },
-            "x": 680,
+            "x": 671,
             "y": 301,
-            "width": 119,
+            "width": 128,
             "height": 130
           }
         ]
@@ -848,7 +848,7 @@
       "distractors": [
         {
           "skeleton": "tyrannosaurus",
-          "piece": "skull",
+          "piece": "head",
           "name": {
             "en": "TYRANNOSAURUS SKULL",
             "ru": "ЧЕРЕП ТИРАННОЗАВРА"

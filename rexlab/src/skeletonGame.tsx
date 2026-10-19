@@ -18,6 +18,7 @@ import {
   openCollection,
   showLastStep,
   startPuzzle,
+  touch,
   turn,
   wait,
   type Badge,
@@ -70,17 +71,19 @@ const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 
 // How a puzzle looks: whether each piece and its slot are coloured by
 // body area, Explorer's cue to where a bone goes, and whether its outline
-// is the skeleton's silhouette alone, Paleontologist's partial outline.
-type Look = { coloured: boolean; silhouette: boolean };
+// is the skeleton's silhouette alone, Paleontologist's partial outline,
+// and whether a held piece's home is outlined, Hatchling's alone.
+type Look = { coloured: boolean; silhouette: boolean; homeShown: boolean };
 
 // How each level plays its puzzle: its look, whether help climbs the
 // ladder of steps rather than Hatchling's one glow, whether other
-// skeletons' bones wait in the tray, whether pieces arrive turned, and
-// the badge a skeleton built there without help's last step earns.
-const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean; badge: Badge | undefined }> = {
-  hatchling: { look: { coloured: false, silhouette: false }, ladder: false, distractors: false, turning: false, badge: undefined },
-  explorer: { look: { coloured: true, silhouette: false }, ladder: true, distractors: false, turning: false, badge: "explorer" },
-  paleontologist: { look: { coloured: false, silhouette: true }, ladder: true, distractors: true, turning: true, badge: "paleontologist" }
+// skeletons' bones wait in the tray, whether pieces arrive turned,
+// whether the tray shuffles them rather than keep the cut's order, and the
+// badge a skeleton built there without help's last step earns.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean; shuffling: boolean; badge: Badge | undefined }> = {
+  hatchling: { look: { coloured: false, silhouette: false, homeShown: true }, ladder: false, distractors: false, turning: false, shuffling: false, badge: undefined },
+  explorer: { look: { coloured: true, silhouette: false, homeShown: false }, ladder: true, distractors: false, turning: false, shuffling: true, badge: "explorer" },
+  paleontologist: { look: { coloured: false, silhouette: true, homeShown: false }, ladder: true, distractors: true, turning: true, shuffling: true, badge: "paleontologist" }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -190,8 +193,8 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { look, ladder, distractors, turning, badge } = MODES[at];
-    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined, badge });
+    const { look, ladder, distractors, turning, shuffling, badge } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined, shuffling: shuffling ? random : undefined, badge });
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
@@ -251,6 +254,14 @@ export function useSkeletonGame(
     if (to === from) return;
     showPuzzle(from, to);
     if (isComplete(to)) reveal(to, record(to), timers);
+  };
+
+  // A piece touched in the tray.
+  const onTouch = (piece: ShownPiece) => {
+    const from = live.current;
+    if (from === null) return;
+    const to = touch(from, piece);
+    if (to !== from) showPuzzle(from, to);
   };
 
   // A tap on a piece in the tray turns it.
@@ -336,6 +347,7 @@ export function useSkeletonGame(
             {...presentPuzzle(screen.puzzle, language, skeletonPicture, screen.look)}
             scatter={screen.scatter}
             onDrop={onDrop}
+            onTouch={onTouch}
             onTurn={onTurn}
             onLastStep={onLastStep}
             onMuseum={museum}

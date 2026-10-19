@@ -268,9 +268,14 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* A picture is never dragged out, selected or offered to share: a long
+   press on an iPad would open its menu and take the touch from the app.
+   Safari reads only the prefixed select. */
 img {
   -webkit-user-drag: none;
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* A card is pressed in quickly, under the finger, and eases back. */
@@ -4575,7 +4580,12 @@ body:has(.result) #version {
 /* The skeleton game's screens fill the screen under a bar like find the
    pair's: HOME, the title beside a bone, MUSEUM and, while building, the
    bones fitted. */
+/* Nothing on the puzzle selects or opens a menu at a long press or quick
+   taps, which would take the touch that drags or turns a piece. */
 .skeleton-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   position: relative;
   isolation: isolate;
   overflow: hidden;
