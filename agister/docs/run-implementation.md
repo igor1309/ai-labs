@@ -606,7 +606,7 @@ Decisions, each with its reason:
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
   the continuation needs none of them. ("Runs" adds the inputs, "A
   call's changes" the HEAD a call left and its patch, "Definitions"
-  the definitions.)
+  the definitions, "A call's plan" the permission plan.)
 - A record starts `lost` and is rewritten as calls end: a run that dies
   reads as lost, never as running (invariant 7), its ended calls kept,
   with no reaper.
@@ -816,7 +816,8 @@ Decisions, each with its reason:
 - Not yet in the record: the definitions with their digests, the
   process's environment, the permission plan, a pinned call's patch
   (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
-  adds the patch, "Definitions" the definitions.)
+  adds the patch, "Definitions" the definitions, "A call's plan" the
+  environment and the permission plan.)
 - No `runs list` or `runs show`: the gate exports, and the record is a
   file to read.
 - A run still being written exports as its files are at the copy: a
@@ -1251,3 +1252,40 @@ Decisions, each with its reason:
   a retry would leave a warning for bytes since kept.
 - No reader in runstore: nothing in a run reads the bytes back; a
   reuse writes them from this run's snapshot.
+
+## A call's plan
+
+Each call's entry records the permission plan resolve made for its
+step and the environment its process set, so the record holds the rest
+of what Agister gave a call (ADR-001, invariant 6; ADR-003, rule 4;
+LAB-324).
+
+**`runstore`**'s call grows `"permissions"`, the step's plan as
+`resolve.Plan` gives it and `agister settings show` prints it: the
+options taken and the permissions required, allowed, granted, granted
+beyond the allowed and withheld, each a list, `[]` for none; and
+`"environment"`, each variable the process sets, its name and its value
+whole, in the order the process declares them, `[]` for none:
+
+```json
+{"calls": [{"permissions": {"options": [], "required": [],
+   "allowed": [], "granted": [], "extra": [], "withheld": []},
+  "environment": [{"name": "", "value": ""}]}]}
+```
+
+**The composition** records a call's permissions from its step's plan,
+on every entry, refused or made; and its environment as resolved for
+its call, as its inputs are: a call whose inputs were refused has none.
+A call taken by a reuse keeps the earlier entry's, as it keeps the rest
+of that entry; an entry from before has neither field, and is read as
+having none.
+
+Decisions, each with its reason:
+
+- The plan as resolve made it, not as a runtime's flags: the flags are
+  the runtime's words, and the plan is what Agister decided.
+- Values whole, as inputs are: the environment's values come from the
+  inputs, so the record holds nothing it did not already.
+- No identity per variable: a reuse compares the inputs a variable's
+  value comes from, and the definitions that say how.
+
