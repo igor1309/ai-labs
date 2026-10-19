@@ -43,3 +43,10 @@ Feature: The composition keeps a call to its cost limit
     When "agister run talk --param q=why" runs in "/r"
     Then claude-code's turn for "second" is given the session "s1" and
       the session's cost before 0.5
+
+  Scenario: A limit on a runtime that reports no cost spends nothing
+    Given codex completes
+    When "agister run --process ask --agent codex-sol-61 --param q=why"
+      runs in "/r"
+    Then codex's turn runs, and the result's warnings hold "the runtime
+      codex reports no cost: the cost limit 1 spends nothing"

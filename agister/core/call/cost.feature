@@ -1,7 +1,9 @@
 # core/call, a call's cost and its cost limit (docs/run-implementation.md,
 # "A call's cost"; ADR-004, rule 7; ADR-012, rule 5). Spies answer the
 # runtime protocol, the watch, the clock and the timer (ADR-009, rule 1).
-# A turn reports its own cost, and the session's cost after it.
+# A turn reports its own cost, and the session's cost after it. The
+# step's recovery is 1 resume, its instruction "Go on.", and its
+# staleness limit no_event 20m.
 
 Feature: A call is kept to its cost limit
 
@@ -49,15 +51,13 @@ Feature: A call is kept to its cost limit
       | 1    |
       | 1.5  |
 
-  Scenario: No recovery turn starts once a turn's cost is unknown
+  Scenario: A turn whose cost is unknown spends none of the limit
     Given a model step of the cost limit 1, whose first turn reports the
       session "s1", then goes stale, giving no reply, and whose recovery
       turn completes
     When the call is made
-    Then it makes one turn, and ends failed, class "budget_exhausted",
-      the reason "the cost limit 1 cannot be kept: a turn's cost is
-      unknown"
-    And its report of the stale turn is not recovering
+    Then the recovery turn is given the budget 1, and the call ends
+      completed, its cost unknown
 
   Scenario: A turn ended at its budget ends the call
     Given a model step of the cost limit 1, whose turn fails

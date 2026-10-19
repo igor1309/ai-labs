@@ -25,7 +25,7 @@ definitions with their digests, compared by a reuse; the sixteenth
 ("A definition's bytes") their bytes kept beside the record; the
 seventeenth ("A call's plan") each call's permission plan and
 environment; the eighteenth ("A call's cost") a cost limit kept on
-claude-code and each turn's own cost. What it
+what a runtime reports, and each turn's own cost. What it
 leaves out, roughly in the order it is needed:
 
 - **Commands on runs**: other commands on runs than `export`.
@@ -35,8 +35,8 @@ leaves out, roughly in the order it is needed:
   than the grace and does not yet end.
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
   turn on pi; skills
-  given to a turn; codex's cost through `ccusage`, and a cost limit on
-  codex, and codex's usage on a resumed thread counted once; the
+  given to a turn; codex's cost through `ccusage`, so a cost limit on
+  codex spends it, and codex's usage on a resumed thread counted once; the
   version warning (ADR-003, rule 8), from the version the
   turn reports.
 - **Staleness on bash**: the no-event limit on every runtime (ADR-012,

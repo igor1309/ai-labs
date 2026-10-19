@@ -11,9 +11,10 @@ Feature: The claude-code wrapper counts a turn's own cost
       cost before 1
     Then the reply's cost is 0.25, and its session's cost 1.25
 
-  Scenario: A new session's cost before is zero
+  Scenario: A turn given no session counts from zero
     Given a success result of the session "s1" and the cost 0.25
-    When claude-code runs the message "m", its session's cost before 0
+    When claude-code runs the message "m" with no session and no cost
+      before
     Then the reply's cost is 0.25, and its session's cost 0.25
 
   Scenario Outline: A turn's cost is unknown where it cannot be told
@@ -42,6 +43,6 @@ Feature: The claude-code wrapper counts a turn's own cost
     Given the lines of an init event, and a result error_max_budget_usd
       of is_error true and the errors "Reached maximum budget ($0.75)",
       the cost 0.8
-    When claude-code runs the message "m", its session's cost before 0
+    When claude-code runs the message "m" with no session
     Then the reply's failure class is "budget_exhausted", its reason the
       result's errors, and its cost 0.8

@@ -44,15 +44,13 @@ Feature: The composition runs a request
       and it exits 1
 
     Examples:
-      | declares                                     | agent        | what                                  |
-      | as it is                                     | pi-m3        | the runtime "pi"'s turn               |
-      | the cost limit 1                             | codex-sol-61 | the cost limit on codex               |
-      | the cost limit 1                             | bash         | the cost limit on bash                |
-      | an input "prompt" from the param "what"      | claude-opus  | the input "prompt", a document's name |
-      | an input "b" from the source "git.diff"      | bash         | the source "git.diff"                 |
-      | the stale limit no_event 1m                  | bash         | the staleness limit on bash           |
-      | an instruction "think"                       | bash         | the instruction on bash               |
-      | the guidance "g", a prompt the settings hold | bash         | the guidance on bash                  |
+      | declares                                     | agent       | what                                  |
+      | as it is                                     | pi-m3       | the runtime "pi"'s turn               |
+      | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name |
+      | an input "b" from the source "git.diff"      | bash        | the source "git.diff"                 |
+      | the stale limit no_event 1m                  | bash        | the staleness limit on bash           |
+      | an instruction "think"                       | bash        | the instruction on bash               |
+      | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
 
   Scenario Outline: What a parallel does not run yet is refused
     Given the workflow "w" with the parallel "p" <holding>
