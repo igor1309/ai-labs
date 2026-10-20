@@ -160,8 +160,6 @@ export type Texts = {
   dugUpNew: string;
   digAgain: string;
   allDugUp: string;
-  // The dig game's details, each the word under its close-up.
-  spotKinds: { eye: string; foot: string; tail: string; horn: string; plate: string; claw: string; crest: string; sail: string; frill: string; beak: string };
 };
 
 // A celebration's label, read out, and its text, shown.

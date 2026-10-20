@@ -9,8 +9,9 @@ Feature: Dig: the offer of the next age level
   level's picture, the question, "YES" with a tick symbol and "NOT NOW"
   with a cross symbol, rising in once the reveal's own rewards have
   played, and while it shows the reveal under it cannot be tapped. A
-  strong round is one finished with no help shown; every Hatchling round
-  is strong, as Hatchling has no help. Paleontologist offers nothing.
+  strong round is one whose dinosaur is named at the first pick
+  (dig-question.feature), help or not; every Hatchling round is strong,
+  as Hatchling asks nothing. Paleontologist offers nothing.
 
   Background:
     Given an iPad in landscape
@@ -18,7 +19,7 @@ Feature: Dig: the offer of the next age level
   Scenario Outline: Three strong rounds in a row offer the next level
     Given the level switch shows <level> chosen
     And I have no strong rounds in a row and have never turned down an offer
-    When I finish 3 <level> rounds in a row with no help shown
+    When I finish 3 <level> rounds in a row, naming each dinosaur at the first pick
     Then the first two reveals show no offer
     And the third's offers "<question>" with <picture>, "YES" with a tick and "NOT NOW" with a cross
 
@@ -33,9 +34,9 @@ Feature: Dig: the offer of the next age level
     Then I see no offer, and I need 3 strong Explorer rounds in a row for it
 
     Examples:
-      | round                                       |
-      | an Explorer round after help thinned a spot |
-      | a Hatchling round                           |
+      | round                                 |
+      | an Explorer round after a wrong pick  |
+      | a Hatchling round                     |
 
   Scenario: "YES" plays the next level from then on
     Given I see the offer of the Explorer level on a Hatchling reveal
@@ -52,13 +53,13 @@ Feature: Dig: the offer of the next age level
 
   Scenario: No offer at the top
     Given the level switch shows Paleontologist chosen
-    When I finish 10 rounds with no help shown
+    When I finish 10 rounds, naming each dinosaur at the first pick
     Then I never see an offer
 
-  Scenario: The offer comes after the reveal's star
+  Scenario: The offer comes after the reveal's arrivals
     Given my third strong Hatchling round digs up a new dinosaur
     When the reveal shows
-    Then the star flies onto the "DUG UP" card and the celebration plays before the offer rises
+    Then the card's star is already in place and the celebration, level switch and buttons arrive before the offer rises
 
   Scenario Outline: An offer left unanswered is turned down
     Given I see the offer of the Explorer level on a Hatchling reveal

@@ -1,12 +1,26 @@
-import { Check, Sparkles, Star } from "lucide-react";
+import { Sparkles, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { DigBar } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
+import type { StartTimer } from "./ownedTimers.ts";
 
-export type DigSpotView = { id: string; word: string; x: number; y: number; r: number; found: boolean; helped: boolean };
+// The view and the round's timers share the durations of each arrival.
+export const BOARD_DROP = { motion: 500, reduced: 160 };
+export const GUST = { motion: 800, reduced: 160 };
+export const LIFT = { motion: 500, reduced: 160 };
+export const COUNT_SETTLE = { motion: 160, reduced: 0 };
+
+export type BoardFinish = {
+  newStar: boolean;
+  phase: "gust" | "lift" | "counted";
+  startTimer: StartTimer;
+  onLifted: () => void;
+};
+
+export type DigSpotView = { id: string; x: number; y: number; r: number; found: boolean; helped: boolean };
 
 // A point on the body picture, in the pixels of its frame.
 export type SandPoint = { x: number; y: number };
@@ -21,6 +35,10 @@ export type SandContext = (canvas: HTMLCanvasElement) => CanvasRenderingContext2
 
 export type DigBoardScreenProps = {
   language: Language;
+  arrivalWait?: number;
+  gustWait?: number;
+  liftWait?: number;
+  finish?: BoardFinish | undefined;
   // The dinosaur's body picture, under the sand, and its frame's size.
   picture: string;
   pictureLook?: PictureLook;
@@ -35,13 +53,17 @@ export type DigBoardScreenProps = {
   // The gust has blown the rest of the sand away.
   blown: boolean;
   spots: readonly DigSpotView[];
-  helpShown: boolean;
+  // The round asks who it is once enough of the dinosaur shows, so the
+  // board leaves room beside it for the choices from the start.
+  asks: boolean;
+  // The dinosaurs to pick from while the round asks, else none.
   choices: readonly { id: string; picture: string; rejected: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
   brush: number;
-  // Whether grains puff from the brush: not with reduced motion.
+  // Whether the board moves, grains puff and a find shines; false for
+  // the short fades of reduced motion.
   grains: boolean;
   // The dinosaurs dug up so far, out of all of them; undefined when
   // stored progress cannot be read, so there is no count to show.
@@ -53,14 +75,23 @@ export type DigBoardScreenProps = {
   onHome: () => void;
 };
 
-// The sand's colour and its grains', drawn the same on every redraw.
+// The sand's colour and its grains', drawn the same on every redraw, and
+// the damp sand of the bed the dinosaur lies in, darker, under the
+// picture where the brush has dug.
 const SAND = "#d9b77e";
 const GRAIN_COLOURS = ["#c9a46a", "#e8cc98", "#b98f55"];
+const BED = "#b0905f";
+const BED_GRAINS = ["#a07f50", "#bf9f6c", "#94744a"];
 // The canvas pixels per grain drawn over the sand.
 const GRAIN_AREA = 160;
 // The brush stamps along a stroke at a third of its radius, so its soft
 // edges overlap into one path.
 const STAMPS_PER_RADIUS = 3;
+// Each stamp knocks crumbs off the sand round its rim, so the hollow's
+// edge is ragged; its pale lip of loose grains lies along both sides of
+// the stroke, twice over, the wider one fainter, for a soft edge.
+const CRUMBS = 3;
+const LIPS = [{ width: 1.5, colour: "rgba(240, 218, 172, 0.2)" }, { width: 1.3, colour: "rgba(240, 218, 172, 0.3)" }];
 // The grains of one puff, and the most puffs in the air at once.
 const PUFF_GRAINS = 6;
 const PUFFS = 3;
@@ -74,24 +105,42 @@ const GRAIN_WAYS = Array.from({ length: PUFF_GRAINS }, (_, grain): CSSProperties
 // as the sand is soft and a larger canvas only costs.
 const pixelRatio = () => Math.min(2, window.devicePixelRatio || 1);
 
-// Covers the whole canvas with sand.
-function cover(context: CanvasRenderingContext2D, width: number, height: number) {
+// Numbers from 0 to 1, the same ones for the same seed.
+function seeded(seed: number) {
+  let state = Math.abs(Math.round(seed)) % 2147483646 + 1;
+  return () => (state = (state * 16807) % 2147483647) / 2147483647;
+}
+
+// Covers the whole canvas with `colour`, strewn with grains of `grains`.
+function cover(context: CanvasRenderingContext2D, width: number, height: number, colour = SAND, grains = GRAIN_COLOURS) {
   context.globalCompositeOperation = "source-over";
-  context.fillStyle = SAND;
+  context.fillStyle = colour;
   context.fillRect(0, 0, width, height);
-  let seed = 7;
-  const next = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const next = seeded(7);
   for (let grain = 0; grain < (width * height) / GRAIN_AREA; grain++) {
-    context.fillStyle = GRAIN_COLOURS[grain % GRAIN_COLOURS.length] ?? SAND;
+    context.fillStyle = grains[grain % grains.length] ?? colour;
     context.fillRect(next() * width, next() * height, 1 + next() * 2, 1 + next() * 2);
   }
 }
 
 // Takes the sand off along `mark` with a soft-edged round brush, `scale`
-// canvas pixels to the frame's pixel.
+// canvas pixels to the frame's pixel, leaving a pale lip of grains on the
+// sand along it and crumbs knocked off its edge. The crumbs fall where
+// the mark's own seed puts them, so a redraw puts them back the same.
 function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: SandMark, scale: number) {
-  context.globalCompositeOperation = "destination-out";
   const reach = radius * scale;
+  context.globalCompositeOperation = "source-atop";
+  context.lineCap = "round";
+  for (const lip of LIPS) {
+    context.strokeStyle = lip.colour;
+    context.lineWidth = 2 * reach * lip.width;
+    context.beginPath();
+    context.moveTo(from.x * scale, from.y * scale);
+    context.lineTo(to.x * scale, to.y * scale);
+    context.stroke();
+  }
+  context.globalCompositeOperation = "destination-out";
+  const next = seeded(from.x * 7919 + from.y * 104729 + to.x * 31 + to.y);
   const stamps = Math.ceil((Math.hypot(to.x - from.x, to.y - from.y) * scale * STAMPS_PER_RADIUS) / reach);
   for (let stamp = 0; stamp <= stamps; stamp++) {
     const along = stamps === 0 ? 0 : stamp / stamps;
@@ -105,6 +154,14 @@ function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: San
     context.beginPath();
     context.arc(x, y, reach, 0, 2 * Math.PI);
     context.fill();
+    context.fillStyle = "#000";
+    for (let crumb = 0; crumb < CRUMBS; crumb++) {
+      const angle = next() * 2 * Math.PI;
+      const out = reach * (0.75 + 0.2 * next());
+      context.beginPath();
+      context.arc(x + Math.cos(angle) * out, y + Math.sin(angle) * out, reach * (0.12 + 0.14 * next()), 0, 2 * Math.PI);
+      context.fill();
+    }
   }
 }
 
@@ -112,6 +169,13 @@ function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: San
 // pressed, the brush's radius in the frame's pixels, where it last was
 // and where its last grains puffed, in the frame's pixels.
 type Stroke = { pointerId: number; rect: DOMRect; radius: number; last: SandPoint; puffed: SandPoint };
+
+// The board where it is now, as it slides aside for the question under a
+// held finger, or as it was pressed if it has no size now.
+const boardNow = (element: HTMLElement | null, pressed: DOMRect) => {
+  const rect = element?.getBoundingClientRect();
+  return rect && rect.width > 0 ? rect : pressed;
+};
 
 // A puff of grains, where it rises, as fractions of the board.
 type Puff = { id: number; left: number; top: number };
@@ -136,6 +200,10 @@ function SpotPicture({ picture, frame, spot }: { picture: string; frame: { width
 
 export function DigBoardScreen({
   language,
+  arrivalWait = BOARD_DROP.motion,
+  gustWait = GUST.motion,
+  liftWait = LIFT.motion,
+  finish,
   picture,
   pictureLook,
   frame,
@@ -144,7 +212,7 @@ export function DigBoardScreen({
   cleared,
   blown,
   spots,
-  helpShown,
+  asks,
   choices,
   level,
   brush,
@@ -157,12 +225,31 @@ export function DigBoardScreen({
   onHome
 }: DigBoardScreenProps) {
   const text = TEXTS[language];
-  const paleontologist = level === "paleontologist";
   const choice = choices.length > 0;
-  const currentClue = spots.findIndex(({ found }) => !found);
-  const shownSpots = paleontologist && currentClue >= 0 ? spots.slice(0, currentClue + 1) : spots;
+  const chipStar = useRef<SVGSVGElement>(null);
+  const [flight, setFlight] = useState<CSSProperties>({});
+  const lifting = finish !== undefined && finish.phase !== "gust";
+  const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
+  const lift = finish?.phase === "lift" ? finish : undefined;
+  // Rotation restarts the displayed lift and star flight, so their wait
+  // belongs to this mounted board, including callbacks delivered after stop.
+  useEffect(() => {
+    if (!lift) return;
+    let active = true;
+    const stop = lift.startTimer(liftWait, () => {
+      if (active) lift.onLifted();
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [lift, liftWait]);
+  // The count ticks up as the star lands; under reduced motion it simply
+  // changes.
+  const shownCount = dugUp !== undefined && grains && finish?.newStar && finish.phase !== "counted" ? dugUp - 1 : dugUp;
   const board = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const bed = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
   const [brushAt, setBrushAt] = useState<SandPoint>();
   const [puffs, setPuffs] = useState<Puff[]>([]);
@@ -172,27 +259,51 @@ export function DigBoardScreen({
     const fresh = spots.filter(({ id, found }) => found && !seenFinds.current.has(id));
     if (fresh.length === 0) return;
     fresh.forEach(({ id }) => seenFinds.current.add(id));
-    setCelebrating((current) => [...current, ...fresh.map(({ id }) => id)]);
-  }, [spots]);
+    if (grains) setCelebrating((current) => [...current, ...fresh.map(({ id }) => id)]);
+  }, [spots, grains]);
   // The listeners on the window and the redraw read the props as they
   // are now, not as they were when they were added.
-  const latest = useRef({ marks, onBrush, grains, brush, locked: blown || choice });
-  latest.current = { marks, onBrush, grains, brush, locked: blown || choice };
+  const latest = useRef({ marks, onBrush, grains, brush, locked: blown });
+  latest.current = { marks, onBrush, grains, brush, locked: blown };
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const drawn = useRef(0);
 
-  // The canvas is as large as the board shows, so the sand is sharp at
-  // any size: on every resize it is covered anew and every mark taken off
-  // again, scaled with the board.
+  // Measure the endpoints in viewport pixels so the flight reaches the
+  // chip even when the reserved column or the viewport changes size.
   useLayoutEffect(() => {
-    const element = canvas.current;
+    if (!flying) return;
+    const measure = () => {
+      const from = board.current?.getBoundingClientRect();
+      const to = chipStar.current?.getBoundingClientRect();
+      if (!from || !to) return;
+      const x = to.left + to.width / 2;
+      const y = to.top + to.height / 2;
+      setFlight({ left: x, top: y, "--star-x": `${from.left + from.width / 2 - x}px`, "--star-y": `${from.top + from.height / 2 - y}px` } as CSSProperties);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [flying]);
+
+  // The canvases are as large as the board shows, so the sand is sharp at
+  // any size: on every resize the bed and any remaining sand are covered
+  // anew and every mark taken off again, scaled with the board. After the
+  // gust only the bed remains, including when rotation remounts the board.
+  useLayoutEffect(() => {
+    const element = canvas.current ?? bed.current;
     if (!element) return;
     const fit = () => {
       const { width, height } = element.getBoundingClientRect();
       const ratio = pixelRatio();
       element.width = Math.round(width * ratio);
       element.height = Math.round(height * ratio);
-      context.current = sandContext(element);
+      if (bed.current) {
+        bed.current.width = element.width;
+        bed.current.height = element.height;
+        const under = sandContext(bed.current);
+        if (under) cover(under, element.width, element.height, BED, BED_GRAINS);
+      }
+      context.current = canvas.current ? sandContext(canvas.current) : null;
       drawn.current = 0;
       if (!context.current) return;
       cover(context.current, element.width, element.height);
@@ -202,7 +313,7 @@ export function DigBoardScreen({
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [sandContext, frame.width, choice]);
+  }, [sandContext, frame.width, lifting]);
 
   // Each new mark is taken off the sand already drawn.
   useLayoutEffect(() => {
@@ -229,7 +340,7 @@ export function DigBoardScreen({
     const move = (event: PointerEvent) => {
       const current = stroke.current;
       if (!current || latest.current.locked || event.pointerId !== current.pointerId) return;
-      const at = toFrame(current.rect, event.clientX, event.clientY);
+      const at = toFrame(boardNow(board.current, current.rect), event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
       setBrushAt(at);
@@ -255,7 +366,7 @@ export function DigBoardScreen({
   // the frame's pixels follows the board's size as it is pressed.
   const press = (event: ReactPointerEvent) => {
     const rect = board.current?.getBoundingClientRect();
-    if (stroke.current || blown || choice || event.button !== 0 || !rect || rect.width === 0) return;
+    if (stroke.current || blown || event.button !== 0 || !rect || rect.width === 0) return;
     const at = toFrame(rect, event.clientX, event.clientY);
     const current = { pointerId: event.pointerId, rect, radius: (brush / 2) * (frame.width / rect.width), last: at, puffed: at };
     stroke.current = current;
@@ -264,25 +375,26 @@ export function DigBoardScreen({
     puff(current, at, true);
   };
 
-  // The choice and the gust both end any stroke.
+  // The gust ends any stroke; the choices showing do not.
   useEffect(() => {
-    if (!blown && !choice) return;
+    if (!blown) return;
     stroke.current = undefined;
     setBrushAt(undefined);
-  }, [blown, choice]);
+  }, [blown]);
 
   return (
-    <main className="dig-screen">
+    <main className="dig-screen" data-motion={grains || undefined} style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms` } as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
-      <DigBar language={language} title={paleontologist ? text.whoIsIt : text.dig} onHome={onHome}>
+      <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
         {dugUp !== undefined && (
-          <p className="dig-chip" aria-label={text.dugUp}>
-            <Star size={20} aria-hidden="true" />
-            {dugUp}/{total}
+          <p className="dig-chip" aria-label={text.dugUp} data-counted={finish?.phase === "counted" || undefined}>
+            <Star ref={chipStar} size={20} aria-hidden="true" />
+            <span>{shownCount}/{total}</span>
           </p>
         )}
       </DigBar>
-      <div className="dig-body" data-explorer={level === "explorer" || paleontologist || undefined} data-paleontologist={paleontologist || undefined} data-choice={choice || undefined}>
+      {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
+      <div className="dig-body" data-asks={asks || undefined} data-choice={choice || undefined}>
         <div
           ref={board}
           className="dig-board"
@@ -291,63 +403,58 @@ export function DigBoardScreen({
           data-clear={clear}
           data-cleared={cleared}
           data-blown={blown || undefined}
+          data-lifting={lifting || undefined}
           data-level={level}
           data-found={spots.filter(({ found }) => found).map(({ id }) => id).join(" ")}
           data-helped={spots.filter(({ helped }) => helped).map(({ id }) => id).join(" ")}
-          data-help-shown={helpShown}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height, "--brush": `${brush}px` } as CSSProperties}
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
-          {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
-          <canvas ref={canvas} className="dig-sand" aria-hidden="true" />
-          {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
-            <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"
-              style={{ left: percent((spot.x - spot.r) / frame.width), top: percent((spot.y - spot.r) / frame.height), width: percent(2 * spot.r / frame.width), height: percent(2 * spot.r / frame.height) }}>
-              <SpotPicture picture={picture} frame={frame} spot={spot} />
-            </span>
-          ))}
-          {spots.filter(({ id }) => celebrating.includes(id)).map((spot) => (
-            <span key={spot.id} className="dig-find-pop" aria-hidden="true" data-spot={spot.id} data-motion={grains || undefined}
-              style={{ left: percent(spot.x / frame.width), top: percent(spot.y / frame.height) }}
-              onAnimationEnd={(event) => { if (event.target === event.currentTarget) setCelebrating((current) => current.filter((id) => id !== spot.id)); }}>
-              <Star className="dig-detail-star" size={30} />
-              {grains && <Sparkles className="dig-detail-sparkle" size={48} />}
-            </span>
-          ))}
-          {grains &&
-            puffs.map((each) => (
-              <span key={each.id} className="dig-puff" aria-hidden="true" style={{ left: percent(each.left), top: percent(each.top) }}>
-                {Array.from({ length: PUFF_GRAINS }, (_, grain) => (
-                  <span key={grain} className="dig-grain" style={GRAIN_WAYS[grain]} />
-                ))}
+          <div className="dig-board-surface">
+            <canvas ref={bed} className="dig-bed" aria-hidden="true" />
+            {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
+            {!lifting && <canvas ref={canvas} className="dig-sand" aria-hidden="true" />}
+            {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
+              <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"
+                style={{ left: percent((spot.x - spot.r) / frame.width), top: percent((spot.y - spot.r) / frame.height), width: percent(2 * spot.r / frame.width), height: percent(2 * spot.r / frame.height) }}>
+                <SpotPicture picture={picture} frame={frame} spot={spot} />
               </span>
             ))}
-          {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
+            {spots.filter(({ id }) => celebrating.includes(id)).map((spot) => (
+              <span key={spot.id} className="dig-find-pop" aria-hidden="true" data-spot={spot.id}
+                style={{ left: percent(spot.x / frame.width), top: percent(spot.y / frame.height) }}
+                onAnimationEnd={(event) => { if (event.target === event.currentTarget) setCelebrating((current) => current.filter((id) => id !== spot.id)); }}>
+                <span className="dig-detail-ring" />
+                <Star className="dig-detail-star" size={30} />
+                <Sparkles className="dig-detail-sparkle" size={48} />
+              </span>
+            ))}
+            {grains &&
+              puffs.map((each) => (
+                <span key={each.id} className="dig-puff" aria-hidden="true" style={{ left: percent(each.left), top: percent(each.top) }}>
+                  {Array.from({ length: PUFF_GRAINS }, (_, grain) => (
+                    <span key={grain} className="dig-grain" style={GRAIN_WAYS[grain]} />
+                  ))}
+                </span>
+              ))}
+            {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
+          </div>
+          {grains && !lifting && <span className="dig-landing" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
+          </span>}
         </div>
-        {spots.length > 0 && <div className="dig-find-cards">
-          {shownSpots.map((spot, at) => (
-            <div key={spot.id} className="dig-find-card" data-spot={spot.id} data-found={spot.found || undefined}
-              data-clue={paleontologist || undefined} data-motion={grains || undefined}
-              data-helped={spot.helped && !spot.found || undefined} data-pulse={grains && spot.helped && !spot.found || undefined}>
-              {paleontologist && <span className="dig-clue-number">{at + 1} / 3</span>}
-              {(!paleontologist || spot.found) && <SpotPicture picture={picture} frame={frame} spot={spot} />}
-              <span className="dig-find-word">{spot.word}</span>
-              {paleontologist && !spot.found && <span className="dig-clue-sand" aria-hidden="true">🔍</span>}
-              {spot.found && <Check className="dig-find-tick" data-motion={grains || undefined} size={28} aria-label="✓" />}
-            </div>
+        {asks && !choice && <div className="dig-choice-cards" aria-hidden="true" />}
+        {choice && <div className="dig-choice-cards" data-motion={grains || undefined} role="group" aria-label={text.whoIsIt}>
+          {choices.map((card, at) => (
+            <button key={card.id} type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
+              style={{ "--choice": at } as CSSProperties}
+              disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}`} onClick={() => onPick?.(card.id)}>
+              <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
+            </button>
           ))}
-          {paleontologist && currentClue >= 0 && currentClue < spots.length - 1 && <div className="dig-clue-closed" aria-hidden="true">🔒</div>}
         </div>}
       </div>
-      {choice && <div className="dig-choice-cards" data-motion={grains || undefined} role="group" aria-label={text.whoIsIt}>
-        {choices.map((card, at) => (
-          <button key={card.id} type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
-            disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / 3`} onClick={() => onPick?.(card.id)}>
-            <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
-          </button>
-        ))}
-      </div>}
     </main>
   );
 }

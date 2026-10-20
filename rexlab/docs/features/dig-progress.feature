@@ -1,7 +1,7 @@
 Feature: Dig: stored progress
   The dig game keeps, in the browser beside the other games' progress,
   the dinosaurs dug up, the dinosaurs named at the first pick at
-  Paleontologist, the child's choice on the level switch and its level
+  Explorer or Paleontologist, the child's choice on the level switch and its level
   offer (dig-level-offer.feature). Dug-up dinosaurs are one collection
   across all levels (docs/age-levels.md, "Same rewards").
 
@@ -19,6 +19,11 @@ Feature: Dig: stored progress
     When I tap "HOME"
     Then I have still dug up 4 dinosaurs
     And the level offer's count of strong rounds is as it was before that round, neither grown nor restarted
+
+  Scenario: A dinosaur is kept from the gust onwards
+    Given the gust has begun in a round at any level
+    When I leave for HOME during the gust, lift or after the reveal's items arrive
+    Then the dinosaur stays recorded as dug up, with its badge if earned
 
   Scenario: Other games' progress is kept
     Given stored progress of every other game from before the dig game

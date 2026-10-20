@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import digFile from "../src/data/dig.json";
 import records from "../src/data/dinosaurs.json";
 import { FRAME, readDig, SPOT_KINDS, spotCells, TELLING_KINDS, type DigFile, type Spot } from "../src/dig/index.ts";
-import { en } from "../src/language/en.ts";
-import { ru } from "../src/language/ru.ts";
 import { alphaOf, bodyPicture, cellsOf } from "../scripts/digGrid.ts";
 
 const IDS = records.map(({ id }) => id);
@@ -114,12 +112,5 @@ describe("reading the dig file", () => {
   it("fails on cells not of the grid", () => {
     const file = { rex: { traits: [], spots: [spot("eye"), spot("foot", 400), spot("tail", 600)], cells: [ROW] } };
     expect(() => readDig(["rex"], file)).toThrow(/40×30 cells/);
-  });
-});
-
-describe("the spot kinds' words", () => {
-  it("are in capitals in either language", () => {
-    expect(SPOT_KINDS.map((kind) => en.spotKinds[kind])).toEqual(["EYE", "FOOT", "TAIL", "CLAW", "HORN", "PLATE", "CREST", "SAIL", "FRILL", "BEAK"]);
-    expect(SPOT_KINDS.map((kind) => ru.spotKinds[kind])).toEqual(["ГЛАЗ", "ЛАПА", "ХВОСТ", "КОГОТЬ", "РОГ", "ПЛАСТИНА", "ГРЕБЕНЬ", "ПАРУС", "ВОРОТНИК", "КЛЮВ"]);
   });
 });

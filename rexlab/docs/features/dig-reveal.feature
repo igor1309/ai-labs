@@ -1,11 +1,11 @@
 Feature: Dig: the reveal and its star
-  When the gust has blown, the dinosaur stays whole with its name: the
+  After the gust and lift, the dinosaur glides in whole with its name: the
   reveal is the round's result. Beside it is the "DUG UP" card: a ⭐,
   the words "DUG UP" and the count of dinosaurs dug up, out of all of
   them, such as "5/42". Each dinosaur dug up for the first time, at any
   level, earns its star once, with the best-score celebrations of the
   other games when the count grows. The 🦴 badge
-  (dig-paleontologist.feature) shows on the same card. Under them stand
+  (dig-question.feature) shows on the same card. Under them stand
   the level switch (dig-level-switch.feature), "DIG AGAIN" with a 🔄
   symbol and "HOME" with a 🏠 symbol.
 
@@ -14,10 +14,12 @@ Feature: Dig: the reveal and its star
 
   Scenario: The reveal names the dinosaur
     Given I have dug up 4 dinosaurs, not Triceratops
-    When the gust blows the last sand off Triceratops
+    When Triceratops has lifted from its damp bed after the gust
     Then I see the whole Triceratops and its name "TRICERATOPS", large
-    And a star flies onto the "DUG UP" card, its count turns to "5/42", and "NEW!" shows on it
-    And with reduced motion the star and the count appear with a short fade
+    And the board slides away as Triceratops glides into place on the left, never cut off at any edge
+    And on the right the name, the "DUG UP" card, the celebration if any, the level switch, "DIG AGAIN" and "HOME" arrive one after another, 60 ms apart
+    And the card shows its star already in place, "5/42" and "NEW!", with no second star flight
+    And with reduced motion everything arrives together on one short fade
     And I see the level switch above "DIG AGAIN" and "HOME"
 
   Scenario: The first dinosaur dug up is the first best
@@ -41,10 +43,10 @@ Feature: Dig: the reveal and its star
     Then I see the new best score celebration, "42/42" and a 🏆 on the "DUG UP" card
     And every later reveal shows "42/42" with the 🏆
 
-  Scenario: The reveal takes taps once its star has landed
+  Scenario: The reveal takes taps once its last item has arrived
     Given I am dabbing the sand as the gust blows
-    When I tap where "DIG AGAIN" or the level switch shows, before the star has landed on the "DUG UP" card
-    Then nothing happens, and once the star has landed the next tap works
+    When I tap where "DIG AGAIN", "HOME" or the level switch shows, before the last item has arrived
+    Then nothing happens, and once the last item has arrived the next tap works
 
   Scenario: Home from the reveal returns to the home page
     Given I am on the reveal

@@ -1,5 +1,6 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { COUNT_SETTLE, GUST, LIFT } from "../src/digGame.tsx";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { App } from "../src/App.tsx";
@@ -43,7 +44,7 @@ export function openDigApp({
 }: {
   storage?: MemoryStorage;
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | (() => boolean);
   language?: "en" | "ru";
   theme?: "light" | "dark";
   timers?: ManualPictures | ManualTimers;
@@ -80,7 +81,7 @@ export function openDigApp({
       digDinosaurs={SHIPPED_DIG}
       digProgress={localDigProgress(local)}
       sandContext={() => null}
-      reducedMotion={() => reducedMotion}
+      reducedMotion={typeof reducedMotion === "function" ? reducedMotion : () => reducedMotion}
       {...timers}
     />
   );
@@ -91,7 +92,7 @@ export function openDigApp({
 // The dig game's board, read and brushed as a test sees it.
 
 export const board = () => screen.getByRole("group", { name: TEXTS[document.documentElement.lang === "ru" ? "ru" : "en"].sand });
-export const sandOf = () => board().querySelector("canvas") ?? board();
+export const sandOf = () => board().querySelector(".dig-sand") ?? board();
 
 // The board laid out `width` CSS pixels wide at the page's top left, in
 // the frame's 4:3 shape, and the page told it changed size.
@@ -127,7 +128,8 @@ export function drag(points: Array<[number, number]>, time = 0, pointer = 1) {
   releaseAt(window, time + 10 * points.length, { x, y, pointer });
 }
 
-// Brushes the whole board, a row of the frame at a time, until the gust.
+// Brushes the whole board, a row of the frame at a time, until the gust
+// or, at Explorer and Paleontologist, until it is all clear.
 export function brushAll() {
   for (let y = 20; y < 600 && board().getAttribute("data-blown") === null; y += 40)
     drag(
@@ -137,4 +139,29 @@ export function brushAll() {
       ],
       y * 100
     );
+}
+
+// The question's card of the dinosaur `id`, or of the one under the sand.
+export const choiceCard = (id = roundDinosaur().id) => {
+  const card = document.querySelector<HTMLButtonElement>(`.dig-choice-card[data-choice="${id}"]`);
+  if (!card) throw new Error(`No choice of ${id}`);
+  return card;
+};
+
+// The question's cards of the dinosaurs not under the sand.
+export const wrongCards = () => [...document.querySelectorAll<HTMLButtonElement>(".dig-choice-card")].filter((card) => card.dataset.choice !== roundDinosaur().id);
+
+// Digs the dinosaur up whole: brushes the board and, where the round
+// asks who it is, names it at the first pick.
+export function digUp() {
+  brushAll();
+  if (board().getAttribute("data-blown") === null) fireEvent.click(choiceCard());
+}
+
+// Finishes the gust and lift, including a new star's count tick. Repeated
+// finds have no count timer; firing that wait has no effect there.
+export function finishBoard(timers: Pick<ManualTimers, "fire">, timing: "motion" | "reduced" = "motion") {
+  act(() => timers.fire(GUST[timing]));
+  act(() => timers.fire(LIFT[timing]));
+  if (COUNT_SETTLE[timing] > 0) act(() => timers.fire(COUNT_SETTLE[timing]));
 }

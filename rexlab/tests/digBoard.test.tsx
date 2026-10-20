@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { App, type SandContext } from "../src/App.tsx";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import { GUST, STAR_LANDS } from "../src/digGame.tsx";
+import { BOARD_DROP, GUST, STAR_LANDS } from "../src/digGame.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -28,7 +28,7 @@ import {
   symbolOf,
   unreadVersion
 } from "./support.ts";
-import { board, brushAll, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
+import { finishBoard, board, digUp, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
 type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext; level?: AgeLevel };
@@ -83,19 +83,29 @@ function openRound(options: Options = {}) {
 type Arc = { x: number; y: number; r: number; start: number; end: number };
 type Gradient = { circles: number[]; stops: Array<[number, string]>; addColorStop(at: number, colour: string): void };
 type Fill = { path: Arc[]; operation: string; style: string | Gradient };
+type Line = { operation: string; style: string; width: number; cap: string; path: number[][] };
 
-// Completed drawing operations on the sand's canvas, in canvas pixels.
-function spySand() {
+// Completed drawing operations on the sand's canvas, in canvas pixels:
+// the soft stamps, the crumbs knocked off their rims and the lips along
+// the strokes, and on the bed's canvas apart.
+function spyContext() {
   const drawn = {
     covers: [] as Array<[number, number]>,
     paints: [] as Array<{ operation: string; style: string | Gradient }>,
     fills: [] as Fill[],
-    get stamps() { return this.fills.flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); }
+    lines: [] as Line[],
+    get erased() { return this.fills.filter(({ style }) => typeof style !== "string"); },
+    get stamps() { return this.erased.flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); },
+    get crumbs() { return this.fills.filter(({ style }) => typeof style === "string").flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); }
   };
   let path: Arc[] = [];
+  let points: number[][] = [];
   const context = {
     globalCompositeOperation: "source-over",
     fillStyle: "" as string | Gradient,
+    strokeStyle: "",
+    lineWidth: 1,
+    lineCap: "butt",
     fillRect: (x: number, y: number, width: number, height: number) => {
       drawn.paints.push({ operation: context.globalCompositeOperation, style: context.fillStyle });
       if (context.globalCompositeOperation === "source-over" && x === 0 && y === 0) drawn.covers.push([width, height]);
@@ -104,17 +114,27 @@ function spySand() {
       const gradient: Gradient = { circles, stops: [], addColorStop: (at, colour) => { gradient.stops.push([at, colour]); } };
       return gradient;
     },
-    beginPath: () => { path = []; },
+    beginPath: () => { path = []; points = []; },
     arc: (x: number, y: number, r: number, start: number, end: number) => { path.push({ x, y, r, start, end }); },
-    fill: () => { drawn.fills.push({ path: [...path], operation: context.globalCompositeOperation, style: context.fillStyle }); }
+    moveTo: (x: number, y: number) => { points.push([x, y]); },
+    lineTo: (x: number, y: number) => { points.push([x, y]); },
+    fill: () => { drawn.fills.push({ path: [...path], operation: context.globalCompositeOperation, style: context.fillStyle }); },
+    stroke: () => { drawn.lines.push({ operation: context.globalCompositeOperation, style: context.strokeStyle, width: context.lineWidth, cap: context.lineCap, path: [...points] }); }
   };
-  return { drawn, sandContext: () => context as unknown as CanvasRenderingContext2D };
+  return { drawn, context: context as unknown as CanvasRenderingContext2D };
+}
+
+function spySand() {
+  const sand = spyContext();
+  const bed = spyContext();
+  return { drawn: sand.drawn, bed: bed.drawn, sandContext: (canvas: HTMLCanvasElement) => (canvas.classList.contains("dig-bed") ? bed.context : sand.context) };
 }
 
 function expectErased(fills: Fill[], places: Array<{ x: number; y: number; r: number }>) {
-  expect(fills).toHaveLength(places.length);
+  const erased = fills.filter(({ style }) => typeof style !== "string");
+  expect(erased).toHaveLength(places.length);
   places.forEach(({ x, y, r }, at) => {
-    expect(fills[at]).toEqual({
+    expect(erased[at]).toEqual({
       operation: "destination-out",
       path: [{ x, y, r, start: 0, end: 2 * Math.PI }],
       style: expect.objectContaining({
@@ -157,7 +177,8 @@ describe("the dig game's tile", () => {
     placeBoard(800);
     tapAt(board(), 1300, { x: 410, y: 300 });
 
-    expect(draws.count - before).toBe(1);
+    // One round: its dinosaur, then the order help shows its spots in.
+    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length);
     expect(clearCells()).toEqual([]);
   });
 
@@ -173,9 +194,15 @@ describe("the dig game's tile", () => {
 });
 
 describe("a round's start", () => {
-  it("covers the whole picture with sand, fading the board in whole", () => {
-    const { drawn, sandContext } = spySand();
+  it("covers the whole picture with sand over a darker bed of damp sand, dropping the board in whole", () => {
+    const { drawn, bed, sandContext } = spySand();
     openRound({ sandContext });
+
+    const [under, picture, sand] = [...board().querySelector(".dig-board-surface")!.children];
+    expect([under?.className, picture?.classList.contains("dig-picture"), sand?.className]).toEqual(["dig-bed", true, "dig-sand"]);
+    expect(bed.covers.at(-1)).toEqual([800, 600]);
+    expect(bed.paints[0]?.style).toBe("#b0905f");
+    expect(bed.fills).toEqual([]);
 
     expect([clearCells(), cleared()]).toEqual([[], 0]);
     expect(board().getAttribute("data-clear")).toBe(Array.from({ length: 30 }, () => "0".repeat(40)).join(" "));
@@ -183,14 +210,33 @@ describe("a round's start", () => {
     expect(drawn.paints.every(({ operation }) => operation === "source-over")).toBe(true);
     expect(drawn.paints[0]?.style).toBe("#d9b77e");
     expect(drawn.stamps).toEqual([]);
-    expect(getComputedStyle(board()).animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(getComputedStyle(board()).animationName).toBe("dig-drop");
+  });
+
+  it.each([false, true])("lands with grains at its bottom edge, or only fades under reduced motion %s", (reducedMotion) => {
+    openRound({ reducedMotion });
+    const main = screen.getByRole("main");
+    const timing = reducedMotion ? "reduced" : "motion";
+    expect(main.style.getPropertyValue("--dig-drop")).toBe(`${BOARD_DROP[timing]}ms`);
+    expect(getComputedStyle(board()).animation).toBe("fade-in var(--dig-drop) var(--ease-out) both");
+    expect(getComputedStyle(board()).animationName).toBe(reducedMotion ? "none" : "dig-drop");
+    expect(board().querySelectorAll(".dig-landing .dig-grain")).toHaveLength(reducedMotion ? 0 : 12);
+    expect(ruleOf(".dig-landing")).toContain("inset: auto 0 0");
+    expect(ruleOf(".dig-landing .dig-grain")).toContain("animation-delay: calc(var(--dig-drop) * 0.75)");
+    expect(ruleOf(".dig-board-surface")).toContain("overflow: hidden");
+    expect(getComputedStyle(board()).overflow).toBe("visible");
+    const drop = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-drop"), APP_CSS.indexOf(".dig-board-surface"));
+    expect(drop).toContain("calc(-100dvh * var(--motion-amount))");
+    expect(drop).toContain("75%");
+    expect(drop).toContain("calc(8px * var(--motion-amount))");
+    expect(drop).toContain("calc(0px * var(--motion-amount))");
   });
 
   it("digs up a dinosaur not dug up yet within this visit", () => {
     const { timers } = openRound();
     const first = roundDinosaur();
-    brushAll();
-    act(() => timers.fire(GUST.motion));
+    digUp();
+    finishBoard(timers);
     act(() => timers.fire(STAR_LANDS.motion));
 
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
@@ -241,6 +287,45 @@ describe("the brush", () => {
     expect(clearCells()).toEqual(["14:20", "15:19", "15:20", "15:21", "16:20"]);
     expect(drawn.stamps).toEqual([{ x: 410, y: 310, r: 24 }]);
     expectErased(drawn.fills, [{ x: 410, y: 310, r: 24 }]);
+  });
+
+  it("leaves a crumbly edge with a pale lip of grains, never a clean cut", () => {
+    const { drawn, sandContext } = spySand();
+    openRound({ sandContext });
+
+    drag([[200, 110], [272, 110]], 1000);
+
+    // The lip goes on the sand only, along the stroke, before it is dug.
+    expect(drawn.lines.map(({ operation, cap, width, path }) => ({ operation, cap, width, path }))).toEqual([
+      { operation: "source-atop", cap: "round", width: 72, path: [[200, 110], [200, 110]] },
+      { operation: "source-atop", cap: "round", width: expect.closeTo(62.4), path: [[200, 110], [200, 110]] },
+      { operation: "source-atop", cap: "round", width: 72, path: [[200, 110], [272, 110]] },
+      { operation: "source-atop", cap: "round", width: expect.closeTo(62.4), path: [[200, 110], [272, 110]] }
+    ]);
+    expect(drawn.lines.every(({ style }) => /^rgba\(240, 218, 172, 0\.\d\)$/.test(style))).toBe(true);
+    // Three crumbs off each stamp's rim, each a different size and place.
+    const stamps = drawn.stamps;
+    const crumbs = drawn.crumbs;
+    expect(crumbs).toHaveLength(3 * stamps.length);
+    crumbs.forEach(({ x, y, r }, at) => {
+      const stamp = stamps[Math.floor(at / 3)]!;
+      expect(Math.hypot(x - stamp.x, y - stamp.y) / stamp.r).toBeGreaterThanOrEqual(0.75);
+      expect(Math.hypot(x - stamp.x, y - stamp.y) / stamp.r).toBeLessThanOrEqual(0.95);
+      expect(r / stamp.r).toBeGreaterThanOrEqual(0.12);
+      expect(r / stamp.r).toBeLessThanOrEqual(0.26);
+    });
+    expect(new Set(crumbs.map(({ r }) => r)).size).toBe(crumbs.length);
+    expect(drawn.fills.filter(({ style }) => typeof style === "string").every(({ operation }) => operation === "destination-out")).toBe(true);
+
+    // A redraw puts the same crumbs back, scaled with the board.
+    const before = crumbs.length;
+    placeBoard(400);
+    expect(drawn.crumbs.slice(before)).toEqual(crumbs.map(({ x, y, r }) => ({ x: x / 2, y: y / 2, r: r / 2 })));
+  });
+
+  it("casts the sand's shadow into the hollows it leaves", () => {
+    openRound();
+    expect(getComputedStyle(sandOf()).filter).toBe("drop-shadow(3px 4px 3px #00000040)");
   });
 
   it.each([["hatchling", 24], ["explorer", 18], ["paleontologist", 18]] as const)("erases a tap and drag with %s's gradient, and redraws them after resize", (level, r) => {
@@ -326,7 +411,7 @@ describe("the brush", () => {
     corners.forEach(([x, y], at) => tapAt(board(), at * 1000, { x, y }));
 
     expect(clearCells()).toEqual(expect.arrayContaining(corners.map(([, , cell]) => cell)));
-    expect([cleared(), board().getAttribute("data-blown"), timers.timers()]).toEqual([0, null, []]);
+    expect([cleared(), board().getAttribute("data-blown"), timers.timers()]).toEqual([0, null, [1000]]);
   });
 
   it("keeps brushed sand brushed, again over the same place or after lifting the finger, the share only growing", () => {
@@ -361,18 +446,18 @@ describe("the brush", () => {
     expect(cleared()).toBeGreaterThanOrEqual(once[1]);
   });
 
-  it("blows the rest of the sand off to one side at 70% of the dinosaur's cells, then shows the dinosaur's name and HOME", () => {
+  it("blows the rest of the sand off to one side once the dinosaur is named, then shows its name and HOME", () => {
     const { timers } = openRound();
     const { id } = roundDinosaur();
 
-    brushAll();
+    digUp();
 
-    expect(cleared()).toBeGreaterThanOrEqual(0.7);
+    expect(cleared()).toBeGreaterThanOrEqual(0.75);
     expect(board().getAttribute("data-blown")).toBe("true");
-    expect(getComputedStyle(sandOf()).animation).toBe("dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both");
+    expect(getComputedStyle(sandOf()).animation).toBe("dig-gust var(--dig-gust) var(--ease-out) both");
     expect(timers.timers()).toEqual([GUST.motion]);
-    expect(GUST.motion).toBe(640);
-    act(() => timers.fire(GUST.motion));
+    expect(GUST.motion).toBe(800);
+    finishBoard(timers);
 
     const name = SHIPPED_DINOSAURS.find((each) => each.id === id)?.name.en.toLocaleUpperCase("en");
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
@@ -382,26 +467,38 @@ describe("the brush", () => {
     expect(homeTile("DIG")).toBeDefined();
   });
 
+  it("sweeps the sand off in one stroke and lifts the dinosaur with an amber glow", () => {
+    const gust = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-gust"), APP_CSS.indexOf(".dig-board[data-lifting]"));
+    expect(gust).toContain("translate: calc(110% * var(--motion-amount)) 0");
+    expect(gust).toContain("opacity: 0");
+    expect(gust.match(/to \{/g)).toHaveLength(1);
+    const lift = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-lift"), APP_CSS.indexOf(".dig-board-star"));
+    expect(lift).toContain("translate: 0 calc(-24px * var(--motion-amount))");
+    expect(lift).toContain("scale: calc(1 + 0.04 * var(--motion-amount))");
+    expect(lift).toContain("filter: drop-shadow(0 0 calc(24px * var(--motion-amount)) #e39b2d)");
+  });
+
   it("fades the rest of the sand away under reduced motion, on the shorter fade", () => {
     const { timers } = openRound({ reducedMotion: true });
 
-    brushAll();
+    digUp();
 
     expect(timers.timers()).toEqual([GUST.reduced]);
-    expect(GUST.reduced).toBe(320);
-    act(() => timers.fire(GUST.reduced));
+    expect(GUST.reduced).toBe(160);
+    finishBoard(timers, "reduced");
     expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   });
 
-  it("has no timer while brushing or waiting, so nothing counts down or ends the round", () => {
+  it("has only help's one-second wait while brushing or waiting, so nothing counts down or ends the round", () => {
     const { timers } = openRound();
 
-    expect(timers.timers()).toEqual([]);
+    expect(timers.timers()).toEqual([1000]);
     drag([
       [100, 100],
       [700, 500]
     ]);
     tapAt(board(), 5000, { x: 300, y: 300 });
+    for (let second = 0; second < 60; second++) act(() => timers.fire(1000));
 
     expect(timers.timers()).toEqual([]);
     expect(board().getAttribute("data-blown")).toBeNull();

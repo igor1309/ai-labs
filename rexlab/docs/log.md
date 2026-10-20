@@ -2,6 +2,13 @@
 
 ## 2026-10-20
 
+- DIG's board drops in, slides aside for the question and gusts the sand away; the dinosaur lifts with a warm glow and sends its first star into DUG UP, then glides into the reveal as its rewards and buttons arrive one after another, with short fades under reduced motion (LAB-361).
+- A skeleton puzzle's board keeps its outline's shape, as large as fits beside the tray, at any window size; the tray's spots are square, at least 48 by 48, each bone large in its spot, and all fit in the tray in as many columns as they need (LAB-351).
+- A turned piece's turn mark is a little dimmer in both themes, still clear as a symbol (LAB-352).
+- In the museum, BUILD and BUILD AGAIN stand on their own under the exhibit, with no card behind them; the hall leaves as much room under the buttons as above the names, and nothing is cut off (LAB-353).
+- A sort basket's cards wrap into rows, apart and inside the basket; names show at 14px where they fit with the picture, otherwise the picture fills the card with no name strip and keeps its accessible name (LAB-355).
+- DIG's brush crumbles the sand: each hollow has a ragged edge, a pale lip of grains and the sand's shadow, over a bed of darker damp sand instead of the page, and a telling part shines once with a ring and a star as it first shows; under reduced motion the sand just clears (LAB-360).
+- DIG is a mystery round: the board starts as all sand with no cards, and at Explorer and Paleontologist, once three quarters of the dinosaur show, WHO IS IT? offers it and its closest look-alikes, 3 or 4, beside the board; brushing goes on, a wrong pick fades, the right one brings the gust, and a first pick earns the 🦴 badge. Hatchling's gust waits for 95%, and help thins a spot after ten quiet seconds at every level (LAB-359).
 - At Paleontologist, Triceratops's tray holds a Spinosaurus sail among the other dinosaurs' bones, three in all (LAB-334).
 - DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
 - DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).

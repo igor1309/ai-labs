@@ -7,7 +7,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { board, brushAll, clearCells, drag, openDigApp, placeBoard } from "./digApp.tsx";
+import { finishBoard, board, digUp, clearCells, drag, openDigApp, placeBoard } from "./digApp.tsx";
 import { badgeOf } from "./homePage.tsx";
 import { fakeBodyPicture, featuredCard, gameDoor, homeTile, manualPictures, memoryStorage, SHIPPED_DIG, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
@@ -18,8 +18,8 @@ const record = (dig: object, featured = "dig") => ({ [PROGRESS_KEY]: JSON.string
 const button = (name: string) => screen.getByRole("button", { name });
 const level = () => board().getAttribute("data-level");
 const finish = (app: ReturnType<typeof openDigApp>) => {
-  placeBoard(800); brushAll();
-  act(() => app.timers.fire(GUST.motion));
+  placeBoard(800); digUp();
+  finishBoard(app.timers);
   act(() => app.timers.fire(STAR_LANDS.motion));
 };
 
@@ -99,10 +99,10 @@ it.each(["failed", "timed out"])("finishes Hatchling with a %s body picture, pre
   expect(board().querySelector(".dig-picture")?.getAttribute("data-picture")).toBe("failed");
   drag([[100, 310], [700, 310]]);
   expect(clearCells().length).toBeGreaterThan(0);
-  brushAll();
+  digUp();
   expect(board().getAttribute("data-blown")).toBe("true");
-  expect(Number(board().getAttribute("data-cleared"))).toBeGreaterThanOrEqual(0.7);
-  act(() => pictures.fire(GUST.motion));
+  expect(Number(board().getAttribute("data-cleared"))).toBeGreaterThanOrEqual(0.95);
+  finishBoard(pictures);
   expect(document.querySelector(".dig-reveal-picture")?.getAttribute("data-picture")).toBe("failed");
   expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
   expect(screen.getByRole("region", { name: "DUG UP" }).textContent).toContain(`1/${SHIPPED_DIG.length}`);
