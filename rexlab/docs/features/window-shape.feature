@@ -20,9 +20,9 @@ Feature: The window's shape
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
     When the app opens
-    Then the app's size class is <class>
+    Then the app's root names its size class, <class>
     When the window becomes <new width> by <new height>
-    Then the app's size class is <new class>, on the same screen and in the same state
+    Then the app's root names its size class, <new class>, on the same screen and in the same state
 
     Examples:
       | width | height | class       | new width | new height | new class   |
@@ -31,6 +31,7 @@ Feature: The window's shape
       | 852   | 393    | wide-short  | 393       | 852        | tall-narrow |
       | 600   | 900    | tall        | 599       | 900        | tall-narrow |
       | 900   | 800    | wide        | 800       | 800        | tall        |
+      | 1000  | 600    | wide        | 1000      | 599        | wide-short  |
 
   Scenario Outline: An upright screen is asked to turn sideways
     Given the app is in <language> on the home page
@@ -59,9 +60,13 @@ Feature: The window's shape
       | English  | 590   | 820    | MAKE THE WINDOW WIDER | A portrait layout for this screen is on its way. |
       | Russian  | 700   | 900    | СДЕЛАЙ ОКНО ШИРЕ      | Вертикальный вид этого экрана уже в пути.        |
 
-  Scenario: The picture comes and goes smoothly
-    When the window becomes portrait, and then landscape again
-    Then the picture fades in over the screen and out again, with the shared motion tokens
+  Scenario: The picture covers the screen and comes and goes smoothly
+    Given I am on the home page
+    When the window becomes portrait
+    Then the picture fades in over the screen with the shared motion tokens, and covers it fully once shown
+    And nothing behind it can be tapped or reached by keyboard
+    When the window becomes landscape again
+    Then the picture fades out and the home page is as it was
 
   @next
   Scenario: A screen with a portrait layout shows it
