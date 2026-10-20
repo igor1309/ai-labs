@@ -15,7 +15,7 @@ import { localCareProgress, localDigProgress, localFeatured, localPairsProgress,
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
-import { mediaOrientation } from "./mediaOrientation.ts";
+import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
 
@@ -37,6 +37,7 @@ const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
 export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
+  screen: { orientation?: Pick<ScreenOrientation, "type" | "addEventListener" | "removeEventListener"> };
   navigator: { language: string };
   document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener"> & {
     getElementById(id: string): Pick<Element, "setAttribute"> | null;
@@ -92,7 +93,7 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
-  const media = mediaOrientation((query) => browser.matchMedia(query));
+  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation);
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);
@@ -103,7 +104,8 @@ export function appProps(browser: Browser): AppProps {
     catalogue: readCatalogue(records),
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
-    orientation: { isPortrait: media.portrait, subscribe: media.watch },
+    viewport,
+    portraitLayouts: new Set(),
     pageVisibility: { isHidden: visibility.hidden, subscribe: visibility.watch },
     progress: localProgress(storage),
     deviceLanguage: browser.navigator.language,

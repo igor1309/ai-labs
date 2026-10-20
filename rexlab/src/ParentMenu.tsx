@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Button } from "./Button.tsx";
 
 export type MenuChoice<Value extends string> = {
   value: Value;
@@ -86,9 +87,8 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
 
   return (
     <div className="parent-menu">
-      <button
+      <Button
         ref={buttonRef}
-        type="button"
         className="parent-menu-button"
         aria-label={label}
         aria-haspopup="menu"
@@ -99,7 +99,7 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
         <span key={face.changes} className="parent-menu-face" data-changed={face.changes > 0 ? "" : undefined}>
           {button}
         </span>
-      </button>
+      </Button>
       {shown && (
         <div
           ref={menuRef}
@@ -113,9 +113,8 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
           onKeyDown={moveFocus}
         >
           {choices.map(({ value, name, lang, symbol, note }) => (
-            <button
+            <Button
               key={value}
-              type="button"
               role="menuitemradio"
               aria-checked={value === chosen}
               tabIndex={-1}
@@ -134,7 +133,7 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
                 {note && <span className="parent-menu-note">{note}</span>}
               </span>
               {value === chosen && <Check className="parent-menu-tick" size={18} />}
-            </button>
+            </Button>
           ))}
         </div>
       )}

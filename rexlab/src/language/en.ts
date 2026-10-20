@@ -14,7 +14,9 @@ export const en: Texts = {
     paleontologist: { name: "PALEONTOLOGIST", age: "6 and up" }
   },
   versionLabel: "Version",
-  turnSideways: "TURN THE IPAD SIDEWAYS",
+  turnSideways: "TURN SIDEWAYS",
+  makeWindowWider: "MAKE THE WINDOW WIDER",
+  portraitLayoutComing: "A portrait layout for this screen is on its way.",
   home: "HOME",
   progress: "PROGRESS",
   dinosaurs: "DINOSAURS",

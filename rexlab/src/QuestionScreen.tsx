@@ -1,9 +1,9 @@
 import { ArrowRight, Check, House, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
 import { ViewTransition } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 // What the prompt asks about.
 export type Prompt = keyof Texts["prompts"];
@@ -70,10 +70,10 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
     <main className="question">
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="question-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
         {/* One step per question: those done, the one on screen, and those
             still to come. */}
         <span className="steps" aria-hidden="true">
@@ -102,7 +102,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
           move when Next appears. */}
       <div className="next-row">
         {answered && (
-          <button type="button" className="next-button" onClick={onNext}>
+          <Button className="next-button" onClick={onNext}>
             {last ? (
               <>
                 <Trophy size={28} aria-hidden="true" />
@@ -114,7 +114,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
                 <ArrowRight size={28} aria-hidden="true" />
               </>
             )}
-          </button>
+          </Button>
         )}
       </div>
     </main>
@@ -130,25 +130,20 @@ type DinosaurCardProps = {
 };
 
 function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, language, prompt, answered, onChoose }: DinosaurCardProps) {
-  const { "data-hovered": hovered, "data-pressed": pressed, ...pointer } = usePointerState();
   const text = TEXTS[language];
   const ValueSymbol = VALUE_SYMBOLS[prompt];
   const MarkSymbol = mark && MARKS[mark];
   // An answered card no longer responds to touch: only the first tap
   // counts, and a card that still looked pressable would say otherwise.
   return (
-    <button
-      type="button"
+    <Button
       className="card dinosaur-card"
       aria-label={name}
       aria-disabled={answered || undefined}
       data-answered={answered || undefined}
       data-mark={mark}
       data-chosen={(answered && chosen) || undefined}
-      data-hovered={answered ? undefined : hovered}
-      data-pressed={answered ? undefined : pressed}
       onClick={() => onChoose(id)}
-      {...pointer}
     >
       <span className="dinosaur-art">
         {/* Every picture is shown at the same size, whatever the dinosaur's
@@ -170,6 +165,6 @@ function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, langua
           </span>
         )}
       </span>
-    </button>
+    </Button>
   );
 }

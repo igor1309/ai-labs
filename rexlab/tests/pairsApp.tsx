@@ -20,11 +20,11 @@ import {
   fakeItemPicture,
   featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   unreadVersion,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualTimers,
   type MemoryStorage,
   loadShownPictures,
@@ -44,7 +44,7 @@ export type PairsAppOptions<C extends Clock> = {
   random?: Random;
   clock?: C;
   reducedMotion?: boolean;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   deviceLanguage?: string;
   theme?: "light" | "dark";
   // The age level a parent picked, or "unset" for none picked yet.
@@ -72,7 +72,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   random = () => 0,
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   deviceLanguage = "en-GB",
   theme = "light",
   ageLevel = PICKED_HATCHLING,
@@ -88,7 +88,8 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}

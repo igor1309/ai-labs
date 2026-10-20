@@ -7,7 +7,7 @@ import { NO_LEVEL_OFFER, type LevelOffer } from "../src/levelOffer.ts";
 import { PROGRESS_KEY, localPairsProgress } from "../src/localProgress.ts";
 import type { Board, BoardLevel } from "../src/pairs/index.ts";
 import { MISS, dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, placesOf, storedPairs, type StoredPairs } from "./pairsApp.tsx";
-import { manualPictures, memoryStorage, type MemoryStorage } from "./support.ts";
+import { manualPictures, manualViewport, memoryStorage, type MemoryStorage, type ManualViewport } from "./support.ts";
 
 // find-the-pair-level-offer.feature, and the leaving-early outline of
 // find-the-pair-level-offer-result.feature: what makes find the pair offer
@@ -46,13 +46,14 @@ async function begin({
   ageLevel = "hatchling",
   progress = {},
   storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(entry(progress)) }),
+  viewport = manualViewport("landscape"),
   settingsStorage
-}: { ageLevel?: AgeLevel; progress?: Partial<StoredPairs>; storage?: MemoryStorage; settingsStorage?: MemoryStorage } = {}) {
+}: { ageLevel?: AgeLevel; progress?: Partial<StoredPairs>; storage?: MemoryStorage; settingsStorage?: MemoryStorage; viewport?: ManualViewport } = {}) {
   const clock = manualPictures();
-  const app = openPairsApp({ storage, ageLevel: picked(ageLevel), clock, ...(settingsStorage && { settingsStorage }) });
+  const app = openPairsApp({ storage, viewport, ageLevel: picked(ageLevel), clock, ...(settingsStorage && { settingsStorage }) });
   await app.user.click(button("FIND THE PAIR"));
   // The board dealt last, which the next one is dealt after.
-  return { ...app, clock, previous: undefined as Board | undefined };
+  return { ...app, clock, viewport, previous: undefined as Board | undefined };
 }
 
 // The app reopened on what the first kept.
@@ -125,6 +126,28 @@ async function needs(session: Session, n: number, level: BoardLevel, tries: numb
 }
 
 describe("when the next level is offered", () => {
+  it("pauses the offer's arrival and dismissal while the portrait gate covers the mounted result", async () => {
+    const session = await begin({ progress: { offer: offerOf("hatchling", 2) } });
+    await reach(session, "PLAY", HATCHLING, 6);
+    act(() => session.viewport.turn("portrait"));
+    expect(session.clock.timers()).not.toContain(0);
+    act(() => session.clock.deliverStopped(0));
+    expect(savedOffer(session)).toEqual(offerOf("hatchling", 3));
+
+    act(() => session.viewport.turn("landscape"));
+    settle(session);
+    expect(asked()).toBe(asks("explorer"));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(button("NOT NOW"));
+    act(() => session.viewport.turn("portrait"));
+    expect(session.clock.timers()).not.toContain(0);
+    act(() => session.clock.deliverStopped(0));
+    expect(dialog.isConnected).toBe(true);
+    act(() => session.viewport.turn("landscape"));
+    settle(session);
+    expect(asked()).toBeNull();
+  });
+
   it.each([
     ["hatchling", HATCHLING, 12, "explorer", "🦖"],
     ["explorer", EXPLORER, 18, "paleontologist", "🦴"]

@@ -5,24 +5,15 @@ import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import type { Theme } from "../src/theme.ts";
 import { board, finishLoading, openSkeletonsApp, skeletonOf, spotOf, spots, tray } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS, contrast, memoryStorage, seenOn, surfaceOf } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // skeleton-assembly-tray.feature: the board in its frame's shape beside a
 // tray of square spots that all fit in it, at any window in landscape;
 // skeleton-assembly-turning.feature: the mark of a turned piece.
 
-// Windows in landscape, in CSS pixels: the iPads, the narrowest first, and
+// Windows in landscape, in CSS pixels: the shared ones, and more iPads and
 // Mac windows, wide and short as the puzzle was seen in, to wide screens.
-const WINDOWS = [
-  [1024, 768],
-  [1180, 820],
-  [1366, 1024],
-  [1280, 720],
-  [1440, 900],
-  [1508, 594],
-  [1440, 520],
-  [1920, 1080],
-  [2560, 1080]
-] as const;
+const WINDOWS = windowsAnd([1180, 820], [1366, 1024], [1280, 720], [1508, 594], [1440, 520], [2560, 1080]);
 
 const levelOf = (level: AgeLevel) => memoryStorage({ [AGE_LEVEL_KEY]: JSON.stringify({ level, revision: `picked-${level}` }) });
 
@@ -102,6 +93,7 @@ function spotsIn(room: { width: number; height: number }, beside: number) {
 
 describe.each(SHIPPED_SKELETONS.flatMap(({ id }) => AGE_LEVELS.map((level) => [id, level] as const)))("the %s puzzle at %s", (id, level) => {
   it.each(WINDOWS)("keeps its board in its frame's shape, as large as fits beside the tray, in a %i by %i window", async (width, height) => {
+    openWindow(width, height);
     await openPuzzle(id, level);
 
     const room = puzzleRoom(width, height);
@@ -113,6 +105,7 @@ describe.each(SHIPPED_SKELETONS.flatMap(({ id }) => AGE_LEVELS.map((level) => [i
   });
 
   it.each(WINDOWS)("fits every spot of its tray in it, square and at least 48 pixels a side, its piece large in it, in a %i by %i window", async (width, height) => {
+    openWindow(width, height);
     await openPuzzle(id, level);
 
     const room = puzzleRoom(width, height);

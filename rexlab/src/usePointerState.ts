@@ -1,7 +1,7 @@
 import { useState, type PointerEvent } from "react";
 
-// A card brightens only under a hovering pointer: a finger has no hover,
-// and a touch would otherwise leave the card bright after it lifts. The
+// A button brightens only under a hovering pointer: a finger has no hover,
+// and a touch would otherwise leave the button bright after it lifts. The
 // pressed state shows from the moment of contact, before the tap acts.
 export function usePointerState() {
   const [hovered, setHovered] = useState(false);

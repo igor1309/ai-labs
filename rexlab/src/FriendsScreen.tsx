@@ -1,9 +1,9 @@
 import { ArrowLeft, Footprints, Heart, HeartHandshake, House } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 // The cards in a row of friends.
 const COLUMNS = 4;
@@ -32,17 +32,17 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
   return (
     <main className="friends">
       <header className="friends-bar">
-        <button type="button" className="home-button" onClick={onBack}>
+        <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
           {text.back}
-        </button>
+        </Button>
         {/* With no friends yet the way on is the big NEW VISITOR below,
             and BACK is the only other choice. */}
         {!empty && (
-          <button type="button" className="home-button" onClick={onHome}>
+          <Button className="home-button" onClick={onHome}>
             <House size={24} aria-hidden="true" />
             {text.home}
-          </button>
+          </Button>
         )}
         <h1 className="friends-title">
           <span className="friends-mark" aria-hidden="true">
@@ -56,10 +56,10 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
               <Heart size={20} aria-hidden="true" />
               {friends.length}
             </p>
-            <button type="button" className="new-visitor-button" onClick={onNewVisitor}>
+            <Button className="new-visitor-button" onClick={onNewVisitor}>
               <Footprints size={24} aria-hidden="true" />
               {text.newVisitor}
-            </button>
+            </Button>
           </>
         )}
       </header>
@@ -72,10 +72,10 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
             </span>
           </span>
           <p className="no-friends-text">{text.noFriends}</p>
-          <button type="button" className="play-again-button no-friends-button" onClick={onNewVisitor}>
+          <Button className="play-again-button no-friends-button" onClick={onNewVisitor}>
             <Footprints size={30} aria-hidden="true" />
             {text.newVisitor}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="friends-grid" role="group" aria-label={text.friends}>
@@ -98,9 +98,8 @@ type FriendCardProps = {
 };
 
 function FriendCard({ friend: { id, name, picture }, language, place, onFriend }: FriendCardProps) {
-  const pointer = usePointerState();
   return (
-    <button type="button" className="card friend-card" aria-label={name} style={{ "--card": place } as CSSProperties} onClick={() => onFriend(id)} {...pointer}>
+    <Button className="card friend-card" aria-label={name} style={{ "--card": place } as CSSProperties} onClick={() => onFriend(id)}>
       <span className="friend-art">
         <Picture className="friend-picture" src={picture} alt="" width={800} height={600} />
       </span>
@@ -108,6 +107,6 @@ function FriendCard({ friend: { id, name, picture }, language, place, onFriend }
         <Heart size={20} fill="currentColor" aria-hidden="true" />
         <span className="friend-name">{name.toLocaleUpperCase(language)}</span>
       </span>
-    </button>
+    </Button>
   );
 }

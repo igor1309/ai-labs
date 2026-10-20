@@ -90,7 +90,7 @@ Feature: Skeleton assembly: placing bones
   Scenario: Portrait pauses the puzzle and cancels a drag
     Given I have placed two pieces and am dragging a third
     When I turn the iPad to portrait
-    Then I see the app's picture asking me to turn the iPad sideways
+    Then I see the app's picture asking me to turn sideways
     And I cannot move pieces or trigger controls behind that picture
     When I turn the iPad back to landscape
     Then the same two pieces are fitted and the other two are in the tray

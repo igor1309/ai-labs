@@ -21,7 +21,7 @@ import {
   welcomeVisitor
 } from "./careApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
+import { fakeBodyPicture, fakeItemPicture, manualViewport, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -285,16 +285,18 @@ describe("leaving a visit", () => {
   });
 
   it("pauses in portrait, nothing to give behind the picture, and goes on unchanged", async () => {
-    const orientation = manualOrientation("landscape");
-    const { user, clock } = openCareApp({ orientation });
+    const viewport = manualViewport("landscape");
+    const { user, clock } = openCareApp({ viewport });
     await welcomeVisitor(user);
     await meetNeed(user, clock);
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
     expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(document.querySelector(".tray-item")).toBeNull();
-    act(() => orientation.turn("landscape"));
+    // The visit remains mounted for the gate fade and cannot be reached.
+    expect(document.querySelector(".tray-item")?.closest("[inert]")).toBe(document.querySelector(".gated-screen"));
+    expect(screen.queryAllByRole("button")).toEqual([]);
+    act(() => viewport.turn("landscape"));
     expect([visitorShown().id, needAsked(), heartsShown()]).toEqual(["tyrannosaurus", "thirsty", "2"]);
     await meetNeed(user, clock);
     expect(heartsShown()).toBe("4");

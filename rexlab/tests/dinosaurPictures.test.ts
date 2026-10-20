@@ -69,7 +69,7 @@ describe("bodyPictures", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedBodyPicture() {
-  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).bodyPicture;
+  return appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).bodyPicture;
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

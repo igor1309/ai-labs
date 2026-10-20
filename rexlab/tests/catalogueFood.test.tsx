@@ -24,7 +24,7 @@ import {
   featuring,
   loadedPictures,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   memoryStorage,
   sameColour,
   seededRandom,
@@ -42,7 +42,8 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => memoryStorage())}

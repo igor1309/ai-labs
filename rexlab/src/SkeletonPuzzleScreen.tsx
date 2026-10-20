@@ -2,6 +2,7 @@ import { Bone, RotateCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, usePicture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
@@ -187,6 +188,7 @@ export function SkeletonPuzzleScreen({
   onBack,
   onHome
 }: SkeletonPuzzleScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const fitted = slots.filter((slot) => slot.fitted).length;
   const [held, setHeld] = useState<Hold>();
@@ -205,6 +207,10 @@ export function SkeletonPuzzleScreen({
     hold.current = next;
     setHeld(next);
   };
+
+  useLayoutEffect(() => {
+    if (gateShown) holdPiece(undefined);
+  }, [gateShown]);
 
   const boardRect = () => boardElement.current?.getBoundingClientRect() ?? NO_RECT;
 

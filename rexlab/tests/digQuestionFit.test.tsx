@@ -7,6 +7,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { presentDigBoard } from "../src/presentation.ts";
 import { withPictures } from "./pictures.tsx";
 import { SHIPPED_DIG, fakeBodyPicture, fakeTreasurePicture } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 const px = (value: string) => Number.parseFloat(value);
 const style = (selector: string) => {
@@ -15,7 +16,6 @@ const style = (selector: string) => {
   return getComputedStyle(element);
 };
 const pads = (s: CSSStyleDeclaration) => px(s.paddingTop) + px(s.paddingBottom) + px(s.borderTopWidth) + px(s.borderBottomWidth);
-const sizes = [[1024, 768], [1133, 744], [1366, 1024]] as const;
 const levels = ["explorer", "paleontologist"] as const;
 
 function show(level: (typeof levels)[number] | "hatchling", asking: boolean, language: (typeof LANGUAGES)[number]) {
@@ -27,32 +27,38 @@ function show(level: (typeof levels)[number] | "hatchling", asking: boolean, lan
   />, withPictures);
 }
 
-// jsdom does not lay out: budget the delivered CSS on the three iPads,
+// jsdom does not lay out: budget the delivered CSS in each window,
 // capitals at a conservative 0.9 em.
 describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, level] as const)))("the question in %s at %s", (language, level) => {
-  it.each([false, true])("keeps the board's size and place and the choices' column, asking %s, on all three iPads", (asking) => {
+  it.each(windowsAnd([1366, 1024]).flatMap(([width, height]) => [false, true].map((asking) => [asking, width, height] as const)))("keeps the board's size and the choices' column, asking %s, in a %i by %i window", (asking, width, height) => {
+    openWindow(width, height);
     show(level, asking, language);
     const outer = style(".dig-screen");
     const body = style(".dig-body");
     const board = style(".dig-board");
     const column = style(".dig-choice-cards");
-    expect([outer.height, outer.overflow, body.display, board.height, board.maxHeight]).toEqual(["100dvh", "hidden", "flex", "auto", "100%"]);
+    expect([outer.height, outer.overflow, body.display, board.height, board.maxHeight]).toEqual([`${height}px`, "hidden", "flex", "auto", "100%"]);
     expect([board.aspectRatio, board.transform, board.translate]).toEqual(["var(--frame-width) / var(--frame-height)", "none", "none"]);
     // The board and the column sit side by side, centred together in the
     // body, the board first: nothing shifts the body or the board aside.
     expect([body.flexDirection, body.justifyContent, body.alignItems, body.transform, body.translate]).toEqual(["row", "center", "center", "none", "none"]);
     expect([board.marginLeft, board.marginRight, board.position, board.left]).toEqual(["0", "0", "relative", "auto"]);
     expect(document.querySelector(".dig-board")?.nextElementSibling).toBe(document.querySelector(".dig-choice-cards"));
-    expect(board.width).toBe("min(100% - 228px, 1.3333333333333333 * (100dvh - 180px))");
+    // The board is as wide as the body leaves beside the column, or as the
+    // height the screen leaves it allows at the frame's 4:3.
+    const sizing = /^min\(100% - 228px, 1\.3333333333333333 \* \(([\d.]+)px - 180px \+ ([\d.]+) \* ([\d.]+)px\)\)$/.exec(board.width);
+    if (!sizing) throw new Error(`Unknown board width: ${board.width}`);
+    expect(Number(sizing[1])).toBe(height);
+    const boardHeight = height - 180 + Number(sizing[2]) * Number(sizing[3]);
     expect([column.flexBasis, column.flexDirection, px(body.gap) + px(column.flexBasis)]).toEqual(["200px", "column", 228]);
     expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(asking ? CHOICES[level] : 0);
     expect(document.querySelectorAll(".dig-choice-slot .dig-empty-card")).toHaveLength(CHOICES[level]);
     expect(document.querySelector(".dig-choice-cards")?.getAttribute("aria-hidden")).toBe(asking ? null : "true");
 
-    for (const [width, height] of sizes) {
+    {
       const roomWidth = width - px(outer.paddingLeft) - px(outer.paddingRight);
-      const roomHeight = height - px(outer.paddingTop) - px(outer.paddingBottom) - 56 - px(outer.gap);
-      const boardWidth = Math.min(roomWidth - 228, (height - 180) * 4 / 3);
+      const roomHeight = height - px(outer.paddingTop) - px(outer.paddingBottom) - 56 - px(outer.rowGap);
+      const boardWidth = Math.min(roomWidth - 228, boardHeight * 4 / 3);
       expect(boardWidth).toBeGreaterThan(680);
       expect(boardWidth * FRAME.height / FRAME.width).toBeLessThanOrEqual(roomHeight);
       expect(boardWidth + 228).toBeLessThanOrEqual(roomWidth);
