@@ -2,8 +2,10 @@ package agister_test
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -252,4 +254,126 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 			t.Errorf("the bash agent %+v, want its runtime bash alone", agent)
 		}
 	})
+}
+
+// The numbered code-review DoDs cover the obligations their prose assigns
+// to each reviewer and to the judge.
+//
+// Contract test: the code-review prompt DoDs shipped under home/prompts.
+func TestCodeReviewPromptDoDsCoverTheirReviewObligations(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		prompt string
+		item   int
+		needs  []string
+	}{
+		{"code-review-architecture.md", 8, []string{"inspection cue, not a finding by itself", "File length alone"}},
+		{"code-review-architecture.md", 10, []string{"relevant ADRs", "quote both the decision and the code", "one owner"}},
+		{"code-review-architecture.md", 11, []string{"goal-required scenario", "outside the diff", "in `coverage`"}},
+		{"code-review-adversarial.md", 9, []string{"goal-required scenario", "changed or unchanged", "in `coverage`"}},
+		{"code-review-clarity.md", 3, []string{"inspection cue, not a finding by itself", "File length alone"}},
+		{"code-review-clarity.md", 7, []string{"Repeated definitions relevant to the change", "including CSS", "concrete change"}},
+		{"code-review-clarity.md", 10, []string{"goal-required scenario", "outside the diff", "clarity defect"}},
+		{"code-review-tests.md", 1, []string{"names the class of inputs", "concrete case as a witness", "test of that class"}},
+		{"code-review-judge.md", 1, []string{"Merge findings making the same claim", "highest supported severity", "sort items by severity"}},
+		{"code-review-judge.md", 5, []string{"presented evidence", "Add no finding or evidence of your own"}},
+		{"code-review-judge.md", 6, []string{
+			"reject unsupported claims and every minor finding",
+			"defer an outside finding",
+			"a goal finding barred by an explicit scope exclusion",
+			"fix blockers",
+			"fix majors unless the presented cost is grossly disproportionate",
+			"waive nits unless the presented benefit exceeds the cost",
+			"weigh the presented benefit and cost",
+		}},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.prompt+"/item "+strconv.Itoa(c.item), func(t *testing.T) {
+			t.Parallel()
+			items := readReviewDoDItems(t, "home/prompts/"+c.prompt)
+			if !reviewDoDItemHas(items, c.item, c.needs) {
+				t.Errorf("item %d in %s must contain %q; got %q", c.item, c.prompt, c.needs, items[c.item])
+			}
+		})
+	}
+}
+
+func TestReviewDoDRequirementMustBeInItsNumberedItem(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name  string
+		text  string
+		item  int
+		wants bool
+	}{
+		{"present", "Definition of done:\n\n1. Waive nits unless the presented benefit exceeds the cost.\n2. Check the outcome.\n", 1, true},
+		{"missing", "Definition of done:\n\n1. Check the outcome.\n2. Check the calls.\n", 1, false},
+		{"misplaced", "Definition of done:\n\n1. Check the outcome.\n2. Waive nits unless the presented benefit exceeds the cost.\n", 1, false},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "prompt.md")
+			if err := os.WriteFile(path, []byte(c.text), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			items := readReviewDoDItems(t, path)
+			got := reviewDoDItemHas(items, c.item, []string{"Waive nits unless the presented benefit exceeds the cost"})
+			if got != c.wants {
+				t.Errorf("requirement in item %d = %v, want %v; items: %v", c.item, got, c.wants, items)
+			}
+		})
+	}
+}
+
+func readReviewDoDItems(t *testing.T, path string) map[int]string {
+	t.Helper()
+	prompt, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := map[int]string{}
+	started, hasItems, current := false, false, 0
+	for _, line := range strings.Split(string(prompt), "\n") {
+		if !started {
+			definition := strings.TrimSpace(line)
+			started = definition == "Definition of done:" || definition == "Definition of done"
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if split := strings.Index(trimmed, ". "); split > 0 {
+			if n, err := strconv.Atoi(trimmed[:split]); err == nil {
+				current = n
+				items[current] = trimmed[split+2:]
+				hasItems = true
+				continue
+			}
+		}
+		if !hasItems {
+			continue
+		}
+		if trimmed != "" && line != "" && line[0] != ' ' && line[0] != '\t' {
+			break
+		}
+		if current != 0 {
+			items[current] += "\n" + line
+		}
+	}
+	return items
+}
+
+func reviewDoDItemHas(items map[int]string, item int, required []string) bool {
+	text, ok := items[item]
+	if !ok {
+		return false
+	}
+	text = strings.Join(strings.Fields(text), " ")
+	for _, phrase := range required {
+		if !strings.Contains(text, phrase) {
+			return false
+		}
+	}
+	return true
 }

@@ -51,6 +51,9 @@ Definition of done:
    not override it.
 8. "Could" and "might" are not findings. Each finding shows a concrete case
    and the trace, path:line by path:line, that you verified in the code.
+9. Each goal-required scenario was traced through the code it uses, changed
+   or unchanged. Report the scenarios checked in `coverage`; a goal finding
+   names the concrete scenario and the path that stops its outcome.
 
 Stop once you have tried to break every changed path. The goal widens
 that: try also to break each scenario the goal requires, through the code
