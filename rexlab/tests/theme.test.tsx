@@ -38,7 +38,7 @@ import {
   fakeBodyPicture,
   featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   sameColour,
@@ -50,7 +50,7 @@ import {
   symbolOf,
   unreadVersion,
   type ManualAppearance,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
@@ -85,7 +85,7 @@ const smallerOf = (question: Question) => (largerOf(question) === question.left 
 function openApp({
   device = manualAppearance("light"),
   storage = memoryStorage(),
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   language = "en-GB",
   timers = manualTimers(),
   sorting = emptySorting(),
@@ -93,7 +93,7 @@ function openApp({
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   language?: string;
   timers?: ManualTimers;
   sorting?: ReturnType<typeof emptySorting>;
@@ -108,7 +108,8 @@ function openApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(41)}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language}
       languageStore={localLanguage(() => languages)}
@@ -166,7 +167,7 @@ function expectScreenIn(theme: Theme) {
 
 // What a walk over screens is given: the theme each screen is to be in,
 // and the app it walks, opened on the home page.
-type Walk = { theme: Theme; user: UserEvent; orientation: ManualOrientation; timers: ManualTimers };
+type Walk = { theme: Theme; user: UserEvent; viewport: ManualViewport; timers: ManualTimers };
 
 const unchecked = () => {};
 
@@ -182,8 +183,8 @@ async function menus({ theme, user }: Walk) {
   }
 }
 
-async function portraitGate({ theme, orientation }: Walk) {
-  act(() => orientation.turn("portrait"));
+async function portraitGate({ theme, viewport }: Walk) {
+  act(() => viewport.turn("portrait"));
   expectScreenIn(theme);
 }
 
@@ -531,11 +532,11 @@ describe("the System theme", () => {
   describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
     describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
       it.each(parts)("%s", async (_, walk) => {
-        const orientation = manualOrientation("landscape");
+        const viewport = manualViewport("landscape");
         const timers = manualTimers();
-        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
+        const { user } = openApp({ device: manualAppearance(appearance), viewport, timers });
 
-        await walk({ theme: appearance, user, orientation, timers });
+        await walk({ theme: appearance, user, viewport, timers });
       });
     });
   });

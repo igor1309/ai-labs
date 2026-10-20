@@ -25,7 +25,7 @@ import {
   featuredCard,
   gameDoor,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   loadShownPictures,
   manualPictures,
   manualTimers,
@@ -65,7 +65,8 @@ function openApp<C extends PictureClock = ManualTimers>(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       pageVisibility={manualVisibility("visible")}
       progress={localProgress(() => storage)}
       deviceLanguage="en-GB"

@@ -6,6 +6,7 @@ import { boardState, score, type CardState, type Property, type Sorting } from "
 import { AWAY, basketButton, centreOf, dragTo, latest, layOutBaskets, openBoard, otherBasket, tray, trayCard } from "./sorting.tsx";
 import { withPictures } from "./pictures.tsx";
 import { fakeBodyPicture, manualPictures, sortingBy, symbolOf, words, type ManualPictures } from "./support.ts";
+import { moveAt, pressAt, releaseAt } from "./taps.ts";
 
 const cardsOf = (sorting: Sorting) => boardState(sorting).cards;
 
@@ -20,6 +21,23 @@ const isPicked = (card: HTMLElement) => card.hasAttribute("data-picked") && card
 const filledSteps = () => document.querySelectorAll('.step[data-step="done"]').length;
 
 describe("a new board", () => {
+  it("cancels a held card when the gate covers the board, ignoring its release over a basket", () => {
+    const sorting = sortingBy("diet");
+    const opened = openBoard(sorting);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 0);
+    pressAt(trayCard(card), 0, { x: 200, y: 300 });
+    const centre = centreOf(sorting, card.basket as Basket);
+    moveAt(50, { x: centre.clientX, y: centre.clientY });
+    expect(document.querySelector(".sort-card[data-dragging]")).not.toBeNull();
+    act(() => opened.viewport.turn("portrait"));
+    releaseAt(window, 100, { x: centre.clientX, y: centre.clientY });
+    act(() => opened.viewport.turn("landscape"));
+    expect(document.querySelector(".sort-card[data-dragging]")).toBeNull();
+    expect(latest(opened)).toBe(sorting);
+    expect(within(tray()).getAllByRole("button")).toHaveLength(6);
+  });
+
   it("shows the prompt, two baskets and six cards, each with its own dinosaur's picture and name in capitals", () => {
     const sorting = sortingBy("diet");
     openBoard(sorting);
@@ -559,12 +577,12 @@ describe("the round on the board", () => {
     const sorted = (["plants", "meat"] as const).map(sortedIn);
     expect(sorted.flat()).toHaveLength(3);
 
-    act(() => opened.orientation.turn("portrait"));
+    act(() => opened.viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
     expect(screen.queryByRole("group")).toBeNull();
 
-    act(() => opened.orientation.turn("landscape"));
+    act(() => opened.viewport.turn("landscape"));
 
     expect((["plants", "meat"] as const).map(sortedIn)).toEqual(sorted);
     expect(within(tray()).getAllByRole("button")).toHaveLength(3);

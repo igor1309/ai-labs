@@ -93,11 +93,11 @@ describe("dig reveals through the app", () => {
     if (rotation !== "gust") act(() => app.timers.fire(GUST[timing]));
     if (rotation === "landed") act(() => app.timers.fire(STAR_LANDS[timing]));
 
-    act(() => app.orientation.turn("portrait"));
+    act(() => app.viewport.turn("portrait"));
     if (rotation === "gust") act(() => app.timers.fire(GUST[timing]));
     expect(app.timers.timers()).toEqual([]);
     act(() => app.timers.fire(STAR_LANDS[timing]));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("landscape"));
     expect(app.timers.timers()).toEqual([STAR_LANDS[timing]]);
     act(() => app.timers.deliverStopped(STAR_LANDS[timing]));
 

@@ -4,6 +4,7 @@ import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { useGateShown } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
 
@@ -23,6 +24,7 @@ export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, 
   onAnswer: (answer: "yes" | "not-now") => void;
   onGone: () => void;
 }) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const title = useId();
   const overlay = useRef<HTMLDivElement>(null);
@@ -30,18 +32,19 @@ export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, 
   const callbacks = useRef({ onShown, onGone });
   callbacks.current = { onShown, onGone };
   useEffect(() => {
+    if (gateShown) return;
     if (!shown.current) {
       shown.current = true;
       callbacks.current.onShown();
     }
     overlay.current?.querySelector<HTMLButtonElement>("button")?.focus();
-  }, []);
+  }, [gateShown]);
   useEffect(() => {
-    if (!leaving || !overlay.current) return;
+    if (gateShown || !leaving || !overlay.current) return;
     return afterResultAnimations([overlay.current], offer.startTimer, () => {
       callbacks.current.onGone();
     });
-  }, [leaving, offer.startTimer]);
+  }, [leaving, offer.startTimer, gateShown]);
   return (
     <div ref={overlay} className="pairs-offer-scrim" data-leaving={leaving || undefined}>
       <section className="pairs-offer" role="dialog" aria-modal="true" aria-labelledby={title}

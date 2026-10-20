@@ -125,14 +125,14 @@ describe("help after waiting", () => {
   });
 
   it("counts no time while the iPad is in portrait, and keeps the pieces as they were", async () => {
-    const { pictures, orientation } = await openPuzzle("TYRANNOSAURUS");
+    const { pictures, viewport } = await openPuzzle("TYRANNOSAURUS");
     fit(TYRANNOSAURUS, "legs");
     spend(pictures, 4);
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
     expect(pictures.timers()).toEqual([]);
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
     layOutPuzzle();
     expect(fittedPieces()).toEqual(["legs"]);
     spend(pictures, 5);

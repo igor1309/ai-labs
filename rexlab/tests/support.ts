@@ -3,7 +3,7 @@ import { act, within } from "@testing-library/react";
 import records from "../src/data/dinosaurs.json";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
-import type { AppProps, Appearance, PageVisibility } from "../src/App.tsx";
+import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport } from "../src/App.tsx";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readDig, type DigFile } from "../src/dig/index.ts";
@@ -12,7 +12,6 @@ import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
-import type { Orientation } from "../src/OrientationGate.tsx";
 import type { StartTimer } from "../src/ownedTimers.ts";
 import { pictureStore, type LoadPicture, type PictureStore } from "../src/Picture.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -224,21 +223,41 @@ export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = S
   throw new Error(`No board sorted by ${property}`);
 }
 
-export type ManualOrientation = Orientation & { turn(to: "portrait" | "landscape"): void };
+export type ManualViewport = Viewport & {
+  turn(to: "portrait" | "landscape"): void;
+  resize(size: SizeClass, upright: boolean): void;
+};
 
-// The iPad's orientation, turned only when the test turns it.
-export function manualOrientation(initial: "portrait" | "landscape"): ManualOrientation {
-  let portrait = initial === "portrait";
+// Window and screen changes are independent and only happen on request.
+export function manualViewport(initial: "portrait" | "landscape"): ManualViewport {
+  let size: SizeClass = initial === "portrait" ? "tall" : "wide";
+  let upright = initial === "portrait";
   const listeners = new Set<() => void>();
+  const resize = (next: SizeClass, screenUpright: boolean) => {
+    size = next;
+    upright = screenUpright;
+    listeners.forEach((onChange) => onChange());
+  };
   return {
-    isPortrait: () => portrait,
+    sizeClass: () => size,
+    isScreenUpright: () => upright,
     subscribe: (onChange) => {
       listeners.add(onChange);
       return () => listeners.delete(onChange);
     },
-    turn: (to) => {
-      portrait = to === "portrait";
-      listeners.forEach((onChange) => onChange());
+    turn: (to) => resize(to === "portrait" ? "tall" : "wide", to === "portrait"),
+    resize
+  };
+}
+
+// The device screen, changed independently of the window's media queries.
+export function manualScreenOrientation(initial: OrientationType) {
+  const orientation = Object.assign(new EventTarget(), { type: initial });
+  return {
+    orientation,
+    turn: (type: OrientationType) => {
+      orientation.type = type;
+      orientation.dispatchEvent(new Event("change"));
     }
   };
 }
@@ -465,7 +484,7 @@ export function mediaQueries(initial: Record<string, boolean>) {
 // matching: an iPad in landscape, in its light appearance, asking for full
 // motion.
 export function browserQueries() {
-  return mediaQueries({ "(orientation: portrait)": false, "(prefers-color-scheme: dark)": false, "(prefers-reduced-motion: reduce)": false });
+  return mediaQueries({ "(orientation: portrait)": false, "(max-width: 599.98px)": false, "(max-height: 599.98px)": false, "(prefers-color-scheme: dark)": false, "(prefers-reduced-motion: reduce)": false });
 }
 
 export type WebpImage = { width: number; height: number; alpha: boolean };

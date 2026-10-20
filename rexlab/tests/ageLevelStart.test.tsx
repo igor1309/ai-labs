@@ -23,7 +23,7 @@ import {
   fakeSkeletonPicture,
   gameDoor,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   manualVisibility,
   memoryStorage,
@@ -65,7 +65,8 @@ function openApp(storage: MemoryStorage) {
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(29)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       pageVisibility={manualVisibility("visible")}
       progress={localProgress(local)}
       deviceLanguage="en-GB"

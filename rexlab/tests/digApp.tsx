@@ -17,13 +17,13 @@ import {
   emptySorting,
   fakeBodyPicture,
   lightDevice,
-  manualOrientation,
+  manualViewport,
   manualVisibility,
   manualTimers,
   memoryStorage,
   unreadVersion,
   type MemoryStorage,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualVisibility,
   type ManualPictures,
   type ManualTimers
@@ -37,7 +37,7 @@ export function openDigApp({
   language = "en" as const,
   theme = "light" as const,
   timers = manualTimers(),
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   visibility = manualVisibility("visible"),
   settingsStorage
 }: {
@@ -47,7 +47,7 @@ export function openDigApp({
   language?: "en" | "ru";
   theme?: "light" | "dark";
   timers?: ManualPictures | ManualTimers;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   visibility?: ManualVisibility;
   settingsStorage?: MemoryStorage;
 } = {}) {
@@ -64,7 +64,8 @@ export function openDigApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={() => 0}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(local)}
@@ -85,7 +86,7 @@ export function openDigApp({
     />
   );
   document.documentElement.dataset.theme = theme;
-  return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, orientation, visibility, unmount: view.unmount };
+  return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
 }
 
 // The dig game's board, read and brushed as a test sees it.

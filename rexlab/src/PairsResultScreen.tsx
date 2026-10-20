@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useGateShown } from "./OrientationGate.tsx";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
@@ -43,6 +44,7 @@ export type PairsResultScreenProps = {
 const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
 
 export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
   const result = useRef<HTMLElement>(null);
@@ -53,17 +55,17 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
   latestOffer.current = offer;
   const startTimer = offer?.startTimer;
   useEffect(() => {
-    if (offerPhase !== "waiting" || !startTimer || !result.current) return;
+    if (gateShown || offerPhase !== "waiting" || !startTimer || !result.current) return;
     const rewards = [...result.current.querySelectorAll(".pairs-result-star, .celebration, .pairs-level-up")];
     return afterResultAnimations(rewards, startTimer, () => {
       if (!latestOffer.current) return;
       setShownOffer(latestOffer.current);
       setOfferPhase("shown");
     });
-  }, [startTimer, offerPhase]);
+  }, [startTimer, offerPhase, gateShown]);
   useEffect(() => {
-    if (offerPhase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
-  }, [offerPhase]);
+    if (!gateShown && offerPhase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
+  }, [offerPhase, gateShown]);
   return (
     <>
       <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined}>

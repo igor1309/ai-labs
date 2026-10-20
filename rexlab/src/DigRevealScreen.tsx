@@ -7,6 +7,7 @@ import { TEXTS } from "./language/texts.ts";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { LevelBadge } from "./LevelBadge.tsx";
 import { LevelSwitch, type LevelSwitchProps } from "./LevelSwitch.tsx";
+import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, PictureImage, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
@@ -67,6 +68,7 @@ export function DigRevealScreen({
   onDigAgain,
   onHome
 }: DigRevealScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const result = useRef<HTMLElement>(null);
   const [phase, setPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
@@ -75,9 +77,10 @@ export function DigRevealScreen({
   const latestOffer = useRef(offer);
   latestOffer.current = offer;
   const hasOffer = Boolean(offer);
-  // Rotation remounts the reveal and restarts its animation, so only this
-  // mounted reveal can say when its displayed star has landed.
+  // The reward must be visible for its full landing wait before it takes
+  // taps. Covering it cancels that wait, including a queued callback.
   useEffect(() => {
+    if (gateShown) return;
     let active = true;
     const stop = startTimer(landingWait, () => {
       if (active) onLanded(true);
@@ -87,19 +90,19 @@ export function DigRevealScreen({
       stop();
       onLanded(false);
     };
-  }, [startTimer, landingWait, onLanded]);
+  }, [startTimer, landingWait, onLanded, gateShown]);
   useEffect(() => {
-    if (!landed || phase !== "waiting" || !hasOffer || !result.current) return;
+    if (gateShown || !landed || phase !== "waiting" || !hasOffer || !result.current) return;
     const rewards = [...result.current.querySelectorAll(".dig-card-star, .celebration")];
     return afterResultAnimations(rewards, startTimer, () => {
       if (!latestOffer.current) return;
       setShownOffer(latestOffer.current);
       setPhase("shown");
     });
-  }, [landed, phase, startTimer, hasOffer]);
+  }, [landed, phase, startTimer, hasOffer, gateShown]);
   useEffect(() => {
-    if (phase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
-  }, [phase]);
+    if (!gateShown && phase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
+  }, [phase, gateShown]);
   return (
     <>
       <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen">

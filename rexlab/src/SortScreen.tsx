@@ -1,5 +1,6 @@
 import { Check, createLucideIcon, Drumstick, Feather, Footprints, House, Leaf, Shapes, Trophy } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useGateShown } from "./OrientationGate.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -59,6 +60,7 @@ type Hold = { pointerId: number; id: string; x: number; y: number; dx: number; d
 type Return = { dx: number; dy: number; count: number };
 
 export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult }: SortScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const [held, setHeld] = useState<Hold>();
   const [picked, setPicked] = useState<string>();
@@ -76,6 +78,13 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
     hold.current = next;
     setHeld(next);
   };
+
+  useLayoutEffect(() => {
+    if (!gateShown) return;
+    holdCard(undefined);
+    setPicked(undefined);
+    setOver(undefined);
+  }, [gateShown]);
 
   // A dragged card is over the basket its pointer is over.
   const basketAt = (x: number, y: number) =>

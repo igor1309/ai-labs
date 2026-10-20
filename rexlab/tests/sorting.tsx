@@ -1,34 +1,36 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import type { Viewport } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localSortingProgress } from "../src/localProgress.ts";
-import { OrientationGate, type Orientation } from "../src/OrientationGate.tsx";
+import { OrientationGate } from "../src/OrientationGate.tsx";
 import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, manualOrientation, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
 import { withManualPictures, withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
-// orientation gate, each drop played through the sorting game.
+// viewport gate, each drop played through the sorting game.
 function Board({
   start,
   language,
-  orientation,
+  viewport,
   seen,
   onHome,
   onSeeResult
 }: {
   start: Sorting;
   language: Language;
-  orientation: Orientation;
+  viewport: Viewport;
   seen: Sorting[];
   onHome: () => void;
   onSeeResult: () => void;
 }) {
+  const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const [sorting, setSorting] = useState(start);
   const onDrop = useCallback(
     (id: string, basket: Basket) =>
@@ -40,7 +42,7 @@ function Board({
     [seen]
   );
   return (
-    <OrientationGate orientation={orientation} language={language}>
+    <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
       <SortScreen
         language={language}
         {...presentBoard(boardState(sorting), language, fakeBodyPicture)}
@@ -53,7 +55,7 @@ function Board({
 }
 
 export type OpenBoard = {
-  orientation: ReturnType<typeof manualOrientation>;
+  viewport: ReturnType<typeof manualViewport>;
   // Each sorting the board has played, in order.
   seen: Sorting[];
   homes: number[];
@@ -64,7 +66,7 @@ export type OpenBoard = {
 // The board on its own, its pictures loaded the moment they are asked for
 // unless `pictures` loads them.
 export function openBoard(start: Sorting, language: Language = "en", pictures?: ManualPictures): OpenBoard {
-  const orientation = manualOrientation("landscape");
+  const viewport = manualViewport("landscape");
   const seen = [start];
   const homes: number[] = [];
   const results: number[] = [];
@@ -72,14 +74,14 @@ export function openBoard(start: Sorting, language: Language = "en", pictures?: 
     <Board
       start={start}
       language={language}
-      orientation={orientation}
+      viewport={viewport}
       seen={seen}
       onHome={() => homes.push(1)}
       onSeeResult={() => results.push(1)}
     />,
     pictures ? withManualPictures(pictures) : withPictures
   );
-  return { orientation, seen, homes, results, unmount };
+  return { viewport, seen, homes, results, unmount };
 }
 
 export const latest = ({ seen }: OpenBoard): Sorting => {
@@ -136,25 +138,26 @@ export async function dragTo(user: UserEvent, card: HTMLElement, to: { clientX: 
   ]);
 }
 
-// The sorting game as the app will hold it: above the orientation gate,
+// The sorting game as the app will hold it: above the viewport gate,
 // started by its owner, who is told when the child goes home.
 function Game({
   props,
   language,
-  orientation,
+  viewport,
   owner,
   onHome
 }: {
   props: SortingGameProps;
   language: Language;
-  orientation: Orientation;
+  viewport: Viewport;
   owner: { start?: () => void };
   onHome: () => void;
 }) {
+  const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
   return (
-    <OrientationGate orientation={orientation} language={language}>
+    <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
       {game.content(language)}
     </OrientationGate>
   );
@@ -182,7 +185,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
     bodyPicture: fakeBodyPicture,
     random: seededRandom(seed)
   };
-  const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />, withPictures);
+  const { unmount } = render(<Game props={props} language={language} viewport={manualViewport("landscape")} owner={owner} onHome={() => homes.push(1)} />, withPictures);
   act(() => owner.start?.());
   const random = seededRandom(seed);
   let last: Sorting | undefined;

@@ -31,7 +31,7 @@ import {
   type StoredPairs
 } from "./pairsApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { SHIPPED_PALS, countedStarts, fakeBodyPicture, manualOrientation, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, countedStarts, fakeBodyPicture, manualViewport, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -380,8 +380,8 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
   });
 
   it("pauses in portrait, with nothing to turn, and is the same board again in landscape", async () => {
-    const orientation = manualOrientation("landscape");
-    const { user, clock } = openPairsApp({ ...options, orientation });
+    const viewport = manualViewport("landscape");
+    const { user, clock } = openPairsApp({ ...options, viewport });
     await playPairs(user);
     await turnCard(user, FIRST[0] ?? 0);
     await turnCard(user, SECOND[0] ?? 0);
@@ -389,11 +389,11 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     await turnCard(user, SECOND[1] ?? 0);
     const before = pairCards().map((_, place) => stateAt(place));
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
     expect(screen.queryByRole("group", { name: "CARDS" })).toBeNull();
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
     expect([pairCards().map((_, place) => stateAt(place)), triesShown()]).toEqual([before, "1"]);
   });
 

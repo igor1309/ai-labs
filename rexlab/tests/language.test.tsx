@@ -34,7 +34,7 @@ import {
   featuring,
   lightDevice,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   questionView,
@@ -44,7 +44,7 @@ import {
   symbolOf,
   unreadVersion,
   words,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
@@ -74,14 +74,14 @@ const byName = (name: string, language: Language = "en"): Dinosaur => {
 function openApp({
   device,
   storage = memoryStorage(),
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   progress = emptyProgress(),
   timers = loadedPictures(),
   nameVersion = unreadVersion
 }: {
   device: string;
   storage?: MemoryStorage;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   progress?: ReturnType<typeof emptyProgress>;
   timers?: ReturnType<typeof loadedPictures>;
   nameVersion?: (label: string) => void;
@@ -93,7 +93,8 @@ function openApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(31)}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={progress}
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
@@ -426,10 +427,11 @@ describe("the sorting board", () => {
 
   // Every text in the document and every name read out, as now shown.
   const shown = () => [
-    ...[...document.body.querySelectorAll("*")].flatMap((element) =>
+    // The hidden gate stays mounted so it can fade over the board.
+    ...[...document.body.querySelectorAll("*")].filter((element) => !element.closest('.orientation-gate[aria-hidden="true"]')).flatMap((element) =>
       [...element.childNodes].flatMap((node) => (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() ? [node.textContent.trim()] : []))
     ),
-    ...[...document.body.querySelectorAll("[aria-label]"), ...document.body.querySelectorAll("img[alt]")].map(
+    ...[...document.body.querySelectorAll("[aria-label]"), ...document.body.querySelectorAll("img[alt]")].filter((element) => !element.closest('.orientation-gate[aria-hidden="true"]')).map(
       (element) => element.getAttribute("aria-label") ?? element.getAttribute("alt") ?? ""
     )
   ];
@@ -532,7 +534,7 @@ type Seen = {
 type Play = {
   language: Language;
   user: UserEvent;
-  orientation: ManualOrientation;
+  viewport: ManualViewport;
   timers: ManualTimers;
   look: () => void;
   seen: Seen;
@@ -542,11 +544,11 @@ type Play = {
 const BEST_OF_5 = JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 5, roundsPlayed: 1 } } });
 
 function openPlay(language: Language, progressStorage = memoryStorage()): Play {
-  const orientation = manualOrientation("landscape");
+  const viewport = manualViewport("landscape");
   const timers = manualTimers();
   const { user } = openApp({
     device: language === "ru" ? "ru-RU" : "en-GB",
-    orientation,
+    viewport,
     progress: localProgress(() => progressStorage),
     timers
   });
@@ -560,27 +562,32 @@ function openPlay(language: Language, progressStorage = memoryStorage()): Play {
       // hidden and so unnamed for a screen reader.
       ...[...document.querySelectorAll('[role="menu"]')].filter((menu) => PARENT_CONTROLS[language].includes(menu.getAttribute("aria-label") ?? "")),
       ...screen.queryAllByText(BRAND),
-      ...screen.queryAllByText(TEXTS[language].sourceNote)
+      ...screen.queryAllByText(TEXTS[language].sourceNote),
+      ...screen.queryAllByText(TEXTS[language].portraitLayoutComing)
     ];
+    // Both gate layers stay mounted; only the exposed layer is shown.
+    const covered = (element: Element | null) => element?.closest('.orientation-gate[aria-hidden="true"], .gated-screen[aria-hidden="true"]');
     const forParents = (node: Node) => controls.some((control) => control.contains(node));
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (!node.textContent?.trim()) continue;
+      if (!node.textContent?.trim() || covered(node.parentElement)) continue;
       (forParents(node) ? seen.parentTexts : seen.texts).push(node.textContent);
     }
     for (const element of document.body.querySelectorAll("[aria-label]")) {
+      if (covered(element)) continue;
       const label = element.getAttribute("aria-label") ?? "";
       if (forParents(element)) seen.parentLabels.push(label);
       else if (isName(label)) seen.names.push(label);
       else seen.texts.push(label);
     }
     for (const picture of document.body.querySelectorAll("img")) {
+      if (covered(picture)) continue;
       const label = picture.alt;
       (isName(label) ? seen.names : seen.texts).push(label);
     }
   };
 
-  return { language, user, orientation, timers, look, seen };
+  return { language, user, viewport, timers, look, seen };
 }
 
 function shownQuestion(language: Language): Question {
@@ -632,14 +639,14 @@ async function lookThroughVisit({ user, timers, look }: Play, refuse: boolean) {
 
 async function homeAndMenus(language: Language): Promise<Seen> {
   const play = openPlay(language);
-  const { user, orientation, look } = play;
+  const { user, viewport, look } = play;
   look();
   for (const label of PARENT_CONTROLS[language]) {
     await openMenu(user, label);
     look();
     await user.click(outsideMenu());
   }
-  act(() => orientation.turn("portrait"));
+  act(() => viewport.turn("portrait"));
   look();
   return play.seen;
 }
@@ -844,7 +851,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     "the home page and its menus",
     homeAndMenus,
     (language) => ({
-      words: [BRAND, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), ...levelNames(language), ...levelAges(language)],
+      words: [BRAND, TEXTS[language].portraitLayoutComing, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), ...levelNames(language), ...levelAges(language)],
       labels: PARENT_CONTROLS[language]
     })
   ],
@@ -915,13 +922,13 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents, save the age levels' names", (language) => {
-    const { languageMenu, themeMenu, themes, ageLevelMenu, ageLevels, versionLabel, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, ageLevelMenu, ageLevels, versionLabel, sourceNote, portraitLayoutComing, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), ...levelNames(language), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu, ageLevelMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), ...levelAges(language), versionLabel, sourceNote].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), ...levelAges(language), versionLabel, sourceNote, portraitLayoutComing].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });

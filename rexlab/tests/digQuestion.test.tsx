@@ -88,8 +88,8 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect(choiceCard(rejected!.dataset.choice).disabled).toBe(true);
     fireEvent.click(choiceCard());

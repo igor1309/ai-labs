@@ -14,7 +14,9 @@ export const ru: Texts = {
     paleontologist: { name: "ПАЛЕОНТОЛОГ", age: "6 лет и старше" }
   },
   versionLabel: "Версия",
-  turnSideways: "ПОВЕРНИ ПЛАНШЕТ БОКОМ",
+  turnSideways: "ПОВЕРНИ БОКОМ",
+  makeWindowWider: "СДЕЛАЙ ОКНО ШИРЕ",
+  portraitLayoutComing: "Вертикальный вид этого экрана уже в пути.",
   home: "ДОМОЙ",
   progress: "ПРОГРЕСС",
   dinosaurs: "ДИНОЗАВРЫ",

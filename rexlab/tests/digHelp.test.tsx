@@ -83,10 +83,10 @@ describe("help's wait", () => {
   it.each(["hidden", "portrait"] as const)("pauses in %s, keeping the seconds waited and ignoring stopped callbacks", (pause) => {
     const app = openRound();
     spend(app, 4);
-    act(() => (pause === "hidden" ? app.visibility.switchTo("hidden") : app.orientation.turn("portrait")));
+    act(() => (pause === "hidden" ? app.visibility.switchTo("hidden") : app.viewport.turn("portrait")));
     expect(app.timers.timers()).toEqual([]);
     act(() => app.timers.deliverStopped(1000));
-    act(() => (pause === "hidden" ? app.visibility.switchTo("visible") : app.orientation.turn("landscape")));
+    act(() => (pause === "hidden" ? app.visibility.switchTo("visible") : app.viewport.turn("landscape")));
     placeBoard(800);
     act(() => app.timers.deliverStopped(1000));
     spend(app, 5);
@@ -137,9 +137,9 @@ describe("a find", () => {
     fireEvent(pop, new Event("webkitAnimationEnd", { bubbles: true }));
     find("foot", 20_000);
     expect(board().querySelector(".dig-find-pop")).toBeNull();
-    // Orientation remounts the board, without repeating an earlier find.
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    // The gate preserves the board without repeating an earlier find.
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect(board().querySelector(".dig-find-pop")).toBeNull();
     find("eye", 30_000);

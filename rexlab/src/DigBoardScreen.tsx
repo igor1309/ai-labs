@@ -3,6 +3,7 @@ import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { useGateShown } from "./OrientationGate.tsx";
 import { DigBar } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 
@@ -195,6 +196,7 @@ export function DigBoardScreen({
   onPick,
   onHome
 }: DigBoardScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const choice = choices.length > 0;
   const board = useRef<HTMLDivElement>(null);
@@ -202,6 +204,11 @@ export function DigBoardScreen({
   const bed = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
   const [brushAt, setBrushAt] = useState<SandPoint>();
+  useLayoutEffect(() => {
+    if (!gateShown) return;
+    stroke.current = undefined;
+    setBrushAt(undefined);
+  }, [gateShown]);
   const [puffs, setPuffs] = useState<Puff[]>([]);
   const seenFinds = useRef(new Set(spots.filter(({ found }) => found).map(({ id }) => id)));
   const [celebrating, setCelebrating] = useState<string[]>([]);
