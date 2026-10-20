@@ -18,6 +18,10 @@ Feature: The window's shape
     | tall-narrow | portrait, under 600 CSS pixels wide      | iPhone portrait    |
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the same picture as a tall one.
+  A screen's portrait layout is built for one size class at a time: the
+  home page has one for a tall window only (home-portrait.feature), so a
+  tall-narrow window still shows it the picture. The scenarios below use
+  the care welcome screen, which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
@@ -36,12 +40,12 @@ Feature: The window's shape
       | 1000  | 600    | wide        | 1000      | 599        | wide-short  |
 
   Scenario Outline: An upright screen is asked to turn sideways
-    Given the app is in <language> on the home page
+    Given the app is in <language> on the care welcome screen
     When the device's screen turns upright, and the window with it
     Then I see a picture of a screen turning from upright to sideways, with "<turn>"
     And under it a small, faded footnote for parents in normal case: "<footnote>"
     When the device's screen turns back to landscape
-    Then I am on the home page again
+    Then I am on the care welcome screen again
 
     Examples:
       | language | turn          | footnote                                          |
@@ -49,13 +53,13 @@ Feature: The window's shape
       | Russian  | ПОВЕРНИ БОКОМ | Вертикальный вид этого экрана уже в пути.         |
 
   Scenario Outline: A portrait window on a sideways screen is asked to be wider
-    Given the app is in <language> on the home page
+    Given the app is in <language> on the care welcome screen
     And the device's screen is sideways, as an iPad in landscape or a Mac
     When the app's window becomes <width> by <height> CSS pixels
     Then I see a picture of a window growing wider, with "<wider>"
     And under it the same footnote for parents: "<footnote>"
     When the window becomes 1200 by 800 CSS pixels
-    Then I am on the home page again
+    Then I am on the care welcome screen again
 
     Examples:
       | language | width | height | wider                 | footnote                                         |
@@ -63,16 +67,25 @@ Feature: The window's shape
       | Russian  | 700   | 900    | СДЕЛАЙ ОКНО ШИРЕ      | Вертикальный вид этого экрана уже в пути.        |
 
   Scenario: The picture covers the screen and comes and goes smoothly
-    Given I am on the home page
+    Given I am on the care welcome screen
     When the window becomes portrait
     Then the picture fades in over the screen with the shared motion tokens, and covers it fully once shown
     And nothing behind it can be tapped or reached by keyboard
     When the window becomes landscape again
-    Then the picture fades out and the home page is as it was
+    Then the picture fades out and the care welcome screen is as it was
+
+  Scenario Outline: A screen shows its portrait layout only in the size class it is built for
+    Given I am on the home page
+    When the window becomes <width> by <height> CSS pixels
+    Then <shown>
+
+    Examples:
+      | width | height | shown                                                                   |
+      | 820   | 1180   | the home page shows its upright layout, with no picture asking to turn |
+      | 393   | 852    | I see the picture asking to turn sideways                               |
 
   @next
-  Scenario: A screen with a portrait layout shows it
+  Scenario: A screen with a portrait layout reflows to it smoothly
     Given a screen whose portrait layout is built
     When the window becomes portrait
-    Then that screen shows its portrait layout, with no picture asking to turn
-    And it reflows with the shared motion tokens, never a jump, and only fades with reduced motion
+    Then it reflows with the shared motion tokens, never a jump, and only fades with reduced motion
