@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { COUNT_SETTLE, GUST, LIFT } from "../src/digGame.tsx";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { App } from "../src/App.tsx";
@@ -43,7 +44,7 @@ export function openDigApp({
 }: {
   storage?: MemoryStorage;
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | (() => boolean);
   language?: "en" | "ru";
   theme?: "light" | "dark";
   timers?: ManualPictures | ManualTimers;
@@ -80,7 +81,7 @@ export function openDigApp({
       digDinosaurs={SHIPPED_DIG}
       digProgress={localDigProgress(local)}
       sandContext={() => null}
-      reducedMotion={() => reducedMotion}
+      reducedMotion={typeof reducedMotion === "function" ? reducedMotion : () => reducedMotion}
       {...timers}
     />
   );
@@ -155,4 +156,12 @@ export const wrongCards = () => [...document.querySelectorAll<HTMLButtonElement>
 export function digUp() {
   brushAll();
   if (board().getAttribute("data-blown") === null) fireEvent.click(choiceCard());
+}
+
+// Finishes the gust and lift, including a new star's count tick. Repeated
+// finds have no count timer; firing that wait has no effect there.
+export function finishBoard(timers: Pick<ManualTimers, "fire">, timing: "motion" | "reduced" = "motion") {
+  act(() => timers.fire(GUST[timing]));
+  act(() => timers.fire(LIFT[timing]));
+  if (COUNT_SETTLE[timing] > 0) act(() => timers.fire(COUNT_SETTLE[timing]));
 }

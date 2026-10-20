@@ -51,6 +51,11 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
       expect(boardWidth).toBeGreaterThan(680);
       expect(boardWidth * FRAME.height / FRAME.width).toBeLessThanOrEqual(roomHeight);
       expect(boardWidth + 228).toBeLessThanOrEqual(roomWidth);
+      const offset = asking ? 0 : Number(/translateX\(calc\((\d+)px/.exec(board.transform)?.[1]);
+      const boardLeft = (roomWidth - boardWidth - 228) / 2;
+      if (!asking) expect(boardLeft + offset + boardWidth / 2).toBeCloseTo(roomWidth / 2);
+      else expect(boardLeft + boardWidth + px(body.gap) + px(column.flexBasis)).toBeLessThanOrEqual(roomWidth);
+
       if (asking) {
         const card = style(".dig-choice-card");
         expect([card.flex, card.maxHeight]).toEqual(["1 1 0px", "170px"]);

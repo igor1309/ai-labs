@@ -144,6 +144,45 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+describe("the dig board's collection star", () => {
+  it("flies from the dinosaur at --star-x and --star-y to the chip, and only fades in with reduced motion", () => {
+    const flight = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-board-star")?.body ?? "")
+      .map(({ prelude, body }) => [prelude, declarationsOf(body).find(({ property }) => property === "transform")?.value]);
+    expect(flight).toEqual([
+      ["from", "translate(calc(var(--star-x) * var(--motion-amount)), calc(var(--star-y) * var(--motion-amount))) scale(calc(1 + var(--motion-amount)))"],
+      ["20%", undefined],
+      ["to", "translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount)))"]
+    ]);
+    expect(declared(PLAIN, ".dig-board-star").animation).toBe("dig-board-star var(--dig-lift) var(--ease-out) both");
+    const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((selector) => selector.trim()).includes(".dig-board-star"));
+    expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
+describe("the dig reveal's motion", () => {
+  it("slides the board away while the dinosaur glides within the reveal's gap, with no second star flight", () => {
+    expect(declared(PLAIN, "::view-transition-old(.dig-reveal-change)").animation).toBe("slide-out var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, "::view-transition-new(.dig-reveal-change)").animation).toBe("none");
+    expect(declared(REDUCED, "::view-transition-old(.dig-reveal-change)").animation).toBe("fade-out var(--motion-small) var(--ease-out) both");
+    const glide = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-reveal-glide");
+    const frames = rulesOf(glide?.body ?? "").flatMap(({ body }) => declarationsOf(body));
+    expect(frames).toEqual([
+      { property: "opacity", value: "0" },
+      { property: "translate", value: "calc(24px * var(--motion-amount)) 0" }
+    ]);
+    expect(declared(PLAIN, ".dig-reveal").gap).toBe("24px");
+    expect(CSS).not.toContain("dig-star-flies");
+    expect(declared(PLAIN, ".dig-reveal-screen .celebration").animation).toBe("none");
+    const reduced = REDUCED.find(({ prelude }) => prelude.includes(".dig-reveal-screen[data-motion] .dig-reveal-art"));
+    expect(reduced?.prelude.split(",").map((selector) => selector.trim())).toEqual([
+      ".dig-reveal-screen[data-motion] .dig-reveal-art", ".dig-reveal-screen[data-motion] .dig-reveal-name",
+      ".dig-reveal-screen[data-motion] .dig-card", ".dig-reveal-screen[data-motion] .dig-reveal-celebration",
+      ".dig-reveal-screen[data-motion] .dig-reveal-level", ".dig-reveal-screen[data-motion] .result-actions > button"
+    ]);
+    expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
 describe("the home page's motion", () => {
   it("fades and lifts the large card in as a screen comes in, and only fades it with reduced motion", () => {
     const card = PLAIN.filter(({ prelude }) => prelude === ".featured-card").flatMap(({ body }) => declarationsOf(body));

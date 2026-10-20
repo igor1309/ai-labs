@@ -18,7 +18,7 @@ Feature: Dig: who is it?
     When a round starts
     Then the board is all sand and the title reads "DIG"
     And no name, card or close-up tells the dinosaur under it
-    And the board leaves room beside it for the question, so it neither shrinks nor moves when the question comes
+    And the board is centred in the body, at the size it keeps beside the reserved question column
 
     Examples:
       | level          |
@@ -29,9 +29,9 @@ Feature: Dig: who is it?
     Given a <level> round
     When I brush 75% of the dinosaur's cells clear
     Then the title reads "WHO IS IT?"
-    And beside the board, one over another, rise <count> cards, each a dinosaur's body picture with no name
+    And the board slides left without changing size, and <count> cards slide in from the trailing side, one over another, 60 ms apart, each a body picture with no name
     And one is the dinosaur under the sand, the others its closest look-alikes, in a random order
-    And with reduced motion the cards come with a short fade
+    And with reduced motion the board stands in place and the cards come with a short fade
 
     Examples:
       | level          | count |
@@ -53,7 +53,7 @@ Feature: Dig: who is it?
     Given the question shows
     When I tap the dinosaur under the sand
     Then the rest of the sand blows away in one gust, and the board takes no more brushing
-    And the reveal follows (dig-reveal.feature)
+    And the dinosaur lifts from its damp bed before the reveal (dig-brush.feature, dig-reveal.feature)
 
   Scenario: Naming it at the first pick earns its badge
     Given an Explorer or Paleontologist round
