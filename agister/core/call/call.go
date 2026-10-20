@@ -129,13 +129,17 @@ type Ended struct {
 // structured output, nil for none; its session; its cost in US dollars,
 // nil where not reported; its usage; and its failure class and reason,
 // empty where it reports none. SessionCost is the session's cost after
-// this turn, in US dollars, nil where unknown.
+// this turn, in US dollars, nil where unknown; CostSource is whose price
+// the cost is, empty where it is unknown; CostUnknown is why the cost is
+// unknown, empty where the runtime says nothing of it.
 type Reply struct {
 	Text        string
 	Output      []byte
 	Session     string
 	Cost        *float64
 	SessionCost *float64
+	CostSource  string
+	CostUnknown string
 	Usage       Usage
 	Failure     Class
 	Reason      string
@@ -322,7 +326,8 @@ type Named struct {
 // which reports none; its usage, nil on bash; the session its runtime
 // reported; the reason of a call that did not complete, empty where there
 // is none; and its warnings. SessionCost is the last turn's reported
-// session cost in US dollars, nil where unknown.
+// session cost in US dollars, nil where unknown; CostSource is whose
+// price its cost is, empty where its cost is unknown.
 type Result struct {
 	Status      Status
 	Class       Class
@@ -330,6 +335,7 @@ type Result struct {
 	Timing      Timing
 	Cost        *float64
 	SessionCost *float64
+	CostSource  string
 	Usage       *Usage
 	Session     string
 	Reason      string
@@ -618,15 +624,17 @@ func (c *Caller) take(ctx context.Context, turn Turn, limits Limits, report func
 }
 
 // counted gives result what its turns reported: the session the last that
-// reported one reported; and, where any gave a reply, its cost and each
-// count of its usage, the sum of its turns', unknown where any turn
-// reported none (ADR-001, invariant 3), as a turn with no reply does. The
+// reported one reported; each reply's why its cost is unknown, a warning,
+// in the order of its turns; and, where any gave a reply, its cost and
+// each count of its usage, the sum of its turns', unknown where any turn
+// reported none (ADR-001, invariant 3), as a turn with no reply does, and
+// the source of its turns' costs, none where its cost is unknown. The
 // session's cost is only the last turn's report, never an earlier one.
 func counted(result *Result, turns []turned) {
 	if last := turns[len(turns)-1]; last.err == nil && last.ended.Reply != nil {
 		result.SessionCost = last.ended.Reply.SessionCost
 	}
-	replied := false
+	replied, source := false, ""
 	costs, usages := make([]*float64, len(turns)), make([]Usage, len(turns))
 	for i, t := range turns {
 		if session := t.session(); session != "" {
@@ -634,6 +642,10 @@ func counted(result *Result, turns []turned) {
 		}
 		if reply := t.ended.Reply; t.err == nil && reply != nil {
 			replied, costs[i], usages[i] = true, reply.Cost, reply.Usage
+			source = reply.CostSource
+			if reply.CostUnknown != "" {
+				result.Warnings = append(result.Warnings, reply.CostUnknown)
+			}
 		}
 	}
 	if !replied {
@@ -647,6 +659,9 @@ func counted(result *Result, turns []turned) {
 		return total(counts)
 	}
 	result.Cost = total(costs)
+	if result.Cost != nil {
+		result.CostSource = source
+	}
 	result.Usage = &Usage{
 		Input:      count(func(u Usage) *int64 { return u.Input }),
 		Output:     count(func(u Usage) *int64 { return u.Output }),

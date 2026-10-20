@@ -66,3 +66,17 @@ Feature: A call is kept to its cost limit
     When the call is made
     Then it ends failed, class "budget_exhausted", its reason the
       runtime's, its cost 1.1
+
+  Scenario: A call gives its cost's source, and why a cost is unknown
+    Given a model step whose first turn reports the session "s1", its
+      cost 0.25 from "ccusage", then fails at capacity, and whose
+      second turn completes, its cost unknown, why "no totalCost"
+    When the call is made
+    Then its cost is unknown, and its source none
+    And its warnings hold "no totalCost"
+
+  Scenario: A call whose turns all gave a cost gives their source
+    Given a model step whose turn completes, its cost 0.25 from
+      "ccusage"
+    When the call is made
+    Then its cost is 0.25, from "ccusage", and it has no warning

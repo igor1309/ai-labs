@@ -81,11 +81,11 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 		{name: "a reply", result: claudecode.Result{
 			Ended:   claudecode.Ended{Code: 1, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: claudecode.Stream{Head: "eh"}},
 			Session: "s1",
-			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25),
+			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25), CostSource: "claude-code",
 				Usage:   claudecode.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 				Failure: claudecode.RateLimited, Reason: "429"}},
 			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"}, Session: "s1",
-				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25),
+				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost, SessionCost: usd(1.25), CostSource: "claude-code",
 					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
 					Failure: call.RateLimited, Reason: "429"}}},
 		{name: "a signal", result: claudecode.Result{Ended: claudecode.Ended{Signal: "killed"}, Session: "s1"}, want: call.Ended{Signal: "killed", Session: "s1"}},
@@ -127,7 +127,8 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 // directory, environment, instruction, model, effort, options, schema and
 // session, and gives each line it reports, a tool's result among them, how
 // the program ended, the session it read and its reply in core's words,
-// its failure class by its name and its cost unknown; a program ended by a signal gives no reply,
+// its failure class by its name, its cost, session's cost, cost source and
+// why its cost is unknown as the wrapper gives them; a program ended by a signal gives no reply,
 // its session still; a program that could not start
 // is core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
@@ -146,10 +147,12 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 			Ended:   codex.Ended{Code: 1, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: codex.Stream{Head: "eh"}},
 			Session: "t1",
 			Reply: &codex.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
+				Cost: usd(0.25), SessionCost: usd(1.25), CostSource: "ccusage", CostUnknown: "why",
 				Usage:   codex.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
 				Failure: codex.NoResult, Reason: "none"}},
 			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"}, Session: "t1",
 				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
+					Cost: usd(0.25), SessionCost: usd(1.25), CostSource: "ccusage", CostUnknown: "why",
 					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
 					Failure: call.NoResult, Reason: "none"}}},
 		{name: "a signal", result: codex.Result{Ended: codex.Ended{Signal: "killed"}, Session: "t1"}, want: call.Ended{Signal: "killed", Session: "t1"}},

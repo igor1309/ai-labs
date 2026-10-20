@@ -97,6 +97,7 @@ func TestItsFacts(t *testing.T) {
 		ToolCalls:    true,
 		Budget:       true,
 		ToolCommands: true,
+		Cost:         true,
 		Inputs:       claudecode.InMessage,
 	}
 	if got := wrapper(t, &supervisorSpy{}).Facts(); !reflect.DeepEqual(got, want) {
@@ -172,7 +173,7 @@ func TestASuccessfulResultIsTheReply(t *testing.T) {
 				`{"type":"result","subtype":"success","is_error":false,"result":"done","session_id":"s1","structured_output":{"ok":true},"total_cost_usd":0.25,"usage":{"input_tokens":10,"output_tokens":3}}`,
 			}}
 			want := claudecode.Reply{Text: "done", Output: []byte(`{"ok":true}`), Session: "s1", Cost: ptr(0.25), SessionCost: ptr(0.25),
-				Usage: claudecode.Usage{Input: ptr(int64(10)), Output: ptr(int64(3))}}
+				CostSource: "claude-code", Usage: claudecode.Usage{Input: ptr(int64(10)), Output: ptr(int64(3))}}
 			if got := reply(t, spy, schema); !reflect.DeepEqual(got, want) {
 				t.Errorf("reply\n got %+v\nwant %+v", got, want)
 			}
