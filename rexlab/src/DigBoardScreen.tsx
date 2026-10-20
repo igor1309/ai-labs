@@ -200,6 +200,10 @@ type Stroke = { pointerId: number; rect: DOMRect; radius: number; last: SandPoin
 // A puff of grains, where it rises, as fractions of the board.
 type Puff = { id: number; left: number; top: number };
 
+// The brush's ring, one per press, where it is in the frame's pixels;
+// once the finger lifts it is leaving, shown only as it shrinks away.
+type Ring = { id: number; at: SandPoint; leaving: boolean };
+
 const percent = (fraction: number) => `${fraction * 100}%`;
 
 // The same body picture, enlarged and offset in a round window. Loading
@@ -296,7 +300,7 @@ export function DigBoardScreen({
   const canvas = useRef<HTMLCanvasElement>(null);
   const bed = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
-  const [brushAt, setBrushAt] = useState<SandPoint>();
+  const [ring, setRing] = useState<Ring>();
   const [puffs, setPuffs] = useState<Puff[]>([]);
   const seenFinds = useRef(new Set(spots.filter(({ found }) => found).map(({ id }) => id)));
   const [celebrating, setCelebrating] = useState<string[]>([]);
@@ -390,6 +394,10 @@ export function DigBoardScreen({
 
   const toFrame = (rect: DOMRect, x: number, y: number): SandPoint => ({ x: ((x - rect.left) * frame.width) / rect.width, y: ((y - rect.top) * frame.height) / rect.height });
 
+  // The ring shrinks away as the stroke ends, or just goes under reduced
+  // motion.
+  const letGo = () => setRing((current) => (current && latest.current.grains ? { ...current, leaving: true } : undefined));
+
   // Grains puff from the brush each time it has moved half its width.
   const puff = (current: Stroke, at: SandPoint, force: boolean) => {
     if (!latest.current.grains) return;
@@ -408,13 +416,13 @@ export function DigBoardScreen({
       const at = toFrame(current.rect, event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
-      setBrushAt(at);
+      setRing((shown) => shown && { ...shown, at });
       puff(current, at, false);
     };
     const end = (event: PointerEvent) => {
       if (stroke.current?.pointerId !== event.pointerId) return;
       stroke.current = undefined;
-      setBrushAt(undefined);
+      letGo();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -436,15 +444,15 @@ export function DigBoardScreen({
     const current = { pointerId: event.pointerId, rect, radius: (brush / 2) * (frame.width / rect.width), last: at, puffed: at };
     stroke.current = current;
     onBrush({ from: at, to: at, radius: current.radius });
-    setBrushAt(at);
+    setRing((shown) => ({ id: (shown?.id ?? 0) + 1, at, leaving: false }));
     puff(current, at, true);
   };
 
   // The gust ends any stroke; the choices showing do not.
   useEffect(() => {
-    if (!blown) return;
+    if (!blown || !stroke.current) return;
     stroke.current = undefined;
-    setBrushAt(undefined);
+    letGo();
   }, [blown]);
 
   return (
@@ -525,7 +533,9 @@ export function DigBoardScreen({
                   ))}
                 </span>
               ))}
-            {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
+            {ring && <span key={ring.id} className="dig-brush" data-leaving={ring.leaving || undefined} aria-hidden="true"
+              style={{ left: percent(ring.at.x / frame.width), top: percent(ring.at.y / frame.height) }}
+              onAnimationEnd={() => { if (ring.leaving) setRing((shown) => (shown?.id === ring.id ? undefined : shown)); }} />}
           </div>
           {grains && !lifting && !dropped && <span className="dig-landing" aria-hidden="true">
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}

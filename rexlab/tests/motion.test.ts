@@ -65,6 +65,7 @@ describe("the motion", () => {
     expect(tokensOf(PLAIN)).toEqual({
       "--ease-out": "cubic-bezier(0.22, 1, 0.36, 1)",
       "--ease-overshoot": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "--ease-spring": expect.stringMatching(/^linear\(0, .*, 1\)$/),
       "--motion-small": "160ms",
       "--motion-standard": "240ms",
       "--motion-screen": "320ms",
@@ -173,6 +174,51 @@ describe("the dig board's collection star", () => {
     expect(declared(PLAIN, ".dig-board-star").animation).toBe("dig-board-star var(--dig-lift) var(--ease-out) both");
     const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((selector) => selector.trim()).includes(".dig-board-star"));
     expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
+describe("the dig brush", () => {
+  const frames = (name: string) => Object.fromEntries(rulesOf(KEYFRAMES.find(({ prelude }) => prelude === `@keyframes ${name}`)?.body ?? "")
+    .map(({ prelude, body }) => [prelude, Object.fromEntries(declarationsOf(body).map(({ property, value }) => [property, value]))]));
+  // The spring's values along its run, from its linear() points.
+  const spring = (tokensOf(PLAIN)["--ease-spring"] ?? "").replace(/^linear\(|\)$/g, "").split(",").map((point) => Number(point.trim().split(" ")[0]));
+
+  it("eases by a spring that overshoots a little and settles where it ends", () => {
+    expect(spring[0]).toBe(0);
+    expect(spring.at(-1)).toBe(1);
+    expect(Math.max(...spring)).toBeGreaterThan(1.2);
+    expect(Math.max(...spring)).toBeLessThan(1.3);
+    // It swings back under its end once before it settles.
+    const peak = spring.indexOf(Math.max(...spring));
+    expect(Math.min(...spring.slice(peak))).toBeLessThan(1);
+  });
+
+  it("springs its ring in from 0.7 past about 1.08 to 1 and shrinks it away over 120 ms, only as it moves", () => {
+    expect(frames("dig-brush-in")).toEqual({ from: { opacity: "0", scale: "calc(1 - 0.3 * var(--motion-amount))" } });
+    expect(0.7 + 0.3 * Math.max(...spring)).toBeCloseTo(1.08, 1);
+    expect(frames("dig-brush-out")).toEqual({ to: { opacity: "0", scale: "calc(1 - 0.4 * var(--motion-amount))" } });
+    expect(declared(PLAIN, ".dig-screen[data-motion] .dig-brush")).toEqual({
+      transition: "left var(--motion-small) var(--ease-spring), top var(--motion-small) var(--ease-spring)",
+      animation: "dig-brush-in var(--motion-standard) var(--ease-spring) both"
+    });
+    expect(declared(PLAIN, ".dig-screen[data-motion] .dig-brush[data-leaving]")).toEqual({ animation: "dig-brush-out calc(var(--motion-standard) / 2) var(--ease-out) both" });
+    expect(declared(PLAIN, ".dig-brush")).not.toHaveProperty("animation");
+    expect(declared(PLAIN, ".dig-brush")).not.toHaveProperty("transition");
+  });
+
+  it("tosses its grains out on the spring as they rise, popping in at 1.3 and shrinking to 0.6, while the board's landing grains fly straight", () => {
+    expect(declared(PLAIN, ".dig-puff .dig-grain").animation).toBe(
+      "dig-grain-out calc(2 * var(--motion-standard)) var(--ease-spring) both, dig-grain-toss calc(2 * var(--motion-standard)) var(--ease-out) both"
+    );
+    expect(frames("dig-grain-out")).toEqual({
+      to: { translate: "calc(-50% + var(--grain-x) * 28px * var(--motion-amount)) calc(-50% + var(--grain-y) * 28px * var(--motion-amount))" }
+    });
+    expect(frames("dig-grain-toss")).toEqual({
+      from: { transform: "translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0.3 * var(--motion-amount)))" },
+      "40%": { opacity: "1" },
+      to: { opacity: "0", transform: "translateY(calc(-16px * var(--motion-amount))) scale(calc(1 - 0.4 * var(--motion-amount)))" }
+    });
+    expect(declared(PLAIN, ".dig-grain").animation).toBe("dig-puff calc(2 * var(--motion-standard)) var(--ease-out) both");
   });
 });
 
