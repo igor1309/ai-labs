@@ -333,7 +333,7 @@ export function useDigGame(
             flightWait={TREASURE_FLIGHT[reducedMotion() ? "reduced" : "motion"]}
             finish={screen.finish}
             treasureFlight={screen.treasure}
-            {...presentDigBoard(screen.round, bodyPicture, (kind) => TREASURE_PICTURES[kind])}
+            {...presentDigBoard(screen.round, bodyPicture, (kind) => TREASURE_PICTURES[kind], (id) => dinosaurName(id, language))}
             choiceCount={screen.round.choices.length}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}

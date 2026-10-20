@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- DIG's Explorer and Paleontologist choice cards show each dinosaur's name in capitals beneath its picture, in the chosen language, and expose the same name to screen readers (LAB-378).
 - The home page's tiles put SORT and CARE last: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, then SORT over CARE, before MORE COMING; the day's featured game is still drawn in tile order (LAB-373).
 - DIG's brush shows no ring under the finger; the sand clearing under it and its grains are the brush. DIG's home tile shows its sand picture with rounded corners, as the cards around it (LAB-370, LAB-372).
 - RexLab lays out by the window's shape: a screen without a portrait layout, every screen for now, shows a turn-sideways picture in a portrait window ("MAKE THE WINDOW WIDER" when the screen is already sideways, as on a Mac), with a parents' footnote that portrait is on its way, and the game waits behind it (LAB-326).

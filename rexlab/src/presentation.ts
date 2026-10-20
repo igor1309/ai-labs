@@ -421,7 +421,12 @@ type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "c
 // brushed, and which cells are clear, as rows of 0 and 1, as dig.json
 // gives the dinosaur's own. The question's cards stay through the gust its
 // right pick brings. The treasure lies on its cells, in the frame's pixels.
-export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: string) => string, treasurePicture: (kind: TreasureKind) => string): DigBoardView {
+export function presentDigBoard(
+  round: DigRound,
+  bodyPicture: (dinosaurId: string) => string,
+  treasurePicture: (kind: TreasureKind) => string,
+  dinosaurName: (dinosaurId: string) => string
+): DigBoardView {
   const [width, height] = [FRAME.width / GRID.columns, FRAME.height / GRID.rows];
   const { treasure } = round;
   return {
@@ -435,6 +440,7 @@ export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: strin
     spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
     choices: asking(round) || round.blown ? round.choices.map((id) => ({
       id,
+      name: dinosaurName(id),
       picture: bodyPicture(id),
       rejected: round.rejected.includes(id),
       correct: round.blown && id === round.dinosaur.id

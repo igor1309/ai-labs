@@ -34,7 +34,7 @@ Feature: Dig: who is it?
     Given a <level> round
     When I brush 75% of the dinosaur's cells clear
     Then the title reads "WHO IS IT?"
-    And the <count> empty cards turn over in place, one after another, 60 ms apart, each into a card with a body picture and no name
+    And the <count> empty cards turn over in place, one after another, 60 ms apart, each into a card with a body picture and its dinosaur's name in capitals
     And one is the dinosaur under the sand, the others its closest look-alikes, in a random order
     And every choice picture is desaturated until the child picks an answer
     And the board does not move, and nothing in the column shifts
@@ -81,6 +81,7 @@ Feature: Dig: who is it?
     When the question shows, in either language and theme
     Then the board, in the same place and size as before it came, and every card show with no scrolling
     And each card's dinosaur is at least 80 CSS pixels tall
+    And each card shows its dinosaur's full name in capitals in the chosen language
 
     Examples:
       | width | height |
