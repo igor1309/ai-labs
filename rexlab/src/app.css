@@ -29,13 +29,15 @@
   color-scheme: light;
 }
 
-/* The motion tokens every screen moves by: arrivals ease out, and only
-   rewards overshoot. Each distance and growth is scaled by
-   --motion-amount, which reduced motion sets to 0, so that there all
-   motion is a short fade. */
+/* The motion tokens every screen moves by: arrivals ease out, only
+   rewards overshoot, and the brush's grains move on a spring that
+   overshoots its end by a quarter and settles. Each distance and growth
+   is scaled by --motion-amount, which reduced motion sets to 0, so that
+   there all motion is a short fade. */
 :root {
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: linear(0, 0.092 4%, 0.314 8%, 0.587 12%, 0.848 16%, 1.055 20%, 1.21 25%, 1.254 30%, 1.216 35%, 1.137 40%, 1.051 45%, 0.984 50%, 0.946 55%, 0.936 60%, 0.953 67%, 0.988 75%, 1.011 83%, 1.016 91%, 1);
   --motion-small: 160ms;
   --motion-standard: 240ms;
   --motion-screen: 320ms;
@@ -262,9 +264,31 @@
   animation-delay: var(--motion-stagger);
 }
 
+/* The page, whichever of the root and the body scrolls it, neither pulls
+   to refresh nor bounces. The page reaches under rounded corners, a home
+   indicator and a notch: each screen adds the window's safe-area insets
+   to its own padding, so its background still fills the window, and the
+   fixed parts at the window's edges add them to their offsets. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* A screen's content, its own padding included, is at most 1440 pixels
+   wide and centred: on a wider window each side of every screen, and the
+   fixed parts at the window's edges, add what lies beyond it, which
+   covers the safe-area inset there. The screen's box, and so its
+   background, still fills the window. Screens and fixed parts read these
+   in place of the side insets, so the cap is this one rule. */
+:root {
+  --screen-left: max(env(safe-area-inset-left), 50vw - 720px);
+  --screen-right: max(env(safe-area-inset-right), 50vw - 720px);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: "Lexend Variable", system-ui, sans-serif;
   background: #f2efe8;
   color: #1d2742;
@@ -273,9 +297,23 @@ body {
 button {
   font: inherit;
   color: inherit;
-  cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: filter var(--motion-small) var(--ease-out);
+}
+
+/* Whatever can be pressed brightens under a hovering pointer. Button.tsx
+   marks it from the pointer's own kind, never :hover, which a finger
+   leaves behind after it lifts, also on an iPad with a trackpad. */
+button[data-hovered] {
+  filter: brightness(1.12);
+}
+
+/* The hand shows only to a pointer that can hover, over what responds. */
+@media (hover: hover) and (pointer: fine) {
+  button:enabled:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 /* A picture is never dragged out, selected or offered to share: a long
@@ -294,10 +332,6 @@ img {
     filter var(--motion-small) var(--ease-out),
     opacity var(--motion-standard) var(--ease-out),
     transform var(--motion-small) var(--ease-out);
-}
-
-.card[data-hovered] {
-  filter: brightness(1.12);
 }
 
 .card[data-pressed] {
@@ -335,8 +369,13 @@ img {
   isolation: isolate;
   overflow: hidden;
   min-height: 100vh;
+  min-height: 100dvh;
   box-sizing: border-box;
-  padding: 116px 56px 72px;
+  padding:
+    calc(116px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(72px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -346,8 +385,8 @@ img {
    soft ink, and in the corners, away from the games. */
 .wordmark {
   position: fixed;
-  top: 36px;
-  left: 56px;
+  top: calc(36px + env(safe-area-inset-top));
+  left: calc(56px + var(--screen-left));
   height: 52px;
   margin: 0;
   display: flex;
@@ -374,8 +413,8 @@ img {
 .home-corner {
   position: fixed;
   z-index: 2;
-  top: 32px;
-  right: 56px;
+  top: calc(32px + env(safe-area-inset-top));
+  right: calc(56px + var(--screen-right));
   display: flex;
   align-items: center;
   gap: 12px;
@@ -582,8 +621,8 @@ img {
 /* The version footer is part of the static page, outside the app. */
 #version {
   position: fixed;
-  right: 56px;
-  bottom: 17px;
+  right: calc(56px + var(--screen-right));
+  bottom: calc(17px + env(safe-area-inset-bottom));
   font-size: 12px;
   font-weight: 400;
   color: #5c647a;
@@ -608,6 +647,7 @@ body:has(.result) #version {
    tiles are what fits a column. */
 .games {
   height: clamp(360px, calc(100vh - 380px), 520px);
+  height: clamp(360px, calc(100dvh - 380px), 520px);
   display: flex;
   gap: 28px;
 }
@@ -659,9 +699,13 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
-.featured-card .skeletons-tile-picture,
-.featured-card .dig-tile-picture {
+.featured-card .skeletons-tile-picture {
   padding: 36px 32px 8px;
+}
+
+.featured-card .dig-tile-picture {
+  max-width: calc(100% - 64px);
+  margin: 36px 32px 8px;
 }
 
 .featured-card-footer {
@@ -807,7 +851,7 @@ body:has(.result) #version {
   gap: 28px 24px;
   overflow-x: auto;
   overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: none;
   scrollbar-width: none;
 }
 
@@ -1291,13 +1335,18 @@ body:has(.result) #version {
   text-align: left;
 }
 
+/* The sand picture is a rounded card of its own, as wide as its height
+   allows, so its corners round with the tile's. */
 .dig-tile-picture {
   flex: 1 1 0;
+  align-self: center;
   min-height: 0;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 16px 20px 10px;
-  object-fit: contain;
+  width: auto;
+  max-width: calc(100% - 40px);
+  aspect-ratio: 4 / 3;
+  margin: 16px 20px 10px;
+  border-radius: 16px;
+  object-fit: cover;
 }
 
 .dig-tile-row {
@@ -1350,7 +1399,11 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -1623,7 +1676,11 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 0 0;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    var(--screen-right)
+    env(safe-area-inset-bottom)
+    var(--screen-left);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -1672,7 +1729,8 @@ body:has(.result) #version {
     background-color var(--motion-standard) var(--ease-out),
     color var(--motion-standard) var(--ease-out),
     outline-color var(--motion-standard) var(--ease-out),
-    box-shadow var(--motion-standard) var(--ease-out);
+    box-shadow var(--motion-standard) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
 }
 
 .food-chip-face {
@@ -1752,6 +1810,7 @@ body:has(.result) #version {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: none;
   box-sizing: border-box;
   padding: 0 56px 48px;
   display: grid;
@@ -1946,7 +2005,11 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -2110,14 +2173,72 @@ body:has(.result) #version {
   color: #5c647a;
 }
 
-.turn-sideways {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
+.gated-screen {
+  display: contents;
 }
 
-.turn-sideways-picture {
-  font-size: 10rem;
+.orientation-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 24px;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(24px + var(--screen-right))
+    calc(24px + env(safe-area-inset-bottom))
+    calc(24px + var(--screen-left));
+  background: #f2efe8;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--motion-screen) var(--ease-out), visibility var(--motion-screen) var(--ease-out);
+}
+
+.orientation-gate[data-shown] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--motion-screen) var(--ease-out);
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.orientation-gate-picture {
+  display: grid;
+  justify-items: center;
+  gap: 32px;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 700;
+}
+
+.orientation-gate-symbols {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.orientation-gate-symbols svg {
+  width: 72px;
+  height: 72px;
+  stroke-width: 1.5;
+}
+
+.orientation-gate-note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #5c647a;
+}
+
+[data-theme="dark"] .orientation-gate {
+  background: #0f1320;
+}
+
+[data-theme="dark"] .orientation-gate-note {
+  color: #9ca3b6;
 }
 
 /* The result is ink navy in both themes: the dinosaur on the left, the
@@ -2130,7 +2251,11 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 60px 40px 40px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(60px + var(--screen-right))
+    calc(40px + env(safe-area-inset-bottom))
+    calc(40px + var(--screen-left));
   display: grid;
   grid-template-columns: minmax(0, 640fr) minmax(0, 680fr);
   align-items: center;
@@ -2159,21 +2284,27 @@ body:has(.result) #version {
 
 .glow-outer {
   width: 133vh;
+  width: 133dvh;
   height: 133vh;
+  height: 133dvh;
   background: #f6f2e9;
   opacity: 0.05;
 }
 
 .glow-mid {
   width: 100vh;
+  width: 100dvh;
   height: 100vh;
+  height: 100dvh;
   background: #a9bcd6;
   opacity: 0.08;
 }
 
 .glow-inner {
   width: 67vh;
+  width: 67dvh;
   height: 67vh;
+  height: 67dvh;
   background: #a9bcd6;
   opacity: 0.16;
 }
@@ -2267,6 +2398,7 @@ body:has(.result) #version {
   justify-items: end;
   counter-reset: score var(--count);
   font-size: min(220px, 24vh);
+  font-size: min(220px, 24dvh);
   font-weight: 700;
   animation: count-up var(--motion-count) var(--ease-out) both;
 }
@@ -2455,7 +2587,11 @@ body:has(.result) #version {
 }
 
 .care-welcome {
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   gap: 28px;
 }
 
@@ -2677,7 +2813,11 @@ body:has(.result) #version {
 /* A visit: the needs and hearts above, the visitor on its stage, and the
    items below. */
 .visit {
-  padding: 40px 56px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(40px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   gap: 24px;
 }
 
@@ -3134,10 +3274,6 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
-.tray-item:disabled {
-  cursor: default;
-}
-
 .tray[data-busy] .tray-item,
 .tray-item[data-refused] {
   opacity: 0.5;
@@ -3236,7 +3372,11 @@ body:has(.result) #version {
 /* Friends: the bar stays at the top while the cards, four to a row,
    scroll under it, the first row rising in one after the other. */
 .friends {
-  padding: 40px 56px 0;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    env(safe-area-inset-bottom)
+    calc(56px + var(--screen-left));
   gap: 28px;
 }
 
@@ -3267,6 +3407,7 @@ body:has(.result) #version {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: none;
   box-sizing: border-box;
   padding-bottom: 48px;
   display: grid;
@@ -3343,6 +3484,7 @@ body:has(.result) #version {
   position: relative;
   width: 420px;
   height: min(300px, 32vh);
+  height: min(300px, 32dvh);
 }
 
 .no-friends-nest {
@@ -3391,10 +3533,27 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A sort window shorter than 768 pixels gives up its margins and the gaps
+   between the bar, the prompt, the baskets and the tray in step, down to 28,
+   32 and 20 pixels at 670 tall, so each basket keeps its name and 48 pixels
+   to drop on; at 768 and taller it keeps them. */
+.sort {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 12 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 12 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 .sort .stratum-1 {
@@ -3642,7 +3801,9 @@ body:has(.result) #version {
   outline-offset: -1px;
   background: #e6e2d9;
   text-align: left;
-  transition: outline var(--motion-small) var(--ease-out);
+  transition:
+    outline var(--motion-small) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
   animation: rise-in var(--motion-screen) var(--ease-out) calc((var(--basket) + 6) * var(--motion-stagger)) backwards;
 }
 
@@ -3855,10 +4016,27 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A board window shorter than 768 pixels gives up its margins, the bar's
+   gap and the cards' gaps in step, down to 20, 16, 12 and 12 pixels at 670
+   tall, so the fullest board's cards stay 120 pixels a side; at 768 and
+   taller the board keeps its margins and gaps. */
+.pairs-board-screen {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 20 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 20 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 32 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 32 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
 }
 
 .pairs-welcome .stratum-1,
@@ -3898,6 +4076,7 @@ body:has(.result) #version {
   flex-shrink: 0;
   width: 32%;
   max-height: 60vh;
+  max-height: 60dvh;
   aspect-ratio: 3 / 4;
   margin: 0 -2%;
   box-sizing: border-box;
@@ -4078,7 +4257,8 @@ body:has(.result) #version {
   white-space: nowrap;
   transition:
     color var(--motion-standard) var(--ease-out),
-    background-color var(--motion-standard) var(--ease-out);
+    background-color var(--motion-standard) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
 }
 
 .level-switch-level[aria-pressed="true"] {
@@ -4101,7 +4281,11 @@ body:has(.result) #version {
    dinosaur takes the room beside it. Rewards and actions share the
    height even with ten stars and a celebration. */
 .result-with-levels {
-  padding: 32px;
+  padding:
+    calc(32px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
   grid-template-columns: minmax(0, 1fr) minmax(0, 648px);
 }
 
@@ -4116,6 +4300,7 @@ body:has(.result) #version {
 
 .result-with-levels .result-score-value {
   font-size: min(180px, 20vh);
+  font-size: min(180px, 20dvh);
 }
 
 .result-with-levels .result-title {
@@ -4236,7 +4421,10 @@ body:has(.result) #version {
   display: grid;
   grid-template-columns: repeat(var(--columns), minmax(var(--card-floor), 1fr));
   grid-template-rows: repeat(var(--rows), minmax(var(--card-floor), 1fr));
-  gap: 20px;
+  row-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
+  column-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  column-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 /* The cards rise in one after the other; each side flips in as it is
@@ -4410,6 +4598,7 @@ body:has(.result) #version {
 .pairs-result .result-content {
   min-width: 0;
   gap: clamp(16px, 2vh, 24px);
+  gap: clamp(16px, 2dvh, 24px);
 }
 
 .pairs-result .result-title {
@@ -4425,6 +4614,7 @@ body:has(.result) #version {
 .pairs-result .result-actions button {
   flex-shrink: 0;
   height: clamp(64px, 8.9vh, 80px);
+  height: clamp(64px, 8.9dvh, 80px);
   padding: 0 clamp(12px, 1.2vw, 32px);
   gap: 8px;
   font-size: clamp(20px, 1.8vw, 26px);
@@ -4537,6 +4727,7 @@ body:has(.result) #version {
 
 .pairs-result-tries-value {
   font-size: min(220px, 22vh);
+  font-size: min(220px, 22dvh);
   font-weight: 700;
 }
 
@@ -4584,7 +4775,9 @@ body:has(.result) #version {
 .pairs-offer {
   position: relative;
   box-sizing: border-box;
-  width: 640px;
+  /* The question's line widens with its type, so it keeps to the same two
+     lines when the type grows past 32 pixels on a wider window. */
+  width: min(710px, 80px + 54.6875vw);
   max-width: 100%;
   display: flex;
   flex-direction: column;
@@ -4670,7 +4863,11 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -4768,10 +4965,27 @@ body:has(.result) #version {
   height: 100vh;
   height: 100dvh;
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A dig window shorter than 768 pixels gives up its margins and the bar's
+   gap in step, down to 28, 32 and 20 pixels at 670 tall, so the board stays
+   wider than 680 pixels; at 768 and taller it keeps them. The board's
+   height below counts the same pixels. */
+.dig-board-screen {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 12 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 12 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 .dig-screen .stratum-1 {
@@ -5089,7 +5303,8 @@ body:has(.result) #version {
 
 .dig-body[data-asks] .dig-board {
   flex: 0 1 auto;
-  width: min(calc(100% - 228px), calc((100dvh - 180px) * 4 / 3));
+  width: min(calc(100% - 228px), calc((100vh - 180px + clamp(0px, 768px - 100vh, 98px) * 36 / 98) * 4 / 3));
+  width: min(calc(100% - 228px), calc((100dvh - 180px + clamp(0px, 768px - 100dvh, 98px) * 36 / 98) * 4 / 3));
   height: auto;
   min-width: 0;
   max-height: 100%;
@@ -5149,7 +5364,7 @@ body:has(.result) #version {
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
   animation: fade-in var(--motion-small) var(--ease-out) both;
 }
 
@@ -5481,6 +5696,7 @@ body:has(.result) #version {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: visible;
   pointer-events: none;
 }
@@ -5564,21 +5780,9 @@ body:has(.result) #version {
   animation: fade-in var(--dig-lift) var(--ease-out) both;
 }
 
-/* The brush, a ring the width it brushes, under the finger. */
-.dig-brush {
-  position: absolute;
-  width: var(--brush);
-  height: var(--brush);
-  box-sizing: border-box;
-  translate: -50% -50%;
-  border: 3px solid #fffdf8;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px #1d274233;
-  pointer-events: none;
-}
-
-/* A puff of grains flies off the brush and fades, in the amber nearest
-   the sand among the theme's colours. */
+/* A puff of grains flies off the brush, in the amber nearest the sand
+   among the theme's colours. A grain alone flies straight out and fades,
+   as the board lands. */
 .dig-puff {
   position: absolute;
   width: 0;
@@ -5603,12 +5807,42 @@ body:has(.result) #version {
   }
 }
 
+/* The brush's grains pop in large and toss out on the spring, overshoot
+   a little and settle, while they rise and shrink as they fade: the two
+   easings bend each grain's way into an arc. */
+.dig-puff .dig-grain {
+  animation: dig-grain-out calc(2 * var(--motion-standard)) var(--ease-spring) both, dig-grain-toss calc(2 * var(--motion-standard)) var(--ease-out) both;
+}
+
+@keyframes dig-grain-out {
+  to {
+    translate: calc(-50% + var(--grain-x) * 28px * var(--motion-amount)) calc(-50% + var(--grain-y) * 28px * var(--motion-amount));
+  }
+}
+
+@keyframes dig-grain-toss {
+  from {
+    transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0.3 * var(--motion-amount)));
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(-16px * var(--motion-amount))) scale(calc(1 - 0.4 * var(--motion-amount)));
+  }
+}
+
 /* The reveal is the round's result, ink navy in both themes as every
    game's result is: the dinosaur dug up, whole, beside its name, the
    "DUG UP" card, the level switch and the ways on, under a glow and
    confetti when the count grows. */
 .dig-reveal-screen {
-  padding: 32px;
+  padding:
+    calc(32px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
   gap: 16px;
   background: #1f2b4d;
   color: #f6f2e9;

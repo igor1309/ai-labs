@@ -26,7 +26,8 @@ Feature: Dig: the brush, and Hatchling's free brushing
     Then the sand clears along the finger's path, a soft-edged round brush wide
     And the hollow's edge is crumbly, with a pale lip of grains around it and the sand's shadow inside
     And a darker bed of damp sand lies under the dinosaur, so the page never shows through
-    And grains puff from the brush as it moves
+    And grains toss up and out from the brush as it moves, overshoot a little and settle as they fade
+    And no ring or cursor marks the brush; the sand clearing under the finger is all it shows
     And with reduced motion the sand just clears, with no grains
 
   Scenario: A tap clears one round spot

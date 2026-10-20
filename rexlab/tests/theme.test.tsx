@@ -43,7 +43,7 @@ import {
   fakeTreasurePicture,
   featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   sameColour,
@@ -55,7 +55,7 @@ import {
   symbolOf,
   unreadVersion,
   type ManualAppearance,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualTimers,
   type MemoryStorage,
   featuredCard,
@@ -90,7 +90,7 @@ const smallerOf = (question: Question) => (largerOf(question) === question.left 
 function openApp({
   device = manualAppearance("light"),
   storage = memoryStorage(),
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   language = "en-GB",
   timers = manualTimers(),
   sorting = emptySorting(),
@@ -98,7 +98,7 @@ function openApp({
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   language?: string;
   timers?: ManualTimers;
   sorting?: ReturnType<typeof emptySorting>;
@@ -113,7 +113,8 @@ function openApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(41)}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language}
       languageStore={localLanguage(() => languages)}
@@ -171,7 +172,7 @@ function expectScreenIn(theme: Theme) {
 
 // What a walk over screens is given: the theme each screen is to be in,
 // and the app it walks, opened on the home page.
-type Walk = { theme: Theme; user: UserEvent; orientation: ManualOrientation; timers: ManualTimers };
+type Walk = { theme: Theme; user: UserEvent; viewport: ManualViewport; timers: ManualTimers };
 
 const unchecked = () => {};
 
@@ -187,8 +188,8 @@ async function menus({ theme, user }: Walk) {
   }
 }
 
-async function portraitGate({ theme, orientation }: Walk) {
-  act(() => orientation.turn("portrait"));
+async function portraitGate({ theme, viewport }: Walk) {
+  act(() => viewport.turn("portrait"));
   expectScreenIn(theme);
 }
 
@@ -454,7 +455,7 @@ async function dig({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
   pressAt(sandBoard(), 0, { x: 200, y: 300 });
   moveAt(10, { x: 400, y: 300 });
-  expect(sandBoard().querySelector(".dig-brush")).not.toBeNull();
+  expect(sandBoard().querySelector(".dig-puff")).not.toBeNull();
   expectScreenIn(theme);
   releaseAt(window, 20, { x: 400, y: 300 });
   digUp();
@@ -543,11 +544,11 @@ describe("the System theme", () => {
   describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
     describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
       it.each(parts)("%s", async (_, walk) => {
-        const orientation = manualOrientation("landscape");
+        const viewport = manualViewport("landscape");
         const timers = manualTimers();
-        const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
+        const { user } = openApp({ device: manualAppearance(appearance), viewport, timers });
 
-        await walk({ theme: appearance, user, orientation, timers });
+        await walk({ theme: appearance, user, viewport, timers });
       });
     });
   });
@@ -787,42 +788,41 @@ describe("the FIELD GUIDE", () => {
 describe("the sorting board", () => {
   const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
-  it.each(["light", "dark"] as const)("is in the %s theme in every state, with every basket's symbol", async (theme) => {
+  // One board per test: a whole sort is long under pointer events.
+  it.each((["light", "dark"] as const).flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
     document.documentElement.dataset.theme = theme;
     try {
-      for (const property of PROPERTIES) {
-        const user = userEvent.setup();
-        const sorting = sortingBy(property);
-        const { unmount } = openBoard(sorting);
-        layOutBaskets(sorting);
-        const [missed, ...rest] = boardState(sorting).cards;
-        if (!missed) throw new Error("The board has no cards");
-        const right = missed.basket as Basket;
-        expectScreenIn(theme);
+      const user = userEvent.setup();
+      const sorting = sortingBy(property);
+      const { unmount } = openBoard(sorting);
+      layOutBaskets(sorting);
+      const [missed, ...rest] = boardState(sorting).cards;
+      if (!missed) throw new Error("The board has no cards");
+      const right = missed.basket as Basket;
+      expectScreenIn(theme);
 
-        await user.click(trayCard(missed));
-        expectScreenIn(theme);
-        await user.click(trayCard(missed));
-        await user.pointer([
-          { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
-          { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
-        ]);
-        expectScreenIn(theme);
-        await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
-        // The hint on the card and the right basket's glow.
-        expect(document.querySelector(".sort-hint")).not.toBeNull();
-        expect(document.querySelector(".basket-glow")).not.toBeNull();
-        expectScreenIn(theme);
+      await user.click(trayCard(missed));
+      expectScreenIn(theme);
+      await user.click(trayCard(missed));
+      await user.pointer([
+        { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
+        { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
+      ]);
+      expectScreenIn(theme);
+      await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
+      // The hint on the card and the right basket's glow.
+      expect(document.querySelector(".sort-hint")).not.toBeNull();
+      expect(document.querySelector(".basket-glow")).not.toBeNull();
+      expectScreenIn(theme);
 
-        await dragTo(user, trayCard(missed), centreOf(sorting, right));
-        for (const card of rest) {
-          await user.click(trayCard(card));
-          await user.click(basketButton(card.basket as Basket));
-        }
-        expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
-        expectScreenIn(theme);
-        unmount();
+      await dragTo(user, trayCard(missed), centreOf(sorting, right));
+      for (const card of rest) {
+        await user.click(trayCard(card));
+        await user.click(basketButton(card.basket as Basket));
       }
+      expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
+      expectScreenIn(theme);
+      unmount();
     } finally {
       delete document.documentElement.dataset.theme;
     }

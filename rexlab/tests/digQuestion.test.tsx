@@ -66,7 +66,6 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     openRound(level, { language });
     expect([title(), choices(), column()?.getAttribute("aria-hidden")]).toEqual([TEXTS[language].dig, [], "true"]);
     expect(document.querySelector(".dig-body")?.hasAttribute("data-asks")).toBe(true);
-    expect(board().style.getPropertyValue("--brush")).toBe("36px");
     drag([[0, 10], [800, 10]]);
     expect(choices()).toEqual([]);
     brushUntilAsked();
@@ -168,7 +167,6 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     view.rerender(draw(asked));
     expect(choices()).toHaveLength(offered[level].length);
     moveAt(10, { x: 306, y: 310, pointer: 9 });
-    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("38.25%");
     moveAt(20, { x: 326, y: 310, pointer: 9 });
     expect(marks).toEqual([
       { from: { x: 286, y: 300 }, to: { x: 286, y: 300 }, radius: 18 },
@@ -191,7 +189,6 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const before = cleared();
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
-    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("100%");
     releaseAt(window, (time += 10), { x: 800, y: 590, pointer: 9 });
     brushAll();
     expect([cleared(), board().hasAttribute("data-blown"), choices().length]).toEqual([1, false, offered[level].length]);
@@ -210,8 +207,8 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect(choiceCard(rejected!.dataset.choice).disabled).toBe(true);
     fireEvent.click(choiceCard());
@@ -305,7 +302,6 @@ describe("Hatchling", () => {
   it("never asks, keeps no room for the question and gusts at 95% of the dinosaur", () => {
     const app = openRound("hatchling");
     expect([document.querySelector(".dig-body")?.hasAttribute("data-asks"), column(), emptyCards()]).toEqual([false, null, []]);
-    expect(board().style.getPropertyValue("--brush")).toBe("48px");
     let last = 0;
     for (let y = 10; y < 600 && !board().hasAttribute("data-blown"); y += 20) {
       last = cleared();

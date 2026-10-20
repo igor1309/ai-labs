@@ -24,6 +24,8 @@ export type Texts = {
   // too.
   versionLabel: string;
   turnSideways: string;
+  makeWindowWider: string;
+  portraitLayoutComing: string;
   home: string;
   progress: string;
   dinosaurs: string;

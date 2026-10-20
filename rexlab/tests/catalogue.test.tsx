@@ -24,7 +24,7 @@ import {
   featuring,
   loadedPictures,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualPictures,
   memoryStorage,
   sameColour,
@@ -52,7 +52,8 @@ function openApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => languages)}
@@ -103,7 +104,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the CARE tile", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the FIND THE PAIR tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -113,7 +114,7 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(42);
     expect(tile.parentElement?.firstElementChild).toBe(tile);
-    expect(tile.nextElementSibling).toBe(homeTile("CARE"));
+    expect(tile.nextElementSibling).toBe(homeTile("FIND THE PAIR"));
   });
 });
 

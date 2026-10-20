@@ -61,6 +61,7 @@ const SCREENS = [
 const PRESENTATION = [
   ...SCREENS,
   "ageLevelPictures.ts",
+  "Button.tsx",
   "DietTag.tsx",
   "DigBar.tsx",
   "Festivity.tsx",
@@ -88,7 +89,7 @@ const ADAPTERS = [
   "localTheme.ts",
   "mediaAppearance.ts",
   "mediaMotion.ts",
-  "mediaOrientation.ts",
+  "mediaViewport.ts",
   "treasurePictures.ts"
 ];
 const COMPOSITION = [

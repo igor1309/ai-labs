@@ -1,9 +1,9 @@
 import { ArrowLeft, ChartNoAxesColumnIncreasing, Copy, Footprints, Hand, House } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { PictureImage, usePicture } from "./Picture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 // A card on the board: face down, turned over, or one of a found pair.
 export type PairCardView = {
@@ -45,14 +45,14 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
     <main className="pairs-board-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="pairs-bar">
-        <button type="button" className="home-button" onClick={onBack}>
+        <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
           {text.back}
-        </button>
-        <button type="button" className="home-button" onClick={onHome}>
+        </Button>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
         <h1 className="pairs-bar-title">
           <span className="pairs-bar-mark" aria-hidden="true">
             <Copy size={30} />
@@ -110,10 +110,9 @@ type PairCardProps = {
 // A card whose picture cannot be loaded shows a dinosaur symbol and the
 // name instead.
 function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
-  const pointer = usePointerState();
   const name = card.name.toLocaleUpperCase(language);
   return (
-    <button type="button" className="card pair-card" data-state={card.state} data-face={card.face} aria-label={label} style={place(index)} onClick={onTurn} {...pointer}>
+    <Button className="card pair-card" data-state={card.state} data-face={card.face} aria-label={label} style={place(index)} onClick={onTurn}>
       {card.state === "down" ? (
         <span className="pair-card-back" aria-hidden="true">
           <span className="pair-card-back-frame">
@@ -125,7 +124,7 @@ function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
           <PairCardFace card={card} name={name} />
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 

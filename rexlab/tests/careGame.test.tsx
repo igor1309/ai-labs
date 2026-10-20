@@ -21,7 +21,7 @@ import {
   welcomeVisitor
 } from "./careApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
+import { fakeBodyPicture, fakeItemPicture, manualViewport, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -37,16 +37,18 @@ const visitorLook = () => {
 };
 
 describe("the CARE tile", () => {
-  it("stands under ALL DINOSAURS, before SORT, with a heart and a dinosaur", () => {
+  it("stands last, under SORT, with a heart and a dinosaur", () => {
     openCareApp();
 
     const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
     // The row fills two tiles to a column, COMPARE's tile left out for
-    // the large card: the second tile is under the first.
-    expect([...tilesRow().children].indexOf(tile)).toBe(1);
-    expect(tile.nextElementSibling).toBe(gameDoor("SORT"));
+    // the large card: the sixth tile is under the fifth, SORT's, and only
+    // MORE COMING comes after it.
+    expect([...tilesRow().children].indexOf(tile)).toBe(5);
+    expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
+    expect(tile.nextElementSibling?.className).toBe("more-coming");
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
@@ -285,16 +287,18 @@ describe("leaving a visit", () => {
   });
 
   it("pauses in portrait, nothing to give behind the picture, and goes on unchanged", async () => {
-    const orientation = manualOrientation("landscape");
-    const { user, clock } = openCareApp({ orientation });
+    const viewport = manualViewport("landscape");
+    const { user, clock } = openCareApp({ viewport });
     await welcomeVisitor(user);
     await meetNeed(user, clock);
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
     expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(document.querySelector(".tray-item")).toBeNull();
-    act(() => orientation.turn("landscape"));
+    // The visit remains mounted for the gate fade and cannot be reached.
+    expect(document.querySelector(".tray-item")?.closest("[inert]")).toBe(document.querySelector(".gated-screen"));
+    expect(screen.queryAllByRole("button")).toEqual([]);
+    act(() => viewport.turn("landscape"));
     expect([visitorShown().id, needAsked(), heartsShown()]).toEqual(["tyrannosaurus", "thirsty", "2"]);
     await meetNeed(user, clock);
     expect(heartsShown()).toBe("4");

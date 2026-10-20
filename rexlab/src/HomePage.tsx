@@ -2,12 +2,12 @@ import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, 
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
+import { Button } from "./Button.tsx";
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { usePointerState } from "./usePointerState.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 
@@ -18,7 +18,7 @@ const BRAND = "RexLab";
 export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -101,15 +101,6 @@ export function HomePage({
   onDig
 }: HomePageProps) {
   const text = TEXTS[language];
-  const featuredPointer = usePointerState();
-  const comparePointer = usePointerState();
-  const cataloguePointer = usePointerState();
-  const carePointer = usePointerState();
-  const sortPointer = usePointerState();
-  const pairsPointer = usePointerState();
-  const skeletonsPointer = usePointerState();
-  const museumPointer = usePointerState();
-  const digPointer = usePointerState();
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -175,7 +166,7 @@ export function HomePage({
   // game is on the page twice.
   const tiles: Record<HomeGame, ReactNode> = {
     compare: (
-      <button key="compare" type="button" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen} {...comparePointer}>
+      <Button key="compare" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen}>
         {games.compare.picture}
         <span className="compare-tile-row">
           <span className="compare-tile-symbol" aria-hidden="true">
@@ -184,10 +175,10 @@ export function HomePage({
           <span className="compare-tile-title">{games.compare.name}</span>
         </span>
         <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
-      </button>
+      </Button>
     ),
     catalogue: (
-      <button key="catalogue" type="button" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen} {...cataloguePointer}>
+      <Button key="catalogue" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
         {games.catalogue.picture}
         {/* The book sits in the picture's other corner: beside the
             title it would leave ALL DINOSAURS too little of the row on
@@ -201,10 +192,10 @@ export function HomePage({
         {/* The counts sit in the tiles' corners, over the pictures: the
             rows keep their width for the titles. */}
         <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
-      </button>
+      </Button>
     ),
     care: (
-      <button key="care" type="button" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen} {...carePointer}>
+      <Button key="care" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen}>
         {games.care.picture}
         <span className="care-tile-row">
           <span className="care-tile-symbol" aria-hidden="true">
@@ -213,10 +204,10 @@ export function HomePage({
           <span className="care-tile-title">{games.care.name}</span>
         </span>
         <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
-      </button>
+      </Button>
     ),
     sort: (
-      <button key="sort" type="button" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen} {...sortPointer}>
+      <Button key="sort" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen}>
         {games.sort.picture}
         <span className="sort-tile-row">
           <span className="sort-tile-symbol" aria-hidden="true">
@@ -225,10 +216,10 @@ export function HomePage({
           <span className="sort-tile-title">{games.sort.name}</span>
         </span>
         <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
-      </button>
+      </Button>
     ),
     pairs: (
-      <button key="pairs" type="button" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen} {...pairsPointer}>
+      <Button key="pairs" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen}>
         {games.pairs.picture}
         <span className="pairs-tile-row">
           <span className="pairs-tile-symbol" aria-hidden="true">
@@ -237,10 +228,10 @@ export function HomePage({
           <span className="pairs-tile-title">{games.pairs.name}</span>
         </span>
         <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
-      </button>
+      </Button>
     ),
     skeletons: (
-      <button key="skeletons" type="button" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen} {...skeletonsPointer}>
+      <Button key="skeletons" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen}>
         {games.skeletons.picture}
         <span className="skeletons-tile-row">
           <span className="skeletons-tile-symbol" aria-hidden="true">
@@ -249,10 +240,10 @@ export function HomePage({
           <span className="skeletons-tile-title">{games.skeletons.name}</span>
         </span>
         <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
-      </button>
+      </Button>
     ),
     dig: (
-      <button key="dig" type="button" className="card dig-tile" aria-label={games.dig.name} onClick={games.dig.onOpen} {...digPointer}>
+      <Button key="dig" className="card dig-tile" aria-label={games.dig.name} onClick={games.dig.onOpen}>
         {games.dig.picture}
         <span className="dig-tile-row">
           <span className="dig-tile-symbol" aria-hidden="true">
@@ -261,7 +252,7 @@ export function HomePage({
           <span className="dig-tile-title">{games.dig.name}</span>
         </span>
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
-      </button>
+      </Button>
     )
   };
   const shown = HOME_GAMES.filter((game) => game !== featured);
@@ -288,10 +279,10 @@ export function HomePage({
         {/* An open menu is closed by a tap anywhere outside it, and that tap
             does nothing else: a parent closing a menu never starts a round. */}
         {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
-        <button type="button" className="card home-museum" onClick={onMuseum} {...museumPointer}>
+        <Button className="card home-museum" onClick={onMuseum}>
           <Landmark size={24} aria-hidden="true" />
           {text.museum}
-        </button>
+        </Button>
         {/* The menus are for parents: small, in the soft ink and out of the
             way in the top-right corner, and only here, never during a round. */}
         <div className="parent-menus">
@@ -347,13 +338,11 @@ export function HomePage({
       <div className="games">
         {/* The large card is today's game's door, its tile left out of
             the row. It stays as the tiles scroll. */}
-        <button
-          type="button"
+        <Button
           className="card featured-card"
           data-game={featured}
           aria-label={today.name}
           onClick={today.onOpen}
-          {...featuredPointer}
         >
           {today.picture}
           <span className="featured-card-footer">
@@ -365,7 +354,7 @@ export function HomePage({
           {/* The badge sits in the card's corner, over the picture, as on
               the tiles: the footer keeps its width for the name. */}
           <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
-        </button>
+        </Button>
         {/* The other games stand in columns of two, in a fixed order, and
             scroll sideways beside the large card when they do not fit. The
             games still to come stand under the last of them. */}

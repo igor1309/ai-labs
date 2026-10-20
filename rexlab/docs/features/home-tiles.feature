@@ -12,9 +12,9 @@ Feature: The home page's game tiles
   Scenario: The tiles stand in equal columns of two beside the large card
     Given the large card features COMPARE
     When I open the home page
-    Then beside the large card I see "ALL DINOSAURS" over "CARE"
-    And then "SORT" over "FIND THE PAIR"
+    Then beside the large card I see "ALL DINOSAURS" over "FIND THE PAIR"
     And then "SKELETONS" over "DIG"
+    And then "SORT" over "CARE"
     And then "MORE COMING", last
     And every column of tiles is as wide as the others
     And every tile, "MORE COMING" too, is as tall as the others, half its column

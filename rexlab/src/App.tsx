@@ -11,7 +11,7 @@ import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
+import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
@@ -78,6 +78,14 @@ export type PageVisibility = {
   subscribe(onChange: () => void): () => void;
 };
 
+export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
+
+export type Viewport = {
+  sizeClass(): SizeClass;
+  isScreenUpright(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
+
 export type { CareProgressStore } from "./careGame.tsx";
 export type { DigProgressStore, SandContext } from "./digGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
@@ -94,7 +102,8 @@ export type AppProps = CareGameProps &
     // The URL of the body picture of the dinosaur with this id.
     bodyPicture: (dinosaurId: string) => string;
     random: Random;
-    orientation: Orientation;
+    viewport: Viewport;
+    portraitLayouts: ReadonlySet<Screen["kind"]>;
     pageVisibility: PageVisibility;
     progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
@@ -183,7 +192,8 @@ export function App({
   catalogue,
   bodyPicture,
   random,
-  orientation,
+  viewport,
+  portraitLayouts,
   pageVisibility,
   progress,
   deviceLanguage,
@@ -210,6 +220,23 @@ export function App({
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
+  const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
+  const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
+  const hasPortraitLayout = portraitLayouts.has(screen.kind);
+  const gate = useMemo(() => ({
+    isShown: () => {
+      const size = viewport.sizeClass();
+      return (size === "tall" || size === "tall-narrow") && !hasPortraitLayout;
+    },
+    subscribe: viewport.subscribe
+  }), [viewport, hasPortraitLayout]);
+  const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.size = size;
+    return () => { delete root.dataset.size; };
+  }, [size]);
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -309,21 +336,21 @@ export function App({
     go({ kind: "pairs" }, { also: pairs.open });
   };
 
-  // The child is away from a game while the app is hidden, or while the
-  // iPad is in portrait and the orientation gate covers it.
+  // The child is away while the page is hidden or the gate covers this
+  // screen. A screen with its portrait layout remains playable.
   const presence = useMemo<Presence>(
     () => ({
-      isAway: () => orientation.isPortrait() || pageVisibility.isHidden(),
+      isAway: () => gate.isShown() || pageVisibility.isHidden(),
       subscribe: (onChange) => {
-        const stopOrientation = orientation.subscribe(onChange);
+        const stopViewport = gate.subscribe(onChange);
         const stopVisibility = pageVisibility.subscribe(onChange);
         return () => {
-          stopOrientation();
+          stopViewport();
           stopVisibility();
         };
       }
     }),
-    [orientation, pageVisibility]
+    [gate, pageVisibility]
   );
 
   const skeletonGame = useSkeletonGame(
@@ -535,7 +562,7 @@ export function App({
   // rest of the screen fades while its picture moves.
   return (
     <PicturesProvider store={pictures} startTimer={startTimer}>
-      <OrientationGate orientation={orientation} language={language}>
+      <OrientationGate shown={gateShown} screenUpright={screenUpright} language={language}>
         <ViewTransition
           default="none"
           update={{ [SCREEN_CHANGE]: "screen", [DIG_REVEAL]: "dig-reveal-change", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}

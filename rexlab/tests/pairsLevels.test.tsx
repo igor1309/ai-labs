@@ -10,6 +10,7 @@ import { openMenu } from "./menus.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
+import { WINDOW_SIZES, openWindow, windowsAnd } from "./windowSizes.ts";
 import { SHIPPED_PALS, contrast, fakeBodyPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
@@ -19,8 +20,6 @@ import { SHIPPED_PALS, contrast, fakeBodyPicture, gameDoor, manualTimers, memory
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
 const THEMES = ["light", "dark"] as const;
-
-const SCREEN = { width: 1024, height: 768 };
 
 const NAMES = AGE_LEVELS.map((level) => TEXTS.en.ageLevels[level].name);
 
@@ -35,9 +34,10 @@ const chosen = () =>
 const climbChip = () => screen.getByLabelText("LEVEL");
 
 const px = (value: string) => Number.parseFloat(value) || 0;
-// jsdom keeps a gap only as the shorthand, row gap first.
-const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
-const rowGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ")[0] ?? "");
+// jsdom resolves a gap that follows the window only in its longhands; a
+// gap set by the shorthand alone is read from the shorthand, row gap first.
+const columnGapOf = (style: CSSStyleDeclaration) => px(style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap.split(" ").at(-1) ?? "");
+const rowGapOf = (style: CSSStyleDeclaration) => px(style.rowGap && style.rowGap !== "normal" ? style.rowGap : style.gap.split(" ")[0] ?? "");
 
 const pals = (...ids: string[]) =>
   ids.map((id) => {
@@ -127,9 +127,10 @@ describe("the level switch", () => {
     for (const level of within(levelSwitch()).getAllByRole("button")) expect(px(getComputedStyle(level).height)).toBeGreaterThanOrEqual(48);
   });
 
-  it.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))(
-    "fits and reads on a 1024 by 768 screen, in %s and the %s theme",
-    async (language, theme) => {
+  it.each(WINDOW_SIZES.flatMap(([width, height]) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme, width, height] as const))))(
+    "fits and reads in %s and the %s theme, in a %i by %i window",
+    async (language, theme, width, height) => {
+      openWindow(width, height);
       const app = openPairsApp({ deviceLanguage: DEVICES[language], theme });
       await app.user.click(gameDoor(TEXTS[language].pairs));
 
@@ -140,7 +141,7 @@ describe("the level switch", () => {
       const column = levelSwitch(language).parentElement;
       if (!column) throw new Error("The switch stands in no column");
       expect(getComputedStyle(column).flexShrink).toBe("0");
-      const row = SCREEN.width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight);
+      const row = width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight);
       expect(px(getComputedStyle(column).width) + columnGapOf(body)).toBeLessThanOrEqual(row);
 
       const style = getComputedStyle(levelSwitch(language));
@@ -274,13 +275,13 @@ describe("the choice on the level switch", () => {
 });
 
 describe("a board at each level", () => {
-  // The fit table of find-the-pair-levels.feature: a level's board on a
-  // screen, and the least every card is there.
-  const FIT = [
-    ["Explorer", 1024, 768, 130, "explorer"],
-    ["Paleontologist", 1024, 768, 120, "paleontologist"],
-    ["Paleontologist", 1366, 1024, 150, "paleontologist"]
-  ] as const;
+  // The fit table of find-the-pair-levels.feature, a level's board on a
+  // screen and the least every card is there, kept in every window: a
+  // window at least as large as the table's largest keeps its least.
+  const FIT = windowsAnd([1366, 1024]).flatMap(([width, height]) => [
+    ["Explorer", width, height, 130, "explorer"] as const,
+    ["Paleontologist", width, height, width >= 1366 && height >= 1024 ? 150 : 120, "paleontologist"] as const
+  ]);
 
   const styleOf = (selector: string) => {
     const found = document.querySelector(selector);
@@ -327,6 +328,7 @@ describe("a board at each level", () => {
   });
 
   it.each(FIT)("fits an %s board with HOME on a %i by %i screen, with no scrolling, every card at least %i pixels a side", async (_, width, height, size, level) => {
+    openWindow(width, height);
     const { user } = await openPairs({ ageLevel: picked(level) });
     await user.click(button("PLAY"));
 
@@ -336,7 +338,7 @@ describe("a board at each level", () => {
     // wide as the room, or as the room's height allows at the board's
     // shape, and its cards share it after the gaps.
     const page = styleOf(".pairs-board-screen");
-    expect([page.height, page.overflow, page.display, page.flexDirection]).toEqual(["100dvh", "hidden", "flex", "column"]);
+    expect([page.height, page.overflow, page.display, page.flexDirection]).toEqual([`${height}px`, "hidden", "flex", "column"]);
     const bar = document.querySelector(".pairs-bar");
     if (!bar) throw new Error("No bar on the board");
     expect(within(bar as HTMLElement).getByRole("button", { name: "HOME" })).toBeDefined();

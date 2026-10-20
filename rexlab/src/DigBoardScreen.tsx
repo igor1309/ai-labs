@@ -1,8 +1,10 @@
 import { Sparkles, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { useGateShown } from "./OrientationGate.tsx";
 import { DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
@@ -251,6 +253,7 @@ export function DigBoardScreen({
   onHome,
   onFieldGuide
 }: DigBoardScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const choice = choices.length > 0;
   const chipStar = useRef<SVGSVGElement>(null);
@@ -258,13 +261,16 @@ export function DigBoardScreen({
   const book = useRef<SVGSVGElement>(null);
   const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
   const [treasurePath, setTreasurePath] = useState("");
-  const inFlight = treasureFlight?.phase === "flying" ? treasureFlight : undefined;
+  // The gate stops the lift, the star's flight and the treasure's flight
+  // where they are, and each starts again from its beginning as the gate
+  // goes, the star and the treasure flying anew with their waits.
+  const inFlight = treasureFlight?.phase === "flying" && !gateShown ? treasureFlight : undefined;
   const treasureFlying = treasure !== undefined && inFlight !== undefined;
   const lifting = finish !== undefined && finish.phase !== "gust";
-  const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
-  const lift = finish?.phase === "lift" ? finish : undefined;
-  // Rotation restarts the displayed lift and star flight, so their wait
-  // belongs to this mounted board, including callbacks delivered after stop.
+  const lift = finish?.phase === "lift" && !gateShown ? finish : undefined;
+  const flying = lift !== undefined && lift.newStar && dugUp !== undefined;
+  // The lift's wait belongs to the board shown, so a callback delivered
+  // after it stopped finishes nothing.
   useEffect(() => {
     if (!lift) return;
     let active = true;
@@ -276,8 +282,7 @@ export function DigBoardScreen({
       stop();
     };
   }, [lift, liftWait]);
-  // Rotation restarts the treasure's flight too, so it lands, and is kept,
-  // only as the flight shown ends.
+  // The treasure lands, and is kept, only as the flight shown ends.
   useEffect(() => {
     if (!inFlight) return;
     let active = true;
@@ -296,7 +301,9 @@ export function DigBoardScreen({
   const canvas = useRef<HTMLCanvasElement>(null);
   const bed = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
-  const [brushAt, setBrushAt] = useState<SandPoint>();
+  useLayoutEffect(() => {
+    if (gateShown) stroke.current = undefined;
+  }, [gateShown]);
   const [puffs, setPuffs] = useState<Puff[]>([]);
   const seenFinds = useRef(new Set(spots.filter(({ found }) => found).map(({ id }) => id)));
   const [celebrating, setCelebrating] = useState<string[]>([]);
@@ -353,7 +360,7 @@ export function DigBoardScreen({
   // The canvases are as large as the board shows, so the sand is sharp at
   // any size: on every resize the bed and any remaining sand are covered
   // anew and every mark taken off again, scaled with the board. After the
-  // gust only the bed remains, including when rotation remounts the board.
+  // gust only the bed remains.
   useLayoutEffect(() => {
     const element = canvas.current ?? bed.current;
     if (!element) return;
@@ -408,13 +415,11 @@ export function DigBoardScreen({
       const at = toFrame(current.rect, event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
-      setBrushAt(at);
       puff(current, at, false);
     };
     const end = (event: PointerEvent) => {
       if (stroke.current?.pointerId !== event.pointerId) return;
       stroke.current = undefined;
-      setBrushAt(undefined);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -436,19 +441,16 @@ export function DigBoardScreen({
     const current = { pointerId: event.pointerId, rect, radius: (brush / 2) * (frame.width / rect.width), last: at, puffed: at };
     stroke.current = current;
     onBrush({ from: at, to: at, radius: current.radius });
-    setBrushAt(at);
     puff(current, at, true);
   };
 
   // The gust ends any stroke; the choices showing do not.
   useEffect(() => {
-    if (!blown) return;
-    stroke.current = undefined;
-    setBrushAt(undefined);
+    if (blown) stroke.current = undefined;
   }, [blown]);
 
   return (
-    <main className="dig-screen" data-motion={grains || undefined}
+    <main className="dig-screen dig-board-screen" data-motion={grains || undefined}
       style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms`, "--dig-treasure": `${flightWait}ms` } as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
@@ -482,7 +484,7 @@ export function DigBoardScreen({
           data-level={level}
           data-found={spots.filter(({ found }) => found).map(({ id }) => id).join(" ")}
           data-helped={spots.filter(({ helped }) => helped).map(({ id }) => id).join(" ")}
-          style={{ "--frame-width": frame.width, "--frame-height": frame.height, "--brush": `${brush}px` } as CSSProperties}
+          style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
@@ -525,7 +527,6 @@ export function DigBoardScreen({
                   ))}
                 </span>
               ))}
-            {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
           </div>
           {grains && !lifting && !dropped && <span className="dig-landing" aria-hidden="true">
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
@@ -540,13 +541,13 @@ export function DigBoardScreen({
             return (
               <div key={at} className="dig-choice-slot" style={{ "--choice": at } as CSSProperties}>
                 <span className="dig-empty-card" aria-hidden="true" data-turned={card ? true : undefined}>?</span>
-                {card && <button type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
+                {card && <Button className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
                   disabled={blown || card.rejected} aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
                   <span className="dig-choice-name">{card.name.toLocaleUpperCase(language)}</span>
                   {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
                   {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
-                </button>}
+                </Button>}
               </div>
             );
           })}

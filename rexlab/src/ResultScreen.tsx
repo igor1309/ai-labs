@@ -1,5 +1,6 @@
 import { House, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -51,14 +52,14 @@ export function ResultScreen({ language, score, total, best, beaten, celebration
         {best !== undefined && <BestScore language={language} best={best} beaten={beaten} />}
         {levelSwitch}
         <nav className="result-actions">
-          <button type="button" className="play-again-button" onClick={onPlayAgain}>
+          <Button className="play-again-button" onClick={onPlayAgain}>
             <RotateCcw size={28} aria-hidden="true" />
             {text.playAgain}
-          </button>
-          <button type="button" className="home-button" onClick={onHome}>
+          </Button>
+          <Button className="home-button" onClick={onHome}>
             <House size={28} aria-hidden="true" />
             {text.home}
-          </button>
+          </Button>
         </nav>
       </div>
     </main>

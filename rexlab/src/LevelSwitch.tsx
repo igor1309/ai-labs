@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -27,12 +28,12 @@ export function LevelSwitch({ language, level, onLevel, disabled = false }: Leve
     <div className="level-switch" role="group" aria-label={text.ageLevelSwitch} style={chosenAt(level)}>
       <span className="level-switch-mark" aria-hidden="true" />
       {AGE_LEVELS.map((each) => (
-        <button key={each} type="button" className="level-switch-level" aria-pressed={each === level} disabled={disabled} onClick={() => onLevel(each)}>
+        <Button key={each} className="level-switch-level" aria-pressed={each === level} disabled={disabled} onClick={() => onLevel(each)}>
           <span className="level-switch-picture" aria-hidden="true">
             {AGE_LEVEL_PICTURES[each]}
           </span>
           <span className="level-switch-name">{text.ageLevels[each].name}</span>
-        </button>
+        </Button>
       ))}
     </div>
   );

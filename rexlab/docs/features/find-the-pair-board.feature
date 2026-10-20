@@ -73,7 +73,7 @@ Feature: Find the pair: turning cards
   Scenario: Portrait pauses a board without changing it
     Given I am partway through a board, with one card open
     When I turn the iPad to portrait
-    Then I see a picture asking me to turn the iPad sideways
+    Then I see a picture asking me to turn sideways
     And I cannot turn a card behind that picture
     When I turn the iPad back to landscape
     Then I see the same cards, open and face down as before, and the same tries

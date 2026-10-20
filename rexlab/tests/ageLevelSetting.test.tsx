@@ -24,7 +24,7 @@ import {
   fakeSkeletonPicture,
   featuredCard,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   manualVisibility,
   memoryStorage,
@@ -60,7 +60,8 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(23)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       pageVisibility={manualVisibility("visible")}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -239,9 +240,9 @@ describe("a chosen level", () => {
     expect(pictureOn(levelButton())).toBe("🥚");
     // The pre-level sorting best belongs to Hatchling: changing the
     // setting changes the badge to that level's best (docs/age-levels.md).
-    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), null, "40", "2", null, null, "6"]);
+    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, "6"]);
     const hatchlingBadges = [...badges];
-    hatchlingBadges[2] = "5";
+    hatchlingBadges[5] = "5";
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([hatchlingBadges, featured]);
     expect(featured).toBe("care");
     expect([...storage.items].filter(([key]) => key !== AGE_LEVEL_KEY)).toEqual([...kept].filter(([key]) => key !== AGE_LEVEL_KEY));

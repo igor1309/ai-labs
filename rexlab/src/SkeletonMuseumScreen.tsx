@@ -1,5 +1,6 @@
 import { Bone, Hammer, Landmark, RotateCcw, Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
@@ -37,10 +38,10 @@ export function SkeletonMuseumScreen({ language, stands, score, total, best, onB
     <main className="skeleton-screen skeleton-museum-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <SkeletonBar language={language} title={text.museum} Mark={Landmark} onHome={onHome}>
-        <button type="button" className="home-button skeleton-bar-button" onClick={onBuildAnother}>
+        <Button className="home-button skeleton-bar-button" onClick={onBuildAnother}>
           <Bone size={24} aria-hidden="true" />
           {text.buildAnother}
-        </button>
+        </Button>
         <p className="skeleton-chip skeleton-stars" aria-label={text.starsEarned}>
           <Star size={20} aria-hidden="true" />
           {score}/{total}
@@ -98,15 +99,15 @@ function StandCard({
         <Picture className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" />
       </div>
       {built ? (
-        <button type="button" className="skeleton-stand-button" onClick={() => onRebuild(stand.id)}>
+        <Button className="skeleton-stand-button" onClick={() => onRebuild(stand.id)}>
           <RotateCcw size={24} aria-hidden="true" />
           {text.rebuild}
-        </button>
+        </Button>
       ) : (
-        <button type="button" className="skeleton-stand-button" onClick={() => onBuild(stand.id)}>
+        <Button className="skeleton-stand-button" onClick={() => onBuild(stand.id)}>
           {stand.state === "empty" ? <Bone size={24} aria-hidden="true" /> : <Hammer size={24} aria-hidden="true" />}
           {stand.state === "empty" ? text.build : text.keepBuilding}
-        </button>
+        </Button>
       )}
     </section>
   );

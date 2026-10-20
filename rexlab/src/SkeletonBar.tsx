@@ -1,5 +1,6 @@
 import { ArrowLeft, Bone, House, Landmark, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -28,15 +29,15 @@ export function SkeletonBar({
   return (
     <header className="skeleton-bar">
       {onBack && (
-        <button type="button" className="home-button" onClick={onBack}>
+        <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
           {text.back}
-        </button>
+        </Button>
       )}
-      <button type="button" className="home-button" onClick={onHome}>
+      <Button className="home-button" onClick={onHome}>
         <House size={24} aria-hidden="true" />
         {text.home}
-      </button>
+      </Button>
       <h1 className="skeleton-title">
         <span className="skeleton-mark" aria-hidden="true">
           <Mark size={28} />
@@ -46,10 +47,10 @@ export function SkeletonBar({
         </span>
       </h1>
       {onMuseum && (
-        <button type="button" className="home-button museum-button" onClick={onMuseum}>
+        <Button className="home-button museum-button" onClick={onMuseum}>
           <Landmark size={24} aria-hidden="true" />
           {text.museum}
-        </button>
+        </Button>
       )}
       {children}
     </header>

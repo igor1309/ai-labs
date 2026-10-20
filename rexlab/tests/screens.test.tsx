@@ -22,7 +22,7 @@ import {
   lightDevice,
   loadedPictures,
   unsetAgeLevel,
-  manualOrientation,
+  manualViewport,
   manualPictures,
   seededRandom
 } from "./support.ts";
@@ -170,7 +170,7 @@ describe("the screen changes of the app", () => {
     const shown: Array<string | null> = [];
     render(
       <Profiler id="app" onRender={() => shown.push(screen.queryByLabelText("PROGRESS")?.textContent ?? null)}>
-        <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
+        <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={new Set()} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
       </Profiler>
     );
     const user = userEvent.setup();
@@ -205,7 +205,7 @@ describe("the screen changes of the app", () => {
 // catalogue it is given.
 function openApp(catalogue = SHIPPED_CATALOGUE) {
   render(
-    <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />
+    <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={new Set()} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />
   );
   return userEvent.setup();
 }

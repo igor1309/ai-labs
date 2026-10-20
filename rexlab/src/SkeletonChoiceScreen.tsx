@@ -1,12 +1,12 @@
 import { Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 // A dinosaur whose skeleton can be built: its name, its picture and
 // whether its finished skeleton has earned its star.
@@ -53,16 +53,13 @@ export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, 
 }
 
 function ChoiceCard({ language, choice, index, onChoose }: { language: Language; choice: SkeletonChoiceView; index: number; onChoose: (id: string) => void }) {
-  const pointer = usePointerState();
   const name = choice.name.toLocaleUpperCase(language);
   return (
-    <button
-      type="button"
+    <Button
       className="card skeleton-choice"
       aria-label={name}
       style={{ "--choice": index } as CSSProperties}
       onClick={() => onChoose(choice.id)}
-      {...pointer}
     >
       <span className="skeleton-choice-art">
         <Picture className="skeleton-choice-picture" src={choice.picture} alt="" width={800} height={600} />
@@ -73,6 +70,6 @@ function ChoiceCard({ language, choice, index, onChoose }: { language: Language;
         )}
       </span>
       <span className="skeleton-choice-name">{name}</span>
-    </button>
+    </Button>
   );
 }

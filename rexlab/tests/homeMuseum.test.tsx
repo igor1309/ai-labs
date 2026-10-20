@@ -8,6 +8,7 @@ import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
 import { PALETTE, contrast, gameDoor, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // home-museum.feature
 
@@ -149,53 +150,51 @@ describe("the museum on the home page", () => {
     expect([onHomePage(), hall()]).toEqual([true, null]);
   });
 
-  it.each([
-    ["en", 1024],
-    ["ru", 1024],
-    ["ru", 1133],
-    ["en", 1366],
-    ["ru", 1366]
-  ] as const)("stands on one line with RexLab and the menus, in %s at %ipx wide, above the greeting", (language, width) => {
-    openHomeApp({ deviceLanguage: DEVICES[language] });
+  it.each(windowsAnd([1366, 1024]).flatMap(([width, height]) => LANGUAGES.map((language) => [language, width, height] as const)))(
+    "stands on one line with RexLab and the menus, in %s in a %i by %i window, above the greeting",
+    (language, width, height) => {
+      openWindow(width, height);
+      openHomeApp({ deviceLanguage: DEVICES[language] });
 
-    const button = museumButton(language);
-    const museumStyle = getComputedStyle(button);
-    expect(museumStyle.whiteSpace).toBe("nowrap");
-    const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
-    // Each button shows its face: a symbol or a picture, and at most a code.
-    const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
-      const style = getComputedStyle(menuButton);
-      const face = menuButton.querySelector(".parent-menu-face");
-      if (!face) throw new Error("A parents' menu button shows nothing");
-      const symbol = menuButton.querySelector("svg");
-      const picture = menuButton.querySelector(".parent-menu-picture");
-      const code = menuButton.querySelector(".parent-menu-code")?.textContent;
-      const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(getComputedStyle(picture).width)] : []), ...(code ? [wordWidth(code, style)] : [])];
-      expect(parts.length).toBeGreaterThan(0);
-      return boxWidth(menuButton, rowWidth(menuButton, [rowWidth(face, parts)]));
-    });
-    expect(menuButtons).toHaveLength(3);
-    const corner = partOf(".home-corner");
-    // The widths add up along one row, every part centred on it.
-    for (const row of [corner, partOf(".parent-menus"), button, partOf(".wordmark")]) {
-      const style = getComputedStyle(row);
-      expect([style.display, style.flexDirection || "row", style.flexWrap || "nowrap", style.alignItems]).toEqual(["flex", "row", "nowrap", "center"]);
+      const button = museumButton(language);
+      const museumStyle = getComputedStyle(button);
+      expect(museumStyle.whiteSpace).toBe("nowrap");
+      const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
+      // Each button shows its face: a symbol or a picture, and at most a code.
+      const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
+        const style = getComputedStyle(menuButton);
+        const face = menuButton.querySelector(".parent-menu-face");
+        if (!face) throw new Error("A parents' menu button shows nothing");
+        const symbol = menuButton.querySelector("svg");
+        const picture = menuButton.querySelector(".parent-menu-picture");
+        const code = menuButton.querySelector(".parent-menu-code")?.textContent;
+        const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(getComputedStyle(picture).width)] : []), ...(code ? [wordWidth(code, style)] : [])];
+        expect(parts.length).toBeGreaterThan(0);
+        return boxWidth(menuButton, rowWidth(menuButton, [rowWidth(face, parts)]));
+      });
+      expect(menuButtons).toHaveLength(3);
+      const corner = partOf(".home-corner");
+      // The widths add up along one row, every part centred on it.
+      for (const row of [corner, partOf(".parent-menus"), button, partOf(".wordmark")]) {
+        const style = getComputedStyle(row);
+        expect([style.display, style.flexDirection || "row", style.flexWrap || "nowrap", style.alignItems]).toEqual(["flex", "row", "nowrap", "center"]);
+      }
+      const cornerWidth = boxWidth(corner, rowWidth(corner, [museum, boxWidth(partOf(".parent-menus"), rowWidth(partOf(".parent-menus"), menuButtons))]));
+      const wordmark = partOf(".wordmark");
+      const wordmarkStyle = getComputedStyle(wordmark);
+      const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), wordWidth("RexLab", wordmarkStyle)]);
+
+      const cornerLeft = width - px(getComputedStyle(corner).right) - cornerWidth;
+      expect(cornerLeft - (px(wordmarkStyle.left) + wordmarkWidth)).toBeGreaterThanOrEqual(px(getComputedStyle(corner).gap));
+      // The corner and the wordmark end above where the greeting begins.
+      const greetingTop = px(getComputedStyle(partOf(".home")).paddingTop);
+      const menusStyle = getComputedStyle(partOf(".parent-menus"));
+      const menuHeight = Math.max(...[...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => px(getComputedStyle(menuButton).minHeight)));
+      const cornerHeight = Math.max(px(museumStyle.height), px(menusStyle.paddingTop) + menuHeight + px(menusStyle.paddingBottom));
+      expect(px(getComputedStyle(corner).top) + cornerHeight).toBeLessThanOrEqual(greetingTop);
+      expect(px(wordmarkStyle.top) + px(wordmarkStyle.height)).toBeLessThanOrEqual(greetingTop);
     }
-    const cornerWidth = boxWidth(corner, rowWidth(corner, [museum, boxWidth(partOf(".parent-menus"), rowWidth(partOf(".parent-menus"), menuButtons))]));
-    const wordmark = partOf(".wordmark");
-    const wordmarkStyle = getComputedStyle(wordmark);
-    const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), wordWidth("RexLab", wordmarkStyle)]);
-
-    const cornerLeft = width - px(getComputedStyle(corner).right) - cornerWidth;
-    expect(cornerLeft - (px(wordmarkStyle.left) + wordmarkWidth)).toBeGreaterThanOrEqual(px(getComputedStyle(corner).gap));
-    // The corner and the wordmark end above where the greeting begins.
-    const greetingTop = px(getComputedStyle(partOf(".home")).paddingTop);
-    const menusStyle = getComputedStyle(partOf(".parent-menus"));
-    const menuHeight = Math.max(...[...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => px(getComputedStyle(menuButton).minHeight)));
-    const cornerHeight = Math.max(px(museumStyle.height), px(menusStyle.paddingTop) + menuHeight + px(menusStyle.paddingBottom));
-    expect(px(getComputedStyle(corner).top) + cornerHeight).toBeLessThanOrEqual(greetingTop);
-    expect(px(wordmarkStyle.top) + px(wordmarkStyle.height)).toBeLessThanOrEqual(greetingTop);
-  });
+  );
 
   it.each(["light", "dark"] as const)("reads in the %s theme, brightens under a pointer and presses in", async (theme) => {
     const { user } = openHomeApp({ appearance: theme });

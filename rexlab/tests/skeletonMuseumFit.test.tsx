@@ -5,21 +5,16 @@ import { TEXTS } from "../src/language/texts.ts";
 import type { Theme } from "../src/theme.ts";
 import { keptSkeletons, openSkeletonsApp } from "./skeletonsApp.tsx";
 import { PALETTE, sameColour } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // skeleton-assembly-museum.feature: each stand's button on its own under
 // its exhibit, in the hall's rows of three and its centred row of two,
 // with as much room under the buttons as above the names, nothing cut
 // off, and the amber ring of a stand awaiting its skeleton.
 
-// Windows in landscape, in CSS pixels: the iPads, the narrowest first, a
-// Mac window, as the museum was seen in, and a wide screen.
-const WINDOWS = [
-  [1024, 768],
-  [1180, 820],
-  [1366, 1024],
-  [1475, 820],
-  [1920, 1080]
-] as const;
+// Windows in landscape, in CSS pixels: the shared ones, more iPads and a
+// Mac window, as the museum was seen in.
+const WINDOWS = windowsAnd([1180, 820], [1366, 1024], [1475, 820]);
 
 // The least height of an exhibit, so a skeleton shows on it.
 const EXHIBIT = 96;
@@ -55,6 +50,7 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
   });
 
   it.each(WINDOWS)("leaves as much room under the buttons as above the names, and cuts nothing off, in a %i by %i window", async (width, height) => {
+    openWindow(width, height);
     const { hall, stands } = await openMuseum(language, theme);
 
     // jsdom lays nothing out, so the hall is laid out here as app.css

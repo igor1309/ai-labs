@@ -258,19 +258,19 @@ describe("an interrupted drag", () => {
   });
 
   it("pauses in portrait behind the picture asking to turn the iPad, cancelling the drag, and resumes as it was", async () => {
-    const { orientation, storage } = await openPuzzle("TYRANNOSAURUS");
+    const { viewport, storage } = await openPuzzle("TYRANNOSAURUS");
     fit(TYRANNOSAURUS, "skull");
     fit(TYRANNOSAURUS, "tail");
     pickUp("legs");
     moveTo(homeOf(TYRANNOSAURUS, "legs"));
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
     expect([screen.queryByRole("group", { name: "SKELETON" }), screen.queryAllByRole("button"), lifted()]).toEqual([null, [], null]);
     release(homeOf(TYRANNOSAURUS, "legs"));
 
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
     layOutPuzzle();
 
     expect(fittedPieces()).toEqual(["skull", "tail"]);

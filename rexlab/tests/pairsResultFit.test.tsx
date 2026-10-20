@@ -6,15 +6,12 @@ import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
 import { NAME_EMS } from "./nameWidths.ts";
 import { withPictures } from "./pictures.tsx";
 import { SHIPPED_PALS, fakeBodyPicture } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom does not lay out a page. Read the delivered CSS and budget its
 // grid, rows and text using conservative widths in ems: Lexend's bold
 // Latin face and the iPad's Cyrillic face. Names use the shared measures.
-const FIT_TABLE = [
-  ["Explorer", 9, 1024, 768],
-  ["Paleontologist", 12, 1024, 768],
-  ["Paleontologist", 12, 1366, 1024]
-] as const;
+const FIT_TABLE = windowsAnd([1366, 1024]).flatMap(([width, height]) => [["Explorer", 9, width, height] as const, ["Paleontologist", 12, width, height] as const]);
 
 const WORD_EMS: Record<string, number> = {
   "PLAY AGAIN": 7.2, HOME: 3.2, BACK: 2.9, "WELL DONE!": 7.5, "FIRST BEST!": 7.6,
@@ -57,6 +54,7 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
   it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
     "keeps every name, reward and action on screen in %s, %s",
     (language, theme) => {
+      openWindow(width, height);
       const text = TEXTS[language];
       render(
         <div data-theme={theme}>
@@ -78,7 +76,7 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
       );
 
       const outer = style(".pairs-result");
-      expect([outer.display, outer.boxSizing, outer.height]).toEqual(["grid", "border-box", "100dvh"]);
+      expect([outer.display, outer.boxSizing, outer.height]).toEqual(["grid", "border-box", `${height}px`]);
       const room = { width: width - sides(outer), height: height - vertical(outer) };
       const columns = /^minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)$/.exec(outer.gridTemplateColumns);
       if (!columns) throw new Error(`Unknown result grid: ${outer.gridTemplateColumns}`);

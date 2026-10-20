@@ -36,7 +36,7 @@ describe("itemPictures", () => {
 });
 
 describe("every care picture", () => {
-  const itemPicture = appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).itemPicture;
+  const itemPicture = appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).itemPicture;
   const fileOf = (name: string) => join(ROOT, itemPicture(name).replace(/\?.*$/, ""));
 
   it("is a 400×300 WebP with alpha, of its own, read from its file", () => {

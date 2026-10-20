@@ -1,4 +1,5 @@
 import { Funnel } from "lucide-react";
+import { Button } from "./Button.tsx";
 import { DIET_SYMBOLS, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -32,7 +33,7 @@ export function FoodChips({ language, choices, chosen, onChoose }: FoodChipsProp
       {choices.map(({ food, count }) => {
         const word = food === "all" ? text.everyFood : text.diets[food];
         return (
-          <button key={food} type="button" className="food-chip" data-food={food} aria-label={word} aria-pressed={food === chosen} onClick={() => onChoose(food)}>
+          <Button key={food} className="food-chip" data-food={food} aria-label={word} aria-pressed={food === chosen} onClick={() => onChoose(food)}>
             <span className="food-chip-face">
               <span className="food-chip-symbols" aria-hidden="true">
                 {SYMBOLS[food].map((Symbol, index) => (
@@ -46,7 +47,7 @@ export function FoodChips({ language, choices, chosen, onChoose }: FoodChipsProp
                 </>
               )}
             </span>
-          </button>
+          </Button>
         );
       })}
     </div>

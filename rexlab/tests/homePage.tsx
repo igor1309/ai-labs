@@ -10,11 +10,11 @@ import { withPictures } from "./pictures.tsx";
 export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig"]> = [
   ["compare", "quizCard"],
   ["catalogue", "catalogueTile"],
-  ["care", "care"],
-  ["sort", "sort"],
   ["pairs", "pairs"],
   ["skeletons", "skeletons"],
-  ["dig", "dig"]
+  ["dig", "dig"],
+  ["sort", "sort"],
+  ["care", "care"]
 ];
 
 const nothing = () => {};

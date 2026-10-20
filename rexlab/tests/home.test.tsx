@@ -32,7 +32,7 @@ import {
   loadShownPictures,
   loadedPictures,
   manualPictures,
-  manualOrientation,
+  manualViewport,
   memoryStorage,
   seededRandom,
   symbolOf,
@@ -41,6 +41,7 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // The home page, its large card COMPARE's unless `featured` names
 // another game.
@@ -54,7 +55,7 @@ function openHomePage(
   dig = emptyDig(),
   featured: HomeGame = "compare"
 ) {
-  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pictures} />);
+  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={new Set()} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard() };
 }
 
@@ -245,6 +246,10 @@ function linesOf(words: string, size: number, spacing: number, room: number): st
   return missing === undefined ? lines : { missing };
 }
 
+// The windows the home page's budgets keep: the shared ones, and more
+// iPads'.
+const HOME_WINDOWS = windowsAnd([1180, 820], [1366, 1024]);
+
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -262,7 +267,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, SKELETONS over DIG, then MORE COMING, last", () => {
+  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -271,7 +276,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ALL DINOSAURS", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -341,7 +346,8 @@ describe("the home page", () => {
     expect(featuredCard()).toBe(tilesRow().previousElementSibling);
   });
 
-  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, at %ipx wide", (width) => {
+  it.each(HOME_WINDOWS)("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, in a %i by %i window", (width, height) => {
+    openWindow(width, height);
     const { card } = openHomePage();
 
     const row = tilesRow();
@@ -366,16 +372,17 @@ describe("the home page", () => {
   const TILE_TITLES: Array<[HomeGame, string, string]> = [
     ["compare", "COMPARE", "7"],
     ["catalogue", "ALL DINOSAURS", String(SHIPPED_CATALOGUE.length)],
-    ["care", "CARE", "8"],
-    ["sort", "SORT", "6"],
     ["pairs", "FIND THE PAIR", "120"],
     ["skeletons", "SKELETONS", "3"],
-    ["dig", "DIG", "7"]
+    ["dig", "DIG", "7"],
+    ["sort", "SORT", "6"],
+    ["care", "CARE", "8"]
   ];
 
-  it.each([1024, 1180, 1366].flatMap((width) => (["compare", "care"] as const).map((featured) => [width, featured] as const)))(
-    "keeps the title of every game on one line in every language at %ipx wide, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
-    (width, featured) => {
+  it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
+    "keeps the title of every game on one line in every language in a %i by %i window, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
+    (width, height, featured) => {
+      openWindow(width, height);
       const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
       openHomePage(
         withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })),
@@ -434,13 +441,13 @@ describe("the home page", () => {
     }
   );
 
-  it("offers find the pair as a tile under SORT, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
+  it("offers find the pair as a tile under ALL DINOSAURS, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
-    // The row fills two tiles to a column: the fourth tile is the second
+    // The row fills two tiles to a column: the second tile is the first
     // column's lower one, COMPARE's tile left out for the large card.
-    expect([...tilesRow().children].indexOf(tile)).toBe(3);
+    expect([...tilesRow().children].indexOf(tile)).toBe(1);
     expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("FIND THE PAIR");
     expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
@@ -762,9 +769,10 @@ describe("the large card", () => {
     }
   );
 
-  it.each([1024, 1180, 1366])(
-    "fits every game's name on two lines at most in every language at %ipx wide, in pixels larger than every tile's name",
-    (width) => {
+  it.each(HOME_WINDOWS)(
+    "fits every game's name on two lines at most in every language in a %i by %i window, in pixels larger than every tile's name",
+    (width, height) => {
+      openWindow(width, height);
       const overflowing = HOME_GAMES.flatMap(([game, key]) => {
         const { unmount } = renderHomePageFeaturing(game);
         const title = featuredCard().querySelector(".featured-card-title");
@@ -799,7 +807,7 @@ describe("the large card", () => {
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
+      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={new Set()} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
     );
     await tap(userEvent.setup());
     const asked: string[] = [];
@@ -871,7 +879,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for two taps on the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
+    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={new Set()} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
     const card = featuredCard();
 
     act(() => {
