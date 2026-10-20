@@ -228,9 +228,9 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	}
 	bashFacts, claudeFacts, codexFacts := b.Facts(), claude.Facts(), cx.Facts()
 	turns := []turn{
-		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), budget: bashFacts.Budget, runtime: bashTurns},
-		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), budget: claudeFacts.Budget, runtime: claudeTurns},
-		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), budget: codexFacts.Budget, runtime: codexTurns},
+		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), cost: bashFacts.Cost, runtime: bashTurns},
+		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), cost: claudeFacts.Cost, runtime: claudeTurns},
+		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), cost: codexFacts.Cost, runtime: codexTurns},
 	}
 	home := homeFolder(user, machine.environ)
 	events, err := newProgress(stderr)

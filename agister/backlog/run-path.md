@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first nineteen slices: commands on runs, reaping, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first twenty slices: commands on runs, reaping, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -26,8 +26,8 @@ definitions with their digests, compared by a reuse; the sixteenth
 seventeenth ("A call's plan") each call's permission plan and
 environment; the eighteenth ("A call's cost") a cost limit kept on
 what a runtime reports, and each turn's own cost; the nineteenth
-("A daily budget") home's budget for a day's spend across runs. What
-it
+("A daily budget") home's budget for a day's spend across runs; the
+twentieth ("Codex's cost") codex's cost through `ccusage`. What it
 leaves out, roughly in the order it is needed:
 
 - **Commands on runs**: other commands on runs than `export`.
@@ -37,10 +37,8 @@ leaves out, roughly in the order it is needed:
   than the grace and does not yet end.
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
   turn on pi; skills
-  given to a turn; codex's cost through `ccusage`, so a cost limit on
-  codex spends it, and codex's usage on a resumed thread counted once; the
-  version warning (ADR-003, rule 8), from the version the
-  turn reports.
+  given to a turn; the version warning (ADR-003, rule 8), from the
+  version the turn reports.
 - **Staleness on bash**: the no-event limit on every runtime (ADR-012,
   rule 6), bash's lines reported as the models' are.
 - **Operators**: a parallel of more than steps, and a field read

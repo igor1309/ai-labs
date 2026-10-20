@@ -12,7 +12,7 @@ import (
 
 // resume.feature, "A turn given a session runs exec resume": the sandbox
 // a config, the session before "-", the schema's file gone once the turn
-// has returned.
+// has returned; its lookup before it is cost.feature's.
 func TestATurnGivenASessionRunsExecResume(t *testing.T) {
 	t.Parallel()
 	folder := t.TempDir()
@@ -21,10 +21,11 @@ func TestATurnGivenASessionRunsExecResume(t *testing.T) {
 	if _, err := wrapper(t, spy, folder).Run(context.Background(), turn, discard); err != nil {
 		t.Fatal(err)
 	}
-	if len(spy.asked) != 1 {
-		t.Fatalf("asked %+v, want one program", spy.asked)
+	asked := ran(spy, "codex")
+	if len(asked) != 1 {
+		t.Fatalf("asked %+v, want codex once", spy.asked)
 	}
-	args := spy.asked[0].Args
+	args := asked[0].Args
 	i := slices.Index(args, "--output-schema")
 	if i < 0 || i+1 >= len(args) {
 		t.Fatalf("arguments %q, want --output-schema and its file", args)
@@ -37,8 +38,8 @@ func TestATurnGivenASessionRunsExecResume(t *testing.T) {
 		"exec", "resume", "--json", "--skip-git-repo-check", "--config", `sandbox_mode="workspace-write"`,
 		"--config", `approval_policy="never"`, "--ignore-user-config", "--ignore-rules", "--model", "gpt-6.1-sol",
 		"--output-schema", file, "s1", "-"}}
-	if !reflect.DeepEqual(spy.asked[0], want) {
-		t.Errorf("asked\n got %+v\nwant %+v", spy.asked[0], want)
+	if !reflect.DeepEqual(asked[0], want) {
+		t.Errorf("asked\n got %+v\nwant %+v", asked[0], want)
 	}
 	if string(spy.schema) != "{}" {
 		t.Errorf("the schema's file held %q, want {}", spy.schema)
@@ -69,7 +70,7 @@ func TestAResumedTurnLeavesOutWhatIsNotGiven(t *testing.T) {
 			if _, err := wrapper(t, spy, t.TempDir()).Run(context.Background(), c.turn, discard); err != nil {
 				t.Fatal(err)
 			}
-			if want := []codex.Program{{Name: "codex", Stdin: "m", Args: c.args}}; !reflect.DeepEqual(spy.asked, want) {
+			if want := []codex.Program{{Name: "codex", Stdin: "m", Args: c.args}}; !reflect.DeepEqual(ran(spy, "codex"), want) {
 				t.Errorf("asked\n got %+v\nwant %+v", spy.asked, want)
 			}
 		})

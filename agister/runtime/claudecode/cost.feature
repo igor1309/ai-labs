@@ -9,7 +9,8 @@ Feature: The claude-code wrapper counts a turn's own cost
     Given a success result of the session "s1" and the cost 1.25
     When claude-code runs the message "m" with the session "s1", its
       cost before 1
-    Then the reply's cost is 0.25, and its session's cost 1.25
+    Then the reply's cost is 0.25, its source "claude-code", and its
+      session's cost 1.25
 
   Scenario: A turn given no session counts from zero
     Given a success result of the session "s1" and the cost 0.25

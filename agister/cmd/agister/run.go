@@ -54,11 +54,11 @@ type host struct {
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,
-// how it takes a call's inputs, whether it takes a budget, and its turns.
+// how it takes a call's inputs, whether it reports a cost, and its turns.
 type turn struct {
 	contract string
 	inputs   call.Inputs
-	budget   bool
+	cost     bool
 	runtime  call.Runtime
 }
 
@@ -192,7 +192,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	for name, planned := range built.calls {
 		if limit := planned.step.CostLimit; limit != nil {
 			for _, runtime := range r.turns {
-				if runtime.contract == planned.contract && !runtime.budget {
+				if runtime.contract == planned.contract && !runtime.cost {
 					runtimeName := resolved.Agents[planned.agent].Runtime.Value
 					planned.step.Warnings = append(planned.step.Warnings, fmt.Sprintf("the runtime %s reports no cost: the cost limit %g spends nothing", runtimeName, *limit))
 					planned.step.CostLimit = nil
@@ -1252,7 +1252,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	if err != nil {
 		return s.refused(err.Error(), step.Warnings)
 	}
-	ended.sessionCost = called.SessionCost
+	ended.sessionCost, ended.costSource = called.SessionCost, called.CostSource
 	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts, cost: called.SessionCost}, step.Session, called.Session)
 	var usage workflow.Usage
 	if u := called.Usage; u != nil {
@@ -1395,7 +1395,7 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 	ended := call.Ended{Code: result.Ended.Code, Signal: result.Ended.Signal, Stdout: stream(result.Ended.Stdout), Stderr: stream(result.Ended.Stderr),
 		Session: result.Session}
 	if r := result.Reply; r != nil {
-		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost, SessionCost: r.SessionCost,
+		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session, Cost: r.Cost, SessionCost: r.SessionCost, CostSource: r.CostSource,
 			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, CacheWrite: r.Usage.CacheWrite},
 			Failure: call.Class(r.Failure), Reason: r.Reason}
 	}
@@ -1421,8 +1421,10 @@ func codexInputs(inputs codex.Inputs) call.Inputs {
 
 // codexTurns answers core/call's runtime from the codex wrapper: the turn's
 // prompt is its message, each line it reports core's, the session it read
-// core's, and its reply core's, its failure class by its name, its cost
-// unknown, codex reporting none. A program that could not start is core's ErrNotStarted.
+// core's, and its reply core's, its failure class by its name, its cost,
+// session's cost, cost source and why its cost is unknown as the wrapper
+// gives them. A turn is given no budget: codex takes none. A program that
+// could not start is core's ErrNotStarted.
 type codexTurns struct {
 	codex codexRuns
 }
@@ -1457,6 +1459,7 @@ func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.
 		Session: result.Session}
 	if r := result.Reply; r != nil {
 		ended.Reply = &call.Reply{Text: r.Text, Output: r.Output, Session: r.Session,
+			Cost: r.Cost, SessionCost: r.SessionCost, CostSource: r.CostSource, CostUnknown: r.CostUnknown,
 			Usage:   call.Usage{Input: r.Usage.Input, Output: r.Usage.Output, CacheRead: r.Usage.CacheRead, Reasoning: r.Usage.Reasoning},
 			Failure: call.Class(r.Failure), Reason: r.Reason}
 	}

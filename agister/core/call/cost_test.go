@@ -145,3 +145,31 @@ func TestTheCallsSessionCostIsOnlyItsLastTurnsReport(t *testing.T) {
 		t.Fatalf("result %+v, turns %+v; want killed, unknown session cost, last turn given 1.25", got, spy.given)
 	}
 }
+
+// cost.feature, "A call gives its cost's source, and why a cost is
+// unknown".
+func TestACallGivesItsCostsSourceAndWhyACostIsUnknown(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(start)
+	spy := &runtimeSpy{turn: inOrder(
+		replies(call.Reply{Session: "s1", Cost: dollars(0.25), CostSource: "ccusage", Failure: call.Capacity}),
+		replies(call.Reply{Text: "done", Session: "s1", CostUnknown: "no totalCost"}),
+	)}
+	done := calling(context.Background(), recoveringCaller(t, spy, &stalenessSpy{}, clock), call.Step{}, discard)
+	clock.Started(30 * time.Second)
+	clock.Advance(30 * time.Second)
+	got := <-done
+	if got.Status != call.Completed || got.Cost != nil || got.CostSource != "" || !reflect.DeepEqual(got.Warnings, []string{"no totalCost"}) {
+		t.Fatalf("result %+v, want completed, its cost unknown, no source, the warning %q", got, "no totalCost")
+	}
+}
+
+// cost.feature, "A call whose turns all gave a cost gives their source".
+func TestACallWhoseTurnsAllGaveACostGivesTheirSource(t *testing.T) {
+	t.Parallel()
+	spy := &runtimeSpy{turn: replies(call.Reply{Text: "done", Cost: dollars(0.25), CostSource: "ccusage"})}
+	got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{}, discard)
+	if got.Status != call.Completed || !reflect.DeepEqual(got.Cost, dollars(0.25)) || got.CostSource != "ccusage" || len(got.Warnings) != 0 {
+		t.Fatalf("result %+v, want completed, its cost 0.25 from ccusage, no warning", got)
+	}
+}

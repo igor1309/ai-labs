@@ -143,11 +143,13 @@ type Result struct {
 }
 
 // CallResult is a call's result: its outcome, its session, nil for none,
-// and the last turn's reported session cost in US dollars, nil where unknown.
+// the last turn's reported session cost in US dollars, nil where unknown,
+// and whose price its cost is, nil where its cost is unknown.
 type CallResult struct {
 	Outcome
 	Session     *string  `json:"session"`
 	SessionCost *float64 `json:"session_cost"`
+	CostSource  *string  `json:"cost_source"`
 }
 
 // Usage is the tokens used, each nil where it is unknown.
