@@ -62,7 +62,10 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(column()?.getAttribute("aria-hidden")).toBeNull();
     expect(choices().map((card) => card.dataset.choice)).toEqual(offered[level]);
     expect(choices().map((card) => card.getAttribute("aria-label"))).toEqual(offered[level].map((_, at) => `${TEXTS[language].whoIsIt} ${at + 1} / ${offered[level].length}`));
-    for (const card of choices()) expect([pictureOf(card), card.textContent]).toEqual([fakeBodyPicture(card.dataset.choice!), ""]);
+    for (const card of choices()) {
+      expect([pictureOf(card), card.textContent, getComputedStyle(card.querySelector("img")!).filter]).toEqual([fakeBodyPicture(card.dataset.choice!), "", "grayscale(1)"]);
+      expect(card.hasAttribute("data-correct")).toBe(false);
+    }
     expect(document.querySelector("main")?.textContent).not.toMatch(/TYRANNOSAURUS|ТИРАННОЗАВР/);
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
@@ -186,7 +189,9 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     brushUntilAsked();
     const [rejected, other] = wrongCards();
     fireEvent.click(rejected!);
-    expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity]).toEqual([true, true, "0.25"]);
+    expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity,
+      getComputedStyle(rejected!.querySelector("img")!).opacity, rejected!.textContent, rejected!.getAttribute("aria-label")])
+      .toEqual([true, true, "1", "0.45", `↻ ${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt} ${choices().indexOf(rejected!) + 1} / ${choices().length}: ${TEXTS.en.digChoice.tryAnother}`]);
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
@@ -196,6 +201,10 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(choiceCard(rejected!.dataset.choice).disabled).toBe(true);
     fireEvent.click(choiceCard());
     expect(board().hasAttribute("data-blown")).toBe(true);
+    expect(choiceCard().hasAttribute("data-correct")).toBe(true);
+    expect(getComputedStyle(choiceCard().querySelector("img")!).filter).toBe("grayscale(0)");
+    expect(choiceCard().textContent).toBe("✓");
+    expect(choiceCard().getAttribute("aria-label")).toContain(TEXTS.en.digChoice.right);
     expect([title(), choices().length, choices().every((card) => card.disabled)]).toEqual([TEXTS.en.whoIsIt, offered[level].length, true]);
     const before = board().getAttribute("data-clear");
     drag([[0, 590], [800, 590]], 90_000);

@@ -5139,11 +5139,13 @@ body:has(.result) #version {
 }
 
 .dig-choice-card {
+  position: relative;
+  overflow: hidden;
   padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: opacity var(--motion-standard) var(--ease-out);
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
   animation: fade-in var(--motion-small) var(--ease-out) both;
 }
 
@@ -5179,7 +5181,11 @@ body:has(.result) #version {
 }
 
 .dig-choice-card[data-rejected] {
-  opacity: 0.25;
+  border-color: #b83b2b;
+}
+
+.dig-choice-card[data-correct] {
+  border-color: #2e7d4f;
 }
 
 .dig-choice-picture {
@@ -5187,6 +5193,51 @@ body:has(.result) #version {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: grayscale(1);
+  transition: filter var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
+}
+
+.dig-choice-card[data-rejected] .dig-choice-picture {
+  opacity: 0.45;
+}
+
+.dig-choice-card[data-correct] .dig-choice-picture {
+  filter: grayscale(0);
+}
+
+.dig-choice-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px #1d274233;
+}
+
+.dig-choice-mark-correct {
+  background: #2e7d4f;
+  color: white;
+}
+
+.dig-choice-mark-rejected {
+  top: auto;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  min-height: 34px;
+  padding: 5px 8px;
+  background: #fffdf8;
+  color: #c9583d;
+  font-size: clamp(11px, 1.2vw, 15px);
+  white-space: nowrap;
 }
 
 .dig-spot-picture {
@@ -7407,6 +7458,23 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 [data-theme="dark"] .dig-choice-card {
   background: #181e2e;
   border-color: #a4aec7;
+}
+
+[data-theme="dark"] .dig-choice-card[data-rejected] {
+  border-color: #f08a78;
+}
+
+[data-theme="dark"] .dig-choice-card[data-correct] {
+  border-color: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-correct {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-rejected {
+  background: #181e2e;
+  color: #e57a5d;
 }
 
 [data-theme="dark"] .dig-spot-picture {
