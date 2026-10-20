@@ -56,7 +56,7 @@ function spend(pictures: ManualPictures, seconds: number) {
 describe("Paleontologist's puzzle", () => {
   it.each([
     ["TYRANNOSAURUS", "tyrannosaurus", 11, ["triceratops/frill", "stegosaurus/spikes", "stegosaurus/front-plates"]],
-    ["TRICERATOPS", "triceratops", 10, ["tyrannosaurus/head", "stegosaurus/back-plates"]],
+    ["TRICERATOPS", "triceratops", 10, ["tyrannosaurus/head", "stegosaurus/back-plates", "spinosaurus/back-sail"]],
     ["STEGOSAURUS", "stegosaurus", 10, ["tyrannosaurus/head", "triceratops/frill", "tyrannosaurus/arms"]],
     ["BRACHIOSAURUS", "brachiosaurus", 10, ["tyrannosaurus/head", "spinosaurus/front-sail", "stegosaurus/spikes"]],
     ["SPINOSAURUS", "spinosaurus", 10, ["triceratops/frill", "brachiosaurus/upper-neck", "stegosaurus/spikes"]]
@@ -180,7 +180,7 @@ describe("Paleontologist's puzzle", () => {
     const [last = "", ...others] = [...(triceratops.cuts.paleontologist ?? [])].map(({ id }) => id).reverse();
     dragTo("tyrannosaurus/head", AWAY);
     for (const piece of others.reverse()) fit(triceratops, piece);
-    expect([counter(), strays()]).toEqual(["9/10", ["tyrannosaurus/head", "stegosaurus/back-plates"]]);
+    expect([counter(), strays()]).toEqual(["9/10", ["tyrannosaurus/head", "stegosaurus/back-plates", "spinosaurus/back-sail"]]);
 
     fit(triceratops, last);
     expect([counter(), strays()]).toEqual(["10/10", []]);

@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- At Paleontologist, Triceratops's tray holds a Spinosaurus sail among the other dinosaurs' bones, three in all (LAB-334).
 - DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
 - DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).
 - DIG at Explorer shows three find cards, each a close-up of a detail on the dinosaur, ticked with a star as the child brushes it clear in any order; after ten quiet seconds the next detail shows through the sand, and the gust comes once all three are found (LAB-343).
