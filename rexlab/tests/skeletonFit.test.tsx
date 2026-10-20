@@ -159,9 +159,9 @@ function actionsOverflow() {
 }
 
 // Each stand takes a third of the hall inside its sides and the gaps of
-// a row of three, however many stands there are, and its button the
-// stand's width inside the plinth's sides, its words sized by the stand's
-// width. Returns the size of the words too.
+// a row of three, however many stands there are, and its button, on its
+// own under the exhibit, the stand's width, its words sized by the
+// stand's width. Returns the size of the words too.
 function standsOverflow() {
   const hall = document.querySelector(".skeleton-hall");
   if (!hall) throw new Error("No museum hall");
@@ -174,11 +174,11 @@ function standsOverflow() {
   );
   const stand = (contentWidth() - widthOf(hall) - gap * 2) / 3;
   return stands.map((each) => {
-    const plinth = each.querySelector(".skeleton-plinth");
-    const button = plinth?.querySelector("button");
-    if (!plinth || !button) throw new Error("A stand with no button on its plinth");
+    const button = each.querySelector(":scope > button");
+    if (!button) throw new Error("A stand with no button of its own");
+    expect(getComputedStyle(button).alignSelf).toBe("stretch");
     const size = sizeOf(button, stand);
-    return { size, overflow: overflow(button, neededBy(button, size), stand - widthOf(plinth)) };
+    return { size, overflow: overflow(button, neededBy(button, size), stand) };
   });
 }
 

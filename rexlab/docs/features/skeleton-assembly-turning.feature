@@ -15,6 +15,7 @@ Feature: Skeleton assembly: turning a piece
     When I tap Tyrannosaurus, the draw turning the skull a quarter and the tail tip half
     Then the skull and the tail tip lie turned in their spots
     And each carries a small turn mark, so it shows it can be turned
+    And the mark is dimmer than any words, in either theme, yet clear as a symbol
     And every other piece lies the right way up, with no mark
 
   Scenario: A tap turns a piece a quarter

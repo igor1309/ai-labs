@@ -15,6 +15,20 @@ Feature: Skeleton assembly: the museum and rebuilding
     And each empty stand offers building its dinosaur with a bone picture
     And I see "BUILD ANOTHER" and "HOME" with their symbols
 
+  Scenario Outline: The hall fits its stands, each button on its own
+    Given the app is in <language> and uses either theme
+    And I have finished Tyrannosaurus and started rebuilding Triceratops
+    When I open "MUSEUM" in a landscape window from 1024 by 768 up
+    Then each stand's "BUILD" or "BUILD AGAIN" button stands on its own under its exhibit, on no card
+    And the hall leaves as much room under the buttons as above the names
+    And nothing is cut off, in the row of three or the two centred below
+    And the Triceratops exhibit and its button keep their amber dashed ring
+
+    Examples:
+      | language |
+      | English  |
+      | Russian  |
+
   Scenario: A finished skeleton has its own exhibit
     Given I have finished Triceratops but neither of the other skeletons
     When I open "MUSEUM"
