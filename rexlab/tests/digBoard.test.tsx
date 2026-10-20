@@ -281,6 +281,43 @@ describe("the brush", () => {
     const row = clearCells().filter((cell) => cell.startsWith("15:"));
     expect(row).toEqual(expect.arrayContaining(["15:10", "15:15", "15:20", "15:25", "15:29"]));
     expect(board().querySelectorAll(".dig-puff").length).toBeGreaterThan(1);
+    expect(getComputedStyle(board().querySelector(".dig-puff .dig-grain")!).animation)
+      .toBe("dig-grain-out calc(2 * var(--motion-standard)) var(--ease-spring) both, dig-grain-toss calc(2 * var(--motion-standard)) var(--ease-out) both");
+  });
+
+  it.each([false, true])("springs its ring in under the finger, follows it on a spring and shrinks it away as it lifts, or just shows it, reduced motion %s", (reducedMotion) => {
+    openRound({ reducedMotion });
+    const ring = () => board().querySelector<HTMLElement>(".dig-brush");
+    // React uses WebKit's event name when jsdom has no AnimationEvent.
+    const ends = (element: HTMLElement) => fireEvent(element, new Event("webkitAnimationEnd", { bubbles: true }));
+
+    pressAt(board(), 0, { x: 200, y: 300 });
+    const pressed = ring()!;
+    expect([pressed.style.left, pressed.style.top]).toEqual(["25%", "50%"]);
+    expect(getComputedStyle(pressed).animation).toBe(reducedMotion ? "" : "dig-brush-in var(--motion-standard) var(--ease-spring) both");
+    expect(getComputedStyle(pressed).transition).toBe(reducedMotion ? "" : "left var(--motion-small) var(--ease-spring), top var(--motion-small) var(--ease-spring)");
+    // The end of its springing in leaves it under the finger.
+    ends(pressed);
+    moveAt(10, { x: 300, y: 450 });
+    expect(ring()).toBe(pressed);
+    expect([pressed.style.left, pressed.style.top, pressed.hasAttribute("data-leaving")]).toEqual(["37.5%", "75%", false]);
+
+    releaseAt(window, 20, { x: 300, y: 450 });
+    if (reducedMotion) {
+      expect(ring()).toBeNull();
+      return;
+    }
+    expect(ring()).toBe(pressed);
+    expect(pressed.hasAttribute("data-leaving")).toBe(true);
+    expect(getComputedStyle(pressed).animation).toBe("dig-brush-out calc(var(--motion-standard) / 2) var(--ease-out) both");
+    // A press as it shrinks springs a new ring in at once.
+    pressAt(board(), 600, { x: 400, y: 150 });
+    const again = ring()!;
+    expect(again).not.toBe(pressed);
+    expect([again.style.left, again.style.top, again.hasAttribute("data-leaving")]).toEqual(["50%", "25%", false]);
+    releaseAt(window, 610, { x: 400, y: 150 });
+    ends(again);
+    expect(ring()).toBeNull();
   });
 
   it("just clears the sand under reduced motion, with no grains", () => {
