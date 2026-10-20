@@ -1,21 +1,24 @@
 Feature: Every screen fits a landscape window
   Every screen is laid out for a landscape window and fits from the
   smallest iPad to the largest and in a landscape Mac window at least 1024
-  CSS pixels wide, with nothing under the iPad's rounded corners or its
-  home indicator. The page never pulls to refresh or bounces, and a
-  pointer that can hover is shown what it can press (LAB-326). Landscape
-  windows under 600 CSS pixels tall (iPhone landscape) or under 1024 wide
-  are laid out by each screen's own stage (LAB-325).
+  by 670 CSS pixels, with nothing under rounded corners, a home indicator
+  or a notch. The page never pulls to refresh or bounces, and a pointer
+  that can hover is shown what it can press (LAB-326). Landscape windows
+  under 670 CSS pixels tall (iPhone landscape among them) or under 1024
+  wide are laid out by each screen's own stage (LAB-325).
 
   The tests lay nothing out, so fit is the budget each fit test keeps: a
   screen's named parts measured in ems of the font and CSS pixels against
-  the window, as the existing fit features do.
+  the window, as the existing fit features do. Budgets count no safe-area
+  inset: the iPad's home indicator takes about 20 CSS pixels at the
+  bottom of a full-screen window, which still leaves it taller than the
+  Safari rows below.
 
   Scenario Outline: A landscape window from the iPad mini to a large Mac display
     Given a window of <width> by <height> CSS pixels
     When I open any screen of the app
     Then its content is at most 1440 CSS pixels wide, centred, with the screen's background filling the window
-    And every fitted part keeps its budget: find the pair's result, the skeleton choice, puzzle and museum, the sort baskets, and DIG's question and reveal
+    And every existing fit budget that is measured against the window keeps it at this size
 
     Examples:
       | width | height | device                        |

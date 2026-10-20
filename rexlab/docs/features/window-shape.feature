@@ -5,7 +5,9 @@ Feature: The window's shape
   with no layout yet for a portrait window shows a picture asking to turn
   sideways when the device's screen is upright, and to make the window
   wider when the screen is already sideways (Split View, Stage Manager, a
-  Mac); the screen keeps its place behind it (LAB-325, LAB-326).
+  Mac); the screen keeps its place behind it (LAB-325, LAB-326). A
+  browser that cannot tell whether the device's screen is upright counts
+  it as upright when the window is portrait.
 
   The window is in one of four size classes, a square window counting as
   portrait:
@@ -20,9 +22,9 @@ Feature: The window's shape
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
     When the app opens
-    Then the app's root names its size class, <class>
+    Then the page's root element names its size class, <class>
     When the window becomes <new width> by <new height>
-    Then the app's root names its size class, <new class>, on the same screen and in the same state
+    Then the page's root element names its size class, <new class>, on the same screen and in the same state
 
     Examples:
       | width | height | class       | new width | new height | new class   |

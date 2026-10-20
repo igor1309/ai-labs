@@ -9,7 +9,7 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 
 ## 1. Product scope
 
-- **Platform:** Web application, optimized for iPad in landscape orientation.
+- **Platform:** Web application, iPad first, laid out by the window's size class for iPad, iPhone and Mac (`docs/features/window-shape.feature`); every screen fits a landscape window today, and portrait comes screen by screen (LAB-325).
 - **Audience:** Children aged 5–7, who are just learning to read: dinosaur names in large capitals, meaning carried by symbols and pictures, touch-friendly controls.
 - **First game:** Two dinosaur cards; choose the dinosaur that matches a comparison question (e.g., bigger, heavier, taller).
 - **Round:** 10 pairs/questions, with immediate answer feedback and a final score.
@@ -114,7 +114,7 @@ const newBest = previousBest === null ? currentScore : Math.max(previousBest, cu
 
 Use `firstBest` and `beatPersonalBest` to trigger the **first best** and **new personal best** celebrations; a first round of 0/10 is not celebrated. Each finished round increments `roundsPlayed`; an unfinished round changes nothing. Stored progress that is unreadable or has an unknown `schemaVersion` counts as no progress: the round is scored as a first round and its record replaces the bad one. When storage cannot be read at all, the round shows its score but no best score and no celebration. When progress can be read but not saved, the round is shown and celebrated against what was read, and nothing is saved. Achievements (LAB-266) start with: first completed round, perfect 10/10, improved personal best. Browser storage may be cleared; this is an accepted product trade-off.
 
-## 6. iPad interaction constraints
+## 6. Touch and window constraints
 
 - Landscape-first layout with side-by-side cards.
 - Large typography and large touch targets for six-year-olds.
@@ -138,7 +138,7 @@ Agreed: Vitest, the runner that comes with the Vite stack, with Testing Library 
 
 1. Behaviour is specified in Gherkin under `rexlab/docs/features/`; each scenario is proved by a test under `rexlab/tests/`. A feature tagged `@next` is not yet built.
 2. Game rules are plain functions, free of React and of the browser, and are tested directly in Node (`*.test.ts`). For the quiz, `src/quiz/` makes a round: every question compares two distinct dinosaurs on an attribute it can ask, with the larger value at least 1.5 times the smaller, and no pair repeats (`round.test.ts`, over many seeds and the shipped list). The best score keeps the best ever, not the last round (`bestScore.test.ts`, `progress.test.ts`). The care, sorting, pairs and skeleton rules are tested the same way.
-3. Screens and whole flows render `App` in jsdom (`*.test.tsx`), with the app's stylesheet loaded so computed styles can be checked. jsdom lays nothing out, so where fit matters (a name on one line) the widths are measured in ems of the font and checked against each iPad's width.
+3. Screens and whole flows render `App` in jsdom (`*.test.tsx`), with the app's stylesheet loaded so computed styles can be checked. jsdom lays nothing out, so where fit matters (a name on one line) the widths are measured in ems of the font and checked against each window size in `docs/features/window-fit.feature`.
 4. Whatever the browser decides is passed to `App` by `src/root.ts`, the composition root: local storage, the random source, the clock, timers, picture loading, the window's size class and whether the device's own screen is upright, theme and motion queries. Tests pass their own: a memory storage, a seeded random source, a fixed clock, timers and pictures that fire when the test says. So a weighted draw, a day boundary or a slow picture is tested without waiting or chance. `root.test.ts` checks that the root wires the real browser.
 5. `architecture.test.ts` reads the import graph and keeps it so: the quiz is reached only through `src/quiz/index.ts` and imports nothing but the languages, and screens, texts and themes are kept free of the quiz.
 6. `rexlab/scripts/test.sh` runs the same steps as CI: clean install, typecheck, tests, build. CI runs them on every pull request that touches RexLab (section 7).
