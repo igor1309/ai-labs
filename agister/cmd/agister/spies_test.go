@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -35,15 +36,17 @@ type typed[T any] struct {
 // and the blocks its test gives, and nothing else. A document it is asked
 // for that its test does not answer fails the test.
 type documentsSpy struct {
-	t             *testing.T
-	workflows     map[string]typed[documents.WorkflowDefinition]
-	processes     map[string]typed[documents.ProcessDefinition]
-	agents        map[string]typed[documents.AgentDefinition]
-	runtimes      map[string]typed[documents.RuntimeDefinition]
-	briefs        map[string]typed[documents.BriefDefinition]
-	blobs         map[documents.Kind]map[string][]documents.Problem
-	blocks        []documents.Field[documents.Block]
-	blockProblems []documents.Problem
+	t              *testing.T
+	workflows      map[string]typed[documents.WorkflowDefinition]
+	processes      map[string]typed[documents.ProcessDefinition]
+	agents         map[string]typed[documents.AgentDefinition]
+	runtimes       map[string]typed[documents.RuntimeDefinition]
+	briefs         map[string]typed[documents.BriefDefinition]
+	blobs          map[documents.Kind]map[string][]documents.Problem
+	blocks         []documents.Field[documents.Block]
+	blockProblems  []documents.Problem
+	budget         documents.Field[float64]
+	budgetProblems []documents.Problem
 }
 
 func newDocumentsSpy(t *testing.T) *documentsSpy {
@@ -97,6 +100,10 @@ func (s *documentsSpy) Blob(kind documents.Kind, name string) (documents.Blob, [
 
 func (s *documentsSpy) Blocks() ([]documents.Field[documents.Block], []documents.Problem) {
 	return slices.Clone(s.blocks), slices.Clone(s.blockProblems)
+}
+
+func (s *documentsSpy) Budget() (documents.Field[float64], []documents.Problem) {
+	return s.budget, slices.Clone(s.budgetProblems)
 }
 
 // sourceOf is the source over spy and the layout snapshot, failing t
@@ -641,6 +648,10 @@ type storeSpy struct {
 	patchWrites              []string
 	patchesMissingAtWrite    []string
 	kept                     map[string]runstore.Record
+	readIDs                  []string
+	listed                   int
+	failRuns                 error
+	failRecord               map[string]error
 	mu                       sync.Mutex
 	folders                  []string
 	records                  []runstore.Record
@@ -686,6 +697,10 @@ func (s *storeSpy) Write(record runstore.Record) error {
 	if len(s.records) == s.failWrite {
 		return errFull
 	}
+	if s.kept == nil {
+		s.kept = map[string]runstore.Record{}
+	}
+	s.kept[record.ID] = record
 	return nil
 }
 
@@ -749,10 +764,19 @@ func (s *storeSpy) exported() []storedExport {
 }
 
 func (s *storeSpy) Runs() ([]string, error) {
-	return slices.Sorted(maps.Keys(s.kept)), nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.listed++
+	return slices.Sorted(maps.Keys(s.kept)), s.failRuns
 }
 
 func (s *storeSpy) Record(id string) (runstore.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.readIDs = append(s.readIDs, id)
+	if err := s.failRecord[id]; err != nil {
+		return runstore.Record{}, err
+	}
 	record, ok := s.kept[id]
 	if !ok {
 		return runstore.Record{}, &fs.PathError{Op: "open", Path: id + "/record.json", Err: fs.ErrNotExist}
@@ -797,3 +821,5 @@ func (s *callsSpy) told() []endedCall {
 	defer s.mu.Unlock()
 	return slices.Clone(s.ended)
 }
+
+func noDailyBudget() (*call.DailyBudget, []string) { return nil, nil }

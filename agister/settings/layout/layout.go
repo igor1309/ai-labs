@@ -70,6 +70,8 @@ type Snapshot struct {
 	// none, or it cannot be read. They are no document: no kind, no name,
 	// no other layer.
 	Blocks *Source
+	// Budget is home's budget file, nil where absent or unreadable.
+	Budget *Source
 	// Problems are those of no document, each of its layer: a layer folder
 	// or a kind's folder that cannot be listed, a layer folder that does
 	// not exist, blocks, a file whose name is no name, a folder in a
@@ -109,6 +111,9 @@ type Problem struct {
 // ErrBlocksOutsideRepository is the problem of a blocks file in the home or
 // the project folder.
 var ErrBlocksOutsideRepository = errors.New("blocks belong to the repository folder alone")
+
+// ErrBudgetOutsideHome is the problem of a budget in another layer.
+var ErrBudgetOutsideHome = errors.New("a budget belongs to the home folder alone")
 
 // ErrNoLayerFolder is the problem of a layer folder given that does not
 // exist.
@@ -246,7 +251,7 @@ func (l *Layout) readFolders(folders Folders) Snapshot {
 	return snapshot
 }
 
-// readLayer reads a layer folder's blocks and kinds' folders. Anything else
+// readLayer reads a layer folder's blocks, budget and kinds' folders. Anything else
 // there, hidden or not, is no settings, and is neither listed nor read.
 func (l *Layout) readLayer(snapshot *Snapshot, at layer, folder string) {
 	entries, err := l.files.Entries(folder)
@@ -261,6 +266,8 @@ func (l *Layout) readLayer(snapshot *Snapshot, at layer, folder string) {
 		switch {
 		case entry.Kind == RegularFile && entry.Name == blocksFile:
 			l.readBlocks(snapshot, at, filepath.Join(folder, entry.Name))
+		case entry.Kind == RegularFile && entry.Name == "budget.yaml":
+			l.readBudget(snapshot, at, filepath.Join(folder, entry.Name))
 		case entry.Kind == Folder:
 			if files, ok := kindOfFolder(entry.Name); ok {
 				l.readKind(snapshot, at, filepath.Join(folder, entry.Name), files)
@@ -282,6 +289,20 @@ func (l *Layout) readBlocks(snapshot *Snapshot, at layer, path string) {
 		return
 	}
 	snapshot.Blocks = &Source{Path: path, Bytes: bytes}
+}
+
+// readBudget reads only home's budget; other layers cannot set the ceiling.
+func (l *Layout) readBudget(snapshot *Snapshot, at layer, path string) {
+	if at != home {
+		snapshot.Problems = append(snapshot.Problems, Problem{Path: path, Err: ErrBudgetOutsideHome})
+		return
+	}
+	bytes, err := l.files.Bytes(path)
+	if err != nil {
+		snapshot.Problems = append(snapshot.Problems, Problem{Path: path, Err: err})
+		return
+	}
+	snapshot.Budget = &Source{Path: path, Bytes: bytes}
 }
 
 // readKind reads a kind's folder of a layer. A hidden entry is no

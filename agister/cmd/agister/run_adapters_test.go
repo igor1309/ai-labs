@@ -122,7 +122,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: "a", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}})
 	unplugged := sayCall("x")
 	unplugged.declared.Inputs[0].Source = "git.revision"
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged}, &callsSpy{})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	count := func(n int64) *int64 { return &n }
 	spy := &turnSpy{result: call.Result{Status: call.Lost, Class: call.NoResult, Session: "s1", Reason: "exited 0",
 		Usage: &call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}}
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}

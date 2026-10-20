@@ -251,7 +251,8 @@ type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // "" for none; its time limit, none when zero; its staleness limits; its
 // recovery; and the warnings of its plan. SessionCostBefore is the
 // continued session's earlier cost, nil where unknown; CostLimit is the
-// call's limit in US dollars, nil for none.
+// call's limit in US dollars, nil for none; DailyBudget is the day's
+// ceiling and spend before this call, nil for none.
 type Step struct {
 	Prompt            string
 	Environment       map[string]string
@@ -265,10 +266,43 @@ type Step struct {
 	Session           string
 	SessionCostBefore *float64
 	CostLimit         *float64
+	DailyBudget       *DailyBudget
 	TimeLimit         time.Duration
 	Staleness         Limits
 	Recovery          Recovery
 	Warnings          []string
+}
+
+// DailyBudget is the day's ceiling and its spend before this call, in US dollars.
+type DailyBudget struct {
+	Cost, Spent float64
+}
+
+// spentReason gives the exhausted budget's reason, the call's limit first.
+func (s Step) spentReason(knownCost float64) string {
+	if s.CostLimit != nil && knownCost >= *s.CostLimit {
+		return fmt.Sprintf("the cost limit %g is spent: %g", *s.CostLimit, knownCost)
+	}
+	if day := s.DailyBudget; day != nil && day.Spent+knownCost >= day.Cost {
+		return fmt.Sprintf("the daily budget %g is spent: %g", day.Cost, day.Spent+knownCost)
+	}
+	return ""
+}
+
+// budget is the least of what remains of the limit and of the day.
+func (s Step) budget(knownCost float64) *float64 {
+	var budget *float64
+	if s.CostLimit != nil {
+		left := *s.CostLimit - knownCost
+		budget = &left
+	}
+	if day := s.DailyBudget; day != nil {
+		left := day.Cost - day.Spent - knownCost
+		if budget == nil || left < *budget {
+			budget = &left
+		}
+	}
+	return budget
 }
 
 // Recovery is how many recovery turns a call may make, none when zero, and
@@ -400,6 +434,11 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 		result.Status, result.Class = Interrupted, Cancelled
 		return result
 	}
+	if reason := step.spentReason(0); reason != "" {
+		result := timed()
+		result.Status, result.Class, result.Reason = Failed, BudgetExhausted, reason
+		return result
+	}
 	callCtx, cancel := context.WithCancelCause(ctx)
 	watched := c.watch(callCtx, cancel, step.TimeLimit)
 	turn := c.turn(step)
@@ -408,17 +447,14 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	// atCapacity counts the call's turns at capacity; interrupted is the
 	// cause of the call's context where it ended a wait.
 	atCapacity, interrupted := 0, error(nil)
-	knownCost, spent := 0.0, false
+	knownCost, spent := 0.0, ""
 	before := step.SessionCostBefore
 	if step.Session == "" {
 		before = new(float64)
 	}
 	for {
 		turn.SessionCostBefore = before
-		if step.CostLimit != nil {
-			remaining := *step.CostLimit - knownCost
-			turn.Budget = &remaining
-		}
+		turn.Budget = step.budget(knownCost)
 		last := c.take(callCtx, turn, step.Staleness, report)
 		turns = append(turns, last)
 		before = nil
@@ -430,10 +466,12 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 		}
 		if reason, ok := last.atCapacity(); ok {
 			atCapacity++
-			spent = step.CostLimit != nil && knownCost >= *step.CostLimit && last.strayed == "" && callCtx.Err() == nil
+			if last.strayed == "" && callCtx.Err() == nil {
+				spent = step.spentReason(knownCost)
+			}
 			wait := time.Duration(atCapacity) * capacityWait
 			left := step.TimeLimit - c.clock.Now().Sub(started)
-			if spent || atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
+			if spent != "" || atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
 				wait = 0
 			}
 			report(Report{Capacity: &CapacityTurn{Reason: reason, Retry: wait}})
@@ -455,6 +493,12 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 		}
 		session := last.session()
 		recovering := resumes > 0 && session != "" && last.strayed == "" && !went[stale.What] && callCtx.Err() == nil
+		// No recovery turn starts once the call's limit or the day is
+		// spent; the call ends for it.
+		if recovering {
+			spent = step.spentReason(knownCost)
+			recovering = spent == ""
+		}
 		report(Report{Stale: &StaleTurn{What: stale.What, Recovering: recovering}})
 		if !recovering {
 			break
@@ -472,9 +516,8 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	result := timed()
 	counted(&result, turns)
 	switch {
-	case spent:
-		result.Status, result.Class = Failed, BudgetExhausted
-		result.Reason = fmt.Sprintf("the cost limit %g is spent: %g", *step.CostLimit, knownCost)
+	case spent != "":
+		result.Status, result.Class, result.Reason = Failed, BudgetExhausted, spent
 	case errors.Is(interrupted, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout
 	case interrupted != nil:

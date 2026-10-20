@@ -13,7 +13,7 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
   another, and the invariants every part keeps
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-013
-  (2026-10-15)
+  (2026-10-15), ADR-014 (2026-10-20)
 - **Revised:** 2026-10-16, settings, by the owner: `settings/check`
   declares a third port, a document's fields with their sources, for
   inspect

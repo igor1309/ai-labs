@@ -33,10 +33,11 @@ const (
 )
 
 // Snapshot is each document, by kind and name, and the repository's
-// blocks file, nil for none.
+// blocks file and home's budget file, each nil for none.
 type Snapshot struct {
 	Documents map[Kind]map[string]Document
 	Blocks    *Source
+	Budget    *Source
 }
 
 // Document is a document's sources and the problems of its files. A
@@ -99,6 +100,7 @@ type Documents struct {
 	workflows map[string]definition[WorkflowDefinition]
 	// blocks are the repository's blocks typed.
 	blocks definition[[]Field[Block]]
+	budget definition[Field[float64]]
 }
 
 type treeResult struct {
@@ -177,6 +179,9 @@ func newDocuments(snapshot Snapshot, decode decoder, typers typers) *Documents {
 	d.workflows = typeEach(d.trees[Workflow], typers.workflow)
 	if snapshot.Blocks != nil {
 		d.blocks = blocksOf(*snapshot.Blocks, decode)
+	}
+	if snapshot.Budget != nil {
+		d.budget = budgetOf(*snapshot.Budget, decode)
 	}
 	return d
 }
