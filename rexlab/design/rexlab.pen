@@ -78439,7 +78439,8 @@
       "content": "8 · REVEAL\nThe board slides away and the dinosaur glides into the hero spot, whole, never cut off at the edge. The name, the star, DUG UP, the level switch and the buttons arrive one after another, 60 ms apart. The live screen should match this layout.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "text",
@@ -78453,7 +78454,8 @@
       "content": "1 · START\nAll sand, nothing showing: no cards, no outline, no hint of who is under it. Each round hides a dinosaur the child has not dug up yet, where one is left. Motion: the board drops in, the sand settles with a puff.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "frame",
@@ -78731,7 +78733,8 @@
       "content": "2 · BRUSHING\nCrumbly edges, a lip of grains, the sand's shadow in the hollow. When a telling part first shows (an eye, a horn, a frill), it shines once with a ring and a star pop. The picture itself is the progress; nothing else on screen.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "frame",
@@ -79035,7 +79038,8 @@
       "content": "3 · BONUS FIND\nNow and then the sand holds a surprise: a shell, a tooth, a drop of amber, rarely an egg nest or a golden fossil. It glows, hops, and goes to the Field Guide. It does not end or speed the round.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "text",
@@ -79049,7 +79053,8 @@
       "content": "4 · WHO IS IT?\nAt 75% of the dinosaur uncovered the board slides left, its size unchanged, and three small look-alikes slide in on the trailing side (four at Paleontologist). The child can pick, or keep brushing for a better look. Hatchling has no question and digs to the end.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "text",
@@ -79063,7 +79068,8 @@
       "content": "5 · A WRONG PICK\nThe card shakes twice and fades; it stays out. The child digs on and picks again. No other penalty, but only a first-pick win earns the bonus star.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "text",
@@ -79077,7 +79083,8 @@
       "content": "6 · THE RIGHT PICK\nThe card turns green, the others fade, and the gust blows the last sand off the board in one sweep, about 0.8 s. With reduced motion the sand just fades.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "frame",
@@ -79394,7 +79401,8 @@
       "content": "7 · LIFT\nThe board grows back, the dinosaur rises off its bed with a warm glow (0.5 s), and its star flies into the DUG UP count, which ticks up to 5/39.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
     },
     {
       "type": "frame",
@@ -81820,7 +81828,2770 @@
       "content": "B · EMPTY SLOTS FROM THE START\nThe board never moves: the side column holds three empty slots from the first stroke, and at 75% the three dinosaurs flip in, one after another. It promises a question is coming; the cost is a narrower board from the start and three blanks the child cannot use for most of the round. Wrong and right picks then go as in 5 and 6.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
-      "fontSize": 24
+      "fontSize": 24,
+      "fontWeight": "normal"
+    },
+    {
+      "type": "text",
+      "id": "B0aKi",
+      "x": 1664,
+      "y": 39260,
+      "name": "DIG Treasures Title",
+      "fill": "$fm-ink",
+      "content": "LAB-362 · Treasures in the sand and the FIELD GUIDE",
+      "fontFamily": "Lexend",
+      "fontSize": 44,
+      "fontWeight": "700"
+    },
+    {
+      "type": "frame",
+      "id": "Xq6Ah",
+      "x": 1664,
+      "y": 39370,
+      "name": "Dig · Treasure art",
+      "fill": "#FFFDF8",
+      "gap": 40,
+      "padding": 40,
+      "children": [
+        {
+          "type": "frame",
+          "id": "cUKDd",
+          "name": "Art SHELL",
+          "width": 400,
+          "height": 400,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-shell.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "b88KbF",
+          "name": "Art TOOTH",
+          "width": 400,
+          "height": 400,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-tooth.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "zixyh",
+          "name": "Art AMBER",
+          "width": 400,
+          "height": 400,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-amber.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "WEh98",
+          "name": "Art EGG NEST",
+          "width": 400,
+          "height": 400,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-egg-nest.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "iG7fi",
+          "name": "Art GOLDEN FOSSIL",
+          "width": 400,
+          "height": 400,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-golden-fossil.webp",
+            "mode": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "E6aWUE",
+      "x": 1664,
+      "y": 39930,
+      "name": "Dig · Treasures 1 — Light · Hatchling · a shell brushed clear glows and hops",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "PM865",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "J5WEHX",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Y7lsh",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "jbWCS",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FVTBE",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nWSpv",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "ZYNr1",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "lqS3x",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KCGrs",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "RmLPu",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "xAHDz",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kRfdu",
+              "name": "Field Guide Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 18,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                18,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bxEpP",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "#B98A45"
+                },
+                {
+                  "type": "text",
+                  "id": "d4fH4",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CPzAw",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KE9ZF",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "h5XaIs",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xeBqq",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "EAiqp",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3-keep-digging.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "UM6R8",
+                  "x": 640,
+                  "y": 480,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "ZC5fk",
+                  "x": 127.91000000000003,
+                  "y": 212.8725,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "i4XlY",
+                  "x": 253.91000000000003,
+                  "y": 178.8725,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "ellipse",
+                  "id": "k9Cfi",
+                  "x": 768,
+                  "y": 550,
+                  "name": "Bed Hollow",
+                  "fill": "#9c7146",
+                  "width": 124,
+                  "height": 112,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 8
+                },
+                {
+                  "type": "frame",
+                  "id": "soJ5J",
+                  "x": 792,
+                  "y": 568,
+                  "name": "Bonus Shell",
+                  "rotation": -8,
+                  "width": 76,
+                  "height": 76,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "ellipse",
+                  "id": "lVGlY",
+                  "x": 772,
+                  "y": 548,
+                  "name": "Bonus Glow",
+                  "fill": "#F2C14E22",
+                  "width": 116,
+                  "height": 116,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 5
+                },
+                {
+                  "type": "text",
+                  "id": "lsBav",
+                  "x": 814,
+                  "y": 514,
+                  "name": "Hop Mark",
+                  "fill": "#E0A526",
+                  "content": "⌃",
+                  "fontFamily": "Lexend",
+                  "fontSize": 30,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "G3nu4",
+      "x": 4784,
+      "y": 39930,
+      "name": "Dig · Field Guide — Light · 3 shells and an egg nest, 2/5 kinds",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "NZsel",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "U0AloC",
+              "name": "Home Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bseEw",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "Ybh3a",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "l1HGBh",
+              "name": "Back Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "uZSCc",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "SPAvf",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "BACK",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "z4yeju",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "b2NqD1",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "j1pRf",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "K5bGw",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "FIELD GUIDE",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SCUlQ",
+              "name": "Kinds Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "SaCIS",
+                  "name": "Kinds Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "gem",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "V5dEyQ",
+                  "name": "Kinds Text",
+                  "fill": "$fm-ink",
+                  "content": "2/5",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "C59V5m",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Pxiis",
+              "name": "Card SHELL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "aeHXE",
+                  "name": "Picture SHELL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "W2eeM",
+                  "name": "Name SHELL",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "SHELL",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "FWhf5",
+                  "name": "Count SHELL",
+                  "fill": "#B98A45",
+                  "content": "×3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "p8mV6",
+              "name": "Card TOOTH",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fwDVj",
+                  "name": "Picture TOOTH",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "MgwfA",
+                  "name": "Unknown TOOTH",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uylC5",
+              "name": "Card AMBER",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wX7Zu",
+                  "name": "Picture AMBER",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "O4AZXJ",
+                  "name": "Unknown AMBER",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OBDVk",
+              "name": "Card EGG NEST",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jBCuA",
+                  "name": "Picture EGG NEST",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "Tch1m",
+                  "name": "Name EGG NEST",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "EGG NEST",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "VYprg",
+                  "name": "Count EGG NEST",
+                  "fill": "#B98A45",
+                  "content": "×1",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fNGPW",
+              "name": "Card GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CVBpH",
+                  "name": "Picture GOLDEN FOSSIL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "tq2HO",
+                  "name": "Unknown GOLDEN FOSSIL",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "IjJFo",
+      "x": 3224,
+      "y": 39930,
+      "name": "Dig · Treasures 2 — Light · Hatchling · the shell flies into the FIELD GUIDE, NEW!",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "A5K4Ky",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "wSjYp",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "WkLo0",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "CttTS",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "M08Ym",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Z1qHv",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "zY28O",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qGE1I",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KOCzm",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "I1yzd",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "l4Uax",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nwqu4",
+              "name": "Field Guide Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 18,
+              "stroke": "#E0A526",
+              "strokeWidth": 3,
+              "gap": 10,
+              "padding": [
+                0,
+                18,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "P5fst",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "#B98A45"
+                },
+                {
+                  "type": "text",
+                  "id": "I95Z3",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-ink",
+                  "content": "4",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D3Xy8",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KTyoX",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "xpRNK",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "C53kl",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "DWw4C",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3-keep-digging.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "Y0eQrh",
+                  "x": 640,
+                  "y": 480,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "ukgOK",
+                  "x": 127.91000000000003,
+                  "y": 212.8725,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "H3UNf",
+                  "x": 253.91000000000003,
+                  "y": 178.8725,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "ellipse",
+                  "id": "N80uY",
+                  "x": 768,
+                  "y": 550,
+                  "name": "Bed Hollow",
+                  "fill": "#9c7146",
+                  "width": 124,
+                  "height": 112,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 8
+                },
+                {
+                  "type": "frame",
+                  "id": "wfag2",
+                  "x": 836,
+                  "y": 612,
+                  "name": "Bonus Shell",
+                  "enabled": false,
+                  "rotation": -8,
+                  "width": 76,
+                  "height": 76,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "ellipse",
+                  "id": "iRada",
+                  "x": 816,
+                  "y": 592,
+                  "name": "Bonus Glow",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 116,
+                  "height": 116,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 5
+                },
+                {
+                  "type": "text",
+                  "id": "Vnfsd",
+                  "x": 858,
+                  "y": 560,
+                  "name": "Hop Mark",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "⌃",
+                  "fontFamily": "Lexend",
+                  "fontSize": 30,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "path",
+          "id": "RiIi6",
+          "layoutPosition": "absolute",
+          "x": 1060,
+          "y": 100,
+          "name": "Flight Path",
+          "geometry": "M10 630c10-210 80-410 130-630",
+          "viewBox": [
+            0,
+            0,
+            150,
+            630
+          ],
+          "fill": "#00000000",
+          "width": 150,
+          "height": 630,
+          "stroke": "#E0A52699",
+          "strokeWidth": 4
+        },
+        {
+          "type": "frame",
+          "id": "c7b4o",
+          "layoutPosition": "absolute",
+          "x": 1096,
+          "y": 24,
+          "name": "New Badge",
+          "height": 32,
+          "fill": "#E0A526",
+          "cornerRadius": 16,
+          "padding": [
+            0,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "v7UgD",
+              "name": "New Text",
+              "fill": "#FFFFFF",
+              "content": "NEW!",
+              "fontFamily": "Lexend",
+              "fontSize": 16,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ksr2l",
+          "layoutPosition": "absolute",
+          "x": 1052,
+          "y": 560,
+          "name": "Flight 560",
+          "opacity": 0.25,
+          "width": 46,
+          "height": 46,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-shell.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "s3sD1",
+          "layoutPosition": "absolute",
+          "x": 1090,
+          "y": 370,
+          "name": "Flight 360",
+          "opacity": 0.45,
+          "width": 40,
+          "height": 40,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-shell.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "y1SI0",
+          "layoutPosition": "absolute",
+          "x": 1128,
+          "y": 190,
+          "name": "Flight 190",
+          "opacity": 0.7,
+          "width": 34,
+          "height": 34,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-treasure-shell.webp",
+            "mode": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "n05st",
+      "x": 6344,
+      "y": 39930,
+      "name": "Dig · Field Guide — Dark · 3 shells and an egg nest, 2/5 kinds",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "rkYNi",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "VS351",
+              "name": "Home Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "F7Yds",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "aIHw5",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XHzYa",
+              "name": "Back Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "D2wF1R",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "swdCW",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "BACK",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xFlqz",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j5Gh8",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Txiz3",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "PuBhV",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "FIELD GUIDE",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rJspY",
+              "name": "Kinds Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "IdaV2",
+                  "name": "Kinds Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "gem",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "uBgJK",
+                  "name": "Kinds Text",
+                  "fill": "$fm-ink",
+                  "content": "2/5",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CHyEe",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "dy1fn",
+              "name": "Card SHELL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eTjxk",
+                  "name": "Picture SHELL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "zjA39",
+                  "name": "Name SHELL",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "SHELL",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "c3v0v",
+                  "name": "Count SHELL",
+                  "fill": "#B98A45",
+                  "content": "×3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GGLU5",
+              "name": "Card TOOTH",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#222a3d",
+              "cornerRadius": 24,
+              "stroke": "#ece8de1f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "omUNM",
+                  "name": "Picture TOOTH",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline-dark.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "PnfgX",
+                  "name": "Unknown TOOTH",
+                  "fill": "#ece8de66",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JAvfy",
+              "name": "Card AMBER",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#222a3d",
+              "cornerRadius": 24,
+              "stroke": "#ece8de1f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VwFMs",
+                  "name": "Picture AMBER",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline-dark.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "PqQXy",
+                  "name": "Unknown AMBER",
+                  "fill": "#ece8de66",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S6ufi",
+              "name": "Card EGG NEST",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "O70k1o",
+                  "name": "Picture EGG NEST",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "R18Y9",
+                  "name": "Name EGG NEST",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "EGG NEST",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "j2tGA",
+                  "name": "Count EGG NEST",
+                  "fill": "#B98A45",
+                  "content": "×1",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XPRfN",
+              "name": "Card GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#222a3d",
+              "cornerRadius": 24,
+              "stroke": "#ece8de1f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oJhQs",
+                  "name": "Picture GOLDEN FOSSIL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline-dark.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "xKQ4B",
+                  "name": "Unknown GOLDEN FOSSIL",
+                  "fill": "#ece8de66",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "SVr3w",
+      "x": 7904,
+      "y": 39930,
+      "name": "Dig · Field Guide — Light · Russian · 2/5 kinds",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "iGH4g",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "aFvP7",
+              "name": "Home Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "L7vWca",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "Le70v",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "ДОМОЙ",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IBJUx",
+              "name": "Back Button",
+              "height": 60,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "B9cXC",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "jKCVH",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "НАЗАД",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "POCUw",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mi3d7",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "GhelA",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "goKBv",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "ПОЛЕВОЙ ДНЕВНИК",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z1UMU2",
+              "name": "Kinds Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "O3us4",
+                  "name": "Kinds Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "gem",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "DQynN",
+                  "name": "Kinds Text",
+                  "fill": "$fm-ink",
+                  "content": "2/5",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tFQSs",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "wrFaS",
+              "name": "Card SHELL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KmJbF",
+                  "name": "Picture SHELL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "tny2G",
+                  "name": "Name SHELL",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "РАКУШКА",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "d9ph8B",
+                  "name": "Count SHELL",
+                  "fill": "#B98A45",
+                  "content": "×3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SLOT4",
+              "name": "Card TOOTH",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GzYUP",
+                  "name": "Picture TOOTH",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "RQGGu",
+                  "name": "Unknown TOOTH",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ROG2k",
+              "name": "Card AMBER",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "T4TQLP",
+                  "name": "Picture AMBER",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "yi2gk",
+                  "name": "Unknown AMBER",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "C7EaKX",
+              "name": "Card EGG NEST",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OofTD",
+                  "name": "Picture EGG NEST",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "l7b4b",
+                  "name": "Name EGG NEST",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "ГНЕЗДО С ЯЙЦАМИ",
+                  "textAlign": "center",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "vrxXy",
+                  "name": "Count EGG NEST",
+                  "fill": "#B98A45",
+                  "content": "×1",
+                  "fontFamily": "Lexend",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w8Yuw",
+              "name": "Card GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 520,
+              "fill": "#e6e2d9",
+              "cornerRadius": 24,
+              "stroke": "#1d27421f",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": [
+                28,
+                16
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OBCIu",
+                  "name": "Picture GOLDEN FOSSIL",
+                  "width": 180,
+                  "height": 180,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline.webp",
+                    "mode": "contain"
+                  },
+                  "layout": "none"
+                },
+                {
+                  "type": "text",
+                  "id": "rU4QF",
+                  "name": "Unknown GOLDEN FOSSIL",
+                  "fill": "#1d274266",
+                  "content": "?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "PeP4R",
+      "x": 9464,
+      "y": 39930,
+      "name": "Dig · Treasures 3 — Light · Reveal · FIELD GUIDE on the bar",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-base",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "AJ00X",
+          "x": 0,
+          "y": 780,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 1440,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "OmTmh",
+          "x": 40,
+          "y": 270,
+          "name": "Hero Art",
+          "width": 640,
+          "height": 480,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/triceratops.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ljmBd",
+          "x": 700,
+          "y": 132,
+          "name": "Celebration",
+          "width": 680,
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "eUQtQ",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "f6fUq",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "TRICERATOPS",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 88,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "us4T9",
+                  "x": 144,
+                  "y": 118,
+                  "name": "Score Total",
+                  "enabled": false,
+                  "fill": "$fm-amber",
+                  "content": "/ 8",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 60,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ufU9K",
+              "name": "Stars",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Bi1UD",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 88,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kpYE9",
+                  "name": "Star New",
+                  "fill": "$fm-amber",
+                  "content": "NEW!",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "chkCr",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "DUG UP!",
+              "fontFamily": "Lexend",
+              "fontSize": 48,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "D27Zc6",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TLjSO",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "DUG UP",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "XZGZn",
+                  "name": "Best New",
+                  "fill": "$fm-amber",
+                  "content": "5/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ErbT8",
+              "name": "Level Switch",
+              "width": 648,
+              "height": 72,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QXXnw",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "E6AKl0",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eKh7g",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "HATCHLING",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dnfmB",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FGIbK",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R3bvI",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-base",
+                      "content": "EXPLORER",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JrYCT",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "GqB9C",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Tg1hJ",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-on-base",
+                      "content": "PALEONTOLOGIST",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZU5io",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Z5hjj",
+                  "name": "Play Again Button",
+                  "height": 80,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "o3DFQ",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ey5IT",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "DIG AGAIN",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "DICId",
+                  "name": "Home Button",
+                  "height": 80,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "lQUPQ",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eNoR2",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "HOME",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nSjaw",
+          "layoutPosition": "absolute",
+          "x": 56,
+          "y": 40,
+          "name": "Top Bar",
+          "width": 1328,
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "J7rdK8",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KrAHK",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "plfkS",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "wwqgB",
+                  "name": "Title Text",
+                  "fill": "$fm-on-base",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d7Sjnt",
+              "name": "Field Guide Button",
+              "height": 60,
+              "fill": "#00000033",
+              "cornerRadius": 18,
+              "gap": 10,
+              "padding": [
+                0,
+                18,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "B1DltT",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-amber"
+                },
+                {
+                  "type": "text",
+                  "id": "q4cFZ",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-on-base",
+                  "content": "4",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
