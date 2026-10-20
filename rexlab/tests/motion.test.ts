@@ -193,17 +193,9 @@ describe("the dig brush", () => {
     expect(Math.min(...spring.slice(peak))).toBeLessThan(1);
   });
 
-  it("springs its ring in from 0.7 past about 1.08 to 1 and shrinks it away over 120 ms, only as it moves", () => {
-    expect(frames("dig-brush-in")).toEqual({ from: { opacity: "0", scale: "calc(1 - 0.3 * var(--motion-amount))" } });
-    expect(0.7 + 0.3 * Math.max(...spring)).toBeCloseTo(1.08, 1);
-    expect(frames("dig-brush-out")).toEqual({ to: { opacity: "0", scale: "calc(1 - 0.4 * var(--motion-amount))" } });
-    expect(declared(PLAIN, ".dig-screen[data-motion] .dig-brush")).toEqual({
-      transition: "left var(--motion-small) var(--ease-spring), top var(--motion-small) var(--ease-spring)",
-      animation: "dig-brush-in var(--motion-standard) var(--ease-spring) both"
-    });
-    expect(declared(PLAIN, ".dig-screen[data-motion] .dig-brush[data-leaving]")).toEqual({ animation: "dig-brush-out calc(var(--motion-standard) / 2) var(--ease-out) both" });
-    expect(declared(PLAIN, ".dig-brush")).not.toHaveProperty("animation");
-    expect(declared(PLAIN, ".dig-brush")).not.toHaveProperty("transition");
+  it("draws no ring for the brush", () => {
+    expect(KEYFRAMES.map(({ prelude }) => prelude).filter((name) => name.startsWith("@keyframes dig-brush"))).toEqual([]);
+    expect(declared(PLAIN, ".dig-brush")).toEqual({});
   });
 
   it("tosses its grains out on the spring as they rise, popping in at 1.3 and shrinking to 0.6, while the board's landing grains fly straight", () => {
