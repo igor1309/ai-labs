@@ -18,7 +18,7 @@ const pads = (s: CSSStyleDeclaration) => px(s.paddingTop) + px(s.paddingBottom) 
 const sizes = [[1024, 768], [1133, 744], [1366, 1024]] as const;
 const levels = ["explorer", "paleontologist"] as const;
 
-function show(level: (typeof levels)[number], asking: boolean, language: (typeof LANGUAGES)[number]) {
+function show(level: (typeof levels)[number] | "hatchling", asking: boolean, language: (typeof LANGUAGES)[number]) {
   const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
   const round = asking ? brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 }) : started;
   render(<DigBoardScreen
@@ -38,6 +38,11 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
     const column = style(".dig-choice-cards");
     expect([outer.height, outer.overflow, body.display, board.height, board.maxHeight]).toEqual(["100dvh", "hidden", "flex", "auto", "100%"]);
     expect([board.aspectRatio, board.transform, board.translate]).toEqual(["var(--frame-width) / var(--frame-height)", "none", "none"]);
+    // The board and the column sit side by side, centred together in the
+    // body, the board first: nothing shifts the body or the board aside.
+    expect([body.flexDirection, body.justifyContent, body.alignItems, body.transform, body.translate]).toEqual(["row", "center", "center", "none", "none"]);
+    expect([board.marginLeft, board.marginRight, board.position, board.left]).toEqual(["0", "0", "relative", "auto"]);
+    expect(document.querySelector(".dig-board")?.nextElementSibling).toBe(document.querySelector(".dig-choice-cards"));
     expect(board.width).toBe("min(100% - 228px, 1.3333333333333333 * (100dvh - 180px))");
     expect([column.flexBasis, column.flexDirection, px(body.gap) + px(column.flexBasis)]).toEqual(["200px", "column", 228]);
     expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(asking ? CHOICES[level] : 0);
@@ -67,5 +72,18 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
       expect(document.querySelector(".dig-title")?.textContent).toContain(title);
       expect(title.length * 0.9 * px(style(".dig-title").fontSize) + 66 + 180 + 110 + 48).toBeLessThanOrEqual(roomWidth);
     }
+  });
+});
+
+describe.each(LANGUAGES)("Hatchling in %s", (language) => {
+  it("centres its board in the body, with no column beside it", () => {
+    show("hatchling", false, language);
+    const body = style(".dig-body");
+    const board = style(".dig-board");
+    expect(document.querySelector(".dig-body")?.hasAttribute("data-asks")).toBe(false);
+    expect(document.querySelector(".dig-choice-cards")).toBeNull();
+    expect([body.display, body.flexDirection, body.justifyContent, body.alignItems, body.transform, body.translate]).toEqual(["flex", "row", "center", "center", "none", "none"]);
+    expect([board.marginLeft, board.marginRight, board.transform, board.translate, board.left]).toEqual(["0", "0", "none", "none", "auto"]);
+    expect(document.querySelector(".dig-body")?.children).toHaveLength(1);
   });
 });
