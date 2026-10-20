@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- In DIG's Explorer and Paleontologist rounds the board stands still beside a column of empty "?" cards from the first stroke, one per choice, and at 75% each card turns over into a dinosaur, 60 ms apart; under reduced motion they fade in (LAB-364).
 - DIG's board drops in, slides aside for the question and gusts the sand away; the dinosaur lifts with a warm glow and sends its first star into DUG UP, then glides into the reveal as its rewards and buttons arrive one after another, with short fades under reduced motion (LAB-361).
 - A skeleton puzzle's board keeps its outline's shape, as large as fits beside the tray, at any window size; the tray's spots are square, at least 48 by 48, each bone large in its spot, and all fit in the tray in as many columns as they need (LAB-351).
 - A turned piece's turn mark is a little dimmer in both themes, still clear as a symbol (LAB-352).

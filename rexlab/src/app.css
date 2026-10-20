@@ -4853,7 +4853,6 @@ body:has(.result) #version {
   background: #fffdf8;
   touch-action: none;
   animation: none;
-  transition: transform var(--motion-screen) var(--ease-out);
 }
 
 .dig-board:not([data-lifting]) {
@@ -4914,8 +4913,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* The column reserves 228px including its gap. Half of that offset
-   centres the board until the question, without changing its size. */
+/* The column takes 228px including its gap, from the round's start, so
+   the board stands in one place, at one size, through the whole round. */
 .dig-body[data-asks] {
   gap: 28px;
 }
@@ -4928,10 +4927,6 @@ body:has(.result) #version {
   max-height: 100%;
 }
 
-.dig-screen[data-motion] .dig-body[data-asks]:not([data-choice]) .dig-board {
-  transform: translateX(calc(114px * var(--motion-amount)));
-}
-
 .dig-choice-cards {
   flex: 0 0 200px;
   align-self: stretch;
@@ -4942,10 +4937,40 @@ body:has(.result) #version {
   gap: 16px;
 }
 
-.dig-choice-card {
+/* Each slot holds its empty card from the round's start, and the choice
+   card over it once the question comes, both filling the slot, so nothing
+   in the column moves as one replaces the other. */
+.dig-choice-slot {
   flex: 1 1 0;
   min-height: 0;
   max-height: 170px;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  perspective: 800px;
+}
+
+.dig-empty-card,
+.dig-choice-card {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.dig-empty-card {
+  display: grid;
+  place-items: center;
+  border: 2px solid #1d27421f;
+  border-radius: 24px;
+  background: #e6e2d9;
+  color: #1d27421f;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dig-choice-card {
   padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
@@ -4954,8 +4979,35 @@ body:has(.result) #version {
   animation: fade-in var(--motion-small) var(--ease-out) both;
 }
 
+.dig-empty-card[data-turned] {
+  animation: fade-out var(--motion-small) var(--ease-out) both;
+}
+
+/* Card by card, 60 ms apart, the empty card turns edge on and the choice
+   card turns on from there. */
+.dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
+  animation: dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
+}
+
 .dig-choice-cards[data-motion] .dig-choice-card {
-  animation: slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
+  animation: dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both;
+}
+
+@keyframes dig-turn-away {
+  99% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: rotateY(calc(90deg * var(--motion-amount)));
+  }
+}
+
+@keyframes dig-turn-in {
+  from {
+    opacity: 0;
+    transform: rotateY(calc(-90deg * var(--motion-amount)));
+  }
 }
 
 .dig-choice-card[data-rejected] {
@@ -6150,8 +6202,8 @@ body:has(.result) #version {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
-  .dig-board {
-    transition-property: none;
+  .dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
   .dig-screen[data-motion] .dig-board:not([data-lifting]) {
@@ -6981,6 +7033,12 @@ body:has(.result) #version {
 [data-theme="dark"] .dig-board {
   outline-color: #ece8de1f;
   background: #181e2e;
+}
+
+[data-theme="dark"] .dig-empty-card {
+  border-color: #ece8de1f;
+  background: #222a3d;
+  color: #ece8de1f;
 }
 
 [data-theme="dark"] .dig-choice-card {

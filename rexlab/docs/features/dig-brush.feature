@@ -8,11 +8,12 @@ Feature: Dig: the brush, and Hatchling's free brushing
   child brushes freely, and once 95% of the dinosaur's cells are clear
   the rest of the sand blows away in one gust, so the child digs the
   whole dinosaur but never hunts for its last grains. Explorer and
-  Paleontologist brush the same way, and their gust comes when the
-  dinosaur is named (dig-question.feature). Taps on the sand go
-  through the double-tap filter (double-tap.feature); an accepted cost is
-  that a stroke begun within 500 ms and 100 px of a tap's release
-  brushes nothing. The brush is a component
+  Paleontologist brush the same way, on a board that never moves, so a
+  held stroke clears under the finger as the question comes; their gust
+  comes when the dinosaur is named (dig-question.feature). Taps on the
+  sand go through the double-tap filter (double-tap.feature); an accepted
+  cost is that a stroke begun within 500 ms and 100 px of a tap's
+  release brushes nothing. The brush is a component
   of its own, so the skeleton game's dig (LAB-283) can brush the same
   sand.
 
