@@ -286,10 +286,11 @@ export function DigBoardScreen({
   }, [flying]);
 
   // The canvases are as large as the board shows, so the sand is sharp at
-  // any size: on every resize the bed and the sand are covered anew and
-  // every mark taken off again, scaled with the board.
+  // any size: on every resize the bed and any remaining sand are covered
+  // anew and every mark taken off again, scaled with the board. After the
+  // gust only the bed remains, including when rotation remounts the board.
   useLayoutEffect(() => {
-    const element = canvas.current;
+    const element = canvas.current ?? bed.current;
     if (!element) return;
     const fit = () => {
       const { width, height } = element.getBoundingClientRect();
@@ -302,7 +303,7 @@ export function DigBoardScreen({
         const under = sandContext(bed.current);
         if (under) cover(under, element.width, element.height, BED, BED_GRAINS);
       }
-      context.current = sandContext(element);
+      context.current = canvas.current ? sandContext(canvas.current) : null;
       drawn.current = 0;
       if (!context.current) return;
       cover(context.current, element.width, element.height);
@@ -312,7 +313,7 @@ export function DigBoardScreen({
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [sandContext, frame.width]);
+  }, [sandContext, frame.width, lifting]);
 
   // Each new mark is taken off the sand already drawn.
   useLayoutEffect(() => {
@@ -413,7 +414,7 @@ export function DigBoardScreen({
           <div className="dig-board-surface">
             <canvas ref={bed} className="dig-bed" aria-hidden="true" />
             {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
-            <canvas ref={canvas} className="dig-sand" aria-hidden="true" />
+            {!lifting && <canvas ref={canvas} className="dig-sand" aria-hidden="true" />}
             {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
               <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"
                 style={{ left: percent((spot.x - spot.r) / frame.width), top: percent((spot.y - spot.r) / frame.height), width: percent(2 * spot.r / frame.width), height: percent(2 * spot.r / frame.height) }}>
@@ -439,7 +440,7 @@ export function DigBoardScreen({
               ))}
             {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
           </div>
-          {grains && <span className="dig-landing" aria-hidden="true">
+          {grains && !lifting && <span className="dig-landing" aria-hidden="true">
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
           </span>}
         </div>

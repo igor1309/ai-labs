@@ -44,7 +44,7 @@ export function openDigApp({
 }: {
   storage?: MemoryStorage;
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
-  reducedMotion?: boolean;
+  reducedMotion?: boolean | (() => boolean);
   language?: "en" | "ru";
   theme?: "light" | "dark";
   timers?: ManualPictures | ManualTimers;
@@ -81,7 +81,7 @@ export function openDigApp({
       digDinosaurs={SHIPPED_DIG}
       digProgress={localDigProgress(local)}
       sandContext={() => null}
-      reducedMotion={() => reducedMotion}
+      reducedMotion={typeof reducedMotion === "function" ? reducedMotion : () => reducedMotion}
       {...timers}
     />
   );

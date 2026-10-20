@@ -4852,11 +4852,15 @@ body:has(.result) #version {
   outline-offset: -2px;
   background: #fffdf8;
   touch-action: none;
-  animation: fade-in var(--dig-drop) var(--ease-out) both;
+  animation: none;
   transition: transform var(--motion-screen) var(--ease-out);
 }
 
-.dig-screen[data-motion] .dig-board {
+.dig-board:not([data-lifting]) {
+  animation: fade-in var(--dig-drop) var(--ease-out) both;
+}
+
+.dig-screen[data-motion] .dig-board:not([data-lifting]) {
   animation-name: dig-drop;
 }
 
@@ -5064,7 +5068,7 @@ body:has(.result) #version {
 
 /* The gust blows the sand left over off to the side; with reduced motion
    it only fades. */
-.dig-board[data-blown] .dig-sand {
+.dig-board[data-blown]:not([data-lifting]) .dig-sand {
   animation: dig-gust var(--dig-gust) var(--ease-out) both;
 }
 
@@ -5118,7 +5122,7 @@ body:has(.result) #version {
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
 }
 
-.dig-screen:not([data-motion]) .dig-board[data-blown] .dig-sand {
+.dig-screen:not([data-motion]) .dig-board[data-blown]:not([data-lifting]) .dig-sand {
   animation: fade-out var(--dig-gust) var(--ease-out) both;
 }
 
@@ -6150,7 +6154,7 @@ body:has(.result) #version {
     transition-property: none;
   }
 
-  .dig-screen[data-motion] .dig-board {
+  .dig-screen[data-motion] .dig-board:not([data-lifting]) {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
@@ -6158,7 +6162,7 @@ body:has(.result) #version {
     display: none;
   }
 
-  .dig-board[data-blown] .dig-sand {
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
     animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
