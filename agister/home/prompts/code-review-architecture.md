@@ -85,8 +85,10 @@ Architecture is in good shape when:
 5. Each side of a boundary retains ownership of its own types.
 6. Infrastructure choices can change through composition and adapters while the consuming component remains stable.
 7. Cross-cutting behavior can change at composition roots while core component behavior remains stable.
-8. Internal implementation changes normally remain contained within the owning module: every component the change touched had a reason of its own to change.
+8. Internal implementation changes normally remain contained within the owning module: every component the change touched had a reason of its own to change. An unusually large changed or expanded file is an inspection cue, not a finding by itself: trace its changed responsibilities and composition, and report only a concrete cohesion or boundary problem the change introduces or extends. File length alone, including fixture-heavy tests or generated and declarative content, is not evidence.
 9. Adding or replacing a collaborator produces a localized change around the relevant boundary and composition root.
+10. Applicable recorded decisions hold: check the code against relevant ADRs and quote both the decision and the code for any departure. Each file format and domain rule has one owner; other components use its API rather than parsing or re-implementing it.
+11. Each goal-required scenario was traced through the code it uses, including relevant code outside the diff. Report the scenarios checked in `coverage`; a goal finding names the concrete scenario that fails.
 
 Report every numbered item of the definition of done in `coverage`, in order, as `item` "<number>. <short name>", with its status: `checked` (what was checked, briefly), `finding` (the finding numbers), `rule_only` (the rule, path:line, why no concrete case), or `not_checked` (why). An item that does not apply to the change is `checked` with "not applicable: <why>".
 

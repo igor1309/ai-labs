@@ -62,7 +62,10 @@ Definition of done:
    behaviour too. Where it claims how an external tool behaves (a version
    a runtime is verified for), its test is a contract test against that
    tool; a comment or note recording a hand observation is no test. The
-   case is the value that could be wrong while every test stays green.
+   case is the value that could be wrong while every test stays green. A
+   finding names the class of inputs, states or variants the assertions
+   miss, uses its concrete case as a witness, and asks for a test of that
+   class.
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
