@@ -4864,6 +4864,17 @@ body:has(.result) #version {
   outline-offset: -1.5px;
 }
 
+.dig-field-guide-button[data-landed][data-motion] {
+  animation: dig-guide-arrival var(--motion-standard) var(--ease-overshoot) both;
+}
+
+@keyframes dig-guide-arrival {
+  45% {
+    scale: calc(1 + 0.08 * var(--motion-amount));
+    box-shadow: 0 0 0 calc(8px * var(--motion-amount)) #e39b2d33;
+  }
+}
+
 .dig-field-guide-button[data-landed][data-motion] .dig-field-guide-count {
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
 }
@@ -5320,6 +5331,21 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
+.dig-treasure-name {
+  position: absolute;
+  z-index: 4;
+  translate: -50% 8px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  box-shadow: 0 2px 8px #1d274244;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .dig-board[data-blown]:not([data-lifting]) .dig-treasure {
   animation: fade-out var(--dig-gust) var(--ease-out) both;
 }
@@ -5374,6 +5400,44 @@ body:has(.result) #version {
   translate: -50% -50%;
   pointer-events: none;
   animation: dig-treasure-flight calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+/* The curved amber trail keeps the find and its destination connected
+   while the treasure travels. */
+.dig-treasure-route {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dig-treasure-route path {
+  fill: none;
+  stroke: #e39b2d;
+  stroke-width: 6px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.75;
+  filter: drop-shadow(0 2px 3px #1d274255);
+  animation: dig-treasure-route calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+@keyframes dig-treasure-route {
+  10% {
+    stroke-dashoffset: calc(1 * var(--motion-amount));
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  to {
+    stroke-dashoffset: calc(0 * var(--motion-amount));
+    opacity: 0.25;
+  }
 }
 
 @keyframes dig-treasure-flight {

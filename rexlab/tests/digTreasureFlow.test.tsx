@@ -19,6 +19,7 @@ const fieldGuide = (language: "en" | "ru" = "en") => screen.getByRole("button", 
 const buried = () => document.querySelector<HTMLElement>(".dig-treasure");
 const found = () => document.querySelector<HTMLElement>(".dig-treasure-found");
 const flight = () => document.querySelector<HTMLElement>(".dig-treasure-flight");
+const route = () => document.querySelector<SVGPathElement>(".dig-treasure-route path");
 const fresh = () => document.querySelector(".dig-field-guide-new");
 
 const guideCards = () => within(screen.getByRole("group", { name: TEXTS.en.treasureCards })).getAllByRole("region");
@@ -82,6 +83,8 @@ describe("a treasure in the sand", () => {
     brushTreasure();
 
     expect([buried(), found()?.dataset.kind, flight()?.dataset.kind]).toEqual([null, "shell", "shell"]);
+    expect(screen.getByText("SHELL").getAttribute("aria-live")).toBe("polite");
+    expect(route()?.getAttribute("d")).toMatch(/^M .* Q .* /);
     expect(getComputedStyle(found()!).animation).toBe("dig-treasure-hop calc(0.4 * var(--dig-treasure)) var(--ease-out) both");
     expect(getComputedStyle(flight()!).animation).toBe("dig-treasure-flight calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both");
     expect(screen.getByRole("main").style.getPropertyValue("--dig-treasure")).toBe(`${TREASURE_FLIGHT.motion}ms`);
@@ -97,6 +100,7 @@ describe("a treasure in the sand", () => {
     landTreasure(app.timers);
     expect([found(), flight(), buried()]).toEqual([null, null, null]);
     expect([fieldGuide().textContent, fieldGuide().hasAttribute("data-landed"), fresh()?.textContent]).toEqual(["1", true, "NEW!"]);
+    expect(getComputedStyle(fieldGuide()).animation).toBe("dig-guide-arrival var(--motion-standard) var(--ease-overshoot) both");
     expect(getComputedStyle(fieldGuide().querySelector(".dig-field-guide-count")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
     expect(saved(app.storage)).toMatchObject({ dug: [], treasures: { shell: 1 } });
   });
@@ -132,6 +136,7 @@ describe("a treasure in the sand", () => {
     const app = openRound({ reducedMotion: true });
     brushTreasure();
     expect([flight(), getComputedStyle(found()!).animation]).toEqual([null, "fade-out var(--dig-treasure) var(--ease-out) both"]);
+    expect(route()).toBeNull();
     expect(screen.getByRole("main").style.getPropertyValue("--dig-treasure")).toBe(`${TREASURE_FLIGHT.reduced}ms`);
     expect(app.timers.timers()).toContain(TREASURE_FLIGHT.reduced);
     landTreasure(app.timers, "reduced");

@@ -16,7 +16,7 @@ export const COUNT_SETTLE = { motion: 160, reduced: 0 };
 // flight, then flies into the FIELD GUIDE; under reduced motion it fades.
 // Each is shorter than the gust and lift together, so a treasure found by
 // the stroke that brings the gust still lands, and is kept, on the board.
-export const TREASURE_FLIGHT = { motion: 960, reduced: 200 };
+export const TREASURE_FLIGHT = { motion: 1250, reduced: 300 };
 
 export type BoardFinish = {
   newStar: boolean;
@@ -257,6 +257,7 @@ export function DigBoardScreen({
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
   const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
+  const [treasurePath, setTreasurePath] = useState("");
   const inFlight = treasureFlight?.phase === "flying" ? treasureFlight : undefined;
   const treasureFlying = treasure !== undefined && inFlight !== undefined;
   const lifting = finish !== undefined && finish.phase !== "gust";
@@ -342,6 +343,9 @@ export function DigBoardScreen({
       const middleX = from.left + ((treasure.x + treasure.size / 2) * from.width) / frame.width;
       const middleY = from.top + ((treasure.y + treasure.size / 2) * from.height) / frame.height;
       setTreasureWay({ left: x, top: y, width: (treasure.size * from.width) / frame.width, "--treasure-x": `${middleX - x}px`, "--treasure-y": `${middleY - y}px` } as CSSProperties);
+      const controlX = (middleX + x) / 2;
+      const controlY = Math.min(middleY, y) - Math.min(96, Math.abs(middleY - y) * 0.18 + 28);
+      setTreasurePath(`M ${middleX} ${middleY} Q ${controlX} ${controlY} ${x} ${y}`);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -460,6 +464,9 @@ export function DigBoardScreen({
         )}
       </DigBar>
       {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
+      {treasureFlying && grains && treasurePath && <svg className="dig-treasure-route" aria-hidden="true">
+        <path d={treasurePath} pathLength="1" />
+      </svg>}
       {treasureFlying && grains && <span className="dig-treasure-flight" data-kind={treasure.kind} aria-hidden="true" style={treasureWay}>
         <Picture className="dig-treasure-picture" src={treasure.picture} alt="" width={400} height={400} />
       </span>}
@@ -481,6 +488,10 @@ export function DigBoardScreen({
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
+          {treasureFlying && <span className="dig-treasure-name" aria-live="polite"
+            style={{ left: percent((treasure.x + treasure.size / 2) / frame.width), top: percent((treasure.y + treasure.size) / frame.height) }}>
+            {text.treasures[treasure.kind as keyof typeof text.treasures]}
+          </span>}
           <div className="dig-board-surface">
             <canvas ref={bed} className="dig-bed" aria-hidden="true" />
             {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
