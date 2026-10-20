@@ -1,0 +1,32 @@
+{
+  "name": "bb-plugin-agister-provider-spike",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.49"
+  },
+  "bb": {
+    "name": "Agister provider (spike)",
+    "description": "Feasibility spike: one BB provider that runs one fixed Agister workflow per turn. Not a product.",
+    "branding": {
+      "icon": "Workflow"
+    },
+    "server": "./server.ts",
+    "host": "./host.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@get-bb/plugin-sdk": "0.6.49",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.1"
+  }
+}
