@@ -1,5 +1,5 @@
-import { Brush, House } from "lucide-react";
-import type { ReactNode } from "react";
+import { BookOpen, Brush, House } from "lucide-react";
+import type { ReactNode, Ref } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -24,5 +24,37 @@ export function DigBar({ language, title, onHome, children }: { language: Langua
       </h1>
       {children}
     </header>
+  );
+}
+
+export type FieldGuideButtonProps = {
+  language: Language;
+  // The treasures found, of every kind.
+  count: number;
+  // A treasure has just landed: its count ticks up, with NEW! by the
+  // button for the first of its kind.
+  landed?: "new" | "again" | undefined;
+  // Whether the count ticks up as it lands; under reduced motion it
+  // simply changes.
+  motion?: boolean;
+  disabled?: boolean;
+  // Where a treasure flies to.
+  bookRef?: Ref<SVGSVGElement>;
+  onFieldGuide?: (() => void) | undefined;
+};
+
+// The way to the FIELD GUIDE on DIG's bar: the book and the count of
+// treasures found, read out by its name alone.
+export function FieldGuideButton({ language, count, landed, motion = false, disabled, bookRef, onFieldGuide }: FieldGuideButtonProps) {
+  const text = TEXTS[language];
+  return (
+    <span className="dig-field-guide">
+      <button type="button" className="dig-field-guide-button" aria-label={text.fieldGuide} disabled={disabled} onClick={onFieldGuide}
+        data-landed={landed !== undefined || undefined} data-motion={motion || undefined}>
+        <BookOpen ref={bookRef} size={26} aria-hidden="true" />
+        <span className="dig-field-guide-count">{count}</span>
+      </button>
+      {landed === "new" && <span className="dig-field-guide-new" aria-hidden="true">{text.treasureNew}</span>}
+    </span>
   );
 }

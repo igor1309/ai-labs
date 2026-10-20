@@ -7,20 +7,24 @@ import {
   brushRound,
   digUp,
   dugUpOf,
+  keepTreasure,
   mergeProgress,
   NO_DIG,
   pickRound,
+  roundTreasureFound,
   startRound,
   strongRound,
+  treasuresFound,
   waitForHelp,
   type DigDinosaur,
   type DigProgress,
   type DigReward,
   type DigRound,
   type KeptDig,
-  type Random
+  type Random,
+  type Treasure
 } from "./dig/index.ts";
-import { BOARD_DROP, COUNT_SETTLE, GUST, LIFT, DigBoardScreen, type BoardFinish, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
+import { BOARD_DROP, COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT, DigBoardScreen, type BoardFinish, type SandContext, type SandMark, type TreasureFlight } from "./DigBoardScreen.tsx";
 import { DigRevealScreen, STAR_LANDS } from "./DigRevealScreen.tsx";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 import { usePicture, type PictureLook } from "./Picture.tsx";
@@ -29,8 +33,9 @@ import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts
 import { presentDigBoard } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
+import { TREASURE_PICTURES } from "./treasurePictures.ts";
 
-export { BOARD_DROP, COUNT_SETTLE, GUST, LIFT } from "./DigBoardScreen.tsx";
+export { BOARD_DROP, COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "./DigBoardScreen.tsx";
 export type { SandContext } from "./DigBoardScreen.tsx";
 export { STAR_LANDS } from "./DigRevealScreen.tsx";
 
@@ -69,9 +74,10 @@ export const DIG_REVEAL = "dig-reveal";
 // they cannot be saved.
 type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelOffer };
 
-// The reveal shows the round dug up and its reward; it takes taps once
-// its last item has arrived (`landed`).
-type DigScreen = { kind: "board"; round: DigRound; finish?: BoardFinish } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
+// The board shows the round, its finish once the gust begins, and its
+// treasure's flight once found. The reveal shows the round dug up and its
+// reward; it takes taps once its last item has arrived (`landed`).
+type DigScreen = { kind: "board"; round: DigRound; finish?: BoardFinish; treasure?: TreasureFlight } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
@@ -171,7 +177,7 @@ export function useDigGame(
         if (!active || presence.isAway() || roundTimers.current !== timers || from === null || from.found !== found || from.helped !== helped || !awaitsHelp(from)) return;
         const to = waitForHelp(from, HELP_TICK);
         live.current = to;
-        go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
+        go((current) => (current?.kind === "board" && current.round === from ? { ...current, round: to } : current));
         if (awaitsHelp(to)) tick();
       });
     };
@@ -201,6 +207,20 @@ export function useDigGame(
     });
   };
 
+  // A found treasure flies into the FIELD GUIDE and is kept as it lands,
+  // even when the gust has begun meanwhile; a round left before then
+  // stops its flight and keeps nothing.
+  const fly = (treasure: Treasure, timers: OwnedTimers) => {
+    const flight: TreasureFlight = { phase: "flying", fresh: (keptNow.current.progress.treasures[treasure.kind] ?? 0) === 0 };
+    const show = (shown: TreasureFlight) => go((current) => (current?.kind === "board" && current.round.treasure === treasure ? { ...current, treasure: shown } : current));
+    show(flight);
+    timers.start(TREASURE_FLIGHT[reducedMotion() ? "reduced" : "motion"], () => {
+      if (roundTimers.current !== timers) return;
+      keep({ ...keptNow.current, progress: keepTreasure(keptNow.current.progress, treasure.kind) });
+      show({ ...flight, phase: "landed" });
+    });
+  };
+
   // Each stroke moves from the round as it is. The dinosaur is dug up,
   // and recorded, the moment the gust begins, so leaving during it cannot
   // lose it, and the reveal follows the lift and reward; a round left
@@ -213,7 +233,8 @@ export function useDigGame(
     const to = update(from);
     if (to === from) return;
     live.current = to;
-    go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
+    go((current) => (current?.kind === "board" && current.round === from ? { ...current, round: to } : current));
+    if (to.treasure && !roundTreasureFound(from) && roundTreasureFound(to)) fly(to.treasure, timers);
     if (!to.blown) return;
     last.current = to.dinosaur.id;
     const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest, to.level !== "hatchling" && to.rejected.length === 0);
@@ -262,14 +283,17 @@ export function useDigGame(
             arrivalWait={BOARD_DROP[reducedMotion() ? "reduced" : "motion"]}
             gustWait={GUST[reducedMotion() ? "reduced" : "motion"]}
             liftWait={LIFT[reducedMotion() ? "reduced" : "motion"]}
+            flightWait={TREASURE_FLIGHT[reducedMotion() ? "reduced" : "motion"]}
             finish={screen.finish}
-            {...presentDigBoard(screen.round, bodyPicture)}
+            treasureFlight={screen.treasure}
+            {...presentDigBoard(screen.round, bodyPicture, (kind) => TREASURE_PICTURES[kind])}
             choiceCount={screen.round.choices.length}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}
             grains={!reducedMotion()}
             dugUp={kept.readable ? dugUpOf(kept.progress, ids) : undefined}
             total={ids.length}
+            treasures={treasuresFound(kept.progress)}
             sandContext={sandContext}
             onBrush={brush}
             onPick={pick}
@@ -285,6 +309,7 @@ export function useDigGame(
             name={dinosaurName(id, language)}
             picture={bodyPicture(id)}
             {...screen.reward}
+            treasures={treasuresFound(kept.progress)}
             landed={screen.landed}
             reducedMotion={reducedMotion()}
             startTimer={startTimer}

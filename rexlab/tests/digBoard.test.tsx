@@ -28,7 +28,7 @@ import {
   symbolOf,
   unreadVersion
 } from "./support.ts";
-import { finishBoard, board, digUp, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
+import { finishBoard, board, digUp, cleared, clearCells, drag, landTreasure, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
 type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext; level?: AgeLevel };
@@ -177,8 +177,9 @@ describe("the dig game's tile", () => {
     placeBoard(800);
     tapAt(board(), 1300, { x: 410, y: 300 });
 
-    // One round: its dinosaur, then the order help shows its spots in.
-    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length);
+    // One round: its dinosaur, the order help shows its spots in, then
+    // its treasure: whether it holds one, its kind and its place.
+    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length + 3);
     expect(clearCells()).toEqual([]);
   });
 
@@ -198,8 +199,8 @@ describe("a round's start", () => {
     const { drawn, bed, sandContext } = spySand();
     openRound({ sandContext });
 
-    const [under, picture, sand] = [...board().querySelector(".dig-board-surface")!.children];
-    expect([under?.className, picture?.classList.contains("dig-picture"), sand?.className]).toEqual(["dig-bed", true, "dig-sand"]);
+    const [under, picture, treasure, sand] = [...board().querySelector(".dig-board-surface")!.children];
+    expect([under?.className, picture?.classList.contains("dig-picture"), treasure?.className, sand?.className]).toEqual(["dig-bed", true, "dig-treasure", "dig-sand"]);
     expect(bed.covers.at(-1)).toEqual([800, 600]);
     expect(bed.paints[0]?.style).toBe("#b0905f");
     expect(bed.fills).toEqual([]);
@@ -451,6 +452,7 @@ describe("the brush", () => {
     const { id } = roundDinosaur();
 
     digUp();
+    landTreasure(timers);
 
     expect(cleared()).toBeGreaterThanOrEqual(0.75);
     expect(board().getAttribute("data-blown")).toBe("true");
@@ -482,6 +484,7 @@ describe("the brush", () => {
     const { timers } = openRound({ reducedMotion: true });
 
     digUp();
+    landTreasure(timers, "reduced");
 
     expect(timers.timers()).toEqual([GUST.reduced]);
     expect(GUST.reduced).toBe(160);

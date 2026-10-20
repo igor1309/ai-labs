@@ -5,7 +5,7 @@ import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { BOARD_DROP, COUNT_SETTLE, DIG_REVEAL, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard } from "./digApp.tsx";
+import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard } from "./digApp.tsx";
 import { SHIPPED_DIG, homeTile, memoryStorage } from "./support.ts";
 
 vi.mock("react", async (actual) => {
@@ -63,6 +63,7 @@ describe("the board's lift and collection star", () => {
       expect(chip.textContent).toBe(before);
       expect(board().hasAttribute("data-lifting")).toBe(false);
       expect(document.querySelector(".dig-board-star")).toBeNull();
+      landTreasure(app.timers, timing);
       expect(app.timers.timers()).toEqual([GUST[timing]]);
       expect(screen.getByRole("main").style.getPropertyValue("--dig-gust")).toBe(`${GUST[timing]}ms`);
       expect(getComputedStyle(board().querySelector(".dig-sand")!).animation).toBe(reducedMotion
@@ -127,6 +128,7 @@ describe("the board's lift and collection star", () => {
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
     digUp();
+    landTreasure(app.timers, timing);
     expect(screen.getByLabelText("DUG UP").textContent).toBe(`${dug.length}/${dug.length}`);
     act(() => app.timers.fire(GUST[timing]));
     expect(board().hasAttribute("data-lifting")).toBe(true);
@@ -159,6 +161,7 @@ describe("the board's lift and collection star", () => {
       expect(board().getAttribute("data-clear")).toContain("0");
       fireEvent.click(choiceCard());
     }
+    landTreasure(app.timers, timing);
     if (phase !== "gust") act(() => app.timers.fire(GUST[timing]));
     if (phase === "counted") act(() => app.timers.fire(LIFT[timing]));
     const firstBoard = board();

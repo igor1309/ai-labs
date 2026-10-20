@@ -160,6 +160,10 @@ export type Texts = {
   dugUpNew: string;
   digAgain: string;
   allDugUp: string;
+  // The FIELD GUIDE of the treasures found, read out on its button, and
+  // the mark by it as the first treasure of a kind lands.
+  fieldGuide: string;
+  treasureNew: string;
 };
 
 // A celebration's label, read out, and its text, shown.

@@ -37,6 +37,7 @@ export const SHIPPED_DIG = readDig(
 // A body picture URL of the dinosaur's own, for tests that are not about
 // the picture files.
 export const fakeBodyPicture = (dinosaurId: string) => `/pictures/${dinosaurId}.webp`;
+export const fakeTreasurePicture = (kind: string) => `/treasures/${kind}.webp`;
 
 // A care picture URL of the item's own, for tests that are not about the
 // picture files.

@@ -48,6 +48,7 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
           picture={fakeBodyPicture("pachycephalosaurus")}
           dugUp={42}
           total={42}
+          treasures={128}
           newStar
           celebration="new-best"
           badge

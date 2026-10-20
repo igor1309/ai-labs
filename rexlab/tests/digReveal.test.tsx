@@ -12,6 +12,7 @@ const props = {
   picture: "/pictures/pachycephalosaurus.webp",
   dugUp: 42,
   total: 42,
+  treasures: 3,
   newStar: true,
   celebration: "new-best" as const,
   badge: true,
@@ -49,6 +50,21 @@ describe("the dig reveal", () => {
     fireEvent.click(screen.getByRole("button", { name: TEXTS.en.home }));
     expect(callbacks.onDigAgain).toHaveBeenCalledOnce();
     expect(callbacks.onHome).toHaveBeenCalledOnce();
+  });
+
+  it("shows the FIELD GUIDE's count on its bar, opening it through the given hook once every control is ready", () => {
+    const onFieldGuide = vi.fn();
+    const timers = manualTimers();
+    const landing = { startTimer: timers.startTimer, landingWait: STAR_LANDS.motion, onLanded: () => {}, onLevel: () => {}, onDigAgain: () => {}, onHome: () => {} };
+    const view = render(<DigRevealScreen {...props} {...landing} landed={false} onFieldGuide={onFieldGuide} />, withPictures);
+    const button = () => screen.getByRole("button", { name: TEXTS.en.fieldGuide }) as HTMLButtonElement;
+
+    expect([button().textContent, button().disabled, button().closest(".dig-bar")?.querySelector(".dig-title")?.textContent]).toEqual(["3", true, "DIG"]);
+    fireEvent.click(button());
+    expect(onFieldGuide).not.toHaveBeenCalled();
+    view.rerender(<DigRevealScreen {...props} {...landing} landed={true} onFieldGuide={onFieldGuide} />);
+    fireEvent.click(button());
+    expect(onFieldGuide).toHaveBeenCalledOnce();
   });
 
   it.each([false, true].flatMap((reducedMotion) => [true, false].flatMap((card) => [true, false].map((celebration) => ({ reducedMotion, card, celebration })))))

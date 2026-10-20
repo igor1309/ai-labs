@@ -3,7 +3,7 @@ import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { DigBar } from "./DigBar.tsx";
+import { DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 
@@ -12,6 +12,11 @@ export const BOARD_DROP = { motion: 500, reduced: 160 };
 export const GUST = { motion: 800, reduced: 160 };
 export const LIFT = { motion: 500, reduced: 160 };
 export const COUNT_SETTLE = { motion: 160, reduced: 0 };
+// A found treasure glows and hops in its place for the first 40% of its
+// flight, then flies into the FIELD GUIDE; under reduced motion it fades.
+// Each is shorter than the gust and lift together, so a treasure found by
+// the stroke that brings the gust still lands, and is kept, on the board.
+export const TREASURE_FLIGHT = { motion: 960, reduced: 200 };
 
 export type BoardFinish = {
   newStar: boolean;
@@ -21,6 +26,14 @@ export type BoardFinish = {
 };
 
 export type DigSpotView = { id: string; x: number; y: number; r: number; found: boolean; helped: boolean };
+
+// The treasure the sand hides: its kind and picture, its top left corner
+// and its side, in the frame's pixels.
+export type DigTreasureView = { kind: string; picture: string; x: number; y: number; size: number };
+
+// A found treasure flies into the FIELD GUIDE, then has landed there,
+// kept; `fresh` when it is the first of its kind.
+export type TreasureFlight = { phase: "flying" | "landed"; fresh: boolean };
 
 // A point on the body picture, in the pixels of its frame.
 export type SandPoint = { x: number; y: number };
@@ -38,6 +51,7 @@ export type DigBoardScreenProps = {
   arrivalWait?: number;
   gustWait?: number;
   liftWait?: number;
+  flightWait?: number;
   finish?: BoardFinish | undefined;
   // The dinosaur's body picture, under the sand, and its frame's size.
   picture: string;
@@ -53,6 +67,8 @@ export type DigBoardScreenProps = {
   // The gust has blown the rest of the sand away.
   blown: boolean;
   spots: readonly DigSpotView[];
+  treasure: DigTreasureView | undefined;
+  treasureFlight?: TreasureFlight | undefined;
   // The round asks who it is once enough of the dinosaur shows, so the
   // board stands beside the choices' column from the start.
   asks: boolean;
@@ -72,10 +88,13 @@ export type DigBoardScreenProps = {
   // stored progress cannot be read, so there is no count to show.
   dugUp: number | undefined;
   total: number;
+  // The treasures found so far, of every kind.
+  treasures: number;
   sandContext: SandContext;
   onBrush: (mark: SandMark) => void;
   onPick?: (id: string) => void;
   onHome: () => void;
+  onFieldGuide?: (() => void) | undefined;
 };
 
 // The sand's colour and its grains', drawn the same on every redraw, and
@@ -200,6 +219,7 @@ export function DigBoardScreen({
   arrivalWait = BOARD_DROP.motion,
   gustWait = GUST.motion,
   liftWait = LIFT.motion,
+  flightWait = TREASURE_FLIGHT.motion,
   finish,
   picture,
   pictureLook,
@@ -209,6 +229,8 @@ export function DigBoardScreen({
   cleared,
   blown,
   spots,
+  treasure,
+  treasureFlight,
   asks,
   choiceCount,
   choices,
@@ -217,15 +239,20 @@ export function DigBoardScreen({
   grains,
   dugUp,
   total,
+  treasures,
   sandContext,
   onBrush,
   onPick,
-  onHome
+  onHome,
+  onFieldGuide
 }: DigBoardScreenProps) {
   const text = TEXTS[language];
   const choice = choices.length > 0;
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
+  const book = useRef<SVGSVGElement>(null);
+  const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
+  const treasureFlying = treasure !== undefined && treasureFlight?.phase === "flying";
   const lifting = finish !== undefined && finish.phase !== "gust";
   const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
   const lift = finish?.phase === "lift" ? finish : undefined;
@@ -282,6 +309,25 @@ export function DigBoardScreen({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [flying]);
+
+  // The treasure flies from its place on the board to the FIELD GUIDE's
+  // book, measured as the star's flight is.
+  useLayoutEffect(() => {
+    if (!treasureFlying) return;
+    const measure = () => {
+      const from = board.current?.getBoundingClientRect();
+      const to = book.current?.getBoundingClientRect();
+      if (!from || !to) return;
+      const x = to.left + to.width / 2;
+      const y = to.top + to.height / 2;
+      const middleX = from.left + ((treasure.x + treasure.size / 2) * from.width) / frame.width;
+      const middleY = from.top + ((treasure.y + treasure.size / 2) * from.height) / frame.height;
+      setTreasureWay({ left: x, top: y, width: (treasure.size * from.width) / frame.width, "--treasure-x": `${middleX - x}px`, "--treasure-y": `${middleY - y}px` } as CSSProperties);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [treasureFlying, treasure, frame.width, frame.height]);
 
   // The canvases are as large as the board shows, so the sand is sharp at
   // any size: on every resize the bed and any remaining sand are covered
@@ -381,9 +427,12 @@ export function DigBoardScreen({
   }, [blown]);
 
   return (
-    <main className="dig-screen" data-motion={grains || undefined} style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms` } as CSSProperties}>
+    <main className="dig-screen" data-motion={grains || undefined}
+      style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms`, "--dig-treasure": `${flightWait}ms` } as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
+        <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
+          landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
         {dugUp !== undefined && (
           <p className="dig-chip" aria-label={text.dugUp} data-counted={finish?.phase === "counted" || undefined}>
             <Star ref={chipStar} size={20} aria-hidden="true" />
@@ -392,6 +441,9 @@ export function DigBoardScreen({
         )}
       </DigBar>
       {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
+      {treasureFlying && grains && <span className="dig-treasure-flight" data-kind={treasure.kind} aria-hidden="true" style={treasureWay}>
+        <Picture className="dig-treasure-picture" src={treasure.picture} alt="" width={400} height={400} />
+      </span>}
       <div className="dig-body" data-asks={asks || undefined}>
         <div
           ref={board}
@@ -412,7 +464,15 @@ export function DigBoardScreen({
           <div className="dig-board-surface">
             <canvas ref={bed} className="dig-bed" aria-hidden="true" />
             {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
+            {treasure && !lifting && treasureFlight === undefined && <span className="dig-treasure" data-kind={treasure.kind} aria-hidden="true"
+              style={{ left: percent(treasure.x / frame.width), top: percent(treasure.y / frame.height), width: percent(treasure.size / frame.width), height: percent(treasure.size / frame.height) }}>
+              <Picture className="dig-treasure-picture" src={treasure.picture} alt="" width={400} height={400} />
+            </span>}
             {!lifting && <canvas ref={canvas} className="dig-sand" aria-hidden="true" />}
+            {treasure && treasureFlying && <span className="dig-treasure-found" data-kind={treasure.kind} aria-hidden="true"
+              style={{ left: percent(treasure.x / frame.width), top: percent(treasure.y / frame.height), width: percent(treasure.size / frame.width), height: percent(treasure.size / frame.height) }}>
+              <Picture className="dig-treasure-picture" src={treasure.picture} alt="" width={400} height={400} />
+            </span>}
             {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
               <span key={spot.id} className="dig-help-window" data-spot={spot.id} data-motion={grains || undefined} aria-hidden="true"
                 style={{ left: percent((spot.x - spot.r) / frame.width), top: percent((spot.y - spot.r) / frame.height), width: percent(2 * spot.r / frame.width), height: percent(2 * spot.r / frame.height) }}>

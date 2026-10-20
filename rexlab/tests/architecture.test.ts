@@ -87,7 +87,8 @@ const ADAPTERS = [
   "localTheme.ts",
   "mediaAppearance.ts",
   "mediaMotion.ts",
-  "mediaOrientation.ts"
+  "mediaOrientation.ts",
+  "treasurePictures.ts"
 ];
 const COMPOSITION = [
   "App.tsx",
