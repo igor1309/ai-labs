@@ -20,6 +20,11 @@ Feature: Dig: stored progress
     Then I have still dug up 4 dinosaurs
     And the level offer's count of strong rounds is as it was before that round, neither grown nor restarted
 
+  Scenario: A dinosaur is kept from the gust onwards
+    Given the gust has begun in a round at any level
+    When I leave for HOME during the gust, lift or after the reveal's items arrive
+    Then the dinosaur stays recorded as dug up, with its badge if earned
+
   Scenario: Other games' progress is kept
     Given stored progress of every other game from before the dig game
     When I finish a round of the dig game

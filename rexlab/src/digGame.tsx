@@ -62,6 +62,7 @@ export type DigGameProps = {
 
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 const HELP_TICK = 1000;
+export const DIG_REVEAL = "dig-reveal";
 
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch; both hold while the app is open even when
@@ -69,13 +70,14 @@ const HELP_TICK = 1000;
 type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelOffer };
 
 // The reveal shows the round dug up and its reward; it takes taps once
-// its star has `landed`.
+// its last item has arrived (`landed`).
 type DigScreen = { kind: "board"; round: DigRound; finish?: BoardFinish } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
 // board at once.
 export function transitionFor(from: DigScreen | undefined, to: DigScreen | undefined, intent: "start" | undefined): string | undefined {
+  if (from?.kind === "board" && to?.kind === "reveal") return DIG_REVEAL;
   return intent === "start" || from?.kind !== to?.kind ? SCREEN_CHANGE : undefined;
 }
 
@@ -122,7 +124,7 @@ export function useDigGame(
   // chosen at; the level already chosen, as on a double tap, changes
   // nothing.
   const chooseLevel = (chosen: AgeLevel) => {
-    // The reveal owns the switch until its reward has landed. The screen
+    // The reveal owns the switch until its last item arrives. The screen
     // also disables the buttons, but keeping the boundary here protects
     // against a queued or programmatic click crossing it.
     if (screen?.kind === "reveal" && !screen.landed) return;
@@ -203,7 +205,7 @@ export function useDigGame(
   // and recorded, the moment the gust begins, so leaving during it cannot
   // lose it, and the reveal follows the lift and reward; a round left
   // before its gust is never recorded. The reveal takes taps once its
-  // star has landed.
+  // last item has arrived.
   const advance = (update: (round: DigRound) => DigRound) => {
     const from = live.current;
     const timers = roundTimers.current;
@@ -283,6 +285,7 @@ export function useDigGame(
             picture={bodyPicture(id)}
             {...screen.reward}
             landed={screen.landed}
+            reducedMotion={reducedMotion()}
             startTimer={startTimer}
             landingWait={STAR_LANDS[reducedMotion() ? "reduced" : "motion"]}
             onLanded={onLanded}

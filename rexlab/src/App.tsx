@@ -5,7 +5,7 @@ import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import digTile from "./assets/dig/tile.webp";
-import { useDigGame, type DigGameProps } from "./digGame.tsx";
+import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -538,7 +538,7 @@ export function App({
       <OrientationGate orientation={orientation} language={language}>
         <ViewTransition
           default="none"
-          update={{ [SCREEN_CHANGE]: "screen", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}
+          update={{ [SCREEN_CHANGE]: "screen", [DIG_REVEAL]: "dig-reveal-change", [OPEN_DINOSAUR]: "screen-fade", [CLOSE_DINOSAUR]: "screen-fade", default: "none" }}
         >
           {content()}
         </ViewTransition>

@@ -30,7 +30,7 @@ The one interaction at every level.
   The cells are worked out once from the pictures and kept in
   `src/data/dig.json`.
 - **The last grains blow away.** When the round is done, the rest of
-  the sand blows off in one gust, so no child hunts for the last grains:
+  the sand blows off in one stroke over about 0.8 s, so no child hunts for the last grains:
   at Hatchling at 95% of the dinosaur's cells, so the child digs the
   whole dinosaur; at Explorer and Paleontologist at the right pick.
 - **The brush is a size a finger can steer.** 48 CSS pixels across at
@@ -62,9 +62,12 @@ Storyboard" row of `../design/rexlab.pen`.
   the dinosaur before it was dug. The child expects to dig the whole
   picture, so brushing goes on while the question shows, and only the
   pick ends the round.
-- **The board stays put.** A round that asks keeps an empty column
-  beside the board from the start, so the board neither shrinks nor
-  moves when the cards rise into it.
+- **The board arrives and moves.** It drops from above and settles,
+  puffing grains from its bottom edge. A round that asks reserves its
+  choice column, but centres the board until 75%; then the board slides
+  left without changing size and the cards slide in from the trailing
+  side, 60 ms apart. Reduced motion fades the board in without a puff,
+  holds its place and fades the cards in.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
   a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
   a beak. A spot's cells are the dinosaur's cells whose middle lies in
@@ -84,9 +87,19 @@ Storyboard" row of `../design/rexlab.pen`.
 - **No choice screen.** "DIG" starts a round at once, as "SORT" does: a
   dinosaur the child has not dug up yet at this game, else any but the
   last round's.
-- **The reveal.** When the gust has blown, the dinosaur stays whole with
-  its name, large, and a star flies onto the "DUG UP" card: a ⭐, the
-  words and the count, such as "5/42".
+- **The lift.** After the gust, the dinosaur lifts from its damp bed
+  with a warm glow over about 0.5 s. On a first dig a star flies into the
+  bar's "DUG UP" chip, then its count ticks up; a repeat lifts without
+  a star. Reduced motion uses short fades and changes the count simply.
+- **The reveal.** After the lift and star's arrival, the board slides
+  away and the whole dinosaur glides into place on the left. On the
+  right, its large name, the "DUG UP" card, the celebration if any, the
+  level switch, "DIG AGAIN" and "HOME" arrive 60 ms apart. The card's
+  star is already in place with NEW! on a first dig, and the count, such
+  as "5/42"; it never flies twice. Taps wait for the last item. Reduced
+  motion brings everything in together on one short fade.
+- **Leaving a round.** HOME before the gust records nothing; from the
+  gust onwards the dinosaur is kept, including during the lift or reveal.
 - **Stars.** Every dinosaur dug up for the first time, at any level,
   earns its star once. The collection score is the dinosaurs dug up, out
   of all of them, with the best-score celebrations of the other games

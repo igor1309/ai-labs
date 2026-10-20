@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- DIG's board drops in, slides aside for the question and gusts the sand away; the dinosaur lifts with a warm glow and sends its first star into DUG UP, then glides into the reveal as its rewards and buttons arrive one after another, with short fades under reduced motion (LAB-361).
 - DIG's brush crumbles the sand: each hollow has a ragged edge, a pale lip of grains and the sand's shadow, over a bed of darker damp sand instead of the page, and a telling part shines once with a ring and a star as it first shows; under reduced motion the sand just clears (LAB-360).
 - DIG is a mystery round: the board starts as all sand with no cards, and at Explorer and Paleontologist, once three quarters of the dinosaur show, WHO IS IT? offers it and its closest look-alikes, 3 or 4, beside the board; brushing goes on, a wrong pick fades, the right one brings the gust, and a first pick earns the 🦴 badge. Hatchling's gust waits for 95%, and help thins a spot after ten quiet seconds at every level (LAB-359).
 - At Paleontologist, Triceratops's tray holds a Spinosaurus sail among the other dinosaurs' bones, three in all (LAB-334).

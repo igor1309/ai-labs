@@ -1,11 +1,21 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { addTransitionType, ViewTransition, type ViewTransitionProps } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
-import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
+import { BOARD_DROP, COUNT_SETTLE, DIG_REVEAL, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { finishBoard, board, digUp, openDigApp, placeBoard } from "./digApp.tsx";
+import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard } from "./digApp.tsx";
 import { SHIPPED_DIG, homeTile, memoryStorage } from "./support.ts";
+
+vi.mock("react", async (actual) => {
+  const react = await actual<typeof import("react")>();
+  return {
+    ...react,
+    addTransitionType: vi.fn(react.addTransitionType),
+    ViewTransition: vi.fn((props: ViewTransitionProps) => react.createElement(react.ViewTransition, props))
+  };
+});
 
 function reveal({ reducedMotion = false, storage = memoryStorage(), ageLevel }: { reducedMotion?: boolean; storage?: ReturnType<typeof memoryStorage>; ageLevel?: AgeLevel } = {}) {
   const app = openDigApp({ storage, reducedMotion, ...(ageLevel && { ageLevel: { level: ageLevel, revision: "parent" } }) });
@@ -26,12 +36,26 @@ const levelButton = (level: AgeLevel) => within(screen.getByRole("group", { name
 
 describe("the board's lift and collection star", () => {
   it.each(AGE_LEVELS.flatMap((level) => [false, true].map((reducedMotion) => ({ level, reducedMotion }))))(
-    "gusts, lifts and delivers a first star before reveal at $level, reduced motion $reducedMotion", ({ level, reducedMotion }) => {
+    "drops, brushes, asks, gusts, lifts and reveals at $level, reduced motion $reducedMotion", ({ level, reducedMotion }) => {
       const app = openDigApp({ reducedMotion, ageLevel: { level, revision: null } });
       const timing = reducedMotion ? "reduced" : "motion";
       fireEvent.click(homeTile("DIG"));
       placeBoard(800);
-      digUp();
+      expect(screen.getByRole("main").style.getPropertyValue("--dig-drop")).toBe(`${BOARD_DROP[timing]}ms`);
+      expect(getComputedStyle(board()).animationName).toBe(reducedMotion ? "none" : "dig-drop");
+      expect(cleared()).toBe(0);
+      drag([[350, 300], [450, 300]]);
+      expect(cleared()).toBeGreaterThan(0);
+      expect(board().hasAttribute("data-blown")).toBe(false);
+      expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(0);
+      brushAll();
+      if (level !== "hatchling") {
+        expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(level === "explorer" ? 3 : 4);
+        expect(board().hasAttribute("data-blown")).toBe(false);
+        fireEvent.click(choiceCard());
+      }
+      expect(board().getAttribute("data-blown")).toBe("true");
+      vi.mocked(addTransitionType).mockClear();
       const chip = screen.getByLabelText("DUG UP");
       // The count ticks up as the star lands; under reduced motion it
       // simply changes.
@@ -75,6 +99,18 @@ describe("the board's lift and collection star", () => {
       }
       expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
       expect(card().textContent).toContain(`1/${SHIPPED_DIG.length}`);
+      expect(vi.mocked(addTransitionType).mock.calls).toEqual([[DIG_REVEAL]]);
+      expect(vi.mocked(ViewTransition).mock.lastCall?.[0].update).toMatchObject({ [DIG_REVEAL]: "dig-reveal-change" });
+      expect(app.timers.timers()).toEqual([STAR_LANDS[timing]]);
+      const again = screen.getByRole<HTMLButtonElement>("button", { name: "DIG AGAIN" });
+      expect(again.disabled).toBe(true);
+      fireEvent.click(again);
+      expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
+      act(() => app.timers.fire(STAR_LANDS[timing]));
+      expect(again.disabled).toBe(false);
+      fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+      expect(app.timers.timers()).toEqual([]);
     }
   );
 
@@ -96,28 +132,43 @@ describe("the board's lift and collection star", () => {
     expect(app.timers.timers()).toEqual([STAR_LANDS[timing]]);
   });
 
-  it.each(["gust", "lift", "counted"] as const)("keeps the find on HOME during %s and ignores stopped callbacks in the next round", (phase) => {
-    const app = openDigApp();
+  it.each(AGE_LEVELS.flatMap((level) => [false, true].flatMap((reducedMotion) =>
+    (["drop", "brushing", ...(level === "hatchling" ? [] : ["question"]), "gust", "lift", ...(!reducedMotion ? ["counted"] : []), "reveal"] as const)
+      .map((phase) => ({ level, reducedMotion, phase })))))
+  ("HOME during $phase at $level, reduced motion $reducedMotion, keeps only a finished find and cancels callbacks", ({ level, reducedMotion, phase }) => {
+    const app = openDigApp({ reducedMotion, ageLevel: { level, revision: null } });
+    const timing = reducedMotion ? "reduced" : "motion";
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
-    digUp();
-    if (phase !== "gust") act(() => app.timers.fire(GUST.motion));
-    if (phase === "counted") act(() => app.timers.fire(LIFT.motion));
+    const finished = ["gust", "lift", "counted", "reveal"].includes(phase);
+    if (phase === "brushing") drag([[350, 300], [450, 300]]);
+    if (phase === "question") brushAll();
+    if (finished) digUp();
+    if (["lift", "counted", "reveal"].includes(phase)) act(() => app.timers.fire(GUST[timing]));
+    if (["counted", "reveal"].includes(phase)) act(() => app.timers.fire(LIFT[timing]));
+    if (phase === "reveal") {
+      if (!reducedMotion) act(() => app.timers.fire(COUNT_SETTLE[timing]));
+      // The reveal's HOME is guarded until every item has arrived.
+      fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+      expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
+      act(() => app.timers.fire(STAR_LANDS[timing]));
+    }
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+    expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(finished ? "1" : undefined);
     expect(app.timers.timers()).toEqual([]);
     fireEvent.click(homeTile("DIG"));
-    for (const wait of [GUST.motion, LIFT.motion, COUNT_SETTLE.motion]) act(() => app.timers.deliverStopped(wait));
+    for (const wait of [1000, GUST[timing], LIFT[timing], COUNT_SETTLE[timing], STAR_LANDS[timing]]) act(() => app.timers.deliverStopped(wait));
     expect(board().hasAttribute("data-blown")).toBe(false);
     expect(board().hasAttribute("data-lifting")).toBe(false);
     expect(document.querySelector(".dig-board-star")).toBeNull();
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
-    expect(stored(app.storage).games.dig.dug).toEqual(["tyrannosaurus"]);
+    expect(stored(app.storage).games.dig?.dug ?? []).toEqual(finished ? ["tyrannosaurus"] : []);
+    expect(stored(app.storage).games.dig?.badges ?? []).toEqual(finished && level !== "hatchling" ? ["tyrannosaurus"] : []);
   });
 });
 
 describe("dig reveals through the app", () => {
-  it("shows the dinosaur, first best reward, flying-star timing, and the DIG title", () => {
+  it("shows the dinosaur, first best reward, arrival timing, and the DIG title", () => {
     const app = reveal();
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("DIG");
@@ -160,7 +211,7 @@ describe("dig reveals through the app", () => {
     expect(screen.getByRole("region", { name: TEXTS.en.dugUp }).textContent).toContain(`${SHIPPED_DIG.length}/${SHIPPED_DIG.length}`);
   });
 
-  it("keeps reveal controls inert until the star lands, then HOME returns to the count tile", () => {
+  it("keeps reveal controls inert until the last arrival, then HOME returns to the count tile", () => {
     const app = reveal();
     fireEvent.click(levelButton("paleontologist"));
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
@@ -173,10 +224,10 @@ describe("dig reveals through the app", () => {
   });
 
   it.each(
-    (["gust", "flight", "landed"] as const).flatMap((rotation) =>
+    (["gust", "arrival", "landed"] as const).flatMap((rotation) =>
       [false, true].flatMap((reducedMotion) => ["DIG AGAIN", "HOME"].map((action) => ({ rotation, reducedMotion, action })))
     )
-  )("waits for the displayed star after rotating during $rotation, reduced motion $reducedMotion, then accepts $action", ({ rotation, reducedMotion, action }) => {
+  )("waits for the displayed items after rotating during $rotation, reduced motion $reducedMotion, then accepts $action", ({ rotation, reducedMotion, action }) => {
     const app = openDigApp({ reducedMotion });
     const timing = reducedMotion ? "reduced" : "motion";
     fireEvent.click(homeTile("DIG"));
@@ -251,11 +302,12 @@ describe("dig reveals through the app", () => {
     reloaded.unmount();
   });
 
-  it("uses reduced-motion fade timings for the gust and reward", () => {
+  it("uses a single short fade for the reveal under reduced motion", () => {
     const app = reveal({ reducedMotion: true });
     expect(app.timers.timers()).toEqual([STAR_LANDS.reduced]);
     const star = card().querySelector(".dig-card-star");
-    expect(star && getComputedStyle(star).animation).toContain("dig-star-flies");
+    expect(star && getComputedStyle(star).animation).toBe("");
+    expect(screen.getByRole("main").style.getPropertyValue("--dig-reveal-stagger")).toBe("0ms");
     land(app, true);
   });
 });

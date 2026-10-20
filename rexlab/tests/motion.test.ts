@@ -144,6 +144,30 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+describe("the dig reveal's motion", () => {
+  it("slides the board away while the dinosaur glides within the reveal's gap, with no second star flight", () => {
+    expect(declared(PLAIN, "::view-transition-old(.dig-reveal-change)").animation).toBe("slide-out var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, "::view-transition-new(.dig-reveal-change)").animation).toBe("none");
+    expect(declared(REDUCED, "::view-transition-old(.dig-reveal-change)").animation).toBe("fade-out var(--motion-small) var(--ease-out) both");
+    const glide = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-reveal-glide");
+    const frames = rulesOf(glide?.body ?? "").flatMap(({ body }) => declarationsOf(body));
+    expect(frames).toEqual([
+      { property: "opacity", value: "0" },
+      { property: "translate", value: "calc(24px * var(--motion-amount)) 0" }
+    ]);
+    expect(declared(PLAIN, ".dig-reveal").gap).toBe("24px");
+    expect(CSS).not.toContain("dig-star-flies");
+    expect(declared(PLAIN, ".dig-reveal-screen .celebration").animation).toBe("none");
+    const reduced = REDUCED.find(({ prelude }) => prelude.includes(".dig-reveal-screen[data-motion] .dig-reveal-art"));
+    expect(reduced?.prelude.split(",").map((selector) => selector.trim())).toEqual([
+      ".dig-reveal-screen[data-motion] .dig-reveal-art", ".dig-reveal-screen[data-motion] .dig-reveal-name",
+      ".dig-reveal-screen[data-motion] .dig-card", ".dig-reveal-screen[data-motion] .dig-reveal-celebration",
+      ".dig-reveal-screen[data-motion] .dig-reveal-level", ".dig-reveal-screen[data-motion] .result-actions > button"
+    ]);
+    expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
 describe("the home page's motion", () => {
   it("fades and lifts the large card in as a screen comes in, and only fades it with reduced motion", () => {
     const card = PLAIN.filter(({ prelude }) => prelude === ".featured-card").flatMap(({ body }) => declarationsOf(body));
