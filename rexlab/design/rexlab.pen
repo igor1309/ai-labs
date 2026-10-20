@@ -76706,6 +76706,7 @@
           "name": "Choices",
           "width": "fill_container",
           "height": 628,
+          "layout": "vertical",
           "gap": 20,
           "children": [
             {
@@ -77089,8 +77090,7 @@
                 }
               ]
             }
-          ],
-          "layout": "vertical"
+          ]
         }
       ]
     },
@@ -77294,6 +77294,7 @@
           "height": "fill_container",
           "fill": "$fm-surface-2",
           "cornerRadius": 32,
+          "layout": "vertical",
           "gap": 16,
           "padding": [
             32,
@@ -77793,8 +77794,8 @@
               "width": "fill_container",
               "height": "fill_container",
               "gap": 32,
-              "alignItems": "end",
               "justifyContent": "center",
+              "alignItems": "end",
               "children": [
                 {
                   "type": "frame",
@@ -78014,10 +78015,3398 @@
                 }
               ]
             }
-          ],
-          "layout": "vertical"
+          ]
         }
       ]
+    },
+    {
+      "type": "text",
+      "id": "C3EuR",
+      "x": 1664,
+      "y": 36830,
+      "name": "DIG Storyboard Title",
+      "fill": "$fm-ink",
+      "content": "DIG storyboard · one Explorer round with Triceratops, from the first stroke to the reveal",
+      "fontFamily": "Lexend",
+      "fontSize": 44,
+      "fontWeight": "700"
+    },
+    {
+      "type": "frame",
+      "id": "ytfeq",
+      "x": 1664,
+      "y": 36940,
+      "name": "Dig · Storyboard 1 — Light · START",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Y1ZRLZ",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Q2gjzL",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KHpF8",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "DTo31",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NxWFL",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XrTVX",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "sH0Sz",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "AJ9xa",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v3KRU7",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "jdueh",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "J0Iitu",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ckbIS",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Ak5O5",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "IDCX4",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s1pKp",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "DmVAX",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-1-start.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "ZB7nA",
+                  "x": 150,
+                  "y": 52,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "b6KUJ",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "A8rMc",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Sa9nf",
+              "name": "Find Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "InZBD",
+                  "name": "Find Card EYE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "r09DP",
+                      "name": "Close-up EYE",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-eye.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#B98A45",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "l4zn0",
+                      "name": "Caption FOOT",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ODsZJ",
+                          "name": "Word EYE",
+                          "fill": "$fm-ink",
+                          "content": "EYE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rSvuH",
+                  "name": "Find Card FOOT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dE7wI",
+                      "name": "Close-up FOOT",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-foot.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#B98A45",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qQyyA",
+                      "name": "Caption FOOT",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "fWUSy",
+                          "name": "Word FOOT",
+                          "fill": "$fm-ink",
+                          "content": "FOOT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Dfbxz",
+                  "name": "Find Card TAIL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jQ1Dy",
+                      "name": "Close-up TAIL",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-tail.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#B98A45",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "L6AqY",
+                      "name": "Caption FOOT",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "acBGF",
+                          "name": "Word TAIL",
+                          "fill": "$fm-ink",
+                          "content": "TAIL",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dSV87",
+                  "name": "Dug Out",
+                  "width": "fill_container",
+                  "height": 172,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    18
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DKilD",
+                      "name": "Dug Out Outline",
+                      "width": 168,
+                      "height": 126,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-story-outline-1-start.webp",
+                        "mode": "stretch"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q79NJ",
+                      "name": "Dug Out Caption",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LdCtG",
+                          "name": "Dug Out Label",
+                          "fill": "#000000",
+                          "content": "DUG OUT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "GZXSc",
+                          "name": "Dug Out Value",
+                          "fill": "#B5761A",
+                          "content": "3%",
+                          "fontFamily": "Lexend",
+                          "fontSize": 40,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "aYqut",
+      "x": 1664,
+      "y": 37880,
+      "name": "Storyboard Note 1",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "1 · START\nThe sand lies over the dinosaur's shape: soft bumps where its body is, horn and frill tips poking out. The board fits the dinosaur, so a stroke near it always finds something. Motion: the board drops in, the sand settles with a puff, the tips wiggle once.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "UV4Pn",
+      "x": 3224,
+      "y": 36940,
+      "name": "Dig · Storyboard 2 — Light · BRUSHING",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "rLUb0",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "cB6OO",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ZCf51",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "GxTOY",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hvLjH",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "zfIns",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "a4VGD",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "zd4wg",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jpWW6",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "y3g0N",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "D9g2Y",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KcKjF",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "x91GcG",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "EWs7R",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "OGkRU",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "RvJSf",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-2-brushing.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "ZJGmh",
+                  "x": 330,
+                  "y": 330,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "M7PsP",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "U5oxnI",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "L7DJv",
+              "name": "Find Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "q5BAUi",
+                  "name": "Find Card EYE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Xnv6D",
+                      "name": "Close-up EYE",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-eye.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aw1T4",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "TC2ya",
+                          "name": "Word EYE",
+                          "fill": "$fm-ink",
+                          "content": "EYE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "G0EFpc",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FNbSZ",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YEzSX",
+                  "name": "Find Card FOOT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "uzyTI",
+                      "name": "Close-up FOOT",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-foot.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#B98A45",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eU7eO",
+                      "name": "Caption FOOT",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tSOfR",
+                          "name": "Word FOOT",
+                          "fill": "$fm-ink",
+                          "content": "FOOT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PfGDT",
+                  "name": "Find Card TAIL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "sazRY",
+                      "name": "Close-up TAIL",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-tail.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#B98A45",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fXMdX",
+                      "name": "Caption FOOT",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "XgjlS",
+                          "name": "Word TAIL",
+                          "fill": "$fm-ink",
+                          "content": "TAIL",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lr0Jf",
+                  "name": "Dug Out",
+                  "width": "fill_container",
+                  "height": 172,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    18
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CrH6x",
+                      "name": "Dug Out Outline",
+                      "width": 168,
+                      "height": 126,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-story-outline-2-brushing.webp",
+                        "mode": "stretch"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZzrD0",
+                      "name": "Dug Out Caption",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "d9fJVR",
+                          "name": "Dug Out Label",
+                          "fill": "#000000",
+                          "content": "DUG OUT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "TSKgu",
+                          "name": "Dug Out Value",
+                          "fill": "#B5761A",
+                          "content": "21%",
+                          "fontFamily": "Lexend",
+                          "fontSize": 40,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "F99Yef",
+      "x": 3224,
+      "y": 37880,
+      "name": "Storyboard Note 2",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "2 · BRUSHING\nSoft, crumbly edges with a lip of grains and the sand's shadow in the hollow, never hard stripes. Grains puff off the brush. A detail found: a gold ring pulses, a star pops and flies into its card, the card turns green with a tick.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "QYF3O",
+      "x": 4784,
+      "y": 36940,
+      "name": "Dig · Storyboard 3 — Light · KEEP DIGGING",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "hMacQ",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "gHKJW",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "gPXvw",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "jxKwX",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m2nsJ",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "q30AU",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "oJNzz",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "PG8oR",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "V6L3ou",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "C64qE",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "RGMeN",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EXSRw",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "g7myZ9",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "Qo8uY",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QGJHR",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "g9z2Li",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3-keep-digging.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "MeI76",
+                  "x": 520,
+                  "y": 420,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "IlBIz",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "mmgBy",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Sbu7d",
+                  "x": 222,
+                  "y": 612,
+                  "name": "Keep Digging Banner",
+                  "height": 64,
+                  "fill": "#FFFFFFEE",
+                  "cornerRadius": 32,
+                  "stroke": "#E0A526",
+                  "strokeWidth": 3,
+                  "gap": 12,
+                  "padding": [
+                    0,
+                    28
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IpSJv",
+                      "name": "Keep Digging Star",
+                      "fill": "#E0A526",
+                      "content": "★",
+                      "fontFamily": "Inter",
+                      "fontSize": 30,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "L0QNKf",
+                      "name": "Keep Digging Text",
+                      "fill": "$fm-ink",
+                      "content": "ALL 3 FOUND! NOW DIG IT ALL OUT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "KDVCn",
+                  "x": 846,
+                  "y": 624,
+                  "name": "Bonus Shell",
+                  "fill": "$fm-ink",
+                  "content": "🐚",
+                  "fontFamily": "Inter",
+                  "fontSize": 44,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w9ZM1D",
+              "name": "Find Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "F8EiK",
+                  "name": "Find Card EYE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "cdpHq",
+                      "name": "Close-up EYE",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-eye.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E4wlqI",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "pSJU6",
+                          "name": "Word EYE",
+                          "fill": "$fm-ink",
+                          "content": "EYE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "pEJxX",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "ti0sB",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LmCyl",
+                  "name": "Find Card FOOT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "t0joWx",
+                      "name": "Close-up FOOT",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-foot.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LeKxs",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "W1zKkE",
+                          "name": "Word FOOT",
+                          "fill": "$fm-ink",
+                          "content": "FOOT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RUuXl",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "UnB6N",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tZub7",
+                  "name": "Find Card TAIL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "o2qiwp",
+                      "name": "Close-up TAIL",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-tail.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fHkWG",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "i1JMqv",
+                          "name": "Word TAIL",
+                          "fill": "$fm-ink",
+                          "content": "TAIL",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sDoF9",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Q6lHkP",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "o901a",
+                  "name": "Dug Out",
+                  "width": "fill_container",
+                  "height": 172,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    18
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "bIaIv",
+                      "name": "Dug Out Outline",
+                      "width": 168,
+                      "height": 126,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-story-outline-3-keep-digging.webp",
+                        "mode": "stretch"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "i4bRX",
+                      "name": "Dug Out Caption",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "inZJT",
+                          "name": "Dug Out Label",
+                          "fill": "#000000",
+                          "content": "DUG OUT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "YJk2Y",
+                          "name": "Dug Out Value",
+                          "fill": "#B5761A",
+                          "content": "62%",
+                          "fontFamily": "Lexend",
+                          "fontSize": 40,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "CVd1W",
+      "x": 4784,
+      "y": 37880,
+      "name": "Storyboard Note 3",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "3 · KEEP DIGGING\nAll three details found, and the round goes on: a banner asks for the whole dinosaur, and DUG OUT shows how much of it is uncovered. A bonus find (a shell) may turn up in the sand; it does not count.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "irVbP",
+      "x": 6344,
+      "y": 36940,
+      "name": "Dig · Storyboard 4 — Light · GUST",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "SdHkc",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "IevPF",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OStJC",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "YjwbM",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LRMH8",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pkxzX",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "gMRop",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "D5d0F",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nv3LF",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "z5mYH",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "q9189C",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "smnS7",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "CCchO",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "SaEV9",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nCJs2",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "QnONF",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-4-gust.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "P5DVh",
+                  "x": 610,
+                  "y": 330,
+                  "name": "Brush",
+                  "enabled": false,
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "fN81P",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "UvGea",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "bjM0j",
+                  "x": 60,
+                  "y": 470,
+                  "name": "Gust Line 1",
+                  "fill": "#FFFFFF8C",
+                  "width": 260,
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "ki0qR",
+                  "x": 150,
+                  "y": 540,
+                  "name": "Gust Line 2",
+                  "fill": "#FFFFFF8C",
+                  "width": 340,
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "U94Oxt",
+                  "x": 40,
+                  "y": 610,
+                  "name": "Gust Line 3",
+                  "fill": "#FFFFFF8C",
+                  "width": 200,
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "cjK7l",
+                  "x": 420,
+                  "y": 560,
+                  "name": "Gust Line 4",
+                  "fill": "#FFFFFF8C",
+                  "width": 300,
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cpdrB",
+              "name": "Find Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nkq70",
+                  "name": "Find Card EYE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HoWuE",
+                      "name": "Close-up EYE",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-eye.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tgkpr",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "T9Tbx",
+                          "name": "Word EYE",
+                          "fill": "$fm-ink",
+                          "content": "EYE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LZxj1",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "z4CWEE",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IZbDq",
+                  "name": "Find Card FOOT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HvsgG",
+                      "name": "Close-up FOOT",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-foot.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "cdRnt",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "It9aA",
+                          "name": "Word FOOT",
+                          "fill": "$fm-ink",
+                          "content": "FOOT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "GncGd",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "n7LVl",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZUC9w",
+                  "name": "Find Card TAIL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SHfKa",
+                      "name": "Close-up TAIL",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-tail.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bLwWv",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bmBkU",
+                          "name": "Word TAIL",
+                          "fill": "$fm-ink",
+                          "content": "TAIL",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "c1Nsja",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Pij7G",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wUyMU",
+                  "name": "Dug Out",
+                  "width": "fill_container",
+                  "height": 172,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    18
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fqhP3",
+                      "name": "Dug Out Outline",
+                      "width": 168,
+                      "height": 126,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-story-outline-4-gust.webp",
+                        "mode": "stretch"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JENyH",
+                      "name": "Dug Out Caption",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "TsOMP",
+                          "name": "Dug Out Label",
+                          "fill": "#000000",
+                          "content": "DUG OUT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "yPHmm",
+                          "name": "Dug Out Value",
+                          "fill": "#B5761A",
+                          "content": "96%",
+                          "fontFamily": "Lexend",
+                          "fontSize": 40,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "JG4EH",
+      "x": 6344,
+      "y": 37880,
+      "name": "Storyboard Note 4",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "4 · GUST\nAt 95% uncovered the last specks lift and streak away in one sweep, left to right, about 0.8 s. With reduced motion the sand just fades.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "IGnuI",
+      "x": 7904,
+      "y": 36940,
+      "name": "Dig · Storyboard 5 — Light · LIFT",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "wT8o9",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "sRpke",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "LMIXY",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "aN782",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ejuh7",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cFhZK",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "W1BT4",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Ugoet",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Vui30",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "jwSMp",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "fH1qj",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XnbLW",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "CmKlg",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "Q7Om5",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "5/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Gac6X",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Rmpri",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-5-lift.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "TY4tZ",
+                  "x": 610,
+                  "y": 330,
+                  "name": "Brush",
+                  "enabled": false,
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "x4AyJ",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "HRlj6",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "S8Kavx",
+                  "x": 600,
+                  "y": 250,
+                  "name": "Flying Star 1",
+                  "fill": "#E0A52666",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "DLNKX",
+                  "x": 720,
+                  "y": 150,
+                  "name": "Flying Star 2",
+                  "fill": "#E0A526AA",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 64,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "YSej4",
+                  "x": 850,
+                  "y": 30,
+                  "name": "Flying Star 3",
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 96,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dJUgK",
+              "name": "Find Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nA9tj",
+                  "name": "Find Card EYE",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fN6WI",
+                      "name": "Close-up EYE",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-eye.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "e2Tvi9",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e64z2",
+                          "name": "Word EYE",
+                          "fill": "$fm-ink",
+                          "content": "EYE",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "B1j00",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "OBX7r",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PG0lP",
+                  "name": "Find Card FOOT",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k4MmO",
+                      "name": "Close-up FOOT",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-foot.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nDQUb",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "f3fV1",
+                          "name": "Word FOOT",
+                          "fill": "$fm-ink",
+                          "content": "FOOT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XiZx6",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "GQKhJ",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JBToK",
+                  "name": "Find Card TAIL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 3,
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    20
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "RAF6F",
+                      "name": "Close-up TAIL",
+                      "width": 124,
+                      "height": 124,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-card-triceratops-tail.webp",
+                        "mode": "stretch"
+                      },
+                      "cornerRadius": 62,
+                      "stroke": "#2E7D4F",
+                      "strokeWidth": 4
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PdJBO",
+                      "name": "Caption EYE",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "YL5Lr",
+                          "name": "Word TAIL",
+                          "fill": "$fm-ink",
+                          "content": "TAIL",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "bDAoL",
+                          "name": "Tick EYE",
+                          "width": 44,
+                          "height": 44,
+                          "fill": "#2E7D4F",
+                          "cornerRadius": 22,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "CWGIW",
+                              "name": "Tick Icon EYE",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Dy6f8",
+                  "name": "Dug Out",
+                  "width": "fill_container",
+                  "height": 172,
+                  "fill": "#FFF4D6",
+                  "cornerRadius": 24,
+                  "stroke": "#E0A526",
+                  "strokeWidth": 3,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    18
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Fpfyd",
+                      "name": "Dug Out Outline",
+                      "width": 168,
+                      "height": 126,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-story-outline-4-gust.webp",
+                        "mode": "stretch"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Aqmye",
+                      "name": "Dug Out Caption",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "YQhcr",
+                          "name": "Dug Out Label",
+                          "fill": "#000000",
+                          "content": "DUG OUT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "AY4bf",
+                          "name": "Dug Out Value",
+                          "fill": "#B5761A",
+                          "content": "100%",
+                          "fontFamily": "Lexend",
+                          "fontSize": 40,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "SEbk9",
+      "x": 7904,
+      "y": 37880,
+      "name": "Storyboard Note 5",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "5 · LIFT\nThe dinosaur rises off its bed with a warm glow (0.5 s); its star flies into the DUG UP count, which ticks up to 5/39.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "XEzDR",
+      "x": 9464,
+      "y": 36940,
+      "name": "Dig · Storyboard 6 — Light · Reveal",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-base",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "IkXTi",
+          "x": 0,
+          "y": 780,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 1440,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "jD0kD",
+          "x": 40,
+          "y": 250,
+          "name": "Hero Art",
+          "width": 640,
+          "height": 480,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/triceratops.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "aZoxP",
+          "x": 700,
+          "y": 80,
+          "name": "Celebration",
+          "width": 680,
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "WYSdV",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LZ6im",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "TRICERATOPS",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 88,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Tw41y",
+                  "x": 144,
+                  "y": 118,
+                  "name": "Score Total",
+                  "enabled": false,
+                  "fill": "$fm-amber",
+                  "content": "/ 8",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 60,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xdILl",
+              "name": "Stars",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "na240",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 88,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "mhnVk",
+                  "name": "Star New",
+                  "fill": "$fm-amber",
+                  "content": "NEW!",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "iN2DP",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "DUG UP!",
+              "fontFamily": "Lexend",
+              "fontSize": 48,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "id9w3",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "BGScr",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "DUG UP",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "vL7Ta",
+                  "name": "Best New",
+                  "fill": "$fm-amber",
+                  "content": "5/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eHeVD",
+              "name": "Level Switch",
+              "width": 648,
+              "height": 72,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "b8aGO",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Iq8NV",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "FU1z0",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "HATCHLING",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Wwcea",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vL9tt",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B56tH",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-base",
+                      "content": "EXPLORER",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PKM41",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "O8X5yu",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "x5V4p",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-on-base",
+                      "content": "PALEONTOLOGIST",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VP1ob",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OCCtZ",
+                  "name": "Play Again Button",
+                  "height": 80,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "FHb72",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zaImz",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "DIG AGAIN",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pn586",
+                  "name": "Home Button",
+                  "height": 80,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "FalAN",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EREBC",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "HOME",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "EItKx",
+      "x": 9464,
+      "y": 37880,
+      "name": "Storyboard Note 6",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "6 · REVEAL\nThe board slides away and the dinosaur glides into the hero spot, whole, never cut off at the edge. The name, the star, DUG UP, the level switch and the buttons arrive one after another, 60 ms apart. The live screen should match this layout.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
     }
   ],
   "themes": {
