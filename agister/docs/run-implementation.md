@@ -1351,7 +1351,8 @@ before, with no such field, is read as `null`.
 ```
 
 **The composition** gives a step its process's cost limit. On a runtime
-whose facts do not take a budget the limit spends nothing, and the call
+whose facts do not take a budget (whose facts report no cost, since
+"Codex's cost") the limit spends nothing, and the call
 is given the warning "the runtime <runtime> reports no cost: the cost
 limit <limit> spends nothing". A call continuing a session, by
 `--continue` or a binding, is given the `"session_cost"` of the
@@ -1379,7 +1380,8 @@ Decisions, each with its reason:
   tool call keeps the class.
 - A limit on codex or bash runs, spending nothing, as ADR-004, rule 7
   has it, with a warning, so a limit that bounds nothing is not silent.
-  Codex's cost through `ccusage` stays in the backlog.
+  Codex's cost through `ccusage` stays in the backlog. (It came in
+  "Codex's cost": a limit on codex spends what it reports.)
 - The facts are the wrapper's, read by the composition as it reads how a
   runtime takes its inputs.
 
@@ -1471,3 +1473,64 @@ Decisions, each with its reason:
   nothing locks across calls.
 - A call already running is not ended for the day: Agister kills no
   turn for its cost.
+
+## Codex's cost
+
+A turn on codex reports its cost, read through `ccusage`, so a cost
+limit and the daily budget spend it; a resumed turn's usage is its own
+(ADR-001, invariant 3; ADR-004, rule 7; LAB-357).
+
+Codex reports no cost. Its `turn.completed` usage on a resumed thread is
+the thread's to date: a first turn's input of 17,587 tokens, then
+38,225 for a resumed one (seen live, 2026-10-20). `ccusage codex session
+--json -O --id <thread>` prices a thread from its rollout, which a
+resume appends to: its `totalCost` is the thread's to date, its tokens
+too, each model's marked `isFallback` where priced as another's; it
+reads the `CODEX_HOME` it is given, and exits 1 for a thread it does
+not find (ccusage 20.0.31, the same day). `-O` prices from the table
+ccusage ships, with no network.
+
+**`runtime/codex`**'s turn is followed, where it gives a reply and its
+thread, by a lookup of the thread's cost; a resumed turn is preceded
+by one as well. A lookup runs `ccusage codex session --json -O --id
+<thread>` through the supervisor, in the turn's directory with its
+environment, and reads its stdout's lines. Its reply's cost is the
+thread's cost after the turn less before it, zero before for a turn
+that resumes none; it also gives the session's cost, the thread's cost
+after. A resumed turn's usage is the reported usage less the thread's
+before, codex's input counting ccusage's input and cache reads. A
+lookup that does not start, exits other than 0, gives no JSON object
+with a number `totalCost`, or prices any model as a fallback is
+unknown: the cost after unknown leaves the cost and the session's cost
+unknown, the cost before unknown the cost and a resumed turn's usage.
+A cost less than zero is unknown. A turn a signal ended, or with no
+thread, has no lookup. Its facts say it reports a cost, as
+claude-code's do, and bash's that it does not.
+
+**The composition** maps codex's reply's cost and session's cost onto
+the call's reply. The warning on a cost limit, "the runtime <runtime>
+reports no cost: the cost limit <limit> spends nothing", is given on a
+runtime whose facts report no cost, bash, and no longer on one that
+takes no budget: a limit on codex is kept, its turns given no budget,
+the call stopped at capacity once its known cost reaches it, as on
+claude-code.
+
+Decisions, each with its reason:
+
+- The wrapper looks the thread up before a resumed turn, not given the
+  cost before by core: the usage before is wanted as well, and only
+  ccusage holds it; the thread's own rollout is truer than the record
+  of another run.
+- `-O`: a lookup with no network, the same price each time. A model the
+  table does not know is priced as a fallback, so its cost is unknown,
+  not a guess, until ccusage is updated (ADR-001, invariant 3).
+- Through the supervisor: the lookup is a program, ended with the call
+  on a timeout or a cancellation, as the turn is.
+- A lookup that fails leaves the cost unknown, and nothing else about
+  the turn: it ran, whatever its price. ccusage not installed is such a
+  failure; it spends nothing, as an unknown cost does.
+- A turn a signal ended has no lookup: it gives no reply, as now, and
+  a stale turn spends nothing (LAB-336).
+- The contract stays `codex/2`, as `claude-code/3` stayed for Claude's
+  cost (LAB-336): the settings' runtime documents name it, and what a
+  call is given is unchanged.

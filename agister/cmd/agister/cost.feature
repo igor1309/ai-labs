@@ -45,8 +45,18 @@ Feature: The composition keeps a call to its cost limit
       the session's cost before 0.5
 
   Scenario: A limit on a runtime that reports no cost spends nothing
-    Given codex completes
+    Given the process "say" on bash declares the cost limit 1
+    When "agister run --process say --agent bash --param what=hi" runs
+      in "/r"
+    Then bash's program runs, and the result's warnings hold "the
+      runtime bash reports no cost: the cost limit 1 spends nothing"
+
+  Scenario: A limit on codex is kept on the cost it reports
+    Given codex's turn fails at capacity, its thread "t1", its cost 1.5
+      and its session's cost 1.5
     When "agister run --process ask --agent codex-sol-61 --param q=why"
       runs in "/r"
-    Then codex's turn runs, and the result's warnings hold "the runtime
-      codex reports no cost: the cost limit 1 spends nothing"
+    Then codex is given one turn, and the result has no warning
+    And it is failed, class "budget_exhausted", the reason "the cost
+      limit 1 is spent: 1.5"
+    And the record's call has the cost 1.5 and "session_cost" 1.5"
