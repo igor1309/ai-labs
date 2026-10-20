@@ -114,7 +114,7 @@ it.each(["failed", "timed out"])("finishes Hatchling with a %s body picture, pre
 it("shows no trace of digging or a first-pick badge in the catalogue or a dinosaur's page", () => {
   const snapshots = [[], ["triceratops"]].map((dug) => {
     const app = openDigApp({ storage: memoryStorage(record({ dug, badges: dug })) });
-    fireEvent.click(homeTile("ALL DINOSAURS"));
+    fireEvent.click(homeTile("ANCIENT REPTILES"));
     const catalogue = screen.getByRole("main").outerHTML;
     fireEvent.click(screen.getByRole("button", { name: /Triceratops/i }));
     const page = screen.getByRole("main").outerHTML;

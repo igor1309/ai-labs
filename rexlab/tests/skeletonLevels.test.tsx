@@ -71,7 +71,7 @@ describe("the level switch", () => {
   it("stands above the dinosaurs, find the pair's switch with the levels youngest first, each with its picture", () => {
     openSkeletonsApp();
 
-    const dinosaurs = screen.getByRole("group", { name: TEXTS.en.dinosaurs });
+    const dinosaurs = screen.getByRole("group", { name: TEXTS.en.creatures });
     expect(levelSwitch().compareDocumentPosition(dinosaurs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const levels = within(levelSwitch()).getAllByRole("button");
     expect(levels.map((level) => level.querySelector(".level-switch-picture")?.textContent)).toEqual(["🥚", "🦖", "🦴"]);
@@ -97,7 +97,7 @@ describe("the level switch", () => {
 
     const row = getComputedStyle(levelSwitch().parentElement ?? document.body);
     const screenStyle = getComputedStyle(document.querySelector(".skeleton-screen") ?? document.body);
-    const dinosaurs = getComputedStyle(screen.getByRole("group", { name: TEXTS.en.dinosaurs }));
+    const dinosaurs = getComputedStyle(screen.getByRole("group", { name: TEXTS.en.creatures }));
     expect([row.flexShrink, px(row.width) <= width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight)]).toEqual(["0", true]);
     expect([screenStyle.overflow, dinosaurs.flexShrink, px(dinosaurs.minHeight)]).toEqual(["hidden", "1", 0]);
   });

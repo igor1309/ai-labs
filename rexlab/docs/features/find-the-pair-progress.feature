@@ -40,7 +40,7 @@ Feature: Find the pair: keeping progress
 
   Scenario: Opening the catalogue keeps the found as stored
     Given the stored found dinosaurs include one that is no longer in the dinosaur list
-    When I open "ALL DINOSAURS"
+    When I open "ANCIENT REPTILES"
     Then the stored progress is not changed by opening it
 
   Scenario: The game works when progress cannot be read

@@ -8,12 +8,12 @@ Feature: The dinosaur catalogue
 
   Scenario: The home page offers the catalogue as a tile
     When I open the home page
-    Then I see an "ALL DINOSAURS" tile with a 📖 symbol, a dinosaur and the count "42"
+    Then I see an "ANCIENT REPTILES" tile with a 📖 symbol, a dinosaur and the count "42"
     And it is under the "COMPARE" tile, in the row's first column
 
   Scenario: The tile opens the list of every dinosaur
     Given I am on the home page
-    When I tap the "ALL DINOSAURS" tile
+    When I tap the "ANCIENT REPTILES" tile
     Then I see a "HOME" button with a 🏠 symbol and the food chips beside it, in one row
     And I see no title and no count above the cards
     And I see 42 dinosaur cards, four to a row, in the order of the dinosaur list
@@ -42,7 +42,7 @@ Feature: The dinosaur catalogue
     And right under the name the "MEAT" food tag
     And its description, "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS."
     And its height "3.1 M" beside "TALL" and its weight "8 T" beside "HEAVY"
-    And an "ALL DINOSAURS" button with a 📖 symbol and the position "1 / 42"
+    And an "ANCIENT REPTILES" button with a 📖 symbol and the position "1 / 42"
 
   Scenario: A page opens at once and loads its neighbours ahead
     Given I am on the list of every dinosaur
@@ -65,7 +65,7 @@ Feature: The dinosaur catalogue
 
   Scenario: Back to the list keeps the dinosaur in view
     Given I opened the page of a dinosaur far down the list
-    When I tap the "ALL DINOSAURS" button
+    When I tap the "ANCIENT REPTILES" button
     Then I see the list of every dinosaur with that dinosaur's card in view
 
   Scenario: The note about the facts is for parents
@@ -80,8 +80,8 @@ Feature: The dinosaur catalogue
 
     Examples:
       | language | tile          | title         | food |
-      | English  | ALL DINOSAURS | ALL DINOSAURS | BOTH |
-      | Russian  | ВСЕ           | ВСЕ ДИНОЗАВРЫ | ВСЁ  |
+      | English  | ANCIENT REPTILES | ANCIENT REPTILES | BOTH |
+      | Russian  | ВСЕ           | ДРЕВНИЕ ЯЩЕРЫ | ВСЁ  |
 
   Scenario: Every dinosaur has a food type and a description
     Given the dinosaur list the app ships with

@@ -91,7 +91,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
         </span>
         {text.prompts[prompt]}
       </h1>
-      <div className="dinosaur-cards" role="group" aria-label={text.dinosaurs}>
+      <div className="dinosaur-cards" role="group" aria-label={text.creatures}>
         {card(left, "left")}
         <span className="versus" aria-hidden="true">
           {text.versus}

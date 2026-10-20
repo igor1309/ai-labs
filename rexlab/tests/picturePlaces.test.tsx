@@ -39,10 +39,10 @@ function openApp(pictures: ManualPictures, featured: Parameters<typeof featuring
 const lookOf = (picture: HTMLElement | null | undefined) => [picture?.dataset.picture, picture?.getAttribute("src")];
 
 describe("a place shimmering until its picture loads", () => {
-  it("is the ALL DINOSAURS tile on the home page", () => {
+  it("is the ANCIENT REPTILES tile on the home page", () => {
     const pictures = manualPictures();
     openApp(pictures);
-    const picture = gameDoor("ALL DINOSAURS").querySelector("img");
+    const picture = gameDoor("ANCIENT REPTILES").querySelector("img");
 
     expect(lookOf(picture)).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("stegosaurus")));
@@ -53,9 +53,9 @@ describe("a place shimmering until its picture loads", () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
 
-    await user.click(gameDoor("ALL DINOSAURS"));
+    await user.click(gameDoor("ANCIENT REPTILES"));
 
-    const card = within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Velociraptor" });
+    const card = within(screen.getByRole("group", { name: "ANCIENT REPTILES" })).getByRole("button", { name: "Velociraptor" });
     expect(lookOf(card.querySelector("img"))).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
     expect(lookOf(card.querySelector("img"))).toEqual(["appearing", fakeBodyPicture("velociraptor")]);
@@ -70,7 +70,7 @@ describe("a place shimmering until its picture loads", () => {
     await user.click(gameDoor("COMPARE"));
     for (let number = 1; number <= 10; number++) {
       loadAllBut();
-      await user.click(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")[0] ?? document.body);
+      await user.click(within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button")[0] ?? document.body);
       await user.click(screen.getByRole("button", { name: number < 10 ? "NEXT" : "SEE RESULT" }));
     }
 
@@ -108,7 +108,7 @@ describe.each(HOME_GAMES)("every picture of the home page, featuring %s", (featu
 });
 
 describe("a screen whose pictures fail or are late", () => {
-  const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+  const cards = () => within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button");
 
   it("is question 1, each card named and answered, once its pictures load past the limit", async () => {
     const pictures = manualPictures();
@@ -142,8 +142,8 @@ describe("a screen whose pictures fail or are late", () => {
   it("is the page of Velociraptor, its → button going on", async () => {
     const pictures = manualPictures();
     const user = openApp(pictures);
-    await user.click(gameDoor("ALL DINOSAURS"));
-    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Velociraptor" }));
+    await user.click(gameDoor("ANCIENT REPTILES"));
+    await user.click(within(screen.getByRole("group", { name: "ANCIENT REPTILES" })).getByRole("button", { name: "Velociraptor" }));
     act(() => pictures.fail(fakeBodyPicture("velociraptor")));
 
     expect(lookOf(screen.getByRole("img", { name: "Velociraptor" }))).toEqual(["failed", null]);

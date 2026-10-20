@@ -1,4 +1,4 @@
-import { Copy, House, Ruler, Weight } from "lucide-react";
+import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
@@ -8,6 +8,14 @@ import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SharedPicture } from "./SharedPicture.tsx";
 
+// How a creature's size is measured: a dinosaur's height, a flying
+// reptile's wingspan or a sea reptile's length.
+export type Measure = "height" | "wingspan" | "length";
+
+// A height stands up the card's ruler; a wingspan or a length lies along
+// its arrow, so neither reads as a height beside a dinosaur's.
+export const MEASURE_ICONS = { height: Ruler, wingspan: MoveHorizontal, length: MoveHorizontal } as const;
+
 // The cards in a row of the catalogue.
 const COLUMNS = 4;
 
@@ -16,8 +24,8 @@ export type CatalogueCardView = {
   name: string;
   // The URL of the dinosaur's picture.
   picture: string;
-  // The height and the mass, written out.
-  height: string;
+  // The size, by its measure, and the mass, written out.
+  size: { measure: Measure; value: string };
   mass: string;
   diet: Diet;
   // Found in find the pair.
@@ -81,8 +89,8 @@ type CatalogueCardProps = {
   onOpen: (id: string) => void;
 };
 
-function CatalogueCard({ view: { id, name, picture, height, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
-  const text = TEXTS[language];
+function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
+  const SizeIcon = MEASURE_ICONS[size.measure];
   return (
     <Button
       className="card catalogue-card"
@@ -100,8 +108,8 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet }, langua
         <span className="catalogue-name">{name.toLocaleUpperCase(language)}</span>
         <span className="catalogue-chips">
           <span className="catalogue-chip">
-            <Ruler size={16} aria-hidden="true" />
-            {height}
+            <SizeIcon size={16} aria-hidden="true" />
+            {size.value}
           </span>
           <span className="catalogue-chip">
             <Weight size={16} aria-hidden="true" />

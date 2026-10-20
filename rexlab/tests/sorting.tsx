@@ -90,7 +90,7 @@ export const latest = ({ seen }: OpenBoard): Sorting => {
   return sorting;
 };
 
-export const tray = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].dinosaurs });
+export const tray = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].creatures });
 
 export const trayCard = (card: CardState, language: Language = "en") =>
   within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });

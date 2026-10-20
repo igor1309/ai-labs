@@ -12,7 +12,7 @@ Feature: The home page's game tiles
   Scenario: The tiles stand in equal columns of two beside the large card
     Given the large card features COMPARE
     When I open the home page
-    Then beside the large card I see "ALL DINOSAURS" over "FIND THE PAIR"
+    Then beside the large card I see "ANCIENT REPTILES" over "FIND THE PAIR"
     And then "SKELETONS" over "DIG"
     And then "SORT" over "CARE"
     And then "MORE COMING", last
@@ -29,13 +29,13 @@ Feature: The home page's game tiles
   Scenario Outline: The tiles scroll sideways
     Given the screen is <width> by <height> CSS pixels
     When I open the home page
-    Then the row shows "COMPARE" and "ALL DINOSAURS" at its left edge
+    Then the row shows "COMPARE" and "ANCIENT REPTILES" at its left edge
     And at least 24 pixels of the first column that does not fit peek in at the right edge
     When I swipe the tiles to the left until they stop
     Then I see "MORE COMING" at the right edge
     And the large card stays in place
     When I swipe back to the right
-    Then I see "COMPARE" and "ALL DINOSAURS" again
+    Then I see "COMPARE" and "ANCIENT REPTILES" again
 
     Examples:
       | width | height |
@@ -56,7 +56,7 @@ Feature: The home page's game tiles
     Given I swiped the tiles to "MORE COMING"
     When I swipe back until I can tap "FIND THE PAIR"
     And I open "FIND THE PAIR" and go back home
-    Then the row shows "COMPARE" and "ALL DINOSAURS" at its left edge
+    Then the row shows "COMPARE" and "ANCIENT REPTILES" at its left edge
 
   Scenario Outline: Every tile's words fit it
     Given the app is in <language>
