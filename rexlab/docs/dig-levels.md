@@ -16,6 +16,9 @@ The one interaction at every level.
   under it; a tap clears one round spot, so a child who taps still digs.
   Taps go through the app's double-tap filter like any other, so a
   second tap at once in the same place clears nothing more.
+  The hollow's edge crumbles, with a pale lip of loose grains on the
+  sand around it and the sand's shadow inside, and under the sand lies
+  a bed of darker, damp sand, never the page (LAB-360).
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
   level. A wrong pick at the question only fades that card.
@@ -46,7 +49,7 @@ Storyboard" row of `../design/rexlab.pen`.
 | The task | brush until it shows | brush, then name it from 3 body pictures | brush, then name it from 4 |
 | The question | none | at 75% of the dinosaur clear, "WHO IS IT?" and 3 cards beside the board | the same with 4 cards |
 | The end | the gust at 95% of the dinosaur | the gust at the right pick | the same |
-| A found spot | a star pops where it lies | the same | the same |
+| A found spot | a ring and a star shine where it lies | the same | the same |
 | Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that card and the child picks again | the same |
 
 - **Why these steps.** Hatchling is free brushing with nothing to get
@@ -89,7 +92,9 @@ Storyboard" row of `../design/rexlab.pen`.
   of all of them, with the best-score celebrations of the other games
   when it grows; it is the same at every level (`age-levels.md`, "Same
   rewards"). The last dinosaur dug up adds a 🏆 to the card.
-- **A found spot** pops a small star, which counts towards nothing. A
+- **A found spot** shines once as it first shows: a ring spreads and a
+  small star pops, which counts towards nothing; under reduced motion
+  it does not shine. A
   dinosaur named at the first pick, at Explorer or Paleontologist,
   earns its 🦴 badge, shown on the "DUG UP" card of its reveals.
 - **The result.** The reveal is the result: the level switch above

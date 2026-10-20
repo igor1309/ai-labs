@@ -83,19 +83,29 @@ function openRound(options: Options = {}) {
 type Arc = { x: number; y: number; r: number; start: number; end: number };
 type Gradient = { circles: number[]; stops: Array<[number, string]>; addColorStop(at: number, colour: string): void };
 type Fill = { path: Arc[]; operation: string; style: string | Gradient };
+type Line = { operation: string; style: string; width: number; cap: string; path: number[][] };
 
-// Completed drawing operations on the sand's canvas, in canvas pixels.
-function spySand() {
+// Completed drawing operations on the sand's canvas, in canvas pixels:
+// the soft stamps, the crumbs knocked off their rims and the lips along
+// the strokes, and on the bed's canvas apart.
+function spyContext() {
   const drawn = {
     covers: [] as Array<[number, number]>,
     paints: [] as Array<{ operation: string; style: string | Gradient }>,
     fills: [] as Fill[],
-    get stamps() { return this.fills.flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); }
+    lines: [] as Line[],
+    get erased() { return this.fills.filter(({ style }) => typeof style !== "string"); },
+    get stamps() { return this.erased.flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); },
+    get crumbs() { return this.fills.filter(({ style }) => typeof style === "string").flatMap(({ path }) => path.map(({ x, y, r }) => ({ x, y, r }))); }
   };
   let path: Arc[] = [];
+  let points: number[][] = [];
   const context = {
     globalCompositeOperation: "source-over",
     fillStyle: "" as string | Gradient,
+    strokeStyle: "",
+    lineWidth: 1,
+    lineCap: "butt",
     fillRect: (x: number, y: number, width: number, height: number) => {
       drawn.paints.push({ operation: context.globalCompositeOperation, style: context.fillStyle });
       if (context.globalCompositeOperation === "source-over" && x === 0 && y === 0) drawn.covers.push([width, height]);
@@ -104,17 +114,27 @@ function spySand() {
       const gradient: Gradient = { circles, stops: [], addColorStop: (at, colour) => { gradient.stops.push([at, colour]); } };
       return gradient;
     },
-    beginPath: () => { path = []; },
+    beginPath: () => { path = []; points = []; },
     arc: (x: number, y: number, r: number, start: number, end: number) => { path.push({ x, y, r, start, end }); },
-    fill: () => { drawn.fills.push({ path: [...path], operation: context.globalCompositeOperation, style: context.fillStyle }); }
+    moveTo: (x: number, y: number) => { points.push([x, y]); },
+    lineTo: (x: number, y: number) => { points.push([x, y]); },
+    fill: () => { drawn.fills.push({ path: [...path], operation: context.globalCompositeOperation, style: context.fillStyle }); },
+    stroke: () => { drawn.lines.push({ operation: context.globalCompositeOperation, style: context.strokeStyle, width: context.lineWidth, cap: context.lineCap, path: [...points] }); }
   };
-  return { drawn, sandContext: () => context as unknown as CanvasRenderingContext2D };
+  return { drawn, context: context as unknown as CanvasRenderingContext2D };
+}
+
+function spySand() {
+  const sand = spyContext();
+  const bed = spyContext();
+  return { drawn: sand.drawn, bed: bed.drawn, sandContext: (canvas: HTMLCanvasElement) => (canvas.classList.contains("dig-bed") ? bed.context : sand.context) };
 }
 
 function expectErased(fills: Fill[], places: Array<{ x: number; y: number; r: number }>) {
-  expect(fills).toHaveLength(places.length);
+  const erased = fills.filter(({ style }) => typeof style !== "string");
+  expect(erased).toHaveLength(places.length);
   places.forEach(({ x, y, r }, at) => {
-    expect(fills[at]).toEqual({
+    expect(erased[at]).toEqual({
       operation: "destination-out",
       path: [{ x, y, r, start: 0, end: 2 * Math.PI }],
       style: expect.objectContaining({
@@ -174,9 +194,15 @@ describe("the dig game's tile", () => {
 });
 
 describe("a round's start", () => {
-  it("covers the whole picture with sand, fading the board in whole", () => {
-    const { drawn, sandContext } = spySand();
+  it("covers the whole picture with sand over a darker bed of damp sand, fading the board in whole", () => {
+    const { drawn, bed, sandContext } = spySand();
     openRound({ sandContext });
+
+    const [under, picture, sand] = [...board().children];
+    expect([under?.className, picture?.classList.contains("dig-picture"), sand?.className]).toEqual(["dig-bed", true, "dig-sand"]);
+    expect(bed.covers.at(-1)).toEqual([800, 600]);
+    expect(bed.paints[0]?.style).toBe("#b0905f");
+    expect(bed.fills).toEqual([]);
 
     expect([clearCells(), cleared()]).toEqual([[], 0]);
     expect(board().getAttribute("data-clear")).toBe(Array.from({ length: 30 }, () => "0".repeat(40)).join(" "));
@@ -242,6 +268,45 @@ describe("the brush", () => {
     expect(clearCells()).toEqual(["14:20", "15:19", "15:20", "15:21", "16:20"]);
     expect(drawn.stamps).toEqual([{ x: 410, y: 310, r: 24 }]);
     expectErased(drawn.fills, [{ x: 410, y: 310, r: 24 }]);
+  });
+
+  it("leaves a crumbly edge with a pale lip of grains, never a clean cut", () => {
+    const { drawn, sandContext } = spySand();
+    openRound({ sandContext });
+
+    drag([[200, 110], [272, 110]], 1000);
+
+    // The lip goes on the sand only, along the stroke, before it is dug.
+    expect(drawn.lines.map(({ operation, cap, width, path }) => ({ operation, cap, width, path }))).toEqual([
+      { operation: "source-atop", cap: "round", width: 72, path: [[200, 110], [200, 110]] },
+      { operation: "source-atop", cap: "round", width: expect.closeTo(62.4), path: [[200, 110], [200, 110]] },
+      { operation: "source-atop", cap: "round", width: 72, path: [[200, 110], [272, 110]] },
+      { operation: "source-atop", cap: "round", width: expect.closeTo(62.4), path: [[200, 110], [272, 110]] }
+    ]);
+    expect(drawn.lines.every(({ style }) => /^rgba\(240, 218, 172, 0\.\d\)$/.test(style))).toBe(true);
+    // Three crumbs off each stamp's rim, each a different size and place.
+    const stamps = drawn.stamps;
+    const crumbs = drawn.crumbs;
+    expect(crumbs).toHaveLength(3 * stamps.length);
+    crumbs.forEach(({ x, y, r }, at) => {
+      const stamp = stamps[Math.floor(at / 3)]!;
+      expect(Math.hypot(x - stamp.x, y - stamp.y) / stamp.r).toBeGreaterThanOrEqual(0.75);
+      expect(Math.hypot(x - stamp.x, y - stamp.y) / stamp.r).toBeLessThanOrEqual(0.95);
+      expect(r / stamp.r).toBeGreaterThanOrEqual(0.12);
+      expect(r / stamp.r).toBeLessThanOrEqual(0.26);
+    });
+    expect(new Set(crumbs.map(({ r }) => r)).size).toBe(crumbs.length);
+    expect(drawn.fills.filter(({ style }) => typeof style === "string").every(({ operation }) => operation === "destination-out")).toBe(true);
+
+    // A redraw puts the same crumbs back, scaled with the board.
+    const before = crumbs.length;
+    placeBoard(400);
+    expect(drawn.crumbs.slice(before)).toEqual(crumbs.map(({ x, y, r }) => ({ x: x / 2, y: y / 2, r: r / 2 })));
+  });
+
+  it("casts the sand's shadow into the hollows it leaves", () => {
+    openRound();
+    expect(getComputedStyle(sandOf()).filter).toBe("drop-shadow(3px 4px 3px #00000040)");
   });
 
   it.each([["hatchling", 24], ["explorer", 18], ["paleontologist", 18]] as const)("erases a tap and drag with %s's gradient, and redraws them after resize", (level, r) => {
