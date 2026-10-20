@@ -59,4 +59,4 @@ Feature: The composition keeps a call to its cost limit
     Then codex is given one turn, and the result has no warning
     And it is failed, class "budget_exhausted", the reason "the cost
       limit 1 is spent: 1.5"
-    And the record's call has the cost 1.5 and "session_cost" 1.5"
+    And the record's call has the cost 1.5 and "session_cost" 1.5

@@ -36,7 +36,8 @@ Feature: The codex wrapper counts a turn's own cost
 
     Examples:
       | fails                                                    |
-      | cannot start                                             |
+      | cannot start                                              |
+      | is ended by SIGTERM                                       |
       | exits 1, "No Codex session found with ID: t1"            |
       | gives "not json"                                         |
       | gives an object with no "totalCost"                      |
@@ -51,12 +52,21 @@ Feature: The codex wrapper counts a turn's own cost
     Then the reply's cost is unknown, and its session's cost 1.25
     And its usage is unknown
 
-  Scenario: A cost less than before is unknown
-    Given a lookup gives the thread "t1" the cost 1
-    And codex resumes the thread "t1" and completes
+  Scenario: A turn at capacity is looked up as well
+    Given codex's lines of thread.started "t1" and turn.failed "Selected
+      model is at capacity"
+    And a lookup gives the thread "t1" the cost 0.25
+    When codex runs the message "m" with no session
+    Then the reply fails, class "capacity", its cost 0.25
+
+  Scenario: A cost or a count less than before is unknown
+    Given a lookup gives the thread "t1" the cost 1 and the input 1000
+    And codex resumes the thread "t1" and completes, its usage the input
+      500 and the output 10
     And a lookup then gives the thread "t1" the cost 0.5
     When codex runs the message "m" with the session "t1"
     Then the reply's cost is unknown, and its session's cost 0.5
+    And its input is unknown, and its output 10
 
   Scenario Outline: A turn with no reply or thread has no lookup after
     Given codex <ends>
