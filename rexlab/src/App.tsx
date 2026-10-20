@@ -80,6 +80,14 @@ export type PageVisibility = {
 
 export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
 
+// The size classes in which a screen with no portrait layout for them
+// shows the picture asking to turn or widen.
+export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
+
+// Each screen with a portrait layout, named with the size classes its
+// layout is built for; a screen not named has none.
+export type PortraitLayouts = Readonly<Partial<Record<Screen["kind"], readonly PortraitSizeClass[]>>>;
+
 export type Viewport = {
   sizeClass(): SizeClass;
   isScreenUpright(): boolean;
@@ -103,7 +111,7 @@ export type AppProps = CareGameProps &
     bodyPicture: (dinosaurId: string) => string;
     random: Random;
     viewport: Viewport;
-    portraitLayouts: ReadonlySet<Screen["kind"]>;
+    portraitLayouts: PortraitLayouts;
     pageVisibility: PageVisibility;
     progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
@@ -222,14 +230,14 @@ export function App({
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
-  const hasPortraitLayout = portraitLayouts.has(screen.kind);
+  const portraitSizes = portraitLayouts[screen.kind];
   const gate = useMemo(() => ({
     isShown: () => {
       const size = viewport.sizeClass();
-      return (size === "tall" || size === "tall-narrow") && !hasPortraitLayout;
+      return (size === "tall" || size === "tall-narrow") && !portraitSizes?.includes(size);
     },
     subscribe: viewport.subscribe
-  }), [viewport, hasPortraitLayout]);
+  }), [viewport, portraitSizes]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
 
   useLayoutEffect(() => {

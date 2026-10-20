@@ -177,7 +177,7 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={() => draw}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       {...englishDevice()}

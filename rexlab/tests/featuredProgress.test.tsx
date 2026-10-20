@@ -65,7 +65,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={manualViewport("landscape")}
       pageVisibility={manualVisibility("visible")}
       progress={localProgress(() => storage)}

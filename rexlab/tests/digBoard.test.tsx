@@ -51,7 +51,7 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={counted}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

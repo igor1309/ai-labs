@@ -159,14 +159,17 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
+  it("gives the home page alone a portrait layout, for a tall window only", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"] });
+  });
+
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
     const screen = manualScreenOrientation("landscape-primary");
     const given = browser({ screenOrientation: screen.orientation });
-    const { viewport, portraitLayouts } = appProps(given);
+    const { viewport } = appProps(given);
     const read = () => [viewport.sizeClass(), viewport.isScreenUpright()];
     const seen: unknown[] = [];
     expect(read()).toEqual(["wide", false]);
-    expect(portraitLayouts.size).toBe(0);
     expect(given.media.queries).toEqual([PORTRAIT, NARROW, SHORT, DARK, REDUCED_MOTION]);
 
     const unsubscribe = viewport.subscribe(() => seen.push(read()));

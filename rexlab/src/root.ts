@@ -105,7 +105,7 @@ export function appProps(browser: Browser): AppProps {
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     viewport,
-    portraitLayouts: new Set(),
+    portraitLayouts: { home: ["tall"] },
     pageVisibility: { isHidden: visibility.hidden, subscribe: visibility.watch },
     progress: localProgress(storage),
     deviceLanguage: browser.navigator.language,

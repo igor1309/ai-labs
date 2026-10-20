@@ -69,7 +69,7 @@ export function openDigApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={viewport}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

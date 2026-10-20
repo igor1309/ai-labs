@@ -70,7 +70,7 @@ export function openHomeApp({
   storage = memoryStorage(),
   pictures = manualPictures(),
   viewport = manualViewport("landscape"),
-  portraitLayouts = new Set(),
+  portraitLayouts = {},
   visibility = manualVisibility("visible"),
   deviceLanguage = "en-GB",
   reducedMotion = false,
