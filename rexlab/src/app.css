@@ -726,7 +726,7 @@ body:has(.result) #version {
 
 /* The name is as large as the longest word of any game's name, in
    either language, fits on one line on the smallest iPad. A name of
-   two words, such as ALL DINOSAURS, takes a second line there. */
+   two words, such as ANCIENT REPTILES, takes a second line there. */
 .featured-card-title {
   flex: 1 1 0;
   min-width: 0;
@@ -2109,6 +2109,14 @@ body:has(.result) #version {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* A creature that is no dinosaur says so just over its name. */
+.dinosaur-group {
+  margin: 0 0 -16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #5c647a;
 }
 
 /* A name is large, and the longest still fits on one line. */
@@ -6951,6 +6959,7 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 [data-theme="dark"] .progress,
 [data-theme="dark"] .dinosaur-position,
 [data-theme="dark"] .dinosaur-fact-label,
+[data-theme="dark"] .dinosaur-group,
 [data-theme="dark"] .source-note,
 [data-theme="dark"] .dinosaur-value-chip svg,
 [data-theme="dark"] #version {

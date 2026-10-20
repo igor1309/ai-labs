@@ -145,7 +145,7 @@ const shownTexts = () => {
   return TEXTS[isLanguage(lang) ? lang : "en"];
 };
 
-export const choices = (name = shownTexts().dinosaurs) => within(screen.getByRole("group", { name })).getAllByRole("button");
+export const choices = (name = shownTexts().creatures) => within(screen.getByRole("group", { name })).getAllByRole("button");
 
 export const board = (name = shownTexts().skeleton) => screen.getByRole("group", { name });
 

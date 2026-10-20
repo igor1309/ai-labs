@@ -4,7 +4,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
 
   Scenario Outline: What counts as starting a game
     When <action>
@@ -13,7 +13,7 @@ Feature: Home page: counting starts and keeping the featured choice
     Examples:
       | action                                                          | game          |
       | a quiz round starts from the home page or from PLAY AGAIN       | COMPARE       |
-      | the dinosaur list opens from the home page                      | ALL DINOSAURS |
+      | the dinosaur list opens from the home page                      | ANCIENT REPTILES |
       | a care visit starts from NEW VISITOR or a friend is called back | CARE          |
       | a sorting round starts from its card or from PLAY AGAIN         | SORT          |
       | a board is dealt from PLAY or PLAY AGAIN                        | FIND THE PAIR |

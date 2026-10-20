@@ -5,6 +5,8 @@ import {
   ROUND_LENGTH,
   fairPairs,
   generateRound,
+  isFair,
+  measureOf,
   pairKey,
   type Dinosaur,
   type Round
@@ -27,8 +29,8 @@ describe("generateRound", () => {
     for (const { attribute, left, right } of round) {
       expect(ATTRIBUTES).toContain(attribute);
       expect(left.id).not.toBe(right.id);
-      const small = Math.min(left.measures[attribute], right.measures[attribute]);
-      const large = Math.max(left.measures[attribute], right.measures[attribute]);
+      const small = Math.min(measureOf(left, attribute), measureOf(right, attribute));
+      const large = Math.max(measureOf(left, attribute), measureOf(right, attribute));
       expect(large).toBeGreaterThanOrEqual(FAIR_RATIO * small);
     }
     const pairs = round.map((q) => pairKey(q.left, q.right));
@@ -86,6 +88,16 @@ describe("fairPairs", () => {
       pairKey(small, atRatio)
     ]);
     expect(fairPairs([small, atRatio, below], "height")).toEqual([]);
+  });
+
+  it("pairs a creature with no height on its mass alone", () => {
+    const tall = dinosaur("tall", 100, 2);
+    const flier: Dinosaur = { id: "flier", name: { en: "flier", ru: "flier" }, measures: { mass: 1000 } };
+
+    expect(isFair(tall, flier, "mass")).toBe(true);
+    expect(isFair(tall, flier, "height")).toBe(false);
+    expect(fairPairs([tall, flier], "height")).toEqual([]);
+    expect(() => measureOf(flier, "height")).toThrow("flier has no height");
   });
 });
 

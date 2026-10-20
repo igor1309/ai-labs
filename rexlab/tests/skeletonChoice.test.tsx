@@ -93,7 +93,7 @@ describe("the skeleton game's choice of dinosaurs", () => {
 
     expect(screen.getByRole("heading").textContent).toBe(text.skeletonTitle);
     expect([button(text.museum), button(text.home)].map((each) => each.textContent)).toEqual([text.museum, text.home]);
-    expect(choices(text.dinosaurs).map((choice) => choice.textContent)).toEqual(SHIPPED_SKELETONS.map(({ name }) => name[language].toLocaleUpperCase(language)));
+    expect(choices(text.creatures).map((choice) => choice.textContent)).toEqual(SHIPPED_SKELETONS.map(({ name }) => name[language].toLocaleUpperCase(language)));
   });
 });
 

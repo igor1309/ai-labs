@@ -5,6 +5,7 @@
       "en": "Tyrannosaurus",
       "ru": "Тираннозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.1,
       "massKg": 8000
@@ -28,6 +29,7 @@
       "en": "Triceratops",
       "ru": "Трицератопс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.7,
       "massKg": 7000
@@ -51,6 +53,7 @@
       "en": "Velociraptor",
       "ru": "Велоцираптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
       "massKg": 15
@@ -74,6 +77,7 @@
       "en": "Brachiosaurus",
       "ru": "Брахиозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.4,
       "massKg": 50000
@@ -97,6 +101,7 @@
       "en": "Stegosaurus",
       "ru": "Стегозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 2700
@@ -120,6 +125,7 @@
       "en": "Ankylosaurus",
       "ru": "Анкилозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 6000
@@ -143,6 +149,7 @@
       "en": "Spinosaurus",
       "ru": "Спинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.6,
       "massKg": 7400
@@ -166,6 +173,7 @@
       "en": "Diplodocus",
       "ru": "Диплодок"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.8,
       "massKg": 15000
@@ -189,6 +197,7 @@
       "en": "Parasaurolophus",
       "ru": "Паразауролоф"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 3500
@@ -212,6 +221,7 @@
       "en": "Pachycephalosaurus",
       "ru": "Пахицефалозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 450
@@ -235,6 +245,7 @@
       "en": "Iguanodon",
       "ru": "Игуанодон"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 4000
@@ -258,6 +269,7 @@
       "en": "Compsognathus",
       "ru": "Компсогнат"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.32,
       "massKg": 3
@@ -281,6 +293,7 @@
       "en": "Gallimimus",
       "ru": "Галлимим"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.9,
       "massKg": 490
@@ -304,6 +317,7 @@
       "en": "Allosaurus",
       "ru": "Аллозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 2300
@@ -327,6 +341,7 @@
       "en": "Argentinosaurus",
       "ru": "Аргентинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 4.3,
       "massKg": 70000
@@ -350,6 +365,7 @@
       "en": "Microraptor",
       "ru": "Микрораптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
       "massKg": 1
@@ -373,6 +389,7 @@
       "en": "Protoceratops",
       "ru": "Протоцератопс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
       "massKg": 180
@@ -396,6 +413,7 @@
       "en": "Dilophosaurus",
       "ru": "Дилофозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 400
@@ -419,6 +437,7 @@
       "en": "Carnotaurus",
       "ru": "Карнотавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.5,
       "massKg": 1500
@@ -442,6 +461,7 @@
       "en": "Giganotosaurus",
       "ru": "Гиганотозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.1,
       "massKg": 7000
@@ -465,6 +485,7 @@
       "en": "Therizinosaurus",
       "ru": "Теризинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3,
       "massKg": 5000
@@ -488,6 +509,7 @@
       "en": "Edmontosaurus",
       "ru": "Эдмонтозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 3400
@@ -511,6 +533,7 @@
       "en": "Deinonychus",
       "ru": "Дейноних"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.87,
       "massKg": 75
@@ -534,6 +557,7 @@
       "en": "Oviraptor",
       "ru": "Овираптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
       "massKg": 30
@@ -557,6 +581,7 @@
       "en": "Coelophysis",
       "ru": "Целофизис"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
       "massKg": 20
@@ -580,6 +605,7 @@
       "en": "Psittacosaurus",
       "ru": "Пситтакозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.52,
       "massKg": 50
@@ -603,6 +629,7 @@
       "en": "Styracosaurus",
       "ru": "Стиракозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 2700
@@ -626,6 +653,7 @@
       "en": "Kentrosaurus",
       "ru": "Кентрозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 1000
@@ -649,6 +677,7 @@
       "en": "Baryonyx",
       "ru": "Барионикс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 1700
@@ -672,6 +701,7 @@
       "en": "Apatosaurus",
       "ru": "Апатозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.2,
       "massKg": 23000
@@ -695,6 +725,7 @@
       "en": "Ceratosaurus",
       "ru": "Цератозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 1000
@@ -718,6 +749,7 @@
       "en": "Utahraptor",
       "ru": "Ютараптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 350
@@ -741,6 +773,7 @@
       "en": "Yutyrannus",
       "ru": "Ютираннус"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.7,
       "massKg": 1400
@@ -764,6 +797,7 @@
       "en": "Archaeopteryx",
       "ru": "Археоптерикс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.16,
       "massKg": 1
@@ -787,6 +821,7 @@
       "en": "Troodon",
       "ru": "Троодон"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.88,
       "massKg": 50
@@ -810,6 +845,7 @@
       "en": "Heterodontosaurus",
       "ru": "Гетеродонтозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
       "massKg": 2
@@ -833,6 +869,7 @@
       "en": "Mamenchisaurus",
       "ru": "Маменчизавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.3,
       "massKg": 12000
@@ -856,6 +893,7 @@
       "en": "Amargasaurus",
       "ru": "Амаргазавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.8,
       "massKg": 9000
@@ -879,6 +917,7 @@
       "en": "Plateosaurus",
       "ru": "Платеозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 4000
@@ -902,6 +941,7 @@
       "en": "Maiasaura",
       "ru": "Майазавра"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.1,
       "massKg": 3000
@@ -925,6 +965,7 @@
       "en": "Corythosaurus",
       "ru": "Коритозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 4000
@@ -948,6 +989,7 @@
       "en": "Chasmosaurus",
       "ru": "Хасмозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 2500
