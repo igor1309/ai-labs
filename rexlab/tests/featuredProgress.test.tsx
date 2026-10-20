@@ -10,6 +10,7 @@ import { endWave, playBoard } from "./pairsApp.tsx";
 import { sortByTrying } from "./sorting.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 import {
+  emptyDig,
   unreadVersion,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -81,6 +82,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       pairsProgress={localPairsProgress(() => storage)}
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
+      {...emptyDig()}
       skeletonProgress={localSkeletonProgress(() => storage)}
       reducedMotion={() => false}
       {...clock}
@@ -339,7 +341,7 @@ describe("a browser that cannot keep progress", () => {
 
     expect(featuredCard().dataset.game).toBe("compare");
     expect(featured.history()).toEqual({ timesStarted: new Map(), lastFeatured: { game: "compare", on: "2026-10-18" } });
-    for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"]) {
+    for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"]) {
       await user.click(gameDoor(name));
       expect(document.querySelector(".games-tiles")).toBeNull();
       await user.click(button("HOME"));

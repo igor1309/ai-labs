@@ -37,7 +37,13 @@ const WORD_EMS: Record<string, number> = {
   "1/4": 1.9,
   "2/4": 1.9,
   "3/4": 1.9,
-  "4/4": 2.0
+  "4/4": 2.0,
+  "0/5": 2.0,
+  "1/5": 1.9,
+  "2/5": 2.0,
+  "3/5": 2.0,
+  "4/5": 2.0,
+  "5/5": 2.0
 };
 
 const px = (value: string) => Number.parseFloat(value) || 0;
@@ -152,18 +158,21 @@ function actionsOverflow() {
   return [...panel.querySelectorAll(".skeleton-actions button")].flatMap((button) => overflow(button, neededBy(button, sizeOf(button)), room));
 }
 
-// Each stand takes an even share of the hall inside its sides and gaps,
-// and its button the stand's width inside the plinth's sides, its words
-// sized by the stand's width. Returns the size of the words too.
+// Each stand takes a third of the hall inside its sides and the gaps of
+// a row of three, however many stands there are, and its button the
+// stand's width inside the plinth's sides, its words sized by the stand's
+// width. Returns the size of the words too.
 function standsOverflow() {
   const hall = document.querySelector(".skeleton-hall");
   if (!hall) throw new Error("No museum hall");
   const stands = [...hall.children];
   const hallStyle = getComputedStyle(hall);
+  const gap = columnGapOf(hallStyle);
+  expect([hallStyle.flexWrap, hallStyle.justifyContent]).toEqual(["wrap", "center"]);
   expect(stands.map((stand) => [getComputedStyle(stand).flexBasis, getComputedStyle(stand).flexGrow, getComputedStyle(stand).minWidth])).toEqual(
-    stands.map(() => ["0px", "1", "0px"])
+    stands.map(() => [`calc(${1 / 3}*(100% - ${2 * gap}px))`, "0", "0px"])
   );
-  const stand = (contentWidth() - widthOf(hall) - columnGapOf(hallStyle) * (stands.length - 1)) / stands.length;
+  const stand = (contentWidth() - widthOf(hall) - gap * 2) / 3;
   return stands.map((each) => {
     const plinth = each.querySelector(".skeleton-plinth");
     const button = plinth?.querySelector("button");
@@ -234,7 +243,7 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
     });
     await user.click(screen.getByRole("button", { name: text.museum }));
 
-    expect([text.rebuild, text.keepBuilding, text.build].map((words) => screen.getByRole("button", { name: words }).textContent)).toEqual([
+    expect([text.rebuild, text.keepBuilding, text.build].map((words) => screen.getAllByRole("button", { name: words })[0]?.textContent)).toEqual([
       text.rebuild,
       text.keepBuilding,
       text.build

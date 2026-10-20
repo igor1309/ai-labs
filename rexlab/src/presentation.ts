@@ -3,9 +3,12 @@ import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } f
 import type { CatalogueEntry, Diet } from "./catalogue.ts";
 import type { CatalogueCardView } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
+import { clearCells, clueIndex, FRAME, roundShare, type DigRound } from "./dig/index.ts";
+import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatHeight, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
@@ -410,5 +413,27 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
     score,
     total,
     best
+  };
+}
+
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "helpShown" | "choices">;
+
+// A dig round's board: its dinosaur's picture under the sand, every mark
+// brushed, and which cells are clear, as rows of 0 and 1, as dig.json
+// gives the dinosaur's own.
+export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: string) => string, language: Language): DigBoardView {
+  const current = clueIndex(round);
+  return {
+    spots: round.spots.map(({ kind, x, y, r }, at) => ({ id: kind, word: TEXTS[language].spotKinds[kind], x, y, r, found: round.found.includes(kind) && (round.level !== "paleontologist" || at < current), helped: round.helped.includes(kind) })),
+    choices: current === 3 ? round.choices.map((id) => ({ id, picture: bodyPicture(id), rejected: round.rejected.includes(id) })) : [],
+    helpShown: round.helpShown,
+    picture: bodyPicture(round.dinosaur.id),
+    frame: FRAME,
+    marks: round.sand.marks,
+    clear: clearCells(round.sand)
+      .map((row) => row.map((clear) => (clear ? "1" : "0")).join(""))
+      .join(" "),
+    cleared: roundShare(round),
+    blown: round.blown
   };
 }

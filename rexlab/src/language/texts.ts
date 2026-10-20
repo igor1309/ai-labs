@@ -149,6 +149,19 @@ export type Texts = {
   build: string;
   rebuild: string;
   keepBuilding: string;
+  // The dig game: its title, also on its home tile, the sand on its
+  // board, the dinosaurs dug up, read out on their count, the mark of one
+  // dug up for the first time, the way to the next round, and the trophy
+  // of every dinosaur dug up, read out.
+  dig: string;
+  whoIsIt: string;
+  sand: string;
+  dugUp: string;
+  dugUpNew: string;
+  digAgain: string;
+  allDugUp: string;
+  // The dig game's details, each the word under its close-up.
+  spotKinds: { eye: string; foot: string; tail: string; horn: string; plate: string; claw: string; crest: string; sail: string; frill: string; beak: string };
 };
 
 // A celebration's label, read out, and its text, shown.

@@ -649,7 +649,8 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
-.featured-card .skeletons-tile-picture {
+.featured-card .skeletons-tile-picture,
+.featured-card .dig-tile-picture {
   padding: 36px 32px 8px;
 }
 
@@ -718,6 +719,11 @@ body:has(.result) #version {
   background: #fffdf8;
 }
 
+.featured-card[data-game="dig"] {
+  background: #d0c5b2;
+  color: #1d2742;
+}
+
 .featured-card[data-game="pairs"] {
   background: #a9bcd6;
   color: #1d2742;
@@ -739,6 +745,7 @@ body:has(.result) #version {
   background: #ffffff33;
 }
 
+.featured-card[data-game="dig"] .featured-card-symbol,
 .featured-card[data-game="care"] .featured-card-symbol {
   background: #ffffff59;
 }
@@ -758,6 +765,7 @@ body:has(.result) #version {
   background: #00000026;
 }
 
+.featured-card[data-game="dig"] .featured-card-badge,
 .featured-card[data-game="care"] .featured-card-badge {
   background: #ffffff59;
 }
@@ -794,8 +802,8 @@ body:has(.result) #version {
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
-   paper's shade, under the last tile in the last column. It is no card,
-   so it neither brightens nor presses in. */
+   paper's shade, after the last tile. It is no card, so it neither
+   brightens nor presses in. */
 .more-coming {
   min-height: 0;
   box-sizing: border-box;
@@ -1251,6 +1259,77 @@ body:has(.result) #version {
 
 .skeletons-tile-best svg {
   color: #e39b2d;
+}
+
+/* The dig game's tile, over MORE COMING, in the other tiles' shape. The
+   design's sand brown is no colour of either theme, so the tile takes the
+   deepest band of rock, the nearest the palette has to sand. */
+.dig-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #d0c5b2;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+
+.dig-tile-picture {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px 10px;
+  object-fit: contain;
+}
+
+.dig-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dig-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #ffffff59;
+}
+
+.dig-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.dig-tile-count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffffff59;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 /* The question fills the screen, and the cards take what is left of it. */
@@ -4019,27 +4098,38 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-/* The result is navy in either theme, with a pale chosen mark. */
+/* The result is navy in either theme, with a pale chosen mark, and so is
+   the dig game's reveal. */
 .result-with-levels .level-switch,
-[data-theme="dark"] .result-with-levels .level-switch {
+.dig-reveal-screen .level-switch,
+[data-theme="dark"] .result-with-levels .level-switch,
+[data-theme="dark"] .dig-reveal-screen .level-switch {
   background: #00000033;
   border-color: #ffffff40;
 }
 
 .result-with-levels .level-switch-level,
-[data-theme="dark"] .result-with-levels .level-switch-level {
+.dig-reveal-screen .level-switch-level,
+[data-theme="dark"] .result-with-levels .level-switch-level,
+[data-theme="dark"] .dig-reveal-screen .level-switch-level {
   color: #f6f2e9;
 }
 
 .result-with-levels .level-switch-mark,
 .result-with-levels .level-switch-level[aria-pressed="true"],
+.dig-reveal-screen .level-switch-mark,
+.dig-reveal-screen .level-switch-level[aria-pressed="true"],
 [data-theme="dark"] .result-with-levels .level-switch-mark,
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .dig-reveal-screen .level-switch-mark,
+[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
   background-color: #f6f2e9;
 }
 
 .result-with-levels .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"] {
+.dig-reveal-screen .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
+[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
   color: #1f2b4d;
   box-shadow: 0 4px 10px #00000066;
 }
@@ -4633,6 +4723,579 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The dig game's screens, under a bar like the skeleton game's: HOME,
+   the title beside a brush and the dinosaurs dug up. Nothing on them
+   selects or opens a menu at a long press, which would take the touch
+   that brushes. */
+.dig-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.dig-screen .stratum-1 {
+  height: 40px;
+}
+
+.dig-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.dig-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-mark {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-chip {
+  flex-shrink: 0;
+  height: 44px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 22px;
+  background: #e6e2d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.dig-bar .home-button {
+  flex-shrink: 0;
+  min-width: 48px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.dig-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The board keeps the picture's frame, as large as the screen leaves it.
+   It fades in whole, so the dinosaur never shows before the sand covers
+   it, and a finger on it only brushes. */
+.dig-board {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: var(--frame-width) / var(--frame-height);
+  height: 100%;
+  max-width: 100%;
+  border-radius: 28px;
+  outline: 2px solid #1d27421f;
+  outline-offset: -2px;
+  background: #fffdf8;
+  touch-action: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-picture,
+.dig-sand {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dig-picture {
+  object-fit: contain;
+}
+
+.dig-body[data-explorer] {
+  gap: 28px;
+}
+
+.dig-body[data-explorer] .dig-board {
+  flex: 0 1 auto;
+  width: min(100%, calc((100dvh - 180px) * 4 / 3));
+  height: auto;
+  min-width: 0;
+  max-height: 100%;
+}
+
+.dig-find-cards {
+  flex: 0 0 152px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.dig-find-card {
+  position: relative;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid #5c647a;
+  border-radius: 22px;
+  color: #1d2742;
+  background: #fffdf8;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  transition: border-color var(--motion-standard) var(--ease-out), background-color var(--motion-standard) var(--ease-out);
+}
+
+.dig-find-card[data-found] {
+  border-color: #2e7d4f;
+}
+
+.dig-find-card[data-pulse] {
+  animation: dig-card-pulse calc(4 * var(--motion-screen)) var(--ease-out) infinite;
+}
+
+.dig-body[data-paleontologist] .dig-find-cards {
+  flex-basis: 232px;
+}
+
+.dig-find-card[data-clue] {
+  padding: 16px 12px;
+  gap: 12px;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-find-card[data-clue][data-motion]:not([data-found]) {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-find-card[data-clue][data-motion][data-pulse] {
+  animation: dig-card-pulse calc(4 * var(--motion-screen)) var(--ease-out) infinite;
+}
+
+.dig-find-card[data-clue][data-found] {
+  flex-direction: row;
+  padding: 8px 36px 8px 10px;
+  gap: 8px;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+  transition: padding var(--motion-standard) var(--ease-out);
+}
+
+.dig-find-card[data-clue][data-found] > .dig-spot-picture {
+  width: 44px;
+  height: 44px;
+}
+
+.dig-find-card[data-clue][data-found] .dig-find-word {
+  font-size: 16px;
+}
+
+.dig-clue-number {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dig-find-card[data-found] .dig-clue-number {
+  display: none;
+}
+
+.dig-clue-sand {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e8cc98, #c9a46a);
+  font-size: 36px;
+}
+
+.dig-clue-closed {
+  box-sizing: border-box;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed #5c647a;
+  border-radius: 18px;
+  font-size: 24px;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+/* Leave vertical room for three 192px tall picture cards below the smaller
+   board, including the bar, padding and both screen gaps. */
+.dig-body[data-choice] .dig-board {
+  width: min(100%, calc((100dvh - 420px) * 4 / 3));
+  transition: width var(--motion-screen) var(--ease-out);
+}
+
+.dig-choice-cards {
+  flex: 0 0 192px;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-choice-cards[data-motion] {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-choice-card {
+  flex: 1 1 0;
+  min-width: 200px;
+  padding: 12px;
+  border: 2px solid #5c647a;
+  border-radius: 22px;
+  background: #fffdf8;
+  transition: opacity var(--motion-standard) var(--ease-out);
+}
+
+.dig-choice-card[data-rejected] {
+  opacity: 0.25;
+}
+
+.dig-choice-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes dig-card-pulse {
+  50% { box-shadow: 0 0 0 calc(5px * var(--motion-amount)) #e39b2d80; }
+}
+
+.dig-spot-picture {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fffdf8;
+}
+
+.dig-find-card > .dig-spot-picture {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.dig-close-up {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.dig-close-up[data-picture="appearing"],
+.dig-close-up[data-picture="shown"] {
+  width: var(--crop-width);
+  height: var(--crop-height);
+  left: var(--crop-left);
+  top: var(--crop-top);
+}
+
+.dig-find-word {
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-find-tick {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 3px;
+  border-radius: 50%;
+  background: #2e7d4f;
+  color: #fffdf8;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-find-tick[data-motion] {
+  animation-name: pop-in;
+}
+
+/* A translucent copy of the same crop lets the detail show through the
+   sand without changing the brushed cells or the round's found count. */
+.dig-help-window {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.8;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-help-window[data-motion] {
+  animation-duration: calc(4 * var(--motion-screen));
+}
+
+.dig-find-pop {
+  position: absolute;
+  pointer-events: none;
+  color: #e39b2d;
+  translate: -50% -50%;
+  animation: dig-detail-fade calc(2 * var(--motion-small)) var(--ease-out) both;
+}
+
+.dig-find-pop[data-motion] {
+  animation: dig-detail-pop calc(2 * var(--motion-screen)) var(--ease-out) both;
+}
+
+.dig-detail-star {
+  fill: currentColor;
+}
+
+.dig-detail-sparkle {
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  animation: pop-in var(--motion-standard) var(--ease-out) both;
+}
+
+@keyframes dig-detail-pop {
+  from {
+    opacity: 0;
+    scale: calc(1 - 0.5 * var(--motion-amount));
+  }
+  30% {
+    opacity: 1;
+    scale: calc(1 + 0.1 * var(--motion-amount));
+  }
+  to {
+    opacity: 0;
+    translate: -50% calc(-50% - 100% * var(--motion-amount));
+  }
+}
+
+@keyframes dig-detail-fade {
+  from, to { opacity: 0; }
+  40% { opacity: 1; }
+}
+
+/* The gust blows the sand left over off to the side; with reduced motion
+   it only fades. */
+.dig-board[data-blown] .dig-sand {
+  animation: dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both;
+}
+
+@keyframes dig-gust {
+  to {
+    opacity: 0;
+    translate: calc(110% * var(--motion-amount)) 0;
+  }
+}
+
+/* The brush, a ring the width it brushes, under the finger. */
+.dig-brush {
+  position: absolute;
+  width: var(--brush);
+  height: var(--brush);
+  box-sizing: border-box;
+  translate: -50% -50%;
+  border: 3px solid #fffdf8;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #1d274233;
+  pointer-events: none;
+}
+
+/* A puff of grains flies off the brush and fades, in the amber nearest
+   the sand among the theme's colours. */
+.dig-puff {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.dig-grain {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #e39b2d;
+  animation: dig-puff calc(2 * var(--motion-standard)) var(--ease-out) both;
+}
+
+@keyframes dig-puff {
+  to {
+    opacity: 0;
+    translate: calc(-50% + var(--grain-x) * 28px * var(--motion-amount)) calc(-50% + var(--grain-y) * 28px * var(--motion-amount));
+  }
+}
+
+/* The reveal is the round's result, ink navy in both themes as every
+   game's result is: the dinosaur dug up, whole, beside its name, the
+   "DUG UP" card, the level switch and the ways on, under a glow and
+   confetti when the count grows. */
+.dig-reveal-screen {
+  padding: 32px;
+  gap: 16px;
+  background: #1f2b4d;
+  color: #f6f2e9;
+}
+
+.dig-reveal {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.dig-reveal-art {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dig-reveal-picture {
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  animation: grow-in var(--motion-screen) var(--ease-out) both;
+}
+
+/* As wide as the level switch needs for every level's name on one line,
+   as the sorting result's column. The name is as large as fits there,
+   its size the column's width over the longest name's, in ems:
+   PACHYCEPHALOSAURUS's 12.7, with its letters' spacing. */
+.dig-reward {
+  flex: 0 1 648px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  container-type: inline-size;
+}
+
+.dig-reveal-name {
+  align-self: stretch;
+  margin: 0;
+  font-size: min(64px, (100cqi - 18px) / 12.7);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dig-card {
+  height: 72px;
+  box-sizing: border-box;
+  padding: 0 24px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 36px;
+  outline: 1px solid #ffffff40;
+  outline-offset: -0.5px;
+  background: #00000033;
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dig-card-star {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-card-words {
+  letter-spacing: 1px;
+}
+
+.dig-card-count,
+.dig-card-new,
+.dig-card-trophy {
+  color: #e39b2d;
+}
+
+.dig-card-count {
+  font-size: 28px;
+}
+
+.dig-card-trophy {
+  display: grid;
+}
+
+/* A star newly earned flies from the dinosaur onto the card as the
+   reveal settles, and the count and NEW! pop in as it lands; with
+   reduced motion they only fade in. */
+.dig-card[data-new] .dig-card-star {
+  animation: dig-star-flies var(--motion-screen) var(--ease-out) var(--motion-screen) both;
+}
+
+@keyframes dig-star-flies {
+  from {
+    opacity: 0;
+    translate: calc(-280px * var(--motion-amount)) calc(-140px * var(--motion-amount));
+    scale: calc(1 + var(--motion-amount));
+  }
+}
+
+.dig-card[data-new] .dig-card-count,
+.dig-card-new {
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(2 * var(--motion-screen)) both;
+}
+
+.dig-reveal-screen .celebration {
+  height: 52px;
+  font-size: 22px;
+}
+
+/* The level switch above DIG AGAIN and HOME, which take no tap until the
+   star has landed. */
+.dig-reveal-ways {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.dig-reveal-screen .play-again-button,
+.dig-reveal-screen .result-actions .home-button {
+  height: 72px;
+  white-space: nowrap;
+}
+
 /* The level switch, centred between the bar and the dinosaurs, as wide as
    find the pair's column so every level's name fits on one line. */
 .skeleton-levels {
@@ -4646,21 +5309,25 @@ body:has(.result) #version {
 
 /* The three dinosaurs side by side, each a big card of its picture over
    its name, rising in one after the other. */
+/* The dinosaurs in rows of three, a last row of fewer centred: each card a
+   third of the row, as wide however many there are. */
 .skeleton-choices {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  gap: 28px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px 28px;
 }
 
 .skeleton-choice {
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 2 * 28px) / 3);
   min-width: 0;
   box-sizing: border-box;
-  padding: 24px 28px 28px;
+  padding: 16px 24px 18px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   border: none;
   border-radius: 28px;
   outline: 1px solid #1d27421f;
@@ -5235,24 +5902,28 @@ body:has(.result) #version {
    skeleton not on its stand shows as its faint silhouette; one knocked
    down to be built again keeps its star, and its exhibit and button are
    ringed in amber, so it reads as work in progress, not as never built. */
+/* The stands in rows of three, a last row of fewer centred: each stand a
+   third of the row, as wide however many there are. */
 .skeleton-hall {
   flex: 1 1 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 32px 32px 0;
+  padding: 24px 32px 0;
   display: flex;
-  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 32px;
   border-radius: 32px;
   background: #e6e2d9;
 }
 
 .skeleton-stand {
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 2 * 32px) / 3);
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   container-type: inline-size;
   animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--stand) * var(--motion-stagger)) both;
 }
@@ -5357,7 +6028,7 @@ body:has(.result) #version {
 .skeleton-plinth {
   align-self: stretch;
   box-sizing: border-box;
-  padding: 18px 14px 24px;
+  padding: 10px 14px 12px;
   border-radius: 20px 20px 0 0;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
@@ -5370,7 +6041,7 @@ body:has(.result) #version {
    least as large as the bar's on the narrowest iPad. */
 .skeleton-stand-button {
   width: 100%;
-  height: 64px;
+  height: 56px;
   padding: 0 10px;
   display: flex;
   align-items: center;
@@ -5411,6 +6082,40 @@ body:has(.result) #version {
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+  }
+
+  .dig-find-card[data-pulse],
+  .dig-find-card[data-clue][data-motion][data-pulse] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-find-card[data-clue][data-motion]:not([data-found]),
+  .dig-choice-cards[data-motion] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-body[data-choice] .dig-board {
+    transition-property: none;
+  }
+
+  .dig-find-card[data-clue][data-found] {
+    transition-property: none;
+  }
+
+  .dig-body[data-choice] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-help-window[data-motion] {
+    animation-duration: var(--motion-small);
+  }
+
+  .dig-find-pop[data-motion] {
+    animation: dig-detail-fade calc(2 * var(--motion-small)) var(--ease-out) both;
+  }
+
+  .dig-detail-sparkle {
+    display: none;
   }
 
   .pairs-offer-scrim,
@@ -6191,6 +6896,84 @@ body:has(.result) #version {
 [data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-exhibit,
 [data-theme="dark"] .skeleton-stand[data-state="rebuilding"] .skeleton-stand-button {
   outline-color: #f2b24b;
+}
+
+[data-theme="dark"] .featured-card[data-game="dig"],
+[data-theme="dark"] .dig-tile {
+  background: #1f273c;
+  color: #ece8de;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-badge,
+[data-theme="dark"] .dig-tile-symbol,
+[data-theme="dark"] .dig-tile-count {
+  background: #ffffff1f;
+}
+
+[data-theme="dark"] .dig-mark {
+  background: #f2b24b;
+  color: #1d2742;
+}
+
+[data-theme="dark"] .dig-chip {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .dig-grain {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-board {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-card {
+  color: #ece8de;
+  background: #181e2e;
+  border-color: #9ca3b6;
+}
+
+[data-theme="dark"] .dig-choice-card {
+  background: #1f2b4d;
+  border-color: #a4aec7;
+}
+
+[data-theme="dark"] .dig-clue-closed {
+  border-color: #a4aec7;
+}
+
+[data-theme="dark"] .dig-find-card[data-found] {
+  border-color: #63c98c;
+}
+
+[data-theme="dark"] .dig-spot-picture {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-tick {
+  background: #63c98c;
+  color: #181e2e;
+}
+
+[data-theme="dark"] .dig-find-pop {
+  color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-reveal-screen {
+  background: #2c3b66;
+}
+
+[data-theme="dark"] .dig-card-star {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-card-count,
+[data-theme="dark"] .dig-card-new,
+[data-theme="dark"] .dig-card-trophy {
+  color: #f2b24b;
 }
 
 [data-theme="dark"] .more-coming {

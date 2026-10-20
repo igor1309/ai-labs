@@ -6,4 +6,6 @@ Explorer's pieces (`docs/skeleton-levels.md`), six to eight per skeleton, are cu
 
 Paleontologist's pieces, ten to twelve per skeleton, are cut on 2026-10-19 by script from Explorer's pieces in the same way, again with no new picture generated. Its distractors, two or three bones of the other skeletons, are those skeletons' own Paleontologist pieces, named in `src/data/skeletons.json` with their dinosaur.
 
+Brachiosaurus's and Spinosaurus's skeletons were generated the same way on 2026-10-19, with `scripts/skeleton-picture.sh`, and cut at every level by `scripts/cut-skeleton.py` on 2026-10-20.
+
 How to make and cut a skeleton: `art/skeletons.md`.

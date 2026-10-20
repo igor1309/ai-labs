@@ -5,7 +5,7 @@ import { App } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { openMenu, outsideMenu } from "./menus.ts";
@@ -14,7 +14,9 @@ import { keptSkeletons } from "./skeletonsApp.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  SHIPPED_DIG,
   emptyCare,
+  emptyDig,
   emptyPairs,
   emptyProgress,
   emptySkeletons,
@@ -49,15 +51,16 @@ function openHomePage(
   sorting = emptySorting(),
   pairs = emptyPairs(),
   skeletons = emptySkeletons(),
+  dig = emptyDig(),
   featured: HomeGame = "compare"
 ) {
-  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...pictures} />);
+  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pictures} />);
   return { user: userEvent.setup(), card: featuredCard() };
 }
 
 // The home page with COMPARE's tile in the row, the large card CARE's.
 function openWithCompareTile(progress = emptyProgress()) {
-  const home = openHomePage(progress, loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), emptySkeletons(), "care");
+  const home = openHomePage(progress, loadedPictures(), emptyCare(), emptySorting(), emptyPairs(), emptySkeletons(), emptyDig(), "care");
   return { ...home, tile: homeTile("COMPARE") };
 }
 
@@ -96,6 +99,7 @@ function renderHomePage(taps: number[]) {
       sort={{ picture: fakeBodyPicture("triceratops"), best: undefined }}
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
+      dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
@@ -104,6 +108,7 @@ function renderHomePage(taps: number[]) {
       onPairs={nothing}
       onSkeletons={nothing}
       onMuseum={nothing}
+      onDig={nothing}
     />,
     withPictures
   );
@@ -147,17 +152,20 @@ const TITLE_EMS: Record<string, number> = {
   ПАРУ: 2.7,
   SKELETONS: 6.2,
   СКЕЛЕТЫ: 4.8,
+  DIG: 2.1,
+  РАСКОПКИ: 5.8,
   "MORE COMING": 7.9,
   "СКОРО ЕЩЁ": 6.0
 };
 
 // The words each tile's title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "moreComing"> = {
+const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing"> = {
   "compare-tile-title": "quizCard",
   "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care",
   "sort-tile-title": "sort",
   "skeletons-tile-title": "skeletons",
+  "dig-tile-title": "dig",
   "more-coming-title": "moreComing"
 };
 
@@ -254,7 +262,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, SKELETONS over MORE COMING", () => {
+  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, SKELETONS over DIG, then MORE COMING, last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -263,7 +271,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -361,7 +369,8 @@ describe("the home page", () => {
     ["care", "CARE", "8"],
     ["sort", "SORT", "6"],
     ["pairs", "FIND THE PAIR", "120"],
-    ["skeletons", "SKELETONS", "3"]
+    ["skeletons", "SKELETONS", "3"],
+    ["dig", "DIG", "7"]
   ];
 
   it.each([1024, 1180, 1366].flatMap((width) => (["compare", "care"] as const).map((featured) => [width, featured] as const)))(
@@ -375,6 +384,7 @@ describe("the home page", () => {
         withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(6) })),
         { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
         withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] })),
+        { ...emptyDig(), digProgress: localDigProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] } } }) })) },
         featured
       );
       const shown = TILE_TITLES.filter(([game]) => game !== featured);
@@ -402,7 +412,7 @@ describe("the home page", () => {
       const tiles = shown.map(([, title]) => homeTile(title));
       expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(tiles.map(() => true));
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
-      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best"));
+      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count"));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual(
         shown.map(([, , count]) => [count, true, "absolute"])
       );
@@ -451,7 +461,7 @@ describe("the home page", () => {
     expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
   });
 
-  it("offers the skeleton game as a SKELETONS tile over MORE COMING: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
+  it("offers the skeleton game as a SKELETONS tile before DIG: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
     openHomePage();
 
     const tile = skeletonsTile();
@@ -461,7 +471,7 @@ describe("the home page", () => {
     expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("triceratops", "skeleton")]);
     const title = tile.querySelector(".skeletons-tile-title");
     expect(title?.previousElementSibling?.contains(tile.querySelector("svg.lucide-bone"))).toBe(true);
-    expect(tile.nextElementSibling).toBe(document.querySelector(".more-coming"));
+    expect(tile.nextElementSibling).toBe(homeTile("DIG"));
     expect(tile.querySelector(".skeletons-tile-best")).toBeNull();
   });
 
@@ -497,7 +507,9 @@ describe("the home page", () => {
     expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
       "TYRANNOSAURUS",
       "TRICERATOPS",
-      "STEGOSAURUS"
+      "STEGOSAURUS",
+      "BRACHIOSAURUS",
+      "SPINOSAURUS"
     ]);
     expect([symbolOf(screen.getByRole("button", { name: "MUSEUM" })), symbolOf(screen.getByRole("button", { name: "HOME" }))]).toEqual(["landmark", "house"]);
   });
@@ -551,7 +563,7 @@ describe("the home page", () => {
   });
 
   it("shows the sorting game's best score in the SORT card's picture's corner, beside a trophy", () => {
-    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(4) })), emptyPairs(), emptySkeletons(), "care");
+    openHomePage(emptyProgress(), loadedPictures(), emptyCare(), withSorting(memoryStorage({ [PROGRESS_KEY]: sortingRecord(4) })), emptyPairs(), emptySkeletons(), emptyDig(), "care");
 
     const sort = screen.getByRole("button", { name: "SORT" });
     const best = sort.querySelector(".sort-tile-best");
@@ -787,7 +799,7 @@ describe("the large card", () => {
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...pictures} />
+      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pictures} />
     );
     await tap(userEvent.setup());
     const asked: string[] = [];
@@ -859,7 +871,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for two taps on the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
+    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...loadedPictures()} />);
     const card = featuredCard();
 
     act(() => {

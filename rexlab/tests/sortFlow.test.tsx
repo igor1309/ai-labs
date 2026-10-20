@@ -17,6 +17,7 @@ import {
   SHIPPED_DINOSAURS,
   SHIPPED_SORTABLES,
   emptyCare,
+  emptyDig,
   emptyPairs,
   englishDevice,
   emptySkeletons,
@@ -69,6 +70,7 @@ function openApp({
       {...emptyCare()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      {...emptyDig()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={sortingProgress}
       {...pictures}

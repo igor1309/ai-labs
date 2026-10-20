@@ -7,15 +7,15 @@ Feature: Home page: the featured card and the tiles
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and SKELETONS
+    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
 
   Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
     When I open the home page
     Then the large card on the left shows CARE with its picture and its name in large capitals
-    And the tiles show COMPARE, ALL DINOSAURS, SORT, FIND THE PAIR and SKELETONS in that order, then "MORE COMING"
+    And the tiles show COMPARE, ALL DINOSAURS, SORT, FIND THE PAIR, SKELETONS and DIG in that order, then "MORE COMING"
     When SKELETONS is featured on another day
-    Then the tiles show COMPARE, ALL DINOSAURS, CARE, SORT and FIND THE PAIR in that order, then "MORE COMING"
+    Then the tiles show COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and DIG in that order, then "MORE COMING"
 
 
   Scenario Outline: The featured card shows what its tile would show
@@ -34,6 +34,7 @@ Feature: Home page: the featured card and the tiles
       | SORT          | a best score of 6 with a trophy symbol      |
       | FIND THE PAIR | 120 stars with a star symbol                |
       | SKELETONS     | a collection best of 2 with a trophy symbol |
+      | DIG           | 7 dinosaurs dug up with a star symbol       |
 
 
   Scenario Outline: The featured card starts its game
@@ -48,6 +49,7 @@ Feature: Home page: the featured card and the tiles
       | COMPARE       | question "1/10"                                           |
       | ALL DINOSAURS | the dinosaur list                                         |
       | SORT          | a sorting round, at once, whatever its pictures are doing |
+      | DIG           | a dig round, at once                                      |
 
 
   Scenario Outline: The featured card opens a game's first screen

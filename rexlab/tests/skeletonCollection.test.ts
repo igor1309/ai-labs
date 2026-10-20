@@ -157,8 +157,8 @@ describe("the museum", () => {
   it("has an empty stand for each skeleton, in their order, before any is built", () => {
     const museum = museumOf(kept(NO_SKELETONS), SHIPPED_SKELETONS);
 
-    expect(states(museum)).toEqual(ORDER.map((id) => [id, "empty"]));
-    expect([museum.score, museum.total, museum.best]).toEqual([0, 3, undefined]);
+    expect(states(museum)).toEqual(SHIPPED_SKELETONS.map(({ id }) => [id, "empty"]));
+    expect([museum.score, museum.total, museum.best]).toEqual([0, 5, undefined]);
   });
 
   it("stands each earned skeleton on its stand, and keeps the stand of one knocked down waiting for it, its star counted", () => {
@@ -167,9 +167,11 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "rebuilding"],
       ["triceratops", "built"],
-      ["stegosaurus", "empty"]
+      ["stegosaurus", "empty"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
-    expect([museum.score, museum.total, museum.best]).toEqual([2, 3, 2]);
+    expect([museum.score, museum.total, museum.best]).toEqual([2, 5, 2]);
   });
 
   it("gives a dinosaur kept twice one stand and one star, and one with no skeleton none", () => {
@@ -178,9 +180,11 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "built"],
       ["triceratops", "empty"],
-      ["stegosaurus", "empty"]
+      ["stegosaurus", "empty"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
-    expect([museum.score, museum.total]).toEqual([1, 3]);
+    expect([museum.score, museum.total]).toEqual([1, 5]);
   });
 
   it("shows no best when stored progress cannot be read, but counts the stars earned meanwhile", () => {
@@ -189,7 +193,9 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "empty"],
       ["triceratops", "empty"],
-      ["stegosaurus", "built"]
+      ["stegosaurus", "built"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
     expect([museum.score, museum.best]).toEqual([1, undefined]);
   });
@@ -239,7 +245,9 @@ describe("level badges", () => {
     expect(museumOf(knocked, SHIPPED_SKELETONS).stands.map(({ skeleton, state, badges }) => [skeleton.id, state, badges])).toEqual([
       ["tyrannosaurus", "empty", []],
       ["triceratops", "rebuilding", ["explorer", "paleontologist"]],
-      ["stegosaurus", "empty", []]
+      ["stegosaurus", "empty", []],
+      ["brachiosaurus", "empty", []],
+      ["spinosaurus", "empty", []]
     ]);
   });
 });

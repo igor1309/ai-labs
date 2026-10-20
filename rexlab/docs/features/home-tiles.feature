@@ -14,9 +14,10 @@ Feature: The home page's game tiles
     When I open the home page
     Then beside the large card I see "ALL DINOSAURS" over "CARE"
     And then "SORT" over "FIND THE PAIR"
-    And then "SKELETONS" over "MORE COMING", last
+    And then "SKELETONS" over "DIG"
+    And then "MORE COMING", last
     And every column of tiles is as wide as the others
-    And every game's tile is as tall as the others, half its column
+    And every tile, "MORE COMING" too, is as tall as the others, half its column
 
   Scenario: MORE COMING is a picture, not a game
     When I open the home page
@@ -60,7 +61,7 @@ Feature: The home page's game tiles
   Scenario Outline: Every tile's words fit it
     Given the app is in <language>
     And the screen is <width> by <height> CSS pixels
-    And I have a best score of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, and 120 stars in FIND THE PAIR
+    And I have a best score of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, 120 stars in FIND THE PAIR and 7 dinosaurs dug up in DIG
     When I open the home page
     Then every tile keeps its title on one line, but "FIND THE PAIR" on two at most
     And every title is at least 24 pixels tall, and "MORE COMING" at least 20

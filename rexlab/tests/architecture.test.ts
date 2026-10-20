@@ -33,10 +33,13 @@ const inCare = (file: string) => file.startsWith("care/");
 const inPairs = (file: string) => file.startsWith("pairs/");
 const inSorting = (file: string) => file.startsWith("sorting/");
 const inSkeletons = (file: string) => file.startsWith("skeletons/");
+const inDig = (file: string) => file.startsWith("dig/");
 const SCREENS = [
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
+  "DigBoardScreen.tsx",
+  "DigRevealScreen.tsx",
   "DinosaurPage.tsx",
   "FriendsScreen.tsx",
   "HomePage.tsx",
@@ -58,7 +61,9 @@ const PRESENTATION = [
   ...SCREENS,
   "ageLevelPictures.ts",
   "DietTag.tsx",
+  "DigBar.tsx",
   "Festivity.tsx",
+  "LevelOfferDialog.tsx",
   "FoodChips.tsx",
   "ParentMenu.tsx",
   "Picture.tsx",
@@ -87,6 +92,7 @@ const ADAPTERS = [
 const COMPOSITION = [
   "App.tsx",
   "careGame.tsx",
+  "digGame.tsx",
   "main.tsx",
   "pairsGame.tsx",
   "presentation.ts",
@@ -200,6 +206,20 @@ describe("the import graph", () => {
     expect(edges(inSkeletons, (target) => !inSkeletons(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
+  it("reaches the dig game only through its entrypoint", () => {
+    expect(GRAPH.get("digGame.tsx")).toContain("dig/index.ts");
+    expect(edges((file) => !inDig(file), (target) => inDig(target) && target !== "dig/index.ts")).toEqual([]);
+  });
+
+  it("keeps screens, formatting, texts and themes free of the dig game", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inDig)).toEqual([]);
+  });
+
+  it("keeps the dig game free of all but the languages", () => {
+    expect(GRAPH.get("dig/index.ts")).toBeDefined();
+    expect(edges(inDig, (target) => !inDig(target) && !target.startsWith("language/"))).toEqual([]);
+  });
+
   it("keeps screens, formatting, texts and themes free of the catalogue's model", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target === CATALOGUE)).toEqual([]);
   });
@@ -237,7 +257,7 @@ describe("the import graph", () => {
   });
 
   it("keeps the timers a game's occurrence owns free of the rest of the app", () => {
-    expect(["careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(OWNED_TIMERS))).toEqual([]);
+    expect(["careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(OWNED_TIMERS))).toEqual([]);
     expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
   });
 
@@ -250,7 +270,7 @@ describe("the import graph", () => {
 const TAP_SAFETY = "docs/tap-safety.md";
 
 // The modules that keep screens, each with useScreens.
-const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
 
 // The module that alone reads the browser's clock and timers.
 const ROOT = "root.ts";

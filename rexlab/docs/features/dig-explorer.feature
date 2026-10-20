@@ -1,0 +1,65 @@
+Feature: Dig: Explorer finds three details
+  Explorer adds looking for a shown detail: three find cards beside the
+  sand, each a round close-up of a spot of the dinosaur
+  (dig-spots.feature), found in any order. The child still brushes
+  where they like. The small star of a found detail counts towards
+  nothing: the round's one star is its dinosaur's (dig-reveal.feature).
+  Help counts only time the round shows, in landscape with the app
+  shown, as the skeleton game's help does.
+
+  Background:
+    Given an iPad in landscape
+    And the level switch shows Explorer chosen
+
+  Scenario: A round shows three find cards
+    When a round starts
+    Then I see 3 find cards beside the sand, one over another
+    And each shows a round close-up of one of the dinosaur's spots, with its word under it, such as "EYE"
+    And the 3 are spots of the dinosaur chosen at random, of different kinds
+
+  Scenario: Finding a detail ticks its card
+    Given a round shows the cards EYE, FOOT and TAIL
+    When I brush more than half of the eye spot's cells clear
+    Then the EYE card gets a tick, and a small star pops by the spot
+    And the eye spot sparkles once
+    And with reduced motion the tick and star appear with a short fade and nothing sparkles
+
+  Scenario: The details are found in any order
+    Given a round shows the cards EYE, FOOT and TAIL
+    When I find the tail first, then the eye
+    Then the TAIL and EYE cards are ticked and FOOT is not
+
+  Scenario: The last grains blow away once all three are found
+    Given I have found 2 of the 3 details
+    When I find the third
+    Then the rest of the sand blows away in one gust, however much of the dinosaur is still covered
+    And the reveal follows (dig-reveal.feature)
+
+  Scenario: Help shows the next detail through the sand
+    Given a round has started
+    When 10 seconds pass with no detail found since the start, the last find or the last help
+    Then the sand over the spot of the first unfound card not yet helped thins so the detail shows through it
+    And the thinning fades in, slowly, with the shared motion tokens, or with a short fade under reduced motion
+    And that card's frame pulses gently, but not under reduced motion
+
+  Scenario: Help comes again while nothing is found
+    Given a round shows the cards EYE, FOOT and TAIL
+    When I keep brushing places where no spot lies for 30 seconds
+    Then help thins the eye spot after 10 seconds, the foot spot after 20 and the tail spot after 30
+
+  Scenario: Help that has shown stays until its detail is found
+    Given help has thinned the sand over the foot spot
+    When I find the eye instead
+    Then the foot spot stays thinned
+    And 10 seconds after finding the eye, help thins the next unfound spot, the tail's
+
+  Scenario Outline: The find cards fit and read in either language and theme
+    Given the app is in <language> and uses the <theme> theme
+    When an Explorer round of Tyrannosaurus shows EYE, FOOT and TAIL on a 1024 by 768 screen
+    Then the board and the 3 cards show with no scrolling, each word on one line at 4.5:1 contrast
+    And the words read <words>
+
+    Examples:
+      | language | theme | words             |
+      | English  | light | EYE, FOOT, TAIL   |
+      | Russian  | dark  | ГЛАЗ, ЛАПА, ХВОСТ |

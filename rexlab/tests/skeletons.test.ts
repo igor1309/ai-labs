@@ -164,13 +164,15 @@ describe("readSkeletons", () => {
     expect(() => readSkeletons(NAMES, file({ triceratops: withPiece(2, { id: "legs", name: NAMED.legs, area: "legs", ...(at as object) }) }))).toThrow(message);
   });
 
-  it("reads every shipped skeleton, Tyrannosaurus, Triceratops and Stegosaurus, each with Hatchling's four pieces in its frame", () => {
+  it("reads every shipped skeleton, Tyrannosaurus, Triceratops, Stegosaurus, Brachiosaurus and Spinosaurus, each with Hatchling's four pieces in its frame", () => {
     const shipped = readSkeletons(records, skeletonPlaces);
 
     expect(shipped.map(({ id, name }) => [id, name.en])).toEqual([
       ["tyrannosaurus", "Tyrannosaurus"],
       ["triceratops", "Triceratops"],
-      ["stegosaurus", "Stegosaurus"]
+      ["stegosaurus", "Stegosaurus"],
+      ["brachiosaurus", "Brachiosaurus"],
+      ["spinosaurus", "Spinosaurus"]
     ]);
     expect(shipped.map(({ frame, cuts }) => [frame, cuts.hatchling.map(({ id, name }) => [id, name])])).toEqual(
       shipped.map(() => [{ width: 800, height: 600 }, PIECES.map((id) => [id, NAMED[id]])])
@@ -184,7 +186,9 @@ describe("readSkeletons", () => {
     expect(shipped.map(({ fact }) => fact.en)).toEqual([
       "T. REX HAD TINY ARMS BUT HUGE LEGS.",
       "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
-      "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK."
+      "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.",
+      "BRACHIOSAURUS HAD FRONT LEGS LONGER THAN ITS BACK LEGS.",
+      "SPINOSAURUS HAD A TALL SAIL ON ITS BACK."
     ]);
     expect(shipped.flatMap(({ fact }) => [fact.en, fact.ru]).filter((each) => each !== each.toLocaleUpperCase() || !each.endsWith("."))).toEqual([]);
   });
@@ -233,7 +237,9 @@ describe("presenting the skeleton game", () => {
     expect(presentSkeletonChoices(SHIPPED_SKELETONS, "ru", fakeBodyPicture, ["allosaurus", "stegosaurus"])).toEqual([
       { id: "tyrannosaurus", name: "Тираннозавр", picture: fakeBodyPicture("tyrannosaurus"), earned: false },
       { id: "triceratops", name: "Трицератопс", picture: fakeBodyPicture("triceratops"), earned: false },
-      { id: "stegosaurus", name: "Стегозавр", picture: fakeBodyPicture("stegosaurus"), earned: true }
+      { id: "stegosaurus", name: "Стегозавр", picture: fakeBodyPicture("stegosaurus"), earned: true },
+      { id: "brachiosaurus", name: "Брахиозавр", picture: fakeBodyPicture("brachiosaurus"), earned: false },
+      { id: "spinosaurus", name: "Спинозавр", picture: fakeBodyPicture("spinosaurus"), earned: false }
     ]);
   });
 

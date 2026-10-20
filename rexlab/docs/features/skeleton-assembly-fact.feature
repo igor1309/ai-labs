@@ -12,10 +12,12 @@ Feature: Skeleton assembly: the dinosaur's fact
     And the fact is one short sentence in capitals beside the dinosaur picture
 
     Examples:
-      | dinosaur      | fact                                           |
-      | Tyrannosaurus | T. REX HAD TINY ARMS BUT HUGE LEGS.          |
-      | Triceratops   | TRICERATOPS HAD THREE HORNS AND A BONY FRILL. |
-      | Stegosaurus   | STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.  |
+      | dinosaur      | fact                                                    |
+      | Tyrannosaurus | T. REX HAD TINY ARMS BUT HUGE LEGS.                     |
+      | Triceratops   | TRICERATOPS HAD THREE HORNS AND A BONY FRILL.           |
+      | Stegosaurus   | STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.            |
+      | Brachiosaurus | BRACHIOSAURUS HAD FRONT LEGS LONGER THAN ITS BACK LEGS. |
+      | Spinosaurus   | SPINOSAURUS HAD A TALL SAIL ON ITS BACK.                |
 
   # Spoken facts depend on LAB-275; visual facts are part of the skeleton MVP.
   @read-aloud

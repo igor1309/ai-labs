@@ -23,6 +23,8 @@ Feature: Skeleton assembly: Explorer
       | Tyrannosaurus | 7     |
       | Triceratops   | 6     |
       | Stegosaurus   | 7     |
+      | Brachiosaurus | 6     |
+      | Spinosaurus   | 7     |
 
   Scenario: Each piece and its slot share its body area's colour
     When I tap Tyrannosaurus

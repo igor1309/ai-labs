@@ -8,6 +8,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
@@ -15,11 +16,13 @@ import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
+import { board as sandBoard, brushAll, placeBoard } from "./digApp.tsx";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
 import { AWAY, dragTo as dragBone, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
+import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import {
   OVERLAYS,
   PALETTE,
@@ -28,6 +31,7 @@ import {
   SHIPPED_PALS,
   contrast,
   emptyCare,
+  emptyDig,
   emptyProgress,
   emptySkeletons,
   emptySorting,
@@ -117,6 +121,7 @@ function openApp({
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
+      {...emptyDig()}
       {...timers}
     />
   );
@@ -435,6 +440,30 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
 }
 
+// The dig game's board under all its sand, with the brush held down on
+// it among its grains, as the gust blows, then the reveal with its first
+// best, and the home page with the dinosaur dug up.
+async function dig({ theme, user, timers }: Walk) {
+  await user.click(screen.getByRole("button", { name: "DIG" }));
+  placeBoard(800);
+  expectScreenIn(theme);
+  pressAt(sandBoard(), 0, { x: 200, y: 300 });
+  moveAt(10, { x: 400, y: 300 });
+  expect(sandBoard().querySelector(".dig-brush")).not.toBeNull();
+  expectScreenIn(theme);
+  releaseAt(window, 20, { x: 400, y: 300 });
+  brushAll();
+  expect(sandBoard().getAttribute("data-blown")).toBe("true");
+  expectScreenIn(theme);
+  act(() => timers.fire(GUST.motion));
+  expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
+  expectScreenIn(theme);
+  act(() => timers.fire(STAR_LANDS.motion));
+  await user.click(screen.getByRole("button", { name: "HOME" }));
+  expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")?.textContent).toBe("1");
+  expectScreenIn(theme);
+}
+
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app: one walk over them all outlasts a test's time limit
 // on CI.
@@ -494,7 +523,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["two finished skeletons' reveals, a first best and a new one, the choice with their stars, and the home page with the best", skeletonReveals],
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]
-  ]
+  ],
+  ["the dig game", [["the board under its sand, brushed, blown away, the reveal and the home page with the count", dig]]]
 ];
 
 describe("the System theme", () => {

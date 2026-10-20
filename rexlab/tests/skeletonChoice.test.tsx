@@ -11,7 +11,7 @@ const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕ
 
 const button = (name: string) => screen.getByRole("button", { name });
 
-const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS"];
+const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS", "BRACHIOSAURUS", "SPINOSAURUS"];
 
 // The look of the outline's picture, then of each bone's in the tray.
 const looks = () => [board().querySelector(".skeleton-outline img"), ...within(tray()).getAllByRole("img")].map((picture) => (picture as HTMLElement | null)?.dataset.picture);
@@ -25,14 +25,15 @@ const leastSide = (element: Element) => {
 };
 
 describe("the skeleton game's choice of dinosaurs", () => {
-  it("offers three dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
-    openSkeletonsApp();
+  it("offers five dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
+    const { pictures } = openSkeletonsApp();
+    act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
     expect(choices().map((choice) => choice.getAttribute("aria-label"))).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector(".skeleton-choice-name")?.textContent)).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector("img")?.getAttribute("src"))).toEqual(
-      ["tyrannosaurus", "triceratops", "stegosaurus"].map(fakeBodyPicture)
+      ["tyrannosaurus", "triceratops", "stegosaurus", "brachiosaurus", "spinosaurus"].map(fakeBodyPicture)
     );
     expect(choices().filter((choice) => choice.hasAttribute("disabled") || symbolOf(choice) !== undefined)).toEqual([]);
   });
@@ -65,6 +66,17 @@ describe("the skeleton game's choice of dinosaurs", () => {
     const ems = 1 / Number(size?.[2]);
     const names = SHIPPED_SKELETONS.flatMap(({ name: { en, ru } }) => [en.toLocaleUpperCase("en"), ru.toLocaleUpperCase("ru")]);
     expect(names.filter((each) => !((NAME_EMS[each] ?? Infinity) <= ems))).toEqual([]);
+  });
+
+  it("lays the dinosaurs in rows of three, a card a third of the row however many there are, the last row centred", () => {
+    openSkeletonsApp();
+
+    const row = getComputedStyle(choices()[0]?.parentElement ?? document.body);
+    const gap = parseFloat(row.gap.split(" ").at(-1) ?? "");
+    expect([row.flexWrap, row.justifyContent]).toEqual(["wrap", "center"]);
+    expect(choices().map((choice) => [getComputedStyle(choice).flexBasis, getComputedStyle(choice).flexGrow])).toEqual(
+      choices().map(() => [`calc(${1 / 3}*(100% - ${2 * gap}px))`, "0"])
+    );
   });
 
   it("goes home on HOME", async () => {
