@@ -455,7 +455,7 @@ async function dig({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
   pressAt(sandBoard(), 0, { x: 200, y: 300 });
   moveAt(10, { x: 400, y: 300 });
-  expect(sandBoard().querySelector(".dig-brush")).not.toBeNull();
+  expect(sandBoard().querySelector(".dig-puff")).not.toBeNull();
   expectScreenIn(theme);
   releaseAt(window, 20, { x: 400, y: 300 });
   digUp();

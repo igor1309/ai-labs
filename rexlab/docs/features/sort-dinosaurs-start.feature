@@ -11,7 +11,7 @@ Feature: Sort dinosaurs: starting a round and the board
   Scenario: The home page offers the sorting game as a card
     When I open the home page
     Then I see a "SORT" game card with a dinosaur and a symbol of shapes
-    And it is under the "CARE" tile, in the column before "FIND THE PAIR" and "SKELETONS"
+    And it is over the "CARE" tile, in the column after "SKELETONS" and "DIG"
     And the card shows my best score when there is one
 
   Scenario: The sorting card brightens under a pointer

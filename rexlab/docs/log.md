@@ -2,6 +2,8 @@
 
 ## 2026-10-20
 
+- The home page's tiles put SORT and CARE last: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, then SORT over CARE, before MORE COMING; the day's featured game is still drawn in tile order (LAB-373).
+- DIG's brush shows no ring under the finger; the sand clearing under it and its grains are the brush. DIG's home tile shows its sand picture with rounded corners, as the cards around it (LAB-370, LAB-372).
 - RexLab lays out by the window's shape: a screen without a portrait layout, every screen for now, shows a turn-sideways picture in a portrait window ("MAKE THE WINDOW WIDER" when the screen is already sideways, as on a Mac), with a parents' footnote that portrait is on its way, and the game waits behind it (LAB-326).
 - Every landscape screen fits from a 1024×670 window to a large Mac display, its content at most 1440 wide and centred, clear of rounded corners, a notch and a home indicator; the page no longer pulls to refresh or bounces, and buttons brighten under a mouse or trackpad with a hand cursor, never after a finger (LAB-326).
 - After BACK from DIG's FIELD GUIDE, the brush clears sand again and the round goes on to its question, help and gust, even when help's wait ticked as the page opened. The brush's ring springs in under the finger, follows it on a soft spring and shrinks away as it lifts, and its grains toss out on an arc, overshoot a little and settle as they fade; under reduced motion the ring just shows and there are no grains (LAB-369).

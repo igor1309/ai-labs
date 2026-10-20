@@ -267,7 +267,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over CARE, SORT over FIND THE PAIR, SKELETONS over DIG, then MORE COMING, last", () => {
+  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -276,7 +276,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ALL DINOSAURS", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -372,11 +372,11 @@ describe("the home page", () => {
   const TILE_TITLES: Array<[HomeGame, string, string]> = [
     ["compare", "COMPARE", "7"],
     ["catalogue", "ALL DINOSAURS", String(SHIPPED_CATALOGUE.length)],
-    ["care", "CARE", "8"],
-    ["sort", "SORT", "6"],
     ["pairs", "FIND THE PAIR", "120"],
     ["skeletons", "SKELETONS", "3"],
-    ["dig", "DIG", "7"]
+    ["dig", "DIG", "7"],
+    ["sort", "SORT", "6"],
+    ["care", "CARE", "8"]
   ];
 
   it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
@@ -441,13 +441,13 @@ describe("the home page", () => {
     }
   );
 
-  it("offers find the pair as a tile under SORT, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
+  it("offers find the pair as a tile under ALL DINOSAURS, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
-    // The row fills two tiles to a column: the fourth tile is the second
+    // The row fills two tiles to a column: the second tile is the first
     // column's lower one, COMPARE's tile left out for the large card.
-    expect([...tilesRow().children].indexOf(tile)).toBe(3);
+    expect([...tilesRow().children].indexOf(tile)).toBe(1);
     expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("FIND THE PAIR");
     expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
