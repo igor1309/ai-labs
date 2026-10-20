@@ -11,10 +11,14 @@ Feature: The home page in a tall window
 
   The padding, the greeting and the gaps keep their landscape sizes, 292
   CSS pixels in all. The row of tiles takes 36% of the window's height,
-  360 to 520 CSS pixels, its columns 310 wide as in landscape. The large
-  card takes the rest, at least 280 tall with its name strip, its picture
-  at 4:3. Under 932 tall the page scrolls up and down instead of going
-  smaller. Budgets count no safe-area inset (window-fit.feature).
+  360 to 520 CSS pixels, and runs on to the window's right edge. Its
+  columns are 310 wide as in landscape, narrower only where that would
+  leave under 24 pixels of the next one peeking in. The large card takes
+  the rest, at least 280 tall with its 108-pixel name strip, its picture
+  at 4:3, but never wider than the padding leaves; height it cannot use
+  stays empty under the tiles. Under 932 tall the page scrolls up and
+  down instead of going smaller. Sizes hold to within a pixel. Budgets
+  count no safe-area inset (window-fit.feature).
 
   Scenario Outline: The home page stands upright
     Given a window of <width> by <height> CSS pixels
@@ -24,21 +28,22 @@ Feature: The home page in a tall window
     And "RexLab", the museum button and the parents' menus stand on one line at the top, the greeting under them
     And the large card stands under the greeting, centred, <card> CSS pixels tall with its name strip, its whole picture shown
     And under the large card the row of tiles is <row> CSS pixels tall, showing "ALL DINOSAURS" over "FIND THE PAIR" first
-    And every column of tiles is 310 CSS pixels wide, every tile half its column's height
+    And every column of tiles is <column> CSS pixels wide, every tile half its column's height
     And at least 24 pixels of the first column that does not fit peek in at the right edge
-    And the page <scrolls> up and down
+    And the page <scrolls> up and down, and the version footer overlaps no tile
 
     Examples:
-      | width | height | card | row | scrolls          | window                          |
-      | 600   | 800    | 280  | 360 | scrolls          | iPad in Split View, or a Mac    |
-      | 768   | 950    | 298  | 360 | does not scroll  | iPad 9.7" upright, in Safari    |
-      | 768   | 1024   | 363  | 369 | does not scroll  | iPad 9.7" upright, full screen  |
-      | 744   | 1060   | 386  | 382 | does not scroll  | iPad mini upright, in Safari    |
-      | 744   | 1133   | 433  | 408 | does not scroll  | iPad mini upright, full screen  |
-      | 820   | 1180   | 463  | 425 | does not scroll  | iPad Air upright                |
-      | 834   | 1194   | 472  | 430 | does not scroll  | iPad Pro 11" upright            |
-      | 1032  | 1376   | 589  | 495 | does not scroll  | iPad Pro 13" upright            |
-      | 900   | 1000   | 348  | 360 | does not scroll  | Mac window, nearly square       |
+      | width | height | card | row | column | scrolls         | window                         |
+      | 600   | 800    | 280  | 360 | 310    | scrolls         | iPad in Split View, or a Mac   |
+      | 768   | 950    | 298  | 360 | 310    | does not scroll | iPad 9.7" upright, in Safari   |
+      | 768   | 1024   | 363  | 369 | 310    | does not scroll | iPad 9.7" upright, full screen |
+      | 744   | 1060   | 386  | 382 | 310    | does not scroll | iPad mini upright, in Safari   |
+      | 744   | 1133   | 433  | 408 | 310    | does not scroll | iPad mini upright, full screen |
+      | 834   | 1194   | 472  | 430 | 310    | does not scroll | iPad Pro 11" upright           |
+      | 1032  | 1376   | 589  | 495 | 310    | does not scroll | iPad Pro 13" upright           |
+      | 900   | 1000   | 348  | 360 | 310    | does not scroll | Mac window, nearly square      |
+      | 712   | 1000   | 348  | 360 | 292    | does not scroll | Stage Manager window           |
+      | 600   | 1400   | 474  | 504 | 310    | does not scroll | tall Mac window                |
 
   Scenario: The tiles scroll sideways under the large card
     Given a window of 744 by 1133 CSS pixels
@@ -60,7 +65,7 @@ Feature: The home page in a tall window
     And every tile keeps its title on one line, but "FIND THE PAIR" on two at most
     And every title is at least 24 pixels tall, and "MORE COMING" at least 20
     And every count is at least 20 pixels tall and stays in its tile's picture corner
-    And the museum button keeps its word on one line, and nothing in the corner overlaps the greeting or the large card
+    And the museum button keeps its word on one line, and nothing in the corner overlaps "RexLab", the greeting or the large card
 
     Examples:
       | language | featured      |
@@ -82,12 +87,6 @@ Feature: The home page in a tall window
       | language  |
       | theme     |
       | age level |
-
-  Scenario: The version footer stays clear
-    Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator
-    When I open the home page
-    Then the version footer and every tile sit clear of the rounded corners and the home indicator
-    And the version footer overlaps no tile
 
   Scenario: Turning the window keeps the home page as it was
     Given a window of 1180 by 820 CSS pixels

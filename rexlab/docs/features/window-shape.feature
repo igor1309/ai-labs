@@ -17,11 +17,12 @@ Feature: The window's shape
     | tall        | portrait, at least 600 CSS pixels wide   | iPad portrait      |
     | tall-narrow | portrait, under 600 CSS pixels wide      | iPhone portrait    |
   Until a screen's own stage builds them, a wide-short window shows the
-  wide layout, and a tall-narrow window the same picture as a tall one.
-  A screen's portrait layout is built for one size class at a time: the
-  home page has one for a tall window only (home-portrait.feature), so in a
-  tall-narrow window the home page is still behind the picture. The scenarios below use
-  the care welcome screen, which has no portrait layout yet.
+  wide layout, and a tall-narrow window the picture a tall one shows for
+  a screen with no portrait layout. A portrait layout is built for one
+  size class at a time: the home page has one for a tall window only
+  (home-portrait.feature), so a tall-narrow window still shows the
+  picture over it. The scenarios below use the care welcome screen,
+  which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
