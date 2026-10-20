@@ -59,4 +59,14 @@ Feature: The composition keeps a call to its cost limit
     Then codex is given one turn, and the result has no warning
     And it is failed, class "budget_exhausted", the reason "the cost
       limit 1 is spent: 1.5"
-    And the record's call has the cost 1.5 and "session_cost" 1.5
+    And the record's call has the cost 1.5, "cost_source" "ccusage" and
+      "session_cost" 1.5
+
+  Scenario: A codex call whose cost is unknown says why
+    Given codex completes, its cost unknown, why "ccusage could not price
+      the thread t1: the program could not start"
+    When "agister run --process ask --agent codex-sol-61 --param q=why"
+      runs in "/r"
+    Then the result's warnings hold "ccusage could not price the thread
+      t1: the program could not start"
+    And the record's call has the cost null and "cost_source" null

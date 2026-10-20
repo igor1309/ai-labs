@@ -12,7 +12,8 @@ Feature: The codex wrapper counts a turn's own cost
     When codex runs the message "m" with no session
     Then the supervisor runs codex, then "ccusage codex session --json
       -O --id t1" in the turn's directory with its environment
-    And the reply's cost is 0.25, and its session's cost 0.25
+    And the reply's cost is 0.25, its source "ccusage", and its
+      session's cost 0.25
 
   Scenario: A resumed turn's cost and usage are the thread's after it
     less before
@@ -33,15 +34,16 @@ Feature: The codex wrapper counts a turn's own cost
     When codex runs the message "m" with no session
     Then the reply completes, its cost unknown and its session's cost
       unknown, its usage the input 100
+    And it gives why: "ccusage could not price the thread t1: <why>"
 
     Examples:
-      | fails                                                    |
-      | cannot start                                              |
-      | is ended by SIGTERM                                       |
-      | exits 1, "No Codex session found with ID: t1"            |
-      | gives "not json"                                         |
-      | gives an object with no "totalCost"                      |
-      | gives the cost 0.25, its model "gpt-x" marked isFallback |
+      | fails                                                    | why                                        |
+      | cannot start                                             | the program could not start                |
+      | is ended by SIGTERM                                      | it was ended by SIGTERM                    |
+      | exits 1, "No Codex session found with ID: t1"            | exit 1: No Codex session found with ID: t1 |
+      | gives "not json"                                         | no totalCost                               |
+      | gives an object with no "totalCost"                      | no totalCost                               |
+      | gives the cost 0.25, its model "gpt-x" marked isFallback | the model gpt-x is priced as a fallback    |
 
   Scenario: A lookup before that fails leaves the cost and usage unknown
     Given the lookup before cannot start
@@ -60,13 +62,16 @@ Feature: The codex wrapper counts a turn's own cost
     Then the reply fails, class "capacity", its cost 0.25
 
   Scenario: A cost or a count less than before is unknown
-    Given a lookup gives the thread "t1" the cost 1 and the input 1000
+    Given a lookup gives the thread "t1" the cost 1, the input 1000, and
+      no cache reads, output or reasoning
     And codex resumes the thread "t1" and completes, its usage the input
       500 and the output 10
     And a lookup then gives the thread "t1" the cost 0.5
     When codex runs the message "m" with the session "t1"
     Then the reply's cost is unknown, and its session's cost 0.5
     And its input is unknown, and its output 10
+    And it gives why: "ccusage could not price the thread t1: the cost
+      fell from 1 to 0.5"
 
   Scenario Outline: A turn with no reply or thread has no lookup after
     Given codex <ends>

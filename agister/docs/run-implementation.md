@@ -298,7 +298,8 @@ Decisions, each with its reason:
   settle. The wrappers report the session now, so the record can keep
   it.
 - Codex's cost waits: the archive priced a thread through `ccusage`, a
-  second program; an unknown cost is honest meanwhile (ADR-012, rule 5).
+  second program; an unknown cost is honest meanwhile (ADR-012, rule
+  5). ("Codex's cost" brings it.)
 - A cost limit is refused, not kept: core ends no call at its cost yet,
   and codex reports none to end it by. ("A call's cost" keeps it, on
   what a runtime reports.)
@@ -1479,48 +1480,68 @@ Decisions, each with its reason:
 ## Codex's cost
 
 A turn on codex reports its cost, read through `ccusage`, so a cost
-limit and the daily budget spend it; a resumed turn's usage is its own
-(ADR-001, invariant 3; ADR-004, rule 7; LAB-357).
+limit and the daily budget spend it; a resumed turn's usage is its own;
+and a call's record names its cost's source (ADR-001, invariant 3;
+ADR-004, rule 7; LAB-357).
 
 Codex reports no cost. Its `turn.completed` usage on a resumed thread is
-the thread's to date: a first turn's input of 17,587 tokens, then
-38,225 for a resumed one (seen live, 2026-10-20). `ccusage codex session
---json -O --id <thread>` prices a thread from its rollout, which a
-resume appends to: its `totalCost` is the thread's to date, its tokens
+the thread's to date: a first turn's input of 17,587 tokens, cached
+12,544, then 38,225, cached 29,952, for a resumed one, which ccusage's
+thread then matched, its input 8,273 and cache reads 29,952 (seen live,
+2026-10-20). `ccusage codex session --json -O --id <thread>` prices a
+thread from its rollout, which a resume appends to: one JSON object,
+over many lines, whose `totalCost` is the thread's to date, its tokens
 too, each model's marked `isFallback` where priced as another's; it
 reads the `CODEX_HOME` it is given, and exits 1 for a thread it does
 not find (ccusage 20.0.31, the same day). Its `inputTokens` leaves out
-the cached tokens codex's input counts: after the first turn above,
-codex's input 17,587 and cached 12,544, ccusage's input 5,043 and
-cache reads 12,544. `-O` prices from the table
+the cached tokens codex's input counts. `-O` prices from the table
 ccusage ships, with no network.
 
 **`runtime/codex`**'s turn is followed, where it gives a reply and its
 thread, by a lookup of the thread's cost; a resumed turn is preceded
 by one as well. A lookup runs `ccusage codex session --json -O --id
 <thread>` through the supervisor, in the turn's directory with its
-environment, and reads its stdout's lines. Its reply's cost is the
-thread's cost after the turn less before it, zero before for a turn
-that resumes none; it also gives the session's cost, the thread's cost
-after. A resumed turn's usage is the reported usage less the thread's
-before, codex's input counting ccusage's input and cache reads. A
-lookup that does not start, is ended by a signal, exits other than 0,
-gives no JSON object
-with a number `totalCost`, or prices any model as a fallback is
-unknown: the cost after unknown leaves the cost and the session's cost
-unknown, the cost before unknown the cost and a resumed turn's usage.
-A cost or a token count less than zero is unknown. A lookup's lines go
-to no report: the turn has ended. A turn a signal ended, or with no
-thread, has no lookup. Its facts say it reports a cost, as
-claude-code's do, and bash's that it does not.
+environment, and reads its stdout's lines, joined, as one JSON object.
+Its reply's cost is the thread's cost after the turn less before it,
+zero before for a turn that resumes none; it also gives the session's
+cost, the thread's cost after, and the cost's source, "ccusage". A
+resumed turn's usage is the reported usage less the thread's before,
+codex's input counting ccusage's input and cache reads; a count
+ccusage does not give is unknown. A lookup that does not start, is
+ended by a signal, exits other than 0, gives no JSON object with a
+number `totalCost`, or prices any model as a fallback is unknown: the
+cost after unknown leaves the cost and the session's cost unknown, the
+cost before unknown the cost and a resumed turn's usage. A cost or a
+token count less than zero is unknown. A reply whose cost is unknown
+gives why: "ccusage could not price the thread <thread>: <reason>",
+the reason the lookup's error, its exit and stderr's tail, "no
+totalCost", "the model <model> is priced as a fallback", or "the cost
+fell from <before> to <after>". A lookup's lines go to no report: the
+turn has ended. A turn a signal ended, or with no thread, has no
+lookup. Its facts say it reports a cost, as claude-code's do, and
+bash's that it does not. claude-code's reply gives the source
+"claude-code" where it gives a cost.
 
-**The composition** maps codex's reply's cost and session's cost onto
-the call's reply. The warning on a cost limit, "the runtime <runtime>
-reports no cost: the cost limit <limit> spends nothing", is given on a
-runtime whose facts report no cost, bash, and no longer on one that
-takes no budget: a limit on codex is kept, its turns given no budget,
-the call stopped at capacity once its known cost reaches it, as on
-claude-code.
+**`core/call`**'s reply carries the cost's source and why the cost is
+unknown. A call's result gives the source of its turns' costs, none
+where its cost is unknown; each reply's why is a warning of the call,
+in the order its turns gave them.
+
+**`runstore`**'s call result grows `"cost_source"`, `null` where the
+cost is unknown; an entry from before, with no such field, is read as
+`null`.
+
+```json
+{"calls": [{"result": {"cost": 0.25, "cost_source": "ccusage"}}]}
+```
+
+**The composition** maps codex's reply's cost, session's cost, source
+and why onto the call's reply. The warning on a cost limit, "the
+runtime <runtime> reports no cost: the cost limit <limit> spends
+nothing", is given on a runtime whose facts report no cost, bash, and
+no longer on one that takes no budget: a limit on codex is kept, its
+turns given no budget, the call stopped at capacity once its known
+cost reaches it, as on claude-code.
 
 Decisions, each with its reason:
 
@@ -1532,16 +1553,20 @@ Decisions, each with its reason:
   table does not know is priced as a fallback, so its cost is unknown,
   not a guess, until ccusage is updated (ADR-001, invariant 3).
 - Through the supervisor: the lookup is a program, ended with the call
-  on a timeout or a cancellation, as the turn is.
+  on a timeout or a cancellation, as the turn is. A time limit reached
+  during the lookup after a turn that completed ends the call
+  interrupted, as one reached at any other moment does: the lookup is
+  under a second, and the limit is the call's.
 - A lookup that fails leaves the cost unknown, and nothing else about
-  the turn: it ran, whatever its price. ccusage not installed is such a
-  failure; it spends nothing, as an unknown cost does.
+  the turn: it ran, whatever its price. It is a warning, so a limit
+  that bounds no longer, ccusage not installed or a model it does not
+  know, is not silent (as "A call's cost" keeps a limit on bash).
 - A turn a signal ended has no lookup: it gives no reply, as now, and
   a stale turn spends nothing (LAB-336).
-- The cost is ccusage's estimate from its price table, not a bill; the
-  record keeps it as a cost, its source and ccusage's version not kept:
-  a cost limit and the daily budget are bounds, and an estimate bounds
-  them as a reported cost does.
+- The source is recorded, as ADR-001, invariant 3 asks: codex's cost is
+  ccusage's estimate from its price table, not a bill, Claude's what
+  Claude reports. ccusage's version is not kept: the source says whose
+  price it is, and an estimate bounds a limit as a reported cost does.
 - The contract stays `codex/2`, as `claude-code/3` stayed for Claude's
   cost (LAB-336): the settings' runtime documents name it, and what a
   call is given is unchanged.
