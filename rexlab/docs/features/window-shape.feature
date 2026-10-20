@@ -77,7 +77,7 @@ Feature: The window's shape
 
   Scenario Outline: A screen shows its portrait layout only in the size class it is built for
     Given I am on the home page
-    And the device's screen turns upright with the window
+    And the device's screen is upright
     When the window becomes <width> by <height> CSS pixels
     Then <shown>
 
@@ -87,7 +87,7 @@ Feature: The window's shape
       | 393   | 852    | I see the picture asking to turn sideways                               |
 
   @next
-  Scenario: A screen with a portrait layout reflows to it smoothly
+  Scenario: A screen with a portrait layout reflows to it smoothly (LAB-375)
     Given a screen whose portrait layout is built
     When the window becomes portrait
     Then it reflows with the shared motion tokens, never a jump, and only fades with reduced motion
