@@ -2,8 +2,10 @@ Feature: Dig: stored progress
   The dig game keeps, in the browser beside the other games' progress,
   the dinosaurs dug up, the dinosaurs named at the first pick at
   Explorer or Paleontologist, the child's choice on the level switch and its level
-  offer (dig-level-offer.feature). Dug-up dinosaurs are one collection
-  across all levels (docs/age-levels.md, "Same rewards").
+  offer (dig-level-offer.feature), and the treasures found in the sand
+  with their counts (dig-treasures.feature). Dug-up dinosaurs and
+  treasures are each one collection across all levels (docs/age-levels.md,
+  "Same rewards").
 
   Background:
     Given an iPad in landscape
@@ -24,6 +26,12 @@ Feature: Dig: stored progress
     Given the gust has begun in a round at any level
     When I leave for HOME during the gust, lift or after the reveal's items arrive
     Then the dinosaur stays recorded as dug up, with its badge if earned
+
+  Scenario: Treasures found are kept
+    Given I have found 2 shells and an egg nest
+    When I find another shell and reload the app
+    Then the FIELD GUIDE shows 3 shells and 1 egg nest
+    And stored progress from before treasures came holds no treasures and keeps its dinosaurs
 
   Scenario: Other games' progress is kept
     Given stored progress of every other game from before the dig game

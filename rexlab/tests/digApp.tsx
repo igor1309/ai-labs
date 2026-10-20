@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { COUNT_SETTLE, GUST, LIFT } from "../src/digGame.tsx";
+import { COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { App } from "../src/App.tsx";
@@ -8,6 +8,7 @@ import { localDigProgress, localFeatured, localProgress } from "../src/localProg
 import { localLanguage } from "../src/localLanguage.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import type { Random } from "../src/dig/index.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DIG,
@@ -40,6 +41,7 @@ export function openDigApp({
   timers = manualTimers(),
   orientation = manualOrientation("landscape"),
   visibility = manualVisibility("visible"),
+  random = () => 0,
   settingsStorage
 }: {
   storage?: MemoryStorage;
@@ -50,6 +52,8 @@ export function openDigApp({
   timers?: ManualPictures | ManualTimers;
   orientation?: ManualOrientation;
   visibility?: ManualVisibility;
+  // The app's draws, the featured game's and each round's.
+  random?: Random;
   settingsStorage?: MemoryStorage;
 } = {}) {
   const local = () => storage;
@@ -64,7 +68,7 @@ export function openDigApp({
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
-      random={() => 0}
+      random={random}
       orientation={orientation}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -158,10 +162,18 @@ export function digUp() {
   if (board().getAttribute("data-blown") === null) fireEvent.click(choiceCard());
 }
 
-// Finishes the gust and lift, including a new star's count tick. Repeated
-// finds have no count timer; firing that wait has no effect there.
+// Lands a found treasure's flight. A round with no treasure in flight has
+// no such timer; firing that wait has no effect there.
+export function landTreasure(timers: Pick<ManualTimers, "fire">, timing: "motion" | "reduced" = "motion") {
+  act(() => timers.fire(TREASURE_FLIGHT[timing]));
+}
+
+// Finishes the gust and lift, including a new star's count tick, landing
+// a treasure in flight as it would land, during the lift. Repeated finds
+// have no count timer; firing that wait has no effect there.
 export function finishBoard(timers: Pick<ManualTimers, "fire">, timing: "motion" | "reduced" = "motion") {
   act(() => timers.fire(GUST[timing]));
+  landTreasure(timers, timing);
   act(() => timers.fire(LIFT[timing]));
   if (COUNT_SETTLE[timing] > 0) act(() => timers.fire(COUNT_SETTLE[timing]));
 }

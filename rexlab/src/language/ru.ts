@@ -114,4 +114,9 @@ export const ru: Texts = {
   dugUpNew: "НОВЫЙ!",
   digAgain: "КОПАТЬ ЕЩЁ",
   allDugUp: "ВСЕ ДИНОЗАВРЫ ОТКОПАНЫ",
+  fieldGuide: "ПОЛЕВОЙ ДНЕВНИК",
+  treasureNew: "НОВИНКА!",
+  treasureCards: "СОКРОВИЩА",
+  kindsFound: "НАЙДЕНО ВИДОВ",
+  treasures: { shell: "РАКУШКА", tooth: "ЗУБ", amber: "ЯНТАРЬ", "egg-nest": "ГНЕЗДО С ЯЙЦАМИ", "golden-fossil": "ЗОЛОТАЯ ОКАМЕНЕЛОСТЬ" },
 };

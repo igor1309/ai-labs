@@ -129,6 +129,31 @@ Storyboard" row of `../design/rexlab.pen`.
   collection until a playtest shows children dig on past 42, as 42
   rounds is already a long goal at 5–7.
 
+## Treasures
+
+- **Which rounds.** About one round in three, at every level, hides one
+  treasure in its sand. Its kind is drawn: a golden fossil 1 in 20, an
+  egg nest 1 in 8, and a shell, a tooth or a drop of amber sharing the
+  rest equally. "Treasures", "СОКРОВИЩА": "find" already names a found
+  spot (`dig-help.feature`).
+- **Where.** On cells of the damp bed with none of the dinosaur, at
+  least one cell from the edge, so it never hides a part of the
+  dinosaur. Its sand counts toward neither 75% nor the gust.
+- **Found.** Brushed more than half clear, it glows, hops and flies
+  into the FIELD GUIDE on DIG's bar, whose count ticks up; "NEW!" shows
+  for the first of its kind. Brushing goes on during the flight. It is
+  kept the moment it lands, even if the child then leaves before the
+  gust. One not found tumbles away with the gust and is not kept.
+  Reduced motion fades it out and changes the count simply.
+- **The FIELD GUIDE.** 📖 "FIELD GUIDE", "ПОЛЕВОЙ ДНЕВНИК": a button
+  beside "DUG UP" on DIG's bar, during a round and on the reveal. Its
+  page holds five cards in a fixed order, each a picture with its count,
+  or an outline and "?" for a kind not found yet, and "n/5" kinds found.
+  "BACK" gives back the round or reveal as it was, as turning the iPad
+  does; "HOME" leaves as from the round.
+- **Kept.** Counts per kind, in DIG's stored progress, one collection
+  across all levels. They show nowhere outside DIG.
+
 ## Sub-issues
 
 | Sub-issue | Builds |
@@ -142,7 +167,7 @@ Storyboard" row of `../design/rexlab.pen`.
 | LAB-359 The mystery round | all sand, the question at 75% with look-alikes, help at every level, Hatchling's gust at 95%; v1's find and clue cards go |
 | LAB-360 The brush | a brush that crumbles the sand |
 | LAB-361 Motion | the motion and the reveal |
-| LAB-362 Bonus finds | finds in the sand |
+| LAB-362 Treasures | treasures in the sand and the FIELD GUIDE |
 
 The brush of LAB-341 is a component of its own, so the skeleton
 game's dig (LAB-283) brushes the same sand.
@@ -159,3 +184,5 @@ game's dig (LAB-283) brushes the same sand.
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
   is the long goal.
+- Treasures in about one round in three, at every level, kept in a
+  FIELD GUIDE page beside DUG UP (LAB-362).

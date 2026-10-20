@@ -81,7 +81,7 @@ it("starts and brushes while its body picture loads, then fades it in under the 
   const picture = board().querySelector<HTMLImageElement>(".dig-picture")!;
   expect([picture.dataset.picture, picture.getAttribute("src"), clearCells()]).toEqual(["loading", null, []]);
   expect(getComputedStyle(picture).animation).toContain("shimmer");
-  expect(picture.nextElementSibling?.className).toBe("dig-sand");
+  expect(picture.parentElement?.querySelector(":scope > .dig-picture ~ .dig-sand")).not.toBeNull();
   drag([[100, 310], [700, 310]]);
   const clear = clearCells();
   expect(clear.length).toBeGreaterThan(0);

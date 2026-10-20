@@ -205,6 +205,17 @@ describe("the dig reveal's motion", () => {
   });
 });
 
+describe("the FIELD GUIDE's motion", () => {
+  it("rises its cards in one after the other, 60 ms apart, and only fades them together with reduced motion", () => {
+    expect(declared(PLAIN, ".dig-guide-card").animation).toBe("rise-in var(--motion-screen) var(--ease-out) calc(var(--card) * var(--motion-stagger) * 1.5) both");
+    expect(Number.parseFloat(tokensOf(PLAIN)["--motion-stagger"] ?? "") * 1.5).toBe(60);
+    // rise-in lifts by --motion-amount and the stagger is --motion-stagger,
+    // both 0 with reduced motion, which leaves one short fade.
+    expect([tokensOf(REDUCED)["--motion-stagger"], tokensOf(REDUCED)["--motion-amount"]]).toEqual(["0ms", "0"]);
+    expect(animationsOf(REDUCED).has(".dig-guide-card")).toBe(false);
+  });
+});
+
 describe("the home page's motion", () => {
   it("fades and lifts the large card in as a screen comes in, and only fades it with reduced motion", () => {
     const card = PLAIN.filter(({ prelude }) => prelude === ".featured-card").flatMap(({ body }) => declarationsOf(body));

@@ -1,6 +1,6 @@
 import { House, RotateCcw, Star, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { DigBar } from "./DigBar.tsx";
+import { DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -39,6 +39,8 @@ export type DigRevealScreenProps = Omit<LevelSwitchProps, "language"> & {
   celebration: Celebration | null;
   // The dinosaur has its 🦴 badge, named at the first pick.
   badge: boolean;
+  // The treasures found, of every kind, on the FIELD GUIDE's button.
+  treasures: number;
   // The last item has arrived, and the reveal takes taps.
   landed: boolean;
   reducedMotion?: boolean;
@@ -47,6 +49,7 @@ export type DigRevealScreenProps = Omit<LevelSwitchProps, "language"> & {
   onLanded: (landed: boolean) => void;
   onDigAgain: () => void;
   onHome: () => void;
+  onFieldGuide?: (() => void) | undefined;
 };
 
 // The round's result: the dinosaur the gust has uncovered, whole, its
@@ -64,6 +67,7 @@ export function DigRevealScreen({
   newStar,
   celebration,
   badge,
+  treasures,
   landed,
   reducedMotion = false,
   startTimer,
@@ -72,7 +76,8 @@ export function DigRevealScreen({
   level,
   onLevel,
   onDigAgain,
-  onHome
+  onHome,
+  onFieldGuide
 }: DigRevealScreenProps) {
   const text = TEXTS[language];
   const timing = reducedMotion ? "reduced" : "motion";
@@ -81,6 +86,10 @@ export function DigRevealScreen({
   let part = 2 - Number(dugUp !== undefined) - Number(Boolean(celebration));
   const arrival = () => motion({ "--reveal-part": part++ });
   const result = useRef<HTMLElement>(null);
+  // A reveal that mounts with its last item arrived, as given back from
+  // the FIELD GUIDE, shows its parts at once; a turn of the iPad lands
+  // it anew, so it arrives again.
+  const [arrived] = useState<boolean>(landed);
   const [phase, setPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<LevelOfferProps | null>(null);
   const blocked = phase === "shown" || phase === "leaving";
@@ -114,11 +123,13 @@ export function DigRevealScreen({
   }, [phase]);
   return (
     <>
-      <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined}
+      <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined} data-arrived={arrived || undefined}
         style={{ "--dig-reveal-duration": `${REVEAL_GLIDE[timing]}ms`, "--dig-reveal-stagger": `${REVEAL_STAGGER[timing]}ms` } as CSSProperties}>
         {celebration && <Festivity />}
         <div className="stratum result-stratum" aria-hidden="true" />
-        <DigBar language={language} />
+        <DigBar language={language}>
+          <FieldGuideButton language={language} count={treasures} disabled={!landed || blocked} onFieldGuide={onFieldGuide} />
+        </DigBar>
         <div className="dig-reveal">
           <span className="dig-reveal-art">
             {pictureLook ? <PictureImage look={pictureLook} className="dig-reveal-picture" src={picture} alt="" width={800} height={600} /> : <Picture className="dig-reveal-picture" src={picture} alt="" width={800} height={600} />}

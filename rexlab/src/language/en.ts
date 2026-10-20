@@ -110,4 +110,9 @@ export const en: Texts = {
   dugUpNew: "NEW!",
   digAgain: "DIG AGAIN",
   allDugUp: "EVERY DINOSAUR DUG UP",
+  fieldGuide: "FIELD GUIDE",
+  treasureNew: "NEW!",
+  treasureCards: "TREASURES",
+  kindsFound: "KINDS FOUND",
+  treasures: { shell: "SHELL", tooth: "TOOTH", amber: "AMBER", "egg-nest": "EGG NEST", "golden-fossil": "GOLDEN FOSSIL" },
 };

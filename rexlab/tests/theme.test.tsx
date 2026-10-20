@@ -9,6 +9,8 @@ import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/l
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
+import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
+import { TREASURE_KINDS } from "../src/dig/index.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
@@ -23,6 +25,7 @@ import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, tu
 import { AWAY, dragTo as dragBone, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
+import { withPictures } from "./pictures.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -37,6 +40,7 @@ import {
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  fakeTreasurePicture,
   featuring,
   manualAppearance,
   manualOrientation,
@@ -742,6 +746,36 @@ describe("the large card", () => {
         expect({ game, footer }).toEqual({ game, footer: getComputedStyle(nameRowOf(tile) ?? tile).backgroundColor });
         unmount();
       }
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
+// The page is shown through its props, in the theme the app sets on the
+// page, with kinds found and kinds not found yet.
+describe("the FIELD GUIDE", () => {
+  it.each(["light", "dark"] as const)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: kind === "shell" ? 3 : kind === "egg-nest" ? 1 : 0 }));
+      render(<DigFieldGuideScreen language="en" cards={cards} onBack={() => {}} onHome={() => {}} />, withPictures);
+
+      expectScreenIn(theme);
+      const colours = PALETTE[theme];
+      const look = (selector: string) => {
+        const style = getComputedStyle(document.querySelector(selector) ?? document.body);
+        return { background: style.backgroundColor, border: style.borderColor, width: style.borderWidth, color: style.color, opacity: style.opacity };
+      };
+      const found = look(".dig-guide-card[data-found]");
+      const missing = look(".dig-guide-card:not([data-found])");
+      const outline = look(".dig-guide-outline");
+      const unknown = look(".dig-guide-unknown");
+      expect([sameColour(found.background, colours.surface ?? ""), sameColour(found.border, colours.line ?? ""), found.width]).toEqual([true, true, "1px"]);
+      expect([sameColour(missing.background, colours["surface-2"] ?? ""), sameColour(missing.border, colours.line ?? ""), missing.width]).toEqual([true, true, "2px"]);
+      expect([sameColour(outline.background, colours.ink ?? ""), outline.opacity]).toEqual([true, "0.16"]);
+      // "?" is the ink at 40%, as the design draws it.
+      expect(sameColour(unknown.color, `${colours.ink}66`)).toBe(true);
     } finally {
       delete document.documentElement.dataset.theme;
     }
