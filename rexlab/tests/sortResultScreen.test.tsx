@@ -9,6 +9,7 @@ import { SortResultScreen, type SortResultScreenProps } from "../src/SortResultS
 import { LEVEL_EMS } from "./levelEms.ts";
 import { withPictures } from "./pictures.tsx";
 import { contrast, fakeBodyPicture, sameColour, seenOn, surfaceOf } from "./support.ts";
+import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 const result = {
   language: "en", score: 5, total: 8, best: 7, beaten: undefined,
@@ -95,31 +96,35 @@ const WORD_EMS: Record<string, number> = {
   "ЕЩЁ РАЗ": 5.8, ДОМОЙ: 4.1, "МОЛОДЕЦ!": 6.8, "ПЕРВЫЙ РЕКОРД!": 10.8, "НОВЫЙ РЕКОРД!": 10.5,
   BEST: 3.2, РЕКОРД: 5.2
 };
-function pixels(value: string): number {
-  if (value === "0") return 0;
-  const plain = /^([\d.]+)(px|dvh)$/.exec(value);
-  if (plain) return Number(plain[1]) * (plain[2] === "dvh" ? 768 / 100 : 1);
-  const minimum = /^min\(([^()]+)\)$/.exec(value);
-  if (minimum) return Math.min(...(minimum[1] ?? "").split(",").map((part) => pixels(part.trim())));
-  throw new Error(`Cannot budget ${value}`);
-}
-const horizontal = (s: CSSStyleDeclaration) => pixels(s.paddingLeft) + pixels(s.paddingRight);
-const vertical = (s: CSSStyleDeclaration) => pixels(s.paddingTop) + pixels(s.paddingBottom);
-const gap = (s: CSSStyleDeclaration) => pixels(s.gap);
 const wordWidth = (word: string, size: number) => (WORD_EMS[word] ?? NaN) * size;
 
-describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))("the sorting result in %s, %s at 1024 by 768", (language, theme) => {
+describe.each(
+  WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme, windowWidth, windowHeight] as const)))
+)("the sorting result in %s, %s at %i by %i", (language, theme, windowWidth, windowHeight) => {
+  function pixels(value: string): number {
+    if (value === "0") return 0;
+    const plain = /^([\d.]+)(px|vh)$/.exec(value);
+    if (plain) return Number(plain[1]) * (plain[2] === "vh" ? windowHeight / 100 : 1);
+    const minimum = /^min\(([^()]+)\)$/.exec(value);
+    if (minimum) return Math.min(...(minimum[1] ?? "").split(",").map((part) => pixels(part.trim())));
+    throw new Error(`Cannot budget ${value}`);
+  }
+  const horizontal = (s: CSSStyleDeclaration) => pixels(s.paddingLeft) + pixels(s.paddingRight);
+  const vertical = (s: CSSStyleDeclaration) => pixels(s.paddingTop) + pixels(s.paddingBottom);
+  const gap = (s: CSSStyleDeclaration) => pixels(s.gap);
+
   it.each(["first-best", "new-best"] as const)("fits a Paleontologist's ten stars, %s celebration, switch and actions with readable names", (celebration) => {
+    openWindow(windowWidth, windowHeight);
     document.documentElement.dataset.theme = theme;
     try {
       openResult({ language, level: "paleontologist", score: 10, total: 10, best: 10, beaten: celebration === "new-best" ? 9 : undefined, celebration });
       const text = TEXTS[language];
       const outer = style(".result");
-      expect([outer.height, outer.boxSizing, outer.display, outer.overflow]).toEqual(["100dvh", "border-box", "grid", "hidden"]);
+      expect([outer.height, outer.boxSizing, outer.display, outer.overflow]).toEqual([`${windowHeight}px`, "border-box", "grid", "hidden"]);
       const columns = /^minmax\(0, 1fr\) minmax\(0, (\d+)px\)$/.exec(outer.gridTemplateColumns);
       if (!columns) throw new Error(`Unknown grid: ${outer.gridTemplateColumns}`);
       const width = Number(columns[1]);
-      expect(width + gap(outer)).toBeLessThan(1024 - horizontal(outer));
+      expect(width + gap(outer)).toBeLessThan(windowWidth - horizontal(outer));
 
       const panel = style(".result-content");
       expect([panel.display, panel.flexDirection, panel.alignItems]).toEqual(["flex", "column", "center"]);
@@ -170,7 +175,7 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
       expect(horizontal(best) + wordWidth(text.best, pixels(best.fontSize)) + 0.75 * pixels(best.fontSize) + 20 + 2 * 0.75 * pixels(style(".best-score-value").fontSize) + 3 * gap(best)).toBeLessThanOrEqual(width);
       const switchHeight = vertical(switchStyle) + pixels(switchStyle.borderTopWidth) + pixels(switchStyle.borderBottomWidth) + pixels(getComputedStyle(levels[0] ?? document.body).height);
       const panelHeight = pixels(chip.height) + pixels(style(".result-score-value").fontSize) + pixels(style(".result-stars").fontSize) + pixels(title.fontSize) * Number(title.lineHeight) + pixels(best.height) + switchHeight + vertical(actions) + Math.max(...buttons.map((button) => pixels(getComputedStyle(button).height))) + (element(".result-content").children.length - 1) * gap(panel);
-      expect(panelHeight).toBeLessThanOrEqual(768 - vertical(outer));
+      expect(panelHeight).toBeLessThanOrEqual(windowHeight - vertical(outer));
     } finally {
       delete document.documentElement.dataset.theme;
     }

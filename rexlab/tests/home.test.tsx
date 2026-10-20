@@ -41,6 +41,7 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // The home page, its large card COMPARE's unless `featured` names
 // another game.
@@ -245,6 +246,10 @@ function linesOf(words: string, size: number, spacing: number, room: number): st
   return missing === undefined ? lines : { missing };
 }
 
+// The windows the home page's budgets keep: the shared ones, and more
+// iPads'.
+const HOME_WINDOWS = windowsAnd([1180, 820], [1366, 1024]);
+
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -341,7 +346,8 @@ describe("the home page", () => {
     expect(featuredCard()).toBe(tilesRow().previousElementSibling);
   });
 
-  it.each([1024, 1133, 1180, 1366, 1376])("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, at %ipx wide", (width) => {
+  it.each(HOME_WINDOWS)("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, in a %i by %i window", (width, height) => {
+    openWindow(width, height);
     const { card } = openHomePage();
 
     const row = tilesRow();
@@ -373,9 +379,10 @@ describe("the home page", () => {
     ["dig", "DIG", "7"]
   ];
 
-  it.each([1024, 1180, 1366].flatMap((width) => (["compare", "care"] as const).map((featured) => [width, featured] as const)))(
-    "keeps the title of every game on one line in every language at %ipx wide, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
-    (width, featured) => {
+  it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
+    "keeps the title of every game on one line in every language in a %i by %i window, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
+    (width, height, featured) => {
+      openWindow(width, height);
       const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
       openHomePage(
         withStorage(memoryStorage({ [PROGRESS_KEY]: record(7) })),
@@ -762,9 +769,10 @@ describe("the large card", () => {
     }
   );
 
-  it.each([1024, 1180, 1366])(
-    "fits every game's name on two lines at most in every language at %ipx wide, in pixels larger than every tile's name",
-    (width) => {
+  it.each(HOME_WINDOWS)(
+    "fits every game's name on two lines at most in every language in a %i by %i window, in pixels larger than every tile's name",
+    (width, height) => {
+      openWindow(width, height);
       const overflowing = HOME_GAMES.flatMap(([game, key]) => {
         const { unmount } = renderHomePageFeaturing(game);
         const title = featuredCard().querySelector(".featured-card-title");

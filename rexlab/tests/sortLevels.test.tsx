@@ -8,6 +8,7 @@ import { boardState, score, type Baskets, type Property, type Sorting } from "..
 import { BASKET_EMS, MARK_EMS, SPACE_EMS } from "./basketWidths.ts";
 import { basketButton, centreOf, dragTo, latest, layOutBaskets, openBoard, tray, trayCard } from "./sorting.tsx";
 import { SHIPPED_SORTABLES, contrast, seenOn, sortingBy, surfaceOf, words } from "./support.ts";
+import { WINDOW_SIZES, openWindow, styleAt } from "./windowSizes.ts";
 
 // sort-dinosaurs-levels.feature: the screen board of a level, which has
 // three baskets, eight or ten cards. The boards are handed to the screen
@@ -82,10 +83,6 @@ function dealt({ property, baskets, members }: Level): Sorting {
 
 const baskets = () => [...document.querySelectorAll<HTMLElement>(".baskets .basket")];
 const steps = () => [...document.querySelectorAll(".steps .step")];
-const px = (value: string) => Number.parseFloat(value) || 0;
-// jsdom keeps a gap only as the shorthand, row gap first.
-const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
-const rowGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ")[0] ?? "");
 const symbolsOf = (element: Element) => [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
 describe.each(LEVELS)("the $name board", (level) => {
@@ -110,48 +107,57 @@ describe.each(LEVELS)("the $name board", (level) => {
     expect(getComputedStyle(tray(language)).gridTemplateColumns).toContain("repeat(var(--columns)");
   });
 
-  it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
-    "fits a 1024 by 768 screen with every basket's name in full and at least 48 by 48 to drop on, in %s and the %s theme",
-    (language, theme) => {
+  it.each(WINDOW_SIZES.flatMap((size) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [size, language, theme] as const))))(
+    "fits a %j screen with every basket's name in full and at least 48 by 48 to drop on, in %s and the %s theme",
+    (size, language, theme) => {
+      const [windowWidth, windowHeight] = size;
+      openWindow(windowWidth, windowHeight);
       document.documentElement.dataset.theme = theme;
       try {
         const { unmount } = openBoard(dealt(level), language);
-        const style = (selector: string) => getComputedStyle(document.querySelector(selector) ?? document.body);
+        const style = (selector: string) => styleAt(document.querySelector(selector) ?? document.body, size);
         const screenStyle = style(".sort");
 
         // The baskets share the row beside each other.
-        const row = 1024 - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight);
-        const width = (row - columnGapOf(style(".baskets")) * (level.baskets.length - 1)) / level.baskets.length;
+        const row = windowWidth - screenStyle.px("padding-left") - screenStyle.px("padding-right");
+        const width = (row - style(".baskets").columnGap() * (level.baskets.length - 1)) / level.baskets.length;
         // The height left under the bar, the prompt and the tray.
         const height =
-          768 - px(screenStyle.paddingTop) - px(screenStyle.paddingBottom) - px(style(".home-button").height) - px(style(".prompt-symbol").height) - px(style(".sort-tray-area").height) - 3 * rowGapOf(screenStyle);
+          windowHeight -
+          screenStyle.px("padding-top") -
+          screenStyle.px("padding-bottom") -
+          style(".home-button").px("height") -
+          style(".prompt-symbol").px("height") -
+          style(".sort-tray-area").px("height") -
+          3 * screenStyle.rowGap();
         expect(width).toBeGreaterThanOrEqual(48);
         expect(height).toBeGreaterThanOrEqual(48);
 
         for (const basket of baskets()) {
-          const basketStyle = getComputedStyle(basket);
+          const basketStyle = styleAt(basket, size);
           const mark = basket.querySelector<HTMLElement>(".basket-mark");
           const name = basket.querySelector<HTMLElement>(".basket-name");
           if (!mark || !name) throw new Error("A basket without its mark or name");
-          const markStyle = getComputedStyle(mark);
+          const markStyle = styleAt(mark, size);
+          const nameStyle = styleAt(name, size);
           const content = [...mark.children].map((part) =>
-            part instanceof SVGElement ? px(getComputedStyle(part).width) || Number(part.getAttribute("width")) : (MARK_EMS[part.textContent ?? ""] ?? Number.NaN) * px(getComputedStyle(part).fontSize)
+            part instanceof SVGElement ? styleAt(part, size).px("width") || Number(part.getAttribute("width")) : (MARK_EMS[part.textContent ?? ""] ?? Number.NaN) * styleAt(part, size).px("font-size")
           );
-          const markWidth = Math.max(px(markStyle.minWidth), content.reduce((sum, each) => sum + each, 0) + columnGapOf(markStyle) * (content.length - 1) + px(markStyle.paddingLeft) + px(markStyle.paddingRight));
-          const labelGap = columnGapOf(getComputedStyle(name.parentElement ?? name));
-          const room = width - px(basketStyle.paddingLeft) - px(basketStyle.paddingRight) - markWidth - labelGap;
+          const markWidth = Math.max(markStyle.px("min-width"), content.reduce((sum, each) => sum + each, 0) + markStyle.columnGap() * (content.length - 1) + markStyle.px("padding-left") + markStyle.px("padding-right"));
+          const labelGap = styleAt(name.parentElement ?? name, size).columnGap();
+          const room = width - basketStyle.px("padding-left") - basketStyle.px("padding-right") - markWidth - labelGap;
 
           // The name breaks between its words, in at most two lines that
           // each fit beside the mark.
-          expect(getComputedStyle(name).whiteSpace).toBe("normal");
-          const size = px(getComputedStyle(name).fontSize);
+          expect(nameStyle.value("white-space")).toBe("normal");
+          const fontSize = nameStyle.px("font-size");
           let lines = 1;
           let used = 0;
           for (const word of (name.textContent ?? "").split(" ")) {
-            const needed = (BASKET_EMS[word] ?? Number.NaN) * size;
+            const needed = (BASKET_EMS[word] ?? Number.NaN) * fontSize;
             expect([word, needed <= room]).toEqual([word, true]);
             if (used === 0) used = needed;
-            else if (used + SPACE_EMS * size + needed <= room) used += SPACE_EMS * size + needed;
+            else if (used + SPACE_EMS * fontSize + needed <= room) used += SPACE_EMS * fontSize + needed;
             else {
               lines++;
               used = needed;
@@ -160,8 +166,8 @@ describe.each(LEVELS)("the $name board", (level) => {
           expect(lines).toBeLessThanOrEqual(2);
           // The label is a mark beside a name; the basket keeps 48 pixels
           // of height under it.
-          const label = Math.max(px(markStyle.height), lines * size * px(getComputedStyle(name).lineHeight));
-          expect(px(basketStyle.paddingTop) + px(basketStyle.paddingBottom) + label + rowGapOf(basketStyle)).toBeLessThanOrEqual(height - 48);
+          const label = Math.max(markStyle.px("height"), lines * fontSize * nameStyle.px("line-height"));
+          expect(basketStyle.px("padding-top") + basketStyle.px("padding-bottom") + label + basketStyle.rowGap()).toBeLessThanOrEqual(height - 48);
 
           const surface = surfaceOf(basket);
           expect(contrast(seenOn(getComputedStyle(name).color, surface), surface)).toBeGreaterThanOrEqual(4.5);

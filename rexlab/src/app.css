@@ -262,6 +262,17 @@ body {
   overscroll-behavior: none;
 }
 
+/* A screen's content, its own padding included, is at most 1440 pixels
+   wide and centred: on a wider window each side of every screen, and the
+   fixed parts at the window's edges, add what lies beyond it, which
+   covers the safe-area inset there. The screen's box, and so its
+   background, still fills the window. Screens and fixed parts read these
+   in place of the side insets, so the cap is this one rule. */
+:root {
+  --screen-left: max(env(safe-area-inset-left), 50vw - 720px);
+  --screen-right: max(env(safe-area-inset-right), 50vw - 720px);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -340,9 +351,9 @@ img {
   box-sizing: border-box;
   padding:
     calc(116px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(72px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -353,7 +364,7 @@ img {
 .wordmark {
   position: fixed;
   top: calc(36px + env(safe-area-inset-top));
-  left: calc(56px + env(safe-area-inset-left));
+  left: calc(56px + var(--screen-left));
   height: 52px;
   margin: 0;
   display: flex;
@@ -381,7 +392,7 @@ img {
   position: fixed;
   z-index: 2;
   top: calc(32px + env(safe-area-inset-top));
-  right: calc(56px + env(safe-area-inset-right));
+  right: calc(56px + var(--screen-right));
   display: flex;
   align-items: center;
   gap: 12px;
@@ -588,7 +599,7 @@ img {
 /* The version footer is part of the static page, outside the app. */
 #version {
   position: fixed;
-  right: calc(56px + env(safe-area-inset-right));
+  right: calc(56px + var(--screen-right));
   bottom: calc(17px + env(safe-area-inset-bottom));
   font-size: 12px;
   font-weight: 400;
@@ -1359,9 +1370,9 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -1636,9 +1647,9 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    env(safe-area-inset-right)
+    var(--screen-right)
     env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+    var(--screen-left);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -1964,9 +1975,9 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -2144,9 +2155,9 @@ body:has(.result) #version {
   gap: 24px;
   padding:
     calc(24px + env(safe-area-inset-top))
-    calc(24px + env(safe-area-inset-right))
+    calc(24px + var(--screen-right))
     calc(24px + env(safe-area-inset-bottom))
-    calc(24px + env(safe-area-inset-left));
+    calc(24px + var(--screen-left));
   background: #f2efe8;
   text-align: center;
   opacity: 0;
@@ -2210,9 +2221,9 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(60px + env(safe-area-inset-right))
+    calc(60px + var(--screen-right))
     calc(40px + env(safe-area-inset-bottom))
-    calc(40px + env(safe-area-inset-left));
+    calc(40px + var(--screen-left));
   display: grid;
   grid-template-columns: minmax(0, 640fr) minmax(0, 680fr);
   align-items: center;
@@ -2546,9 +2557,9 @@ body:has(.result) #version {
 .care-welcome {
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   gap: 28px;
 }
 
@@ -2772,9 +2783,9 @@ body:has(.result) #version {
 .visit {
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(40px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   gap: 24px;
 }
 
@@ -3335,9 +3346,9 @@ body:has(.result) #version {
 .friends {
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     env(safe-area-inset-bottom)
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   gap: 28px;
 }
 
@@ -3496,12 +3507,25 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A sort window shorter than 768 pixels gives up its margins and the gaps
+   between the bar, the prompt, the baskets and the tray in step, down to 28,
+   32 and 20 pixels at 670 tall, so each basket keeps its name and 48 pixels
+   to drop on; at 768 and taller it keeps them. */
+.sort {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 12 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 12 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 .sort .stratum-1 {
@@ -3964,12 +3988,25 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A board window shorter than 768 pixels gives up its margins, the bar's
+   gap and the cards' gaps in step, down to 20, 16, 12 and 12 pixels at 670
+   tall, so the fullest board's cards stay 120 pixels a side; at 768 and
+   taller the board keeps its margins and gaps. */
+.pairs-board-screen {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 20 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 20 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 32 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 32 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
 }
 
 .pairs-welcome .stratum-1,
@@ -4215,9 +4252,9 @@ body:has(.result) #version {
 .result-with-levels {
   padding:
     calc(32px + env(safe-area-inset-top))
-    calc(32px + env(safe-area-inset-right))
+    calc(32px + var(--screen-right))
     calc(32px + env(safe-area-inset-bottom))
-    calc(32px + env(safe-area-inset-left));
+    calc(32px + var(--screen-left));
   grid-template-columns: minmax(0, 1fr) minmax(0, 648px);
 }
 
@@ -4353,7 +4390,10 @@ body:has(.result) #version {
   display: grid;
   grid-template-columns: repeat(var(--columns), minmax(var(--card-floor), 1fr));
   grid-template-rows: repeat(var(--rows), minmax(var(--card-floor), 1fr));
-  gap: 20px;
+  row-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
+  column-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  column-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 /* The cards rise in one after the other; each side flips in as it is
@@ -4704,7 +4744,9 @@ body:has(.result) #version {
 .pairs-offer {
   position: relative;
   box-sizing: border-box;
-  width: 640px;
+  /* The question's line widens with its type, so it keeps to the same two
+     lines when the type grows past 32 pixels on a wider window. */
+  width: min(710px, 80px + 54.6875vw);
   max-width: 100%;
   display: flex;
   flex-direction: column;
@@ -4792,9 +4834,9 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -4894,12 +4936,25 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding:
     calc(40px + env(safe-area-inset-top))
-    calc(56px + env(safe-area-inset-right))
+    calc(56px + var(--screen-right))
     calc(48px + env(safe-area-inset-bottom))
-    calc(56px + env(safe-area-inset-left));
+    calc(56px + var(--screen-left));
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+/* A dig window shorter than 768 pixels gives up its margins and the bar's
+   gap in step, down to 28, 32 and 20 pixels at 670 tall, so the board stays
+   wider than 680 pixels; at 768 and taller it keeps them. The board's
+   height below counts the same pixels. */
+.dig-board-screen {
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 12 / 98);
+  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 12 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
+  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
+  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
 }
 
 .dig-screen .stratum-1 {
@@ -5012,7 +5067,8 @@ body:has(.result) #version {
 
 .dig-body[data-asks] .dig-board {
   flex: 0 1 auto;
-  width: min(calc(100% - 228px), calc((100dvh - 180px) * 4 / 3));
+  width: min(calc(100% - 228px), calc((100vh - 180px + clamp(0px, 768px - 100vh, 98px) * 36 / 98) * 4 / 3));
+  width: min(calc(100% - 228px), calc((100dvh - 180px + clamp(0px, 768px - 100dvh, 98px) * 36 / 98) * 4 / 3));
   height: auto;
   min-width: 0;
   max-height: 100%;
@@ -5211,9 +5267,9 @@ body:has(.result) #version {
 .dig-reveal-screen {
   padding:
     calc(32px + env(safe-area-inset-top))
-    calc(32px + env(safe-area-inset-right))
+    calc(32px + var(--screen-right))
     calc(32px + env(safe-area-inset-bottom))
-    calc(32px + env(safe-area-inset-left));
+    calc(32px + var(--screen-left));
   gap: 16px;
   background: #1f2b4d;
   color: #f6f2e9;

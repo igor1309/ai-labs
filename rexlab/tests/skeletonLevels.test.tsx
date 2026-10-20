@@ -10,14 +10,13 @@ import { LEVEL_EMS } from "./levelEms.ts";
 import { openMenu } from "./menus.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, PIECES, savedSkeletons, skeletonOf, slots, type SkeletonsAppOptions } from "./skeletonsApp.tsx";
 import { contrast, gameDoor, memoryStorage, seenOn, SHIPPED_SKELETONS, surfaceOf } from "./support.ts";
+import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // skeleton-assembly-levels.feature: the selection screen's level switch,
 // the choice on it kept in the skeleton game's progress, and the cut each
 // level plays.
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
-
-const SCREEN = { width: 1024, height: 768 };
 
 const NAMES = AGE_LEVELS.map((level) => TEXTS.en.ageLevels[level].name);
 
@@ -92,13 +91,14 @@ describe("the level switch", () => {
     for (const level of styles) expect(px(level.height)).toBeGreaterThanOrEqual(48);
   });
 
-  it("keeps its row off the dinosaurs' room, which shrinks to fit the screen", () => {
+  it.each(WINDOW_SIZES)("keeps its row off the dinosaurs' room, which shrinks to fit the screen, in a %i by %i window", (width, height) => {
+    openWindow(width, height);
     openSkeletonsApp();
 
     const row = getComputedStyle(levelSwitch().parentElement ?? document.body);
     const screenStyle = getComputedStyle(document.querySelector(".skeleton-screen") ?? document.body);
     const dinosaurs = getComputedStyle(screen.getByRole("group", { name: TEXTS.en.dinosaurs }));
-    expect([row.flexShrink, px(row.width) <= SCREEN.width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight)]).toEqual(["0", true]);
+    expect([row.flexShrink, px(row.width) <= width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight)]).toEqual(["0", true]);
     expect([screenStyle.overflow, dinosaurs.flexShrink, px(dinosaurs.minHeight)]).toEqual(["hidden", "1", 0]);
   });
 

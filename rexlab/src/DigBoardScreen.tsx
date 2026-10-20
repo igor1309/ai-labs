@@ -322,7 +322,7 @@ export function DigBoardScreen({
   }, [blown]);
 
   return (
-    <main className="dig-screen">
+    <main className="dig-screen dig-board-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
         {dugUp !== undefined && (

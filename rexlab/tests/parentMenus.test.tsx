@@ -8,14 +8,13 @@ import { LEVEL_EMS } from "./levelEms.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { openHomeApp } from "./skeletonsApp.tsx";
 import { contrast, manualPictures, seenOn, surfaceOf, type ManualPictures } from "./support.ts";
+import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // age-level-menu.feature
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
 const THEMES = ["light", "dark"] as const;
-
-const SCREEN = { width: 1024, height: 768 };
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
@@ -40,9 +39,10 @@ const textContrast = (text: Element) => {
 const list = () => document.querySelector<HTMLElement>(".parent-menu-list");
 
 describe("the age level menu", () => {
-  it.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))(
-    "fits and reads on a 1024 by 768 screen, in %s and the %s theme",
-    async (language, theme) => {
+  it.each(WINDOW_SIZES.flatMap(([width, height]) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme, width, height] as const))))(
+    "fits and reads in %s and the %s theme, in a %i by %i window",
+    async (language, theme, windowWidth, windowHeight) => {
+      openWindow(windowWidth, windowHeight);
       const { user } = openHomeApp({ deviceLanguage: DEVICES[language], appearance: theme });
 
       const menu = await openMenu(user, TEXTS[language].ageLevelMenu);
@@ -53,14 +53,14 @@ describe("the age level menu", () => {
       expect([style.position, style.top, style.right, style.boxSizing]).toEqual(["absolute", "calc(100% + 8px)", "0px", "border-box"]);
       const corner = getComputedStyle(partOf(".home-corner"));
       const menus = getComputedStyle(partOf(".parent-menus"));
-      const right = SCREEN.width - px(corner.right) - px(corner.paddingRight);
+      const right = windowWidth - px(corner.right) - px(corner.paddingRight);
       expect(right - px(style.width)).toBeGreaterThanOrEqual(0);
       const choices = within(menu).getAllByRole("menuitemradio");
       const rows = choices.map((choice) => px(getComputedStyle(choice).height));
       const height = px(style.paddingTop) + rows.reduce((sum, row) => sum + row, 0) + px(style.gap) * (rows.length - 1) + px(style.paddingBottom);
       const buttons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((button) => px(getComputedStyle(button).minHeight));
       const top = px(corner.top) + px(corner.paddingTop) + px(menus.paddingTop) + Math.max(...buttons) + px(menus.paddingBottom) + 8;
-      expect(top + height).toBeLessThanOrEqual(SCREEN.height);
+      expect(top + height).toBeLessThanOrEqual(windowHeight);
 
       // Each name and age stands on one line beside the picture and room
       // for the ✓, which the chosen row draws.
