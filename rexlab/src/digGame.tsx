@@ -81,7 +81,7 @@ type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelO
 // back from the FIELD GUIDE. The reveal shows the round dug up and its
 // reward; it takes taps once its last item has arrived (`landed`). The
 // FIELD GUIDE keeps the board or reveal it was opened from `under` it,
-// where the round goes on as it does while the iPad is turned.
+// where the round goes on as it does behind the portrait gate.
 type BoardScreen = { kind: "board"; round: DigRound; finish?: BoardFinish; treasure?: TreasureFlight; dropped?: true };
 type RevealScreen = { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 type DigScreen = BoardScreen | RevealScreen | { kind: "guide"; under: BoardScreen | RevealScreen };
@@ -102,8 +102,8 @@ function changeBoard(screen: DigScreen | undefined, of: (round: DigRound) => boo
   return screen;
 }
 
-// The dig game, kept by its owner above the orientation gate, so turning
-// the iPad pauses a round without losing its sand. It shows nothing until
+// The dig game, kept by its owner above the orientation gate, so the gate
+// pauses a round without losing its sand. It shows nothing until
 // a round is started. `ageLevel` is the age level a parent picked, which
 // the game starts at until the child chooses another level on its
 // switch. `onHome` takes the child back to the home page.
@@ -236,9 +236,9 @@ export function useDigGame(
   // A found treasure flies into the FIELD GUIDE and is kept as it lands,
   // even when the gust has begun meanwhile; a round left before then
   // stops its flight and keeps nothing. The board shown owns the flight's
-  // wait, as a turn of the iPad starts the flight again. It lands one more
-  // of its kind on the count stored last, as another tab may have found
-  // one meanwhile.
+  // wait, as the flight starts again when the portrait gate goes. It
+  // lands one more of its kind on the count stored last, as another tab
+  // may have found one meanwhile.
   const fly = (treasure: Treasure, timers: OwnedTimers) => {
     const show = (shown: TreasureFlight) => go((current) => changeBoard(current, (round) => round.treasure === treasure, (board) => ({ ...board, treasure: shown })));
     const land = () => {
@@ -274,8 +274,8 @@ export function useDigGame(
     const showPhase = (phase: "gust" | "lift" | "counted") => go((current) =>
       changeBoard(current, (round) => round === to, (board) => ({ ...board, finish: { newStar: dug.reward.newStar, phase, startTimer: timers.start, onLifted } })));
     // A reveal due while the FIELD GUIDE is open waits under it. A
-    // treasure still in flight, its flight started again by a turn of the
-    // iPad, lands as the board goes.
+    // treasure still in flight, its flight started again as the portrait
+    // gate went, lands as the board goes.
     const reveal = () => {
       if (live.current !== to || roundTimers.current !== timers) return;
       landing.current?.();

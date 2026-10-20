@@ -89,7 +89,7 @@ describe("the FIELD GUIDE from a round", () => {
     expect([fieldGuide().textContent, document.querySelector(".dig-field-guide-new")?.textContent]).toEqual(["1", "NEW!"]);
   });
 
-  it.each(["gust", "lift", "counted"] as const)("lets the round go on under the page during its %s, as a turn of the iPad does", (phase) => {
+  it.each(["gust", "lift", "counted"] as const)("lets the round go on under the page during its %s, as a turn to portrait does", (phase) => {
     const app = openRound();
     digUp();
     landTreasure(app.timers);

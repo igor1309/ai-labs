@@ -5667,6 +5667,7 @@ body:has(.result) #version {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: visible;
   pointer-events: none;
 }

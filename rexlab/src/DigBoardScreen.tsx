@@ -261,13 +261,16 @@ export function DigBoardScreen({
   const book = useRef<SVGSVGElement>(null);
   const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
   const [treasurePath, setTreasurePath] = useState("");
-  const inFlight = treasureFlight?.phase === "flying" ? treasureFlight : undefined;
+  // The gate stops the lift, the star's flight and the treasure's flight
+  // where they are, and each starts again from its beginning as the gate
+  // goes, the star and the treasure flying anew with their waits.
+  const inFlight = treasureFlight?.phase === "flying" && !gateShown ? treasureFlight : undefined;
   const treasureFlying = treasure !== undefined && inFlight !== undefined;
   const lifting = finish !== undefined && finish.phase !== "gust";
-  const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
-  const lift = finish?.phase === "lift" ? finish : undefined;
-  // Rotation restarts the displayed lift and star flight, so their wait
-  // belongs to this mounted board, including callbacks delivered after stop.
+  const lift = finish?.phase === "lift" && !gateShown ? finish : undefined;
+  const flying = lift !== undefined && lift.newStar && dugUp !== undefined;
+  // The lift's wait belongs to the board shown, so a callback delivered
+  // after it stopped finishes nothing.
   useEffect(() => {
     if (!lift) return;
     let active = true;
@@ -279,8 +282,7 @@ export function DigBoardScreen({
       stop();
     };
   }, [lift, liftWait]);
-  // Rotation restarts the treasure's flight too, so it lands, and is kept,
-  // only as the flight shown ends.
+  // The treasure lands, and is kept, only as the flight shown ends.
   useEffect(() => {
     if (!inFlight) return;
     let active = true;
@@ -361,7 +363,7 @@ export function DigBoardScreen({
   // The canvases are as large as the board shows, so the sand is sharp at
   // any size: on every resize the bed and any remaining sand are covered
   // anew and every mark taken off again, scaled with the board. After the
-  // gust only the bed remains, including when rotation remounts the board.
+  // gust only the bed remains.
   useLayoutEffect(() => {
     const element = canvas.current ?? bed.current;
     if (!element) return;

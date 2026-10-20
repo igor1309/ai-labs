@@ -566,7 +566,7 @@ describe("the brush", () => {
     releaseAt(window, 2000, { x: 410, y: 310 });
   });
 
-  it("keeps the same sand clear, scaled with the board, as the page changes size and the iPad turns", () => {
+  it("keeps the same sand clear, scaled with the board, as the page changes size and turns to portrait and back", () => {
     const { drawn, sandContext } = spySand();
     const { viewport } = openRound({ sandContext });
     drag([

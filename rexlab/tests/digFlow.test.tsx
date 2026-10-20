@@ -167,27 +167,28 @@ describe("the board's lift and collection star", () => {
     const firstBoard = board();
     const brushed = firstBoard.getAttribute("data-clear");
 
+    // The board stays behind the gate, inert, and drops in no more.
     act(() => app.viewport.turn("portrait"));
-    expect(document.querySelector(".dig-board")).toBeNull();
+    expect(document.querySelector(".dig-board")).toBe(firstBoard);
+    expect(firstBoard.closest("[inert]")).not.toBeNull();
+    expect(document.querySelector(".dig-board-star")).toBeNull();
     expect(app.timers.timers()).toEqual(phase === "gust" ? [GUST[timing]] : phase === "counted" ? [COUNT_SETTLE.motion] : []);
     prefersReduced = reducedMotion;
-    // jsdom has no layout. Supply the settled board and chip rectangles
-    // before mounting, so the first flight measurement needs no resize.
+    // jsdom has no layout. The board and the chip are laid out anew
+    // behind the gate, so the flight started again measures them where
+    // they are now, with no resize needed.
     const geometry = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-      return (this.classList.contains("dig-board")
-        ? { left: 40, top: 90, width: 800, height: 600 }
-        : this.matches(".dig-chip svg")
-          ? { left: 600, top: 32, width: 20, height: 20 }
-          : { left: 0, top: 0, width: 800, height: 600 }) as DOMRect;
+      return (this.matches(".dig-chip svg")
+        ? { left: 600, top: 32, width: 20, height: 20 }
+        : { left: 0, top: 0, width: 800, height: 600 }) as DOMRect;
     });
+    firstBoard.getBoundingClientRect = () => ({ left: 40, top: 90, width: 800, height: 600 }) as DOMRect;
     try {
       act(() => app.viewport.turn("landscape"));
-      expect(board()).not.toBe(firstBoard);
+      expect(board()).toBe(firstBoard);
+      expect(board().closest("[inert]")).toBeNull();
       expect(board().getAttribute("data-clear")).toBe(brushed);
       if (phase === "gust") {
-        expect(getComputedStyle(board()).animation).toBe("fade-in var(--dig-drop) var(--ease-out) both");
-        expect(getComputedStyle(board()).animationName).toBe(reducedMotion ? "none" : "dig-drop");
-        expect(board().querySelectorAll(".dig-landing .dig-grain")).toHaveLength(reducedMotion ? 0 : 12);
         expect(getComputedStyle(board().querySelector(".dig-sand")!).animation).toBe(reducedMotion
           ? "fade-out var(--dig-gust) var(--ease-out) both"
           : "dig-gust var(--dig-gust) var(--ease-out) both");
@@ -344,7 +345,9 @@ describe("dig reveals through the app", () => {
     act(() => app.viewport.turn("portrait"));
     if (rotation === "gust") {
       finishBoard(app.timers, timing);
-      expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+      // Behind the gate, hidden from the accessibility tree, the board
+      // still waits for its lift.
+      expect(screen.queryByRole("heading", { level: 2, hidden: true })).toBeNull();
     }
     expect(app.timers.timers()).toEqual([]);
     act(() => app.timers.fire(STAR_LANDS[timing]));

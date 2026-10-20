@@ -90,8 +90,7 @@ export function DigRevealScreen({
   const arrival = () => motion({ "--reveal-part": part++ });
   const result = useRef<HTMLElement>(null);
   // A reveal that mounts with its last item arrived, as given back from
-  // the FIELD GUIDE, shows its parts at once; a turn of the iPad lands
-  // it anew, so it arrives again.
+  // the FIELD GUIDE, shows its parts at once.
   const [arrived] = useState<boolean>(landed);
   const [phase, setPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<LevelOfferProps | null>(null);
@@ -99,8 +98,8 @@ export function DigRevealScreen({
   const latestOffer = useRef(offer);
   latestOffer.current = offer;
   const hasOffer = Boolean(offer);
-  // Rotation remounts the reveal and restarts its animation, so only this
-  // mounted reveal can say when its displayed parts have arrived.
+  // The reward must be visible for its full landing wait before it takes
+  // taps. Covering it cancels that wait, including a queued callback.
   useEffect(() => {
     if (gateShown) return;
     let active = true;

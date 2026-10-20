@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe("safe areas stay clear", () => {
   it("finds every screen's root", () => {
-    expect(SCREEN_ROOTS).toEqual(expect.arrayContaining(["home", "catalogue", "dinosaur-page", "question", "result", "result result-with-levels", "dig-screen dig-reveal-screen", "skeleton-screen"]));
+    expect(SCREEN_ROOTS).toEqual(expect.arrayContaining(["home", "catalogue", "dinosaur-page", "question", "result", "result result-with-levels", "dig-screen dig-reveal-screen", "dig-screen dig-field-guide-screen", "skeleton-screen"]));
   });
 
   it.each(SCREEN_ROOTS)("insets the content of .%s by adding the safe areas to its own padding, its background still filling the window", (classes) => {

@@ -7,7 +7,7 @@ import { LEVEL_EMS } from "./levelEms.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { withPictures } from "./pictures.tsx";
 import { contrast, fakeBodyPicture, manualTimers, seenOn, surfaceOf } from "./support.ts";
-import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom lays nothing out. Budget the delivered CSS of the fullest reveal,
 // the 42nd dinosaur dug up and named at the first pick, in each window,
@@ -36,7 +36,7 @@ const element = (selector: string) => {
 const style = (selector: string) => getComputedStyle(element(selector));
 
 describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))("the dig reveal in %s, %s", (language, theme) => {
-  it.each(WINDOW_SIZES)("shows the name, the fullest DUG UP card, the switch and both actions with no scrolling, every word readable, in a %i by %i window", (windowWidth, windowHeight) => {
+  it.each(windowsAnd([1366, 1024]))("shows the name, the fullest DUG UP card, the switch and both actions with no scrolling, every word readable, in a %i by %i window", (windowWidth, windowHeight) => {
     openWindow(windowWidth, windowHeight);
     document.documentElement.dataset.theme = theme;
     try {
@@ -76,22 +76,21 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
       const width = 648;
       expect(width + gap(reveal) + 200).toBeLessThanOrEqual(room.width);
 
-      // The whole 4:3 picture stays in its flexible left column on every
-      // iPad. Its glide uses the gap, never space outside the screen.
+      // The whole 4:3 picture stays in its flexible left column in every
+      // window, the screen's padding as this window gives it. Its glide
+      // uses the gap, never space outside the screen.
       const art = style(".dig-reveal-art");
       const picture = style(".dig-reveal-picture");
       expect([art.flex, art.minWidth, art.height, picture.width, picture.maxHeight, picture.objectFit])
         .toEqual(["1 1 0px", "0px", "100%", "100%", "100%", "contain"]);
-      for (const [screenWidth, screenHeight] of [[1024, 768], [1133, 744], [1366, 1024]] as const) {
-        const artWidth = screenWidth - horizontal(outer) - width - gap(reveal);
-        const artHeight = screenHeight - vertical(outer) - 48 - gap(outer);
-        expect(artWidth).toBeGreaterThan(0);
-        expect(artHeight).toBeGreaterThan(0);
-        const scale = Math.min(artWidth / 800, artHeight / 600);
-        expect(800 * scale).toBeLessThanOrEqual(artWidth);
-        expect(600 * scale).toBeLessThanOrEqual(artHeight);
-        expect(pixels(outer.paddingLeft) + artWidth + gap(reveal)).toBeLessThanOrEqual(screenWidth - pixels(outer.paddingRight));
-      }
+      const artWidth = room.width - width - gap(reveal);
+      const artHeight = room.height - 48 - gap(outer);
+      expect(artWidth).toBeGreaterThan(0);
+      expect(artHeight).toBeGreaterThan(0);
+      const scale = Math.min(artWidth / 800, artHeight / 600);
+      expect(800 * scale).toBeLessThanOrEqual(artWidth);
+      expect(600 * scale).toBeLessThanOrEqual(artHeight);
+      expect(pixels(outer.paddingLeft) + artWidth + gap(reveal)).toBeLessThanOrEqual(windowWidth - pixels(outer.paddingRight));
 
       // The name, as large as fits the column, on one line.
       const shown = style(".dig-reveal-name");
