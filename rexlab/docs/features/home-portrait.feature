@@ -11,9 +11,9 @@ Feature: The home page in a tall window
   The padding, the greeting's 48-pixel line and the gaps keep their
   landscape sizes, 292 CSS pixels in all. The tiles' row takes 36% of
   the height, 360 to 520, and runs to the window's right edge. Columns
-  are 310 wide, narrowed just enough where the next column would show
-  under 24 pixels or hide under 24; if that column is the last, enough
-  to show it whole. The large card spans the width inside the padding
+  are 310 wide and 24 apart, narrowed just enough where the next column
+  would show under 24 pixels or hide under 24, or, where it would hide
+  under 24 and is the last, to show it whole. The large card spans the width inside the padding
   and takes the height left, at least 280 with its name strip, its whole
   picture centred in its colour. Safe areas come off its height. Where
   that leaves under 280 the whole page scrolls, wordmark, corner and the
@@ -43,7 +43,7 @@ Feature: The home page in a tall window
       | 900   | 1000   | 348  | 360 | 310    | 176  | does not scroll | Mac window, nearly square      |
       | 712   | 1000   | 348  | 360 | 292    | 24   | does not scroll | Stage Manager window           |
       | 600   | 1400   | 604  | 504 | 310    | 210  | does not scroll | tall Mac window                |
-      | 1032  | 1500   | 688  | 520 | 293    | 25   | does not scroll | tall Mac window                |
+      | 1068  | 1500   | 688  | 520 | 305    | 25   | does not scroll | Mac window, fourth column in   |
       | 1400  | 1500   | 688  | 520 | 310    | 0    | does not scroll | Mac window, all tiles whole    |
 
   Scenario Outline: Every word fits the tightest tall windows
@@ -65,7 +65,7 @@ Feature: The home page in a tall window
       | Russian  | 600   | FIND THE PAIR |
       | Russian  | 677   | COMPARE       |
       | Russian  | 700   | COMPARE       |
-      | Russian  | 700   | SKELETONS     |
+      | Russian  | 677   | SKELETONS     |
 
   Scenario Outline: The parents' menus open inside the window
     Given the app is in Russian
