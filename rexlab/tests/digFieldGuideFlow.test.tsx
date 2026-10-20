@@ -73,6 +73,27 @@ describe("the FIELD GUIDE from a round", () => {
     expect(starts(app)).toBe(before);
   });
 
+  it("gives back a round whose help wait ticked as the page was opening, the brush clearing sand and the round going on", () => {
+    const app = openRound();
+    // The tick fires before the page's screen change is applied, as a
+    // view transition lets it in a browser.
+    act(() => {
+      fireEvent.click(fieldGuide());
+      app.timers.fire(1000);
+    });
+    expect(title()).toBe(TEXTS.en.fieldGuide);
+
+    fireEvent.click(button("BACK"));
+    placeBoard(800);
+    brushHalf();
+    expect(clearCells().length).toBeGreaterThan(0);
+
+    digUp();
+    finishBoard(app.timers);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
+    expect(saved(app).dug).toEqual(["tyrannosaurus"]);
+  });
+
   it("keeps a treasure in flight as the page opens, as if it had landed, and only once", () => {
     const app = openRound();
     brushTreasure();

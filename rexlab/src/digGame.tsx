@@ -203,7 +203,7 @@ export function useDigGame(
         if (!active || presence.isAway() || roundTimers.current !== timers || from === null || from.found !== found || from.helped !== helped || !awaitsHelp(from)) return;
         const to = waitForHelp(from, HELP_TICK);
         live.current = to;
-        go((current) => (current?.kind === "board" && current.round === from ? { ...current, round: to } : current));
+        go((current) => changeBoard(current, (round) => round === from, (board) => ({ ...board, round: to })));
         if (awaitsHelp(to)) tick();
       });
     };

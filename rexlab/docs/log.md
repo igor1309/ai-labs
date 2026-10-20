@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- After BACK from DIG's FIELD GUIDE, the brush clears sand again and the round goes on to its question, help and gust, even when help's wait ticked as the page opened (LAB-369).
 - DIG keeps a found treasure visible at its sandy spot with its name, then carries it along a straight amber trail to the FIELD GUIDE; the longer flight ends with a clear collection pulse, and reduced motion keeps the named find for a short fade before the count updates (LAB-366).
 - About one DIG round in three hides a treasure beside the dinosaur: a shell, tooth or amber, more rarely an egg nest or a golden fossil. Brushed clear, it glows, hops and flies into the 📖 FIELD GUIDE on DIG's bar, whose page shows each kind found with its count and an outline for those still to find (LAB-362).
 - In DIG's Explorer and Paleontologist rounds the board stands still beside a column of empty "?" cards from the first stroke, one per choice, and at 75% each card turns over into a dinosaur, 60 ms apart; under reduced motion they fade in (LAB-364).
