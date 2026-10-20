@@ -97,19 +97,17 @@ function StandCard({
         )}
         <Picture className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" />
       </div>
-      <div className="skeleton-plinth">
-        {built ? (
-          <button type="button" className="skeleton-stand-button" onClick={() => onRebuild(stand.id)}>
-            <RotateCcw size={24} aria-hidden="true" />
-            {text.rebuild}
-          </button>
-        ) : (
-          <button type="button" className="skeleton-stand-button" onClick={() => onBuild(stand.id)}>
-            {stand.state === "empty" ? <Bone size={24} aria-hidden="true" /> : <Hammer size={24} aria-hidden="true" />}
-            {stand.state === "empty" ? text.build : text.keepBuilding}
-          </button>
-        )}
-      </div>
+      {built ? (
+        <button type="button" className="skeleton-stand-button" onClick={() => onRebuild(stand.id)}>
+          <RotateCcw size={24} aria-hidden="true" />
+          {text.rebuild}
+        </button>
+      ) : (
+        <button type="button" className="skeleton-stand-button" onClick={() => onBuild(stand.id)}>
+          {stand.state === "empty" ? <Bone size={24} aria-hidden="true" /> : <Hammer size={24} aria-hidden="true" />}
+          {stand.state === "empty" ? text.build : text.keepBuilding}
+        </button>
+      )}
     </section>
   );
 }

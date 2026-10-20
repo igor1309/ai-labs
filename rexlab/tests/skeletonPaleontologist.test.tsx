@@ -24,7 +24,6 @@ import {
   slots,
   spotOf,
   spotPieces,
-  tray,
   trayPieces
 } from "./skeletonsApp.tsx";
 import { fakeSkeletonPicture, PALETTE, memoryStorage, sameColour, type ManualPictures } from "./support.ts";
@@ -69,7 +68,6 @@ describe("Paleontologist's puzzle", () => {
     expect(spotPieces().filter((piece) => !piece.includes("/"))).toEqual(cut);
     expect(strays()).toEqual(others);
     expect([spotPieces()[0], spotPieces().at(-1)]).toEqual([cut[0], cut.at(-1)]);
-    expect(tray().getAttribute("data-columns")).toBe("2");
     expect(counter()).toBe(`0/${count}`);
   });
 
@@ -192,13 +190,13 @@ describe("Paleontologist's puzzle", () => {
 });
 
 describe("the other levels", () => {
-  it.each<[AgeLevel, number, string | null]>([
-    ["hatchling", 4, null],
-    ["explorer", 6, "2"]
-  ])("keep %s's faint outline of bones and a tray of its own %i pieces only, in two columns from five", async (level, count, columns) => {
+  it.each<[AgeLevel, number]>([
+    ["hatchling", 4],
+    ["explorer", 6]
+  ])("keep %s's faint outline of bones and a tray of its own %i pieces only", async (level, count) => {
     await openPuzzle("TRICERATOPS", { ageLevels: levelOf(level) });
 
     expect([silhouette(), board().querySelector(".skeleton-outline img")?.getAttribute("src")]).toEqual([null, "/skeletons/triceratops/skeleton.webp"]);
-    expect([spotPieces().length, strays(), tray().getAttribute("data-columns"), screen.queryByRole("status")]).toEqual([count, [], columns, null]);
+    expect([spotPieces().length, strays(), screen.queryByRole("status")]).toEqual([count, [], null]);
   });
 });

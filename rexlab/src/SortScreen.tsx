@@ -243,7 +243,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               </span>
               <span className="basket-name">{text.baskets[basket]}</span>
             </span>
-            <span className="basket-cards">
+            <span className="basket-cards" style={{ "--longest": Math.max(0, ...cards.map((card) => card.name.length)) } as CSSProperties}>
               {cards.map((card) => (
                 <span key={card.id} className="sorted-card">
                   <span className="sorted-art">
