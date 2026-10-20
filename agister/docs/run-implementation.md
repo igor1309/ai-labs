@@ -1517,8 +1517,10 @@ gives why: "ccusage could not price the thread <thread>: <reason>",
 the reason the lookup's error, its exit and stderr's tail, "no
 totalCost", "the model <model> is priced as a fallback", or "the cost
 fell from <before> to <after>". A lookup's lines go to no report: the
-turn has ended. A turn a signal ended, or with no thread, has no
-lookup. Its facts say it reports a cost, as claude-code's do, and
+turn has ended. A call ended during the lookup before a resumed turn
+starts no codex: the turn gives the call's error. A turn a signal
+ended, or with no thread, has no lookup. Its facts say it reports a
+cost, as claude-code's do, and
 bash's that it does not. claude-code's reply gives the source
 "claude-code" where it gives a cost.
 

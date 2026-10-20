@@ -2,6 +2,7 @@ package codex_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -202,5 +203,18 @@ func TestATurnWithNoReplyOrThreadHasNoLookupAfter(t *testing.T) {
 				t.Errorf("turn gave %+v, reply %+v; want a reply %v, its cost unknown", got, got.Reply, c.reply)
 			}
 		})
+	}
+}
+
+// A call ended during the lookup before a resumed turn starts no codex.
+func TestACallEndedDuringTheLookupBeforeStartsNoCodex(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	spy := &supervisorSpy{lookups: []lookup{{result: codex.Ended{Signal: "SIGTERM"}, during: cancel}}}
+	turn := codex.Turn{Message: "m", Dir: "/r", Env: []string{"A=1"}, Options: []string{"read-only"}, Session: "t1"}
+	_, err := wrapper(t, spy, t.TempDir()).Run(ctx, turn, discard)
+	if !errors.Is(err, context.Canceled) || !reflect.DeepEqual(names(spy), []string{"ccusage"}) {
+		t.Fatalf("error %v, programs %v; want context.Canceled and the lookup alone", err, names(spy))
 	}
 }

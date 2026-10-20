@@ -224,6 +224,10 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	var before price
 	if turn.Session != "" {
 		before = w.lookup(ctx, turn, turn.Session)
+		// A call ended during the lookup before starts no codex.
+		if err := ctx.Err(); err != nil {
+			return Result{}, err
+		}
 	}
 	read := stream{report: report, searches: map[string]bool{}}
 	ended, err := w.supervisor.Run(ctx, Program{

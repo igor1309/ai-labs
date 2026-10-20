@@ -35,11 +35,12 @@ type supervisorSpy struct {
 }
 
 // lookup is a spy's answer to one run of ccusage: the lines it gives, then
-// its result and its error.
+// its result and its error; during, where set, runs as it is asked.
 type lookup struct {
 	lines  []string
 	result codex.Ended
 	err    error
+	during func()
 }
 
 func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
@@ -53,6 +54,9 @@ func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.E
 		}
 		answer := s.lookups[0]
 		s.lookups = s.lookups[1:]
+		if answer.during != nil {
+			answer.during()
+		}
 		for _, l := range answer.lines {
 			line(l)
 		}
