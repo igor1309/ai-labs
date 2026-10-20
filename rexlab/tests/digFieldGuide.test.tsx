@@ -59,6 +59,10 @@ describe("the FIELD GUIDE page", () => {
     // Only the words of a kind found are read out: an outline and its "?"
     // are pictures.
     expect(cards().map((card) => words(card))).toEqual(["SHELL×3", "", "", "EGG NEST×1", ""]);
+    // A picture is square at its card's width, not its file's 400 high:
+    // the page's rule for it sets the height itself, over the attribute.
+    const rule = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]).find((each): each is CSSStyleRule => each instanceof CSSStyleRule && each.selectorText.split(/,\s*/).includes(".dig-guide-picture"));
+    expect([rule?.style.height, rule?.style.aspectRatio]).toEqual(["auto", "1 / 1"]);
   });
 
   it.each([

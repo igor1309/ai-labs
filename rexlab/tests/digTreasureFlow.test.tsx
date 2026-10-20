@@ -101,6 +101,24 @@ describe("a treasure in the sand", () => {
     expect(saved(app.storage)).toMatchObject({ dug: [], treasures: { shell: 1 } });
   });
 
+  it("flies from its place on the board to the FIELD GUIDE's book, measured again on a resize of an offset, scaled board", () => {
+    openRound();
+    const { column, row } = place();
+    const book = fieldGuide().querySelector("svg")!;
+    book.getBoundingClientRect = () => ({ left: 600, top: 32, width: 20, height: 20 } as DOMRect);
+    brushTreasure();
+    const ends = () => [flight()!.style.left, flight()!.style.top, flight()!.style.width, flight()!.style.getPropertyValue("--treasure-x"), flight()!.style.getPropertyValue("--treasure-y")];
+    // The board shows the frame's 800 by 600 pixels at their own size, a
+    // cell 20 pixels wide, the treasure 3 cells.
+    expect(ends()).toEqual(["610px", "42px", "60px", `${(column + 1.5) * 20 - 610}px`, `${(row + 1.5) * 20 - 42}px`]);
+
+    // At half size and moved, a cell is 10 pixels wide.
+    board().getBoundingClientRect = () => ({ left: 100, top: 50, width: 400, height: 300 } as DOMRect);
+    book.getBoundingClientRect = () => ({ left: 500, top: 12, width: 20, height: 20 } as DOMRect);
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(ends()).toEqual(["510px", "22px", "30px", `${100 + (column + 1.5) * 10 - 510}px`, `${50 + (row + 1.5) * 10 - 22}px`]);
+  });
+
   it("flies a kind found before into the FIELD GUIDE with no NEW!", () => {
     const app = openRound({ storage: stored({ shell: 2, tooth: 1 }) });
     expect(fieldGuide().textContent).toBe("3");

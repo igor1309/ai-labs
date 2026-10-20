@@ -4950,6 +4950,8 @@ body:has(.result) #version {
 .dig-guide-outline {
   flex-shrink: 0;
   width: min(100%, 180px);
+  /* The picture's own 400 high would win over the square. */
+  height: auto;
   aspect-ratio: 1;
   object-fit: contain;
 }
