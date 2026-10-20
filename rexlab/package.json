@@ -2,7 +2,7 @@
   "name": "@ai-labs/rexlab",
   "private": true,
   "type": "module",
-  "version": "0.9.10",
+  "version": "0.10.1",
   "scripts": {
     "build": "vite build",
     "dev": "vite",

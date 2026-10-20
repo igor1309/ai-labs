@@ -110,8 +110,19 @@ export type SkeletonPuzzleScreenProps = {
 // which is never fitted and has no body area.
 type TraySpot = Pick<SkeletonSlotView, "piece" | "name" | "picture" | "area" | "fitted">;
 
-// The most spots the tray stacks in one column before it needs two.
-const TRAY_COLUMN = 4;
+// The side of the largest square spots that fit `count` of them in the
+// tray, in CSS: each number of columns lays them in as many rows as they
+// need, and the squares are as large as the tray's width and height let
+// them be. Of the column counts that need the same rows only the fewest
+// is given, which leaves its squares widest. The side is whole pixels, so
+// a row as wide as the tray never wraps on a fraction of one.
+function spotSide(count: number): string {
+  const layouts = Array.from({ length: count }, (_, at) => at + 1)
+    .map((columns) => ({ columns, rows: Math.ceil(count / columns) }))
+    .filter(({ rows }, at, all) => all[at - 1]?.rows !== rows);
+  const sides = layouts.map(({ columns, rows }) => `min((100cqw - ${columns - 1} * var(--spot-gap)) / ${columns}, (100cqh - ${rows - 1} * var(--spot-gap)) / ${rows})`);
+  return `round(down, max(${sides.join(", ")}), 1px)`;
+}
 
 // How near its home a dropped piece's centre fits, in CSS pixels:
 // generous, so a child's near miss still fits.
@@ -394,7 +405,14 @@ export function SkeletonPuzzleScreen({
             </p>
           )}
         </div>
-        <div className="skeleton-tray" role="group" aria-label={text.bones} data-scatter={scatter || undefined} data-turning={turning || undefined} data-columns={spots.length > TRAY_COLUMN ? 2 : undefined}>
+        <div
+          className="skeleton-tray"
+          role="group"
+          aria-label={text.bones}
+          data-scatter={scatter || undefined}
+          data-turning={turning || undefined}
+          style={{ "--spot-side": spotSide(spots.length) } as CSSProperties}
+        >
           {spots.map((slot, index) => {
             const release = releases[slot.piece];
             // A piece once let go floats back from where it was let go
@@ -451,16 +469,18 @@ export function SkeletonPuzzleScreen({
             );
           })}
         </div>
-        {held && lifted && (
-          <span
-            className="skeleton-lifted"
-            data-piece={held.piece}
-            style={{ width: held.width, height: held.height, translate: `${held.x - held.width / 2}px ${held.y - held.height / 2}px`, ...turnStyle(quartersOf(held.piece)) }}
-          >
-            <Picture className="skeleton-lifted-picture" src={lifted.picture} alt="" />
-          </span>
-        )}
       </div>
+      {/* The held piece follows the pointer on the window: inside the
+          puzzle, a container, it would be placed on the puzzle instead. */}
+      {held && lifted && (
+        <span
+          className="skeleton-lifted"
+          data-piece={held.piece}
+          style={{ width: held.width, height: held.height, translate: `${held.x - held.width / 2}px ${held.y - held.height / 2}px`, ...turnStyle(quartersOf(held.piece)) }}
+        >
+          <Picture className="skeleton-lifted-picture" src={lifted.picture} alt="" />
+        </span>
+      )}
     </main>
   );
 }

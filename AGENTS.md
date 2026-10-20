@@ -56,6 +56,8 @@
   -H "Tags: no_entry"`, with the repo, the step that stopped and the reset
   time Codex gives, if any. Do not retry the call in a loop; keep working
   on whatever does not need Codex.
+- When Codex or Claude fails with "model at capacity", retry the call
+  once; if it fails again, go on without it and say so in the report.
 - Do not put questions to the owner. For a product, scope or issue-split
   call, weigh the options and suggest one, with its reason, for the owner
   to accept or change. Make technical choices yourself (where a setting is

@@ -3513,16 +3513,16 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* A name stays on one line and shrinks to fit its card: its letters are
-   at most 0.75 of its size wide in Lexend's capitals. */
+/* Names share a centred strip. A tray name shrinks to fit: its letters
+   are at most 0.75 of its size wide in Lexend's capitals. */
 .sort-footer,
 .sorted-footer {
   display: flex;
   justify-content: center;
-  container-type: inline-size;
 }
 
 .sort-footer {
+  container-type: inline-size;
   padding: 12px 14px;
 }
 
@@ -3755,22 +3755,26 @@ body:has(.result) #version {
   }
 }
 
+/* The basket chooses columns from its measured room; rows share its height. */
 .basket-cards {
+  --named-art-padding: 8px;
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 1), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 8px;
 }
 
 /* A card lands in its basket as a small card that pops in, and its ✓
    stamps in after it. */
 .sorted-card {
-  flex: 0 1 170px;
+  position: relative;
+  align-self: end;
   min-width: 0;
+  min-height: 0;
   height: 100%;
-  max-height: 150px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3786,8 +3790,12 @@ body:has(.result) #version {
   flex: 1 1 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 8px;
+  padding: var(--named-art-padding);
   display: flex;
+}
+
+.sorted-card:not([data-name-fits]) .sorted-art {
+  padding: 0;
 }
 
 .sorted-check {
@@ -3805,11 +3813,24 @@ body:has(.result) #version {
 }
 
 .sorted-footer {
-  padding: 6px 8px;
+  position: absolute;
+  visibility: hidden;
+  align-self: center;
+  flex: 0 0 auto;
+  width: max-content;
+  padding: 4px 6px;
+}
+
+/* An unfitting strip stays measurable outside the flow, giving all its
+   room to the picture. */
+.sorted-card[data-name-fits] .sorted-footer {
+  position: static;
+  visibility: visible;
 }
 
 .sorted-name {
-  font-size: min(14px, calc(100cqi / (var(--letters) * 0.75)));
+  font-size: 14px;
+  line-height: 1.2;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -5259,26 +5280,34 @@ body:has(.result) #version {
 }
 
 /* A puzzle: the board, in the outline's frame, beside the tray of bones.
-   The outline is drawn faint; each slot is its piece's place on it. */
+   The outline is drawn faint; each slot is its piece's place on it. The
+   puzzle is the container its board is sized in. */
 .skeleton-puzzle {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   gap: 28px;
+  container-type: size;
 }
 
 .skeleton-board {
   position: relative;
-  flex: 920 1 0;
-  min-width: 0;
   align-self: center;
-  max-height: 100%;
   aspect-ratio: var(--frame-width) / var(--frame-height);
   overflow: hidden;
   border-radius: 28px;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #fffdf8;
+}
+
+/* Everything on the board is placed in fractions of its frame, so the
+   board keeps the frame's shape: it is the largest box of that shape in
+   its share of the puzzle beside the tray, as wide as the share or as
+   the puzzle's height allows, and the tray takes the rest. */
+.skeleton-puzzle .skeleton-board {
+  flex: none;
+  width: min((100cqw - 28px) * 920 / 1300, 100cqh * var(--frame-width) / var(--frame-height));
 }
 
 .skeleton-outline {
@@ -5323,36 +5352,36 @@ body:has(.result) #version {
   min-height: 0;
 }
 
-/* The tray keeps a spot for every piece, each piece large in its own,
-   rising in one after the other after the outline. */
+/* The tray keeps a square spot for every piece, each piece large in its
+   own, rising in one after the other after the outline. The tray is the
+   container its spots are sized in: --spot-side, which the puzzle gives
+   for its number of spots, is the side of the largest squares that fit
+   it in any number of columns, so they wrap into as many as they need. */
 .skeleton-tray {
-  flex: 380 1 0;
+  --spot-gap: 16px;
+  flex: 1 1 0;
   min-width: 0;
   box-sizing: border-box;
   padding: 28px;
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: var(--spot-gap);
+  container-type: size;
   border-radius: 28px;
   background: #e6e2d9;
 }
 
-/* Paleontologist's tray of ten to twelve pieces and other skeletons'
-   bones stands in two columns. */
-.skeleton-tray[data-columns="2"] {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(48px, 1fr);
-  gap: 16px;
-}
-
+/* A spot keeps a touch target of at least 48 by 48 CSS pixels. */
 .skeleton-tray-spot {
   position: relative;
-  flex: 1 1 0;
+  flex: none;
+  width: var(--spot-side);
+  height: var(--spot-side);
   min-width: 48px;
   min-height: 48px;
   box-sizing: border-box;
-  padding: 16px;
   display: flex;
   border-radius: 22px;
   outline: 1px solid #1d27421f;
@@ -5360,6 +5389,14 @@ body:has(.result) #version {
   background: #fffdf8;
   touch-action: none;
   animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * (var(--piece) + 2)) both;
+}
+
+/* A piece is large in its spot, however large the spot: three quarters
+   of its side, in the middle. */
+.skeleton-tray-spot > .skeleton-piece {
+  width: 75%;
+  height: 75%;
+  margin: auto;
 }
 
 /* A piece is picked up at the size it fits on the board and follows the
@@ -5384,13 +5421,14 @@ body:has(.result) #version {
   transition: rotate var(--motion-standard) var(--ease-out);
 }
 
-/* A turned piece's mark that it turns, in its spot's corner. */
+/* A turned piece's mark that it turns, in its spot's corner: dimmer than
+   any words, so it never outweighs the piece, yet clear as a symbol. */
 .skeleton-turn-mark {
   position: absolute;
   top: 8px;
   right: 8px;
   display: flex;
-  color: #5c647a;
+  color: #737a8e;
   pointer-events: none;
 }
 
@@ -5644,6 +5682,12 @@ body:has(.result) #version {
   gap: 28px;
 }
 
+.skeleton-reveal-board {
+  flex: 920 1 0;
+  min-width: 0;
+  max-height: 100%;
+}
+
 .skeleton-reveal-bones,
 .skeleton-reveal-body {
   position: absolute;
@@ -5793,17 +5837,18 @@ body:has(.result) #version {
 }
 
 /* The museum: a hall of one stand for each dinosaur, rising in one after
-   the other, each its name and star over its exhibit on a plinth. A
+   the other, each its name and star over its exhibit and its button. A
    skeleton not on its stand shows as its faint silhouette; one knocked
    down to be built again keeps its star, and its exhibit and button are
    ringed in amber, so it reads as work in progress, not as never built. */
 /* The stands in rows of three, a last row of fewer centred: each stand a
-   third of the row, as wide however many there are. */
+   third of the row, as wide however many there are. The hall leaves as
+   much room under the buttons as above the names. */
 .skeleton-hall {
   flex: 1 1 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 24px 32px 0;
+  padding: 24px 32px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -5921,22 +5966,14 @@ body:has(.result) #version {
   filter: brightness(0);
 }
 
-.skeleton-plinth {
-  align-self: stretch;
-  box-sizing: border-box;
-  padding: 10px 14px 12px;
-  border-radius: 20px 20px 0 0;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-}
-
-/* A button's words shrink with the room the plinth and the button's sides
-   leave beside its symbol, over the longest words', in ems: СОБРАТЬ
-   ЗАНОВО's 9.8. Unspaced, unlike the other buttons' words, they stay at
-   least as large as the bar's on the narrowest iPad. */
+/* A stand's button stands on its own under the exhibit, as wide as the
+   stand. Its words shrink with the room the button's sides leave beside
+   its symbol, over the longest words', in ems: СОБРАТЬ ЗАНОВО's 9.8.
+   Unspaced, unlike the other buttons' words, they stay at least as large
+   as the bar's on the narrowest iPad. */
 .skeleton-stand-button {
-  width: 100%;
+  flex-shrink: 0;
+  align-self: stretch;
   height: 56px;
   padding: 0 10px;
   display: flex;
@@ -5948,7 +5985,7 @@ body:has(.result) #version {
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #e6e2d9;
-  font-size: min(22px, (100cqi - 82px) / 9.8);
+  font-size: min(22px, (100cqi - 54px) / 9.8);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -6604,7 +6641,7 @@ body:has(.result) #version {
 }
 
 [data-theme="dark"] .skeleton-turn-mark {
-  color: #9ca3b6;
+  color: #7a8193;
 }
 
 [data-theme="dark"] .skeleton-choice,
@@ -6738,13 +6775,8 @@ body:has(.result) #version {
   background: #222a3d;
 }
 
-[data-theme="dark"] .skeleton-plinth,
 [data-theme="dark"] .skeleton-stand-button {
   outline-color: #ece8de1f;
-}
-
-[data-theme="dark"] .skeleton-plinth {
-  background: #181e2e;
 }
 
 [data-theme="dark"] .skeleton-stand[data-state="empty"] .skeleton-stand-name {
