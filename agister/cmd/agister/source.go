@@ -20,6 +20,7 @@ type definitions interface {
 	Brief(name string) (documents.BriefDefinition, []documents.Problem)
 	Blob(kind documents.Kind, name string) (documents.Blob, []documents.Problem)
 	Blocks() ([]documents.Field[documents.Block], []documents.Problem)
+	Budget() (documents.Field[float64], []documents.Problem)
 }
 
 // source answers resolve's source from documents, and from the layout
@@ -133,14 +134,15 @@ func (s *source) Other(kind resolve.Kind, name string) []resolve.Problem {
 }
 
 // Problems gives the problems of no document: layout's, then the blocks
-// file's.
+// and budget files'.
 func (s *source) Problems() []resolve.Problem {
 	var problems []resolve.Problem
 	for _, p := range s.snapshot.Problems {
 		problems = append(problems, resolve.Problem{Origin: resolve.Origin{Path: p.Path}, Message: p.Err.Error()})
 	}
 	_, blocks := s.documents.Blocks()
-	return append(problems, problemsOf(blocks)...)
+	_, budget := s.documents.Budget()
+	return append(append(problems, problemsOf(blocks)...), problemsOf(budget)...)
 }
 
 func (s *source) Blocks() []resolve.Block {

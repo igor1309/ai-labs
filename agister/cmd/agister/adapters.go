@@ -86,7 +86,7 @@ func documentsSnapshot(snapshot layout.Snapshot) documents.Snapshot {
 		}
 		return &documents.Source{Path: s.Path, Bytes: s.Bytes}
 	}
-	mapped := documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{}, Blocks: source(snapshot.Blocks)}
+	mapped := documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{}, Blocks: source(snapshot.Blocks), Budget: source(snapshot.Budget)}
 	for kind, named := range snapshot.Documents {
 		k := layoutKind(kind).documents
 		mapped.Documents[k] = map[string]documents.Document{}

@@ -111,7 +111,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Stale: &call.StaleTurn{What: "no event for 1m", Recovering: true}},
 		{Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}, {Stale: &call.StaleTurn{What: "no event for 1m"}},
 		{Capacity: &call.CapacityTurn{Reason: "Overloaded", Retry: 30 * time.Second}}, {Capacity: &call.CapacityTurn{Reason: "Overloaded"}}}}
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}

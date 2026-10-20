@@ -171,7 +171,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		admits := &admissionSpy{facts: admit.Facts{Head: "c1", Content: "t1"}}
 		spy := &turnSpy{result: call.Result{Status: call.Completed}}
 		records := &callsSpy{}
-		steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records)
+		steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records, noDailyBudget)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +191,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	admits := &admissionSpy{err: errors.New(`HEAD is "c0", not the pinned "c1"`), facts: admit.Facts{Head: "c1", Content: "t1"}}
 	spy := &turnSpy{}
 	records := &callsSpy{}
-	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records)
+	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, records, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,10 +204,10 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	if told, want := records.told(), []endedCall{{step: "pinned", process: "say", agent: "bash", inputs: given["pinned"], environment: []runstore.Variable{}, result: want}}; !reflect.DeepEqual(told, want) {
 		t.Errorf("refused: told the records %+v, want %+v, no facts", told, want)
 	}
-	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, &callsSpy{}); err == nil {
+	if _, err := newStepCalls(resolver, nil, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, &callsSpy{}, noDailyBudget); err == nil {
 		t.Error("step calls built with no admission, want an error")
 	}
-	if _, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, nil); err == nil {
+	if _, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), calls, nil, noDailyBudget); err == nil {
 		t.Error("step calls built with no records, want an error")
 	}
 }

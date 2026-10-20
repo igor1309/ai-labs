@@ -628,3 +628,16 @@ func TestAConditionGivesEveryReferenceItReadsHoweverNested(t *testing.T) {
 		t.Errorf("the arm's condition reads\n got %+v\nwant %+v", got, want)
 	}
 }
+
+// A budget's problems, like blocks', belong to no document and preserve
+// their field and line when resolve is given them.
+func TestSourceReportsBudgetProblems(t *testing.T) {
+	t.Parallel()
+	docs := newDocumentsSpy(t)
+	docs.budgetProblems = []documents.Problem{{Path: "/u/.agister/budget.yaml", Line: 2, Place: "daily.cost", Message: "it is more than zero"}}
+	s := sourceOf(t, docs, layout.Snapshot{})
+	want := []resolve.Problem{{Origin: resolve.Origin{Path: "/u/.agister/budget.yaml", Line: 2, Place: "daily.cost"}, Message: "it is more than zero"}}
+	if got := s.Problems(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("problems %+v, want %+v", got, want)
+	}
+}

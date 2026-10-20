@@ -156,6 +156,7 @@ type runFixture struct {
 	sources   *sourcesSpy
 	holding   *holdingSpy
 	store     *storeSpy
+	random    randomSpy
 }
 
 func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
@@ -172,6 +173,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 		sources:   &sourcesSpy{root: "/r"},
 		holding:   &holdingSpy{root: "/r", head: "c1", clean: true},
 		store:     &storeSpy{},
+		random:    randomSpy{0x55, 0xfd, 0x36},
 	}
 }
 
@@ -185,7 +187,7 @@ func (f *runFixture) runWatching(t *testing.T, watch signals, environment []stri
 	t.Helper()
 	var stdout, stderr strings.Builder
 	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch,
-		random: randomSpy{0x55, 0xfd, 0x36}}
+		random: f.random}
 	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), f.roots, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), f.store.at, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
