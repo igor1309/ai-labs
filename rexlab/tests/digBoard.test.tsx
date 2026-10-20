@@ -22,7 +22,7 @@ import {
   featuring,
   homeTile,
   lightDevice,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   symbolOf,
@@ -37,7 +37,7 @@ type Options = { reducedMotion?: boolean; random?: () => number; language?: Lang
 // pictures loading at once, and random draws counted.
 function openApp({ reducedMotion = false, random = () => 0, language = "en", sandContext = emptyDig().sandContext, level = "hatchling" }: Options = {}) {
   const timers = manualTimers();
-  const orientation = manualOrientation("landscape");
+  const viewport = manualViewport("landscape");
   const draws = { count: 0 };
   const counted = () => {
     draws.count++;
@@ -51,7 +51,8 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={counted}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => storage)}
@@ -68,7 +69,7 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       {...timers}
     />
   );
-  return { timers, orientation, draws };
+  return { timers, viewport, draws };
 }
 
 // The app with a round of the dig game started from its tile, on a board
@@ -79,6 +80,21 @@ function openRound(options: Options = {}) {
   placeBoard(800);
   return opened;
 }
+
+it("cancels a brush stroke when the gate covers the board and ignores later moves of that finger", () => {
+  const app = openRound();
+  const sand = sandOf();
+  const rect = sand.getBoundingClientRect();
+  pressAt(sand, 0, { x: rect.left + 100, y: rect.top + 100 });
+  const before = clearCells();
+  expect(before.length).toBeGreaterThan(0);
+  act(() => app.viewport.turn("portrait"));
+  moveAt(50, { x: rect.left + 700, y: rect.top + 100 });
+  act(() => app.viewport.turn("landscape"));
+  moveAt(100, { x: rect.left + 700, y: rect.top + 500 });
+  releaseAt(window, 150);
+  expect(clearCells()).toEqual(before);
+});
 
 type Arc = { x: number; y: number; r: number; start: number; end: number };
 type Gradient = { circles: number[]; stops: Array<[number, string]>; addColorStop(at: number, colour: string): void };
@@ -587,9 +603,9 @@ describe("the brush", () => {
     releaseAt(window, 2000, { x: 410, y: 310 });
   });
 
-  it("keeps the same sand clear, scaled with the board, as the page changes size and the iPad turns", () => {
+  it("keeps the same sand clear, scaled with the board, as the page changes size and turns to portrait and back", () => {
     const { drawn, sandContext } = spySand();
-    const { orientation } = openRound({ sandContext });
+    const { viewport } = openRound({ sandContext });
     drag([
       [200, 310],
       [600, 310]
@@ -603,8 +619,8 @@ describe("the brush", () => {
     expect(drawn.stamps.slice(stamps).map(({ r }) => r)).toEqual(drawn.stamps.slice(0, stamps).map(() => 12));
     expect(clearCells()).toEqual(brushed);
 
-    act(() => orientation.turn("portrait"));
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("portrait"));
+    act(() => viewport.turn("landscape"));
     placeBoard(800);
     expect(clearCells()).toEqual(brushed);
   });

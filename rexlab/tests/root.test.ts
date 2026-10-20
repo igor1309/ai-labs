@@ -5,9 +5,11 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps, filterDoubleTaps } from "../src/root.ts";
-import { browserDocument, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, manualScreenOrientation, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
+const NARROW = "(max-width: 599.98px)";
+const SHORT = "(max-height: 599.98px)";
 const DARK = "(prefers-color-scheme: dark)";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
@@ -16,14 +18,18 @@ function browser({
   local = memoryStorage(),
   language = "en-GB",
   portrait = false,
+  narrow = false,
+  short = false,
+  screenOrientation = undefined as ReturnType<typeof manualScreenOrientation>["orientation"] | undefined,
   dark = false,
   reduced = false,
   visibility = "visible" as DocumentVisibilityState,
   versionFooter = true
 } = {}) {
-  const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark, [REDUCED_MOTION]: reduced });
+  const media = mediaQueries({ [PORTRAIT]: portrait, [NARROW]: narrow, [SHORT]: short, [DARK]: dark, [REDUCED_MOTION]: reduced });
   const page = browserDocument(visibility, { versionFooter });
   return {
+    screen: screenOrientation ? { orientation: screenOrientation } : {},
     localStorage: local,
     sessionStorage: memoryStorage(),
     matchMedia: media.matchMedia,
@@ -153,17 +159,40 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("follows the portrait media query", () => {
-    const given = browser({ portrait: true });
-    const { orientation } = appProps(given);
-    const seen: boolean[] = [];
-    expect(orientation.isPortrait()).toBe(true);
+  it("wires the window media queries and the screen's own orientation into one viewport", () => {
+    const screen = manualScreenOrientation("landscape-primary");
+    const given = browser({ screenOrientation: screen.orientation });
+    const { viewport, portraitLayouts } = appProps(given);
+    const read = () => [viewport.sizeClass(), viewport.isScreenUpright()];
+    const seen: unknown[] = [];
+    expect(read()).toEqual(["wide", false]);
+    expect(portraitLayouts.size).toBe(0);
+    expect(given.media.queries).toEqual([PORTRAIT, NARROW, SHORT, DARK, REDUCED_MOTION]);
 
-    const unsubscribe = orientation.subscribe(() => seen.push(orientation.isPortrait()));
-    given.media.change(PORTRAIT, false);
-    unsubscribe();
+    const unsubscribe = viewport.subscribe(() => seen.push(read()));
+    given.media.change(SHORT, true);
     given.media.change(PORTRAIT, true);
+    given.media.change(NARROW, true);
+    screen.turn("portrait-secondary");
+    unsubscribe();
+    given.media.change(PORTRAIT, false);
+    given.media.change(NARROW, false);
+    given.media.change(SHORT, false);
+    screen.turn("landscape-secondary");
 
+    expect(seen).toEqual([["wide-short", false], ["tall", false], ["tall-narrow", false], ["tall-narrow", true]]);
+    expect(read()).toEqual(["wide", false]);
+  });
+
+  it("uses the window's portrait query for upright on a browser without screen.orientation", () => {
+    const given = browser({ portrait: true });
+    const { viewport } = appProps(given);
+    expect([viewport.sizeClass(), viewport.isScreenUpright()]).toEqual(["tall", true]);
+    const seen: boolean[] = [];
+    const stop = viewport.subscribe(() => seen.push(viewport.isScreenUpright()));
+    given.media.change(PORTRAIT, false);
+    stop();
+    given.media.change(PORTRAIT, true);
     expect(seen).toEqual([false]);
   });
 

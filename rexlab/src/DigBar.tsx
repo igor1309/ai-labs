@@ -1,5 +1,6 @@
 import { ArrowLeft, BookOpen, Brush, House, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode, Ref } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -27,16 +28,16 @@ export function DigBar({
   return (
     <header className="dig-bar">
       {onHome && (
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
       )}
       {onBack && (
-        <button type="button" className="home-button" onClick={onBack}>
+        <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
           {text.back}
-        </button>
+        </Button>
       )}
       <h1 className="dig-title">
         <span className="dig-mark" aria-hidden="true">
@@ -73,11 +74,11 @@ export function FieldGuideButton({ language, count, landed, motion = false, disa
   const text = TEXTS[language];
   return (
     <span className="dig-field-guide">
-      <button type="button" className="dig-field-guide-button" aria-label={text.fieldGuide} disabled={disabled} onClick={onFieldGuide}
+      <Button className="dig-field-guide-button" aria-label={text.fieldGuide} disabled={disabled} onClick={onFieldGuide}
         data-landed={landed !== undefined || undefined} data-motion={motion || undefined}>
         <BookOpen ref={bookRef} size={26} aria-hidden="true" />
         <span className="dig-field-guide-count">{count}</span>
-      </button>
+      </Button>
       {landed === "new" && <span className="dig-field-guide-new" aria-hidden="true">{text.treasureNew}</span>}
     </span>
   );

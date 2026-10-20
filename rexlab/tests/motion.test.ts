@@ -61,6 +61,13 @@ const declared = (rules: Rule[], selector: string) =>
   Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
 describe("the motion", () => {
+  it("fades the portrait gate in and out with the screen token, including the short reduced-motion fade", () => {
+    expect(declared(PLAIN, ".orientation-gate").transition).toBe("opacity var(--motion-screen) var(--ease-out), visibility var(--motion-screen) var(--ease-out)");
+    expect(declared(PLAIN, ".orientation-gate[data-shown]").animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(tokensOf(PLAIN)["--motion-screen"]).toBe("320ms");
+    expect(tokensOf(REDUCED)["--motion-screen"]).toBe("160ms");
+  });
+
   it("is built from the shared tokens", () => {
     expect(tokensOf(PLAIN)).toEqual({
       "--ease-out": "cubic-bezier(0.22, 1, 0.36, 1)",
@@ -417,7 +424,9 @@ describe("find the pair's motion", () => {
 
   it("slides the level switch's mark to the chosen level and fades its fill in, and only fades the fill with reduced motion", () => {
     expect(declared(PLAIN, ".level-switch-mark").transition).toBe("translate var(--motion-standard) var(--ease-out)");
-    expect(declared(PLAIN, ".level-switch-level").transition).toBe("color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out)");
+    expect(declared(PLAIN, ".level-switch-level").transition).toBe(
+      "color var(--motion-standard) var(--ease-out),\n    background-color var(--motion-standard) var(--ease-out),\n    filter var(--motion-small) var(--ease-out)"
+    );
     expect(declared(REDUCED, ".level-switch-mark")).toEqual({ visibility: "hidden", "transition-property": "none" });
   });
 

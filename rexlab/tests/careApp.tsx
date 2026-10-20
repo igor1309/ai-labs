@@ -17,11 +17,11 @@ import {
   fakeItemPicture,
   featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
   unreadVersion,
-  type ManualOrientation,
+  type ManualViewport,
   type MemoryStorage,
   unsetAgeLevel,
   loadShownPictures,
@@ -38,7 +38,7 @@ export type CareAppOptions<C extends Clock> = {
   random?: Random;
   clock?: C;
   reducedMotion?: boolean;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
   deviceLanguage?: string;
 };
 
@@ -50,7 +50,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
   random = () => 0,
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
   deviceLanguage = "en-GB"
 }: CareAppOptions<C> = {}) {
   const view = render(
@@ -60,7 +60,8 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      orientation={orientation}
+      portraitLayouts={new Set()}
+      viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}

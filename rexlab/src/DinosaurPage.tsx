@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, BookOpen, Ruler, Weight } from "lucide-react";
 import { ViewTransition, type ReactNode } from "react";
+import { Button } from "./Button.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -58,10 +59,10 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, de
   return (
     <main className="dinosaur-page">
       <header className="dinosaur-bar">
-        <button type="button" className="home-button" onClick={onBack}>
+        <Button className="home-button" onClick={onBack}>
           <BookOpen size={24} aria-hidden="true" />
           {text.catalogue}
-        </button>
+        </Button>
         <p className="dinosaur-position" aria-label={text.position}>
           {number} / {total}
         </p>
@@ -77,12 +78,12 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, de
             </div>
           </Sliding>
           <nav className="dinosaur-steps">
-            <button type="button" className="dinosaur-step" aria-label={text.previousDinosaur} onClick={onPrevious}>
+            <Button className="dinosaur-step" aria-label={text.previousDinosaur} onClick={onPrevious}>
               <ArrowLeft size={32} aria-hidden="true" />
-            </button>
-            <button type="button" className="dinosaur-step" aria-label={text.nextDinosaur} onClick={onNext}>
+            </Button>
+            <Button className="dinosaur-step" aria-label={text.nextDinosaur} onClick={onNext}>
               <ArrowRight size={32} aria-hidden="true" />
-            </button>
+            </Button>
           </nav>
         </div>
         <div className="dinosaur-info">

@@ -24,7 +24,7 @@ import {
   fakeSkeletonPicture,
   featuredCard,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   manualVisibility,
   memoryStorage,
@@ -60,7 +60,8 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(23)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       pageVisibility={manualVisibility("visible")}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

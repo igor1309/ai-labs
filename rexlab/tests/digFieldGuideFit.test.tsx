@@ -6,6 +6,7 @@ import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { withPictures } from "./pictures.tsx";
 import { fakeTreasurePicture } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom lays nothing out, so the width of each word on the FIELD GUIDE is
 // given here in ems of its face, rounded up: Lexend's for the Latin words,
@@ -59,16 +60,20 @@ function sizeIn(written: string, room: number): number {
   return Math.min(Number(parts[1]), room / Number(parts[2]));
 }
 
-const IPADS = [[1024, 768], [1133, 744], [1366, 1024]] as const;
+// The feature's windows, and the 13" iPad Pro of the budget before them.
+const WINDOWS = windowsAnd([1366, 1024]);
 
-function show(language: Language) {
+// The page with a card of each kind found, in a `width` by `height`
+// window.
+function show(language: Language, width: number, height: number) {
+  openWindow(width, height);
   const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: 1 }));
   render(<DigFieldGuideScreen language={language} cards={cards} onBack={() => {}} onHome={() => {}} />, withPictures);
 }
 
 describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
-  it.each(IPADS)("keeps its title on one line beside HOME, BACK and the kinds found, on a %i by %i iPad", (width) => {
-    show(language);
+  it.each(WINDOWS)("keeps its title on one line beside HOME, BACK and the kinds found, in a %i by %i window", (width, height) => {
+    show(language, width, height);
     const text = TEXTS[language];
     const outer = style(".dig-screen");
     const bar = style(".dig-bar");
@@ -89,8 +94,8 @@ describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
     expect(mark + emsOf(text.fieldGuide) * size).toBeLessThanOrEqual(room);
   });
 
-  it.each(IPADS)("keeps each word of every name whole on its card, at least 16 pixels large, on a %i by %i iPad", (width) => {
-    show(language);
+  it.each(WINDOWS)("keeps each word of every name whole on its card, at least 16 pixels large, in a %i by %i window", (width, height) => {
+    show(language, width, height);
     const outer = style(".dig-screen");
     const row = style(".dig-guide-cards");
     const card = style(".dig-guide-card[data-found]");
@@ -102,8 +107,8 @@ describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
     expect(words.filter((word) => emsOf(word) * size > inside)).toEqual([]);
   });
 
-  it.each(IPADS)("fits a card's picture, two lines of its name and its count, or its outline and ?, in its height, on a %i by %i iPad", (width, height) => {
-    show(language);
+  it.each(WINDOWS)("fits a card's picture, two lines of its name and its count, or its outline and ?, in its height, in a %i by %i window", (width, height) => {
+    show(language, width, height);
     const outer = style(".dig-screen");
     const row = style(".dig-guide-cards");
     const card = style(".dig-guide-card[data-found]");
@@ -113,6 +118,7 @@ describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
     // The bar is as tall as its tallest part, the HOME button.
     const room = height - px(outer.paddingTop) - px(outer.paddingBottom) - px(style(".dig-bar .home-button").height) - px(outer.gap);
     const cardHeight = Math.min(px(card.maxHeight), room);
+    expect([outer.height, outer.boxSizing, outer.overflow]).toEqual([`${height}px`, "border-box", "hidden"]);
     const art = Math.min(inside, 180);
     const found = px(card.paddingTop) + art + 2 * px(card.gap) + 2 * px(name.lineHeight) * sizeIn(name.fontSize, inside) + px(style(".dig-guide-count").fontSize) + px(card.paddingBottom);
 

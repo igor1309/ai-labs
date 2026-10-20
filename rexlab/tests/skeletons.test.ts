@@ -409,7 +409,7 @@ describe("presenting the skeleton game", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedApp() {
-  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() });
+  return appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() });
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

@@ -1,4 +1,5 @@
 import { Footprints, Heart, HeartHandshake, House } from "lucide-react";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -53,18 +54,18 @@ export function CareResultScreen({ language, visitor, score, total, best, beaten
           {best !== undefined && <BestScore language={language} best={best} beaten={beaten} total={total} />}
         </div>
         <nav className="result-actions">
-          <button type="button" className="play-again-button" onClick={onNewVisitor}>
+          <Button className="play-again-button" onClick={onNewVisitor}>
             <Footprints size={28} aria-hidden="true" />
             {text.newVisitor}
-          </button>
-          <button type="button" className="home-button" onClick={onFriends}>
+          </Button>
+          <Button className="home-button" onClick={onFriends}>
             <HeartHandshake size={28} aria-hidden="true" />
             {text.friends}
-          </button>
-          <button type="button" className="home-button" onClick={onHome}>
+          </Button>
+          <Button className="home-button" onClick={onHome}>
             <House size={28} aria-hidden="true" />
             {text.home}
-          </button>
+          </Button>
         </nav>
       </div>
     </main>

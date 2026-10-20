@@ -183,33 +183,33 @@ describe("a treasure in the sand", () => {
     expect(saved(app.storage).treasures).toBeUndefined();
   });
 
-  it("lies under the same sand after a turn of the iPad, and once kept stays kept and gone from the board", () => {
+  it("lies under the same sand after a turn to portrait and back, and once kept stays kept and gone from the board", () => {
     const app = openRound();
     drag([[100, 400], [700, 400]]);
     const [treasure, clear] = [buried()!.getAttribute("style"), board().getAttribute("data-clear")];
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect([buried()?.getAttribute("style"), board().getAttribute("data-clear"), fieldGuide().textContent]).toEqual([treasure, clear, "0"]);
 
     brushTreasure(5000);
     landTreasure(app.timers);
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect([buried(), found(), flight(), fieldGuide().textContent]).toEqual([null, null, null, "1"]);
     expect(saved(app.storage).treasures).toEqual({ shell: 1 });
   });
 
-  it("flies again after a turn of the iPad mid-flight, kept only as the flight started again lands", () => {
+  it("flies again after a turn to portrait and back mid-flight, kept only as the flight started again lands", () => {
     const app = openRound();
     brushTreasure();
     const flights = () => app.timers.timers().filter((wait) => wait === TREASURE_FLIGHT.motion).length;
     expect(flights()).toBe(1);
 
-    act(() => app.orientation.turn("portrait"));
+    act(() => app.viewport.turn("portrait"));
     expect(flights()).toBe(0);
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     expect([flights(), found()?.dataset.kind, flight()?.dataset.kind]).toEqual([1, "shell", "shell"]);
     act(() => app.timers.deliverStopped(TREASURE_FLIGHT.motion));
@@ -220,13 +220,13 @@ describe("a treasure in the sand", () => {
     expect(saved(app.storage).treasures).toEqual({ shell: 1 });
   });
 
-  it("is kept as the reveal comes while its flight, started again by a turn of the iPad, is still on", () => {
+  it("is kept as the reveal comes while its flight, started again by a turn to portrait and back, is still on", () => {
     const app = openRound();
     brushTreasure();
     for (let y = 20; y < 600 && document.querySelectorAll(".dig-choice-card").length === 0; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
     fireEvent.click(choiceCard());
-    act(() => app.orientation.turn("portrait"));
-    act(() => app.orientation.turn("landscape"));
+    act(() => app.viewport.turn("portrait"));
+    act(() => app.viewport.turn("landscape"));
     placeBoard(800);
     act(() => app.timers.fire(GUST.motion));
     act(() => app.timers.fire(LIFT.motion));

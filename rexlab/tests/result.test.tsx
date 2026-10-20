@@ -18,7 +18,7 @@ import {
   featuring,
   lightDevice,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
   memoryStorage,
   sameColour,
   seededRandom,
@@ -69,7 +69,8 @@ function openApp(storage: MemoryStorage, seed = 21) {
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(seed)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()} {...unsetAgeLevel()}

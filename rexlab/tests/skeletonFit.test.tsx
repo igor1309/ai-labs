@@ -5,9 +5,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, revealNow, skeletonOf } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
-
-// The narrowest iPad's width in landscape, in CSS pixels.
-const NARROWEST = 1024;
+import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // jsdom lays nothing out, so the width of the words on each skeleton
 // button and chip is given here in ems of its bold face, rounded up:
@@ -97,8 +95,9 @@ function neededBy(element: Element, size: number) {
 const overflow = (element: Element, needed: number, room: number) =>
   needed <= room ? [] : [`${wordsOf(element) || element.className}: ${Number.isNaN(needed) ? "no width in ems" : `${needed.toFixed(1)}px in ${room.toFixed(1)}px`}`];
 
-// The width of the screen's content, inside its sides.
-const contentWidth = () => NARROWEST - widthOf(document.querySelector(".skeleton-screen") ?? document.body);
+// The width of the screen's content, inside its sides, in the test's
+// window.
+const contentWidth = () => window.innerWidth - widthOf(document.querySelector(".skeleton-screen") ?? document.body);
 
 // The bar's buttons and chips, each at its full width, with the gaps
 // between every part of the bar, fit in the bar, the title shrinking to
@@ -193,11 +192,12 @@ const wrapping = () =>
 
 const deviceOf = (language: Language) => (language === "ru" ? "ru-RU" : "en-GB");
 
-describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPad", (language) => {
+describe.each(WINDOW_SIZES.flatMap(([width, height]) => LANGUAGES.map((language) => [language, width, height] as const)))("the skeleton game's buttons in %s in a %i by %i window", (language, width, height) => {
   const text = TEXTS[language];
   const name = (id: string) => skeletonOf(id).name[language].toLocaleUpperCase(language);
 
   it("keep their words on one line in the bar of the choice of dinosaurs, beside the best", () => {
+    openWindow(width, height);
     openSkeletonsApp({ deviceLanguage: deviceOf(language), storage: keptSkeletons({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] }) });
 
     expect(screen.getByLabelText(text.bestScore)).toBeDefined();
@@ -205,6 +205,7 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
   });
 
   it("keep their words on one line in the bar of a puzzle, beside the bones in place", async () => {
+    openWindow(width, height);
     const { user, pictures } = openSkeletonsApp({ deviceLanguage: deviceOf(language) });
     await user.click(screen.getByRole("button", { name: name("stegosaurus") }));
     act(() => finishLoading(pictures));
@@ -214,6 +215,7 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
   });
 
   it.each(SHIPPED_SKELETONS.map(({ id }) => id))("fit the name of the %s in the bar of its puzzle, beside BACK, HOME and MUSEUM, at a size a child reads", async (id) => {
+    openWindow(width, height);
     const { user, pictures } = openSkeletonsApp({ deviceLanguage: deviceOf(language) });
     await user.click(screen.getByRole("button", { name: name(id) }));
     act(() => finishLoading(pictures));
@@ -225,6 +227,7 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
   });
 
   it("keep their words on one line on the reveal, the panel at its least width", async () => {
+    openWindow(width, height);
     const { user, pictures } = openSkeletonsApp({ deviceLanguage: deviceOf(language) });
     await user.click(screen.getByRole("button", { name: name("triceratops") }));
     act(() => finishLoading(pictures));
@@ -237,6 +240,7 @@ describe.each(LANGUAGES)("the skeleton game's buttons in %s on the narrowest iPa
   });
 
   it("keep their words on one line in the museum, on a built stand, one awaiting its skeleton and an empty one, as large as the bar's", async () => {
+    openWindow(width, height);
     const { user } = openSkeletonsApp({
       deviceLanguage: deviceOf(language),
       storage: keptSkeletons({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: ["triceratops"] })

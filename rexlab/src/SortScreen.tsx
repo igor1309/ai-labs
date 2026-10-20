@@ -1,5 +1,7 @@
 import { Check, createLucideIcon, Drumstick, Feather, Footprints, House, Leaf, Shapes, Trophy } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "./Button.tsx";
+import { useGateShown } from "./OrientationGate.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -59,6 +61,7 @@ type Hold = { pointerId: number; id: string; x: number; y: number; dx: number; d
 type Return = { dx: number; dy: number; count: number };
 
 export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult }: SortScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const [held, setHeld] = useState<Hold>();
   const [picked, setPicked] = useState<string>();
@@ -76,6 +79,13 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
     hold.current = next;
     setHeld(next);
   };
+
+  useLayoutEffect(() => {
+    if (!gateShown) return;
+    holdCard(undefined);
+    setPicked(undefined);
+    setOver(undefined);
+  }, [gateShown]);
 
   // A dragged card is over the basket its pointer is over.
   const basketAt = (x: number, y: number) =>
@@ -153,10 +163,10 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
     <main className="sort" data-rows={rows} onClick={() => setPicked(undefined)}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="sort-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
         {/* One step per card, filled as each lands: no numbers. */}
         <span className="steps" aria-hidden="true">
           {Array.from({ length: total }, (_, at) => (
@@ -179,9 +189,8 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
             // A card let go is drawn anew where it was let go, so it slides
             // back from there each time.
             return (
-              <button
+              <Button
                 key={`${card.id}-${back?.count ?? 0}`}
-                type="button"
                 className="sort-card"
                 aria-label={card.name}
                 aria-pressed={picked === card.id}
@@ -209,22 +218,21 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
                 <span className="sort-footer">
                   <Name name={card.name} language={language} className="sort-name" />
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>
         {sorted === total && (
-          <button type="button" className="next-button sort-finish" onClick={onSeeResult}>
+          <Button className="next-button sort-finish" onClick={onSeeResult}>
             <Trophy size={28} aria-hidden="true" />
             {text.seeResult}
-          </button>
+          </Button>
         )}
       </div>
       <div className="baskets" data-count={baskets.length}>
         {baskets.map(({ basket, cards }, place) => (
-          <button
+          <Button
             key={basket}
-            type="button"
             className="basket"
             aria-label={text.baskets[basket]}
             data-over={over === basket || undefined}
@@ -245,7 +253,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               <span className="basket-name">{text.baskets[basket]}</span>
             </span>
             <BasketCards cards={cards} language={language} correct={text.marks.correct} />
-          </button>
+          </Button>
         ))}
       </div>
     </main>

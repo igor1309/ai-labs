@@ -21,7 +21,7 @@ import {
   featuredSpy,
   lightDevice,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
   tilesRow,
   unsetAgeLevel
 } from "./support.ts";
@@ -177,7 +177,8 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={() => draw}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={new Set()}
+      viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       {...englishDevice()}
       {...lightDevice()} {...unsetAgeLevel()}

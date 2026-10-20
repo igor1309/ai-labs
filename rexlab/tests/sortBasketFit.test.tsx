@@ -6,6 +6,7 @@ import { BASKET_EMS, MARK_EMS, SPACE_EMS } from "./basketWidths.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { withPictures } from "./pictures.tsx";
 import { SHIPPED_SORTABLES, fakeBodyPicture } from "./support.ts";
+import { openWindow, styleAt, windowsAnd, type WindowSize } from "./windowSizes.ts";
 
 // sort-dinosaurs-basket-fit.feature: a basket filled as full as the game deals,
 // its cards in rows, with a 14px name where it fits beside the picture,
@@ -49,56 +50,14 @@ const BOARDS: readonly { level: string; cards: number; baskets: readonly (readon
 // Every other basket of a board gets at least two cards.
 const LEAST_PER_BASKET = 2;
 
-// The iPads' windows, a wide but short desktop one, and larger ones.
-const WINDOWS = [
-  [1024, 768],
-  [1180, 820],
-  [1366, 1024],
-  [1506, 807],
-  [1920, 1080]
-] as const;
+// The shared windows, more iPads' and a wide but short desktop one.
+const WINDOWS = windowsAnd([1180, 820], [1366, 1024], [1506, 807]);
 
-type Size = readonly [number, number];
+type Size = WindowSize;
 
 const NAME_SIZE = 14;
 // Lexend's normal line height, for a name that sets none.
 const NORMAL_LINE = 1.25;
-
-const px = (value: string) => Number.parseFloat(value) || 0;
-
-const holds = (condition: string, [width, height]: Size) => {
-  const [, feature, least] = /^\((min-width|min-height): (\d+)px\)$/.exec(condition) ?? [];
-  return feature === "min-width" ? width >= Number(least) : feature === "min-height" ? height >= Number(least) : false;
-};
-
-// An element's style in a window of `size`. jsdom applies no media query, so the
-// screen's rules for wider or taller windows are applied here: each
-// restates a selector of the screen's own rules, and the last that
-// matches wins.
-function styleAt(element: Element, size: Size) {
-  const computed = getComputedStyle(element);
-  const value = (property: string) => {
-    let found = computed.getPropertyValue(property);
-    for (const sheet of document.styleSheets) {
-      for (const rule of sheet.cssRules) {
-        if (!(rule instanceof CSSMediaRule) || !holds(rule.conditionText, size)) continue;
-        for (const inner of rule.cssRules) {
-          if (inner instanceof CSSStyleRule && element.matches(inner.selectorText)) found = inner.style.getPropertyValue(property) || found;
-        }
-      }
-    }
-    const variable = /^var\((--[\w-]+)\)$/.exec(found)?.[1];
-    if (variable) {
-      for (let parent: Element | null = element; parent; parent = parent.parentElement) {
-        const resolved = getComputedStyle(parent).getPropertyValue(variable);
-        if (resolved) return resolved;
-      }
-    }
-    return found;
-  };
-  // jsdom keeps a gap only as the shorthand, row gap first.
-  return { value, px: (property: string) => px(value(property)), rowGap: () => px(value("gap").split(" ")[0] ?? ""), columnGap: () => px(value("gap").split(" ").at(-1) ?? "") };
-}
 
 const first = (selector: string, within: ParentNode = document) => {
   const element = within.querySelector(selector);
@@ -272,6 +231,7 @@ function expectCard(card: HTMLElement, width: number, height: number, size: Size
 
 describe("a full basket", () => {
   it.each(CASES)("of $level's $basket, in $language at $size, wraps its cards inside the basket with 14px names or pictures alone", ({ cards, board, full, language, size }) => {
+    openWindow(...size);
     const layout = layoutMeasurements();
     const { unmount } = openBasket(board, full, cards, language);
     const basket = document.querySelectorAll<HTMLElement>(".baskets .basket")[full];

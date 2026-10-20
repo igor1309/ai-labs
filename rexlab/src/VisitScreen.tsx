@@ -1,9 +1,9 @@
 import { Bath, Check, Droplet, Heart, House, Moon, Undo2, Utensils, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 export type CareItem = keyof Texts["items"];
 export type CareNeed = keyof Texts["needs"];
@@ -53,10 +53,10 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
   return (
     <main className="visit">
       <header className="visit-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
         <ol className="needs" aria-label={text.needsLabel}>
           {needs.map(({ need: each, state }) => {
             const Symbol = state === "met" ? Check : NEED_SYMBOLS[each];
@@ -163,20 +163,17 @@ type TrayItemProps = {
 };
 
 function TrayItem({ item, label, picture, suggested, refused, busy, onGive }: TrayItemProps) {
-  const pointer = usePointerState();
   return (
-    <button
-      type="button"
+    <Button
       className="card tray-item"
       data-item={item}
       data-suggested={suggested || undefined}
       data-refused={refused || undefined}
       disabled={busy}
       onClick={() => onGive(item)}
-      {...pointer}
     >
       <Picture className="tray-picture" src={picture} alt="" width={400} height={300} />
       <span className="tray-label">{label}</span>
-    </button>
+    </Button>
   );
 }

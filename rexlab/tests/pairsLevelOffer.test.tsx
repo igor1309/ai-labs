@@ -8,6 +8,7 @@ import { PairsResultScreen, type PairsResultScreenProps } from "../src/PairsResu
 import { afterResultAnimations } from "../src/resultAnimation.ts";
 import { contrast, manualTimers, surfaceOf, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
+import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // jsdom has no animation engine. The browser boundary reports each
 // reward's running duration; the screen's timer is driven by the test.
@@ -146,9 +147,12 @@ it("uses the CSS engine's remaining time, including reduced motion, without a ne
   expect(done).toHaveBeenCalledTimes(1);
 });
 
-const CASES = LANGUAGES.flatMap((language) => (["light", "dark"] as const).flatMap((theme) => (["explorer", "paleontologist"] as const).map((level) => ({ language, theme, level }))));
-describe.each(CASES)("$language $theme $level offer at 1024×768", (options) => {
+const CASES = WINDOW_SIZES.flatMap(([width, height]) =>
+  LANGUAGES.flatMap((language) => (["light", "dark"] as const).flatMap((theme) => (["explorer", "paleontologist"] as const).map((level) => ({ language, theme, level, width, height }))))
+);
+describe.each(CASES)("$language $theme $level offer at $width×$height", ({ width: windowWidth, height: windowHeight, ...options }) => {
   it("uses the menu picture and name, fits the question and answers, and keeps text contrast", () => {
+    openWindow(windowWidth, windowHeight);
     const app = open(options);
     app.show();
     const text = TEXTS[options.language];
@@ -158,10 +162,10 @@ describe.each(CASES)("$language $theme $level offer at 1024×768", (options) => 
     const px = (value: string) => { expect(value).toMatch(/^\d+(\.\d+)?px$/); return Number.parseFloat(value); };
     const width = px(card.width);
     const inner = width - px(card.paddingLeft) - px(card.paddingRight);
-    expect(width + 2 * 24).toBeLessThanOrEqual(1024);
+    expect(width + 2 * 24).toBeLessThanOrEqual(windowWidth);
     const question = within(dialog).getByRole("heading");
     const qs = getComputedStyle(question);
-    const size = qs.fontSize === "min(36px, 3.125vw)" ? Math.min(36, 3.125 * 1024 / 100) : px(qs.fontSize);
+    const size = qs.fontSize === "min(36px, 3.125vw)" ? Math.min(36, 3.125 * windowWidth / 100) : px(qs.fontSize);
     // Conservative Latin/Cyrillic glyph widths; jsdom does not lay out.
     const wordWidth = (word: string, font: number) => [...word].reduce((sum, char) => sum + (char === " " ? 0.4 : 0.8) * font, 0);
     let lines = 1;
@@ -192,6 +196,6 @@ describe.each(CASES)("$language $theme $level offer at 1024×768", (options) => 
     if (!picture) throw new Error("No picture");
     expect(getComputedStyle(picture).borderRadius).toBe("50%");
     const height = px(card.paddingTop) + px(getComputedStyle(picture).height) + 2 * px(card.gap) + lines * size * Number(qs.lineHeight) + px(getComputedStyle(buttons[0]!).height) + px(card.paddingBottom);
-    expect(height + 48).toBeLessThanOrEqual(768);
+    expect(height + 48).toBeLessThanOrEqual(windowHeight);
   });
 });

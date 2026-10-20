@@ -21,12 +21,12 @@ import {
   fakeSkeletonPicture,
   featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualPictures,
   manualVisibility,
   memoryStorage,
   unreadVersion,
-  type ManualOrientation,
+  type ManualViewport,
   type ManualPictures,
   type ManualVisibility,
   type MemoryStorage,
@@ -40,7 +40,8 @@ export type SkeletonsAppOptions = {
   // in a browser.
   storage?: MemoryStorage;
   pictures?: ManualPictures;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
+  portraitLayouts?: AppProps["portraitLayouts"];
   visibility?: ManualVisibility;
   deviceLanguage?: string;
   // Whether the device asks for reduced motion.
@@ -68,7 +69,8 @@ export type SkeletonsAppOptions = {
 export function openHomeApp({
   storage = memoryStorage(),
   pictures = manualPictures(),
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
+  portraitLayouts = new Set(),
   visibility = manualVisibility("visible"),
   deviceLanguage = "en-GB",
   reducedMotion = false,
@@ -80,11 +82,12 @@ export function openHomeApp({
   random = () => 0
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
+    portraitLayouts,
     dinosaurs: SHIPPED_DINOSAURS,
     catalogue: SHIPPED_CATALOGUE,
     bodyPicture: fakeBodyPicture,
     random,
-    orientation,
+    viewport,
     pageVisibility: visibility,
     progress: localProgress(() => storage),
     deviceLanguage,
@@ -111,7 +114,7 @@ export function openHomeApp({
   };
   const view = render(<App {...props} />);
   if (loadHome) loadShownPictures(pictures);
-  return { user: userEvent.setup(), storage, pictures, orientation, visibility, ageLevels, unmount: view.unmount };
+  return { user: userEvent.setup(), storage, pictures, viewport, visibility, ageLevels, unmount: view.unmount };
 }
 
 // The age level a parent picked as Hatchling, whose puzzle of four pieces

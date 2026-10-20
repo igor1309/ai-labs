@@ -1,12 +1,14 @@
 import { House, RotateCcw, Star, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { LevelBadge } from "./LevelBadge.tsx";
 import { LevelSwitch, type LevelSwitchProps } from "./LevelSwitch.tsx";
+import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, PictureImage, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
@@ -79,6 +81,7 @@ export function DigRevealScreen({
   onHome,
   onFieldGuide
 }: DigRevealScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const timing = reducedMotion ? "reduced" : "motion";
   // Missing rewards leave time before the name, keeping visible parts
@@ -87,8 +90,7 @@ export function DigRevealScreen({
   const arrival = () => motion({ "--reveal-part": part++ });
   const result = useRef<HTMLElement>(null);
   // A reveal that mounts with its last item arrived, as given back from
-  // the FIELD GUIDE, shows its parts at once; a turn of the iPad lands
-  // it anew, so it arrives again.
+  // the FIELD GUIDE, shows its parts at once.
   const [arrived] = useState<boolean>(landed);
   const [phase, setPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<LevelOfferProps | null>(null);
@@ -96,9 +98,10 @@ export function DigRevealScreen({
   const latestOffer = useRef(offer);
   latestOffer.current = offer;
   const hasOffer = Boolean(offer);
-  // Rotation remounts the reveal and restarts its animation, so only this
-  // mounted reveal can say when its displayed parts have arrived.
+  // The reward must be visible for its full landing wait before it takes
+  // taps. Covering it cancels that wait, including a queued callback.
   useEffect(() => {
+    if (gateShown) return;
     let active = true;
     const stop = startTimer(landingWait, () => {
       if (active) onLanded(true);
@@ -108,19 +111,19 @@ export function DigRevealScreen({
       stop();
       onLanded(false);
     };
-  }, [startTimer, landingWait, onLanded]);
+  }, [startTimer, landingWait, onLanded, gateShown]);
   useEffect(() => {
-    if (!landed || phase !== "waiting" || !hasOffer || !result.current) return;
+    if (gateShown || !landed || phase !== "waiting" || !hasOffer || !result.current) return;
     const rewards = [...result.current.querySelectorAll(".dig-card-star, .celebration")];
     return afterResultAnimations(rewards, startTimer, () => {
       if (!latestOffer.current) return;
       setShownOffer(latestOffer.current);
       setPhase("shown");
     });
-  }, [landed, phase, startTimer, hasOffer]);
+  }, [landed, phase, startTimer, hasOffer, gateShown]);
   useEffect(() => {
-    if (phase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
-  }, [phase]);
+    if (!gateShown && phase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
+  }, [phase, gateShown]);
   return (
     <>
       <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined} data-arrived={arrived || undefined}
@@ -160,14 +163,14 @@ export function DigRevealScreen({
             <div className="dig-reveal-ways" inert={!landed || blocked}>
               <div className="dig-reveal-level" style={arrival()}><LevelSwitch language={language} level={level} onLevel={onLevel} disabled={!landed || blocked} /></div>
               <nav className="result-actions">
-                <button type="button" className="play-again-button" style={arrival()} disabled={!landed || blocked} onClick={onDigAgain}>
+                <Button className="play-again-button" style={arrival()} disabled={!landed || blocked} onClick={onDigAgain}>
                   <RotateCcw size={28} aria-hidden="true" />
                   {text.digAgain}
-                </button>
-                <button type="button" className="home-button" style={arrival()} disabled={!landed || blocked} onClick={onHome}>
+                </Button>
+                <Button className="home-button" style={arrival()} disabled={!landed || blocked} onClick={onHome}>
                   <House size={28} aria-hidden="true" />
                   {text.home}
-                </button>
+                </Button>
               </nav>
             </div>
           </section>
