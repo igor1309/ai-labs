@@ -1,5 +1,6 @@
 import { ArrowRight, Bone, Landmark, Lightbulb, Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -120,14 +121,14 @@ export function SkeletonResultScreen({
             </p>
           )}
           <nav className="skeleton-actions">
-            <button type="button" className="skeleton-build-another" onClick={onBuildAnother}>
+            <Button className="skeleton-build-another" onClick={onBuildAnother}>
               <Bone size={28} aria-hidden="true" />
               {text.buildAnother}
-            </button>
-            <button type="button" className="home-button museum-button skeleton-museum" onClick={onMuseum}>
+            </Button>
+            <Button className="home-button museum-button skeleton-museum" onClick={onMuseum}>
               <Landmark size={28} aria-hidden="true" />
               {text.museum}
-            </button>
+            </Button>
           </nav>
         </section>
       </div>

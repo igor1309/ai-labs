@@ -482,7 +482,7 @@ describe("tapping", () => {
     const opened = openBoard(sorting);
     const before = document.body.innerHTML;
 
-    await user.click(basketButton("horns"));
+    await user.pointer({ keys: "[TouchA]", target: basketButton("horns") });
 
     expect(opened.seen).toEqual([sorting]);
     expect(document.body.innerHTML).toBe(before);

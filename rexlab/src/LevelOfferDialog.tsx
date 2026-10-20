@@ -2,6 +2,7 @@ import { Check, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
@@ -59,12 +60,12 @@ export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, 
         <span className="pairs-offer-picture" aria-hidden="true">{AGE_LEVEL_PICTURES[offer.level]}</span>
         <h2 id={title} className="pairs-offer-question">{text.levelOffer.question(text.ageLevels[offer.level].name)}</h2>
         <div className="pairs-offer-answers">
-          <button type="button" className="pairs-offer-yes" disabled={leaving} onClick={() => onAnswer("yes")}>
+          <Button className="pairs-offer-yes" disabled={leaving} onClick={() => onAnswer("yes")}>
             <Check size={30} aria-hidden="true" />{text.levelOffer.yes}
-          </button>
-          <button type="button" className="pairs-offer-not-now" disabled={leaving} onClick={() => onAnswer("not-now")}>
+          </Button>
+          <Button className="pairs-offer-not-now" disabled={leaving} onClick={() => onAnswer("not-now")}>
             <X size={30} aria-hidden="true" />{text.levelOffer.notNow}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

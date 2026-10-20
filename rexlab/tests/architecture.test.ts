@@ -60,6 +60,7 @@ const SCREENS = [
 const PRESENTATION = [
   ...SCREENS,
   "ageLevelPictures.ts",
+  "Button.tsx",
   "DietTag.tsx",
   "DigBar.tsx",
   "Festivity.tsx",

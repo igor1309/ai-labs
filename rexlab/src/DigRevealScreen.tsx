@@ -1,5 +1,6 @@
 import { House, RotateCcw, Star, Trophy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "./Button.tsx";
 import { DigBar } from "./DigBar.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
@@ -139,14 +140,14 @@ export function DigRevealScreen({
             <div className="dig-reveal-ways" inert={!landed || blocked}>
               <LevelSwitch language={language} level={level} onLevel={onLevel} disabled={!landed || blocked} />
               <nav className="result-actions">
-                <button type="button" className="play-again-button" disabled={!landed || blocked} onClick={onDigAgain}>
+                <Button className="play-again-button" disabled={!landed || blocked} onClick={onDigAgain}>
                   <RotateCcw size={28} aria-hidden="true" />
                   {text.digAgain}
-                </button>
-                <button type="button" className="home-button" disabled={!landed || blocked} onClick={onHome}>
+                </Button>
+                <Button className="home-button" disabled={!landed || blocked} onClick={onHome}>
                   <House size={28} aria-hidden="true" />
                   {text.home}
-                </button>
+                </Button>
               </nav>
             </div>
           </section>

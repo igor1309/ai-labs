@@ -196,3 +196,20 @@ describe.each([false, true])("the parents' menus, with reduced motion %s", (redu
     expect([menu, leaving(), menu.getAttribute("aria-hidden"), exitsRunning(pictures)]).toEqual([list(), false, null, 0]);
   });
 });
+
+// window-fit.feature: "Escape closes a menu".
+describe("the parents' menus, on a keyboard", () => {
+  it.each(Object.values(MENUS))("close the %s menu on Escape, back on its button, with the home page under it where it was", async (label) => {
+    const { user } = openHomeApp();
+    const page = document.querySelector("main");
+    const tiles = partOf(".games-tiles");
+    tiles.scrollLeft = 240;
+
+    await openMenu(user, label);
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: label }));
+    expect([document.querySelector("main"), partOf(".games-tiles"), tiles.scrollLeft]).toEqual([page, tiles, 240]);
+  });
+});

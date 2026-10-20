@@ -1,12 +1,12 @@
 import { Copy, House, Ruler, Weight } from "lucide-react";
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import { FoodChips, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SharedPicture } from "./SharedPicture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 // The cards in a row of the catalogue.
 const COLUMNS = 4;
@@ -54,10 +54,10 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, returning, o
     <main className="catalogue" aria-label={text.catalogue}>
       {/* HOME and the chips in one row, the cards under it. */}
       <header className="catalogue-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
         <FoodChips language={language} choices={foods} chosen={food} onChoose={onFood} />
       </header>
       {/* The cards rise in when the catalogue opens from home, and again
@@ -82,17 +82,14 @@ type CatalogueCardProps = {
 };
 
 function CatalogueCard({ view: { id, name, picture, height, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
-  const pointer = usePointerState();
   const text = TEXTS[language];
   return (
-    <button
-      type="button"
+    <Button
       className="card catalogue-card"
       aria-label={name}
       data-id={id}
       style={{ "--card": place } as CSSProperties}
       onClick={() => onOpen(id)}
-      {...pointer}
     >
       <span className="catalogue-art">
         <SharedPicture id={id}>
@@ -113,6 +110,6 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet }, langua
           <DietTag diet={diet} language={language} size="small" />
         </span>
       </span>
-    </button>
+    </Button>
   );
 }

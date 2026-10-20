@@ -285,9 +285,23 @@ body {
 button {
   font: inherit;
   color: inherit;
-  cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: filter var(--motion-small) var(--ease-out);
+}
+
+/* Whatever can be pressed brightens under a hovering pointer. Button.tsx
+   marks it from the pointer's own kind, never :hover, which a finger
+   leaves behind after it lifts, also on an iPad with a trackpad. */
+button[data-hovered] {
+  filter: brightness(1.12);
+}
+
+/* The hand shows only to a pointer that can hover, over what responds. */
+@media (hover: hover) and (pointer: fine) {
+  button:enabled:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 /* A picture is never dragged out, selected or offered to share: a long
@@ -306,10 +320,6 @@ img {
     filter var(--motion-small) var(--ease-out),
     opacity var(--motion-standard) var(--ease-out),
     transform var(--motion-small) var(--ease-out);
-}
-
-.card[data-hovered] {
-  filter: brightness(1.12);
 }
 
 .card[data-pressed] {
@@ -1698,7 +1708,8 @@ body:has(.result) #version {
     background-color var(--motion-standard) var(--ease-out),
     color var(--motion-standard) var(--ease-out),
     outline-color var(--motion-standard) var(--ease-out),
-    box-shadow var(--motion-standard) var(--ease-out);
+    box-shadow var(--motion-standard) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
 }
 
 .food-chip-face {
@@ -3242,10 +3253,6 @@ body:has(.result) #version {
   background: #e6e2d9;
 }
 
-.tray-item:disabled {
-  cursor: default;
-}
-
 .tray[data-busy] .tray-item,
 .tray-item[data-refused] {
   opacity: 0.5;
@@ -3773,7 +3780,9 @@ body:has(.result) #version {
   outline-offset: -1px;
   background: #e6e2d9;
   text-align: left;
-  transition: outline var(--motion-small) var(--ease-out);
+  transition:
+    outline var(--motion-small) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
   animation: rise-in var(--motion-screen) var(--ease-out) calc((var(--basket) + 6) * var(--motion-stagger)) backwards;
 }
 
@@ -4227,7 +4236,8 @@ body:has(.result) #version {
   white-space: nowrap;
   transition:
     color var(--motion-standard) var(--ease-out),
-    background-color var(--motion-standard) var(--ease-out);
+    background-color var(--motion-standard) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
 }
 
 .level-switch-level[aria-pressed="true"] {
@@ -5097,7 +5107,9 @@ body:has(.result) #version {
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: opacity var(--motion-standard) var(--ease-out);
+  transition:
+    opacity var(--motion-standard) var(--ease-out),
+    filter var(--motion-small) var(--ease-out);
 }
 
 .dig-choice-card[data-rejected] {

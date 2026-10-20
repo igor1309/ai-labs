@@ -1,5 +1,6 @@
 import { Brush, House } from "lucide-react";
 import type { ReactNode } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -11,10 +12,10 @@ export function DigBar({ language, title, onHome, children }: { language: Langua
   return (
     <header className="dig-bar">
       {onHome && (
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
       )}
       <h1 className="dig-title">
         <span className="dig-mark" aria-hidden="true">

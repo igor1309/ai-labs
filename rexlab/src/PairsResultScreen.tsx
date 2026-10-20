@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import { useGateShown } from "./OrientationGate.tsx";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { afterResultAnimations } from "./resultAnimation.ts";
@@ -136,18 +137,18 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
             </p>
           )}
           <nav className="result-actions">
-            <button type="button" className="play-again-button" disabled={blocked} onClick={onPlayAgain}>
+            <Button className="play-again-button" disabled={blocked} onClick={onPlayAgain}>
               <RotateCcw size={28} aria-hidden="true" />
               {text.playAgain}
-            </button>
-            <button type="button" className="home-button" disabled={blocked} onClick={onBack}>
+            </Button>
+            <Button className="home-button" disabled={blocked} onClick={onBack}>
               <ArrowLeft size={28} aria-hidden="true" />
               {text.back}
-            </button>
-            <button type="button" className="home-button" disabled={blocked} onClick={onHome}>
+            </Button>
+            <Button className="home-button" disabled={blocked} onClick={onHome}>
               <House size={28} aria-hidden="true" />
               {text.home}
-            </button>
+            </Button>
           </nav>
         </div>
       </main>

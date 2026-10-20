@@ -1,10 +1,10 @@
 import { ChartNoAxesColumnIncreasing, Copy, Footprints, House, Play, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
-import { usePointerState } from "./usePointerState.ts";
 
 export type PairsWelcomeScreenProps = {
   language: Language;
@@ -23,7 +23,6 @@ export type PairsWelcomeScreenProps = {
 
 export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPicture, onLevel, onPlay, onHome }: PairsWelcomeScreenProps) {
   const text = TEXTS[language];
-  const playPointer = usePointerState();
   // Only Hatchling climbs: at the other levels the climb level folds away,
   // kept in place so that it can unfold again.
   const climbing = level === "hatchling";
@@ -31,10 +30,10 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
     <main className="pairs-welcome">
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="pairs-welcome-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
-        </button>
+        </Button>
       </header>
       <div className="pairs-welcome-body">
         {/* A face-down card, and the dinosaur's picture matched to its
@@ -72,10 +71,10 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
             </p>
           </div>
           <LevelSwitch language={language} level={level} onLevel={onLevel} />
-          <button type="button" className="card pairs-play-button" onClick={onPlay} {...playPointer}>
+          <Button className="card pairs-play-button" onClick={onPlay}>
             <Play size={44} aria-hidden="true" />
             {text.play}
-          </button>
+          </Button>
         </div>
       </div>
     </main>

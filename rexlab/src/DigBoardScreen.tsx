@@ -1,6 +1,7 @@
 import { Sparkles, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
@@ -379,10 +380,10 @@ export function DigBoardScreen({
         {asks && !choice && <div className="dig-choice-cards" aria-hidden="true" />}
         {choice && <div className="dig-choice-cards" data-motion={grains || undefined} role="group" aria-label={text.whoIsIt}>
           {choices.map((card, at) => (
-            <button key={card.id} type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
+            <Button key={card.id} className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
               disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}`} onClick={() => onPick?.(card.id)}>
               <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
-            </button>
+            </Button>
           ))}
         </div>}
       </div>
