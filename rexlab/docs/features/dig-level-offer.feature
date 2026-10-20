@@ -56,10 +56,10 @@ Feature: Dig: the offer of the next age level
     When I finish 10 rounds, naming each dinosaur at the first pick
     Then I never see an offer
 
-  Scenario: The offer comes after the reveal's star
+  Scenario: The offer comes after the reveal's arrivals
     Given my third strong Hatchling round digs up a new dinosaur
     When the reveal shows
-    Then the star flies onto the "DUG UP" card and the celebration plays before the offer rises
+    Then the card's star is already in place and the celebration, level switch and buttons arrive before the offer rises
 
   Scenario Outline: An offer left unanswered is turned down
     Given I see the offer of the Explorer level on a Hatchling reveal

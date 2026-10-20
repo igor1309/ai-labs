@@ -48,7 +48,8 @@ Feature: Dig: starting a round and the board
   Scenario: The sand covers the whole picture at the start
     When a round starts
     Then no part of the dinosaur shows through the sand
-    And the sand fades in with the shared motion tokens, or appears with a short fade under reduced motion
+    And the whole board drops from above and settles, with grains puffing off its bottom edge
+    And with reduced motion it only fades in, with no puff
 
   Scenario Outline: A quick double tap starts one round
     Given I am on <screen>

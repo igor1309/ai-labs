@@ -1,13 +1,13 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
-import { DigBoardScreen } from "../src/DigBoardScreen.tsx";
+import { DigBoardScreen, type SandMark } from "../src/DigBoardScreen.tsx";
 import { BRUSH_SIZES, brushRound, startRound } from "../src/dig/index.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
-import { board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
+import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
 import { SHIPPED_DIG, fakeBodyPicture, homeTile, manualPictures, memoryStorage } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
@@ -58,6 +58,55 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
+  it.each([false, true])("centres the reserved-size board, then slides it beside cards staggered 60 ms, reduced motion %s", (reducedMotion) => {
+    openRound(level, { reducedMotion });
+    const before = getComputedStyle(board());
+    const size = [before.width, before.height, before.aspectRatio];
+    expect(before.transform).toBe(reducedMotion ? "none" : "translateX(calc(114px * var(--motion-amount)))");
+    expect(before.transition).toBe("transform var(--motion-screen) var(--ease-out)");
+    brushUntilAsked();
+    const after = getComputedStyle(board());
+    expect([after.width, after.height, after.aspectRatio]).toEqual(size);
+    expect(after.transform).toBe("none");
+    const stagger = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--motion-stagger")) * 1.5;
+    expect(stagger).toBe(60);
+    expect(choices()).toHaveLength(offered[level].length);
+    for (const [at, card] of choices().entries()) {
+      const style = getComputedStyle(card);
+      expect(style.getPropertyValue("--choice")).toBe(String(at));
+      expect(style.animation).toBe(reducedMotion
+        ? "fade-in var(--motion-small) var(--ease-out) both"
+        : "slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both");
+      if (!reducedMotion) expect(Number(style.getPropertyValue("--choice")) * stagger).toBe(at * 60);
+    }
+  });
+
+  it.each([false, true])("reports consecutive held brush moves in frame coordinates as the question slides the board, reduced motion %s", (reducedMotion) => {
+    const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
+    const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
+    const marks: SandMark[] = [];
+    const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture)}
+      level={level} brush={BRUSH_SIZES[level]} grains={!reducedMotion}
+      dugUp={0} total={SHIPPED_DIG.length} sandContext={() => null}
+      onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
+    const view = render(draw(started), withPictures);
+    placeBoard(800);
+    pressAt(board(), 0, { x: 286, y: 300, pointer: 9 });
+    view.rerender(draw(asked));
+    expect(choices()).toHaveLength(offered[level].length);
+    const slid = { left: -114, top: 0, x: -114, y: 0, width: 800, height: 600, right: 686, bottom: 600, toJSON: () => ({}) };
+    board().getBoundingClientRect = () => slid as DOMRect;
+    moveAt(10, { x: 286, y: 300, pointer: 9 });
+    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("50%");
+    moveAt(20, { x: 306, y: 310, pointer: 9 });
+    expect(marks).toEqual([
+      { from: { x: 286, y: 300 }, to: { x: 286, y: 300 }, radius: 18 },
+      { from: { x: 286, y: 300 }, to: { x: 400, y: 300 }, radius: 18 },
+      { from: { x: 400, y: 300 }, to: { x: 420, y: 310 }, radius: 18 }
+    ]);
+    releaseAt(window, 30, { x: 306, y: 310, pointer: 9 });
+  });
+
   it.each([false, true])("goes on brushing while it asks, even the stroke held down as it came, reduced motion %s", (reducedMotion) => {
     const app = openRound(level, { reducedMotion });
     let time = 0;
@@ -67,12 +116,18 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
       moveAt((time += 10), { x: 0, y: y + 20, pointer: 9 });
     }
     expect(choices()).toHaveLength(offered[level].length);
-    expect(getComputedStyle(column()!).animation).toContain(reducedMotion ? "fade-in" : "rise-in");
+    expect(getComputedStyle(choices()[0]!).animation).toContain(reducedMotion ? "fade-in" : "slide-in");
     const before = cleared();
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
     expect(board().querySelector(".dig-brush")).not.toBeNull();
-    releaseAt(window, (time += 10), { x: 800, y: 590, pointer: 9 });
+    // The board slides 114px left under the held finger; the brush stays
+    // under it.
+    const slid = { left: -114, top: 0, x: -114, y: 0, width: 800, height: 600, right: 686, bottom: 600, toJSON: () => ({}) };
+    board().getBoundingClientRect = () => slid as DOMRect;
+    moveAt((time += 10), { x: 286, y: 300, pointer: 9 });
+    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("50%");
+    releaseAt(window, (time += 10), { x: 286, y: 300, pointer: 9 });
     brushAll();
     expect([cleared(), board().hasAttribute("data-blown"), choices().length]).toEqual([1, false, offered[level].length]);
     // Digging is recorded only at the gust.
@@ -101,7 +156,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(saved(app.storage).badges).toEqual([]);
     const timing = reducedMotion ? "reduced" : "motion";
     expect(app.timers.timers()).toEqual([GUST[timing]]);
-    act(() => app.timers.fire(GUST[timing]));
+    finishBoard(app.timers, timing);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(reward().textContent).toContain(`1/${SHIPPED_DIG.length}`);
     expect(badge()).toBeNull();
@@ -112,7 +167,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const first = openRound(level, { storage });
     digUp();
     expect(saved(storage).badges).toEqual(["tyrannosaurus"]);
-    act(() => first.timers.fire(GUST.motion));
+    finishBoard(first.timers);
     expect(badge()).not.toBeNull();
     expect(reward().querySelector(".level-badge")).not.toBeNull();
     first.unmount();
@@ -120,7 +175,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     brushAll();
     fireEvent.click(wrongCards()[0]!);
     fireEvent.click(choiceCard());
-    act(() => later.timers.fire(GUST.motion));
+    finishBoard(later.timers);
     expect(badge()).not.toBeNull();
     expect(saved(storage).badges).toEqual(["tyrannosaurus"]);
     act(() => later.timers.fire(STAR_LANDS.motion));
@@ -142,7 +197,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(choiceCard("velociraptor").disabled).toBe(true);
     fireEvent.click(choiceCard("tyrannosaurus"));
     expect(board().hasAttribute("data-blown")).toBe(true);
-    act(() => app.timers.fire(GUST.motion));
+    finishBoard(app.timers);
     expect(reward().textContent).toContain(`1/${SHIPPED_DIG.length}`);
   });
 });
@@ -174,7 +229,7 @@ describe("Hatchling", () => {
       expect(choices()).toEqual([]);
     }
     expect([last < 0.95, cleared() >= 0.95, title()]).toEqual([true, true, "DIG"]);
-    act(() => app.timers.fire(GUST.motion));
+    finishBoard(app.timers);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
   });
 });

@@ -8,7 +8,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { GUST, STAR_LANDS } from "../src/digGame.tsx";
+import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import { HELP_AFTER } from "../src/skeletons/index.ts";
 import type { Theme } from "../src/theme.ts";
@@ -27,6 +27,7 @@ import {
   OVERLAYS,
   PALETTE,
   SHIPPED_CATALOGUE,
+  SHIPPED_DIG,
   SHIPPED_DINOSAURS,
   SHIPPED_PALS,
   contrast,
@@ -441,7 +442,7 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
 }
 
 // The dig game's board under all its sand, with the brush held down on
-// it among its grains, as the gust blows, then the reveal with its first
+// it among its grains, through the gust, lift and count, then the reveal with its first
 // best, and the home page with the dinosaur dug up.
 async function dig({ theme, user, timers }: Walk) {
   await user.click(screen.getByRole("button", { name: "DIG" }));
@@ -456,6 +457,13 @@ async function dig({ theme, user, timers }: Walk) {
   expect(sandBoard().getAttribute("data-blown")).toBe("true");
   expectScreenIn(theme);
   act(() => timers.fire(GUST.motion));
+  expect(sandBoard().hasAttribute("data-lifting")).toBe(true);
+  expect(document.querySelector(".dig-board-star")).not.toBeNull();
+  expectScreenIn(theme);
+  act(() => timers.fire(LIFT.motion));
+  expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+  expectScreenIn(theme);
+  act(() => timers.fire(COUNT_SETTLE.motion));
   expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   expectScreenIn(theme);
   act(() => timers.fire(STAR_LANDS.motion));

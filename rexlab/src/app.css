@@ -207,6 +207,16 @@
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* The board gives way to the reveal, whose parts animate in the live
+   screen. Its snapshot adds no second entrance over those arrivals. */
+::view-transition-old(.dig-reveal-change) {
+  animation: slide-out var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-new(.dig-reveal-change) {
+  animation: none;
+}
+
 /* The card's picture grows into the page's, and back. The two pictures
    are boxes of different shapes, so each is fitted whole inside the box
    as it changes. */
@@ -4828,11 +4838,12 @@ body:has(.result) #version {
 }
 
 /* The board keeps the picture's frame, as large as the screen leaves it.
-   It fades in whole, so the dinosaur never shows before the sand covers
-   it, and a finger on it only brushes. */
+   It drops in whole, so the dinosaur never shows before the sand covers
+   it, and a finger on it only brushes. Its surface clips the sand; the
+   board itself lets the grains of its landing escape. */
 .dig-board {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: var(--frame-width) / var(--frame-height);
   height: 100%;
   max-width: 100%;
@@ -4841,7 +4852,47 @@ body:has(.result) #version {
   outline-offset: -2px;
   background: #fffdf8;
   touch-action: none;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  animation: none;
+  transition: transform var(--motion-screen) var(--ease-out);
+}
+
+.dig-board:not([data-lifting]) {
+  animation: fade-in var(--dig-drop) var(--ease-out) both;
+}
+
+.dig-screen[data-motion] .dig-board:not([data-lifting]) {
+  animation-name: dig-drop;
+}
+
+@keyframes dig-drop {
+  from {
+    opacity: 0;
+    translate: 0 calc(-100dvh * var(--motion-amount));
+  }
+  75% {
+    opacity: 1;
+    translate: 0 calc(8px * var(--motion-amount));
+  }
+  to {
+    translate: 0 calc(0px * var(--motion-amount));
+  }
+}
+
+.dig-board-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.dig-landing {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+}
+
+.dig-landing .dig-grain {
+  animation-delay: calc(var(--dig-drop) * 0.75);
 }
 
 .dig-bed,
@@ -4863,11 +4914,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* A round that asks who it is keeps an empty column beside the board for
-   the choices from the start, so the board neither shrinks nor moves when
-   they come: as wide as the screen leaves it next to the column, and no
-   taller than the body. Paleontologist's four cards stack in the same
-   column. */
+/* The column reserves 228px including its gap. Half of that offset
+   centres the board until the question, without changing its size. */
 .dig-body[data-asks] {
   gap: 28px;
 }
@@ -4880,6 +4928,10 @@ body:has(.result) #version {
   max-height: 100%;
 }
 
+.dig-screen[data-motion] .dig-body[data-asks]:not([data-choice]) .dig-board {
+  transform: translateX(calc(114px * var(--motion-amount)));
+}
+
 .dig-choice-cards {
   flex: 0 0 200px;
   align-self: stretch;
@@ -4888,11 +4940,6 @@ body:has(.result) #version {
   flex-direction: column;
   justify-content: center;
   gap: 16px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-choice-cards[data-motion] {
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
 .dig-choice-card {
@@ -4904,6 +4951,11 @@ body:has(.result) #version {
   border-radius: 22px;
   background: #fffdf8;
   transition: opacity var(--motion-standard) var(--ease-out);
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-choice-cards[data-motion] .dig-choice-card {
+  animation: slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
 }
 
 .dig-choice-card[data-rejected] {
@@ -5016,8 +5068,8 @@ body:has(.result) #version {
 
 /* The gust blows the sand left over off to the side; with reduced motion
    it only fades. */
-.dig-board[data-blown] .dig-sand {
-  animation: dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both;
+.dig-board[data-blown]:not([data-lifting]) .dig-sand {
+  animation: dig-gust var(--dig-gust) var(--ease-out) both;
 }
 
 @keyframes dig-gust {
@@ -5025,6 +5077,58 @@ body:has(.result) #version {
     opacity: 0;
     translate: calc(110% * var(--motion-amount)) 0;
   }
+}
+
+.dig-board[data-lifting] .dig-picture {
+  animation: dig-lift var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-lift {
+  from {
+    opacity: 1;
+  }
+  to {
+    translate: 0 calc(-24px * var(--motion-amount));
+    scale: calc(1 + 0.04 * var(--motion-amount));
+    filter: drop-shadow(0 0 calc(24px * var(--motion-amount)) #e39b2d);
+  }
+}
+
+.dig-board-star {
+  position: fixed;
+  z-index: 2;
+  color: #e39b2d;
+  fill: currentColor;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: dig-board-star var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-board-star {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--star-x) * var(--motion-amount)), calc(var(--star-y) * var(--motion-amount))) scale(calc(1 + var(--motion-amount)));
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount)));
+  }
+}
+
+.dig-chip[data-counted] span {
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+  animation: fade-out var(--dig-gust) var(--ease-out) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-lifting] .dig-picture,
+.dig-screen:not([data-motion]) .dig-board-star {
+  animation: fade-in var(--dig-lift) var(--ease-out) both;
 }
 
 /* The brush, a ring the width it brushes, under the finger. */
@@ -5092,13 +5196,44 @@ body:has(.result) #version {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fade-in var(--dig-reveal-duration) var(--ease-out) both;
+}
+
+.dig-reveal-screen[data-motion] .dig-reveal-art {
+  animation-name: dig-reveal-glide;
+}
+
+@keyframes dig-reveal-glide {
+  from {
+    opacity: 0;
+    translate: calc(24px * var(--motion-amount)) 0;
+  }
 }
 
 .dig-reveal-picture {
   width: 100%;
   max-height: 100%;
   object-fit: contain;
-  animation: grow-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-reveal-name,
+.dig-card,
+.dig-reveal-celebration,
+.dig-reveal-level,
+.dig-reveal-screen .result-actions > button {
+  animation: fade-in var(--dig-reveal-duration) var(--ease-out) calc(var(--reveal-part) * var(--dig-reveal-stagger)) both;
+}
+
+.dig-reveal-screen[data-motion] .dig-reveal-name,
+.dig-reveal-screen[data-motion] .dig-card,
+.dig-reveal-screen[data-motion] .dig-reveal-celebration,
+.dig-reveal-screen[data-motion] .dig-reveal-level,
+.dig-reveal-screen[data-motion] .result-actions > button {
+  animation-name: rise-in;
+}
+
+.dig-reveal-level {
+  align-self: stretch;
 }
 
 /* As wide as the level switch needs for every level's name on one line,
@@ -5171,33 +5306,14 @@ body:has(.result) #version {
   display: grid;
 }
 
-/* A star newly earned flies from the dinosaur onto the card as the
-   reveal settles, and the count and NEW! pop in as it lands; with
-   reduced motion they only fade in. */
-.dig-card[data-new] .dig-card-star {
-  animation: dig-star-flies var(--motion-screen) var(--ease-out) var(--motion-screen) both;
-}
-
-@keyframes dig-star-flies {
-  from {
-    opacity: 0;
-    translate: calc(-280px * var(--motion-amount)) calc(-140px * var(--motion-amount));
-    scale: calc(1 + var(--motion-amount));
-  }
-}
-
-.dig-card[data-new] .dig-card-count,
-.dig-card-new {
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(2 * var(--motion-screen)) both;
-}
-
 .dig-reveal-screen .celebration {
   height: 52px;
   font-size: 22px;
+  animation: none;
 }
 
 /* The level switch above DIG AGAIN and HOME, which take no tap until the
-   star has landed. */
+   last item has arrived. */
 .dig-reveal-ways {
   align-self: stretch;
   display: flex;
@@ -6017,7 +6133,41 @@ body:has(.result) #version {
     --motion-amount: 0;
   }
 
-  .dig-choice-cards[data-motion] {
+  ::view-transition-old(.dig-reveal-change) {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-reveal-screen[data-motion] .dig-reveal-art,
+  .dig-reveal-screen[data-motion] .dig-reveal-name,
+  .dig-reveal-screen[data-motion] .dig-card,
+  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
+  .dig-reveal-screen[data-motion] .dig-reveal-level,
+  .dig-reveal-screen[data-motion] .result-actions > button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-choice-cards[data-motion] .dig-choice-card {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board {
+    transition-property: none;
+  }
+
+  .dig-screen[data-motion] .dig-board:not([data-lifting]) {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 

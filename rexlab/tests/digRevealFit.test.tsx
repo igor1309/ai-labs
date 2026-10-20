@@ -74,6 +74,23 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
       const width = 648;
       expect(width + gap(reveal) + 200).toBeLessThanOrEqual(room.width);
 
+      // The whole 4:3 picture stays in its flexible left column on every
+      // iPad. Its glide uses the gap, never space outside the screen.
+      const art = style(".dig-reveal-art");
+      const picture = style(".dig-reveal-picture");
+      expect([art.flex, art.minWidth, art.height, picture.width, picture.maxHeight, picture.objectFit])
+        .toEqual(["1 1 0px", "0px", "100%", "100%", "100%", "contain"]);
+      for (const [screenWidth, screenHeight] of [[1024, 768], [1133, 744], [1366, 1024]] as const) {
+        const artWidth = screenWidth - horizontal(outer) - width - gap(reveal);
+        const artHeight = screenHeight - vertical(outer) - 48 - gap(outer);
+        expect(artWidth).toBeGreaterThan(0);
+        expect(artHeight).toBeGreaterThan(0);
+        const scale = Math.min(artWidth / 800, artHeight / 600);
+        expect(800 * scale).toBeLessThanOrEqual(artWidth);
+        expect(600 * scale).toBeLessThanOrEqual(artHeight);
+        expect(pixels(outer.paddingLeft) + artWidth + gap(reveal)).toBeLessThanOrEqual(screenWidth - pixels(outer.paddingRight));
+      }
+
       // The name, as large as fits the column, on one line.
       const shown = style(".dig-reveal-name");
       expect(shown.whiteSpace).toBe("nowrap");
