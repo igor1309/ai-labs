@@ -235,7 +235,12 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 	if err != nil {
 		return cli.Result{}, err
 	}
-	runner, err := r.runner(built, id, launch, root, record, reused)
+	budget, _ := read.documents.Budget()
+	var daily *float64
+	if budget.Given {
+		daily = &budget.Value
+	}
+	runner, err := r.runner(built, id, launch, root, record, reused, daily)
 	if err != nil {
 		return cli.Result{}, err
 	}
@@ -255,7 +260,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 // a call taken from reused's calls where it may be;
 // what each step is doing told to the run's events and to record, and each
 // call, as it ends, to record.
-func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reused runstore.Record) (*workflow.Runner, error) {
+func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reused runstore.Record, daily *float64) (*workflow.Runner, error) {
 	watcher, err := watch.New(watch.Timer(r.host.timer))
 	if err != nil {
 		return nil, err
@@ -281,7 +286,9 @@ func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reu
 	if err != nil {
 		return nil, err
 	}
-	steps, err := newStepCalls(resolver, admitter, callers, r.host.clock, built.calls, record)
+	steps, err := newStepCalls(resolver, admitter, callers, r.host.clock, built.calls, record, func() (*call.DailyBudget, []string) {
+		return dailyBudget(r.store, r.host.clock.Now(), daily)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1086,6 +1093,7 @@ type stepCalls struct {
 	clock    clock
 	calls    map[string]plannedCall
 	records  callRecords
+	daily    func() (*call.DailyBudget, []string)
 	reuse    reusable
 	run      string
 	sessions sessionCalls
@@ -1137,7 +1145,7 @@ type callRecords interface {
 	Called(ended endedCall)
 }
 
-func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall, records callRecords) (*stepCalls, error) {
+func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall, records callRecords, daily func() (*call.DailyBudget, []string)) (*stepCalls, error) {
 	switch {
 	case inputs == nil:
 		return nil, errors.New("step calls: no inputs")
@@ -1147,13 +1155,15 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 		return nil, errors.New("step calls: no clock")
 	case records == nil:
 		return nil, errors.New("step calls: no records")
+	case daily == nil:
+		return nil, errors.New("step calls: no daily budget reader")
 	}
 	for _, name := range slices.Sorted(maps.Keys(calls)) {
 		if callers[calls[name].contract] == nil {
 			return nil, fmt.Errorf("step calls: no caller for the step %q, of the contract %q", name, calls[name].contract)
 		}
 	}
-	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records}, nil
+	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records, daily: daily}, nil
 }
 
 func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
@@ -1201,6 +1211,9 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		return s.refused(err.Error(), planned.step.Warnings)
 	}
 	step := planned.step
+	var warnings []string
+	step.DailyBudget, warnings = s.daily()
+	step.Warnings = append(slices.Clone(step.Warnings), warnings...)
 	step.Environment = resolved.Environment
 	for _, input := range ended.inputs {
 		step.Inputs = append(step.Inputs, call.Named{Name: input.name, Text: input.Value})
@@ -1237,7 +1250,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		})
 	}, func(told admit.Facts) { ended.facts = told })
 	if err != nil {
-		return s.refused(err.Error(), planned.step.Warnings)
+		return s.refused(err.Error(), step.Warnings)
 	}
 	ended.sessionCost = called.SessionCost
 	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts, cost: called.SessionCost}, step.Session, called.Session)

@@ -1,6 +1,7 @@
 Feature: Dig: the spots of each dinosaur
-  A spot is a detail on a dinosaur's body picture that Explorer finds
-  and Paleontologist follows as a clue: a round place, its middle and
+  A spot is a detail on a dinosaur's body picture that help shows
+  through the sand and a find celebrates (dig-help.feature), and whose
+  kinds tell look-alikes (dig-question.feature): a round place, its middle and
   radius in the picture's 800 by 600 frame, and its kind. The picture
   is cut into 40 by 30 cells of 20 by 20; a cell is the dinosaur's when
   its picture shows in more than a tenth of it. A spot's cells are the
@@ -35,14 +36,3 @@ Feature: Dig: the spots of each dinosaur
   Scenario: The dinosaur's cells match its picture
     Given the dig data and every dinosaur's body picture
     Then a dinosaur's cell is marked as its own exactly when the picture shows in more than a tenth of it
-
-  Scenario Outline: Each kind has its words and a close-up
-    Given the app is in <language>
-    Then an Explorer find card shows a round close-up of the picture cropped about its spot, with its word under it
-    And a Paleontologist clue card shows the same close-up only once its spot is found (dig-paleontologist.feature)
-    And the words are <words>
-
-    Examples:
-      | language | words                                                                         |
-      | English  | EYE, FOOT, TAIL, CLAW, HORN, PLATE, CREST, SAIL, FRILL, BEAK                  |
-      | Russian  | ГЛАЗ, ЛАПА, ХВОСТ, КОГОТЬ, РОГ, ПЛАСТИНА, ГРЕБЕНЬ, ПАРУС, ВОРОТНИК, КЛЮВ      |

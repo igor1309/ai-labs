@@ -20,17 +20,16 @@ Feature: Dig: pictures that load
 
   Scenario: A round whose picture failed plays to its end
     Given a Hatchling round whose body picture has failed to load
-    When I brush 70% of the dinosaur's cells clear
+    When I brush 95% of the dinosaur's cells clear
     Then the failure look shows beneath the brushed sand, and the gust and the reveal follow as in any round
     And the reveal shows the failure look in the dinosaur's place, its name large, and its star counts
 
-  Scenario: A card's close-up loads as a picture does
-    Given an Explorer round whose body picture is still loading
-    Then each find card's close-up shimmers in its disc, its word under it
-    And once the picture fails, each disc shows the failure look and its spot is found by brushing as any
-    And at Paleontologist a found clue's close-up loads in the same way
+  Scenario: Help's close-up loads as a picture does
+    Given a round whose body picture is still loading
+    When help thins a spot
+    Then the spot's close-up shimmers through the sand, and once the picture fails it shows the failure look
 
   Scenario: A choice card whose picture failed can still be picked
-    Given the choice of three, one card's picture failed to load
+    Given the question shows, one card's picture failed to load
     Then that card shows the failure look and can be tapped as any card
     And it fades if it is not the dinosaur under the sand, and blows the sand away if it is

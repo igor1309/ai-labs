@@ -700,6 +700,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 	home := &layout.Source{Path: "/u/.agister/agents/a.toml", Bytes: []byte("a")}
 	project := &layout.Source{Path: "/r/a/.agister/agents/a.toml", Bytes: []byte("b")}
 	blocks := &layout.Source{Path: "/r/.agister/blocks.yaml", Bytes: []byte("c")}
+	budget := &layout.Source{Path: "/u/.agister/budget.yaml", Bytes: []byte("daily: {cost: 20}")}
 	got := documentsSnapshot(layout.Snapshot{
 		Documents: map[layout.Kind]map[string]layout.Document{
 			layout.Agent: {"a": {Sources: layout.Sources{Home: home, Project: project}}},
@@ -708,6 +709,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 			}}},
 		},
 		Blocks: blocks,
+		Budget: budget,
 	})
 	want := documents.Snapshot{
 		Documents: map[documents.Kind]map[string]documents.Document{
@@ -718,6 +720,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 			documents.Prompt: {"pr": {Problems: []documents.Problem{{Path: "/r/.agister/prompts/pr.txt", Message: `a prompt is a ".md" file`}}}},
 		},
 		Blocks: &documents.Source{Path: blocks.Path, Bytes: blocks.Bytes},
+		Budget: &documents.Source{Path: budget.Path, Bytes: budget.Bytes},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("documents' snapshot\n got %+v\nwant %+v", got, want)

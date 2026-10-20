@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-356: home may set a daily cost budget across runs; calls stop on a
+  spent day, and claude-code turns get no more than remains.
+
 - LAB-336: a call on claude-code is kept to its process's cost limit, and
   a resumed turn's cost is its own, no longer the session's to date.
 

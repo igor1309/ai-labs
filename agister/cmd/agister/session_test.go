@@ -228,7 +228,7 @@ func TestAStepGivenASessionNoCallWentOnInIsRefused(t *testing.T) {
 	}
 	admits := &admissionSpy{}
 	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": &turnSpy{result: call.Result{Status: call.Completed}}},
-		clocktest.NewClock(runStart), map[string]plannedCall{"b": sayCall("x")}, &callsSpy{})
+		clocktest.NewClock(runStart), map[string]plannedCall{"b": sayCall("x")}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}

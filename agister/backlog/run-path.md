@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Backlog: the run path after its first eighteen slices: commands on runs, reaping, the rest of the model runtimes, the other operators, sources and budgets"
+description: "Backlog: the run path after its first nineteen slices: commands on runs, reaping, the rest of the model runtimes, the other operators, sources and budgets"
 ---
 
 # The run path
@@ -25,7 +25,9 @@ definitions with their digests, compared by a reuse; the sixteenth
 ("A definition's bytes") their bytes kept beside the record; the
 seventeenth ("A call's plan") each call's permission plan and
 environment; the eighteenth ("A call's cost") a cost limit kept on
-what a runtime reports, and each turn's own cost. What it
+what a runtime reports, and each turn's own cost; the nineteenth
+("A daily budget") home's budget for a day's spend across runs. What
+it
 leaves out, roughly in the order it is needed:
 
 - **Commands on runs**: other commands on runs than `export`.

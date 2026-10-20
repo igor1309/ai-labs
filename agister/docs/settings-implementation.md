@@ -79,6 +79,8 @@ Snapshot: kind → name → Sources{Home, Repository, Project}
           each slot: {path, bytes}, or absent
           + blocks: the repository layer's blocks.yaml, {path, bytes},
             or absent
+          + budget: the home layer's budget.yaml, {path, bytes}, or
+            absent (run-implementation.md, "A daily budget")
           + file problems, each of its document: a file that cannot be
             read, a file in a wrong place, …
           + layer problems: a layer that cannot be read at all
@@ -408,6 +410,8 @@ Decisions of its reviews, each with its reason:
 | an unknown field, a wrong type, a missing field | 5, type |
 | a reference that reads none of the readable forms, or a root its place may not read; `item` outside a query's `where` | 5, type |
 | a blocks file that is not a list of blocks, each a kind, a name and a reason | 5, type |
+| a budget file in a layer but home's | 1, layout |
+| a budget file that is not a daily cost more than zero | 5, type |
 | a name that reaches no document; a blob no layer holds | 6, resolve, from its source |
 | a blocked document; a block naming no document, a warning | 6, resolve |
 | a binding or a condition that reads what is not there | 6, resolve |

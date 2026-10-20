@@ -5,8 +5,11 @@ Feature: Dig: the brush, and Hatchling's free brushing
   its picture shows, count towards uncovering it. A cell is clear once
   more than half of it has lain under the brush's full width; the soft
   edge is only how the brush looks. At Hatchling the
-  child brushes freely, and once 70% of the dinosaur's cells are clear
-  the rest of the sand blows away in one gust. Taps on the sand go
+  child brushes freely, and once 95% of the dinosaur's cells are clear
+  the rest of the sand blows away in one gust, so the child digs the
+  whole dinosaur but never hunts for its last grains. Explorer and
+  Paleontologist brush the same way, and their gust comes when the
+  dinosaur is named (dig-question.feature). Taps on the sand go
   through the double-tap filter (double-tap.feature); an accepted cost is
   that a stroke begun within 500 ms and 100 px of a tap's release
   brushes nothing. The brush is a component
@@ -20,6 +23,8 @@ Feature: Dig: the brush, and Hatchling's free brushing
     Given a Hatchling round has started
     When I drag a finger across the sand
     Then the sand clears along the finger's path, a soft-edged round brush wide
+    And the hollow's edge is crumbly, with a pale lip of grains around it and the sand's shadow inside
+    And a darker bed of damp sand lies under the dinosaur, so the page never shows through
     And grains puff from the brush as it moves
     And with reduced motion the sand just clears, with no grains
 
@@ -58,7 +63,7 @@ Feature: Dig: the brush, and Hatchling's free brushing
 
   Scenario: The last grains blow away at Hatchling
     Given a Hatchling round has started
-    When I have brushed 70% of the dinosaur's cells clear
+    When I have brushed 95% of the dinosaur's cells clear
     Then the rest of the sand blows off the board in one gust, out to one side
     And with reduced motion the sand fades away instead
     And the reveal follows (dig-reveal.feature)
@@ -66,7 +71,7 @@ Feature: Dig: the brush, and Hatchling's free brushing
   Scenario: Brushing has no wrong place, no timer and no failure
     Given a round at any level has started
     When I brush anywhere, as slowly as I like, or wait without brushing
-    Then nothing scolds, counts down or ends the round
+    Then nothing scolds, counts down or ends the round, and only help comes (dig-help.feature)
 
   Scenario: Only one finger brushes
     Given I am brushing with one finger

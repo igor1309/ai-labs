@@ -5,7 +5,7 @@ Feature: Dig: the reveal and its star
   them, such as "5/42". Each dinosaur dug up for the first time, at any
   level, earns its star once, with the best-score celebrations of the
   other games when the count grows. The 🦴 badge
-  (dig-paleontologist.feature) shows on the same card. Under them stand
+  (dig-question.feature) shows on the same card. Under them stand
   the level switch (dig-level-switch.feature), "DIG AGAIN" with a 🔄
   symbol and "HOME" with a 🏠 symbol.
 

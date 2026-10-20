@@ -65,10 +65,11 @@ describe("the tray's order", () => {
       "tyrannosaurus/head",
       "ribs",
       "backbone",
+      "stegosaurus/back-plates",
       "left-front-leg",
       "right-front-leg",
-      "stegosaurus/back-plates",
       "left-hind-leg",
+      "spinosaurus/back-sail",
       "right-hind-leg",
       "beak"
     ]);

@@ -1382,3 +1382,92 @@ Decisions, each with its reason:
   Codex's cost through `ccusage` stays in the backlog.
 - The facts are the wrapper's, read by the composition as it reads how a
   runtime takes its inputs.
+
+## A daily budget
+
+Home may set a daily budget: what Agister's calls may spend in a day,
+across runs, on what their runtimes report. A call does not start once
+the day's spend has reached it, and a turn is given no more than is
+left of it (ADR-014; ADR-001, invariant 3; LAB-356).
+
+**`settings/layout`** reads home's folder's `budget.yaml`, as it reads
+the repository's `blocks.yaml`: its path and its bytes. A `budget.yaml`
+in the repository's or a project's folder is a problem of its file: "a
+budget belongs to the home folder alone"; one that cannot be read, a
+problem of the home layer naming its path and the read's error.
+
+**`settings/documents`** types it, decoded in YAML: a map whose one
+field `daily` is a map whose one field `cost` is an amount in US
+dollars, more than zero, required. A field no budget knows, a `cost`
+not a number more than zero, or a root not a map is a problem of no
+document, at its line, as a blocks file's is; an empty file is no
+budget.
+
+```yaml
+daily:
+  cost: 20
+```
+
+`agister check` reports its problems with layout's, and `agister run`
+refuses on them, as on any problem of no document.
+
+**`core/call`**'s step is given the day's budget and what the day has
+spent before the call, none where home sets no budget. What is left of
+the day is the budget less the day's spend and the call's known cost
+so far. A call whose day has spent the budget as it starts takes no
+turn, on any runtime: it ends failed, `budget_exhausted`, its reason
+"the daily budget <budget> is spent: <spend>". Each turn is given as its
+budget the least of what is left of
+its cost limit and of the day; a runtime that takes none ignores it.
+No retry at capacity, nor recovery turn, starts once the day's spend
+and the call's known cost reach the budget; the call ends failed,
+`budget_exhausted`, its reason "the daily budget <budget> is spent:
+<spend>", the spend the day's and the call's, the turn at capacity's
+report has no retry and the stale turn's is not recovering. Where both
+the limit and the day are spent, the limit's reason is given.
+
+**The composition** reads the day's spend before each call it makes,
+after a reuse is ruled out and before the call is admitted, and gives
+its step the budget and the spend: the sum of
+the known costs of the calls whose `timing.started` is on the day, by
+the host's clock and its time zone, from midnight, kept in home's runs;
+a call taken by a reuse, or of an unknown cost, spends nothing. Only the
+runs whose id is from midnight of the day before or later are read, the
+run's own among them, its ended calls recorded. A run or a list of runs
+that cannot be read spends nothing, and the call is given the warning
+"the runs could not be read: <error>; they spend nothing of the day".
+It refuses no call itself: a call on a spent day is admitted and made,
+core/call failing it with no turn taken, and is recorded as any call
+core ends; a run of it ends failed, as a failed step ends it. A call
+taken by a reuse is taken on a spent day: it makes nothing.
+
+Decisions, each with its reason:
+
+- A file in home's folder, not a kind: there is one budget, the
+  owner's, and no document refers to it by name. Home alone (ADR-014,
+  rule 1).
+- A call counts on the day it started, by the host's clock in its time
+  zone: the owner's day, as the owner reads it. A run's id is UTC and
+  its calls may start later, so the runs from the day before are read
+  too; a run that started before the day before is not read, and its
+  calls spend nothing of the day.
+- Spend read from the records, not kept apart: the record already holds
+  each call's cost, and it is what the owner would add up.
+- An unknown or reused cost spends nothing (ADR-001, invariant 3): a
+  reused call spent on the day it was made. Records that cannot be
+  read spend nothing as well, with a warning: one bad record must not
+  stop every run.
+- The check in core/call, not the composition: only what core emits is
+  recorded (ADR-001, rule 4). The call is admitted first, its worktree
+  held for no turn: a refusal before admission would be the
+  composition's.
+- Every call stops on a spent day, a call on codex or bash too, though
+  it spends nothing of it: the day is spent, as a run starts no child
+  once its budget is spent (ADR-001, `core/workflow`).
+- Read before each call, not each run: a workflow's later steps stop
+  once its earlier ones spent the day.
+- Best effort: runs that start together, or the steps of a parallel,
+  may all pass the check; each turn is still given what was left, and
+  nothing locks across calls.
+- A call already running is not ended for the day: Agister kills no
+  turn for its cost.
