@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- DIG's brush shows no ring under the finger; the sand clearing under it and its grains are the brush. DIG's home tile shows its sand picture with rounded corners, as the cards around it (LAB-370, LAB-372).
 - After BACK from DIG's FIELD GUIDE, the brush clears sand again and the round goes on to its question, help and gust, even when help's wait ticked as the page opened. The brush's ring springs in under the finger, follows it on a soft spring and shrinks away as it lifts, and its grains toss out on an arc, overshoot a little and settle as they fade; under reduced motion the ring just shows and there are no grains (LAB-369).
 - DIG keeps a found treasure visible at its sandy spot with its name, then carries it along a straight amber trail to the FIELD GUIDE; the longer flight ends with a clear collection pulse, and reduced motion keeps the named find for a short fade before the count updates (LAB-366).
 - About one DIG round in three hides a treasure beside the dinosaur: a shell, tooth or amber, more rarely an egg nest or a golden fossil. Brushed clear, it glows, hops and flies into the 📖 FIELD GUIDE on DIG's bar, whose page shows each kind found with its count and an outline for those still to find (LAB-362).

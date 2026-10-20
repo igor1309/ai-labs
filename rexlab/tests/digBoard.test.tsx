@@ -158,6 +158,8 @@ describe("the dig game's tile", () => {
     const tile = homeTile("DIG");
     expect(symbolOf(tile.querySelector(".dig-tile-symbol") ?? tile)).toBe("brush");
     expect(tile.querySelector(".dig-tile-count")).toBeNull();
+    const picture = getComputedStyle(tile.querySelector(".dig-tile-picture")!);
+    expect([picture.borderRadius, picture.aspectRatio, picture.padding]).toEqual(["16px", "4 / 3", "0"]);
     fireEvent.click(tile);
 
     expect(board().getAttribute("data-blown")).toBeNull();
