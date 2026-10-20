@@ -105,6 +105,7 @@ export const en: Texts = {
   keepBuilding: "CONTINUE",
   dig: "DIG",
   whoIsIt: "WHO IS IT?",
+  digChoice: { right: "THAT'S IT!", tryAnother: "TRY ANOTHER" },
   sand: "SAND",
   dugUp: "DUG UP",
   dugUpNew: "NEW!",

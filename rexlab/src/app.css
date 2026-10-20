@@ -4864,6 +4864,17 @@ body:has(.result) #version {
   outline-offset: -1.5px;
 }
 
+.dig-field-guide-button[data-landed][data-motion] {
+  animation: dig-guide-arrival var(--motion-standard) var(--ease-overshoot) both;
+}
+
+@keyframes dig-guide-arrival {
+  45% {
+    scale: calc(1 + 0.08 * var(--motion-amount));
+    box-shadow: 0 0 0 calc(8px * var(--motion-amount)) #e39b2d33;
+  }
+}
+
 .dig-field-guide-button[data-landed][data-motion] .dig-field-guide-count {
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
 }
@@ -5128,11 +5139,13 @@ body:has(.result) #version {
 }
 
 .dig-choice-card {
+  position: relative;
+  overflow: hidden;
   padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: opacity var(--motion-standard) var(--ease-out);
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
   animation: fade-in var(--motion-small) var(--ease-out) both;
 }
 
@@ -5168,7 +5181,11 @@ body:has(.result) #version {
 }
 
 .dig-choice-card[data-rejected] {
-  opacity: 0.25;
+  border-color: #b83b2b;
+}
+
+.dig-choice-card[data-correct] {
+  border-color: #2e7d4f;
 }
 
 .dig-choice-picture {
@@ -5176,6 +5193,52 @@ body:has(.result) #version {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: grayscale(1);
+  transition: filter var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
+}
+
+.dig-choice-card[data-rejected] .dig-choice-picture {
+  opacity: 0.45;
+}
+
+.dig-choice-card[data-correct] .dig-choice-picture {
+  filter: grayscale(0);
+}
+
+.dig-choice-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px #1d274233;
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-choice-mark-correct {
+  background: #2e7d4f;
+  color: white;
+}
+
+.dig-choice-mark-rejected {
+  top: auto;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  min-height: 34px;
+  padding: 5px 8px;
+  background: #fffdf8;
+  color: #c9583d;
+  font-size: clamp(11px, 1.2vw, 15px);
+  white-space: nowrap;
 }
 
 .dig-spot-picture {
@@ -5320,6 +5383,22 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
+.dig-treasure-name {
+  position: absolute;
+  z-index: 4;
+  translate: -50% 8px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  box-shadow: 0 2px 8px #1d274244;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
 .dig-board[data-blown]:not([data-lifting]) .dig-treasure {
   animation: fade-out var(--dig-gust) var(--ease-out) both;
 }
@@ -5374,6 +5453,44 @@ body:has(.result) #version {
   translate: -50% -50%;
   pointer-events: none;
   animation: dig-treasure-flight calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+/* The amber trail follows the treasure straight to its destination
+   while the treasure travels. */
+.dig-treasure-route {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dig-treasure-route path {
+  fill: none;
+  stroke: #e39b2d;
+  stroke-width: 6px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.75;
+  filter: drop-shadow(0 2px 3px #1d274255);
+  animation: dig-treasure-route calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+@keyframes dig-treasure-route {
+  10% {
+    stroke-dashoffset: calc(1 * var(--motion-amount));
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  to {
+    stroke-dashoffset: calc(0 * var(--motion-amount));
+    opacity: 0.25;
+  }
 }
 
 @keyframes dig-treasure-flight {
@@ -7343,6 +7460,23 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 [data-theme="dark"] .dig-choice-card {
   background: #181e2e;
   border-color: #a4aec7;
+}
+
+[data-theme="dark"] .dig-choice-card[data-rejected] {
+  border-color: #f08a78;
+}
+
+[data-theme="dark"] .dig-choice-card[data-correct] {
+  border-color: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-correct {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-rejected {
+  background: #181e2e;
+  color: #e57a5d;
 }
 
 [data-theme="dark"] .dig-spot-picture {

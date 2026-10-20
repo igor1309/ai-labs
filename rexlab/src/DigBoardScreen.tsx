@@ -16,7 +16,7 @@ export const COUNT_SETTLE = { motion: 160, reduced: 0 };
 // flight, then flies into the FIELD GUIDE; under reduced motion it fades.
 // Each is shorter than the gust and lift together, so a treasure found by
 // the stroke that brings the gust still lands, and is kept, on the board.
-export const TREASURE_FLIGHT = { motion: 960, reduced: 200 };
+export const TREASURE_FLIGHT = { motion: 1250, reduced: 300 };
 
 export type BoardFinish = {
   newStar: boolean;
@@ -80,7 +80,7 @@ export type DigBoardScreenProps = {
   // card for each until the question comes.
   choiceCount: number;
   // The dinosaurs to pick from while the round asks, else none.
-  choices: readonly { id: string; picture: string; rejected: boolean }[];
+  choices: readonly { id: string; picture: string; rejected: boolean; correct: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
@@ -257,6 +257,7 @@ export function DigBoardScreen({
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
   const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
+  const [treasurePath, setTreasurePath] = useState("");
   const inFlight = treasureFlight?.phase === "flying" ? treasureFlight : undefined;
   const treasureFlying = treasure !== undefined && inFlight !== undefined;
   const lifting = finish !== undefined && finish.phase !== "gust";
@@ -342,6 +343,7 @@ export function DigBoardScreen({
       const middleX = from.left + ((treasure.x + treasure.size / 2) * from.width) / frame.width;
       const middleY = from.top + ((treasure.y + treasure.size / 2) * from.height) / frame.height;
       setTreasureWay({ left: x, top: y, width: (treasure.size * from.width) / frame.width, "--treasure-x": `${middleX - x}px`, "--treasure-y": `${middleY - y}px` } as CSSProperties);
+      setTreasurePath(`M ${middleX} ${middleY} L ${x} ${y}`);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -460,6 +462,9 @@ export function DigBoardScreen({
         )}
       </DigBar>
       {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
+      {treasureFlying && grains && treasurePath && <svg className="dig-treasure-route" aria-hidden="true">
+        <path d={treasurePath} pathLength="1" />
+      </svg>}
       {treasureFlying && grains && <span className="dig-treasure-flight" data-kind={treasure.kind} aria-hidden="true" style={treasureWay}>
         <Picture className="dig-treasure-picture" src={treasure.picture} alt="" width={400} height={400} />
       </span>}
@@ -481,6 +486,10 @@ export function DigBoardScreen({
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
+          {treasureFlying && <span className="dig-treasure-name" aria-live="polite"
+            style={{ left: percent((treasure.x + treasure.size / 2) / frame.width), top: percent((treasure.y + treasure.size) / frame.height) }}>
+            {text.treasures[treasure.kind as keyof typeof text.treasures]}
+          </span>}
           <div className="dig-board-surface">
             <canvas ref={bed} className="dig-bed" aria-hidden="true" />
             {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
@@ -531,9 +540,11 @@ export function DigBoardScreen({
             return (
               <div key={at} className="dig-choice-slot" style={{ "--choice": at } as CSSProperties}>
                 <span className="dig-empty-card" aria-hidden="true" data-turned={card ? true : undefined}>?</span>
-                {card && <button type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
-                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}`} onClick={() => onPick?.(card.id)}>
+                {card && <button type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
+                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
+                  {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
+                  {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
                 </button>}
               </div>
             );

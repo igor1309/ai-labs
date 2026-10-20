@@ -33,6 +33,19 @@ const reward = () => screen.getByRole("region", { name: TEXTS.en.dugUp });
 // Tyrannosaurus is under the sand, and its closest look-alikes offered.
 const offered = { explorer: ["tyrannosaurus", "velociraptor", "compsognathus"], paleontologist: ["tyrannosaurus", "velociraptor", "compsognathus", "giganotosaurus"] };
 
+it("marks only the dinosaur under the sand correct in every answer position", () => {
+  const round = startRound(SHIPPED_DIG, [], undefined, () => 0.42, "explorer");
+  const correct = round.dinosaur.id;
+  const distractors = round.choices.filter((id) => id !== correct);
+
+  for (let position = 0; position <= distractors.length; position++) {
+    const choices = [...distractors];
+    choices.splice(position, 0, correct);
+    const presented = presentDigBoard({ ...round, blown: true, choices }, fakeBodyPicture, fakeTreasurePicture);
+    expect(presented.choices.filter((choice) => choice.correct).map((choice) => choice.id)).toEqual([correct]);
+  }
+});
+
 function openRound(level: Level, options: Parameters<typeof openDigApp>[0] = {}) {
   const app = openDigApp({ ageLevel: { level, revision: null }, ...options });
   fireEvent.click(homeTile(TEXTS[options.language ?? "en"].dig));
@@ -62,7 +75,10 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(column()?.getAttribute("aria-hidden")).toBeNull();
     expect(choices().map((card) => card.dataset.choice)).toEqual(offered[level]);
     expect(choices().map((card) => card.getAttribute("aria-label"))).toEqual(offered[level].map((_, at) => `${TEXTS[language].whoIsIt} ${at + 1} / ${offered[level].length}`));
-    for (const card of choices()) expect([pictureOf(card), card.textContent]).toEqual([fakeBodyPicture(card.dataset.choice!), ""]);
+    for (const card of choices()) {
+      expect([pictureOf(card), card.textContent, getComputedStyle(card.querySelector("img")!).filter]).toEqual([fakeBodyPicture(card.dataset.choice!), "", "grayscale(1)"]);
+      expect(card.hasAttribute("data-correct")).toBe(false);
+    }
     expect(document.querySelector("main")?.textContent).not.toMatch(/TYRANNOSAURUS|ТИРАННОЗАВР/);
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
@@ -186,7 +202,9 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     brushUntilAsked();
     const [rejected, other] = wrongCards();
     fireEvent.click(rejected!);
-    expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity]).toEqual([true, true, "0.25"]);
+    expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity,
+      getComputedStyle(rejected!.querySelector("img")!).opacity, rejected!.textContent, rejected!.getAttribute("aria-label")])
+      .toEqual([true, true, "1", "0.45", `↻ ${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt} ${choices().indexOf(rejected!) + 1} / ${choices().length}: ${TEXTS.en.digChoice.tryAnother}`]);
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
@@ -196,6 +214,22 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(choiceCard(rejected!.dataset.choice).disabled).toBe(true);
     fireEvent.click(choiceCard());
     expect(board().hasAttribute("data-blown")).toBe(true);
+    expect(choiceCard().hasAttribute("data-correct")).toBe(true);
+    expect(getComputedStyle(choiceCard().querySelector("img")!).filter).toBe("grayscale(0)");
+    expect(choiceCard().textContent).toBe("✓");
+    expect(choiceCard().getAttribute("aria-label")).toContain(TEXTS.en.digChoice.right);
+    const correctChoice = choiceCard();
+    const currentRejected = choices().find((card) => card.dataset.choice === rejected!.dataset.choice)!;
+    const correctChoices = choices().filter((card) => card.hasAttribute("data-correct"));
+    const rejectedChoices = choices().filter((card) => card.hasAttribute("data-rejected"));
+    const remainingChoices = choices().filter((card) => card.dataset.choice !== correctChoice.dataset.choice && card.dataset.choice !== currentRejected.dataset.choice);
+    expect(correctChoices.map((card) => card.dataset.choice)).toEqual([correctChoice.dataset.choice]);
+    expect(rejectedChoices.map((card) => card.dataset.choice)).toEqual([currentRejected.dataset.choice]);
+    expect(getComputedStyle(correctChoice.querySelector(".dig-choice-mark")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
+    for (const card of remainingChoices) {
+      expect([card.hasAttribute("data-correct"), card.hasAttribute("data-rejected"), getComputedStyle(card.querySelector("img")!).filter, card.textContent])
+        .toEqual([false, false, "grayscale(1)", ""]);
+    }
     expect([title(), choices().length, choices().every((card) => card.disabled)]).toEqual([TEXTS.en.whoIsIt, offered[level].length, true]);
     const before = board().getAttribute("data-clear");
     drag([[0, 590], [800, 590]], 90_000);

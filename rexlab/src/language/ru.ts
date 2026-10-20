@@ -109,6 +109,7 @@ export const ru: Texts = {
   keepBuilding: "ДОСТРОИТЬ",
   dig: "РАСКОПКИ",
   whoIsIt: "КТО ЭТО?",
+  digChoice: { right: "ВЕРНО!", tryAnother: "ВЫБЕРИ ДРУГОГО" },
   sand: "ПЕСОК",
   dugUp: "ОТКОПАНО",
   dugUpNew: "НОВЫЙ!",

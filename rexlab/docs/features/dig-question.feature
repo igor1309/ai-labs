@@ -36,6 +36,7 @@ Feature: Dig: who is it?
     Then the title reads "WHO IS IT?"
     And the <count> empty cards turn over in place, one after another, 60 ms apart, each into a card with a body picture and no name
     And one is the dinosaur under the sand, the others its closest look-alikes, in a random order
+    And every choice picture is desaturated until the child picks an answer
     And the board does not move, and nothing in the column shifts
     And with reduced motion the cards come with a short fade and no turn
 
@@ -52,13 +53,14 @@ Feature: Dig: who is it?
   Scenario: A wrong pick fades and stays out
     Given the question shows
     When I tap a dinosaur that is not the one under the sand
-    Then its card fades and can no longer be tapped, even after the screen turns
-    And I can brush on and pick again from the others
+    Then its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
+    And I can brush on and pick again from the other, still-colourless cards
 
   Scenario: The right pick blows the sand away
     Given the question shows
     When I tap the dinosaur under the sand
-    Then the rest of the sand blows away in one gust, and the board takes no more brushing
+    Then its picture reveals its colour with a green border and a check
+    And the rest of the sand blows away in one gust, and the board takes no more brushing
     And the board stays in its place through the gust and the lift
     And the dinosaur lifts from its damp bed before the reveal (dig-brush.feature, dig-reveal.feature)
 

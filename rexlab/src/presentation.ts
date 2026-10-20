@@ -433,7 +433,12 @@ export function presentDigBoard(round: DigRound, bodyPicture: (dinosaurId: strin
       size: TREASURE_CELLS * width
     },
     spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
-    choices: asking(round) || round.blown ? round.choices.map((id) => ({ id, picture: bodyPicture(id), rejected: round.rejected.includes(id) })) : [],
+    choices: asking(round) || round.blown ? round.choices.map((id) => ({
+      id,
+      picture: bodyPicture(id),
+      rejected: round.rejected.includes(id),
+      correct: round.blown && id === round.dinosaur.id
+    })) : [],
     asks: round.choices.length > 0,
     picture: bodyPicture(round.dinosaur.id),
     frame: FRAME,

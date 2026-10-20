@@ -155,6 +155,7 @@ export type Texts = {
   // of every dinosaur dug up, read out.
   dig: string;
   whoIsIt: string;
+  digChoice: { right: string; tryAnother: string };
   sand: string;
   dugUp: string;
   dugUpNew: string;
