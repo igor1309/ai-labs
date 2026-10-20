@@ -39,6 +39,7 @@ const SCREENS = [
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
   "DigBoardScreen.tsx",
+  "DigFieldGuideScreen.tsx",
   "DigRevealScreen.tsx",
   "DinosaurPage.tsx",
   "FriendsScreen.tsx",

@@ -164,6 +164,11 @@ export type Texts = {
   // the mark by it as the first treasure of a kind lands.
   fieldGuide: string;
   treasureNew: string;
+  // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
+  // found, read out on their count, and each kind's name.
+  treasureCards: string;
+  kindsFound: string;
+  treasures: { shell: string; tooth: string; amber: string; "egg-nest": string; "golden-fossil": string };
 };
 
 // A celebration's label, read out, and its text, shown.

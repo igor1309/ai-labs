@@ -1,13 +1,29 @@
-import { BookOpen, Brush, House } from "lucide-react";
-import type { ReactNode, Ref } from "react";
+import { ArrowLeft, BookOpen, Brush, House, type LucideIcon } from "lucide-react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
-// The bar over every dig screen: HOME, unless the screen has its own, the
-// game's title beside a brush, and anything else the screen shows in the
-// bar after them.
-export function DigBar({ language, title, onHome, children }: { language: Language; title?: string; onHome?: () => void; children?: ReactNode }) {
+// The bar over every dig screen: HOME, unless the screen has its own, BACK
+// where the screen has one, the screen's title beside a brush, or the
+// screen's own symbol, and anything else the screen shows in the bar
+// after them.
+export function DigBar({
+  language,
+  title,
+  Mark = Brush,
+  onHome,
+  onBack,
+  children
+}: {
+  language: Language;
+  title?: string;
+  Mark?: LucideIcon;
+  onHome?: () => void;
+  onBack?: () => void;
+  children?: ReactNode;
+}) {
   const text = TEXTS[language];
+  const words = title ?? text.dig;
   return (
     <header className="dig-bar">
       {onHome && (
@@ -16,11 +32,19 @@ export function DigBar({ language, title, onHome, children }: { language: Langua
           {text.home}
         </button>
       )}
+      {onBack && (
+        <button type="button" className="home-button" onClick={onBack}>
+          <ArrowLeft size={24} aria-hidden="true" />
+          {text.back}
+        </button>
+      )}
       <h1 className="dig-title">
         <span className="dig-mark" aria-hidden="true">
-          <Brush size={28} />
+          <Mark size={28} />
         </span>
-        {title ?? text.dig}
+        <span className="dig-title-words" style={{ "--letters": words.length } as CSSProperties}>
+          {words}
+        </span>
       </h1>
       {children}
     </header>

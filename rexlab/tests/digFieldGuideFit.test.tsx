@@ -1,0 +1,123 @@
+import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
+import { TREASURE_KINDS } from "../src/dig/index.ts";
+import { LANGUAGES, type Language } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
+import { withPictures } from "./pictures.tsx";
+import { fakeTreasurePicture } from "./support.ts";
+
+// jsdom lays nothing out, so the width of each word on the FIELD GUIDE is
+// given here in ems of its face, rounded up: Lexend's for the Latin words,
+// and the iPad's own face for the Cyrillic ones, which Lexend has no
+// letters for. The title and names at their bold, HOME and BACK at their
+// semibold. A word missing here fails the test that reads it.
+const EMS: Record<string, number> = {
+  SHELL: 3.3,
+  TOOTH: 3.8,
+  AMBER: 3.7,
+  EGG: 2.3,
+  NEST: 2.8,
+  GOLDEN: 4.5,
+  FOSSIL: 3.9,
+  РАКУШКА: 5.0,
+  ЗУБ: 2.0,
+  ЯНТАРЬ: 4.0,
+  ГНЕЗДО: 4.1,
+  С: 0.8,
+  ЯЙЦАМИ: 4.5,
+  ЗОЛОТАЯ: 4.9,
+  ОКАМЕНЕЛОСТЬ: 8.4,
+  "FIELD GUIDE": 7.1,
+  "ПОЛЕВОЙ ДНЕВНИК": 10.0,
+  HOME: 3.1,
+  BACK: 2.9,
+  ДОМОЙ: 3.9,
+  НАЗАД: 3.5,
+  "5/5": 1.8
+};
+
+const emsOf = (word: string) => {
+  const ems = EMS[word];
+  if (ems === undefined) throw new Error(`No width for ${word}`);
+  return ems;
+};
+
+const px = (value: string) => Number.parseFloat(value);
+const style = (selector: string) => {
+  const element = document.querySelector(selector);
+  if (!element) throw new Error(`No ${selector}`);
+  return getComputedStyle(element);
+};
+const sides = (s: CSSStyleDeclaration) => px(s.paddingLeft) + px(s.paddingRight) + px(s.borderLeftWidth) + px(s.borderRightWidth);
+
+// A size written as min(<largest>px, 100cqi / <ems>), in the room it is
+// given.
+function sizeIn(written: string, room: number): number {
+  const parts = /^min\((\d+)px, 100cqi ?\/ ?([\d.]+)\)$/.exec(written);
+  if (!parts) throw new Error(`Cannot read the size ${written}`);
+  return Math.min(Number(parts[1]), room / Number(parts[2]));
+}
+
+const IPADS = [[1024, 768], [1133, 744], [1366, 1024]] as const;
+
+function show(language: Language) {
+  const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: 1 }));
+  render(<DigFieldGuideScreen language={language} cards={cards} onBack={() => {}} onHome={() => {}} />, withPictures);
+}
+
+describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
+  it.each(IPADS)("keeps its title on one line beside HOME, BACK and the kinds found, on a %i by %i iPad", (width) => {
+    show(language);
+    const text = TEXTS[language];
+    const outer = style(".dig-screen");
+    const bar = style(".dig-bar");
+    const home = style(".dig-bar .home-button");
+    const chip = style(".dig-kinds-found");
+    const title = style(".dig-field-guide-screen .dig-title-words");
+    const button = (word: string) => px(home.paddingLeft) + 24 + px(home.gap) + emsOf(word) * px(home.fontSize) + px(home.paddingRight);
+    const kinds = px(chip.paddingLeft) + 20 + px(chip.gap) + emsOf("5/5") * px(chip.fontSize) + px(chip.paddingRight);
+    const room = width - px(outer.paddingLeft) - px(outer.paddingRight) - button(text.home) - button(text.back) - kinds - 3 * px(bar.gap);
+    // The book, its gap and the title's letters, at most 0.75 of their size.
+    const mark = px(style(".dig-mark").width) + px(style(".dig-title").gap);
+    expect(title.fontSize).toBe("min(40px, (100cqi - 66px) / (var(--letters) * 0.75))");
+    expect(mark).toBe(66);
+    expect(emsOf(text.fieldGuide)).toBeLessThanOrEqual(text.fieldGuide.length * 0.75);
+    const size = Math.min(40, (room - mark) / (text.fieldGuide.length * 0.75));
+
+    expect([style(".dig-title").whiteSpace, size >= 32]).toEqual(["nowrap", true]);
+    expect(mark + emsOf(text.fieldGuide) * size).toBeLessThanOrEqual(room);
+  });
+
+  it.each(IPADS)("keeps each word of every name whole on its card, at least 16 pixels large, on a %i by %i iPad", (width) => {
+    show(language);
+    const outer = style(".dig-screen");
+    const row = style(".dig-guide-cards");
+    const card = style(".dig-guide-card[data-found]");
+    const inside = (width - px(outer.paddingLeft) - px(outer.paddingRight) - 4 * px(row.gap)) / 5 - sides(card);
+    const size = sizeIn(style(".dig-guide-name").fontSize, inside);
+    const words = TREASURE_KINDS.flatMap((kind) => TEXTS[language].treasures[kind].split(" "));
+
+    expect(size).toBeGreaterThanOrEqual(16);
+    expect(words.filter((word) => emsOf(word) * size > inside)).toEqual([]);
+  });
+
+  it.each(IPADS)("fits a card's picture, two lines of its name and its count, or its outline and ?, in its height, on a %i by %i iPad", (width, height) => {
+    show(language);
+    const outer = style(".dig-screen");
+    const row = style(".dig-guide-cards");
+    const card = style(".dig-guide-card[data-found]");
+    const picture = style(".dig-guide-picture");
+    const name = style(".dig-guide-name");
+    const inside = (width - px(outer.paddingLeft) - px(outer.paddingRight) - 4 * px(row.gap)) / 5 - sides(card);
+    // The bar is as tall as its tallest part, the HOME button.
+    const room = height - px(outer.paddingTop) - px(outer.paddingBottom) - px(style(".dig-bar .home-button").height) - px(outer.gap);
+    const cardHeight = Math.min(px(card.maxHeight), room);
+    const art = Math.min(inside, 180);
+    const found = px(card.paddingTop) + art + 2 * px(card.gap) + 2 * px(name.lineHeight) * sizeIn(name.fontSize, inside) + px(style(".dig-guide-count").fontSize) + px(card.paddingBottom);
+
+    expect([picture.width, picture.aspectRatio, card.maxHeight, card.height]).toEqual(["min(100%, 180px)", "1 / 1", "520px", "100%"]);
+    expect(found).toBeLessThanOrEqual(cardHeight);
+    expect(px(card.paddingTop) + art + px(card.gap) + 64 + px(card.paddingBottom)).toBeLessThanOrEqual(cardHeight);
+  });
+});

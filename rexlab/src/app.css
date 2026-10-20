@@ -4893,6 +4893,97 @@ body:has(.result) #version {
   background: #00000033;
 }
 
+/* The FIELD GUIDE: the treasures found, a card for each kind under a bar
+   with HOME, BACK, the title beside the book and the kinds found. The
+   title's words stay on one line and shrink to the room the bar leaves
+   beside the book: their letters are at most 0.75 of their size wide. */
+.dig-field-guide-screen .dig-title {
+  container-type: inline-size;
+}
+
+.dig-field-guide-screen .dig-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.75));
+}
+
+.dig-kinds-found svg {
+  color: #e39b2d;
+}
+
+/* Five cards in a row, each a fifth of it and as tall as the design's
+   where the screen has the room, rising in one after the other, 60 ms
+   apart. Reduced motion takes the rise and the stagger, leaving one short
+   fade. */
+.dig-guide-cards {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dig-guide-card {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 520px;
+  box-sizing: border-box;
+  padding: 28px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  container-type: inline-size;
+  border: 1px solid #1d27421f;
+  border-radius: 24px;
+  background: #fffdf8;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--card) * var(--motion-stagger) * 1.5) both;
+}
+
+/* A kind not found yet is in the colours of the question's empty cards. */
+.dig-guide-card:not([data-found]) {
+  border-width: 2px;
+  background: #e6e2d9;
+}
+
+.dig-guide-picture,
+.dig-guide-outline {
+  flex-shrink: 0;
+  width: min(100%, 180px);
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+/* The outline is the picture's silhouette in the line's ink, faint. */
+.dig-guide-outline {
+  background: #1d2742;
+  opacity: 0.16;
+  mask: var(--outline) center / contain no-repeat;
+}
+
+/* A name is large, its size the card's width over the longest word's, in
+   ems: ОКАМЕНЕЛОСТЬ's 8.4. A name of two words takes two lines. */
+.dig-guide-name {
+  margin: 0;
+  font-size: min(22px, 100cqi / 8.4);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.dig-guide-count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dig-guide-unknown {
+  color: #1d274266;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .dig-body {
   flex: 1 1 0;
   min-height: 0;
@@ -7213,6 +7304,27 @@ body:has(.result) #version {
   border-color: #ece8de1f;
   background: #222a3d;
   color: #ece8de1f;
+}
+
+[data-theme="dark"] .dig-kinds-found svg {
+  color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-guide-card {
+  border-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-guide-card:not([data-found]) {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .dig-guide-outline {
+  background: #ece8de;
+}
+
+[data-theme="dark"] .dig-guide-unknown {
+  color: #ece8de66;
 }
 
 [data-theme="dark"] .dig-choice-card {
