@@ -63,11 +63,15 @@ Storyboard" row of `../design/rexlab.pen`.
   picture, so brushing goes on while the question shows, and only the
   pick ends the round.
 - **The board arrives and moves.** It drops from above and settles,
-  puffing grains from its bottom edge. A round that asks reserves its
-  choice column, but centres the board until 75%; then the board slides
-  left without changing size and the cards slide in from the trailing
-  side, 60 ms apart. Reduced motion fades the board in without a puff,
-  holds its place and fades the cards in.
+  puffing grains from its bottom edge. In a round that asks, it drops
+  into its place beside the choice column and never moves sideways
+  again: not at the question, a pick, the gust or the lift. The column
+  holds an empty "?" card for each choice from the start (3 at
+  Explorer, 4 at Paleontologist), each the size and place of the card
+  that replaces it; at 75% each turns over into its dinosaur's card,
+  60 ms apart. Hatchling's board is centred, with no column. Reduced
+  motion fades the board in without a puff and fades the cards in with
+  no turn.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
   a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
   a beak. A spot's cells are the dinosaur's cells whose middle lies in

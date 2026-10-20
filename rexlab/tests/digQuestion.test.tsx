@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { GUST, STAR_LANDS } from "../src/digGame.tsx";
+import { GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigBoardScreen, type SandMark } from "../src/DigBoardScreen.tsx";
 import { BRUSH_SIZES, brushRound, startRound } from "../src/dig/index.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -8,7 +8,7 @@ import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
 import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
-import { SHIPPED_DIG, fakeBodyPicture, homeTile, manualPictures, memoryStorage } from "./support.ts";
+import { PALETTE, SHIPPED_DIG, fakeBodyPicture, homeTile, manualPictures, memoryStorage, sameColour } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
 
@@ -18,6 +18,15 @@ const choices = () => [...document.querySelectorAll<HTMLButtonElement>(".dig-cho
 const pictureOf = (card: HTMLButtonElement) => card.querySelector("img")?.getAttribute("src");
 const title = () => screen.getByRole("heading", { level: 1 }).textContent;
 const column = () => document.querySelector(".dig-choice-cards");
+const slots = () => [...document.querySelectorAll<HTMLElement>(".dig-choice-slot")];
+const emptyCards = () => [...document.querySelectorAll<HTMLElement>(".dig-empty-card")];
+// What places the board on the screen and sizes it, as its rules give it.
+const boardPlace = () => {
+  const style = getComputedStyle(board());
+  const body = getComputedStyle(document.querySelector(".dig-body")!);
+  return [style.width, style.height, style.aspectRatio, style.transform, style.translate, style.transition, style.margin, style.position, style.order,
+    body.justifyContent, body.alignItems, body.gap, getComputedStyle(column()!).flexBasis];
+};
 const saved = (storage: ReturnType<typeof memoryStorage>) => JSON.parse(storage.items.get(PROGRESS_KEY)!).games.dig;
 const badge = () => screen.queryByRole("img", { name: TEXTS.en.badges.paleontologist });
 const reward = () => screen.getByRole("region", { name: TEXTS.en.dugUp });
@@ -58,35 +67,81 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
-  it.each([false, true])("centres the reserved-size board, then slides it beside cards staggered 60 ms, reduced motion %s", (reducedMotion) => {
-    openRound(level, { reducedMotion });
-    const before = getComputedStyle(board());
-    const size = [before.width, before.height, before.aspectRatio];
-    expect(before.transform).toBe(reducedMotion ? "none" : "translateX(calc(114px * var(--motion-amount)))");
-    expect(before.transition).toBe("transform var(--motion-screen) var(--ease-out)");
+  it.each(["light", "dark"] as const)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
+    openRound(level, { theme });
+    const colours = PALETTE[theme];
+    expect([column()?.getAttribute("aria-hidden"), column()?.querySelectorAll("button, [tabindex]").length, choices()]).toEqual(["true", 0, []]);
+    expect(screen.queryByRole("group", { name: TEXTS.en.whoIsIt })).toBeNull();
+    expect(emptyCards()).toHaveLength(offered[level].length);
+    for (const card of emptyCards()) {
+      const style = getComputedStyle(card);
+      expect([card.textContent, card.getAttribute("aria-hidden"), style.borderTopWidth, style.borderTopStyle, style.borderRadius, style.fontSize, style.fontWeight, style.placeItems])
+        .toEqual(["?", "true", "2px", "solid", "24px", "64px", "700", "center"]);
+      expect([style.backgroundColor, style.borderTopColor, style.color].map((colour, at) => sameColour(colour, [colours["surface-2"], colours.line, colours.line][at]!)))
+        .toEqual([true, true, true]);
+    }
+    fireEvent.click(emptyCards()[0]!);
+    expect([title(), board().hasAttribute("data-blown"), choices()]).toEqual([TEXTS.en.dig, false, []]);
+  });
+
+  it.each([false, true])("keeps the board in its place and size, and each card's slot, as the question comes, a pick, the gust and the lift, reduced motion %s", (reducedMotion) => {
+    const app = openRound(level, { reducedMotion });
+    const timing = reducedMotion ? "reduced" : "motion";
+    const place = boardPlace();
+    expect([place[3], place[4], place[5]]).toEqual(["none", "none", ""]);
+    const before = slots();
+    const slotSizes = () => slots().map((slot) => {
+      const style = getComputedStyle(slot);
+      return [style.flex, style.minHeight, style.maxHeight, style.display, style.gridTemplate];
+    });
+    const sizes = slotSizes();
+    expect(sizes).toHaveLength(offered[level].length);
     brushUntilAsked();
-    const after = getComputedStyle(board());
-    expect([after.width, after.height, after.aspectRatio]).toEqual(size);
-    expect(after.transform).toBe("none");
+    expect([boardPlace(), slots(), slotSizes()]).toEqual([place, before, sizes]);
+    // The choice card fills the slot its empty card filled.
+    for (const [at, slot] of slots().entries()) {
+      const [empty, card] = [slot.querySelector(".dig-empty-card")!, slot.querySelector(".dig-choice-card")!];
+      expect(card).toBe(choices()[at]);
+      const fill = (element: Element) => {
+        const style = getComputedStyle(element);
+        return [style.gridArea, style.boxSizing, style.width, style.height, style.minHeight, style.borderTopWidth];
+      };
+      expect(fill(card)).toEqual(fill(empty));
+      expect(fill(card)).toEqual(["1 / 1", "border-box", "100%", "100%", "0px", "2px"]);
+    }
+    fireEvent.click(wrongCards()[0]!);
+    expect(boardPlace()).toEqual(place);
+    fireEvent.click(choiceCard());
+    expect([board().hasAttribute("data-blown"), boardPlace()]).toEqual([true, place]);
+    act(() => app.timers.fire(GUST[timing]));
+    expect([board().hasAttribute("data-lifting"), boardPlace()]).toEqual([true, place]);
+    act(() => app.timers.fire(LIFT[timing]));
+  });
+
+  it.each([false, true])("turns each empty card into its choice card in place, 60 ms apart, reduced motion %s", (reducedMotion) => {
+    openRound(level, { reducedMotion });
+    expect(emptyCards().map((card) => getComputedStyle(card).animationName)).toEqual(offered[level].map(() => "none"));
+    brushUntilAsked();
     const stagger = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--motion-stagger")) * 1.5;
     expect(stagger).toBe(60);
     expect(choices()).toHaveLength(offered[level].length);
-    for (const [at, card] of choices().entries()) {
-      const style = getComputedStyle(card);
-      expect(style.getPropertyValue("--choice")).toBe(String(at));
-      expect(style.animation).toBe(reducedMotion
-        ? "fade-in var(--motion-small) var(--ease-out) both"
-        : "slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both");
-      if (!reducedMotion) expect(Number(style.getPropertyValue("--choice")) * stagger).toBe(at * 60);
+    for (const [at, slot] of slots().entries()) {
+      expect(slot.style.getPropertyValue("--choice")).toBe(String(at));
+      const [empty, card] = [slot.querySelector(".dig-empty-card")!, slot.querySelector(".dig-choice-card")!];
+      expect([getComputedStyle(empty).animation, getComputedStyle(card).animation]).toEqual(reducedMotion
+        ? ["fade-out var(--motion-small) var(--ease-out) both", "fade-in var(--motion-small) var(--ease-out) both"]
+        : ["dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both",
+          "dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both"]);
+      if (!reducedMotion) expect(Number(slot.style.getPropertyValue("--choice")) * stagger).toBe(at * 60);
     }
   });
 
-  it.each([false, true])("reports consecutive held brush moves in frame coordinates as the question slides the board, reduced motion %s", (reducedMotion) => {
+  it.each([false, true])("keeps clearing under a held finger as the question comes, reduced motion %s", (reducedMotion) => {
     const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
     const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const marks: SandMark[] = [];
     const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture)}
-      level={level} brush={BRUSH_SIZES[level]} grains={!reducedMotion}
+      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} sandContext={() => null}
       onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
     const view = render(draw(started), withPictures);
@@ -94,17 +149,15 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     pressAt(board(), 0, { x: 286, y: 300, pointer: 9 });
     view.rerender(draw(asked));
     expect(choices()).toHaveLength(offered[level].length);
-    const slid = { left: -114, top: 0, x: -114, y: 0, width: 800, height: 600, right: 686, bottom: 600, toJSON: () => ({}) };
-    board().getBoundingClientRect = () => slid as DOMRect;
-    moveAt(10, { x: 286, y: 300, pointer: 9 });
-    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("50%");
-    moveAt(20, { x: 306, y: 310, pointer: 9 });
+    moveAt(10, { x: 306, y: 310, pointer: 9 });
+    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("38.25%");
+    moveAt(20, { x: 326, y: 310, pointer: 9 });
     expect(marks).toEqual([
       { from: { x: 286, y: 300 }, to: { x: 286, y: 300 }, radius: 18 },
-      { from: { x: 286, y: 300 }, to: { x: 400, y: 300 }, radius: 18 },
-      { from: { x: 400, y: 300 }, to: { x: 420, y: 310 }, radius: 18 }
+      { from: { x: 286, y: 300 }, to: { x: 306, y: 310 }, radius: 18 },
+      { from: { x: 306, y: 310 }, to: { x: 326, y: 310 }, radius: 18 }
     ]);
-    releaseAt(window, 30, { x: 306, y: 310, pointer: 9 });
+    releaseAt(window, 30, { x: 326, y: 310, pointer: 9 });
   });
 
   it.each([false, true])("goes on brushing while it asks, even the stroke held down as it came, reduced motion %s", (reducedMotion) => {
@@ -116,18 +169,12 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
       moveAt((time += 10), { x: 0, y: y + 20, pointer: 9 });
     }
     expect(choices()).toHaveLength(offered[level].length);
-    expect(getComputedStyle(choices()[0]!).animation).toContain(reducedMotion ? "fade-in" : "slide-in");
+    expect(getComputedStyle(choices()[0]!).animation).toContain(reducedMotion ? "fade-in" : "dig-turn-in");
     const before = cleared();
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
-    expect(board().querySelector(".dig-brush")).not.toBeNull();
-    // The board slides 114px left under the held finger; the brush stays
-    // under it.
-    const slid = { left: -114, top: 0, x: -114, y: 0, width: 800, height: 600, right: 686, bottom: 600, toJSON: () => ({}) };
-    board().getBoundingClientRect = () => slid as DOMRect;
-    moveAt((time += 10), { x: 286, y: 300, pointer: 9 });
-    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("50%");
-    releaseAt(window, (time += 10), { x: 286, y: 300, pointer: 9 });
+    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("100%");
+    releaseAt(window, (time += 10), { x: 800, y: 590, pointer: 9 });
     brushAll();
     expect([cleared(), board().hasAttribute("data-blown"), choices().length]).toEqual([1, false, offered[level].length]);
     // Digging is recorded only at the gust.
@@ -208,7 +255,7 @@ describe("the question's cards", () => {
     const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const submitted: string[] = [];
     render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture)}
-      level={round.level} brush={BRUSH_SIZES[round.level]} grains={false}
+      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} grains={false}
       dugUp={0} total={SHIPPED_DIG.length} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);
     for (const card of choices()) fireEvent.click(card);
@@ -220,7 +267,7 @@ describe("the question's cards", () => {
 describe("Hatchling", () => {
   it("never asks, keeps no room for the question and gusts at 95% of the dinosaur", () => {
     const app = openRound("hatchling");
-    expect([document.querySelector(".dig-body")?.hasAttribute("data-asks"), column()]).toEqual([false, null]);
+    expect([document.querySelector(".dig-body")?.hasAttribute("data-asks"), column(), emptyCards()]).toEqual([false, null, []]);
     expect(board().style.getPropertyValue("--brush")).toBe("48px");
     let last = 0;
     for (let y = 10; y < 600 && !board().hasAttribute("data-blown"); y += 20) {

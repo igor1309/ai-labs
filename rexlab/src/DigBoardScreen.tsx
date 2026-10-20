@@ -54,8 +54,11 @@ export type DigBoardScreenProps = {
   blown: boolean;
   spots: readonly DigSpotView[];
   // The round asks who it is once enough of the dinosaur shows, so the
-  // board leaves room beside it for the choices from the start.
+  // board stands beside the choices' column from the start.
   asks: boolean;
+  // How many dinosaurs the question offers: the column holds an empty
+  // card for each until the question comes.
+  choiceCount: number;
   // The dinosaurs to pick from while the round asks, else none.
   choices: readonly { id: string; picture: string; rejected: boolean }[];
   // The age level the round plays.
@@ -166,16 +169,10 @@ function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: San
 }
 
 // The finger, pen or mouse brushing: its pointer, the board as it was
-// pressed, the brush's radius in the frame's pixels, where it last was
-// and where its last grains puffed, in the frame's pixels.
+// pressed, which stays where it is through the round, the brush's radius
+// in the frame's pixels, where it last was and where its last grains
+// puffed, in the frame's pixels.
 type Stroke = { pointerId: number; rect: DOMRect; radius: number; last: SandPoint; puffed: SandPoint };
-
-// The board where it is now, as it slides aside for the question under a
-// held finger, or as it was pressed if it has no size now.
-const boardNow = (element: HTMLElement | null, pressed: DOMRect) => {
-  const rect = element?.getBoundingClientRect();
-  return rect && rect.width > 0 ? rect : pressed;
-};
 
 // A puff of grains, where it rises, as fractions of the board.
 type Puff = { id: number; left: number; top: number };
@@ -213,6 +210,7 @@ export function DigBoardScreen({
   blown,
   spots,
   asks,
+  choiceCount,
   choices,
   level,
   brush,
@@ -340,7 +338,7 @@ export function DigBoardScreen({
     const move = (event: PointerEvent) => {
       const current = stroke.current;
       if (!current || latest.current.locked || event.pointerId !== current.pointerId) return;
-      const at = toFrame(boardNow(board.current, current.rect), event.clientX, event.clientY);
+      const at = toFrame(current.rect, event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
       setBrushAt(at);
@@ -394,7 +392,7 @@ export function DigBoardScreen({
         )}
       </DigBar>
       {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
-      <div className="dig-body" data-asks={asks || undefined} data-choice={choice || undefined}>
+      <div className="dig-body" data-asks={asks || undefined}>
         <div
           ref={board}
           className="dig-board"
@@ -444,15 +442,22 @@ export function DigBoardScreen({
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
           </span>}
         </div>
-        {asks && !choice && <div className="dig-choice-cards" aria-hidden="true" />}
-        {choice && <div className="dig-choice-cards" data-motion={grains || undefined} role="group" aria-label={text.whoIsIt}>
-          {choices.map((card, at) => (
-            <button key={card.id} type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
-              style={{ "--choice": at } as CSSProperties}
-              disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}`} onClick={() => onPick?.(card.id)}>
-              <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
-            </button>
-          ))}
+        {/* Each slot keeps its place from the round's start: its empty
+            card turns away as the choice card turns in over it. */}
+        {asks && <div className="dig-choice-cards" data-motion={grains || undefined} role={choice ? "group" : undefined}
+          aria-label={choice ? text.whoIsIt : undefined} aria-hidden={choice ? undefined : true}>
+          {Array.from({ length: choiceCount }, (_, at) => {
+            const card = choices[at];
+            return (
+              <div key={at} className="dig-choice-slot" style={{ "--choice": at } as CSSProperties}>
+                <span className="dig-empty-card" aria-hidden="true" data-turned={card ? true : undefined}>?</span>
+                {card && <button type="button" className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined}
+                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}`} onClick={() => onPick?.(card.id)}>
+                  <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
+                </button>}
+              </div>
+            );
+          })}
         </div>}
       </div>
     </main>

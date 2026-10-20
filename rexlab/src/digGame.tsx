@@ -264,6 +264,7 @@ export function useDigGame(
             liftWait={LIFT[reducedMotion() ? "reduced" : "motion"]}
             finish={screen.finish}
             {...presentDigBoard(screen.round, bodyPicture)}
+            choiceCount={screen.round.choices.length}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}
             grains={!reducedMotion()}

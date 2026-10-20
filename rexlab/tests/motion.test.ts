@@ -159,6 +159,28 @@ describe("the dig board's collection star", () => {
   });
 });
 
+describe("the dig question's cards", () => {
+  it("turn each empty card edge on and the choice card on from there, and only fade with reduced motion", () => {
+    const frames = (name: string) => rulesOf(KEYFRAMES.find(({ prelude }) => prelude === `@keyframes ${name}`)?.body ?? "")
+      .map(({ prelude, body }) => [prelude, Object.fromEntries(declarationsOf(body).map(({ property, value }) => [property, value]))]);
+    expect(frames("dig-turn-away")).toEqual([
+      ["99%", { opacity: "1" }],
+      ["to", { opacity: "0", transform: "rotateY(calc(90deg * var(--motion-amount)))" }]
+    ]);
+    expect(frames("dig-turn-in")).toEqual([["from", { opacity: "0", transform: "rotateY(calc(-90deg * var(--motion-amount)))" }]]);
+    expect(declared(REDUCED, ".dig-choice-cards[data-motion] .dig-empty-card[data-turned]")).toEqual({ animation: "fade-out var(--motion-small) var(--ease-out) both" });
+    expect(declared(REDUCED, ".dig-choice-cards[data-motion] .dig-choice-card")).toEqual({ animation: "fade-in var(--motion-small) var(--ease-out) both" });
+  });
+
+  it("leave the board where it stands: no rule moves it or transitions it", () => {
+    const board = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.split(",").some((selector) => /\.dig-board(\[[^\]]*\]|:not\([^)]*\))*$/.test(selector.trim())));
+    expect(board.length).toBeGreaterThan(0);
+    expect(board.flatMap(({ prelude, body }) => declarationsOf(body)
+      .filter(({ property }) => /^(transform|translate|transition)(-|$)/.test(property))
+      .map(({ property }) => `${prelude} ${property}`))).toEqual([]);
+  });
+});
+
 describe("the dig reveal's motion", () => {
   it("slides the board away while the dinosaur glides within the reveal's gap, with no second star flight", () => {
     expect(declared(PLAIN, "::view-transition-old(.dig-reveal-change)").animation).toBe("slide-out var(--motion-screen) var(--ease-out) both");
