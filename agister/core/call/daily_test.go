@@ -66,6 +66,26 @@ func TestACallOnASpentDayTakesNoTurn(t *testing.T) {
 	}
 }
 
+// daily.feature: an exhausted budget prevents a recovery turn.
+func TestNoRecoveryStartsOnceTheDayIsSpent(t *testing.T) {
+	t.Parallel()
+	staleness := &stalenessSpy{}
+	stale := func(ctx context.Context) (call.Ended, error) {
+		ended, err := goesStale(staleness, noEvent, "s1")(ctx)
+		ended.Reply = &call.Reply{Session: "s1", Cost: dollars(1.5)}
+		return ended, err
+	}
+	spy := &runtimeSpy{turn: inOrder(stale, replies(call.Reply{Text: "done", Session: "s1"}))}
+	var reported staleTurns
+	got := recoveringCaller(t, spy, staleness, clocktest.NewClock(start)).Call(context.Background(), call.Step{Staleness: limits, Recovery: recovery, DailyBudget: &call.DailyBudget{Cost: 20, Spent: 19}}, reported.report)
+	if len(spy.given) != 1 || got.Status != call.Failed || got.Class != call.BudgetExhausted || got.Reason != "the daily budget 20 is spent: 20.5" {
+		t.Fatalf("result %+v, %d turns; want one turn, budget_exhausted, the day's reason", got, len(spy.given))
+	}
+	if want := (staleTurns{{What: noEvent.What}}); !reflect.DeepEqual(reported, want) {
+		t.Errorf("stale turns reported %+v, want %+v", reported, want)
+	}
+}
+
 // daily.feature: an exhausted budget prevents capacity retries, with the
 // cost limit's reason first where both are spent.
 func TestNoRetryStartsOnceTheDayIsSpent(t *testing.T) {

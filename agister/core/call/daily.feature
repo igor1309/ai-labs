@@ -53,6 +53,15 @@ Feature: A call is kept to what is left of the day
       20.5"
     And its report of the turn at capacity has no retry
 
+  Scenario: No recovery starts once the day is spent
+    Given a model step of one resume, under the daily budget 20 of which
+      the day has spent 19, whose first turn reports the session "s1",
+      its cost 1.5, then goes stale
+    When the call is made
+    Then it makes one turn, its stale turn reported not recovering, and
+      ends failed, class "budget_exhausted", the reason "the daily
+      budget 20 is spent: 20.5"
+
   Scenario: The limit's reason is given where both are spent
     Given a model step of the cost limit 1, under the daily budget 20 of
       which the day has spent 19, whose first turn reports the session

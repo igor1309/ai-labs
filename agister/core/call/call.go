@@ -493,6 +493,12 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 		}
 		session := last.session()
 		recovering := resumes > 0 && session != "" && last.strayed == "" && !went[stale.What] && callCtx.Err() == nil
+		// No recovery turn starts once the call's limit or the day is
+		// spent; the call ends for it.
+		if recovering {
+			spent = step.spentReason(knownCost)
+			recovering = spent == ""
+		}
 		report(Report{Stale: &StaleTurn{What: stale.What, Recovering: recovering}})
 		if !recovering {
 			break

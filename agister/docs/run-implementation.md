@@ -1419,12 +1419,12 @@ turn, on any runtime: it ends failed, `budget_exhausted`, its reason
 "the daily budget <budget> is spent: <spend>". Each turn is given as its
 budget the least of what is left of
 its cost limit and of the day; a runtime that takes none ignores it.
-No retry at capacity starts once the day's spend and the call's known
-cost reach the budget; the call ends failed, `budget_exhausted`, its
-reason "the daily budget <budget> is spent: <spend>", the spend the
-day's and the call's, and the turn at capacity's report has no retry.
-Where both the limit and the day are spent, the limit's reason is
-given.
+No retry at capacity, nor recovery turn, starts once the day's spend
+and the call's known cost reach the budget; the call ends failed,
+`budget_exhausted`, its reason "the daily budget <budget> is spent:
+<spend>", the spend the day's and the call's, the turn at capacity's
+report has no retry and the stale turn's is not recovering. Where both
+the limit and the day are spent, the limit's reason is given.
 
 **The composition** reads the day's spend before each call it makes,
 after a reuse is ruled out and before the call is admitted, and gives
