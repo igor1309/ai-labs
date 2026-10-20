@@ -28,7 +28,7 @@ it("offers committed sand art with the brush, and brightens and presses the tile
   const tile = homeTile("DIG");
   expect(tile.querySelector("img")?.getAttribute("src")).toBe(digTile);
   expect(symbolOf(tile)).toBe("brush");
-  expect(tile.nextElementSibling?.className).toBe("more-coming");
+  expect(tile.nextElementSibling).toBe(homeTile("SORT"));
   expect(tile.previousElementSibling).toBe(homeTile("SKELETONS"));
   expect(badgeOf(tile)).toBeNull();
   await app.user.hover(tile);
