@@ -577,6 +577,14 @@
             "en": "STEGOSAURUS PLATES",
             "ru": "ПЛАСТИНЫ СТЕГОЗАВРА"
           }
+        },
+        {
+          "skeleton": "spinosaurus",
+          "piece": "back-sail",
+          "name": {
+            "en": "SPINOSAURUS SAIL",
+            "ru": "ПАРУС СПИНОЗАВРА"
+          }
         }
       ]
     },
