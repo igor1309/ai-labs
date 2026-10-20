@@ -220,8 +220,7 @@ export function useDigGame(
     keep({ ...keptNow.current, ...dug.kept });
     const timing = reducedMotion() ? "reduced" : "motion";
     const showPhase = (phase: "gust" | "lift" | "counted") => go((current) =>
-      current?.kind === "board" && current.round === to ? { ...current, finish: { newStar: dug.reward.newStar, phase } } : current);
-    showPhase("gust");
+      current?.kind === "board" && current.round === to ? { ...current, finish: { newStar: dug.reward.newStar, phase, startTimer: timers.start, onLifted } } : current);
     const reveal = () => {
       if (live.current !== to || roundTimers.current !== timers) return;
       live.current = null;
@@ -229,15 +228,16 @@ export function useDigGame(
       keep({ ...keptNow.current, levelOffer });
       go({ kind: "reveal", round: to, reward: dug.reward, landed: false, offer: offeredLevel(levelOffer) });
     };
+    const onLifted = () => {
+      if (live.current !== to || roundTimers.current !== timers) return;
+      if (!dug.reward.newStar || dug.reward.dugUp === undefined || timing === "reduced") return reveal();
+      showPhase("counted");
+      timers.start(COUNT_SETTLE[timing], reveal);
+    };
+    showPhase("gust");
     timers.start(GUST[timing], () => {
       if (live.current !== to || roundTimers.current !== timers) return;
       showPhase("lift");
-      timers.start(LIFT[timing], () => {
-        if (live.current !== to || roundTimers.current !== timers) return;
-        if (!dug.reward.newStar || dug.reward.dugUp === undefined || timing === "reduced") return reveal();
-        showPhase("counted");
-        timers.start(COUNT_SETTLE[timing], reveal);
-      });
     });
   };
 

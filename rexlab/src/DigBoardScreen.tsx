@@ -5,6 +5,7 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { DigBar } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
+import type { StartTimer } from "./ownedTimers.ts";
 
 // The view and the round's timers share the durations of each arrival.
 export const BOARD_DROP = { motion: 500, reduced: 160 };
@@ -12,7 +13,12 @@ export const GUST = { motion: 800, reduced: 160 };
 export const LIFT = { motion: 500, reduced: 160 };
 export const COUNT_SETTLE = { motion: 160, reduced: 0 };
 
-export type BoardFinish = { newStar: boolean; phase: "gust" | "lift" | "counted" };
+export type BoardFinish = {
+  newStar: boolean;
+  phase: "gust" | "lift" | "counted";
+  startTimer: StartTimer;
+  onLifted: () => void;
+};
 
 export type DigSpotView = { id: string; x: number; y: number; r: number; found: boolean; helped: boolean };
 
@@ -224,6 +230,20 @@ export function DigBoardScreen({
   const [flight, setFlight] = useState<CSSProperties>({});
   const lifting = finish !== undefined && finish.phase !== "gust";
   const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
+  const lift = finish?.phase === "lift" ? finish : undefined;
+  // Rotation restarts the displayed lift and star flight, so their wait
+  // belongs to this mounted board, including callbacks delivered after stop.
+  useEffect(() => {
+    if (!lift) return;
+    let active = true;
+    const stop = lift.startTimer(liftWait, () => {
+      if (active) lift.onLifted();
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [lift, liftWait]);
   // The count ticks up as the star lands; under reduced motion it simply
   // changes.
   const shownCount = dugUp !== undefined && grains && finish?.newStar && finish.phase !== "counted" ? dugUp - 1 : dugUp;
