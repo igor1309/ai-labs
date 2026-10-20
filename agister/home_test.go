@@ -258,6 +258,8 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 
 // The numbered code-review DoDs cover the obligations their prose assigns
 // to each reviewer and to the judge.
+//
+// Contract test: the code-review prompt DoDs shipped under home/prompts.
 func TestCodeReviewPromptDoDsCoverTheirReviewObligations(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -275,7 +277,15 @@ func TestCodeReviewPromptDoDsCoverTheirReviewObligations(t *testing.T) {
 		{"code-review-tests.md", 1, []string{"names the class of inputs", "concrete case as a witness", "test of that class"}},
 		{"code-review-judge.md", 1, []string{"Merge findings making the same claim", "highest supported severity", "sort items by severity"}},
 		{"code-review-judge.md", 5, []string{"presented evidence", "Add no finding or evidence of your own"}},
-		{"code-review-judge.md", 6, []string{"every minor finding", "defer an outside finding", "fix blockers", "grossly disproportionate"}},
+		{"code-review-judge.md", 6, []string{
+			"reject unsupported claims and every minor finding",
+			"defer an outside finding",
+			"a goal finding barred by an explicit scope exclusion",
+			"fix blockers",
+			"fix majors unless the presented cost is grossly disproportionate",
+			"waive nits unless the presented benefit exceeds the cost",
+			"weigh the presented benefit and cost",
+		}},
 	}
 	for _, c := range cases {
 		c := c
@@ -297,9 +307,9 @@ func TestReviewDoDRequirementMustBeInItsNumberedItem(t *testing.T) {
 		item  int
 		wants bool
 	}{
-		{"present", "Definition of done:\n\n1. Name the class of missed cases.\n2. Check the outcome.\n", 1, true},
+		{"present", "Definition of done:\n\n1. Waive nits unless the presented benefit exceeds the cost.\n2. Check the outcome.\n", 1, true},
 		{"missing", "Definition of done:\n\n1. Check the outcome.\n2. Check the calls.\n", 1, false},
-		{"misplaced", "Definition of done:\n\n1. Check the outcome.\n2. Name the class of missed cases.\n", 1, false},
+		{"misplaced", "Definition of done:\n\n1. Check the outcome.\n2. Waive nits unless the presented benefit exceeds the cost.\n", 1, false},
 	}
 	for _, c := range cases {
 		c := c
@@ -310,7 +320,7 @@ func TestReviewDoDRequirementMustBeInItsNumberedItem(t *testing.T) {
 				t.Fatal(err)
 			}
 			items := readReviewDoDItems(t, path)
-			got := reviewDoDItemHas(items, c.item, []string{"Name the class of missed cases"})
+			got := reviewDoDItemHas(items, c.item, []string{"Waive nits unless the presented benefit exceeds the cost"})
 			if got != c.wants {
 				t.Errorf("requirement in item %d = %v, want %v; items: %v", c.item, got, c.wants, items)
 			}
