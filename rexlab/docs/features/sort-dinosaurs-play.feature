@@ -81,7 +81,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
   Scenario: Portrait asks to turn the iPad
     Given I have sorted 3 cards, one of them after a wrong drop
     When I turn the iPad to portrait
-    Then I see a picture asking to turn the iPad sideways
+    Then I see a picture asking to turn sideways
     When I turn the iPad back to landscape
     Then the 3 cards are still in their baskets
     And the wrong drop still counts

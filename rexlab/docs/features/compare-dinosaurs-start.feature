@@ -46,10 +46,10 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 
-  Scenario: Portrait asks to turn the iPad
+  Scenario: Portrait asks to turn sideways
     Given I am on question 3 of a round
     When I turn the iPad to portrait
-    Then I see a picture asking to turn the iPad sideways
+    Then I see a picture asking to turn sideways
     When I turn the iPad back to landscape
     Then I am on question 3 again
 

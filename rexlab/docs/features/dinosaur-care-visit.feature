@@ -38,7 +38,7 @@ Feature: Dinosaur care: giving items and leaving a visit
   Scenario: Portrait pauses interaction without changing the visit
     Given I am partway through a visit
     When I turn the iPad to portrait
-    Then I see a picture asking me to turn the iPad sideways
+    Then I see a picture asking me to turn sideways
     And I cannot give an item behind that picture
     When I turn the iPad back to landscape
     Then I return to the same dinosaur, need and hearts
