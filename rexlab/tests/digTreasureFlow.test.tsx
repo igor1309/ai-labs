@@ -335,7 +335,7 @@ it("opens the FIELD GUIDE through the board's hook", () => {
   const onFieldGuide = vi.fn();
   const round = startRound(SHIPPED_DIG, [], undefined, () => 0, "explorer");
   render(<DigBoardScreen
-    {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture)} choiceCount={round.choices.length} language="en" level="explorer"
+    {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language="en" level="explorer"
     brush={BRUSH_SIZES.explorer} grains dugUp={0} total={SHIPPED_DIG.length} treasures={5} sandContext={() => null} onBrush={() => {}} onHome={() => {}} onFieldGuide={onFieldGuide}
   />, withPictures);
   fireEvent.click(fieldGuide());

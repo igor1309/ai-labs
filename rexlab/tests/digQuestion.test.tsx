@@ -8,7 +8,7 @@ import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
 import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
-import { PALETTE, SHIPPED_DIG, fakeBodyPicture, fakeTreasurePicture, homeTile, manualPictures, memoryStorage, sameColour } from "./support.ts";
+import { PALETTE, SHIPPED_DIG, SHIPPED_DINOSAURS, fakeBodyPicture, fakeTreasurePicture, homeTile, manualPictures, memoryStorage, sameColour } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
 
@@ -41,7 +41,7 @@ it("marks only the dinosaur under the sand correct in every answer position", ()
   for (let position = 0; position <= distractors.length; position++) {
     const choices = [...distractors];
     choices.splice(position, 0, correct);
-    const presented = presentDigBoard({ ...round, blown: true, choices }, fakeBodyPicture, fakeTreasurePicture);
+    const presented = presentDigBoard({ ...round, blown: true, choices }, fakeBodyPicture, fakeTreasurePicture, (id) => id);
     expect(presented.choices.filter((choice) => choice.correct).map((choice) => choice.id)).toEqual([correct]);
   }
 });
@@ -62,7 +62,7 @@ function brushUntilAsked() {
 }
 
 describe.each(["explorer", "paleontologist"] as const)("the question at %s", (level) => {
-  it.each(["en", "ru"] as const)("waits for three quarters of the dinosaur, then asks in %s beside the board, with no name shown", (language) => {
+  it.each(["en", "ru"] as const)("waits for three quarters of the dinosaur, then asks in %s beside the board, naming each choice", (language) => {
     openRound(level, { language });
     expect([title(), choices(), column()?.getAttribute("aria-hidden")]).toEqual([TEXTS[language].dig, [], "true"]);
     expect(document.querySelector(".dig-body")?.hasAttribute("data-asks")).toBe(true);
@@ -74,12 +74,14 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(title()).toBe(TEXTS[language].whoIsIt);
     expect(column()?.getAttribute("aria-hidden")).toBeNull();
     expect(choices().map((card) => card.dataset.choice)).toEqual(offered[level]);
-    expect(choices().map((card) => card.getAttribute("aria-label"))).toEqual(offered[level].map((_, at) => `${TEXTS[language].whoIsIt} ${at + 1} / ${offered[level].length}`));
+    const names = offered[level].map((id) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)!.name[language].toLocaleUpperCase(language));
+    expect(choices().map((card) => card.getAttribute("aria-label"))).toEqual(names.map((name) => `${TEXTS[language].whoIsIt}: ${name}`));
     for (const card of choices()) {
-      expect([pictureOf(card), card.textContent, getComputedStyle(card.querySelector("img")!).filter]).toEqual([fakeBodyPicture(card.dataset.choice!), "", "grayscale(1)"]);
+      const name = SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === card.dataset.choice)!.name[language].toLocaleUpperCase(language);
+      expect([pictureOf(card), card.textContent, getComputedStyle(card.querySelector("img")!).filter]).toEqual([fakeBodyPicture(card.dataset.choice!), name, "grayscale(1)"]);
       expect(card.hasAttribute("data-correct")).toBe(false);
     }
-    expect(document.querySelector("main")?.textContent).not.toMatch(/TYRANNOSAURUS|ТИРАННОЗАВР/);
+    expect(board().textContent).not.toMatch(/TYRANNOSAURUS|ТИРАННОЗАВР/);
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
@@ -156,7 +158,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
     const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const marks: SandMark[] = [];
-    const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture)}
+    const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
       choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
@@ -204,7 +206,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     fireEvent.click(rejected!);
     expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity,
       getComputedStyle(rejected!.querySelector("img")!).opacity, rejected!.textContent, rejected!.getAttribute("aria-label")])
-      .toEqual([true, true, "1", "0.45", `↻ ${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt} ${choices().indexOf(rejected!) + 1} / ${choices().length}: ${TEXTS.en.digChoice.tryAnother}`]);
+      .toEqual([true, true, "1", "0.45", `${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}↻ ${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt}: ${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}: ${TEXTS.en.digChoice.tryAnother}`]);
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
@@ -216,7 +218,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(true);
     expect(choiceCard().hasAttribute("data-correct")).toBe(true);
     expect(getComputedStyle(choiceCard().querySelector("img")!).filter).toBe("grayscale(0)");
-    expect(choiceCard().textContent).toBe("✓");
+    expect(choiceCard().textContent).toBe(`${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === choiceCard().dataset.choice)!.name.en.toLocaleUpperCase("en")}✓`);
     expect(choiceCard().getAttribute("aria-label")).toContain(TEXTS.en.digChoice.right);
     const correctChoice = choiceCard();
     const currentRejected = choices().find((card) => card.dataset.choice === rejected!.dataset.choice)!;
@@ -228,7 +230,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(getComputedStyle(correctChoice.querySelector(".dig-choice-mark")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
     for (const card of remainingChoices) {
       expect([card.hasAttribute("data-correct"), card.hasAttribute("data-rejected"), getComputedStyle(card.querySelector("img")!).filter, card.textContent])
-        .toEqual([false, false, "grayscale(1)", ""]);
+        .toEqual([false, false, "grayscale(1)", SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === card.dataset.choice)!.name.en.toLocaleUpperCase("en")]);
     }
     expect([title(), choices().length, choices().every((card) => card.disabled)]).toEqual([TEXTS.en.whoIsIt, offered[level].length, true]);
     const before = board().getAttribute("data-clear");
@@ -289,7 +291,7 @@ describe("the question's cards", () => {
     const started = startRound(SHIPPED_DIG, [], undefined, () => 0, "paleontologist");
     const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const submitted: string[] = [];
-    render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture)}
+    render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
       choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} grains={false}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);

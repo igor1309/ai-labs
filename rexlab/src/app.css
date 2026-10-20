@@ -5141,6 +5141,10 @@ body:has(.result) #version {
 .dig-choice-card {
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
@@ -5191,7 +5195,9 @@ body:has(.result) #version {
 .dig-choice-picture {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 0;
+  min-height: 0;
+  flex: 1 1 auto;
   object-fit: contain;
   filter: grayscale(1);
   transition: filter var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
@@ -5203,6 +5209,18 @@ body:has(.result) #version {
 
 .dig-choice-card[data-correct] .dig-choice-picture {
   filter: grayscale(0);
+}
+
+.dig-choice-name {
+  display: block;
+  flex: 0 0 auto;
+  color: #1d2742;
+  font-size: clamp(10px, 1.1vw, 13px);
+  font-weight: 800;
+  line-height: 1.05;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .dig-choice-mark {
@@ -7477,6 +7495,10 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 [data-theme="dark"] .dig-choice-mark-rejected {
   background: #181e2e;
   color: #e57a5d;
+}
+
+[data-theme="dark"] .dig-choice-name {
+  color: #ece8de;
 }
 
 [data-theme="dark"] .dig-spot-picture {
