@@ -87,6 +87,13 @@ function styleAt(element: Element, size: Size) {
         }
       }
     }
+    const variable = /^var\((--[\w-]+)\)$/.exec(found)?.[1];
+    if (variable) {
+      for (let parent: Element | null = element; parent; parent = parent.parentElement) {
+        const resolved = getComputedStyle(parent).getPropertyValue(variable);
+        if (resolved) return resolved;
+      }
+    }
     return found;
   };
   // jsdom keeps a gap only as the shorthand, row gap first.
@@ -221,12 +228,14 @@ function stripSize(card: Element, size: Size): Size {
   ];
 }
 
-function measureCard(layout: ReturnType<typeof layoutMeasurements>, card: HTMLElement, size: Size, window: Size) {
-  const strip = first(".sorted-footer", card) as HTMLElement;
-  const natural = stripSize(card, window);
-  layout.set(card, [Math.floor(size[0]), Math.floor(size[1])]);
-  layout.set(strip, [Math.round(natural[0]), Math.round(natural[1])]);
-  layout.resized(card, strip);
+function measureBasket(layout: ReturnType<typeof layoutMeasurements>, area: HTMLElement, room: Size, window: Size) {
+  const cards = [...area.querySelectorAll<HTMLElement>(".sorted-card")];
+  layout.set(area, [Math.floor(room[0]), Math.floor(room[1])]);
+  for (const card of cards) {
+    const natural = stripSize(card, window);
+    layout.set(first(".sorted-footer", card) as HTMLElement, [Math.round(natural[0]), Math.round(natural[1])]);
+  }
+  layout.resized(area);
 }
 
 function expectCard(card: HTMLElement, width: number, height: number, size: Size) {
@@ -246,15 +255,18 @@ function expectCard(card: HTMLElement, width: number, height: number, size: Size
   if (strip.value("visibility") === "visible") {
     expect(strip.value("position")).toBe("static");
     expect(nameWidth).toBeLessThanOrEqual(width);
-    // At least 32px of picture plus its padding remains beside the strip.
-    expect(height - stripHeight - art.px("padding-top") - art.px("padding-bottom")).toBeGreaterThanOrEqual(32);
+    expect(Math.min((width - art.px("padding-left") - art.px("padding-right")) * 600 / 800,
+      height - stripHeight - art.px("padding-top") - art.px("padding-bottom"))).toBeGreaterThanOrEqual(48);
   } else {
     expect(strip.value("visibility")).toBe("hidden");
     expect(strip.value("position")).toBe("absolute");
     // A hidden strip takes no height: the flexing picture gets the full card.
     expect([art.px("padding-top"), art.px("padding-bottom"), art.px("padding-left"), art.px("padding-right")]).toEqual([0, 0, 0, 0]);
-    // Allow the spare pixel and integer rounding in the DOM measurements.
-    expect(nameWidth > width || stripHeight + 48 + 2 > height).toBe(true);
+    // The basket uses its widest strip for every card, including shorter names.
+    const cards = [...(card.parentElement?.querySelectorAll(".sorted-card") ?? [])];
+    const widest = Math.max(...cards.map((each) => stripSize(each, size)[0]));
+    const tallest = Math.max(...cards.map((each) => stripSize(each, size)[1]));
+    expect(widest + 2 > width || tallest + 48 + 16 + 2 > height || (width - 16) * 600 / 800 < 48).toBe(true);
   }
 }
 
@@ -267,67 +279,67 @@ describe("a full basket", () => {
     const area = first(".basket-cards", basket) as HTMLElement;
     const sortedCards = [...area.querySelectorAll<HTMLElement>(".sorted-card")];
     const names = sortedCards.map((card) => first(".sorted-name", card).textContent ?? "");
-    const letters = Math.max(...names.map((name) => name.length));
     const grid = styleAt(area, size);
     const card = styleAt(first(".sorted-card", area), size);
-    const footer = styleAt(first(".sorted-footer", area), size);
-    const sides = footer.px("padding-left") + footer.px("padding-right");
 
-    // Columns budget the longest name at 14px, at most 0.75 of its size a
-    // letter, and share the remaining width; rows share the basket's height.
-    expect([grid.value("display"), grid.value("grid-template-columns"), grid.value("grid-auto-rows"), area.style.getPropertyValue("--longest")]).toEqual([
-      "grid",
-      "repeat(auto-fill, minmax(min(100%, var(--least-card)), 1fr))",
-      "minmax(0, 1fr)",
-      String(letters)
+    expect([grid.value("display"), grid.value("grid-template-columns"), grid.value("grid-auto-rows")]).toEqual([
+      "grid", "repeat(var(--columns, 1), minmax(0, 1fr))", "minmax(0, 1fr)"
     ]);
-    // jsdom drops the spaces around a custom property's * and /.
-    expect(grid.value("--least-card").replaceAll(" ", "")).toBe(`calc(var(--longest)*0.75*${NAME_SIZE}px+${sides}px)`);
-    expect(["min-width", "min-height", "height", "display", "flex-direction"].map(card.value)).toEqual(["0px", "0px", "100%", "flex", "column"]);
+    expect(["min-width", "min-height", "height", "max-height", "display", "flex-direction"].map(card.value)).toEqual(["0px", "0px", "100%", "none", "flex", "column"]);
 
     const room = cardsRoom(basket, board.length, size);
     const [rowGap, columnGap] = [grid.rowGap(), grid.columnGap()];
-    const least = Math.min(room.width, letters * 0.75 * NAME_SIZE + sides);
-    const columns = Math.max(1, Math.floor((room.width + columnGap) / (least + columnGap)));
+    measureBasket(layout, area, [room.width, room.height], size);
+    const columns = Number(area.style.getPropertyValue("--columns"));
+    expect(columns).toBeGreaterThanOrEqual(1);
+    expect(columns).toBeLessThanOrEqual(names.length);
     const columnWidth = (room.width - columnGap * (columns - 1)) / columns;
     const rows = Math.ceil(names.length / columns);
-    const cardHeight = Math.min((room.height - rowGap * (rows - 1)) / rows, card.px("max-height"));
+    const cardHeight = (room.height - rowGap * (rows - 1)) / rows;
 
     expect([rowGap > 0, columnGap > 0, cardHeight > 0]).toEqual([true, true, true]);
     expect(rows * cardHeight + rowGap * (rows - 1)).toBeLessThanOrEqual(room.height + 0.01);
-    expect(names.filter((each) => (NAME_EMS[each] ?? Number.NaN) * NAME_SIZE + sides > columnWidth)).toEqual([]);
+    expect(columns * columnWidth + columnGap * (columns - 1)).toBeLessThanOrEqual(room.width + 0.01);
+    const canGive40px = Array.from({ length: names.length }, (_, at) => at + 1).some((cols) => {
+      const rows = Math.ceil(names.length / cols);
+      return (room.width - columnGap * (cols - 1)) / cols * 600 / 800 >= 40 && (room.height - rowGap * (rows - 1)) / rows >= 40;
+    });
     for (const sorted of sortedCards) {
-      measureCard(layout, sorted, [columnWidth, cardHeight], size);
       expectCard(sorted, columnWidth, cardHeight, size);
+      if (canGive40px) {
+        const art = styleAt(first(".sorted-art", sorted), size);
+        const strip = styleAt(first(".sorted-footer", sorted), size).value("visibility") === "visible" ? stripSize(sorted, size)[1] : 0;
+        expect(Math.min((columnWidth - art.px("padding-left") - art.px("padding-right")) * 600 / 800,
+          cardHeight - strip - art.px("padding-top") - art.px("padding-bottom"))).toBeGreaterThanOrEqual(40);
+      }
     }
     unmount();
     expect(layout.observed()).toEqual([]);
   });
 
-  it("rechecks width, height and the name's natural size as the same card resizes", () => {
+  it("rechecks the basket's width, height and every name's natural size on resize", () => {
     const layout = layoutMeasurements();
     openBasket(["plants", "meat"], 0, 6, "en");
-    const card = first(".sorted-card") as HTMLElement;
-    const strip = first(".sorted-footer", card) as HTMLElement;
+    const area = first(".basket-cards") as HTMLElement;
+    const cards = [...area.querySelectorAll<HTMLElement>(".sorted-card")];
     const size = [1920, 1080] as const;
-    const [width, height] = stripSize(card, size);
     for (const [room, shown] of [
-      [[width + 10, height + 60], true],
-      [[width - 10, height + 60], false],
-      [[width + 10, height + 60], true],
-      [[width + 10, height + 40], false],
-      [[width + 10, height + 60], true]
+      [[800, 100], true],
+      [[390, 120], false],
+      [[800, 100], true],
+      [[800, 80], false],
+      [[800, 100], true]
     ] as const) {
-      measureCard(layout, card, room, size);
-      expect(card.hasAttribute("data-name-fits")).toBe(shown);
-      expectCard(card, ...room, size);
+      measureBasket(layout, area, room, size);
+      expect(cards.map((card) => card.hasAttribute("data-name-fits"))).toEqual(cards.map(() => shown));
     }
-    // A font can change the strip's natural width without changing the card.
-    layout.set(strip, [width + 20, height]);
+    // A font can change a strip's natural width without changing the basket.
+    const strip = first(".sorted-footer", cards[cards.length - 1] ?? area) as HTMLElement;
+    layout.set(strip, [220, 25]);
     layout.resized(strip);
-    expect(getComputedStyle(strip).visibility).toBe("hidden");
-    layout.set(strip, [width, height]);
+    expect(cards.every((card) => getComputedStyle(first(".sorted-footer", card)).visibility === "hidden")).toBe(true);
+    layout.set(strip, [100, 25]);
     layout.resized(strip);
-    expect(getComputedStyle(strip).visibility).toBe("visible");
+    expect(cards.every((card) => getComputedStyle(first(".sorted-footer", card)).visibility === "visible")).toBe(true);
   });
 });

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
+import { basketLayout } from "./basketLayout.ts";
 
 export type Basket = keyof Texts["baskets"];
 
@@ -243,11 +244,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               </span>
               <span className="basket-name">{text.baskets[basket]}</span>
             </span>
-            <span className="basket-cards" style={{ "--longest": Math.max(0, ...cards.map((card) => card.name.length)) } as CSSProperties}>
-              {cards.map((card) => (
-                <SortedCard key={card.id} card={card} language={language} correct={text.marks.correct} />
-              ))}
-            </span>
+            <BasketCards cards={cards} language={language} correct={text.marks.correct} />
           </button>
         ))}
       </div>
@@ -255,25 +252,35 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   );
 }
 
-function SortedCard({ card, language, correct }: { card: SortedCardView; language: Language; correct: string }) {
+function BasketCards({ cards, language, correct }: { cards: readonly SortedCardView[]; language: Language; correct: string }) {
   const box = useRef<HTMLSpanElement>(null);
-  const footer = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
     const element = box.current;
-    const strip = footer.current;
-    if (!element || !strip) return;
+    if (!element) return;
+    const strips = [...element.querySelectorAll<HTMLElement>(".sorted-footer")];
     const fit = () => {
-      // Keep 48px for the picture, including its padding. The spare pixel
-      // covers the rounding of the DOM's integer layout measurements.
-      element.toggleAttribute("data-name-fits", element.clientWidth >= strip.offsetWidth + 1 && element.clientHeight >= strip.offsetHeight + 48 + 1);
+      const style = getComputedStyle(element);
+      const layout = basketLayout({
+        width: element.clientWidth,
+        height: element.clientHeight,
+        count: cards.length,
+        gap: Number.parseFloat(style.gap) || 0,
+        // The spare pixel covers the DOM's integer layout measurements.
+        nameWidth: Math.max(0, ...strips.map((strip) => strip.offsetWidth)) + 1,
+        nameHeight: Math.max(0, ...strips.map((strip) => strip.offsetHeight)) + 1,
+        pictureAspect: 800 / 600,
+        picturePadding: Number.parseFloat(style.getPropertyValue("--named-art-padding")) || 0
+      });
+      element.style.setProperty("--columns", String(layout.columns));
+      for (const card of element.children) card.toggleAttribute("data-name-fits", layout.namesShown);
     };
     fit();
     // The strip keeps its natural size even when hidden, so a font or
     // language change can make the name fit again without a window resize.
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
     observer?.observe(element);
-    observer?.observe(strip);
+    strips.forEach((strip) => observer?.observe(strip));
     window.addEventListener("resize", fit);
     document.fonts?.addEventListener("loadingdone", fit);
     return () => {
@@ -281,17 +288,25 @@ function SortedCard({ card, language, correct }: { card: SortedCardView; languag
       window.removeEventListener("resize", fit);
       document.fonts?.removeEventListener("loadingdone", fit);
     };
-  }, [card.name, language]);
+  }, [cards, language]);
 
   return (
-    <span ref={box} className="sorted-card">
+    <span ref={box} className="basket-cards">
+      {cards.map((card) => <SortedCard key={card.id} card={card} language={language} correct={correct} />)}
+    </span>
+  );
+}
+
+function SortedCard({ card, language, correct }: { card: SortedCardView; language: Language; correct: string }) {
+  return (
+    <span className="sorted-card">
       <span className="sorted-art">
         <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
         <span className="sorted-check" role="img" aria-label={correct}>
           <Check size={20} strokeWidth={3} />
         </span>
       </span>
-      <span ref={footer} className="sorted-footer">
+      <span className="sorted-footer">
         <Name name={card.name} language={language} className="sorted-name" />
       </span>
     </span>

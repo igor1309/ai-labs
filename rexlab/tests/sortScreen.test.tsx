@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { boardState, score, type CardState, type Property, type Sorting } from "../src/sorting/index.ts";
 import { AWAY, basketButton, centreOf, dragTo, latest, layOutBaskets, openBoard, otherBasket, tray, trayCard } from "./sorting.tsx";
@@ -105,6 +105,50 @@ describe("a new board", () => {
       expect(style.whiteSpace).toBe("nowrap");
       if (each.classList.contains("sort-name")) expect(getComputedStyle(each.parentElement ?? each).getPropertyValue("container-type")).toBe("inline-size");
       else expect(style.fontSize).toBe("14px");
+    }
+  });
+});
+
+describe("a basket's measured layout", () => {
+  it("updates columns and all names when cards, language or the window change, without ResizeObserver", () => {
+    let room = [629, 159];
+    vi.stubGlobal("ResizeObserver", undefined);
+    const measurements = ([["clientWidth", 0], ["clientHeight", 1], ["offsetWidth", 0], ["offsetHeight", 1]] as const).map(([property, axis]) =>
+      vi.spyOn(HTMLElement.prototype, property, "get").mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("basket-cards")) return room[axis] ?? 0;
+        if (this.classList.contains("sorted-footer")) return axis === 1 ? 26 : this.textContent?.includes("П") ? 250 : 191;
+        return 0;
+      })
+    );
+    const cards = Array.from({ length: 5 }, (_, at) => ({ id: String(at), name: "Pachycephalosaurus", picture: fakeBodyPicture("pachycephalosaurus") }));
+    const board = (count: number, language: "en" | "ru" = "en") => (
+      <SortScreen language={language} tray={Array.from({ length: 6 }, () => null)} baskets={[
+        { basket: "feathers", cards: [] },
+        { basket: "no-feathers", cards: cards.slice(0, count).map((card) => ({ ...card, name: language === "ru" ? "Пахицефалозавр" : card.name })) }
+      ]} sorted={count} total={6} glow={undefined} onDrop={() => {}} onHome={() => {}} onSeeResult={() => {}} />
+    );
+    const state = (language: "en" | "ru" = "en") => {
+      const area = basketButton("no-feathers", language).querySelector<HTMLElement>(".basket-cards");
+      return [area?.style.getPropertyValue("--columns"), [...(area?.children ?? [])].map((card) => card.hasAttribute("data-name-fits"))];
+    };
+    try {
+      const { rerender, unmount } = render(board(3), withPictures);
+      expect(state()).toEqual(["3", [true, true, true]]);
+      rerender(board(3, "ru"));
+      expect(state("ru")[1]).toEqual([false, false, false]);
+      rerender(board(3));
+      expect(state()).toEqual(["3", [true, true, true]]);
+      room = [390, 120];
+      rerender(board(5));
+      expect(state()).toEqual(["3", [false, false, false, false, false]]);
+      room = [1100, 240];
+      act(() => window.dispatchEvent(new Event("resize")));
+      expect(state()).toEqual(["5", [true, true, true, true, true]]);
+      unmount();
+      act(() => window.dispatchEvent(new Event("resize")));
+    } finally {
+      measurements.forEach((measurement) => measurement.mockRestore());
+      vi.unstubAllGlobals();
     }
   });
 });

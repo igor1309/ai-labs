@@ -6,9 +6,9 @@ Feature: Sort dinosaurs: a full basket's cards
     When a basket holds the <cards> cards a <level> round can deal it
     And the screen is 1024 by 768, 1180 by 820, 1366 by 1024, 1506 by 807 or 1920 by 1080
     Then its cards wrap into rows, apart, all inside the basket
-    And each card is at least as wide as its picture and its name in one line at 14px need
-    And a card with room for its picture and its name in one line shows the name at exactly 14px
-    And otherwise the name strip is hidden, the picture fills the card, and its accessible name is kept
+    And the basket chooses the columns with the largest pictures that fit all names in one line at exactly 14px and at least 48px of picture above them
+    And if no such layout fits, all name strips are hidden and the columns give the largest pictures alone, keeping their accessible names
+    And no picture is under 40px tall where the basket has room for it
 
     Examples:
       | level          | cards |
