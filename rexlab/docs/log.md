@@ -2,6 +2,8 @@
 
 ## 2026-10-20
 
+- RexLab lays out by the window's shape: a screen without a portrait layout, every screen for now, shows a turn-sideways picture in a portrait window ("MAKE THE WINDOW WIDER" when the screen is already sideways, as on a Mac), with a parents' footnote that portrait is on its way, and the game waits behind it (LAB-326).
+- Every landscape screen fits from a 1024×670 window to a large Mac display, its content at most 1440 wide and centred, clear of rounded corners, a notch and a home indicator; the page no longer pulls to refresh or bounces, and buttons brighten under a mouse or trackpad with a hand cursor, never after a finger (LAB-326).
 - A skeleton puzzle's board keeps its outline's shape, as large as fits beside the tray, at any window size; the tray's spots are square, at least 48 by 48, each bone large in its spot, and all fit in the tray in as many columns as they need (LAB-351).
 - A turned piece's turn mark is a little dimmer in both themes, still clear as a symbol (LAB-352).
 - In the museum, BUILD and BUILD AGAIN stand on their own under the exhibit, with no card behind them; the hall leaves as much room under the buttons as above the names, and nothing is cut off (LAB-353).
