@@ -34,8 +34,8 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
   // unit fails the fit check rather than silently treating it as pixels.
   function pixels(value: string): number {
     if (value === "0") return 0;
-    const plain = /^([\d.]+)(px|vw|vh)$/.exec(value);
-    if (plain) return Number(plain[1]) * (plain[2] === "vw" ? width / 100 : plain[2] === "vh" ? height / 100 : 1);
+    const plain = /^([\d.]+)(px|vw|dvh)$/.exec(value);
+    if (plain) return Number(plain[1]) * (plain[2] === "vw" ? width / 100 : plain[2] === "dvh" ? height / 100 : 1);
     const range = /^(clamp|min)\(([^()]+)\)$/.exec(value);
     if (range) {
       const parts = (range[2] ?? "").split(",").map((part) => pixels(part.trim()));

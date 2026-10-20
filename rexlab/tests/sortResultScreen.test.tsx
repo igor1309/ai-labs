@@ -97,8 +97,8 @@ const WORD_EMS: Record<string, number> = {
 };
 function pixels(value: string): number {
   if (value === "0") return 0;
-  const plain = /^([\d.]+)(px|vh)$/.exec(value);
-  if (plain) return Number(plain[1]) * (plain[2] === "vh" ? 768 / 100 : 1);
+  const plain = /^([\d.]+)(px|dvh)$/.exec(value);
+  if (plain) return Number(plain[1]) * (plain[2] === "dvh" ? 768 / 100 : 1);
   const minimum = /^min\(([^()]+)\)$/.exec(value);
   if (minimum) return Math.min(...(minimum[1] ?? "").split(",").map((part) => pixels(part.trim())));
   throw new Error(`Cannot budget ${value}`);
