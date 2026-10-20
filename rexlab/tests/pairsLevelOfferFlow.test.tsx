@@ -326,9 +326,11 @@ describe('"YES"', () => {
 });
 
 describe("the top level, and moving down", () => {
-  // Weak boards each start the count again, so a few show what ten would.
+  // Five strong boards pass both offer counts, three and five after a
+  // decline; weak boards each start the count again, so a few show what
+  // ten would.
   it.each([
-    ["paleontologist", PALEONTOLOGIST, 24, 10],
+    ["paleontologist", PALEONTOLOGIST, 24, 5],
     ["explorer", EXPLORER, 40, 3]
   ] as const)("never offers on %s boards, and never moves the child down", async (level, board, tries, boards) => {
     const session = await begin({ ageLevel: level });
