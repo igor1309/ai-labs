@@ -123,16 +123,16 @@ describe("help's wait", () => {
 });
 
 describe("a find", () => {
-  it.each([false, true])("celebrates each spot once where it lies, in any order, reduced motion %s", (reducedMotion) => {
-    const app = openRound("explorer", { reducedMotion });
+  it("shines once where each spot lies, with a ring and a star, in any order", () => {
+    const app = openRound("explorer");
     find("foot");
     expect(found()).toEqual(["foot"]);
     const pop = board().querySelector<HTMLElement>(".dig-find-pop")!;
     expect(pop.dataset.spot).toBe("foot");
+    expect(getComputedStyle(pop).animation).toContain("dig-detail-pop");
+    expect(getComputedStyle(pop.querySelector(".dig-detail-ring")!).animation).toContain("dig-ring");
     expect(pop.querySelector(".dig-detail-star")).not.toBeNull();
-    expect(pop.querySelector(".dig-detail-sparkle") !== null).toBe(!reducedMotion);
-    expect(pop.hasAttribute("data-motion")).toBe(!reducedMotion);
-    expect(getComputedStyle(pop).animation).toContain(reducedMotion ? "dig-detail-fade" : "dig-detail-pop");
+    expect(pop.querySelector(".dig-detail-sparkle")).not.toBeNull();
     // React uses WebKit's event name when jsdom has no AnimationEvent.
     fireEvent(pop, new Event("webkitAnimationEnd", { bubbles: true }));
     find("foot", 20_000);
@@ -145,5 +145,13 @@ describe("a find", () => {
     find("eye", 30_000);
     expect(found()).toEqual(order.filter((kind) => kind === "eye" || kind === "foot"));
     expect(board().hasAttribute("data-blown")).toBe(false);
+  });
+
+  it("finds the spots with no shine under reduced motion", () => {
+    openRound("explorer", { reducedMotion: true });
+    find("foot");
+    find("eye", 20_000);
+    expect(found()).toEqual(order.filter((kind) => kind === "eye" || kind === "foot"));
+    expect(board().querySelector(".dig-find-pop")).toBeNull();
   });
 });

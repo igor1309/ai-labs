@@ -44,7 +44,8 @@ export type DigBoardScreenProps = {
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
   brush: number;
-  // Whether grains puff from the brush: not with reduced motion.
+  // Whether grains puff from the brush and a find shines: not with
+  // reduced motion.
   grains: boolean;
   // The dinosaurs dug up so far, out of all of them; undefined when
   // stored progress cannot be read, so there is no count to show.
@@ -56,14 +57,23 @@ export type DigBoardScreenProps = {
   onHome: () => void;
 };
 
-// The sand's colour and its grains', drawn the same on every redraw.
+// The sand's colour and its grains', drawn the same on every redraw, and
+// the damp sand of the bed the dinosaur lies in, darker, under the
+// picture where the brush has dug.
 const SAND = "#d9b77e";
 const GRAIN_COLOURS = ["#c9a46a", "#e8cc98", "#b98f55"];
+const BED = "#b0905f";
+const BED_GRAINS = ["#a07f50", "#bf9f6c", "#94744a"];
 // The canvas pixels per grain drawn over the sand.
 const GRAIN_AREA = 160;
 // The brush stamps along a stroke at a third of its radius, so its soft
 // edges overlap into one path.
 const STAMPS_PER_RADIUS = 3;
+// Each stamp knocks crumbs off the sand round its rim, so the hollow's
+// edge is ragged; its pale lip of loose grains lies along both sides of
+// the stroke, twice over, the wider one fainter, for a soft edge.
+const CRUMBS = 3;
+const LIPS = [{ width: 1.5, colour: "rgba(240, 218, 172, 0.2)" }, { width: 1.3, colour: "rgba(240, 218, 172, 0.3)" }];
 // The grains of one puff, and the most puffs in the air at once.
 const PUFF_GRAINS = 6;
 const PUFFS = 3;
@@ -77,24 +87,42 @@ const GRAIN_WAYS = Array.from({ length: PUFF_GRAINS }, (_, grain): CSSProperties
 // as the sand is soft and a larger canvas only costs.
 const pixelRatio = () => Math.min(2, window.devicePixelRatio || 1);
 
-// Covers the whole canvas with sand.
-function cover(context: CanvasRenderingContext2D, width: number, height: number) {
+// Numbers from 0 to 1, the same ones for the same seed.
+function seeded(seed: number) {
+  let state = Math.abs(Math.round(seed)) % 2147483646 + 1;
+  return () => (state = (state * 16807) % 2147483647) / 2147483647;
+}
+
+// Covers the whole canvas with `colour`, strewn with grains of `grains`.
+function cover(context: CanvasRenderingContext2D, width: number, height: number, colour = SAND, grains = GRAIN_COLOURS) {
   context.globalCompositeOperation = "source-over";
-  context.fillStyle = SAND;
+  context.fillStyle = colour;
   context.fillRect(0, 0, width, height);
-  let seed = 7;
-  const next = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const next = seeded(7);
   for (let grain = 0; grain < (width * height) / GRAIN_AREA; grain++) {
-    context.fillStyle = GRAIN_COLOURS[grain % GRAIN_COLOURS.length] ?? SAND;
+    context.fillStyle = grains[grain % grains.length] ?? colour;
     context.fillRect(next() * width, next() * height, 1 + next() * 2, 1 + next() * 2);
   }
 }
 
 // Takes the sand off along `mark` with a soft-edged round brush, `scale`
-// canvas pixels to the frame's pixel.
+// canvas pixels to the frame's pixel, leaving a pale lip of grains on the
+// sand along it and crumbs knocked off its edge. The crumbs fall where
+// the mark's own seed puts them, so a redraw puts them back the same.
 function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: SandMark, scale: number) {
-  context.globalCompositeOperation = "destination-out";
   const reach = radius * scale;
+  context.globalCompositeOperation = "source-atop";
+  context.lineCap = "round";
+  for (const lip of LIPS) {
+    context.strokeStyle = lip.colour;
+    context.lineWidth = 2 * reach * lip.width;
+    context.beginPath();
+    context.moveTo(from.x * scale, from.y * scale);
+    context.lineTo(to.x * scale, to.y * scale);
+    context.stroke();
+  }
+  context.globalCompositeOperation = "destination-out";
+  const next = seeded(from.x * 7919 + from.y * 104729 + to.x * 31 + to.y);
   const stamps = Math.ceil((Math.hypot(to.x - from.x, to.y - from.y) * scale * STAMPS_PER_RADIUS) / reach);
   for (let stamp = 0; stamp <= stamps; stamp++) {
     const along = stamps === 0 ? 0 : stamp / stamps;
@@ -108,6 +136,14 @@ function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: San
     context.beginPath();
     context.arc(x, y, reach, 0, 2 * Math.PI);
     context.fill();
+    context.fillStyle = "#000";
+    for (let crumb = 0; crumb < CRUMBS; crumb++) {
+      const angle = next() * 2 * Math.PI;
+      const out = reach * (0.75 + 0.2 * next());
+      context.beginPath();
+      context.arc(x + Math.cos(angle) * out, y + Math.sin(angle) * out, reach * (0.12 + 0.14 * next()), 0, 2 * Math.PI);
+      context.fill();
+    }
   }
 }
 
@@ -163,6 +199,7 @@ export function DigBoardScreen({
   const choice = choices.length > 0;
   const board = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const bed = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke>(undefined);
   const [brushAt, setBrushAt] = useState<SandPoint>();
   const [puffs, setPuffs] = useState<Puff[]>([]);
@@ -172,8 +209,8 @@ export function DigBoardScreen({
     const fresh = spots.filter(({ id, found }) => found && !seenFinds.current.has(id));
     if (fresh.length === 0) return;
     fresh.forEach(({ id }) => seenFinds.current.add(id));
-    setCelebrating((current) => [...current, ...fresh.map(({ id }) => id)]);
-  }, [spots]);
+    if (grains) setCelebrating((current) => [...current, ...fresh.map(({ id }) => id)]);
+  }, [spots, grains]);
   // The listeners on the window and the redraw read the props as they
   // are now, not as they were when they were added.
   const latest = useRef({ marks, onBrush, grains, brush, locked: blown });
@@ -181,9 +218,9 @@ export function DigBoardScreen({
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const drawn = useRef(0);
 
-  // The canvas is as large as the board shows, so the sand is sharp at
-  // any size: on every resize it is covered anew and every mark taken off
-  // again, scaled with the board.
+  // The canvases are as large as the board shows, so the sand is sharp at
+  // any size: on every resize the bed and the sand are covered anew and
+  // every mark taken off again, scaled with the board.
   useLayoutEffect(() => {
     const element = canvas.current;
     if (!element) return;
@@ -192,6 +229,12 @@ export function DigBoardScreen({
       const ratio = pixelRatio();
       element.width = Math.round(width * ratio);
       element.height = Math.round(height * ratio);
+      if (bed.current) {
+        bed.current.width = element.width;
+        bed.current.height = element.height;
+        const under = sandContext(bed.current);
+        if (under) cover(under, element.width, element.height, BED, BED_GRAINS);
+      }
       context.current = sandContext(element);
       drawn.current = 0;
       if (!context.current) return;
@@ -298,6 +341,7 @@ export function DigBoardScreen({
           onPointerDown={press}
           onContextMenu={(event) => event.preventDefault()}
         >
+          <canvas ref={bed} className="dig-bed" aria-hidden="true" />
           {pictureLook ? <PictureImage look={pictureLook} className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} /> : <Picture className="dig-picture" src={picture} alt="" width={frame.width} height={frame.height} />}
           <canvas ref={canvas} className="dig-sand" aria-hidden="true" />
           {spots.filter(({ helped, found }) => helped && !found && !blown).map((spot) => (
@@ -307,11 +351,12 @@ export function DigBoardScreen({
             </span>
           ))}
           {spots.filter(({ id }) => celebrating.includes(id)).map((spot) => (
-            <span key={spot.id} className="dig-find-pop" aria-hidden="true" data-spot={spot.id} data-motion={grains || undefined}
+            <span key={spot.id} className="dig-find-pop" aria-hidden="true" data-spot={spot.id}
               style={{ left: percent(spot.x / frame.width), top: percent(spot.y / frame.height) }}
               onAnimationEnd={(event) => { if (event.target === event.currentTarget) setCelebrating((current) => current.filter((id) => id !== spot.id)); }}>
+              <span className="dig-detail-ring" />
               <Star className="dig-detail-star" size={30} />
-              {grains && <Sparkles className="dig-detail-sparkle" size={48} />}
+              <Sparkles className="dig-detail-sparkle" size={48} />
             </span>
           ))}
           {grains &&

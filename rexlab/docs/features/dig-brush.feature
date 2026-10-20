@@ -23,6 +23,8 @@ Feature: Dig: the brush, and Hatchling's free brushing
     Given a Hatchling round has started
     When I drag a finger across the sand
     Then the sand clears along the finger's path, a soft-edged round brush wide
+    And the hollow's edge is crumbly, with a pale lip of grains around it and the sand's shadow inside
+    And a darker bed of damp sand lies under the dinosaur, so the page never shows through
     And grains puff from the brush as it moves
     And with reduced motion the sand just clears, with no grains
 

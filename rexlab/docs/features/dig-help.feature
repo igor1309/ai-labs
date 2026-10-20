@@ -3,9 +3,9 @@ Feature: Dig: help and finds
   spot of it (dig-spots.feature) shows faintly through the sand. Help
   never clears a cell or finds a spot, so the child still digs it up.
   Help counts only time the round shows, in landscape with the app
-  shown, as the skeleton game's help does. A spot brushed clear pops a
-  small star where it lies, which counts towards nothing: the round's
-  one star is its dinosaur's (dig-reveal.feature).
+  shown, as the skeleton game's help does. A spot brushed clear shines
+  once where it lies, a ring and a small star, which counts towards
+  nothing: the round's one star is its dinosaur's (dig-reveal.feature).
 
   Background:
     Given an iPad in landscape
@@ -45,9 +45,9 @@ Feature: Dig: help and finds
     Then help comes 6 seconds later
     And leaving for HOME stops the wait, and the next round's starts from nothing
 
-  Scenario: A find pops a star where it lies
+  Scenario: A find shines once where it lies
     Given a round has started
     When I brush more than half of a spot's cells clear, in any order
-    Then a small star pops by the spot and the spot sparkles once
-    And with reduced motion the star appears with a short fade and nothing sparkles
-    And a spot found once never pops again, even after the screen turns
+    Then a ring spreads from the spot, and a small star pops by it as it sparkles once
+    And with reduced motion nothing shines
+    And a spot found once never shines again, even after the screen turns

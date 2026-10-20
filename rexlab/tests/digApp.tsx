@@ -91,7 +91,7 @@ export function openDigApp({
 // The dig game's board, read and brushed as a test sees it.
 
 export const board = () => screen.getByRole("group", { name: TEXTS[document.documentElement.lang === "ru" ? "ru" : "en"].sand });
-export const sandOf = () => board().querySelector("canvas") ?? board();
+export const sandOf = () => board().querySelector(".dig-sand") ?? board();
 
 // The board laid out `width` CSS pixels wide at the page's top left, in
 // the frame's 4:3 shape, and the page told it changed size.
