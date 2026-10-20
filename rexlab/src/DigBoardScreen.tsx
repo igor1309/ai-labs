@@ -343,9 +343,7 @@ export function DigBoardScreen({
       const middleX = from.left + ((treasure.x + treasure.size / 2) * from.width) / frame.width;
       const middleY = from.top + ((treasure.y + treasure.size / 2) * from.height) / frame.height;
       setTreasureWay({ left: x, top: y, width: (treasure.size * from.width) / frame.width, "--treasure-x": `${middleX - x}px`, "--treasure-y": `${middleY - y}px` } as CSSProperties);
-      const controlX = (middleX + x) / 2;
-      const controlY = Math.min(middleY, y) - Math.min(96, Math.abs(middleY - y) * 0.18 + 28);
-      setTreasurePath(`M ${middleX} ${middleY} Q ${controlX} ${controlY} ${x} ${y}`);
+      setTreasurePath(`M ${middleX} ${middleY} L ${x} ${y}`);
     };
     measure();
     window.addEventListener("resize", measure);

@@ -84,7 +84,8 @@ describe("a treasure in the sand", () => {
 
     expect([buried(), found()?.dataset.kind, flight()?.dataset.kind]).toEqual([null, "shell", "shell"]);
     expect(screen.getByText("SHELL").getAttribute("aria-live")).toBe("polite");
-    expect(route()?.getAttribute("d")).toMatch(/^M .* Q .* /);
+    expect(getComputedStyle(screen.getByText("SHELL")).animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(route()?.getAttribute("d")).toMatch(/^M .* L .*$/);
     expect(getComputedStyle(found()!).animation).toBe("dig-treasure-hop calc(0.4 * var(--dig-treasure)) var(--ease-out) both");
     expect(getComputedStyle(flight()!).animation).toBe("dig-treasure-flight calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both");
     expect(screen.getByRole("main").style.getPropertyValue("--dig-treasure")).toBe(`${TREASURE_FLIGHT.motion}ms`);
@@ -115,12 +116,14 @@ describe("a treasure in the sand", () => {
     // The board shows the frame's 800 by 600 pixels at their own size, a
     // cell 20 pixels wide, the treasure 3 cells.
     expect(ends()).toEqual(["610px", "42px", "60px", `${(column + 1.5) * 20 - 610}px`, `${(row + 1.5) * 20 - 42}px`]);
+    expect(route()?.getAttribute("d")).toBe(`M ${(column + 1.5) * 20} ${(row + 1.5) * 20} L 610 42`);
 
     // At half size and moved, a cell is 10 pixels wide.
     board().getBoundingClientRect = () => ({ left: 100, top: 50, width: 400, height: 300 } as DOMRect);
     book.getBoundingClientRect = () => ({ left: 500, top: 12, width: 20, height: 20 } as DOMRect);
     act(() => window.dispatchEvent(new Event("resize")));
     expect(ends()).toEqual(["510px", "22px", "30px", `${100 + (column + 1.5) * 10 - 510}px`, `${50 + (row + 1.5) * 10 - 22}px`]);
+    expect(route()?.getAttribute("d")).toBe(`M ${100 + (column + 1.5) * 10} ${50 + (row + 1.5) * 10} L 510 22`);
   });
 
   it("flies a kind found before into the FIELD GUIDE with no NEW!", () => {
@@ -136,6 +139,7 @@ describe("a treasure in the sand", () => {
     const app = openRound({ reducedMotion: true });
     brushTreasure();
     expect([flight(), getComputedStyle(found()!).animation]).toEqual([null, "fade-out var(--dig-treasure) var(--ease-out) both"]);
+    expect(getComputedStyle(screen.getByText("SHELL")).animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
     expect(route()).toBeNull();
     expect(screen.getByRole("main").style.getPropertyValue("--dig-treasure")).toBe(`${TREASURE_FLIGHT.reduced}ms`);
     expect(app.timers.timers()).toContain(TREASURE_FLIGHT.reduced);

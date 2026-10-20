@@ -205,6 +205,18 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(getComputedStyle(choiceCard().querySelector("img")!).filter).toBe("grayscale(0)");
     expect(choiceCard().textContent).toBe("✓");
     expect(choiceCard().getAttribute("aria-label")).toContain(TEXTS.en.digChoice.right);
+    const correctChoice = choiceCard();
+    const currentRejected = choices().find((card) => card.dataset.choice === rejected!.dataset.choice)!;
+    const correctChoices = choices().filter((card) => card.hasAttribute("data-correct"));
+    const rejectedChoices = choices().filter((card) => card.hasAttribute("data-rejected"));
+    const remainingChoices = choices().filter((card) => card.dataset.choice !== correctChoice.dataset.choice && card.dataset.choice !== currentRejected.dataset.choice);
+    expect(correctChoices.map((card) => card.dataset.choice)).toEqual([correctChoice.dataset.choice]);
+    expect(rejectedChoices.map((card) => card.dataset.choice)).toEqual([currentRejected.dataset.choice]);
+    expect(getComputedStyle(correctChoice.querySelector(".dig-choice-mark")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
+    for (const card of remainingChoices) {
+      expect([card.hasAttribute("data-correct"), card.hasAttribute("data-rejected"), getComputedStyle(card.querySelector("img")!).filter, card.textContent])
+        .toEqual([false, false, "grayscale(1)", ""]);
+    }
     expect([title(), choices().length, choices().every((card) => card.disabled)]).toEqual([TEXTS.en.whoIsIt, offered[level].length, true]);
     const before = board().getAttribute("data-clear");
     drag([[0, 590], [800, 590]], 90_000);
