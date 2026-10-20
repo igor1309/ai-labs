@@ -1,5 +1,9 @@
 # Changes
 
+- LAB-357: a codex turn's cost is priced through ccusage, so a cost
+  limit and the daily budget spend it; a resumed turn's usage is its
+  own, and each call records its cost's source.
+
 - LAB-356: home may set a daily cost budget across runs; calls stop on a
   spent day, and claude-code turns get no more than remains.
 

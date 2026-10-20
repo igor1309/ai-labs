@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/runstore"
@@ -36,21 +37,9 @@ func TestAStepOnClaudeCodeIsGivenItsProcessCostLimit(t *testing.T) {
 // of the in-memory field that the composition fills.
 func assertRecordedCosts(t *testing.T, record runstore.Record, cost, sessionCost *float64) {
 	t.Helper()
-	data, err := json.Marshal(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var raw struct {
-		Calls []struct{ Result map[string]any }
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatal(err)
-	}
-	if len(raw.Calls) != 1 {
-		t.Fatalf("calls %s, want one", data)
-	}
+	result := recordedResult(t, record)
 	for name, want := range map[string]*float64{"cost": cost, "session_cost": sessionCost} {
-		got, ok := raw.Calls[0].Result[name]
+		got, ok := result[name]
 		var expected any
 		if want != nil {
 			expected = *want
@@ -124,45 +113,96 @@ func TestAStepContinuingASessionInTheRunIsGivenItsCost(t *testing.T) {
 	}
 }
 
-// cost.feature: a runtime without budgets runs with a warning. Bash has
-// the same facts contract as codex for this policy.
+// cost.feature, "A limit on a runtime that reports no cost spends
+// nothing": bash's facts report no cost.
 // Contract test: the files home holds, as Agister ships them.
 func TestALimitOnARuntimeThatReportsNoCostSpendsNothing(t *testing.T) {
 	t.Parallel()
-	for _, runtime := range []string{"codex", "bash"} {
-		t.Run(runtime, func(t *testing.T) {
-			t.Parallel()
-			settings := modelSettings(t, map[string]string{"/r/.agister/processes/ask.yaml": askProcess + "limits: {cost: 1}\n"})
-			f := newRecordFixture(t, settings, echoes)
-			agent, process := "codex-sol-61", "ask"
-			if runtime == "bash" {
-				agent, process = "bash", "say"
-				f.settings["/r/.agister/processes/say.yaml"] = fmt.Sprintf(sayProcess, "", "limits: {cost: 1}\n")
-				f.settings["/r/.agister/prompts/say.md"] = "echo hi"
-			} else {
-				f.runtimes.codex.answer = codexReply(codex.Reply{Output: []byte(`{"ok":true}`)})
-			}
-			param := "q=why"
-			if runtime == "bash" {
-				param = "what=hi"
-			}
-			got := f.run(t, "/r", "run", "--process", process, "--agent", agent, "--param", param)
-			if got.stderr != "" || got.code != 0 {
-				t.Fatalf("ran %+v", got)
-			}
-			warning := "the runtime " + runtime + " reports no cost: the cost limit 1 spends nothing"
-			if p := printedOf(t, got); !slices.Contains(p.Warnings, warning) || p.Cost != nil {
-				t.Fatalf("printed %+v, want unknown cost and warning %q", p, warning)
-			}
-			calls := f.store.last(t).Calls
-			if len(calls) != 1 || !slices.Contains(calls[0].Result.Warnings, warning) {
-				t.Fatalf("calls %+v, want warning %q", calls, warning)
-			}
-			if runtime == "codex" && len(f.runtimes.codex.ran()) != 1 {
-				t.Fatal("codex did not run")
-			}
-		})
+	f := newRecordFixture(t, modelSettings(t, nil), echoes)
+	f.settings["/r/.agister/processes/say.yaml"] = fmt.Sprintf(sayProcess, "", "limits: {cost: 1}\n")
+	f.settings["/r/.agister/prompts/say.md"] = "echo hi"
+	got := f.run(t, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("ran %+v", got)
 	}
+	if len(f.runtimes.bash.ran()) != 1 {
+		t.Fatalf("bash ran %+v, want its program", f.runtimes.bash.ran())
+	}
+	const warning = "the runtime bash reports no cost: the cost limit 1 spends nothing"
+	if p := printedOf(t, got); !slices.Contains(p.Warnings, warning) || p.Cost != nil {
+		t.Fatalf("printed %+v, want unknown cost and warning %q", p, warning)
+	}
+	calls := f.store.last(t).Calls
+	if len(calls) != 1 || !slices.Contains(calls[0].Result.Warnings, warning) {
+		t.Fatalf("calls %+v, want warning %q", calls, warning)
+	}
+}
+
+// cost.feature, "A limit on codex is kept on the cost it reports": its
+// turn at capacity is not made again, the limit spent, and the result has
+// no warning of the limit; codex's plan gives its own warnings, of what it
+// grants.
+// Contract test: the files home holds, as Agister ships them.
+func TestALimitOnCodexIsKeptOnTheCostItReports(t *testing.T) {
+	t.Parallel()
+	f := newRecordFixture(t, modelSettings(t, map[string]string{"/r/.agister/processes/ask.yaml": askProcess + "limits: {cost: 1}\n"}), nil)
+	f.runtimes.codex.answer = answers[codex.Turn](codex.Result{Session: "t1", Reply: &codex.Reply{Session: "t1",
+		Failure: codex.Capacity, Reason: "Selected model is at capacity", Cost: usd(1.5), SessionCost: usd(1.5), CostSource: "ccusage"}})
+	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
+	if len(f.runtimes.codex.ran()) != 1 {
+		t.Fatalf("codex ran %+v, want one turn", f.runtimes.codex.ran())
+	}
+	p := printedOf(t, got)
+	if p.Status != "failed" || p.Class == nil || *p.Class != "budget_exhausted" || p.Reason == nil || *p.Reason != "the cost limit 1 is spent: 1.5" ||
+		slices.ContainsFunc(p.Warnings, func(w string) bool { return strings.Contains(w, "cost") }) {
+		t.Fatalf("printed %+v, want failed budget_exhausted, the limit spent, no warning", p)
+	}
+	record := f.store.last(t)
+	assertRecordedCosts(t, record, usd(1.5), usd(1.5))
+	if got := recordedResult(t, record)["cost_source"]; got != "ccusage" {
+		t.Errorf("record cost_source %v, want ccusage", got)
+	}
+}
+
+// cost.feature, "A codex call whose cost is unknown says why".
+// Contract test: the files home holds, as Agister ships them.
+func TestACodexCallWhoseCostIsUnknownSaysWhy(t *testing.T) {
+	t.Parallel()
+	const why = "ccusage could not price the thread t1: the program could not start"
+	f := newRecordFixture(t, modelSettings(t, map[string]string{"/r/.agister/processes/ask.yaml": askProcess + "limits: {cost: 1}\n"}), nil)
+	f.runtimes.codex.answer = answers[codex.Turn](codex.Result{Session: "t1", Reply: &codex.Reply{Output: []byte(`{"ok":true}`), Session: "t1", CostUnknown: why}})
+	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("ran %+v", got)
+	}
+	if p := printedOf(t, got); !slices.Contains(p.Warnings, why) || p.Cost != nil {
+		t.Fatalf("printed %+v, want unknown cost and warning %q", p, why)
+	}
+	result := recordedResult(t, f.store.last(t))
+	for _, name := range []string{"cost", "cost_source"} {
+		if got, ok := result[name]; !ok || got != nil {
+			t.Errorf("record %s = %v, present %v; want null", name, got, ok)
+		}
+	}
+}
+
+// recordedResult is the result of record's one call, as its JSON gives it.
+func recordedResult(t *testing.T, record runstore.Record) map[string]any {
+	t.Helper()
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Calls []struct{ Result map[string]any }
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if len(raw.Calls) != 1 {
+		t.Fatalf("calls %s, want one", data)
+	}
+	return raw.Calls[0].Result
 }
 
 // Reuse records the earlier call's session cost as well as its outcome.

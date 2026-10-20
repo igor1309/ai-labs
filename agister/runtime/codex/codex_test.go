@@ -17,22 +17,47 @@ import (
 // supervisorSpy answers in place of the supervisor: it keeps each program
 // it is asked to run, its line function left out, and the bytes of the
 // file its --output-schema names, and why its context had ended, nil
-// where it had not; gives that function the lines its test gives, in
-// order, counting in given those it has begun to give, runs its test's
-// hook, and gives the result and the error its test gives.
+// where it had not. It answers ccusage with its test's lookups, in
+// order, an error where none is left; and codex by giving that function
+// the lines its test gives, in order, counting in given those it has
+// begun to give, running its test's hook, and giving the result and the
+// error its test gives.
 type supervisorSpy struct {
+	lines   []string
+	result  codex.Ended
+	err     error
+	during  func()
+	lookups []lookup
+	asked   []codex.Program
+	schema  []byte
+	ended   []error
+	given   int
+}
+
+// lookup is a spy's answer to one run of ccusage: the lines it gives, then
+// its result and its error.
+type lookup struct {
 	lines  []string
 	result codex.Ended
 	err    error
-	during func()
-	asked  []codex.Program
-	schema []byte
-	ended  []error
-	given  int
 }
 
 func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
 	s.ended = append(s.ended, ctx.Err())
+	if program.Name == "ccusage" {
+		line := program.Line
+		program.Line = nil
+		s.asked = append(s.asked, program)
+		if len(s.lookups) == 0 {
+			return codex.Ended{}, errors.New("the spy was given no lookup")
+		}
+		answer := s.lookups[0]
+		s.lookups = s.lookups[1:]
+		for _, l := range answer.lines {
+			line(l)
+		}
+		return answer.result, answer.err
+	}
 	if i := slices.Index(program.Args, "--output-schema"); i >= 0 && i+1 < len(program.Args) {
 		schema, err := os.ReadFile(program.Args[i+1])
 		if err != nil {
@@ -118,7 +143,8 @@ func ptr[T any](v T) *T { return &v }
 // about what it reports.
 func discard(codex.Report) {}
 
-// facts.feature, "Its facts".
+// facts.feature, "Its facts": it reports a cost, and cannot take a
+// budget.
 func TestItsFacts(t *testing.T) {
 	t.Parallel()
 	want := codex.Facts{
@@ -131,6 +157,7 @@ func TestItsFacts(t *testing.T) {
 		ToolCalls:    true,
 		Budget:       false,
 		ToolCommands: true,
+		Cost:         true,
 		Inputs:       codex.InMessage,
 	}
 	if got := wrapper(t, &supervisorSpy{}, t.TempDir()).Facts(); !reflect.DeepEqual(got, want) {
@@ -214,13 +241,13 @@ func TestATurnIsGivenExactlyOneOption(t *testing.T) {
 }
 
 // turn.feature, "A completed turn is the reply", among lines the reply
-// does not read.
+// does not read, priced by its thread's lookup.
 func TestACompletedTurnIsTheReply(t *testing.T) {
 	t.Parallel()
 	spy := &supervisorSpy{lines: []string{
 		threadLine, turnLine, notJSONLine, "", errorLine, commandLine, message("first"), reasoningLine, message("last"), completedLine,
-	}}
-	want := codex.Reply{Text: "last", Session: "t1",
+	}, lookups: []lookup{priced(`"totalCost":0.25`)}}
+	want := codex.Reply{Text: "last", Session: "t1", Cost: ptr(0.25), SessionCost: ptr(0.25), CostSource: "ccusage",
 		Usage: codex.Usage{Input: ptr(int64(10)), CacheRead: ptr(int64(4)), Output: ptr(int64(3)), Reasoning: ptr(int64(2))}}
 	if got := reply(t, spy, nil); !reflect.DeepEqual(got, want) {
 		t.Errorf("reply\n got %+v\nwant %+v", got, want)

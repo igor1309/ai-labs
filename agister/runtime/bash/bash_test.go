@@ -46,6 +46,7 @@ func TestItsFacts(t *testing.T) {
 		ToolCalls:    false,
 		Budget:       false,
 		ToolCommands: false,
+		Cost:         false,
 		Inputs:       bash.InEnvironment,
 	}
 	if got := wrapper(t, &supervisorSpy{}).Facts(); !reflect.DeepEqual(got, want) {

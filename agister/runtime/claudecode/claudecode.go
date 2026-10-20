@@ -15,7 +15,7 @@ import (
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
 // efforts it accepts, report tool calls and tool commands, take a
-// budget, and how it takes a call's inputs.
+// budget, report a cost, and how it takes a call's inputs.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -26,6 +26,7 @@ type Facts struct {
 	ToolCalls    bool
 	ToolCommands bool
 	Budget       bool
+	Cost         bool
 	Inputs       Inputs
 }
 
@@ -125,13 +126,15 @@ type Result struct {
 // Reply is what the runtime reported of a turn: its text, its structured
 // output, nil for none, its session, its turn's own cost in US dollars,
 // nil where unknown, its usage, and its session's cost after it, nil where
-// unknown; and its failure class and reason, empty where it reports none.
+// unknown; whose price the cost is, "claude-code" where it is known; and
+// its failure class and reason, empty where it reports none.
 type Reply struct {
 	Text        string
 	Output      []byte
 	Session     string
 	Cost        *float64
 	SessionCost *float64
+	CostSource  string
 	Usage       Usage
 	Failure     Class
 	Reason      string
@@ -185,6 +188,7 @@ func (*Wrapper) Facts() Facts {
 		ToolCalls:    true,
 		ToolCommands: true,
 		Budget:       true,
+		Cost:         true,
 		Inputs:       InMessage,
 	}
 }
@@ -219,7 +223,7 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	reply.SessionCost, reply.Cost = reply.Cost, nil
 	if before != nil && reply.SessionCost != nil && *reply.SessionCost >= *before {
 		cost := *reply.SessionCost - *before
-		reply.Cost = &cost
+		reply.Cost, reply.CostSource = &cost, "claude-code"
 	}
 	return Result{Ended: ended, Session: read.session, Reply: reply}, nil
 }

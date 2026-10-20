@@ -15,7 +15,8 @@ import (
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
 // efforts it accepts, report tool calls and tool commands, and how it
-// takes a call's inputs, and whether it takes a budget.
+// takes a call's inputs, whether it takes a budget, and whether it
+// reports a cost.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -26,6 +27,7 @@ type Facts struct {
 	ToolCalls    bool
 	ToolCommands bool
 	Budget       bool
+	Cost         bool
 	Inputs       Inputs
 }
 
@@ -121,14 +123,22 @@ type Result struct {
 
 // Reply is what the runtime reported of a turn: its text, its structured
 // output, nil for none, its session and its usage, and its failure class
-// and reason, empty where it reports none. Codex reports no cost.
+// and reason, empty where it reports none. Codex reports no cost: Cost is
+// the turn's own, priced by ccusage, in US dollars, and SessionCost the
+// thread's after it, each nil where unknown; CostSource is whose price
+// the cost is, empty where it is unknown, and CostUnknown why it is,
+// empty where it is known.
 type Reply struct {
-	Text    string
-	Output  []byte
-	Session string
-	Usage   Usage
-	Failure Class
-	Reason  string
+	Text        string
+	Output      []byte
+	Session     string
+	Cost        *float64
+	SessionCost *float64
+	CostSource  string
+	CostUnknown string
+	Usage       Usage
+	Failure     Class
+	Reason      string
 }
 
 // Usage is the tokens a turn used, each nil where not reported.
@@ -178,6 +188,7 @@ func (*Wrapper) Facts() Facts {
 		Efforts:      []string{"minimal", "low", "medium", "high", "xhigh"},
 		ToolCalls:    true,
 		ToolCommands: true,
+		Cost:         true,
 		Inputs:       InMessage,
 	}
 }
@@ -192,7 +203,10 @@ func (*Wrapper) Facts() Facts {
 // that cannot be is left, the turn's end unchanged, since the turn has
 // already run and a folder under the system's temporary folder harms
 // nothing. A supervisor's error is the turn's, its error that the program
-// could not start included.
+// could not start included. A turn that gives a reply and its thread is
+// priced by a lookup of the thread after it, and a resumed one by a
+// lookup before it as well; a lookup's failure leaves the cost unknown,
+// and nothing else about the turn.
 func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Result, error) {
 	if report == nil {
 		return Result{}, errors.New("codex: no report")
@@ -207,6 +221,10 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	if err != nil {
 		return Result{}, err
 	}
+	var before price
+	if turn.Session != "" {
+		before = w.lookup(ctx, turn, turn.Session)
+	}
 	read := stream{report: report, searches: map[string]bool{}}
 	ended, err := w.supervisor.Run(ctx, Program{
 		Name: "codex", Args: arguments(turn, schema), Dir: turn.Dir, Env: turn.Env, Stdin: prompt(turn), Line: read.line,
@@ -217,7 +235,14 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	if ended.Signal != "" {
 		return Result{Ended: ended, Session: read.thread}, nil
 	}
-	return Result{Ended: ended, Session: read.thread, Reply: read.reply(ended, schema != "")}, nil
+	reply := read.reply(ended, schema != "")
+	if read.thread != "" {
+		if turn.Session == "" {
+			before = price{cost: new(float64), usage: Usage{Input: new(int64), Output: new(int64), CacheRead: new(int64), Reasoning: new(int64)}}
+		}
+		priced(reply, read.thread, before, w.lookup(ctx, turn, read.thread))
+	}
+	return Result{Ended: ended, Session: read.thread, Reply: reply}, nil
 }
 
 // write writes schema, where one is given, to a file in a folder of its
