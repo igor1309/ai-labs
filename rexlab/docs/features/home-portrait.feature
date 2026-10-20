@@ -1,17 +1,20 @@
 Feature: The home page in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide (an iPad
-  upright, an iPad in Split View or Stage Manager, a Mac window taller
-  than it is wide), the home page stands upright: the corner and the
-  greeting at the top, the large card under them, and the row of tiles
-  under the large card, with the same columns of two,
-  the same order and the same sideways scroll as in a landscape window
-  (home-tiles.feature, home-featured-card.feature). Nothing else on the
-  page changes. A tall-narrow window, under 600 wide (an iPhone
-  upright), still asks to turn sideways (window-shape.feature). Turning
-  the window reflows the page straight to its other layout; the motion
-  for that is LAB-375's.
+  upright, in Split View or Stage Manager, or a tall Mac window), the
+  home page stands upright: the corner and the greeting at the top, the
+  large card under them, and under it the row of tiles in the same
+  columns of two, order and sideways scroll as in landscape
+  (home-tiles.feature). Nothing else changes. A tall-narrow window keeps
+  the picture asking to turn or widen (window-shape.feature). Turning
+  reflows straight to the other layout; its motion is LAB-375's, the
+  owner's call of 2026-10-20 splitting stage 1 into slices.
 
-  Budgets count no safe-area inset, as window-fit.feature says.
+  The padding, the greeting and the gaps keep their landscape sizes, 292
+  CSS pixels in all. The row of tiles takes 36% of the window's height,
+  360 to 520 CSS pixels, its columns 310 wide as in landscape. The large
+  card takes the rest, at least 280 tall with its name strip, its picture
+  at 4:3. Under 932 tall the page scrolls up and down instead of going
+  smaller. Budgets count no safe-area inset (window-fit.feature).
 
   Scenario Outline: The home page stands upright
     Given a window of <width> by <height> CSS pixels
@@ -19,24 +22,27 @@ Feature: The home page in a tall window
     When I open the home page
     Then I see no picture asking to turn sideways or to make the window wider
     And "RexLab", the museum button and the parents' menus stand on one line at the top, the greeting under them
-    And the large card stands under the greeting, centred, as large as the room the tiles' row leaves it, its whole picture shown
-    And under the large card I see "ALL DINOSAURS" over "FIND THE PAIR", then "SKELETONS" over "DIG"
-    And every column of tiles is as wide as the others, every tile half its column's height
+    And the large card stands under the greeting, centred, <card> CSS pixels tall with its name strip, its whole picture shown
+    And under the large card the row of tiles is <row> CSS pixels tall, showing "ALL DINOSAURS" over "FIND THE PAIR" first
+    And every column of tiles is 310 CSS pixels wide, every tile half its column's height
     And at least 24 pixels of the first column that does not fit peek in at the right edge
-    And the whole page fits the window with no scrolling up or down
+    And the page <scrolls> up and down
 
     Examples:
-      | width | height | window                         |
-      | 600   | 800    | iPad in Split View, or a Mac   |
-      | 744   | 1060   | iPad mini upright, in Safari   |
-      | 744   | 1133   | iPad mini upright, full screen |
-      | 820   | 1180   | iPad Air upright               |
-      | 834   | 1194   | iPad Pro 11" upright           |
-      | 1032  | 1376   | iPad Pro 13" upright           |
-      | 900   | 1000   | Mac window, nearly square      |
+      | width | height | card | row | scrolls          | window                          |
+      | 600   | 800    | 280  | 360 | scrolls          | iPad in Split View, or a Mac    |
+      | 768   | 950    | 298  | 360 | does not scroll  | iPad 9.7" upright, in Safari    |
+      | 768   | 1024   | 363  | 369 | does not scroll  | iPad 9.7" upright, full screen  |
+      | 744   | 1060   | 386  | 382 | does not scroll  | iPad mini upright, in Safari    |
+      | 744   | 1133   | 433  | 408 | does not scroll  | iPad mini upright, full screen  |
+      | 820   | 1180   | 463  | 425 | does not scroll  | iPad Air upright                |
+      | 834   | 1194   | 472  | 430 | does not scroll  | iPad Pro 11" upright            |
+      | 1032  | 1376   | 589  | 495 | does not scroll  | iPad Pro 13" upright            |
+      | 900   | 1000   | 348  | 360 | does not scroll  | Mac window, nearly square       |
 
   Scenario: The tiles scroll sideways under the large card
     Given a window of 744 by 1133 CSS pixels
+    And the large card features COMPARE
     And I am on the home page
     When I swipe the tiles to the left until they stop
     Then I see "MORE COMING" at the right edge
@@ -81,12 +87,14 @@ Feature: The home page in a tall window
     Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator
     When I open the home page
     Then the version footer and every tile sit clear of the rounded corners and the home indicator
+    And the version footer overlaps no tile
 
   Scenario: Turning the window keeps the home page as it was
     Given a window of 1180 by 820 CSS pixels
-    And I am on the home page with the theme menu open
+    And I am on the home page with the tiles swiped to "MORE COMING" and the theme menu open
     When the window becomes 820 by 1180 CSS pixels
     Then the home page shows its upright layout with the theme menu still open
-    And the large card features the same game
+    And the large card features the same game, and does not rise in again
+    And the row of tiles stands at its start, "ALL DINOSAURS" at its left edge
     When the window becomes 1180 by 820 CSS pixels
     Then the home page shows its landscape layout with the theme menu still open

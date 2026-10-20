@@ -19,8 +19,8 @@ Feature: The window's shape
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the same picture as a tall one.
   A screen's portrait layout is built for one size class at a time: the
-  home page has one for a tall window only (home-portrait.feature), so a
-  tall-narrow window still shows it the picture. The scenarios below use
+  home page has one for a tall window only (home-portrait.feature), so in a
+  tall-narrow window the home page is still behind the picture. The scenarios below use
   the care welcome screen, which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
@@ -76,6 +76,7 @@ Feature: The window's shape
 
   Scenario Outline: A screen shows its portrait layout only in the size class it is built for
     Given I am on the home page
+    And the device's screen turns upright with the window
     When the window becomes <width> by <height> CSS pixels
     Then <shown>
 
