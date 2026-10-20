@@ -8,6 +8,7 @@ import { localDigProgress, localFeatured, localProgress } from "../src/localProg
 import { localLanguage } from "../src/localLanguage.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import type { Random } from "../src/dig/index.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DIG,
@@ -40,6 +41,7 @@ export function openDigApp({
   timers = manualTimers(),
   orientation = manualOrientation("landscape"),
   visibility = manualVisibility("visible"),
+  random = () => 0,
   settingsStorage
 }: {
   storage?: MemoryStorage;
@@ -50,6 +52,8 @@ export function openDigApp({
   timers?: ManualPictures | ManualTimers;
   orientation?: ManualOrientation;
   visibility?: ManualVisibility;
+  // The app's draws, the featured game's and each round's.
+  random?: Random;
   settingsStorage?: MemoryStorage;
 } = {}) {
   const local = () => storage;
@@ -64,7 +68,7 @@ export function openDigApp({
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
-      random={() => 0}
+      random={random}
       orientation={orientation}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

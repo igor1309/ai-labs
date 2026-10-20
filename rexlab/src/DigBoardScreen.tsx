@@ -31,9 +31,10 @@ export type DigSpotView = { id: string; x: number; y: number; r: number; found: 
 // and its side, in the frame's pixels.
 export type DigTreasureView = { kind: string; picture: string; x: number; y: number; size: number };
 
-// A found treasure flies into the FIELD GUIDE, then has landed there,
-// kept; `fresh` when it is the first of its kind.
-export type TreasureFlight = { phase: "flying" | "landed"; fresh: boolean };
+// A found treasure flies into the FIELD GUIDE, `onLanded` called as it
+// lands there, then has landed, kept; `fresh` when it was the first of its
+// kind.
+export type TreasureFlight = { phase: "flying"; startTimer: StartTimer; onLanded: () => void } | { phase: "landed"; fresh: boolean };
 
 // A point on the body picture, in the pixels of its frame.
 export type SandPoint = { x: number; y: number };
@@ -256,7 +257,8 @@ export function DigBoardScreen({
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
   const [treasureWay, setTreasureWay] = useState<CSSProperties>({});
-  const treasureFlying = treasure !== undefined && treasureFlight?.phase === "flying";
+  const inFlight = treasureFlight?.phase === "flying" ? treasureFlight : undefined;
+  const treasureFlying = treasure !== undefined && inFlight !== undefined;
   const lifting = finish !== undefined && finish.phase !== "gust";
   const flying = finish?.phase === "lift" && finish.newStar && dugUp !== undefined;
   const lift = finish?.phase === "lift" ? finish : undefined;
@@ -273,6 +275,19 @@ export function DigBoardScreen({
       stop();
     };
   }, [lift, liftWait]);
+  // Rotation restarts the treasure's flight too, so it lands, and is kept,
+  // only as the flight shown ends.
+  useEffect(() => {
+    if (!inFlight) return;
+    let active = true;
+    const stop = inFlight.startTimer(flightWait, () => {
+      if (active) inFlight.onLanded();
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [inFlight, flightWait]);
   // The count ticks up as the star lands; under reduced motion it simply
   // changes.
   const shownCount = dugUp !== undefined && grains && finish?.newStar && finish.phase !== "counted" ? dugUp - 1 : dugUp;

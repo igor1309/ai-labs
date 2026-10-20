@@ -1,10 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BRUSH_SIZES, startRound, treasurePlaces } from "../src/dig/index.ts";
+import { BRUSH_SIZES, keepTreasure, startRound, TREASURE_CHANCES, TREASURE_KINDS, treasurePlaces, type Random, type TreasureKind } from "../src/dig/index.ts";
 import { DigBoardScreen } from "../src/DigBoardScreen.tsx";
-import { GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
+import { COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY } from "../src/localProgress.ts";
+import { localDigProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { presentDigBoard } from "../src/presentation.ts";
 import { board, choiceCard, cleared, clearCells, drag, finishBoard, landTreasure, openDigApp, placeBoard, roundDinosaur } from "./digApp.tsx";
 import { badgeOf } from "./homePage.tsx";
@@ -21,9 +21,39 @@ const found = () => document.querySelector<HTMLElement>(".dig-treasure-found");
 const flight = () => document.querySelector<HTMLElement>(".dig-treasure-flight");
 const fresh = () => document.querySelector(".dig-field-guide-new");
 
+const guideCards = () => within(screen.getByRole("group", { name: TEXTS.en.treasureCards })).getAllByRole("region");
+const helped = () => board().getAttribute("data-helped");
+const spendHelp = (app: ReturnType<typeof openDigApp>, seconds: number) => {
+  for (let second = 0; second < seconds; second++) act(() => app.timers.fire(1000));
+};
+
 function openRound(options: Parameters<typeof openDigApp>[0] = {}) {
   const app = openDigApp(options);
   fireEvent.click(homeTile(options.language === "ru" ? "РАСКОПКИ" : "DIG"));
+  placeBoard(800);
+  return app;
+}
+
+// The draws of a first round at Explorer hiding `kind`: 0, as every other
+// test round's, but the one that draws its kind, in the middle of that
+// kind's chance. The draw it is at is found by starting such rounds.
+function roundDraws(kind: TreasureKind): number[] {
+  const draw = TREASURE_KINDS.slice(0, TREASURE_KINDS.indexOf(kind)).reduce((sum, each) => sum + TREASURE_CHANCES[each], 0) + TREASURE_CHANCES[kind] / 2;
+  for (let at = 0; at < 100; at++) {
+    const draws = Array.from({ length: at + 1 }, (_, each) => (each === at ? draw : 0));
+    const queue = [...draws];
+    if (startRound(SHIPPED_DIG, [], undefined, () => queue.shift() ?? 0, "explorer").treasure?.kind === kind) return draws;
+  }
+  throw new Error(`No round hides ${kind}`);
+}
+
+// A round hiding `kind`: the app's draws are 0 until it starts.
+function openRoundHiding(kind: TreasureKind, storage: MemoryStorage) {
+  const draws: number[] = [];
+  const random: Random = () => draws.shift() ?? 0;
+  const app = openDigApp({ storage, random });
+  draws.push(...roundDraws(kind));
+  fireEvent.click(homeTile("DIG"));
   placeBoard(800);
   return app;
 }
@@ -142,6 +172,102 @@ describe("a treasure in the sand", () => {
     placeBoard(800);
     expect([buried(), found(), flight(), fieldGuide().textContent]).toEqual([null, null, null, "1"]);
     expect(saved(app.storage).treasures).toEqual({ shell: 1 });
+  });
+
+  it("flies again after a turn of the iPad mid-flight, kept only as the flight started again lands", () => {
+    const app = openRound();
+    brushTreasure();
+    const flights = () => app.timers.timers().filter((wait) => wait === TREASURE_FLIGHT.motion).length;
+    expect(flights()).toBe(1);
+
+    act(() => app.orientation.turn("portrait"));
+    expect(flights()).toBe(0);
+    act(() => app.orientation.turn("landscape"));
+    placeBoard(800);
+    expect([flights(), found()?.dataset.kind, flight()?.dataset.kind]).toEqual([1, "shell", "shell"]);
+    act(() => app.timers.deliverStopped(TREASURE_FLIGHT.motion));
+    expect([fieldGuide().textContent, fieldGuide().hasAttribute("data-landed"), saved(app.storage)?.treasures]).toEqual(["0", false, undefined]);
+
+    landTreasure(app.timers);
+    expect([found(), flight(), fieldGuide().textContent, fresh()?.textContent]).toEqual([null, null, "1", "NEW!"]);
+    expect(saved(app.storage).treasures).toEqual({ shell: 1 });
+  });
+
+  it("is kept as the reveal comes while its flight, started again by a turn of the iPad, is still on", () => {
+    const app = openRound();
+    brushTreasure();
+    for (let y = 20; y < 600 && document.querySelectorAll(".dig-choice-card").length === 0; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
+    fireEvent.click(choiceCard());
+    act(() => app.orientation.turn("portrait"));
+    act(() => app.orientation.turn("landscape"));
+    placeBoard(800);
+    act(() => app.timers.fire(GUST.motion));
+    act(() => app.timers.fire(LIFT.motion));
+    expect([saved(app.storage).treasures, app.timers.timers()]).toEqual([undefined, expect.arrayContaining([TREASURE_FLIGHT.motion, COUNT_SETTLE.motion])]);
+
+    act(() => app.timers.fire(COUNT_SETTLE.motion));
+    expect([screen.getByRole("heading", { level: 2 }).textContent, fieldGuide().textContent]).toEqual(["TYRANNOSAURUS", "1"]);
+    expect(saved(app.storage)).toMatchObject({ dug: ["tyrannosaurus"], treasures: { shell: 1 } });
+    landTreasure(app.timers);
+    expect(saved(app.storage).treasures).toEqual({ shell: 1 });
+  });
+
+  it.each([
+    { before: { shell: 2 }, after: { shell: 4 }, count: "4" },
+    { before: {}, after: { shell: 2 }, count: "2" }
+  ])("lands on the count another tab stored meanwhile, from $before", ({ before, after, count }) => {
+    const app = openRound({ storage: stored(before) });
+    const otherTab = localDigProgress(() => app.storage);
+    const other = otherTab.load()!;
+    brushTreasure();
+    otherTab.save({ ...other, progress: keepTreasure(other.progress, "shell") });
+
+    landTreasure(app.timers);
+    expect([fieldGuide().textContent, fresh()]).toEqual([count, null]);
+    expect(saved(app.storage).treasures).toEqual(after);
+  });
+
+  it.each(["during its flight", "after it lands", "after BACK from the FIELD GUIDE"] as const)("keeps its state through help's ticks %s", (when) => {
+    const app = openRound();
+    brushTreasure();
+    if (when === "after it lands") landTreasure(app.timers);
+    if (when === "after BACK from the FIELD GUIDE") {
+      fireEvent.click(fieldGuide());
+      fireEvent.click(screen.getByRole("button", { name: "BACK" }));
+      placeBoard(800);
+    }
+    expect(helped()).toBe("");
+    spendHelp(app, 10);
+    expect(helped()).not.toBe("");
+
+    if (when === "during its flight") {
+      expect([buried(), found()?.dataset.kind, flight()?.dataset.kind, fieldGuide().textContent]).toEqual([null, "shell", "shell", "0"]);
+      landTreasure(app.timers);
+    }
+    expect([buried(), found(), flight(), fieldGuide().textContent, fresh()?.textContent]).toEqual([null, null, null, "1", "NEW!"]);
+    expect(saved(app.storage).treasures).toEqual({ shell: 1 });
+    const dropped = when === "after BACK from the FIELD GUIDE";
+    expect([board().getAttribute("data-dropped"), board().querySelector(".dig-landing") === null]).toEqual([dropped ? "true" : null, dropped]);
+  });
+});
+
+describe.each(TREASURE_KINDS)("a %s found", (kind) => {
+  it.each([
+    { found: "first", before: {}, count: 1, fresh: "NEW!" },
+    { found: "again", before: { [kind]: 1 }, count: 2, fresh: undefined }
+  ])("is kept as its own kind, $found, and shows on its FIELD GUIDE card", ({ before, count, fresh: news }) => {
+    const app = openRoundHiding(kind, stored(before));
+    expect(buried()?.dataset.kind).toBe(kind);
+    brushTreasure();
+    expect([found()?.dataset.kind, flight()?.dataset.kind]).toEqual([kind, kind]);
+    landTreasure(app.timers);
+
+    expect(saved(app.storage).treasures).toEqual({ [kind]: count });
+    expect([fieldGuide().textContent, fresh()?.textContent]).toEqual([String(count), news]);
+    fireEvent.click(fieldGuide());
+    expect(guideCards().map((card) => [card.dataset.kind, card.querySelector(".dig-guide-name")?.textContent, card.querySelector(".dig-guide-count")?.textContent])).toEqual(
+      TREASURE_KINDS.map((each) => (each === kind ? [each, TEXTS.en.treasures[each], `×${count}`] : [each, undefined, undefined]))
+    );
   });
 });
 

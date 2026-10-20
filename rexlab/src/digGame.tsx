@@ -132,15 +132,21 @@ export function useDigGame(
   // while the age level is still the pick it was made under, otherwise
   // the age level.
   const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
-  // Kept, then saved over the progress another tab may have saved
-  // meanwhile; unreadable progress is not saved over.
-  const keep = (next: Kept) => {
+  // `next` with the progress another tab may have saved meanwhile;
+  // unreadable progress is not read.
+  const withStored = (next: Kept): Kept => {
     const stored = next.readable ? digProgress.load() : undefined;
-    const merged = stored === undefined ? next : { ...next, progress: mergeProgress(next.progress, stored.progress) };
+    return stored === undefined ? next : { ...next, progress: mergeProgress(next.progress, stored.progress) };
+  };
+  // Kept, and saved where the progress could be read.
+  const store = (merged: Kept) => {
     keptNow.current = merged;
     setKept(merged);
     if (merged.readable) digProgress.save({ progress: merged.progress, levelChoice: merged.levelChoice, levelOffer: merged.levelOffer });
   };
+  // Kept, then saved over the progress another tab may have saved
+  // meanwhile.
+  const keep = (next: Kept) => store(withStored(next));
   // A level chosen on the switch is kept under the age level it was
   // chosen at; the level already chosen, as on a double tap, changes
   // nothing.
@@ -162,9 +168,9 @@ export function useDigGame(
   // The dinosaur of the last round finished, so a round once every
   // dinosaur is dug up digs up another.
   const last = useRef<string | undefined>(undefined);
-  // Lands the treasure in flight, by its timer or as the FIELD GUIDE
-  // opens, whichever comes first; null once it has landed or the round
-  // is left.
+  // Lands the treasure in flight, as the board's flight ends, the FIELD
+  // GUIDE opens or the reveal comes, whichever is first; null once it has
+  // landed or the round is left.
   const landing = useRef<(() => void) | null>(null);
 
   const leave = () => {
@@ -229,19 +235,21 @@ export function useDigGame(
 
   // A found treasure flies into the FIELD GUIDE and is kept as it lands,
   // even when the gust has begun meanwhile; a round left before then
-  // stops its flight and keeps nothing.
+  // stops its flight and keeps nothing. The board shown owns the flight's
+  // wait, as a turn of the iPad starts the flight again. It lands one more
+  // of its kind on the count stored last, as another tab may have found
+  // one meanwhile.
   const fly = (treasure: Treasure, timers: OwnedTimers) => {
-    const flight: TreasureFlight = { phase: "flying", fresh: (keptNow.current.progress.treasures[treasure.kind] ?? 0) === 0 };
     const show = (shown: TreasureFlight) => go((current) => changeBoard(current, (round) => round.treasure === treasure, (board) => ({ ...board, treasure: shown })));
     const land = () => {
       if (landing.current !== land || roundTimers.current !== timers) return;
       landing.current = null;
-      keep({ ...keptNow.current, progress: keepTreasure(keptNow.current.progress, treasure.kind) });
-      show({ ...flight, phase: "landed" });
+      const latest = withStored(keptNow.current);
+      store({ ...latest, progress: keepTreasure(latest.progress, treasure.kind) });
+      show({ phase: "landed", fresh: (latest.progress.treasures[treasure.kind] ?? 0) === 0 });
     };
-    show(flight);
     landing.current = land;
-    timers.start(TREASURE_FLIGHT[reducedMotion() ? "reduced" : "motion"], land);
+    show({ phase: "flying", startTimer: timers.start, onLanded: land });
   };
 
   // Each stroke moves from the round as it is. The dinosaur is dug up,
@@ -265,9 +273,12 @@ export function useDigGame(
     const timing = reducedMotion() ? "reduced" : "motion";
     const showPhase = (phase: "gust" | "lift" | "counted") => go((current) =>
       changeBoard(current, (round) => round === to, (board) => ({ ...board, finish: { newStar: dug.reward.newStar, phase, startTimer: timers.start, onLifted } })));
-    // A reveal due while the FIELD GUIDE is open waits under it.
+    // A reveal due while the FIELD GUIDE is open waits under it. A
+    // treasure still in flight, its flight started again by a turn of the
+    // iPad, lands as the board goes.
     const reveal = () => {
       if (live.current !== to || roundTimers.current !== timers) return;
+      landing.current?.();
       live.current = null;
       const levelOffer = countBoard(keptNow.current.levelOffer, to.level, strongRound(to));
       keep({ ...keptNow.current, levelOffer });

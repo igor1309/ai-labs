@@ -2,7 +2,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { addTransitionType, ViewTransition, type ViewTransitionProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
-import { BOARD_DROP, COUNT_SETTLE, DIG_REVEAL, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
+import { BOARD_DROP, COUNT_SETTLE, DIG_REVEAL, GUST, LIFT, STAR_LANDS, TREASURE_FLIGHT } from "../src/digGame.tsx";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard } from "./digApp.tsx";
@@ -350,7 +350,9 @@ describe("dig reveals through the app", () => {
     act(() => app.timers.fire(STAR_LANDS[timing]));
     act(() => app.orientation.turn("landscape"));
     if (rotation === "gust") {
-      expect(app.timers.timers()).toEqual([LIFT[timing]]);
+      // The round's shell, brushed clear with the dinosaur, flies again
+      // with the board brought back, and lands as the reveal comes.
+      expect(app.timers.timers()).toEqual([LIFT[timing], TREASURE_FLIGHT[timing]]);
       act(() => app.timers.fire(LIFT[timing]));
       if (!reducedMotion) act(() => app.timers.fire(COUNT_SETTLE[timing]));
     }
