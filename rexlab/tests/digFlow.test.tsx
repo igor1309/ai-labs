@@ -4,7 +4,7 @@ import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { brushAll, openDigApp, placeBoard } from "./digApp.tsx";
+import { digUp, openDigApp, placeBoard } from "./digApp.tsx";
 import { SHIPPED_DIG, homeTile, memoryStorage } from "./support.ts";
 
 function reveal({ reducedMotion = false, storage = memoryStorage(), ageLevel }: { reducedMotion?: boolean; storage?: ReturnType<typeof memoryStorage>; ageLevel?: AgeLevel } = {}) {
@@ -12,14 +12,7 @@ function reveal({ reducedMotion = false, storage = memoryStorage(), ageLevel }: 
   fireEvent.click(homeTile("DIG"));
   placeBoard(800);
   const startedLevel = document.querySelector(".dig-board")?.getAttribute("data-level");
-  brushAll();
-  // Paleontologist finishes by naming the dinosaur after uncovering its clues.
-  if (ageLevel === "paleontologist") {
-    const picture = document.querySelector(".dig-board img")?.getAttribute("src");
-    const choice = [...document.querySelectorAll<HTMLButtonElement>(".dig-choice-card")].find((card) => card.querySelector("img")?.getAttribute("src") === picture);
-    if (!choice) throw new Error("No matching dinosaur choice");
-    fireEvent.click(choice);
-  }
+  digUp();
   act(() => app.timers.fire(reducedMotion ? GUST.reduced : GUST.motion));
   return { ...app, storage, startedLevel };
 }
@@ -68,7 +61,7 @@ describe("dig reveals through the app", () => {
     land(app);
     fireEvent.click(screen.getByRole("button", { name: "DIG AGAIN" }));
     placeBoard(800);
-    brushAll();
+    digUp();
     act(() => app.timers.fire(GUST.motion));
     act(() => app.timers.fire(STAR_LANDS.motion));
     expect(screen.getByRole("img", { name: TEXTS.en.allDugUp })).toBeDefined();
@@ -96,7 +89,7 @@ describe("dig reveals through the app", () => {
     const timing = reducedMotion ? "reduced" : "motion";
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
-    brushAll();
+    digUp();
     if (rotation !== "gust") act(() => app.timers.fire(GUST[timing]));
     if (rotation === "landed") act(() => app.timers.fire(STAR_LANDS[timing]));
 
@@ -279,7 +272,7 @@ describe("the dig reveal's level switch", () => {
     const first = openDigApp({ storage, ageLevel: { level: "explorer", revision: "a" } });
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
-    brushAll();
+    digUp();
     act(() => first.timers.fire(GUST.motion));
     act(() => first.timers.fire(STAR_LANDS.motion));
     fireEvent.click(levelButton("hatchling"));

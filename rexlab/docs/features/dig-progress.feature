@@ -1,7 +1,7 @@
 Feature: Dig: stored progress
   The dig game keeps, in the browser beside the other games' progress,
   the dinosaurs dug up, the dinosaurs named at the first pick at
-  Paleontologist, the child's choice on the level switch and its level
+  Explorer or Paleontologist, the child's choice on the level switch and its level
   offer (dig-level-offer.feature). Dug-up dinosaurs are one collection
   across all levels (docs/age-levels.md, "Same rewards").
 

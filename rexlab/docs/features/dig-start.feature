@@ -3,8 +3,9 @@ Feature: Dig: starting a round and the board
   dinosaur shows (LAB-335, docs/dig-levels.md). "DIG" starts a round at
   once, with no choice screen, at the level it starts at
   (age-level-start.feature). This feature's scenarios hold at every
-  level; each level's task is in dig-brush.feature (Hatchling),
-  dig-explorer.feature and dig-paleontologist.feature.
+  level; Hatchling's gust is in dig-brush.feature, the question of
+  Explorer and Paleontologist in dig-question.feature, and help and
+  finds at every level in dig-help.feature.
 
   Background:
     Given an iPad in landscape

@@ -1,11 +1,10 @@
-// The details a child finds on a dinosaur's body picture, by the word
-// the card names them with (the texts' `spotKinds`).
+// The details a child finds on a dinosaur's body picture, by kind.
 export const SPOT_KINDS = ["eye", "foot", "tail", "claw", "horn", "plate", "crest", "sail", "frill", "beak"] as const;
 
 export type SpotKind = (typeof SPOT_KINDS)[number];
 
-// The kinds only some dinosaurs show, so a clue of one tells a dinosaur
-// from others; every dinosaur shows an eye, feet, a tail and claws.
+// The kinds only some dinosaurs show, so one tells a dinosaur from its
+// look-alikes; every dinosaur shows an eye, feet, a tail and claws.
 export const TELLING_KINDS: readonly SpotKind[] = ["horn", "plate", "crest", "sail", "frill", "beak"];
 
 // The frame a body picture is drawn in, in its pixels, and the grid of

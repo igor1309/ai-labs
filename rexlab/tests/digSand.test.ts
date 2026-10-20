@@ -92,15 +92,15 @@ describe("a round", () => {
     expect([roundShare(round), round.blown, round.sand.marks]).toEqual([0, false, []]);
   });
 
-  it("blows the rest of the sand away once 70% of the dinosaur's cells are clear, and takes no stroke after", () => {
-    // Ten columns of dinosaur: seven of them clear is 70%.
-    const round = startRound([dinosaur("rex", cellsWhere((_, column) => column < 10))], [], undefined, () => 0, "hatchling");
-    const six = brushRound(round, downAt(0, 6 * CELL - 2));
-    const seven = brushRound(six, downAt(0, 7 * CELL - 2));
+  it("blows the rest of the sand away at Hatchling once 95% of the dinosaur's cells are clear, and takes no stroke after", () => {
+    // Twenty columns of dinosaur: nineteen of them clear is 95%.
+    const round = startRound([dinosaur("rex", cellsWhere((_, column) => column < 20))], [], undefined, () => 0, "hatchling");
+    const eighteen = brushRound(round, downAt(0, 18 * CELL - 2));
+    const nineteen = brushRound(eighteen, downAt(0, 19 * CELL - 2));
 
-    expect([roundShare(six), six.blown]).toEqual([0.6, false]);
-    expect([roundShare(seven), seven.blown, GUST_SHARE]).toEqual([0.7, true, 0.7]);
-    expect(brushRound(seven, downAt(400, 400))).toBe(seven);
+    expect([roundShare(eighteen), eighteen.blown]).toEqual([0.9, false]);
+    expect([roundShare(nineteen), nineteen.blown, GUST_SHARE]).toEqual([0.95, true, 0.95]);
+    expect(brushRound(nineteen, downAt(400, 400))).toBe(nineteen);
   });
 
   it("brushes 48 CSS pixels wide at Hatchling, and 36 at Explorer and Paleontologist", () => {

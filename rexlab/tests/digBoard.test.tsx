@@ -28,7 +28,7 @@ import {
   symbolOf,
   unreadVersion
 } from "./support.ts";
-import { board, brushAll, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
+import { board, digUp, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
 type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext; level?: AgeLevel };
@@ -157,7 +157,8 @@ describe("the dig game's tile", () => {
     placeBoard(800);
     tapAt(board(), 1300, { x: 410, y: 300 });
 
-    expect(draws.count - before).toBe(1);
+    // One round: its dinosaur, then the order help shows its spots in.
+    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length);
     expect(clearCells()).toEqual([]);
   });
 
@@ -189,7 +190,7 @@ describe("a round's start", () => {
   it("digs up a dinosaur not dug up yet within this visit", () => {
     const { timers } = openRound();
     const first = roundDinosaur();
-    brushAll();
+    digUp();
     act(() => timers.fire(GUST.motion));
     act(() => timers.fire(STAR_LANDS.motion));
 
@@ -326,7 +327,7 @@ describe("the brush", () => {
     corners.forEach(([x, y], at) => tapAt(board(), at * 1000, { x, y }));
 
     expect(clearCells()).toEqual(expect.arrayContaining(corners.map(([, , cell]) => cell)));
-    expect([cleared(), board().getAttribute("data-blown"), timers.timers()]).toEqual([0, null, []]);
+    expect([cleared(), board().getAttribute("data-blown"), timers.timers()]).toEqual([0, null, [1000]]);
   });
 
   it("keeps brushed sand brushed, again over the same place or after lifting the finger, the share only growing", () => {
@@ -361,13 +362,13 @@ describe("the brush", () => {
     expect(cleared()).toBeGreaterThanOrEqual(once[1]);
   });
 
-  it("blows the rest of the sand off to one side at 70% of the dinosaur's cells, then shows the dinosaur's name and HOME", () => {
+  it("blows the rest of the sand off to one side once the dinosaur is named, then shows its name and HOME", () => {
     const { timers } = openRound();
     const { id } = roundDinosaur();
 
-    brushAll();
+    digUp();
 
-    expect(cleared()).toBeGreaterThanOrEqual(0.7);
+    expect(cleared()).toBeGreaterThanOrEqual(0.75);
     expect(board().getAttribute("data-blown")).toBe("true");
     expect(getComputedStyle(sandOf()).animation).toBe("dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both");
     expect(timers.timers()).toEqual([GUST.motion]);
@@ -385,7 +386,7 @@ describe("the brush", () => {
   it("fades the rest of the sand away under reduced motion, on the shorter fade", () => {
     const { timers } = openRound({ reducedMotion: true });
 
-    brushAll();
+    digUp();
 
     expect(timers.timers()).toEqual([GUST.reduced]);
     expect(GUST.reduced).toBe(320);
@@ -393,15 +394,16 @@ describe("the brush", () => {
     expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   });
 
-  it("has no timer while brushing or waiting, so nothing counts down or ends the round", () => {
+  it("has only help's one-second wait while brushing or waiting, so nothing counts down or ends the round", () => {
     const { timers } = openRound();
 
-    expect(timers.timers()).toEqual([]);
+    expect(timers.timers()).toEqual([1000]);
     drag([
       [100, 100],
       [700, 500]
     ]);
     tapAt(board(), 5000, { x: 300, y: 300 });
+    for (let second = 0; second < 60; second++) act(() => timers.fire(1000));
 
     expect(timers.timers()).toEqual([]);
     expect(board().getAttribute("data-blown")).toBeNull();

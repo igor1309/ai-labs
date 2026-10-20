@@ -4835,128 +4835,30 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-.dig-body[data-explorer] {
+/* A round that asks who it is keeps an empty column beside the board for
+   the choices from the start, so the board neither shrinks nor moves when
+   they come: as wide as the screen leaves it next to the column, and no
+   taller than the body. Paleontologist's four cards stack in the same
+   column. */
+.dig-body[data-asks] {
   gap: 28px;
 }
 
-.dig-body[data-explorer] .dig-board {
+.dig-body[data-asks] .dig-board {
   flex: 0 1 auto;
-  width: min(100%, calc((100dvh - 180px) * 4 / 3));
+  width: min(calc(100% - 228px), calc((100dvh - 180px) * 4 / 3));
   height: auto;
   min-width: 0;
   max-height: 100%;
 }
 
-.dig-find-cards {
-  flex: 0 0 152px;
+.dig-choice-cards {
+  flex: 0 0 200px;
   align-self: stretch;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 16px;
-}
-
-.dig-find-card {
-  position: relative;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  border: 2px solid #5c647a;
-  border-radius: 22px;
-  color: #1d2742;
-  background: #fffdf8;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
-  transition: border-color var(--motion-standard) var(--ease-out), background-color var(--motion-standard) var(--ease-out);
-}
-
-.dig-find-card[data-found] {
-  border-color: #2e7d4f;
-}
-
-.dig-find-card[data-pulse] {
-  animation: dig-card-pulse calc(4 * var(--motion-screen)) var(--ease-out) infinite;
-}
-
-.dig-body[data-paleontologist] .dig-find-cards {
-  flex-basis: 232px;
-}
-
-.dig-find-card[data-clue] {
-  padding: 16px 12px;
-  gap: 12px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-find-card[data-clue][data-motion]:not([data-found]) {
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
-}
-
-.dig-find-card[data-clue][data-motion][data-pulse] {
-  animation: dig-card-pulse calc(4 * var(--motion-screen)) var(--ease-out) infinite;
-}
-
-.dig-find-card[data-clue][data-found] {
-  flex-direction: row;
-  padding: 8px 36px 8px 10px;
-  gap: 8px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-  transition: padding var(--motion-standard) var(--ease-out);
-}
-
-.dig-find-card[data-clue][data-found] > .dig-spot-picture {
-  width: 44px;
-  height: 44px;
-}
-
-.dig-find-card[data-clue][data-found] .dig-find-word {
-  font-size: 16px;
-}
-
-.dig-clue-number {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.dig-find-card[data-found] .dig-clue-number {
-  display: none;
-}
-
-.dig-clue-sand {
-  width: 112px;
-  height: 112px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #e8cc98, #c9a46a);
-  font-size: 36px;
-}
-
-.dig-clue-closed {
-  box-sizing: border-box;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  border: 2px dashed #5c647a;
-  border-radius: 18px;
-  font-size: 24px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-/* Leave vertical room for three 192px tall picture cards below the smaller
-   board, including the bar, padding and both screen gaps. */
-.dig-body[data-choice] .dig-board {
-  width: min(100%, calc((100dvh - 420px) * 4 / 3));
-  transition: width var(--motion-screen) var(--ease-out);
-}
-
-.dig-choice-cards {
-  flex: 0 0 192px;
-  min-height: 0;
-  display: flex;
   gap: 16px;
   animation: fade-in var(--motion-small) var(--ease-out) both;
 }
@@ -4967,8 +4869,9 @@ body:has(.result) #version {
 
 .dig-choice-card {
   flex: 1 1 0;
-  min-width: 200px;
-  padding: 12px;
+  min-height: 0;
+  max-height: 170px;
+  padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
@@ -4986,10 +4889,6 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-@keyframes dig-card-pulse {
-  50% { box-shadow: 0 0 0 calc(5px * var(--motion-amount)) #e39b2d80; }
-}
-
 .dig-spot-picture {
   display: block;
   position: relative;
@@ -4998,12 +4897,6 @@ body:has(.result) #version {
   height: 100%;
   border-radius: 50%;
   background: #fffdf8;
-}
-
-.dig-find-card > .dig-spot-picture {
-  width: 88px;
-  height: 88px;
-  flex-shrink: 0;
 }
 
 .dig-close-up {
@@ -5019,27 +4912,6 @@ body:has(.result) #version {
   height: var(--crop-height);
   left: var(--crop-left);
   top: var(--crop-top);
-}
-
-.dig-find-word {
-  font-size: 20px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.dig-find-tick {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-  padding: 3px;
-  border-radius: 50%;
-  background: #2e7d4f;
-  color: #fffdf8;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-find-tick[data-motion] {
-  animation-name: pop-in;
 }
 
 /* A translucent copy of the same crop lets the detail show through the
@@ -5981,6 +5853,7 @@ body:has(.result) #version {
   border-radius: 50%;
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
+  color: #1d2742;
   background: #fffdf8;
   font-size: 22px;
   line-height: 1;
@@ -6084,25 +5957,7 @@ body:has(.result) #version {
     --motion-amount: 0;
   }
 
-  .dig-find-card[data-pulse],
-  .dig-find-card[data-clue][data-motion][data-pulse] {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-find-card[data-clue][data-motion]:not([data-found]),
   .dig-choice-cards[data-motion] {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-body[data-choice] .dig-board {
-    transition-property: none;
-  }
-
-  .dig-find-card[data-clue][data-found] {
-    transition-property: none;
-  }
-
-  .dig-body[data-choice] {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
@@ -6841,6 +6696,7 @@ body:has(.result) #version {
 
 [data-theme="dark"] .level-badge {
   outline-color: #ece8de1f;
+  color: #ece8de;
   background: #181e2e;
 }
 
@@ -6930,32 +6786,13 @@ body:has(.result) #version {
   background: #181e2e;
 }
 
-[data-theme="dark"] .dig-find-card {
-  color: #ece8de;
-  background: #181e2e;
-  border-color: #9ca3b6;
-}
-
 [data-theme="dark"] .dig-choice-card {
-  background: #1f2b4d;
+  background: #181e2e;
   border-color: #a4aec7;
-}
-
-[data-theme="dark"] .dig-clue-closed {
-  border-color: #a4aec7;
-}
-
-[data-theme="dark"] .dig-find-card[data-found] {
-  border-color: #63c98c;
 }
 
 [data-theme="dark"] .dig-spot-picture {
   background: #181e2e;
-}
-
-[data-theme="dark"] .dig-find-tick {
-  background: #63c98c;
-  color: #181e2e;
 }
 
 [data-theme="dark"] .dig-find-pop {

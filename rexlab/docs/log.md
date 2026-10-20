@@ -2,6 +2,7 @@
 
 ## 2026-10-20
 
+- DIG is a mystery round: the board starts as all sand with no cards, and at Explorer and Paleontologist, once three quarters of the dinosaur show, WHO IS IT? offers it and its closest look-alikes, 3 or 4, beside the board; brushing goes on, a wrong pick fades, the right one brings the gust, and a first pick earns the 🦴 badge. Hatchling's gust waits for 95%, and help thins a spot after ten quiet seconds at every level (LAB-359).
 - At Paleontologist, Triceratops's tray holds a Spinosaurus sail among the other dinosaurs' bones, three in all (LAB-334).
 - DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
 - DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).

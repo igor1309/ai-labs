@@ -5,7 +5,7 @@ import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "../src/levelOffer.ts";
 import { localDigProgress, PROGRESS_KEY } from "../src/localProgress.ts";
-import { board, brushAll, openDigApp, placeBoard, roundDinosaur } from "./digApp.tsx";
+import { board, brushAll, digUp, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
 import { homeTile, memoryStorage } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 
@@ -33,13 +33,14 @@ function begin(level: AgeLevel = "hatchling", levelOffer = NO_LEVEL_OFFER) {
 }
 
 // Integrates brushing, round completion, the gust, reveal and stored offer.
-function finish(app: ReturnType<typeof openDigApp>, help = false) {
+function finish(app: ReturnType<typeof openDigApp>, { help = false, wrong = false } = {}) {
   placeBoard(800);
   if (help) for (let second = 0; second < 10; second++) act(() => app.timers.fire(1000));
-  const level = board().getAttribute("data-level");
-  const id = roundDinosaur().id;
-  brushAll();
-  if (level === "paleontologist") fireEvent.click(document.querySelector<HTMLButtonElement>(`[data-choice="${id}"]`)!);
+  if (wrong) {
+    brushAll();
+    fireEvent.click(wrongCards()[0]!);
+  }
+  digUp();
   act(() => app.timers.fire(GUST.motion));
   act(() => app.timers.fire(STAR_LANDS.motion));
 }
@@ -69,12 +70,13 @@ it.each(["hatchling", "explorer"] as const)("offers the next level after three s
   expect(saved(app).levelOffer).toEqual(offerOf(level, 0, [level]));
 });
 
-it.each(["help", "other level"])("restarts Explorer's run after %s, and needs three fresh strong rounds", (reason) => {
-  const app = begin(reason === "help" ? "explorer" : "hatchling", offerOf("explorer", 2));
-  finish(app, reason === "help");
+it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, and needs three fresh strong rounds", (reason) => {
+  const wrong = reason === "a wrong pick";
+  const app = begin(wrong ? "explorer" : "hatchling", offerOf("explorer", 2));
+  finish(app, { wrong });
   show(app);
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(saved(app).levelOffer).toEqual(offerOf(reason === "help" ? "explorer" : "hatchling", reason === "help" ? 0 : 1));
+  expect(saved(app).levelOffer).toEqual(offerOf(wrong ? "explorer" : "hatchling", wrong ? 0 : 1));
   fireEvent.click(chosen("explorer"));
   for (let round = 1; round <= 3; round++) {
     fireEvent.click(button("DIG AGAIN"));
@@ -82,6 +84,13 @@ it.each(["help", "other level"])("restarts Explorer's run after %s, and needs th
     show(app);
     expect(screen.queryByRole("dialog") !== null).toBe(round === 3);
   }
+});
+
+it.each(["hatchling", "explorer"] as const)("counts a %s round with help as strong, so help never costs the offer", (level) => {
+  const app = begin(level, offerOf(level, 2));
+  finish(app, { help: true });
+  show(app);
+  expect(screen.queryByRole("dialog")).not.toBeNull();
 });
 
 it("YES keeps the next level for DIG AGAIN, the tile and a reopened app", () => {
@@ -126,7 +135,7 @@ it("never offers beyond Paleontologist, even after ten strong rounds", () => {
 it("waits for the star to land and every remaining celebration before showing the offer", () => {
   const app = begin("hatchling", offerOf("hatchling", 2));
   remaining = 900;
-  placeBoard(800); brushAll();
+  placeBoard(800); digUp();
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 2));
   act(() => app.timers.fire(GUST.motion));
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 3));
@@ -194,7 +203,7 @@ it.each([false, true])("leaving early with help shown %s keeps the count as it w
   if (help) for (let second = 0; second < 10; second++) act(() => app.timers.fire(1000));
   fireEvent.click(button("HOME"));
   expect(saved(app).levelOffer).toEqual(offerOf("explorer", 2));
-  fireEvent.click(homeTile("DIG")); placeBoard(800); brushAll();
+  fireEvent.click(homeTile("DIG")); placeBoard(800); digUp();
   fireEvent.click(button("HOME"));
   act(() => app.timers.deliverStopped(GUST.motion));
   expect(saved(app).levelOffer).toEqual(offerOf("explorer", 2));

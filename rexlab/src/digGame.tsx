@@ -11,6 +11,7 @@ import {
   NO_DIG,
   pickRound,
   startRound,
+  strongRound,
   waitForHelp,
   type DigDinosaur,
   type DigProgress,
@@ -217,13 +218,13 @@ export function useDigGame(
     go((current) => (current?.kind === "board" && current.round === from ? { kind: "board", round: to } : current));
     if (!to.blown) return;
     last.current = to.dinosaur.id;
-    const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest, to.level === "paleontologist" && to.rejected.length === 0);
+    const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest, to.level !== "hatchling" && to.rejected.length === 0);
     keep({ ...keptNow.current, ...dug.kept });
     const timing = reducedMotion() ? "reduced" : "motion";
     timers.start(GUST[timing], () => {
       if (live.current !== to) return;
       live.current = null;
-      const levelOffer = countBoard(keptNow.current.levelOffer, to.level, !to.helpShown);
+      const levelOffer = countBoard(keptNow.current.levelOffer, to.level, strongRound(to));
       keep({ ...keptNow.current, levelOffer });
       go({ kind: "reveal", round: to, reward: dug.reward, landed: false, offer: offeredLevel(levelOffer) });
     });
@@ -246,7 +247,7 @@ export function useDigGame(
           <DigBoardScreen
             language={language}
             pictureLook={pictureLook}
-            {...presentDigBoard(screen.round, bodyPicture, language)}
+            {...presentDigBoard(screen.round, bodyPicture)}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}
             grains={!reducedMotion()}

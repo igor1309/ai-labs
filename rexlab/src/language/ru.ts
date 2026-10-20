@@ -114,5 +114,4 @@ export const ru: Texts = {
   dugUpNew: "НОВЫЙ!",
   digAgain: "КОПАТЬ ЕЩЁ",
   allDugUp: "ВСЕ ДИНОЗАВРЫ ОТКОПАНЫ",
-  spotKinds: { eye: "ГЛАЗ", foot: "ЛАПА", tail: "ХВОСТ", horn: "РОГ", plate: "ПЛАСТИНА", claw: "КОГОТЬ", crest: "ГРЕБЕНЬ", sail: "ПАРУС", frill: "ВОРОТНИК", beak: "КЛЮВ" }
 };
