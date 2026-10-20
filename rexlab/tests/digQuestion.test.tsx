@@ -7,7 +7,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
-import { board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
+import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
 import { SHIPPED_DIG, fakeBodyPicture, homeTile, manualPictures, memoryStorage } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
@@ -58,6 +58,24 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
+  it.each([false, true])("centres the reserved-size board, then slides it beside cards staggered 60 ms, reduced motion %s", (reducedMotion) => {
+    openRound(level, { reducedMotion });
+    const before = getComputedStyle(board());
+    const size = [before.width, before.height, before.aspectRatio];
+    expect(before.transform).toBe(reducedMotion ? "none" : "translateX(calc(114px * var(--motion-amount)))");
+    expect(before.transition).toBe("transform var(--motion-screen) var(--ease-out)");
+    brushUntilAsked();
+    const after = getComputedStyle(board());
+    expect([after.width, after.height, after.aspectRatio]).toEqual(size);
+    expect(after.transform).toBe("none");
+    expect(choices().map((card) => card.style.getPropertyValue("--choice"))).toEqual(offered[level].map((_, at) => String(at)));
+    const animation = getComputedStyle(choices()[0]!).animation;
+    expect(animation).toBe(reducedMotion
+      ? "fade-in var(--motion-small) var(--ease-out) both"
+      : "slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both");
+    expect(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--motion-stagger")) * 1.5).toBe(60);
+  });
+
   it.each([false, true])("goes on brushing while it asks, even the stroke held down as it came, reduced motion %s", (reducedMotion) => {
     const app = openRound(level, { reducedMotion });
     let time = 0;
@@ -67,7 +85,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
       moveAt((time += 10), { x: 0, y: y + 20, pointer: 9 });
     }
     expect(choices()).toHaveLength(offered[level].length);
-    expect(getComputedStyle(column()!).animation).toContain(reducedMotion ? "fade-in" : "rise-in");
+    expect(getComputedStyle(choices()[0]!).animation).toContain(reducedMotion ? "fade-in" : "slide-in");
     const before = cleared();
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
@@ -101,7 +119,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(saved(app.storage).badges).toEqual([]);
     const timing = reducedMotion ? "reduced" : "motion";
     expect(app.timers.timers()).toEqual([GUST[timing]]);
-    act(() => app.timers.fire(GUST[timing]));
+    finishBoard(app.timers, timing);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(reward().textContent).toContain(`1/${SHIPPED_DIG.length}`);
     expect(badge()).toBeNull();
@@ -112,7 +130,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const first = openRound(level, { storage });
     digUp();
     expect(saved(storage).badges).toEqual(["tyrannosaurus"]);
-    act(() => first.timers.fire(GUST.motion));
+    finishBoard(first.timers);
     expect(badge()).not.toBeNull();
     expect(reward().querySelector(".level-badge")).not.toBeNull();
     first.unmount();
@@ -120,7 +138,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     brushAll();
     fireEvent.click(wrongCards()[0]!);
     fireEvent.click(choiceCard());
-    act(() => later.timers.fire(GUST.motion));
+    finishBoard(later.timers);
     expect(badge()).not.toBeNull();
     expect(saved(storage).badges).toEqual(["tyrannosaurus"]);
     act(() => later.timers.fire(STAR_LANDS.motion));
@@ -142,7 +160,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(choiceCard("velociraptor").disabled).toBe(true);
     fireEvent.click(choiceCard("tyrannosaurus"));
     expect(board().hasAttribute("data-blown")).toBe(true);
-    act(() => app.timers.fire(GUST.motion));
+    finishBoard(app.timers);
     expect(reward().textContent).toContain(`1/${SHIPPED_DIG.length}`);
   });
 });
@@ -174,7 +192,7 @@ describe("Hatchling", () => {
       expect(choices()).toEqual([]);
     }
     expect([last < 0.95, cleared() >= 0.95, title()]).toEqual([true, true, "DIG"]);
-    act(() => app.timers.fire(GUST.motion));
+    finishBoard(app.timers);
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
   });
 });

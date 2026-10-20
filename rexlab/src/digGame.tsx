@@ -20,7 +20,7 @@ import {
   type KeptDig,
   type Random
 } from "./dig/index.ts";
-import { DigBoardScreen, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
+import { BOARD_DROP, COUNT_SETTLE, GUST, LIFT, DigBoardScreen, type BoardFinish, type SandContext, type SandMark } from "./DigBoardScreen.tsx";
 import { DigRevealScreen, STAR_LANDS } from "./DigRevealScreen.tsx";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 import { usePicture, type PictureLook } from "./Picture.tsx";
@@ -30,6 +30,7 @@ import { presentDigBoard } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
+export { BOARD_DROP, COUNT_SETTLE, GUST, LIFT } from "./DigBoardScreen.tsx";
 export type { SandContext } from "./DigBoardScreen.tsx";
 export { STAR_LANDS } from "./DigRevealScreen.tsx";
 
@@ -62,11 +63,6 @@ export type DigGameProps = {
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 const HELP_TICK = 1000;
 
-// How long the gust blows the sand away before the reveal, in
-// milliseconds: the gust's animation of twice --motion-screen, and its
-// fade with reduced motion.
-export const GUST: Record<"motion" | "reduced", number> = { motion: 640, reduced: 320 };
-
 // The progress the game goes by while the app is open, with the child's
 // choice on the level switch; both hold while the app is open even when
 // they cannot be saved.
@@ -74,7 +70,7 @@ type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelO
 
 // The reveal shows the round dug up and its reward; it takes taps once
 // its star has `landed`.
-type DigScreen = { kind: "board"; round: DigRound } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
+type DigScreen = { kind: "board"; round: DigRound; finish?: BoardFinish } | { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
@@ -133,11 +129,11 @@ export function useDigGame(
     if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
     keep({ ...keptNow.current, levelChoice: { level: chosen, revision: ageLevel.revision } });
   };
-  // The round being brushed, ahead of the screen: a stroke, or the gust's
-  // timer, acts on the round as it is, not as last rendered. Null once
-  // the child leaves it or the gust has blown.
+  // The live round, ahead of the screen: strokes and reward timers act
+  // on the round as it is, not as last rendered. Null once the child
+  // leaves it or the reveal starts.
   const live = useRef<DigRound | null>(null);
-  // The gust's timer of the round being brushed, stopped as the child
+  // The round's help, gust and reward timers, stopped as the child
   // leaves it.
   const roundTimers = useRef<OwnedTimers | null>(null);
   // The dinosaur of the last round finished, so a round once every
@@ -205,7 +201,7 @@ export function useDigGame(
 
   // Each stroke moves from the round as it is. The dinosaur is dug up,
   // and recorded, the moment the gust begins, so leaving during it cannot
-  // lose it, and the reveal follows once the gust has blown; a round left
+  // lose it, and the reveal follows the lift and reward; a round left
   // before its gust is never recorded. The reveal takes taps once its
   // star has landed.
   const advance = (update: (round: DigRound) => DigRound) => {
@@ -221,12 +217,25 @@ export function useDigGame(
     const dug = digUp(keptNow.current, to.dinosaur.id, ids, beatBest, to.level !== "hatchling" && to.rejected.length === 0);
     keep({ ...keptNow.current, ...dug.kept });
     const timing = reducedMotion() ? "reduced" : "motion";
-    timers.start(GUST[timing], () => {
-      if (live.current !== to) return;
+    const showPhase = (phase: "gust" | "lift" | "counted") => go((current) =>
+      current?.kind === "board" && current.round === to ? { ...current, finish: { newStar: dug.reward.newStar, phase } } : current);
+    showPhase("gust");
+    const reveal = () => {
+      if (live.current !== to || roundTimers.current !== timers) return;
       live.current = null;
       const levelOffer = countBoard(keptNow.current.levelOffer, to.level, strongRound(to));
       keep({ ...keptNow.current, levelOffer });
       go({ kind: "reveal", round: to, reward: dug.reward, landed: false, offer: offeredLevel(levelOffer) });
+    };
+    timers.start(GUST[timing], () => {
+      if (live.current !== to || roundTimers.current !== timers) return;
+      showPhase("lift");
+      timers.start(LIFT[timing], () => {
+        if (live.current !== to || roundTimers.current !== timers) return;
+        if (!dug.reward.newStar || dug.reward.dugUp === undefined || timing === "reduced") return reveal();
+        showPhase("counted");
+        timers.start(COUNT_SETTLE[timing], reveal);
+      });
     });
   };
 
@@ -245,8 +254,13 @@ export function useDigGame(
       case "board":
         return (
           <DigBoardScreen
+            key={screen.round.dinosaur.id}
             language={language}
             pictureLook={pictureLook}
+            arrivalWait={BOARD_DROP[reducedMotion() ? "reduced" : "motion"]}
+            gustWait={GUST[reducedMotion() ? "reduced" : "motion"]}
+            liftWait={LIFT[reducedMotion() ? "reduced" : "motion"]}
+            finish={screen.finish}
             {...presentDigBoard(screen.round, bodyPicture)}
             level={screen.round.level}
             brush={BRUSH_SIZES[screen.round.level]}

@@ -4807,11 +4807,12 @@ body:has(.result) #version {
 }
 
 /* The board keeps the picture's frame, as large as the screen leaves it.
-   It fades in whole, so the dinosaur never shows before the sand covers
-   it, and a finger on it only brushes. */
+   It drops in whole, so the dinosaur never shows before the sand covers
+   it, and a finger on it only brushes. Its surface clips the sand; the
+   board itself lets the grains of its landing escape. */
 .dig-board {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: var(--frame-width) / var(--frame-height);
   height: 100%;
   max-width: 100%;
@@ -4820,7 +4821,43 @@ body:has(.result) #version {
   outline-offset: -2px;
   background: #fffdf8;
   touch-action: none;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  animation: fade-in var(--dig-drop) var(--ease-out) both;
+  transition: transform var(--motion-screen) var(--ease-out);
+}
+
+.dig-screen[data-motion] .dig-board {
+  animation-name: dig-drop;
+}
+
+@keyframes dig-drop {
+  from {
+    opacity: 0;
+    translate: 0 calc(-100dvh * var(--motion-amount));
+  }
+  75% {
+    opacity: 1;
+    translate: 0 calc(8px * var(--motion-amount));
+  }
+  to {
+    translate: 0 calc(0px * var(--motion-amount));
+  }
+}
+
+.dig-board-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.dig-landing {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+}
+
+.dig-landing .dig-grain {
+  animation-delay: calc(var(--dig-drop) * 0.75);
 }
 
 .dig-bed,
@@ -4842,11 +4879,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* A round that asks who it is keeps an empty column beside the board for
-   the choices from the start, so the board neither shrinks nor moves when
-   they come: as wide as the screen leaves it next to the column, and no
-   taller than the body. Paleontologist's four cards stack in the same
-   column. */
+/* The column reserves 228px including its gap. Half of that offset
+   centres the board until the question, without changing its size. */
 .dig-body[data-asks] {
   gap: 28px;
 }
@@ -4859,6 +4893,10 @@ body:has(.result) #version {
   max-height: 100%;
 }
 
+.dig-screen[data-motion] .dig-body[data-asks]:not([data-choice]) .dig-board {
+  transform: translateX(calc(114px * var(--motion-amount)));
+}
+
 .dig-choice-cards {
   flex: 0 0 200px;
   align-self: stretch;
@@ -4867,11 +4905,6 @@ body:has(.result) #version {
   flex-direction: column;
   justify-content: center;
   gap: 16px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-choice-cards[data-motion] {
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
 .dig-choice-card {
@@ -4883,6 +4916,11 @@ body:has(.result) #version {
   border-radius: 22px;
   background: #fffdf8;
   transition: opacity var(--motion-standard) var(--ease-out);
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-choice-cards[data-motion] .dig-choice-card {
+  animation: slide-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
 }
 
 .dig-choice-card[data-rejected] {
@@ -4996,7 +5034,7 @@ body:has(.result) #version {
 /* The gust blows the sand left over off to the side; with reduced motion
    it only fades. */
 .dig-board[data-blown] .dig-sand {
-  animation: dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both;
+  animation: dig-gust var(--dig-gust) var(--ease-out) both;
 }
 
 @keyframes dig-gust {
@@ -5004,6 +5042,58 @@ body:has(.result) #version {
     opacity: 0;
     translate: calc(110% * var(--motion-amount)) 0;
   }
+}
+
+.dig-board[data-lifting] .dig-picture {
+  animation: dig-lift var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-lift {
+  from {
+    opacity: 1;
+  }
+  to {
+    translate: 0 calc(-24px * var(--motion-amount));
+    scale: calc(1 + 0.04 * var(--motion-amount));
+    filter: drop-shadow(0 0 calc(24px * var(--motion-amount)) #e39b2d);
+  }
+}
+
+.dig-board-star {
+  position: fixed;
+  z-index: 2;
+  color: #e39b2d;
+  fill: currentColor;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: dig-board-star var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-board-star {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--star-x) * var(--motion-amount)), calc(var(--star-y) * var(--motion-amount))) scale(calc(1 + var(--motion-amount)));
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount)));
+  }
+}
+
+.dig-chip[data-counted] span {
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-blown] .dig-sand {
+  animation: fade-out var(--dig-gust) var(--ease-out) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-lifting] .dig-picture,
+.dig-screen:not([data-motion]) .dig-board-star {
+  animation: fade-in var(--dig-lift) var(--ease-out) both;
 }
 
 /* The brush, a ring the width it brushes, under the finger. */
@@ -5980,7 +6070,28 @@ body:has(.result) #version {
     --motion-amount: 0;
   }
 
-  .dig-choice-cards[data-motion] {
+  .dig-choice-cards[data-motion] .dig-choice-card {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board {
+    transition-property: none;
+  }
+
+  .dig-screen[data-motion] .dig-board {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown] .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 

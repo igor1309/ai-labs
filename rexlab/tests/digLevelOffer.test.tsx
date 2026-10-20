@@ -5,7 +5,7 @@ import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "../src/levelOffer.ts";
 import { localDigProgress, PROGRESS_KEY } from "../src/localProgress.ts";
-import { board, brushAll, digUp, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
+import { finishBoard, board, brushAll, digUp, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
 import { homeTile, memoryStorage } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 
@@ -41,7 +41,7 @@ function finish(app: ReturnType<typeof openDigApp>, { help = false, wrong = fals
     fireEvent.click(wrongCards()[0]!);
   }
   digUp();
-  act(() => app.timers.fire(GUST.motion));
+  finishBoard(app.timers);
   act(() => app.timers.fire(STAR_LANDS.motion));
 }
 const show = (app: ReturnType<typeof openDigApp>) => act(() => app.timers.fire(remaining));
@@ -137,7 +137,7 @@ it("waits for the star to land and every remaining celebration before showing th
   remaining = 900;
   placeBoard(800); digUp();
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 2));
-  act(() => app.timers.fire(GUST.motion));
+  finishBoard(app.timers);
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 3));
   act(() => app.timers.fire(900));
   expect(screen.queryByRole("dialog")).toBeNull();
