@@ -82,7 +82,7 @@ export type DigBoardScreenProps = {
   // card for each until the question comes.
   choiceCount: number;
   // The dinosaurs to pick from while the round asks, else none.
-  choices: readonly { id: string; picture: string; rejected: boolean; correct: boolean }[];
+  choices: readonly { id: string; name: string; picture: string; rejected: boolean; correct: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
   // The brush's width, in CSS pixels, whatever the board's size.
@@ -542,8 +542,9 @@ export function DigBoardScreen({
               <div key={at} className="dig-choice-slot" style={{ "--choice": at } as CSSProperties}>
                 <span className="dig-empty-card" aria-hidden="true" data-turned={card ? true : undefined}>?</span>
                 {card && <Button className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
-                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt} ${at + 1} / ${choices.length}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
+                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
+                  <span className="dig-choice-name" style={{ "--letters": card.name.length } as CSSProperties}>{card.name.toLocaleUpperCase(language)}</span>
                   {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
                   {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
                 </Button>}

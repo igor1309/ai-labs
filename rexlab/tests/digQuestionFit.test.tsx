@@ -22,7 +22,7 @@ function show(level: (typeof levels)[number] | "hatchling", asking: boolean, lan
   const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
   const round = asking ? brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 }) : started;
   render(<DigBoardScreen
-    {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture)} choiceCount={round.choices.length} language={language} level={level}
+    {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language={language} level={level}
     brush={BRUSH_SIZES[level]} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
   />, withPictures);
 }
@@ -69,10 +69,17 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
       expect([slot.flex, slot.maxHeight]).toEqual(["1 1 0px", "170px"]);
       if (asking) {
         const card = style(".dig-choice-card");
+        const picture = style(".dig-choice-picture");
+        expect([card.display, card.flexDirection, picture.flex, picture.height, picture.objectFit]).toEqual(["flex", "column", "1 1 auto", "0px", "contain"]);
         // Each card shows its dinosaur at least 80 CSS pixels tall.
         const cardHeight = Math.min(px(slot.maxHeight), (roomHeight - (CHOICES[level] - 1) * px(column.gap)) / CHOICES[level]);
         const pictureWidth = px(column.flexBasis) - px(card.paddingLeft) - px(card.paddingRight) - px(card.borderLeftWidth) - px(card.borderRightWidth);
-        expect(Math.min(cardHeight - pads(card), pictureWidth * 3 / 4)).toBeGreaterThanOrEqual(80);
+        const caption = style(".dig-choice-name");
+        // The name is at most 14px, smaller only for a name too long for that.
+        expect(caption.fontSize).toBe("min(14px, calc(100cqi / (var(--letters) * 0.75)))");
+        const captionHeight = 14 * px(caption.lineHeight);
+        const imageHeight = cardHeight - pads(card) - captionHeight - px(card.gap);
+        expect(Math.min(imageHeight, pictureWidth * 3 / 4)).toBeGreaterThanOrEqual(80);
       }
       const title = TEXTS[language][asking ? "whoIsIt" : "dig"];
       expect(document.querySelector(".dig-title")?.textContent).toContain(title);
