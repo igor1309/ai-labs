@@ -70,7 +70,7 @@ it.each(["hatchling", "explorer"] as const)("offers the next level after three s
   expect(saved(app).levelOffer).toEqual(offerOf(level, 0, [level]));
 });
 
-it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, and needs three fresh strong rounds", (reason) => {
+it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, counting from one again", (reason) => {
   const wrong = reason === "a wrong pick";
   const app = begin(wrong ? "explorer" : "hatchling", offerOf("explorer", 2));
   finish(app, { wrong });
@@ -78,12 +78,11 @@ it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, and 
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(saved(app).levelOffer).toEqual(offerOf(wrong ? "explorer" : "hatchling", wrong ? 0 : 1));
   fireEvent.click(chosen("explorer"));
-  for (let round = 1; round <= 3; round++) {
-    fireEvent.click(button("DIG AGAIN"));
-    finish(app);
-    show(app);
-    expect(screen.queryByRole("dialog") !== null).toBe(round === 3);
-  }
+  fireEvent.click(button("DIG AGAIN"));
+  finish(app);
+  show(app);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(saved(app).levelOffer).toEqual(offerOf("explorer", 1));
 });
 
 it.each(["hatchling", "explorer"] as const)("counts a %s round with help as strong, so help never costs the offer", (level) => {
