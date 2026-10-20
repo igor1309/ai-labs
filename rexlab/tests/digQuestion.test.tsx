@@ -78,6 +78,8 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     for (const card of choices()) {
       const name = SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === card.dataset.choice)!.name[language].toLocaleUpperCase(language);
       expect([pictureOf(card), card.textContent, getComputedStyle(card.querySelector("img")!).filter]).toEqual([fakeBodyPicture(card.dataset.choice!), name, "grayscale(1)"]);
+      // The name shrinks by its letters only as much as the card needs.
+      expect(card.querySelector<HTMLElement>(".dig-choice-name")!.style.getPropertyValue("--letters")).toBe(String(name.length));
       expect(card.hasAttribute("data-correct")).toBe(false);
     }
     expect(board().textContent).not.toMatch(/TYRANNOSAURUS|ТИРАННОЗАВР/);

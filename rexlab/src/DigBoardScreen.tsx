@@ -544,7 +544,7 @@ export function DigBoardScreen({
                 {card && <Button className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
                   disabled={blown || card.rejected} aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
-                  <span className="dig-choice-name">{card.name.toLocaleUpperCase(language)}</span>
+                  <span className="dig-choice-name" style={{ "--letters": card.name.length } as CSSProperties}>{card.name.toLocaleUpperCase(language)}</span>
                   {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
                   {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
                 </Button>}

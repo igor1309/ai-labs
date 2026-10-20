@@ -75,8 +75,10 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
         const cardHeight = Math.min(px(slot.maxHeight), (roomHeight - (CHOICES[level] - 1) * px(column.gap)) / CHOICES[level]);
         const pictureWidth = px(column.flexBasis) - px(card.paddingLeft) - px(card.paddingRight) - px(card.borderLeftWidth) - px(card.borderRightWidth);
         const caption = style(".dig-choice-name");
-        const captionHeight = px(caption.fontSize) * px(caption.lineHeight);
-        const imageHeight = cardHeight - pads(card) - captionHeight - px(card.rowGap);
+        // The name is at most 14px, smaller only for a name too long for that.
+        expect(caption.fontSize).toBe("min(14px, calc(100cqi / (var(--letters) * 0.75)))");
+        const captionHeight = 14 * px(caption.lineHeight);
+        const imageHeight = cardHeight - pads(card) - captionHeight - px(card.gap);
         expect(Math.min(imageHeight, pictureWidth * 3 / 4)).toBeGreaterThanOrEqual(80);
       }
       const title = TEXTS[language][asking ? "whoIsIt" : "dig"];
