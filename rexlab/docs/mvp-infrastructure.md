@@ -119,7 +119,7 @@ Use `firstBest` and `beatPersonalBest` to trigger the **first best** and **new p
 - Landscape-first layout with side-by-side cards.
 - Large typography and large touch targets for six-year-olds.
 - Immediate visual feedback on card selection: a pressed state on tap, then a ✓ or ✗ mark with colour, never colour alone.
-- In portrait, a screen asks to turn the iPad sideways.
+- A screen with no portrait layout yet asks, in a portrait window, to turn sideways, or to make the window wider where the screen is already sideways (`docs/features/window-shape.feature`).
 - Dinosaur pictures on question cards are all the same size, so the picture never gives away or contradicts the answer; the revealed values do. Additional thumbnails/head images for other screens or games.
 
 ## 7. Deployment workflow

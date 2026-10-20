@@ -78,7 +78,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then I am on the home page without being asked to confirm
     And the round is not recorded
 
-  Scenario: Portrait asks to turn the iPad
+  Scenario: Portrait asks to turn sideways
     Given I have sorted 3 cards, one of them after a wrong drop
     When I turn the iPad to portrait
     Then I see a picture asking to turn sideways
