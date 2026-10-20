@@ -207,6 +207,16 @@
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* The board gives way to the reveal, whose parts animate in the live
+   screen. Its snapshot adds no second entrance over those arrivals. */
+::view-transition-old(.dig-reveal-change) {
+  animation: slide-out var(--motion-screen) var(--ease-out) both;
+}
+
+::view-transition-new(.dig-reveal-change) {
+  animation: none;
+}
+
 /* The card's picture grows into the page's, and back. The two pictures
    are boxes of different shapes, so each is fitted whole inside the box
    as it changes. */
@@ -5022,6 +5032,174 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
+/* The FIELD GUIDE's button beside DUG UP: the book and the count of
+   treasures found, ringed in amber once one lands, with NEW! above it
+   for the first of a kind. */
+.dig-field-guide {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dig-field-guide-button {
+  min-width: 60px;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 0 18px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-radius: 18px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.dig-field-guide-button svg {
+  flex-shrink: 0;
+  color: #e39b2d;
+}
+
+.dig-field-guide-button[data-landed] {
+  outline: 3px solid #e39b2d;
+  outline-offset: -1.5px;
+}
+
+.dig-field-guide-button[data-landed][data-motion] {
+  animation: dig-guide-arrival var(--motion-standard) var(--ease-overshoot) both;
+}
+
+@keyframes dig-guide-arrival {
+  45% {
+    scale: calc(1 + 0.08 * var(--motion-amount));
+    box-shadow: 0 0 0 calc(8px * var(--motion-amount)) #e39b2d33;
+  }
+}
+
+.dig-field-guide-button[data-landed][data-motion] .dig-field-guide-count {
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-field-guide-new {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  translate: -50% 0;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-reveal-screen .dig-field-guide-button {
+  outline: none;
+  background: #00000033;
+}
+
+/* The FIELD GUIDE: the treasures found, a card for each kind under a bar
+   with HOME, BACK, the title beside the book and the kinds found. The
+   title's words stay on one line and shrink to the room the bar leaves
+   beside the book: their letters are at most 0.75 of their size wide. */
+.dig-field-guide-screen .dig-title {
+  container-type: inline-size;
+}
+
+.dig-field-guide-screen .dig-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.75));
+}
+
+.dig-kinds-found svg {
+  color: #e39b2d;
+}
+
+/* Five cards in a row, each a fifth of it and as tall as the design's
+   where the screen has the room, rising in one after the other, 60 ms
+   apart. Reduced motion takes the rise and the stagger, leaving one short
+   fade. */
+.dig-guide-cards {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dig-guide-card {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 520px;
+  box-sizing: border-box;
+  padding: 28px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  container-type: inline-size;
+  border: 1px solid #1d27421f;
+  border-radius: 24px;
+  background: #fffdf8;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--card) * var(--motion-stagger) * 1.5) both;
+}
+
+/* A kind not found yet is in the colours of the question's empty cards. */
+.dig-guide-card:not([data-found]) {
+  border-width: 2px;
+  background: #e6e2d9;
+}
+
+.dig-guide-picture,
+.dig-guide-outline {
+  flex-shrink: 0;
+  width: min(100%, 180px);
+  /* The picture's own 400 high would win over the square. */
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+/* The outline is the picture's silhouette in the line's ink, faint. */
+.dig-guide-outline {
+  background: #1d2742;
+  opacity: 0.16;
+  mask: var(--outline) center / contain no-repeat;
+}
+
+/* A name is large, its size the card's width over the longest word's, in
+   ems: ОКАМЕНЕЛОСТЬ's 8.4. A name of two words takes two lines. */
+.dig-guide-name {
+  margin: 0;
+  font-size: min(22px, 100cqi / 8.4);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.dig-guide-count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dig-guide-unknown {
+  color: #1d274266;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .dig-body {
   flex: 1 1 0;
   min-height: 0;
@@ -5031,11 +5209,12 @@ body:has(.result) #version {
 }
 
 /* The board keeps the picture's frame, as large as the screen leaves it.
-   It fades in whole, so the dinosaur never shows before the sand covers
-   it, and a finger on it only brushes. */
+   It drops in whole, so the dinosaur never shows before the sand covers
+   it, and a finger on it only brushes. Its surface clips the sand; the
+   board itself lets the grains of its landing escape. */
 .dig-board {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: var(--frame-width) / var(--frame-height);
   height: 100%;
   max-width: 100%;
@@ -5044,7 +5223,46 @@ body:has(.result) #version {
   outline-offset: -2px;
   background: #fffdf8;
   touch-action: none;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  animation: none;
+}
+
+.dig-board:not([data-lifting]):not([data-dropped]) {
+  animation: fade-in var(--dig-drop) var(--ease-out) both;
+}
+
+.dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
+  animation-name: dig-drop;
+}
+
+@keyframes dig-drop {
+  from {
+    opacity: 0;
+    translate: 0 calc(-100dvh * var(--motion-amount));
+  }
+  75% {
+    opacity: 1;
+    translate: 0 calc(8px * var(--motion-amount));
+  }
+  to {
+    translate: 0 calc(0px * var(--motion-amount));
+  }
+}
+
+.dig-board-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.dig-landing {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+}
+
+.dig-landing .dig-grain {
+  animation-delay: calc(var(--dig-drop) * 0.75);
 }
 
 .dig-bed,
@@ -5066,11 +5284,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* A round that asks who it is keeps an empty column beside the board for
-   the choices from the start, so the board neither shrinks nor moves when
-   they come: as wide as the screen leaves it next to the column, and no
-   taller than the body. Paleontologist's four cards stack in the same
-   column. */
+/* The column takes 228px including its gap, from the round's start, so
+   the board stands in one place, at one size, through the whole round. */
 .dig-body[data-asks] {
   gap: 28px;
 }
@@ -5092,28 +5307,89 @@ body:has(.result) #version {
   flex-direction: column;
   justify-content: center;
   gap: 16px;
-  animation: fade-in var(--motion-small) var(--ease-out) both;
 }
 
-.dig-choice-cards[data-motion] {
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
-}
-
-.dig-choice-card {
+/* Each slot holds its empty card from the round's start, and the choice
+   card over it once the question comes, both filling the slot, so nothing
+   in the column moves as one replaces the other. */
+.dig-choice-slot {
   flex: 1 1 0;
   min-height: 0;
   max-height: 170px;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  perspective: 800px;
+}
+
+.dig-empty-card,
+.dig-choice-card {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.dig-empty-card {
+  display: grid;
+  place-items: center;
+  border: 2px solid #1d27421f;
+  border-radius: 24px;
+  background: #e6e2d9;
+  color: #1d27421f;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dig-choice-card {
+  position: relative;
+  overflow: hidden;
   padding: 10px;
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition:
-    opacity var(--motion-standard) var(--ease-out),
-    filter var(--motion-small) var(--ease-out);
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.dig-empty-card[data-turned] {
+  animation: fade-out var(--motion-small) var(--ease-out) both;
+}
+
+/* Card by card, 60 ms apart, the empty card turns edge on and the choice
+   card turns on from there. */
+.dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
+  animation: dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
+}
+
+.dig-choice-cards[data-motion] .dig-choice-card {
+  animation: dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both;
+}
+
+@keyframes dig-turn-away {
+  99% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: rotateY(calc(90deg * var(--motion-amount)));
+  }
+}
+
+@keyframes dig-turn-in {
+  from {
+    opacity: 0;
+    transform: rotateY(calc(-90deg * var(--motion-amount)));
+  }
 }
 
 .dig-choice-card[data-rejected] {
-  opacity: 0.25;
+  border-color: #b83b2b;
+}
+
+.dig-choice-card[data-correct] {
+  border-color: #2e7d4f;
 }
 
 .dig-choice-picture {
@@ -5121,6 +5397,52 @@ body:has(.result) #version {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: grayscale(1);
+  transition: filter var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
+}
+
+.dig-choice-card[data-rejected] .dig-choice-picture {
+  opacity: 0.45;
+}
+
+.dig-choice-card[data-correct] .dig-choice-picture {
+  filter: grayscale(0);
+}
+
+.dig-choice-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px #1d274233;
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-choice-mark-correct {
+  background: #2e7d4f;
+  color: white;
+}
+
+.dig-choice-mark-rejected {
+  top: auto;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  min-height: 34px;
+  padding: 5px 8px;
+  background: #fffdf8;
+  color: #c9583d;
+  font-size: clamp(11px, 1.2vw, 15px);
+  white-space: nowrap;
 }
 
 .dig-spot-picture {
@@ -5222,8 +5544,8 @@ body:has(.result) #version {
 
 /* The gust blows the sand left over off to the side; with reduced motion
    it only fades. */
-.dig-board[data-blown] .dig-sand {
-  animation: dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both;
+.dig-board[data-blown]:not([data-lifting]) .dig-sand {
+  animation: dig-gust var(--dig-gust) var(--ease-out) both;
 }
 
 @keyframes dig-gust {
@@ -5231,6 +5553,201 @@ body:has(.result) #version {
     opacity: 0;
     translate: calc(110% * var(--motion-amount)) 0;
   }
+}
+
+.dig-board[data-lifting] .dig-picture {
+  animation: dig-lift var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-lift {
+  from {
+    opacity: 1;
+  }
+  to {
+    translate: 0 calc(-24px * var(--motion-amount));
+    scale: calc(1 + 0.04 * var(--motion-amount));
+    filter: drop-shadow(0 0 calc(24px * var(--motion-amount)) #e39b2d);
+  }
+}
+
+/* A treasure lies on its cells under the sand, tilted as the design
+   draws it. One not found tumbles away with the gust; with reduced
+   motion it only fades. */
+.dig-treasure,
+.dig-treasure-found {
+  position: absolute;
+  rotate: -8deg;
+  pointer-events: none;
+}
+
+.dig-treasure-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dig-treasure-name {
+  position: absolute;
+  z-index: 4;
+  translate: -50% 8px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: #e39b2d;
+  color: #1d2742;
+  box-shadow: 0 2px 8px #1d274244;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-board[data-blown]:not([data-lifting]) .dig-treasure {
+  animation: fade-out var(--dig-gust) var(--ease-out) both;
+}
+
+.dig-screen[data-motion] .dig-board[data-blown]:not([data-lifting]) .dig-treasure {
+  animation-name: dig-treasure-tumble;
+}
+
+@keyframes dig-treasure-tumble {
+  to {
+    opacity: 0;
+    translate: calc(1400% * var(--motion-amount)) calc(200% * var(--motion-amount));
+    rotate: calc(540deg * var(--motion-amount));
+  }
+}
+
+/* Brushed clear, a treasure glows and hops where it lies for the first
+   40% of its flight, then flies from there into the FIELD GUIDE's book;
+   with reduced motion it only fades from its place. */
+.dig-treasure-found {
+  animation: fade-out var(--dig-treasure) var(--ease-out) both;
+}
+
+.dig-screen[data-motion] .dig-treasure-found {
+  animation: dig-treasure-hop calc(0.4 * var(--dig-treasure)) var(--ease-out) both;
+}
+
+@keyframes dig-treasure-hop {
+  from {
+    filter: drop-shadow(0 0 calc(0px * var(--motion-amount)) #e39b2d);
+  }
+  50% {
+    translate: 0 calc(-24px * var(--motion-amount));
+    scale: calc(1 + 0.15 * var(--motion-amount));
+    filter: drop-shadow(0 0 calc(16px * var(--motion-amount)) #e39b2d);
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 calc(0px * var(--motion-amount));
+    scale: calc(1 + 0.15 * var(--motion-amount));
+    filter: drop-shadow(0 0 calc(16px * var(--motion-amount)) #e39b2d);
+  }
+}
+
+.dig-treasure-flight {
+  position: fixed;
+  z-index: 2;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: dig-treasure-flight calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+/* The amber trail follows the treasure straight to its destination
+   while the treasure travels. */
+.dig-treasure-route {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dig-treasure-route path {
+  fill: none;
+  stroke: #e39b2d;
+  stroke-width: 6px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.75;
+  filter: drop-shadow(0 2px 3px #1d274255);
+  animation: dig-treasure-route calc(0.6 * var(--dig-treasure)) var(--ease-out) calc(0.4 * var(--dig-treasure)) both;
+}
+
+@keyframes dig-treasure-route {
+  10% {
+    stroke-dashoffset: calc(1 * var(--motion-amount));
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  to {
+    stroke-dashoffset: calc(0 * var(--motion-amount));
+    opacity: 0.25;
+  }
+}
+
+@keyframes dig-treasure-flight {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--treasure-x) * var(--motion-amount)), calc(var(--treasure-y) * var(--motion-amount))) scale(calc(1 + 0.15 * var(--motion-amount)));
+    filter: drop-shadow(0 0 calc(16px * var(--motion-amount)) #e39b2d);
+  }
+  10% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 - 0.6 * var(--motion-amount)));
+    filter: drop-shadow(0 0 calc(4px * var(--motion-amount)) #e39b2d);
+  }
+}
+
+.dig-board-star {
+  position: fixed;
+  z-index: 2;
+  color: #e39b2d;
+  fill: currentColor;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: dig-board-star var(--dig-lift) var(--ease-out) both;
+}
+
+@keyframes dig-board-star {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--star-x) * var(--motion-amount)), calc(var(--star-y) * var(--motion-amount))) scale(calc(1 + var(--motion-amount)));
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount)));
+  }
+}
+
+.dig-chip[data-counted] span {
+  animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+  animation: fade-out var(--dig-gust) var(--ease-out) both;
+}
+
+.dig-screen:not([data-motion]) .dig-board[data-lifting] .dig-picture,
+.dig-screen:not([data-motion]) .dig-board-star {
+  animation: fade-in var(--dig-lift) var(--ease-out) both;
 }
 
 /* The brush, a ring the width it brushes, under the finger. */
@@ -5302,13 +5819,55 @@ body:has(.result) #version {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fade-in var(--dig-reveal-duration) var(--ease-out) both;
+}
+
+.dig-reveal-screen[data-motion] .dig-reveal-art {
+  animation-name: dig-reveal-glide;
+}
+
+@keyframes dig-reveal-glide {
+  from {
+    opacity: 0;
+    translate: calc(24px * var(--motion-amount)) 0;
+  }
 }
 
 .dig-reveal-picture {
   width: 100%;
   max-height: 100%;
   object-fit: contain;
-  animation: grow-in var(--motion-screen) var(--ease-out) both;
+}
+
+.dig-reveal-name,
+.dig-card,
+.dig-reveal-celebration,
+.dig-reveal-level,
+.dig-reveal-screen .result-actions > button {
+  animation: fade-in var(--dig-reveal-duration) var(--ease-out) calc(var(--reveal-part) * var(--dig-reveal-stagger)) both;
+}
+
+.dig-reveal-screen[data-motion] .dig-reveal-name,
+.dig-reveal-screen[data-motion] .dig-card,
+.dig-reveal-screen[data-motion] .dig-reveal-celebration,
+.dig-reveal-screen[data-motion] .dig-reveal-level,
+.dig-reveal-screen[data-motion] .result-actions > button {
+  animation-name: rise-in;
+}
+
+/* A reveal given back from the FIELD GUIDE has arrived already, so its
+   parts show at once, with either motion. */
+main.dig-reveal-screen[data-arrived] .dig-reveal-art,
+main.dig-reveal-screen[data-arrived] .dig-reveal-name,
+main.dig-reveal-screen[data-arrived] .dig-card,
+main.dig-reveal-screen[data-arrived] .dig-reveal-celebration,
+main.dig-reveal-screen[data-arrived] .dig-reveal-level,
+main.dig-reveal-screen[data-arrived] .result-actions > button {
+  animation-name: none;
+}
+
+.dig-reveal-level {
+  align-self: stretch;
 }
 
 /* As wide as the level switch needs for every level's name on one line,
@@ -5381,33 +5940,14 @@ body:has(.result) #version {
   display: grid;
 }
 
-/* A star newly earned flies from the dinosaur onto the card as the
-   reveal settles, and the count and NEW! pop in as it lands; with
-   reduced motion they only fade in. */
-.dig-card[data-new] .dig-card-star {
-  animation: dig-star-flies var(--motion-screen) var(--ease-out) var(--motion-screen) both;
-}
-
-@keyframes dig-star-flies {
-  from {
-    opacity: 0;
-    translate: calc(-280px * var(--motion-amount)) calc(-140px * var(--motion-amount));
-    scale: calc(1 + var(--motion-amount));
-  }
-}
-
-.dig-card[data-new] .dig-card-count,
-.dig-card-new {
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(2 * var(--motion-screen)) both;
-}
-
 .dig-reveal-screen .celebration {
   height: 52px;
   font-size: 22px;
+  animation: none;
 }
 
 /* The level switch above DIG AGAIN and HOME, which take no tap until the
-   star has landed. */
+   last item has arrived. */
 .dig-reveal-ways {
   align-self: stretch;
   display: flex;
@@ -6227,7 +6767,41 @@ body:has(.result) #version {
     --motion-amount: 0;
   }
 
-  .dig-choice-cards[data-motion] {
+  ::view-transition-old(.dig-reveal-change) {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-reveal-screen[data-motion] .dig-reveal-art,
+  .dig-reveal-screen[data-motion] .dig-reveal-name,
+  .dig-reveal-screen[data-motion] .dig-card,
+  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
+  .dig-reveal-screen[data-motion] .dig-reveal-level,
+  .dig-reveal-screen[data-motion] .result-actions > button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-choice-cards[data-motion] .dig-choice-card {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
@@ -7034,6 +7608,27 @@ body:has(.result) #version {
   background: #222a3d;
 }
 
+[data-theme="dark"] .dig-field-guide-button {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-field-guide-button svg {
+  color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-field-guide-button[data-landed] {
+  outline-color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-field-guide-new {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-reveal-screen .dig-field-guide-button {
+  background: #00000033;
+}
+
 [data-theme="dark"] .dig-grain {
   background: #f2b24b;
 }
@@ -7043,9 +7638,53 @@ body:has(.result) #version {
   background: #181e2e;
 }
 
+[data-theme="dark"] .dig-empty-card {
+  border-color: #ece8de1f;
+  background: #222a3d;
+  color: #ece8de1f;
+}
+
+[data-theme="dark"] .dig-kinds-found svg {
+  color: #f2b24b;
+}
+
+[data-theme="dark"] .dig-guide-card {
+  border-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-guide-card:not([data-found]) {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .dig-guide-outline {
+  background: #ece8de;
+}
+
+[data-theme="dark"] .dig-guide-unknown {
+  color: #ece8de66;
+}
+
 [data-theme="dark"] .dig-choice-card {
   background: #181e2e;
   border-color: #a4aec7;
+}
+
+[data-theme="dark"] .dig-choice-card[data-rejected] {
+  border-color: #f08a78;
+}
+
+[data-theme="dark"] .dig-choice-card[data-correct] {
+  border-color: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-correct {
+  background: #63c98c;
+}
+
+[data-theme="dark"] .dig-choice-mark-rejected {
+  background: #181e2e;
+  color: #e57a5d;
 }
 
 [data-theme="dark"] .dig-spot-picture {

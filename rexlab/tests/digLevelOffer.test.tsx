@@ -5,7 +5,7 @@ import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "../src/levelOffer.ts";
 import { localDigProgress, PROGRESS_KEY } from "../src/localProgress.ts";
-import { board, brushAll, digUp, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
+import { finishBoard, board, brushAll, digUp, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
 import { homeTile, memoryStorage } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 
@@ -41,7 +41,7 @@ function finish(app: ReturnType<typeof openDigApp>, { help = false, wrong = fals
     fireEvent.click(wrongCards()[0]!);
   }
   digUp();
-  act(() => app.timers.fire(GUST.motion));
+  finishBoard(app.timers);
   act(() => app.timers.fire(STAR_LANDS.motion));
 }
 const show = (app: ReturnType<typeof openDigApp>) => act(() => app.timers.fire(remaining));
@@ -70,7 +70,7 @@ it.each(["hatchling", "explorer"] as const)("offers the next level after three s
   expect(saved(app).levelOffer).toEqual(offerOf(level, 0, [level]));
 });
 
-it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, and needs three fresh strong rounds", (reason) => {
+it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, counting from one again", (reason) => {
   const wrong = reason === "a wrong pick";
   const app = begin(wrong ? "explorer" : "hatchling", offerOf("explorer", 2));
   finish(app, { wrong });
@@ -78,12 +78,11 @@ it.each(["a wrong pick", "other level"])("restarts Explorer's run after %s, and 
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(saved(app).levelOffer).toEqual(offerOf(wrong ? "explorer" : "hatchling", wrong ? 0 : 1));
   fireEvent.click(chosen("explorer"));
-  for (let round = 1; round <= 3; round++) {
-    fireEvent.click(button("DIG AGAIN"));
-    finish(app);
-    show(app);
-    expect(screen.queryByRole("dialog") !== null).toBe(round === 3);
-  }
+  fireEvent.click(button("DIG AGAIN"));
+  finish(app);
+  show(app);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(saved(app).levelOffer).toEqual(offerOf("explorer", 1));
 });
 
 it.each(["hatchling", "explorer"] as const)("counts a %s round with help as strong, so help never costs the offer", (level) => {
@@ -109,20 +108,24 @@ it("YES keeps the next level for DIG AGAIN, the tile and a reopened app", () => 
   expect(board().getAttribute("data-level")).toBe("explorer");
 });
 
-it("NOT NOW waits for five at Hatchling, while Explorer still needs three", () => {
+it("NOT NOW keeps Hatchling and records the decline", () => {
   const app = begin("hatchling", offerOf("hatchling", 2));
   finish(app); show(app); dismiss(app, "NOT NOW");
   expect(chosen("hatchling").getAttribute("aria-pressed")).toBe("true");
-  for (let round = 1; round <= 5; round++) {
-    fireEvent.click(button("DIG AGAIN")); finish(app); show(app);
-    expect(screen.queryByRole("dialog") !== null).toBe(round === 5);
-  }
-  dismiss(app, "NOT NOW");
-  fireEvent.click(chosen("explorer"));
-  for (let round = 1; round <= 3; round++) {
-    fireEvent.click(button("DIG AGAIN")); finish(app); show(app);
-    expect(screen.queryByRole("dialog") !== null).toBe(round === 3);
-  }
+  expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 0, ["hatchling"]));
+});
+
+// levelOffer.test.ts counts the runs; these seed a declined run's end.
+it.each([[3, "waits"], [5, "offers again"]] as const)("after NOT NOW at Hatchling, strong round %i %s", (round, result) => {
+  const app = begin("hatchling", offerOf("hatchling", round - 1, ["hatchling"]));
+  finish(app); show(app);
+  expect(screen.queryByRole("dialog") !== null).toBe(round === 5);
+});
+
+it("after NOT NOW at Hatchling, Explorer still needs three", () => {
+  const app = begin("explorer", offerOf("explorer", 2, ["hatchling"]));
+  finish(app); show(app);
+  expect(screen.getByRole("dialog")).toBeDefined();
 });
 
 it("never offers beyond Paleontologist, even after ten strong rounds", () => {
@@ -137,7 +140,7 @@ it("waits for the star to land and every remaining celebration before showing th
   remaining = 900;
   placeBoard(800); digUp();
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 2));
-  act(() => app.timers.fire(GUST.motion));
+  finishBoard(app.timers);
   expect(saved(app).levelOffer).toEqual(offerOf("hatchling", 3));
   act(() => app.timers.fire(900));
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -149,15 +152,11 @@ it("waits for the star to land and every remaining celebration before showing th
   expect(screen.getByRole("dialog")).toBeDefined();
 });
 
-it.each(["reload", "close"])("treats an offer left by %s as declined, persisting its five-round threshold", () => {
+it.each(["reload", "close"])("treats an offer left by %s as declined, persisting the decline", () => {
   const app = begin("hatchling", offerOf("hatchling", 2));
   finish(app); show(app); app.unmount();
   const reopened = openDigApp({ storage: app.storage, settingsStorage: app.settingsStorage });
   expect(saved(reopened).levelOffer).toEqual(offerOf("hatchling", 0, ["hatchling"]));
-  for (let round = 1; round <= 5; round++) {
-    fireEvent.click(button(round === 1 ? "DIG" : "DIG AGAIN")); finish(reopened); show(reopened);
-    expect(screen.queryByRole("dialog") !== null).toBe(round === 5);
-  }
 });
 
 it.each(["YES", "NOT NOW"])("answers a quick double tap on %s once, blocking the reveal through dismissal", (answer) => {

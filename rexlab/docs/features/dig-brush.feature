@@ -8,11 +8,12 @@ Feature: Dig: the brush, and Hatchling's free brushing
   child brushes freely, and once 95% of the dinosaur's cells are clear
   the rest of the sand blows away in one gust, so the child digs the
   whole dinosaur but never hunts for its last grains. Explorer and
-  Paleontologist brush the same way, and their gust comes when the
-  dinosaur is named (dig-question.feature). Taps on the sand go
-  through the double-tap filter (double-tap.feature); an accepted cost is
-  that a stroke begun within 500 ms and 100 px of a tap's release
-  brushes nothing. The brush is a component
+  Paleontologist brush the same way, on a board that never moves, so a
+  held stroke clears under the finger as the question comes; their gust
+  comes when the dinosaur is named (dig-question.feature). Taps on the
+  sand go through the double-tap filter (double-tap.feature); an accepted
+  cost is that a stroke begun within 500 ms and 100 px of a tap's
+  release brushes nothing. The brush is a component
   of its own, so the skeleton game's dig (LAB-283) can brush the same
   sand.
 
@@ -64,9 +65,13 @@ Feature: Dig: the brush, and Hatchling's free brushing
   Scenario: The last grains blow away at Hatchling
     Given a Hatchling round has started
     When I have brushed 95% of the dinosaur's cells clear
-    Then the rest of the sand blows off the board in one gust, out to one side
+    Then the rest of the sand blows off the board in one stroke, out to one side, over about 0.8 s
     And with reduced motion the sand fades away instead
-    And the reveal follows (dig-reveal.feature)
+    And the dinosaur lifts from its damp bed with a warm glow, over about 0.5 s
+    And on a first dig a star flies from it into the bar's "DUG UP" chip, then its count ticks up by one
+    And on a repeated dig it lifts without a star
+    And with reduced motion the lift, glow and star are a short fade and the count simply changes
+    And the reveal follows the lift and star's arrival (dig-reveal.feature)
 
   Scenario: Brushing has no wrong place, no timer and no failure
     Given a round at any level has started

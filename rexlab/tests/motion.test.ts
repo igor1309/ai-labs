@@ -94,6 +94,23 @@ describe("the motion", () => {
     expect(timings.filter(({ value }) => /\d(ms|s)\b|cubic-bezier|steps\(|\b(ease|ease-in|ease-out|ease-in-out|linear)\b/.test(value))).toEqual([]);
   });
 
+  it("draws the treasure's route and visibly pulses the FIELD GUIDE on arrival", () => {
+    const route = declared(PLAIN, ".dig-treasure-route path");
+    expect(route).toMatchObject({ stroke: "#e39b2d", "stroke-dasharray": "1" });
+    expect(route.animation).toMatch(/^dig-treasure-route /);
+    const routeFrames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-treasure-route")!.body);
+    expect(declared(routeFrames, "10%")["stroke-dashoffset"]).toBe("calc(1 * var(--motion-amount))");
+    expect(declared(routeFrames, "to")["stroke-dashoffset"]).toBe("calc(0 * var(--motion-amount))");
+
+    const arrival = declared(PLAIN, ".dig-field-guide-button[data-landed][data-motion]");
+    expect(arrival.animation).toMatch(/^dig-guide-arrival /);
+    const arrivalFrames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-guide-arrival")!.body);
+    expect(declared(arrivalFrames, "45%")).toMatchObject({
+      scale: "calc(1 + 0.08 * var(--motion-amount))",
+      "box-shadow": "0 0 0 calc(8px * var(--motion-amount)) #e39b2d33"
+    });
+  });
+
   it("is only short fades with reduced motion", () => {
     expect(tokensOf(REDUCED)).toEqual({
       "--motion-standard": "160ms",
@@ -150,6 +167,78 @@ const animationsOf = (rules: Rule[]) =>
         .flatMap(({ value }) => prelude.split(",").map((selector) => [selector.trim(), value.split(" ")[0]] as const))
     )
   );
+
+describe("the dig board's collection star", () => {
+  it("flies from the dinosaur at --star-x and --star-y to the chip, and only fades in with reduced motion", () => {
+    const flight = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-board-star")?.body ?? "")
+      .map(({ prelude, body }) => [prelude, declarationsOf(body).find(({ property }) => property === "transform")?.value]);
+    expect(flight).toEqual([
+      ["from", "translate(calc(var(--star-x) * var(--motion-amount)), calc(var(--star-y) * var(--motion-amount))) scale(calc(1 + var(--motion-amount)))"],
+      ["20%", undefined],
+      ["to", "translate(calc(0px * var(--motion-amount)), calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount)))"]
+    ]);
+    expect(declared(PLAIN, ".dig-board-star").animation).toBe("dig-board-star var(--dig-lift) var(--ease-out) both");
+    const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((selector) => selector.trim()).includes(".dig-board-star"));
+    expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
+describe("the dig question's cards", () => {
+  it("turn each empty card edge on and the choice card on from there, and only fade with reduced motion", () => {
+    const frames = (name: string) => rulesOf(KEYFRAMES.find(({ prelude }) => prelude === `@keyframes ${name}`)?.body ?? "")
+      .map(({ prelude, body }) => [prelude, Object.fromEntries(declarationsOf(body).map(({ property, value }) => [property, value]))]);
+    expect(frames("dig-turn-away")).toEqual([
+      ["99%", { opacity: "1" }],
+      ["to", { opacity: "0", transform: "rotateY(calc(90deg * var(--motion-amount)))" }]
+    ]);
+    expect(frames("dig-turn-in")).toEqual([["from", { opacity: "0", transform: "rotateY(calc(-90deg * var(--motion-amount)))" }]]);
+    expect(declared(REDUCED, ".dig-choice-cards[data-motion] .dig-empty-card[data-turned]")).toEqual({ animation: "fade-out var(--motion-small) var(--ease-out) both" });
+    expect(declared(REDUCED, ".dig-choice-cards[data-motion] .dig-choice-card")).toEqual({ animation: "fade-in var(--motion-small) var(--ease-out) both" });
+  });
+
+  it("leave the board where it stands: no rule moves it or transitions it", () => {
+    const board = [...PLAIN, ...REDUCED].filter(({ prelude }) => prelude.split(",").some((selector) => /\.dig-board(\[[^\]]*\]|:not\([^)]*\))*$/.test(selector.trim())));
+    expect(board.length).toBeGreaterThan(0);
+    expect(board.flatMap(({ prelude, body }) => declarationsOf(body)
+      .filter(({ property }) => /^(transform|translate|transition)(-|$)/.test(property))
+      .map(({ property }) => `${prelude} ${property}`))).toEqual([]);
+  });
+});
+
+describe("the dig reveal's motion", () => {
+  it("slides the board away while the dinosaur glides within the reveal's gap, with no second star flight", () => {
+    expect(declared(PLAIN, "::view-transition-old(.dig-reveal-change)").animation).toBe("slide-out var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, "::view-transition-new(.dig-reveal-change)").animation).toBe("none");
+    expect(declared(REDUCED, "::view-transition-old(.dig-reveal-change)").animation).toBe("fade-out var(--motion-small) var(--ease-out) both");
+    const glide = KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-reveal-glide");
+    const frames = rulesOf(glide?.body ?? "").flatMap(({ body }) => declarationsOf(body));
+    expect(frames).toEqual([
+      { property: "opacity", value: "0" },
+      { property: "translate", value: "calc(24px * var(--motion-amount)) 0" }
+    ]);
+    expect(declared(PLAIN, ".dig-reveal").gap).toBe("24px");
+    expect(CSS).not.toContain("dig-star-flies");
+    expect(declared(PLAIN, ".dig-reveal-screen .celebration").animation).toBe("none");
+    const reduced = REDUCED.find(({ prelude }) => prelude.includes(".dig-reveal-screen[data-motion] .dig-reveal-art"));
+    expect(reduced?.prelude.split(",").map((selector) => selector.trim())).toEqual([
+      ".dig-reveal-screen[data-motion] .dig-reveal-art", ".dig-reveal-screen[data-motion] .dig-reveal-name",
+      ".dig-reveal-screen[data-motion] .dig-card", ".dig-reveal-screen[data-motion] .dig-reveal-celebration",
+      ".dig-reveal-screen[data-motion] .dig-reveal-level", ".dig-reveal-screen[data-motion] .result-actions > button"
+    ]);
+    expect(declarationsOf(reduced?.body ?? "")).toEqual([{ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" }]);
+  });
+});
+
+describe("the FIELD GUIDE's motion", () => {
+  it("rises its cards in one after the other, 60 ms apart, and only fades them together with reduced motion", () => {
+    expect(declared(PLAIN, ".dig-guide-card").animation).toBe("rise-in var(--motion-screen) var(--ease-out) calc(var(--card) * var(--motion-stagger) * 1.5) both");
+    expect(Number.parseFloat(tokensOf(PLAIN)["--motion-stagger"] ?? "") * 1.5).toBe(60);
+    // rise-in lifts by --motion-amount and the stagger is --motion-stagger,
+    // both 0 with reduced motion, which leaves one short fade.
+    expect([tokensOf(REDUCED)["--motion-stagger"], tokensOf(REDUCED)["--motion-amount"]]).toEqual(["0ms", "0"]);
+    expect(animationsOf(REDUCED).has(".dig-guide-card")).toBe(false);
+  });
+});
 
 describe("the home page's motion", () => {
   it("fades and lifts the large card in as a screen comes in, and only fades it with reduced motion", () => {

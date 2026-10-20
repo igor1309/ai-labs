@@ -1,10 +1,17 @@
+import { TREASURE_KINDS, type TreasureKind } from "./treasures.ts";
+
+// How many of each kind of treasure a child has found, none of a kind
+// not found yet.
+export type Treasures = Readonly<Partial<Record<TreasureKind, number>>>;
+
 // What a child has dug up, across every level (docs/age-levels.md, "Same
 // rewards"): the ids of the dinosaurs dug up, and of those named at the
-// first pick at Explorer or Paleontologist, each its 🦴 badge. An id the app no
-// longer ships is kept but never counted.
-export type DigProgress = { dug: readonly string[]; badges: readonly string[] };
+// first pick at Explorer or Paleontologist, each its 🦴 badge, and the
+// treasures found in the sand. An id the app no longer ships is kept but
+// never counted.
+export type DigProgress = { dug: readonly string[]; badges: readonly string[]; treasures: Treasures };
 
-export const NO_DIG: DigProgress = { dug: [], badges: [] };
+export const NO_DIG: DigProgress = { dug: [], badges: [], treasures: {} };
 
 // The progress the game goes by while the app is open. When stored
 // progress cannot be read there is no count to show or celebrate, but
@@ -37,11 +44,22 @@ const shipped = (held: readonly string[], ids: readonly string[]) => ids.filter(
 // The dinosaurs dug up that the app still ships.
 export const dugUpOf = (progress: DigProgress, ids: readonly string[]): number => shipped(progress.dug, ids).length;
 
-// Every dinosaur and badge of either: a visit may hold one unsaved while
-// another tab saves others meanwhile.
+// How many treasures have been found, of every kind.
+export const treasuresFound = ({ treasures }: DigProgress): number => TREASURE_KINDS.reduce((sum, kind) => sum + (treasures[kind] ?? 0), 0);
+
+// The progress with one more treasure of `kind` kept.
+export const keepTreasure = (progress: DigProgress, kind: TreasureKind): DigProgress => ({ ...progress, treasures: { ...progress.treasures, [kind]: (progress.treasures[kind] ?? 0) + 1 } });
+
+// Every dinosaur and badge of either, and of each treasure the larger
+// count: a visit may hold one unsaved while another tab saves others
+// meanwhile, and a count is never lowered.
 export function mergeProgress(kept: DigProgress, stored: DigProgress): DigProgress {
   const both = (one: readonly string[], other: readonly string[]) => [...new Set([...one, ...other])];
-  return { dug: both(kept.dug, stored.dug), badges: both(kept.badges, stored.badges) };
+  const treasures = Object.fromEntries(TREASURE_KINDS.flatMap((kind) => {
+    const count = Math.max(kept.treasures[kind] ?? 0, stored.treasures[kind] ?? 0);
+    return count > 0 ? [[kind, count]] : [];
+  }));
+  return { dug: both(kept.dug, stored.dug), badges: both(kept.badges, stored.badges), treasures };
 }
 
 // The progress with `dinosaurId` dug up, and its reward. Only a dinosaur
@@ -52,6 +70,7 @@ export function mergeProgress(kept: DigProgress, stored: DigProgress): DigProgre
 export function digUp(kept: KeptDig, dinosaurId: string, ids: readonly string[], beatBest: BeatBest, namedFirst = false): { kept: KeptDig; reward: DigReward } {
   const newStar = !kept.progress.dug.includes(dinosaurId);
   const progress = {
+    ...kept.progress,
     dug: newStar ? [...kept.progress.dug, dinosaurId] : kept.progress.dug,
     badges: namedFirst && !kept.progress.badges.includes(dinosaurId) ? [...kept.progress.badges, dinosaurId] : kept.progress.badges
   };

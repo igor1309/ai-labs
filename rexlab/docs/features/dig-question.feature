@@ -7,8 +7,11 @@ Feature: Dig: who is it?
   look-alikes, by the telling traits and spot kinds (dig-spots.feature)
   two dinosaurs share of those either shows, equals drawn at random. The
   child digs the whole picture if they like: brushing goes on while the
-  question shows, and only the right pick brings the gust. Hatchling has
-  no question; its gust comes at 95% (dig-brush.feature).
+  question shows, and only the right pick brings the gust. The board
+  stands in one place beside the question's column for the whole round,
+  so the sand never moves under the finger. Hatchling has no question
+  and no column; its board is centred and its gust comes at 95%
+  (dig-brush.feature).
 
   Background:
     Given an iPad in landscape
@@ -17,21 +20,25 @@ Feature: Dig: who is it?
     Given the level switch shows <level> chosen
     When a round starts
     Then the board is all sand and the title reads "DIG"
-    And no name, card or close-up tells the dinosaur under it
-    And the board leaves room beside it for the question, so it neither shrinks nor moves when the question comes
+    And no name, picture or close-up tells the dinosaur under it
+    And the board stands in its place beside the question's column, which holds <count> empty cards
+    And each empty card is the second surface, with a 2 px line border, rounded 24, and a large "?" in the line colour, centred
+    And an empty card is not a button: tapping it does nothing, and screen readers skip it
 
     Examples:
-      | level          |
-      | Explorer       |
-      | Paleontologist |
+      | level          | count |
+      | Explorer       | 3     |
+      | Paleontologist | 4     |
 
   Scenario Outline: The question comes at three quarters
     Given a <level> round
     When I brush 75% of the dinosaur's cells clear
     Then the title reads "WHO IS IT?"
-    And beside the board, one over another, rise <count> cards, each a dinosaur's body picture with no name
+    And the <count> empty cards turn over in place, one after another, 60 ms apart, each into a card with a body picture and no name
     And one is the dinosaur under the sand, the others its closest look-alikes, in a random order
-    And with reduced motion the cards come with a short fade
+    And every choice picture is desaturated until the child picks an answer
+    And the board does not move, and nothing in the column shifts
+    And with reduced motion the cards come with a short fade and no turn
 
     Examples:
       | level          | count |
@@ -46,14 +53,16 @@ Feature: Dig: who is it?
   Scenario: A wrong pick fades and stays out
     Given the question shows
     When I tap a dinosaur that is not the one under the sand
-    Then its card fades and can no longer be tapped, even after the screen turns
-    And I can brush on and pick again from the others
+    Then its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
+    And I can brush on and pick again from the other, still-colourless cards
 
   Scenario: The right pick blows the sand away
     Given the question shows
     When I tap the dinosaur under the sand
-    Then the rest of the sand blows away in one gust, and the board takes no more brushing
-    And the reveal follows (dig-reveal.feature)
+    Then its picture reveals its colour with a green border and a check
+    And the rest of the sand blows away in one gust, and the board takes no more brushing
+    And the board stays in its place through the gust and the lift
+    And the dinosaur lifts from its damp bed before the reveal (dig-brush.feature, dig-reveal.feature)
 
   Scenario: Naming it at the first pick earns its badge
     Given an Explorer or Paleontologist round
@@ -70,7 +79,7 @@ Feature: Dig: who is it?
   Scenario Outline: The board and the question fit on the iPads
     Given the screen is <width> by <height> CSS pixels
     When the question shows, in either language and theme
-    Then the board, the same size as before it came, and every card show with no scrolling
+    Then the board, in the same place and size as before it came, and every card show with no scrolling
     And each card's dinosaur is at least 80 CSS pixels tall
 
     Examples:

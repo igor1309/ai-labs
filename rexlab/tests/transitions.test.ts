@@ -5,7 +5,7 @@ import { finishVisit, give, NO_CARE, startVisit } from "../src/care/index.ts";
 import { transitionFor as careTransitionFor } from "../src/careGame.tsx";
 import { stepFrom, type Step } from "../src/catalogue.ts";
 import { brushRound, startRound as startDig } from "../src/dig/index.ts";
-import { transitionFor as digTransitionFor } from "../src/digGame.tsx";
+import { DIG_REVEAL, transitionFor as digTransitionFor } from "../src/digGame.tsx";
 import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
 import { dealBoard, finishBoard as finishPairs, NO_PAIRS, turn } from "../src/pairs/index.ts";
 import { transitionFor as pairsTransitionFor } from "../src/pairsGame.tsx";
@@ -183,10 +183,14 @@ describe("the dig game's transition for each change", () => {
   type DigScreen = Parameters<typeof digTransitionFor>[0];
   const round = startDig(SHIPPED_DIG, [], undefined, () => 0, "hatchling");
   const reward = { dugUp: 1, total: SHIPPED_DIG.length, newStar: true, celebration: "first-best", badge: false } as const;
-  const screens: DigScreen[] = [undefined, { kind: "board", round }, { kind: "reveal", round, reward, landed: false, offer: undefined }];
+  const board = { kind: "board", round } as const;
+  const screens: DigScreen[] = [undefined, board, { kind: "reveal", round, reward, landed: false, offer: undefined }, { kind: "guide", under: board }];
 
   it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
-    expect(digTransitionFor(from, to, undefined)).toBe(type);
+    // The board slides away for the reveal rather than using the plain
+    // whole-screen fade and rise shared by other screen changes.
+    const expected = from?.kind === "board" && to?.kind === "reveal" ? DIG_REVEAL : type;
+    expect(digTransitionFor(from, to, undefined)).toBe(expected);
   });
 
   it("changes a board at once as the brush moves", () => {
@@ -195,7 +199,7 @@ describe("the dig game's transition for each change", () => {
     expect(digTransitionFor({ kind: "board", round }, { kind: "board", round: brushed }, undefined)).toBeUndefined();
   });
 
-  it("changes the reveal at once as its star lands", () => {
+  it("changes the reveal at once as its last item arrives", () => {
     expect(digTransitionFor({ kind: "reveal", round, reward, landed: false, offer: undefined }, { kind: "reveal", round, reward, landed: true, offer: undefined }, undefined)).toBeUndefined();
   });
 

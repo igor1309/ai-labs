@@ -157,11 +157,21 @@ export type Texts = {
   // of every dinosaur dug up, read out.
   dig: string;
   whoIsIt: string;
+  digChoice: { right: string; tryAnother: string };
   sand: string;
   dugUp: string;
   dugUpNew: string;
   digAgain: string;
   allDugUp: string;
+  // The FIELD GUIDE of the treasures found, read out on its button, and
+  // the mark by it as the first treasure of a kind lands.
+  fieldGuide: string;
+  treasureNew: string;
+  // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
+  // found, read out on their count, and each kind's name.
+  treasureCards: string;
+  kindsFound: string;
+  treasures: { shell: string; tooth: string; amber: string; "egg-nest": string; "golden-fossil": string };
 };
 
 // A celebration's label, read out, and its text, shown.

@@ -1,9 +1,10 @@
 # runstore, a wrapper (docs/run-implementation.md, "A call's cost";
-# ADR-001, invariant 6): a call's session cost in its run's record.
+# ADR-001, invariant 6; "Codex's cost"): a call's session cost and its
+# cost's source in its run's record.
 # Contract tests against real files, in a temporary folder (ADR-009,
 # rule 3).
 
-Feature: runstore keeps a call's session cost
+Feature: runstore keeps a call's session cost and cost source
 
   Scenario Outline: A call's session cost is written and given back
     Given runstore over the folder "runs"
@@ -22,3 +23,20 @@ Feature: runstore keeps a call's session cost
       whose call "a" has no "session_cost"
     When "x" is read
     Then its call "a" has no session cost
+
+  Scenario Outline: A call's cost source is written and given back
+    Given runstore over the folder "runs"
+    When the record of the run "x" is written, its call "a" <cost>
+    Then the record holds the call's "cost_source" <json>
+    And reading "x" gives the call <given>
+
+    Examples:
+      | cost                            | json      | given                   |
+      | of the cost 0.25 from "ccusage" | "ccusage" | the cost source ccusage |
+      | of no cost                      | null      | no cost source          |
+
+  Scenario: An entry from before reads as no cost source
+    Given runstore over the folder "runs", holding the record of "x"
+      whose call "a" has no "cost_source"
+    When "x" is read
+    Then its call "a" has no cost source

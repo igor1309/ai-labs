@@ -9,6 +9,6 @@ Feature: The codex wrapper gives its facts
     Then its contract is "codex/2"
     And it can check output against a schema, resume a session, take
       skills, take a model, and report tool calls and tool commands
-    And it cannot take a budget
+    And it reports a cost, and cannot take a budget
     And it accepts the efforts "minimal low medium high xhigh"
     And it takes a call's inputs in its message

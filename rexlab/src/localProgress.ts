@@ -1,6 +1,6 @@
 import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
-import { NO_DIG, type DigProgress } from "./dig/index.ts";
+import { NO_DIG, TREASURE_KINDS, type DigProgress, type Treasures } from "./dig/index.ts";
 import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
@@ -133,6 +133,17 @@ function readPairs({ stars, level, boardsOnLevel, best, found, levelChoice, offe
   return choice && { ...progress, levelChoice: choice };
 }
 
+// The treasures found, each kind with a count of one or more; as the
+// offer, treasures that cannot be read never make the dinosaurs dug up
+// unusable, and an entry saved before treasures has none.
+function readTreasures(raw: unknown): Treasures {
+  if (!isObject(raw)) return {};
+  return Object.fromEntries(TREASURE_KINDS.flatMap((kind) => {
+    const count = raw[kind];
+    return isCount(count) && count > 0 ? [[kind, count]] : [];
+  }));
+}
+
 // An optional offer must never make otherwise readable progress unusable.
 function readOffer(raw: unknown): LevelOffer {
   if (!isObject(raw)) return NO_LEVEL_OFFER;
@@ -150,8 +161,9 @@ function choiceOf(raw: unknown): LevelChoice | undefined {
 }
 
 // The dig game's progress, beside the others in the same record: the
-// dinosaurs dug up and those with their 🦴 badge, by id, with the child's
-// last choice on its level switch, none until the switch is first used.
+// dinosaurs dug up and those with their 🦴 badge, by id, the treasures
+// found, by kind with their counts, with the child's last choice on its
+// level switch, none until the switch is first used.
 export function localDigProgress(storage: () => KeyValueStorage) {
   const entry = gameProgress<StoredDig>(storage, "dig", storedDig(NO_DIG, undefined, NO_LEVEL_OFFER), readDig);
   return {
@@ -159,8 +171,8 @@ export function localDigProgress(storage: () => KeyValueStorage) {
     load(): { progress: DigProgress; levelChoice: LevelChoice | undefined; levelOffer: LevelOffer } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
-      const { levelChoice, levelOffer, ...progress } = stored;
-      return { progress, levelChoice, levelOffer };
+      const { levelChoice, levelOffer, treasures = {}, ...progress } = stored;
+      return { progress: { ...progress, treasures }, levelChoice, levelOffer };
     },
 
     save({ progress, levelChoice, levelOffer }: { progress: DigProgress; levelChoice: LevelChoice | undefined; levelOffer: LevelOffer }): void {
@@ -169,16 +181,18 @@ export function localDigProgress(storage: () => KeyValueStorage) {
   };
 }
 
-type StoredDig = DigProgress & { levelChoice?: LevelChoice; levelOffer: LevelOffer };
+type StoredDig = Omit<DigProgress, "treasures"> & { treasures?: Treasures; levelChoice?: LevelChoice; levelOffer: LevelOffer };
 
-function storedDig({ dug, badges }: DigProgress, levelChoice: LevelChoice | undefined, levelOffer: LevelOffer): StoredDig {
-  return { dug: [...dug], badges: [...badges], levelOffer, ...(levelChoice && { levelChoice }) };
+// Treasures are stored only once one is found, as an entry saved before
+// them has none.
+function storedDig({ dug, badges, treasures }: DigProgress, levelChoice: LevelChoice | undefined, levelOffer: LevelOffer): StoredDig {
+  return { dug: [...dug], badges: [...badges], ...(Object.keys(treasures).length > 0 && { treasures: { ...treasures } }), levelOffer, ...(levelChoice && { levelChoice }) };
 }
 
 // As find the pair's, an entry whose choice cannot be read is unusable.
-function readDig({ dug, badges, levelChoice, levelOffer }: Entry): StoredDig | undefined {
+function readDig({ dug, badges, treasures, levelChoice, levelOffer }: Entry): StoredDig | undefined {
   if (!isIds(dug) || !isIds(badges)) return undefined;
-  const progress = { dug: [...dug], badges: [...badges], levelOffer: readOffer(levelOffer) };
+  const progress = { dug: [...dug], badges: [...badges], treasures: readTreasures(treasures), levelOffer: readOffer(levelOffer) };
   if (levelChoice === undefined) return progress;
   const choice = choiceOf(levelChoice);
   return choice && { ...progress, levelChoice: choice };

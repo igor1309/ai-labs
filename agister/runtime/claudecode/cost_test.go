@@ -10,8 +10,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 )
 
-// cost.feature: each turn counts only its own cost, retaining the whole
-// report as the session's cost, including unknown and decreasing reports.
+// cost.feature: each turn counts only its own cost, from claude-code where
+// it is known, retaining the whole report as the session's cost, including
+// unknown and decreasing reports.
 func TestATurnCountsItsOwnCost(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
@@ -33,6 +34,9 @@ func TestATurnCountsItsOwnCost(t *testing.T) {
 			}
 			if got.Reply == nil || !reflect.DeepEqual(got.Reply.Cost, c.cost) || !reflect.DeepEqual(got.Reply.SessionCost, c.sessionCost) {
 				t.Fatalf("reply %+v, want cost %v, session cost %v", got.Reply, c.cost, c.sessionCost)
+			}
+			if source := map[bool]string{true: "claude-code"}[c.cost != nil]; got.Reply.CostSource != source {
+				t.Fatalf("cost source %q, want %q", got.Reply.CostSource, source)
 			}
 		})
 	}

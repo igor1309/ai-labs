@@ -30,7 +30,7 @@ The one interaction at every level.
   The cells are worked out once from the pictures and kept in
   `src/data/dig.json`.
 - **The last grains blow away.** When the round is done, the rest of
-  the sand blows off in one gust, so no child hunts for the last grains:
+  the sand blows off in one stroke over about 0.8 s, so no child hunts for the last grains:
   at Hatchling at 95% of the dinosaur's cells, so the child digs the
   whole dinosaur; at Explorer and Paleontologist at the right pick.
 - **The brush is a size a finger can steer.** 48 CSS pixels across at
@@ -62,9 +62,16 @@ Storyboard" row of `../design/rexlab.pen`.
   the dinosaur before it was dug. The child expects to dig the whole
   picture, so brushing goes on while the question shows, and only the
   pick ends the round.
-- **The board stays put.** A round that asks keeps an empty column
-  beside the board from the start, so the board neither shrinks nor
-  moves when the cards rise into it.
+- **The board arrives and moves.** It drops from above and settles,
+  puffing grains from its bottom edge. In a round that asks, it drops
+  into its place beside the choice column and never moves sideways
+  again: not at the question, a pick, the gust or the lift. The column
+  holds an empty "?" card for each choice from the start (3 at
+  Explorer, 4 at Paleontologist), each the size and place of the card
+  that replaces it; at 75% each turns over into its dinosaur's card,
+  60 ms apart. Hatchling's board is centred, with no column. Reduced
+  motion fades the board in without a puff and fades the cards in with
+  no turn.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
   a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
   a beak. A spot's cells are the dinosaur's cells whose middle lies in
@@ -84,9 +91,19 @@ Storyboard" row of `../design/rexlab.pen`.
 - **No choice screen.** "DIG" starts a round at once, as "SORT" does: a
   dinosaur the child has not dug up yet at this game, else any but the
   last round's.
-- **The reveal.** When the gust has blown, the dinosaur stays whole with
-  its name, large, and a star flies onto the "DUG UP" card: a ⭐, the
-  words and the count, such as "5/42".
+- **The lift.** After the gust, the dinosaur lifts from its damp bed
+  with a warm glow over about 0.5 s. On a first dig a star flies into the
+  bar's "DUG UP" chip, then its count ticks up; a repeat lifts without
+  a star. Reduced motion uses short fades and changes the count simply.
+- **The reveal.** After the lift and star's arrival, the board slides
+  away and the whole dinosaur glides into place on the left. On the
+  right, its large name, the "DUG UP" card, the celebration if any, the
+  level switch, "DIG AGAIN" and "HOME" arrive 60 ms apart. The card's
+  star is already in place with NEW! on a first dig, and the count, such
+  as "5/42"; it never flies twice. Taps wait for the last item. Reduced
+  motion brings everything in together on one short fade.
+- **Leaving a round.** HOME before the gust records nothing; from the
+  gust onwards the dinosaur is kept, including during the lift or reveal.
 - **Stars.** Every dinosaur dug up for the first time, at any level,
   earns its star once. The collection score is the dinosaurs dug up, out
   of all of them, with the best-score celebrations of the other games
@@ -112,6 +129,31 @@ Storyboard" row of `../design/rexlab.pen`.
   collection until a playtest shows children dig on past 42, as 42
   rounds is already a long goal at 5–7.
 
+## Treasures
+
+- **Which rounds.** About one round in three, at every level, hides one
+  treasure in its sand. Its kind is drawn: a golden fossil 1 in 20, an
+  egg nest 1 in 8, and a shell, a tooth or a drop of amber sharing the
+  rest equally. "Treasures", "СОКРОВИЩА": "find" already names a found
+  spot (`dig-help.feature`).
+- **Where.** On cells of the damp bed with none of the dinosaur, at
+  least one cell from the edge, so it never hides a part of the
+  dinosaur. Its sand counts toward neither 75% nor the gust.
+- **Found.** Brushed more than half clear, it glows, hops and flies
+  into the FIELD GUIDE on DIG's bar, whose count ticks up; "NEW!" shows
+  for the first of its kind. Brushing goes on during the flight. It is
+  kept the moment it lands, even if the child then leaves before the
+  gust. One not found tumbles away with the gust and is not kept.
+  Reduced motion fades it out and changes the count simply.
+- **The FIELD GUIDE.** 📖 "FIELD GUIDE", "ПОЛЕВОЙ ДНЕВНИК": a button
+  beside "DUG UP" on DIG's bar, during a round and on the reveal. Its
+  page holds five cards in a fixed order, each a picture with its count,
+  or an outline and "?" for a kind not found yet, and "n/5" kinds found.
+  "BACK" gives back the round or reveal as it was, as turning the iPad
+  does; "HOME" leaves as from the round.
+- **Kept.** Counts per kind, in DIG's stored progress, one collection
+  across all levels. They show nowhere outside DIG.
+
 ## Sub-issues
 
 | Sub-issue | Builds |
@@ -125,7 +167,7 @@ Storyboard" row of `../design/rexlab.pen`.
 | LAB-359 The mystery round | all sand, the question at 75% with look-alikes, help at every level, Hatchling's gust at 95%; v1's find and clue cards go |
 | LAB-360 The brush | a brush that crumbles the sand |
 | LAB-361 Motion | the motion and the reveal |
-| LAB-362 Bonus finds | finds in the sand |
+| LAB-362 Treasures | treasures in the sand and the FIELD GUIDE |
 
 The brush of LAB-341 is a component of its own, so the skeleton
 game's dig (LAB-283) brushes the same sand.
@@ -142,3 +184,5 @@ game's dig (LAB-283) brushes the same sand.
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
   is the long goal.
+- Treasures in about one round in three, at every level, kept in a
+  FIELD GUIDE page beside DUG UP (LAB-362).

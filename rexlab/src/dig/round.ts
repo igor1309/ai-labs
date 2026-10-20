@@ -1,5 +1,6 @@
 import { brush, clearCells, clearShare, NEW_SAND, type Mark, type Sand } from "./sand.ts";
 import { spotCells, type Cells, type DigDinosaur, type Spot, type SpotKind } from "./spots.ts";
+import { drawTreasure, treasureFound, type Treasure } from "./treasures.ts";
 
 // A source of numbers from 0 up to 1, as Math.random gives them.
 export type Random = () => number;
@@ -27,8 +28,8 @@ export const QUESTION_SHARE = 0.75;
 export const CHOICES: Readonly<Record<DigLevel, number>> = { hatchling: 0, explorer: 3, paleontologist: 4 };
 
 // A round: the dinosaur under the sand, its spots in the order help
-// shows them, the dinosaurs its question offers, and the brushing, finds,
-// help and wrong picks so far.
+// shows them, the dinosaurs its question offers, the treasure its sand
+// hides, if any, and the brushing, finds, help and wrong picks so far.
 export type DigRound = {
   level: DigLevel;
   dinosaur: DigDinosaur;
@@ -40,6 +41,7 @@ export type DigRound = {
   quietMs: number;
   choices: readonly string[];
   rejected: readonly string[];
+  treasure: Treasure | undefined;
 };
 
 export const HELP_AFTER = 10_000;
@@ -79,6 +81,10 @@ export function lookAlikes(dinosaur: DigDinosaur, dinosaurs: readonly DigDinosau
 // The share of the round's dinosaur that is clear.
 export const roundShare = ({ dinosaur, sand }: DigRound): number => clearShare(sand, dinosaur.cells);
 
+// The round's treasure is found once more than half of it is clear; one
+// not found by the gust goes with the sand.
+export const roundTreasureFound = ({ treasure, sand }: DigRound): boolean => treasure !== undefined && treasureFound(treasure, clearCells(sand));
+
 // Explorer and Paleontologist ask who it is once three quarters of the
 // dinosaur show, until the right pick; brushing goes on meanwhile.
 export const asking = (round: DigRound): boolean => round.choices.length > 0 && !round.blown && roundShare(round) >= QUESTION_SHARE;
@@ -115,7 +121,9 @@ export function waitForHelp(round: DigRound, ms: number): DigRound {
 }
 
 // A round at `level` of a dinosaur not dug up yet, at random; once every
-// one is, of any but `last`, the last one dug up.
+// one is, of any but `last`, the last one dug up. Its treasure is drawn
+// last, so the dinosaur, spots and question a draw gives are the same
+// whether or not the sand hides one.
 export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly string[], last: string | undefined, random: Random, level: DigLevel): DigRound {
   const fresh = dinosaurs.filter(({ id }) => !dug.includes(id));
   const others = dinosaurs.filter(({ id }) => id !== last);
@@ -126,12 +134,14 @@ export function startRound(dinosaurs: readonly DigDinosaur[], dug: readonly stri
     level, dinosaur, sand: NEW_SAND, blown: false,
     spots: draw(dinosaur.spots, dinosaur.spots.length, random),
     choices: CHOICES[level] > 0 ? lookAlikes(dinosaur, dinosaurs, CHOICES[level], random) : [], rejected: [],
-    found: [], helped: [], quietMs: 0
+    found: [], helped: [], quietMs: 0,
+    treasure: drawTreasure(dinosaur.cells, random)
   };
 }
 
 // Brushing goes on until the gust: Hatchling's at 95% of the dinosaur,
-// the other levels' at the right pick.
+// the other levels' at the right pick. Only the dinosaur's cells count
+// toward either, so a treasure's sand neither ends nor speeds the round.
 export function brushRound(round: DigRound, mark: Mark): DigRound {
   if (round.blown) return round;
   const sand = brush(round.sand, mark);

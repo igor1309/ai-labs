@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { App, type SandContext } from "../src/App.tsx";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import { GUST, STAR_LANDS } from "../src/digGame.tsx";
+import { BOARD_DROP, GUST, STAR_LANDS } from "../src/digGame.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -28,7 +28,7 @@ import {
   symbolOf,
   unreadVersion
 } from "./support.ts";
-import { board, digUp, cleared, clearCells, drag, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
+import { finishBoard, board, digUp, cleared, clearCells, drag, landTreasure, placeBoard, roundDinosaur, sandOf } from "./digApp.tsx";
 import { filterTaps, moveAt, pressAt, releaseAt, tapAt } from "./taps.ts";
 
 type Options = { reducedMotion?: boolean; random?: () => number; language?: Language; sandContext?: SandContext; level?: AgeLevel };
@@ -193,8 +193,9 @@ describe("the dig game's tile", () => {
     placeBoard(800);
     tapAt(board(), 1300, { x: 410, y: 300 });
 
-    // One round: its dinosaur, then the order help shows its spots in.
-    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length);
+    // One round: its dinosaur, the order help shows its spots in, then
+    // its treasure: whether it holds one, its kind and its place.
+    expect(draws.count - before).toBe(1 + roundDinosaur().spots.length + 3);
     expect(clearCells()).toEqual([]);
   });
 
@@ -210,12 +211,12 @@ describe("the dig game's tile", () => {
 });
 
 describe("a round's start", () => {
-  it("covers the whole picture with sand over a darker bed of damp sand, fading the board in whole", () => {
+  it("covers the whole picture with sand over a darker bed of damp sand, dropping the board in whole", () => {
     const { drawn, bed, sandContext } = spySand();
     openRound({ sandContext });
 
-    const [under, picture, sand] = [...board().children];
-    expect([under?.className, picture?.classList.contains("dig-picture"), sand?.className]).toEqual(["dig-bed", true, "dig-sand"]);
+    const [under, picture, treasure, sand] = [...board().querySelector(".dig-board-surface")!.children];
+    expect([under?.className, picture?.classList.contains("dig-picture"), treasure?.className, sand?.className]).toEqual(["dig-bed", true, "dig-treasure", "dig-sand"]);
     expect(bed.covers.at(-1)).toEqual([800, 600]);
     expect(bed.paints[0]?.style).toBe("#b0905f");
     expect(bed.fills).toEqual([]);
@@ -226,14 +227,33 @@ describe("a round's start", () => {
     expect(drawn.paints.every(({ operation }) => operation === "source-over")).toBe(true);
     expect(drawn.paints[0]?.style).toBe("#d9b77e");
     expect(drawn.stamps).toEqual([]);
-    expect(getComputedStyle(board()).animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
+    expect(getComputedStyle(board()).animationName).toBe("dig-drop");
+  });
+
+  it.each([false, true])("lands with grains at its bottom edge, or only fades under reduced motion %s", (reducedMotion) => {
+    openRound({ reducedMotion });
+    const main = screen.getByRole("main");
+    const timing = reducedMotion ? "reduced" : "motion";
+    expect(main.style.getPropertyValue("--dig-drop")).toBe(`${BOARD_DROP[timing]}ms`);
+    expect(getComputedStyle(board()).animation).toBe("fade-in var(--dig-drop) var(--ease-out) both");
+    expect(getComputedStyle(board()).animationName).toBe(reducedMotion ? "none" : "dig-drop");
+    expect(board().querySelectorAll(".dig-landing .dig-grain")).toHaveLength(reducedMotion ? 0 : 12);
+    expect(ruleOf(".dig-landing")).toContain("inset: auto 0 0");
+    expect(ruleOf(".dig-landing .dig-grain")).toContain("animation-delay: calc(var(--dig-drop) * 0.75)");
+    expect(ruleOf(".dig-board-surface")).toContain("overflow: hidden");
+    expect(getComputedStyle(board()).overflow).toBe("visible");
+    const drop = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-drop"), APP_CSS.indexOf(".dig-board-surface"));
+    expect(drop).toContain("calc(-100dvh * var(--motion-amount))");
+    expect(drop).toContain("75%");
+    expect(drop).toContain("calc(8px * var(--motion-amount))");
+    expect(drop).toContain("calc(0px * var(--motion-amount))");
   });
 
   it("digs up a dinosaur not dug up yet within this visit", () => {
     const { timers } = openRound();
     const first = roundDinosaur();
     digUp();
-    act(() => timers.fire(GUST.motion));
+    finishBoard(timers);
     act(() => timers.fire(STAR_LANDS.motion));
 
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
@@ -448,13 +468,14 @@ describe("the brush", () => {
     const { id } = roundDinosaur();
 
     digUp();
+    landTreasure(timers);
 
     expect(cleared()).toBeGreaterThanOrEqual(0.75);
     expect(board().getAttribute("data-blown")).toBe("true");
-    expect(getComputedStyle(sandOf()).animation).toBe("dig-gust calc(2 * var(--motion-screen)) var(--ease-out) both");
+    expect(getComputedStyle(sandOf()).animation).toBe("dig-gust var(--dig-gust) var(--ease-out) both");
     expect(timers.timers()).toEqual([GUST.motion]);
-    expect(GUST.motion).toBe(640);
-    act(() => timers.fire(GUST.motion));
+    expect(GUST.motion).toBe(800);
+    finishBoard(timers);
 
     const name = SHIPPED_DINOSAURS.find((each) => each.id === id)?.name.en.toLocaleUpperCase("en");
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
@@ -464,14 +485,26 @@ describe("the brush", () => {
     expect(homeTile("DIG")).toBeDefined();
   });
 
+  it("sweeps the sand off in one stroke and lifts the dinosaur with an amber glow", () => {
+    const gust = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-gust"), APP_CSS.indexOf(".dig-board[data-lifting]"));
+    expect(gust).toContain("translate: calc(110% * var(--motion-amount)) 0");
+    expect(gust).toContain("opacity: 0");
+    expect(gust.match(/to \{/g)).toHaveLength(1);
+    const lift = APP_CSS.slice(APP_CSS.indexOf("@keyframes dig-lift"), APP_CSS.indexOf(".dig-board-star"));
+    expect(lift).toContain("translate: 0 calc(-24px * var(--motion-amount))");
+    expect(lift).toContain("scale: calc(1 + 0.04 * var(--motion-amount))");
+    expect(lift).toContain("filter: drop-shadow(0 0 calc(24px * var(--motion-amount)) #e39b2d)");
+  });
+
   it("fades the rest of the sand away under reduced motion, on the shorter fade", () => {
     const { timers } = openRound({ reducedMotion: true });
 
     digUp();
+    landTreasure(timers, "reduced");
 
     expect(timers.timers()).toEqual([GUST.reduced]);
-    expect(GUST.reduced).toBe(320);
-    act(() => timers.fire(GUST.reduced));
+    expect(GUST.reduced).toBe(160);
+    finishBoard(timers, "reduced");
     expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   });
 

@@ -39,6 +39,7 @@ const SCREENS = [
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
   "DigBoardScreen.tsx",
+  "DigFieldGuideScreen.tsx",
   "DigRevealScreen.tsx",
   "DinosaurPage.tsx",
   "FriendsScreen.tsx",
@@ -88,7 +89,8 @@ const ADAPTERS = [
   "localTheme.ts",
   "mediaAppearance.ts",
   "mediaMotion.ts",
-  "mediaViewport.ts"
+  "mediaViewport.ts",
+  "treasurePictures.ts"
 ];
 const COMPOSITION = [
   "App.tsx",
