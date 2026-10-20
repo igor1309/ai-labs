@@ -157,8 +157,6 @@ describe("the FIELD GUIDE button", () => {
       expect(button.textContent).toBe(where === "round" ? "2" : "3");
       const style = getComputedStyle(button);
       expect([style.minWidth, style.height]).toEqual(["60px", "60px"]);
-      fireEvent.click(button);
-      expect(button.isConnected).toBe(true);
       if (where === "round") {
         brushTreasure();
         landTreasure(app.timers);
@@ -170,7 +168,7 @@ describe("the FIELD GUIDE button", () => {
   });
 });
 
-it("opens the FIELD GUIDE through the board's hook, which the game leaves unset", () => {
+it("opens the FIELD GUIDE through the board's hook", () => {
   const onFieldGuide = vi.fn();
   const round = startRound(SHIPPED_DIG, [], undefined, () => 0, "explorer");
   render(<DigBoardScreen

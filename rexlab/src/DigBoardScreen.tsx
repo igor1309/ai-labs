@@ -49,6 +49,9 @@ export type SandContext = (canvas: HTMLCanvasElement) => CanvasRenderingContext2
 export type DigBoardScreenProps = {
   language: Language;
   arrivalWait?: number;
+  // The board has dropped in already and is given back, as from the
+  // FIELD GUIDE: it shows at once, with no drop and no landing grains.
+  dropped?: boolean | undefined;
   gustWait?: number;
   liftWait?: number;
   flightWait?: number;
@@ -217,6 +220,7 @@ function SpotPicture({ picture, frame, spot }: { picture: string; frame: { width
 export function DigBoardScreen({
   language,
   arrivalWait = BOARD_DROP.motion,
+  dropped = false,
   gustWait = GUST.motion,
   liftWait = LIFT.motion,
   flightWait = TREASURE_FLIGHT.motion,
@@ -454,6 +458,7 @@ export function DigBoardScreen({
           data-cleared={cleared}
           data-blown={blown || undefined}
           data-lifting={lifting || undefined}
+          data-dropped={dropped || undefined}
           data-level={level}
           data-found={spots.filter(({ found }) => found).map(({ id }) => id).join(" ")}
           data-helped={spots.filter(({ helped }) => helped).map(({ id }) => id).join(" ")}
@@ -498,7 +503,7 @@ export function DigBoardScreen({
               ))}
             {brushAt && <span className="dig-brush" aria-hidden="true" style={{ left: percent(brushAt.x / frame.width), top: percent(brushAt.y / frame.height) }} />}
           </div>
-          {grains && !lifting && <span className="dig-landing" aria-hidden="true">
+          {grains && !lifting && !dropped && <span className="dig-landing" aria-hidden="true">
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
           </span>}
         </div>

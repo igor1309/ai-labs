@@ -183,7 +183,8 @@ describe("the dig game's transition for each change", () => {
   type DigScreen = Parameters<typeof digTransitionFor>[0];
   const round = startDig(SHIPPED_DIG, [], undefined, () => 0, "hatchling");
   const reward = { dugUp: 1, total: SHIPPED_DIG.length, newStar: true, celebration: "first-best", badge: false } as const;
-  const screens: DigScreen[] = [undefined, { kind: "board", round }, { kind: "reveal", round, reward, landed: false, offer: undefined }];
+  const board = { kind: "board", round } as const;
+  const screens: DigScreen[] = [undefined, board, { kind: "reveal", round, reward, landed: false, offer: undefined }, { kind: "guide", under: board }];
 
   it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
     // The board slides away for the reveal rather than using the plain

@@ -5010,11 +5010,11 @@ body:has(.result) #version {
   animation: none;
 }
 
-.dig-board:not([data-lifting]) {
+.dig-board:not([data-lifting]):not([data-dropped]) {
   animation: fade-in var(--dig-drop) var(--ease-out) both;
 }
 
-.dig-screen[data-motion] .dig-board:not([data-lifting]) {
+.dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
   animation-name: dig-drop;
 }
 
@@ -5526,6 +5526,17 @@ body:has(.result) #version {
 .dig-reveal-screen[data-motion] .dig-reveal-level,
 .dig-reveal-screen[data-motion] .result-actions > button {
   animation-name: rise-in;
+}
+
+/* A reveal given back from the FIELD GUIDE has arrived already, so its
+   parts show at once, with either motion. */
+main.dig-reveal-screen[data-arrived] .dig-reveal-art,
+main.dig-reveal-screen[data-arrived] .dig-reveal-name,
+main.dig-reveal-screen[data-arrived] .dig-card,
+main.dig-reveal-screen[data-arrived] .dig-reveal-celebration,
+main.dig-reveal-screen[data-arrived] .dig-reveal-level,
+main.dig-reveal-screen[data-arrived] .result-actions > button {
+  animation-name: none;
 }
 
 .dig-reveal-level {
@@ -6450,7 +6461,7 @@ body:has(.result) #version {
     animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
-  .dig-screen[data-motion] .dig-board:not([data-lifting]) {
+  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 

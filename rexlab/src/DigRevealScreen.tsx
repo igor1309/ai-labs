@@ -86,6 +86,10 @@ export function DigRevealScreen({
   let part = 2 - Number(dugUp !== undefined) - Number(Boolean(celebration));
   const arrival = () => motion({ "--reveal-part": part++ });
   const result = useRef<HTMLElement>(null);
+  // A reveal that mounts with its last item arrived, as given back from
+  // the FIELD GUIDE, shows its parts at once; a turn of the iPad lands
+  // it anew, so it arrives again.
+  const [arrived] = useState<boolean>(landed);
   const [phase, setPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<LevelOfferProps | null>(null);
   const blocked = phase === "shown" || phase === "leaving";
@@ -119,7 +123,7 @@ export function DigRevealScreen({
   }, [phase]);
   return (
     <>
-      <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined}
+      <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined} data-arrived={arrived || undefined}
         style={{ "--dig-reveal-duration": `${REVEAL_GLIDE[timing]}ms`, "--dig-reveal-stagger": `${REVEAL_STAGGER[timing]}ms` } as CSSProperties}>
         {celebration && <Festivity />}
         <div className="stratum result-stratum" aria-hidden="true" />
