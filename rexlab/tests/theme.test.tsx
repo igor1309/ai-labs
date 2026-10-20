@@ -16,7 +16,7 @@ import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
-import { board as sandBoard, brushAll, placeBoard } from "./digApp.tsx";
+import { board as sandBoard, digUp, placeBoard } from "./digApp.tsx";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
 import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
@@ -452,7 +452,7 @@ async function dig({ theme, user, timers }: Walk) {
   expect(sandBoard().querySelector(".dig-brush")).not.toBeNull();
   expectScreenIn(theme);
   releaseAt(window, 20, { x: 400, y: 300 });
-  brushAll();
+  digUp();
   expect(sandBoard().getAttribute("data-blown")).toBe("true");
   expectScreenIn(theme);
   act(() => timers.fire(GUST.motion));

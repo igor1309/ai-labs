@@ -1,6 +1,6 @@
 // What a child has dug up, across every level (docs/age-levels.md, "Same
 // rewards"): the ids of the dinosaurs dug up, and of those named at the
-// first pick at Paleontologist, each its 🦴 badge. An id the app no
+// first pick at Explorer or Paleontologist, each its 🦴 badge. An id the app no
 // longer ships is kept but never counted.
 export type DigProgress = { dug: readonly string[]; badges: readonly string[] };
 

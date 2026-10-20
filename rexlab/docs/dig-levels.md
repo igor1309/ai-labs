@@ -18,7 +18,7 @@ The one interaction at every level.
   second tap at once in the same place clears nothing more.
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
-  level.
+  level. A wrong pick at the question only fades that card.
 - **The sand counts in cells.** The picture is split into a grid of cells
   (40 by 30 over the 800×600 frame). A cell is clear once the brush has
   passed over most of it. Only cells over the dinosaur, where its
@@ -26,51 +26,55 @@ The one interaction at every level.
   uncovering it, so brushing an empty corner is fine but never needed.
   The cells are worked out once from the pictures and kept in
   `src/data/dig.json`.
-- **The last grains blow away.** When the round's task is done, the rest
-  of the sand blows off in one gust, so no child hunts for the last
-  grains: at Hatchling at 70% of the dinosaur's cells, at Explorer once
-  the 3 details are found, at Paleontologist once the dinosaur is
-  named.
+- **The last grains blow away.** When the round is done, the rest of
+  the sand blows off in one gust, so no child hunts for the last grains:
+  at Hatchling at 95% of the dinosaur's cells, so the child digs the
+  whole dinosaur; at Explorer and Paleontologist at the right pick.
 - **The brush is a size a finger can steer.** 48 CSS pixels across at
   Hatchling, 36 at Explorer and Paleontologist.
 
 ## The levels
 
+DIG v2 (LAB-358): each round above Hatchling is a mystery. The board is
+all sand, with nothing beside it to give the dinosaur away; the picture
+itself shows how far the dig has come. The frames are the "Dig ·
+Storyboard" row of `../design/rexlab.pen`.
+
 | | 🥚 Hatchling | 🦖 Explorer | 🦴 Paleontologist |
 | --- | --- | --- | --- |
-| The picture | one dinosaur's body picture, large | the same | the same, the dinosaur unnamed until the end |
-| The task | brush anywhere until it shows | find 3 marked details; brush anywhere else freely | follow 3 clues, one at a time, then name the dinosaur |
-| Prompts | none | 3 find cards beside the sand, each a round close-up of its detail from the picture (EYE, FOOT, TAIL…) | one clue card at a time, the next only when this one is found |
-| A found detail | | its card gets a tick and a star pops; its spot sparkles | the same, and the next clue card slides in |
-| The end | the gust at 70% of the dinosaur | the gust once all 3 are found | 3 body pictures to choose from; the right one blows the sand away |
-| Help | | every 10 s with nothing found, the next unfound detail's spot thins and shows through the sand | after 10 s on a clue, its spot thins once; a wrong pick fades that card and the child picks again |
+| The picture | one dinosaur's body picture, large, under all the sand | the same, unnamed until the end | the same |
+| The task | brush until it shows | brush, then name it from 3 body pictures | brush, then name it from 4 |
+| The question | none | at 75% of the dinosaur clear, "WHO IS IT?" and 3 cards beside the board | the same with 4 cards |
+| The end | the gust at 95% of the dinosaur | the gust at the right pick | the same |
+| A found spot | a star pops where it lies | the same | the same |
+| Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that card and the child picks again | the same |
 
-- **Why these steps.** Hatchling is the parent's observation as it is:
-  free brushing with nothing to get wrong. Explorer adds looking for a
-  shown detail, with no order, so the child still brushes where they
-  like. Paleontologist adds order (the clues come one at a time) and
-  deduction (the dinosaur is named from what the clues uncovered), never
-  speed.
-- **Details.** A detail is a spot on the dinosaur's body picture: an
-  eye, a foot, the tail, a horn, a plate, a claw, a crest, a sail, a
-  frill or a beak. A spot's cells are the dinosaur's cells whose middle
-  lies in it, and it is found once most of them are clear. Every
-  dinosaur shows an eye, feet, a tail and claws; horns, plates, crests,
-  sails, frills and beaks are telling traits only some show, and
-  `dig.json` lists each dinosaur's.
-  Each dinosaur in the game has three to five spots, in
-  `src/data/dig.json`; a round picks 3.
-  The close-up on an Explorer card is the picture itself, cropped round
-  the spot, so the card shows exactly what to find. Its word is a small
-  caption under it, not the cue. A Paleontologist clue card names its
-  kind with its word over a disc of sand with a 🔍, and shows its
-  close-up once the spot is found, so the detail is dug up, not copied
-  from the card.
-- **Paleontologist's choice.** The clues are as many of the
-  dinosaur's telling spots as it has, up to 3, then others, in a random
-  order. The 3 pictures are the dinosaur and two
-  others that each lack one of the clues' telling traits, so the clues
-  tell it apart; with no telling clue, any two others.
+- **Why these steps.** Hatchling is free brushing with nothing to get
+  wrong. Explorer and Paleontologist add deduction: the dinosaur is
+  named from what the brush uncovered, and asked only once three
+  quarters of it show, so the pick is a judgement rather than a guess.
+  Paleontologist's fourth card makes it harder; nothing adds speed.
+- **No spoilers.** A playtest of v1 found its find cards a checklist:
+  the round ended once their spots were found, and its close-ups showed
+  the dinosaur before it was dug. The child expects to dig the whole
+  picture, so brushing goes on while the question shows, and only the
+  pick ends the round.
+- **The board stays put.** A round that asks keeps an empty column
+  beside the board from the start, so the board neither shrinks nor
+  moves when the cards rise into it.
+- **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
+  a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
+  a beak. A spot's cells are the dinosaur's cells whose middle lies in
+  it, and it is found once most of them are clear. Every dinosaur shows
+  an eye, feet, a tail and claws; horns, plates, crests, sails, frills
+  and beaks are telling traits only some show, and `dig.json` lists
+  each dinosaur's. Each dinosaur has three to five spots, in
+  `src/data/dig.json`. Help thins them in a random order drawn at the
+  round's start.
+- **The look-alikes.** The question's other cards are the dinosaur's
+  closest look-alikes: of the telling traits and spot kinds either of
+  two dinosaurs shows, the share both show. Equals are drawn at random,
+  and the cards come in a random order.
 
 ## A round, its rewards and the offer
 
@@ -85,20 +89,21 @@ The one interaction at every level.
   of all of them, with the best-score celebrations of the other games
   when it grows; it is the same at every level (`age-levels.md`, "Same
   rewards"). The last dinosaur dug up adds a 🏆 to the card.
-- **Explorer and Paleontologist** also pop a small star for each detail
-  found, which counts towards nothing. Paleontologist's dinosaur named at the first pick earns its
-  🦴 badge, shown on the "DUG UP" card of its reveals.
+- **A found spot** pops a small star, which counts towards nothing. A
+  dinosaur named at the first pick, at Explorer or Paleontologist,
+  earns its 🦴 badge, shown on the "DUG UP" card of its reveals.
 - **The result.** The reveal is the result: the level switch above
   "DIG AGAIN" with 🔄, and "HOME" with 🏠, as the sorting game's.
-- **The offer up.** A strong round is one finished without the help's
-  shown spot (Hatchling: every round, so 3 rounds offer Explorer);
-  Explorer's offers Paleontologist; Paleontologist offers nothing.
+- **The offer up.** A strong round is one whose dinosaur is named at
+  the first pick, help or not (Hatchling: every round, so 3 rounds
+  offer Explorer); Explorer's offers Paleontologist; Paleontologist
+  offers nothing.
 - **Home.** The "DIG" tile, 🖌️ a brush over sand, joins the fourth column
   above "MORE COMING", which halves.
 
 - **A full collection.** Once all 42 are dug up the card keeps its 🏆
-  and a round's reward is its reveal; at Paleontologist the 🦴 badges
-  still collect. Accepted by the owner (2026-10-19): no further
+  and a round's reward is its reveal; at Explorer and Paleontologist
+  the 🦴 badges still collect. Accepted by the owner (2026-10-19): no further
   collection until a playtest shows children dig on past 42, as 42
   rounds is already a long goal at 5–7.
 
@@ -111,6 +116,11 @@ The one interaction at every level.
 | LAB-342 Dig spots (art data) | 3–5 spots and the telling traits for every dinosaur in `dig.json`, with a test that each spot lies on the dinosaur's cells |
 | LAB-343 Explorer | find cards, found details, the help, the offer from Hatchling |
 | LAB-344 Paleontologist | clues in order, the choice of 3, the badge, the offer from Explorer |
+| LAB-358 DIG v2, a mystery round | |
+| LAB-359 The mystery round | all sand, the question at 75% with look-alikes, help at every level, Hatchling's gust at 95%; v1's find and clue cards go |
+| LAB-360 The brush | a brush that crumbles the sand |
+| LAB-361 Motion | the motion and the reveal |
+| LAB-362 Bonus finds | finds in the sand |
 
 The brush of LAB-341 is a component of its own, so the skeleton
 game's dig (LAB-283) brushes the same sand.
@@ -118,11 +128,12 @@ game's dig (LAB-283) brushes the same sand.
 ## Accepted by the owner
 
 - The game's name: "DIG", "РАСКОПКИ".
-- Hatchling's gust at 70% of the dinosaur, so a 4-year-old never hunts
-  the last grains.
-- Three details at Explorer and three clues at Paleontologist.
-- Paleontologist names the dinosaur from 3 body pictures, not its
-  skeleton: every dinosaur has a body picture, and only five have a
-  skeleton.
+- Hatchling's gust at 95% of the dinosaur, so a 4-year-old digs it
+  whole but never hunts the last grains (LAB-359).
+- A mystery round at Explorer and Paleontologist: no cards, the
+  question at 75%, 3 choices at Explorer and 4 at Paleontologist, a
+  wrong pick fading and staying out (LAB-358).
+- The dinosaur is named from body pictures, not its skeleton: every
+  dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
   is the long goal.
