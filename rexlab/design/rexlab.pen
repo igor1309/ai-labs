@@ -78442,272 +78442,6 @@
       "fontSize": 24
     },
     {
-      "type": "frame",
-      "id": "DKuVa",
-      "x": 1664,
-      "y": 36940,
-      "name": "Dig · Storyboard 1 — Light · Start · plain sand",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "children": [
-        {
-          "type": "frame",
-          "id": "G6SEa",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "Jrxo5",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "AlZCt",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "wEXCf",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "qoeyq",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "R4aIhS",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#B98A45",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "O9hAq",
-                      "name": "Title Mark Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "brush",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "P9NnVE",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "DIG",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "mfjuO",
-              "x": 1048,
-              "y": 0,
-              "name": "Museum Button",
-              "enabled": false,
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                22,
-                0,
-                18
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "L1KLfc",
-                  "name": "Museum Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "landmark",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "g7xwl",
-                  "name": "Museum Text",
-                  "fill": "$fm-ink",
-                  "content": "MUSEUM",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "700",
-                  "letterSpacing": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "YyoO6",
-              "name": "Dug Up Count",
-              "height": 44,
-              "fill": "$fm-surface-2",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "RIthO",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "star",
-                  "library": "lucide",
-                  "fill": "#E0A526"
-                },
-                {
-                  "type": "text",
-                  "id": "YrnPs",
-                  "name": "Best Text",
-                  "fill": "$fm-ink",
-                  "content": "4/39",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "dCvyT",
-          "name": "Body",
-          "width": "fill_container",
-          "height": "fill_container",
-          "gap": 28,
-          "justifyContent": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "B7Hzx1",
-              "name": "Sand Board",
-              "clip": true,
-              "width": 971,
-              "height": 728,
-              "fill": {
-                "type": "image",
-                "enabled": true,
-                "url": "images/dig-story-1-start.webp",
-                "mode": "stretch"
-              },
-              "cornerRadius": 28,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "layout": "none",
-              "children": [
-                {
-                  "type": "ellipse",
-                  "id": "eUxpg",
-                  "x": 180,
-                  "y": 60,
-                  "name": "Brush",
-                  "fill": "#FFFFFF40",
-                  "width": 58,
-                  "height": 58,
-                  "stroke": "#FFFFFF",
-                  "strokeWidth": 4
-                },
-                {
-                  "type": "ellipse",
-                  "id": "R76gJ",
-                  "x": 127.91000000000003,
-                  "y": 212.8725,
-                  "name": "Found Glow EYE",
-                  "enabled": false,
-                  "fill": "#F2C14E22",
-                  "width": 152,
-                  "height": 152,
-                  "stroke": "#F2C14E",
-                  "strokeWidth": 6
-                },
-                {
-                  "type": "text",
-                  "id": "tsle8",
-                  "x": 253.91000000000003,
-                  "y": 178.8725,
-                  "name": "Star Pop EYE",
-                  "enabled": false,
-                  "fill": "#E0A526",
-                  "content": "★",
-                  "fontFamily": "Inter",
-                  "fontSize": 56,
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "type": "text",
       "id": "QEv38",
       "x": 1664,
@@ -78716,7 +78450,7 @@
       "fill": "$fm-ink",
       "textGrowth": "fixed-width",
       "width": 1440,
-      "content": "1 · START\nJust sand: no cards, no outline, no hint of who is under it. A horn tip pokes out to say where to begin. Each round hides a dinosaur the child has not dug up yet, where one is left. Motion: the board drops in, the sand settles with a puff.",
+      "content": "1 · START\nAll sand, nothing showing: no cards, no outline, no hint of who is under it. Each round hides a dinosaur the child has not dug up yet, where one is left. Motion: the board drops in, the sand settles with a puff.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
       "fontSize": 24
@@ -78930,8 +78664,8 @@
               "id": "l2YIT",
               "name": "Sand Board",
               "clip": true,
-              "width": 971,
-              "height": 728,
+              "width": 960,
+              "height": 720,
               "fill": {
                 "type": "image",
                 "enabled": true,
@@ -79208,8 +78942,8 @@
               "id": "Yq17n",
               "name": "Sand Board",
               "clip": true,
-              "width": 971,
-              "height": 728,
+              "width": 960,
+              "height": 720,
               "fill": {
                 "type": "image",
                 "enabled": true,
@@ -79304,366 +79038,6 @@
       "fontSize": 24
     },
     {
-      "type": "frame",
-      "id": "mL54H",
-      "x": 6344,
-      "y": 36940,
-      "name": "Dig · Storyboard 4 — Light · Who is it? at 75%",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "children": [
-        {
-          "type": "frame",
-          "id": "O90Iz",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "OejN8",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "GoMOo",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "TLuW6",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "ZLpyO",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "DmWlF",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#B98A45",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "tranV",
-                      "name": "Title Mark Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "brush",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "OLgYe",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "WHO IS IT?",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "v1h07",
-              "x": 1048,
-              "y": 0,
-              "name": "Museum Button",
-              "enabled": false,
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                22,
-                0,
-                18
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "Sdhn3",
-                  "name": "Museum Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "landmark",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "cVjLa",
-                  "name": "Museum Text",
-                  "fill": "$fm-ink",
-                  "content": "MUSEUM",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "700",
-                  "letterSpacing": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "wK4ku",
-              "name": "Dug Up Count",
-              "height": 44,
-              "fill": "$fm-surface-2",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "D0jMm",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "star",
-                  "library": "lucide",
-                  "fill": "#E0A526"
-                },
-                {
-                  "type": "text",
-                  "id": "YaBek",
-                  "name": "Best Text",
-                  "fill": "$fm-ink",
-                  "content": "4/39",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "gkmGm",
-          "name": "Body",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "gap": 28,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "ezqwl",
-              "name": "Dig Row",
-              "gap": 28,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "FpIrl",
-                  "name": "Sand Board Small",
-                  "width": 560,
-                  "height": 420,
-                  "fill": {
-                    "type": "image",
-                    "enabled": true,
-                    "url": "images/dig-story-3b-question.webp",
-                    "mode": "stretch"
-                  },
-                  "cornerRadius": 24,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "layout": "none",
-                  "children": [
-                    {
-                      "type": "ellipse",
-                      "id": "x59oo",
-                      "x": 330,
-                      "y": 300,
-                      "name": "Brush",
-                      "fill": "#FFFFFF40",
-                      "width": 44,
-                      "height": 44,
-                      "stroke": "#FFFFFF",
-                      "strokeWidth": 4
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "s6qBGx",
-              "name": "Choices",
-              "width": "fill_container",
-              "height": "fill_container",
-              "gap": 28,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "bpXAy",
-                  "name": "Choice styracosaurus",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "qEqmM",
-                      "name": "Body Picture styracosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/styracosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "DEZSo",
-                  "name": "Choice triceratops",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "FM309",
-                      "name": "Body Picture triceratops",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/triceratops.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Q6rJLx",
-                  "name": "Choice chasmosaurus",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "p17Q23",
-                      "name": "Body Picture chasmosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/chasmosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "type": "text",
       "id": "x1BAw",
       "x": 6344,
@@ -79672,371 +79046,10 @@
       "fill": "$fm-ink",
       "textGrowth": "fixed-width",
       "width": 1440,
-      "content": "4 · WHO IS IT?\nAt 75% of the dinosaur uncovered the board moves up and three dinosaurs slide in below (four at Paleontologist), each a close look-alike. The child can pick, or keep brushing for a better look. Hatchling has no question and digs to the end.",
+      "content": "4 · WHO IS IT?\nAt 75% of the dinosaur uncovered the board slides left, its size unchanged, and three small look-alikes slide in on the trailing side (four at Paleontologist). The child can pick, or keep brushing for a better look. Hatchling has no question and digs to the end.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
       "fontSize": 24
-    },
-    {
-      "type": "frame",
-      "id": "gTqp2",
-      "x": 7904,
-      "y": 36940,
-      "name": "Dig · Storyboard 5 — Light · Wrong pick fades",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "children": [
-        {
-          "type": "frame",
-          "id": "KOlHO",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "tcsOL",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "bDWDr",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "VmzhU",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "MZHOJ",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "QFUp7",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#B98A45",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "d22W6A",
-                      "name": "Title Mark Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "brush",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "V8e0c0",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "WHO IS IT?",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "gxmEt",
-              "x": 1048,
-              "y": 0,
-              "name": "Museum Button",
-              "enabled": false,
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                22,
-                0,
-                18
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "IxeSJ",
-                  "name": "Museum Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "landmark",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "nX6H7",
-                  "name": "Museum Text",
-                  "fill": "$fm-ink",
-                  "content": "MUSEUM",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "700",
-                  "letterSpacing": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "S4Gq4N",
-              "name": "Dug Up Count",
-              "height": 44,
-              "fill": "$fm-surface-2",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "s3gbh",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "star",
-                  "library": "lucide",
-                  "fill": "#E0A526"
-                },
-                {
-                  "type": "text",
-                  "id": "X41mV",
-                  "name": "Best Text",
-                  "fill": "$fm-ink",
-                  "content": "4/39",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "nD4tA",
-          "name": "Body",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "gap": 28,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "TTsrb",
-              "name": "Dig Row",
-              "gap": 28,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "eo3Ia",
-                  "name": "Sand Board Small",
-                  "width": 560,
-                  "height": 420,
-                  "fill": {
-                    "type": "image",
-                    "enabled": true,
-                    "url": "images/dig-story-3b-question.webp",
-                    "mode": "stretch"
-                  },
-                  "cornerRadius": 24,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "layout": "none",
-                  "children": [
-                    {
-                      "type": "ellipse",
-                      "id": "E7LfP",
-                      "x": 400,
-                      "y": 330,
-                      "name": "Brush",
-                      "fill": "#FFFFFF40",
-                      "width": 44,
-                      "height": 44,
-                      "stroke": "#FFFFFF",
-                      "strokeWidth": 4
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "tNTcm",
-              "name": "Choices",
-              "width": "fill_container",
-              "height": "fill_container",
-              "gap": 28,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "ykYmW",
-                  "name": "Choice styracosaurus",
-                  "opacity": 0.3,
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "BRGzo",
-                      "name": "Body Picture styracosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/styracosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "h6ZLXx",
-                  "name": "Choice triceratops",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "OHaYX",
-                      "name": "Body Picture triceratops",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/triceratops.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "K9niT",
-                  "name": "Choice chasmosaurus",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "JJ66z",
-                      "name": "Body Picture chasmosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/chasmosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
     },
     {
       "type": "text",
@@ -80051,353 +79064,6 @@
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
       "fontSize": 24
-    },
-    {
-      "type": "frame",
-      "id": "mcmjn",
-      "x": 9464,
-      "y": 36940,
-      "name": "Dig · Storyboard 6 — Light · Right pick · gust",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "children": [
-        {
-          "type": "frame",
-          "id": "unkBE",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "ftJmQ",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "b0YM8",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "SN7zh",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "CHFBP",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "VPTPe",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#B98A45",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "Sp14w",
-                      "name": "Title Mark Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "brush",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "y3waX6",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "WHO IS IT?",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "eFK7H",
-              "x": 1048,
-              "y": 0,
-              "name": "Museum Button",
-              "enabled": false,
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                22,
-                0,
-                18
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "vmEwR",
-                  "name": "Museum Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "landmark",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "AQhqX",
-                  "name": "Museum Text",
-                  "fill": "$fm-ink",
-                  "content": "MUSEUM",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "700",
-                  "letterSpacing": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "UYBkL",
-              "name": "Dug Up Count",
-              "height": 44,
-              "fill": "$fm-surface-2",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "jASbs",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "star",
-                  "library": "lucide",
-                  "fill": "#E0A526"
-                },
-                {
-                  "type": "text",
-                  "id": "GgprP",
-                  "name": "Best Text",
-                  "fill": "$fm-ink",
-                  "content": "4/39",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "ba4sk",
-          "name": "Body",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "gap": 28,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "jf7D0",
-              "name": "Dig Row",
-              "gap": 28,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "o8BRuk",
-                  "name": "Sand Board Small",
-                  "width": 560,
-                  "height": 420,
-                  "fill": {
-                    "type": "image",
-                    "enabled": true,
-                    "url": "images/dig-story-4-gust.webp",
-                    "mode": "stretch"
-                  },
-                  "cornerRadius": 24,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "sq8kQ",
-              "name": "Choices",
-              "width": "fill_container",
-              "height": "fill_container",
-              "gap": 28,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "nuLQW",
-                  "name": "Choice styracosaurus",
-                  "opacity": 0.3,
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "if45E",
-                      "name": "Body Picture styracosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/styracosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "U3su1Y",
-                  "name": "Choice triceratops",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "#E3F1E6",
-                  "cornerRadius": 28,
-                  "stroke": "#2E7D4F",
-                  "strokeWidth": 4,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "QaSGL",
-                      "name": "Body Picture triceratops",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/triceratops.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "PeOFh",
-                  "name": "Choice chasmosaurus",
-                  "opacity": 0.3,
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 2,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "padding": 16,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "A0tdCV",
-                      "name": "Body Picture chasmosaurus",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/chasmosaurus.webp",
-                        "mode": "contain"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
     },
     {
       "type": "text",
@@ -80622,8 +79288,8 @@
               "id": "EBZQF",
               "name": "Sand Board",
               "clip": true,
-              "width": 971,
-              "height": 728,
+              "width": 960,
+              "height": 720,
               "fill": {
                 "type": "image",
                 "enabled": true,
@@ -80701,8 +79367,8 @@
                 {
                   "type": "text",
                   "id": "zDXJX",
-                  "x": 860,
-                  "y": 20,
+                  "x": 830,
+                  "y": 16,
                   "name": "Flying Star 3",
                   "fill": "#E0A526",
                   "content": "★",
@@ -80726,6 +79392,2432 @@
       "textGrowth": "fixed-width",
       "width": 1440,
       "content": "7 · LIFT\nThe board grows back, the dinosaur rises off its bed with a warm glow (0.5 s), and its star flies into the DUG UP count, which ticks up to 5/39.",
+      "lineHeight": 1.45,
+      "fontFamily": "Lexend",
+      "fontSize": 24
+    },
+    {
+      "type": "frame",
+      "id": "B28DZ",
+      "x": 1664,
+      "y": 36940,
+      "name": "Dig · Storyboard 1 — Light · Start · all sand",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "A4VwN",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "AWn3a",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "q6IZE9",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "EEWjD",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qSmtF",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nPDTD",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "DoeAo",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "pOAiN",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VdYX5",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bihdQ",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "J7yix",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "z4uPi",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "a4zNzL",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "xnAzu",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NKc8g",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Mi739",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-1-start.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "GeFGd",
+                  "x": 430,
+                  "y": 330,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "Q1masF",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "t3VxT6",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RyM8G",
+      "x": 6344,
+      "y": 36940,
+      "name": "Dig · Storyboard 4 — Light · Who is it? at 75%, cards on the trailing side",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Y8ibpw",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "wRYqu",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ankqs",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "QPXOq",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HD0qp",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GI0ot",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "DnO5m",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "WsGTk",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "WHO IS IT?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pAYrh",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "T6HSO",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "BFcK7",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TaaK6",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "jATt7",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "QFdev",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "I20fN",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "xNdLe",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3b-question.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "jsHbq",
+                  "x": 400,
+                  "y": 360,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "VzDWT",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "z8aZn9",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XRwEE",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pBwRU",
+                  "name": "Choice styracosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Up6iS",
+                      "name": "Body Picture styracosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MpMOx",
+                  "name": "Choice triceratops",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "y5ClSR",
+                      "name": "Body Picture triceratops",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "t3ilw",
+                  "name": "Choice chasmosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "uwjug",
+                      "name": "Body Picture chasmosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "WYAW8",
+      "x": 7904,
+      "y": 36940,
+      "name": "Dig · Storyboard 5 — Light · Wrong pick fades",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "L2i2Qd",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ho8Sg",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ZoYzM",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "N2wHEB",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "etGK8",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZXy1O",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "xuC7O",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "l9xJOi",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "WHO IS IT?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v47p7",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "e9Ew2",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "cSUsQ",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ml1od",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ZploD",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "Hq3OD",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "K1xYz3",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "TkScX",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3b-question.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "lxBLD",
+                  "x": 480,
+                  "y": 400,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "Oy30D",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "n62bdq",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IIg9M",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WzGlD",
+                  "name": "Choice styracosaurus",
+                  "opacity": 0.3,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "NXSNb",
+                      "name": "Body Picture styracosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "I7Xyk",
+                  "name": "Choice triceratops",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CCN2M",
+                      "name": "Body Picture triceratops",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TxlDh",
+                  "name": "Choice chasmosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Snhvk",
+                      "name": "Body Picture chasmosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "iAtJG",
+      "x": 9464,
+      "y": 36940,
+      "name": "Dig · Storyboard 6 — Light · Right pick · gust",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "M2t8S",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "wl8ay",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "hv2SI",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "OVAki",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "erpTK",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "rcbHw",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Yv4TQ",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "x2Nu4",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "WHO IS IT?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EfTss",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Xw7e6",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "pj4zh",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pGuhM",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "dczY8",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "OqSzW",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "IotR7",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "vdclT",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-4-gust.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "n3eKVN",
+                  "x": 610,
+                  "y": 330,
+                  "name": "Brush",
+                  "enabled": false,
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "R1DB7H",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "FWCxV",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EIcTq",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Lotir",
+                  "name": "Choice styracosaurus",
+                  "opacity": 0.3,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "E9kpk",
+                      "name": "Body Picture styracosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mNbCj",
+                  "name": "Choice triceratops",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#E3F1E6",
+                  "cornerRadius": 24,
+                  "stroke": "#2E7D4F",
+                  "strokeWidth": 4,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HXfmi",
+                      "name": "Body Picture triceratops",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Seczl",
+                  "name": "Choice chasmosaurus",
+                  "opacity": 0.3,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jnZRl",
+                      "name": "Body Picture chasmosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "qpE4z",
+      "x": 1664,
+      "y": 38150,
+      "name": "DIG Storyboard Variation Title",
+      "fill": "$fm-ink",
+      "content": "Variation B · the cards are there from the start, three empty slots that fill at 75%",
+      "fontFamily": "Lexend",
+      "fontSize": 44,
+      "fontWeight": "700"
+    },
+    {
+      "type": "frame",
+      "id": "l9mhRK",
+      "x": 1664,
+      "y": 38260,
+      "name": "Dig · Storyboard B1 — Light · Start · empty slots",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "cAffe",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "GLkOA",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "k5KtMy",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "wuqFw",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Tjl76",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Ln2J6",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "mhw5C",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "LtLqX",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vFMWI",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "U8SBS",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "MlccR",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bhaqm",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "t3g0G",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "mihFm",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b1K9g8",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "BaTRo",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-1-start.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "KH2nQ",
+                  "x": 430,
+                  "y": 330,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "NGLKS",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "DwquM",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Boj0D",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TSehQ",
+                  "name": "Empty Slot 1",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q6tBV7",
+                      "name": "Slot Mark 1",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tcAqm",
+                  "name": "Empty Slot 2",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JSU0p",
+                      "name": "Slot Mark 2",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v83nWS",
+                  "name": "Empty Slot 3",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Yfs2U",
+                      "name": "Slot Mark 3",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "z2p4Nd",
+      "x": 3224,
+      "y": 38260,
+      "name": "Dig · Storyboard B2 — Light · Brushing · slots still empty",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "aMs1L",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "xGHjB",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "IpGcV",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "a0Ch5K",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qwGwa",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r7krSr",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "J35Q9",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "c9xNP",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jdJBM",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "wVQ4w",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "qAQdn",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vFebd",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ZjZvC",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "F31VO",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Kz7zK",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Jsc4k",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-2-brushing.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "Pn8Zx",
+                  "x": 400,
+                  "y": 400,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "JfLHk",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "t2scPW",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EN5iN",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lTLSW",
+                  "name": "Empty Slot 1",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MlcFK",
+                      "name": "Slot Mark 1",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TH2J3",
+                  "name": "Empty Slot 2",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "oGnhB",
+                      "name": "Slot Mark 2",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iFc0g",
+                  "name": "Empty Slot 3",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hN8y2",
+                      "name": "Slot Mark 3",
+                      "fill": "$fm-line",
+                      "content": "?",
+                      "fontFamily": "Lexend",
+                      "fontSize": 64,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "C2y3G",
+      "x": 4784,
+      "y": 38260,
+      "name": "Dig · Storyboard B3 — Light · At 75% the slots fill",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "cKmza",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kY74d",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "K0Pqr",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "zwuKC",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CtjpX",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oJFA3",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#B98A45",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "B9iD79",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qFeKa",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "WHO IS IT?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CsWkJ",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "zAVyb",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "T1xCpy",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G7nPlU",
+              "name": "Dug Up Count",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "S94hB",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "f3PXaz",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FqSmd",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "zAHsF",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 960,
+              "height": 720,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3b-question.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "BC9rm",
+                  "x": 400,
+                  "y": 360,
+                  "name": "Brush",
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "LQiSB",
+                  "x": 126,
+                  "y": 207,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "XfHkN",
+                  "x": 258,
+                  "y": 170,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PTqwO",
+              "name": "Who Is It Cards",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "P91sV",
+                  "name": "Choice styracosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "L6urg",
+                      "name": "Body Picture styracosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s5NSL2",
+                  "name": "Choice triceratops",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "d21YF",
+                      "name": "Body Picture triceratops",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LmwuS",
+                  "name": "Choice chasmosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 24,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "sfV8f",
+                      "name": "Body Picture chasmosaurus",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "W8hiw",
+      "x": 6344,
+      "y": 38260,
+      "name": "Storyboard Note B",
+      "fill": "$fm-ink",
+      "textGrowth": "fixed-width",
+      "width": 1440,
+      "content": "B · EMPTY SLOTS FROM THE START\nThe board never moves: the side column holds three empty slots from the first stroke, and at 75% the three dinosaurs flip in, one after another. It promises a question is coming; the cost is a narrower board from the start and three blanks the child cannot use for most of the round. Wrong and right picks then go as in 5 and 6.",
       "lineHeight": 1.45,
       "fontFamily": "Lexend",
       "fontSize": 24
