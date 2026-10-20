@@ -3513,16 +3513,16 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* A name stays on one line and shrinks to fit its card: its letters are
-   at most 0.75 of its size wide in Lexend's capitals. */
+/* Names share a centred strip. A tray name shrinks to fit: its letters
+   are at most 0.75 of its size wide in Lexend's capitals. */
 .sort-footer,
 .sorted-footer {
   display: flex;
   justify-content: center;
-  container-type: inline-size;
 }
 
 .sort-footer {
+  container-type: inline-size;
   padding: 12px 14px;
 }
 
@@ -3771,14 +3771,14 @@ body:has(.result) #version {
 }
 
 /* A card lands in its basket as a small card that pops in, and its ✓
-   stamps in after it. It is the container its name is sized in. */
+   stamps in after it. */
 .sorted-card {
+  position: relative;
   align-self: end;
   min-width: 0;
   min-height: 0;
   height: 100%;
   max-height: 150px;
-  container-type: size;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3798,6 +3798,10 @@ body:has(.result) #version {
   display: flex;
 }
 
+.sorted-card:not([data-name-fits]) .sorted-art {
+  padding: 0;
+}
+
 .sorted-check {
   position: absolute;
   top: 8px;
@@ -3813,14 +3817,23 @@ body:has(.result) #version {
 }
 
 .sorted-footer {
+  position: absolute;
+  visibility: hidden;
+  align-self: center;
+  flex: 0 0 auto;
+  width: max-content;
   padding: 4px 6px;
 }
 
-/* A name is 14px in a card as wide as its basket's longest name needs; in
-   a basket too short for its rows the picture gives way first, then the
-   name shrinks to the card's height. */
+/* An unfitting strip stays measurable outside the flow, giving all its
+   room to the picture. */
+.sorted-card[data-name-fits] .sorted-footer {
+  position: static;
+  visibility: visible;
+}
+
 .sorted-name {
-  font-size: min(14px, 100cqi / (var(--letters) * 0.75), (100cqh - 8px) / 1.2);
+  font-size: 14px;
   line-height: 1.2;
   font-weight: 700;
   white-space: nowrap;

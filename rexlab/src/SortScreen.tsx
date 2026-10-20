@@ -1,5 +1,5 @@
 import { Check, createLucideIcon, Drumstick, Feather, Footprints, House, Leaf, Shapes, Trophy } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -245,17 +245,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
             </span>
             <span className="basket-cards" style={{ "--longest": Math.max(0, ...cards.map((card) => card.name.length)) } as CSSProperties}>
               {cards.map((card) => (
-                <span key={card.id} className="sorted-card">
-                  <span className="sorted-art">
-                    <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
-                    <span className="sorted-check" role="img" aria-label={text.marks.correct}>
-                      <Check size={20} strokeWidth={3} />
-                    </span>
-                  </span>
-                  <span className="sorted-footer">
-                    <Name name={card.name} language={language} className="sorted-name" />
-                  </span>
-                </span>
+                <SortedCard key={card.id} card={card} language={language} correct={text.marks.correct} />
               ))}
             </span>
           </button>
@@ -265,8 +255,51 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   );
 }
 
-// A name on one line, as large as fits its card: the stylesheet shrinks it
-// by its number of letters.
+function SortedCard({ card, language, correct }: { card: SortedCardView; language: Language; correct: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const footer = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const element = box.current;
+    const strip = footer.current;
+    if (!element || !strip) return;
+    const fit = () => {
+      // Keep 48px for the picture, including its padding. The spare pixel
+      // covers the rounding of the DOM's integer layout measurements.
+      element.toggleAttribute("data-name-fits", element.clientWidth >= strip.offsetWidth + 1 && element.clientHeight >= strip.offsetHeight + 48 + 1);
+    };
+    fit();
+    // The strip keeps its natural size even when hidden, so a font or
+    // language change can make the name fit again without a window resize.
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
+    observer?.observe(element);
+    observer?.observe(strip);
+    window.addEventListener("resize", fit);
+    document.fonts?.addEventListener("loadingdone", fit);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+      document.fonts?.removeEventListener("loadingdone", fit);
+    };
+  }, [card.name, language]);
+
+  return (
+    <span ref={box} className="sorted-card">
+      <span className="sorted-art">
+        <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
+        <span className="sorted-check" role="img" aria-label={correct}>
+          <Check size={20} strokeWidth={3} />
+        </span>
+      </span>
+      <span ref={footer} className="sorted-footer">
+        <Name name={card.name} language={language} className="sorted-name" />
+      </span>
+    </span>
+  );
+}
+
+// A capitalised name on one line; tray cards budget its width by its
+// number of letters, while sorted cards show it only at 14px.
 function Name({ name, language, className }: { name: string; language: Language; className: string }) {
   return (
     <span className={className} style={{ "--letters": name.length } as CSSProperties}>

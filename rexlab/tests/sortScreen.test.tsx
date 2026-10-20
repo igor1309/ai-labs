@@ -99,11 +99,12 @@ describe("a new board", () => {
     expect(names.map((each) => each.textContent)).toEqual([name.toLocaleUpperCase(language), name.toLocaleUpperCase(language)]);
     for (const each of names) {
       const style = getComputedStyle(each);
-      // Each name's size falls with its letters, from the card's width, so
-      // it shrinks to fit rather than wrap or be cut off.
+      // Tray names shrink with their letters; sorted names stay at 14px
+      // and give their strip to the picture when it cannot fit.
       expect(each.style.getPropertyValue("--letters")).toBe(String(name.length));
       expect(style.whiteSpace).toBe("nowrap");
-      expect(getComputedStyle(each.parentElement ?? each).getPropertyValue("container-type")).toBe("inline-size");
+      if (each.classList.contains("sort-name")) expect(getComputedStyle(each.parentElement ?? each).getPropertyValue("container-type")).toBe("inline-size");
+      else expect(style.fontSize).toBe("14px");
     }
   });
 });
