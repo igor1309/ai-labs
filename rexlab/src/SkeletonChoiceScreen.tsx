@@ -43,7 +43,7 @@ export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, 
       <div className="skeleton-levels">
         <LevelSwitch language={language} level={level} onLevel={onLevel} />
       </div>
-      <div className="skeleton-choices" role="group" aria-label={text.dinosaurs}>
+      <div className="skeleton-choices" role="group" aria-label={text.creatures}>
         {choices.map((choice, index) => (
           <ChoiceCard key={choice.id} language={language} choice={choice} index={index} onChoose={onChoose} />
         ))}

@@ -23,7 +23,7 @@ Feature: Find the pair: dinosaurs found in the catalogue
 
   Scenario: The catalogue does not mark found dinosaurs
     Given I have found Triceratops and Stegosaurus
-    When I open "ALL DINOSAURS"
+    When I open "ANCIENT REPTILES"
     Then I see no count of the found and no found stamp over any card's artwork
     And the page of Triceratops has no found stamp either
 

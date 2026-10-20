@@ -12,13 +12,30 @@ export function isDiet(value: unknown): value is Diet {
   return DIETS.includes(value as Diet);
 }
 
+// The kind of creature: a dinosaur, or a flying or sea reptile, which
+// lived alongside the dinosaurs but was none.
+export type Group = "dinosaur" | "flying-reptile" | "sea-reptile";
+
+export const GROUPS: readonly Group[] = ["dinosaur", "flying-reptile", "sea-reptile"];
+
+// How big a creature is measured: a dinosaur's height at the hip, a flying
+// reptile's wingspan and a sea reptile's length, each its group's own.
+export type Measure = "height" | "wingspan" | "length";
+
+export function isGroup(value: unknown): value is Group {
+  return GROUPS.includes(value as Group);
+}
+
+export const MEASURES: Record<Group, Measure> = { dinosaur: "height", "flying-reptile": "wingspan", "sea-reptile": "length" };
+
 export type CatalogueEntry = {
   id: string;
   name: Record<Language, string>;
+  group: Group;
   diet: Diet;
   description: Record<Language, string>;
-  // Metres.
-  height: number;
+  // In metres, by its group's measure.
+  size: { measure: Measure; metres: number };
   // Kilograms.
   mass: number;
 };

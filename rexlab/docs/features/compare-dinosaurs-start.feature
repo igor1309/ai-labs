@@ -10,7 +10,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: The home page offers the quiz as a tile
     When I open the home page
     Then I see a "COMPARE" tile with a scales symbol and a picture of two dinosaurs
-    And on a day another game is featured it is the first tile of the row, above "ALL DINOSAURS"
+    And on a day another game is featured it is the first tile of the row, above "ANCIENT REPTILES"
     And it shows my best score with a trophy symbol when there is one
 
   Scenario: The quiz tile brightens under a pointer
@@ -71,6 +71,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated
     Then each question compares mass or height
+    And a height only of two dinosaurs, as a flying or sea reptile is not measured standing
     And each question's two dinosaurs are different
     And in each question the larger value is at least 1.5 times the smaller
     And no two questions use the same two dinosaurs, whatever they compare

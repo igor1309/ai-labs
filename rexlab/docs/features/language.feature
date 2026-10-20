@@ -50,7 +50,7 @@ Feature: English and Russian
       | Home button          | ДОМОЙ              |
       | name of Triceratops  | ТРИЦЕРАТОПС        |
       | sorting game card    | РАЗЛОЖИ            |
-      | sorting prompt       | РАЗЛОЖИ ДИНОЗАВРОВ |
+      | sorting prompt       | РАЗЛОЖИ ВСЕХ |
       | basket TWO LEGS      | ДВЕ НОГИ           |
       | basket FOUR LEGS     | ЧЕТЫРЕ НОГИ        |
       | basket PLANTS        | РАСТЕНИЯ           |
@@ -74,6 +74,8 @@ Feature: English and Russian
       | language | attribute | value   | text  |
       | English  | mass      | 15 kg   | 15 KG |
       | Russian  | mass      | 15 kg   | 15 КГ |
+      | English  | mass      | 0.5 kg  | 500 G |
+      | Russian  | mass      | 0.5 kg  | 500 Г |
       | Russian  | mass      | 1000 kg | 1 Т   |
       | English  | mass      | 6500 kg | 6.5 T |
       | Russian  | mass      | 6500 kg | 6,5 Т |

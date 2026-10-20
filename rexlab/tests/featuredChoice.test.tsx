@@ -26,7 +26,7 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 
-// The start counts of the feature's draw: COMPARE 9, ALL DINOSAURS 4,
+// The start counts of the feature's draw: COMPARE 9, ANCIENT REPTILES 4,
 // FIND THE PAIR 3, SKELETONS 2, DIG 2, SORT 5 and CARE 2.
 const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, pairs: 3, skeletons: 2, dig: 2, sort: 5, care: 2 };
 
@@ -227,7 +227,7 @@ describe("the featured game in the app", () => {
     expect(featuredGame()).toBe("skeletons");
 
     clock.time = new Date(2026, 9, 19, 8, 0);
-    await user.click(within(tilesRow()).getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(within(tilesRow()).getByRole("button", { name: "ANCIENT REPTILES" }));
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
     expect(featuredGame()).toBe("skeletons");

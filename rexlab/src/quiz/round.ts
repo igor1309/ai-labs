@@ -7,7 +7,8 @@ export const ATTRIBUTES: readonly Attribute[] = ["mass", "height"];
 export type Dinosaur = {
   id: string;
   name: Record<Language, string>;
-  measures: Record<Attribute, number>;
+  // Every dinosaur's mass; a height only where it is measured standing.
+  measures: { mass: number; height?: number };
 };
 
 export type Question = {
@@ -27,16 +28,27 @@ export const ROUND_LENGTH = 10;
 // is clearly larger, so the answer does not rest on a disputed figure.
 export const FAIR_RATIO = 1.5;
 
+// A pair is fair only when both have the measure.
 export function isFair(a: Dinosaur, b: Dinosaur, attribute: Attribute): boolean {
-  const small = Math.min(a.measures[attribute], b.measures[attribute]);
-  const large = Math.max(a.measures[attribute], b.measures[attribute]);
+  const [x, y] = [a.measures[attribute], b.measures[attribute]];
+  if (x === undefined || y === undefined) return false;
+  const small = Math.min(x, y);
+  const large = Math.max(x, y);
   return a.id !== b.id && small > 0 && large >= FAIR_RATIO * small;
+}
+
+// A question asks only of a fair pair, so both of its dinosaurs have the
+// measure it compares.
+export function measureOf(dinosaur: Dinosaur, attribute: Attribute): number {
+  const value = dinosaur.measures[attribute];
+  if (value === undefined) throw new Error(`${dinosaur.id} has no ${attribute}`);
+  return value;
 }
 
 // The question always asks which has more. A fair pair's values are never
 // equal, so one dinosaur is always the larger.
 export function largerOf({ attribute, left, right }: Question): Dinosaur {
-  return left.measures[attribute] > right.measures[attribute] ? left : right;
+  return measureOf(left, attribute) > measureOf(right, attribute) ? left : right;
 }
 
 // Two dinosaurs are the same pair whichever side each is on and whatever

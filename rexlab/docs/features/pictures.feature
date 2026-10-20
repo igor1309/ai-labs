@@ -34,7 +34,7 @@ Feature: Screens never wait for their pictures
       | Velociraptor's page            | the page of Velociraptor        |
       | a card of question 1           | question 1 of a compare round   |
       | the compare result's dinosaur  | the result of a compare round   |
-      | the ALL DINOSAURS tile         | the home page                   |
+      | the ANCIENT REPTILES tile         | the home page                   |
 
   Scenario Outline: A picture that fails shows the failure look
     Given the picture of <place> fails to load

@@ -38,7 +38,7 @@ const byName = (name: string) => {
   return found;
 };
 
-const group = () => screen.getByRole("group", { name: "DINOSAURS" });
+const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 

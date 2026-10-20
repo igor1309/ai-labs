@@ -1,6 +1,6 @@
 import { AGE_LEVELS, isAgeLevel, type AgeLevel } from "./ageLevel.ts";
 import type { Visitor } from "./care/index.ts";
-import { isDiet, type CatalogueEntry } from "./catalogue.ts";
+import { isDiet, isGroup, MEASURES, type CatalogueEntry, type Group, type Measure } from "./catalogue.ts";
 import { LANGUAGES, type Language } from "./language/language.ts";
 import type { Pal } from "./pairs/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
@@ -11,7 +11,12 @@ import type { Dinosaur as Sortable } from "./sorting/index.ts";
 export type DinosaurRecord = {
   id: string;
   name: { en: string; ru: string };
-  attributes: { massKg: number; heightMeters: number };
+  // "dinosaur", "flying-reptile" or "sea-reptile"; read as any string, as
+  // the JSON gives it.
+  group: string;
+  // A size by the group's measure alone: a dinosaur's hip height, a flying
+  // reptile's wingspan or a sea reptile's length.
+  attributes: { massKg: number; heightMeters?: number | null; wingspanMeters?: number | null; lengthMeters?: number | null };
   // "meat", "plants" or "both"; read as any string, as the JSON gives it.
   diet: string;
   // Explicit uncertain values distinguish a third basket from a fact
@@ -23,20 +28,48 @@ export type DinosaurRecord = {
   lookAlike: unknown;
 };
 
-// The quiz needs only what it compares.
-export function readDinosaurs(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "attributes">>): Dinosaur[] {
-  return records.map(({ id, name, attributes }) => ({
-    id,
-    name: { en: name.en, ru: name.ru },
-    measures: { mass: attributes.massKg, height: attributes.heightMeters }
-  }));
+const SIZE_FIELDS = { height: "heightMeters", wingspan: "wingspanMeters", length: "lengthMeters" } as const;
+
+const MEASURE_ORDER = Object.keys(SIZE_FIELDS) as Measure[];
+
+// A record with no known group fails here, when the app is put together,
+// rather than as a creature no game knows whether to show.
+function groupOf(id: string, group: unknown): Group {
+  if (!isGroup(group)) throw new Error(`${id} has no known group: ${JSON.stringify(group)}`);
+  return group;
 }
 
-// Care needs only who visits and what it eats. A record with no known
-// food type fails here, when the app is put together, rather than as a
-// visitor no food can feed.
-export function readVisitors(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "diet">>): Visitor[] {
-  return records.map(({ id, name, diet }) => {
+// A record's size by its group's measure. A record with no size by that
+// measure, or with one by another, fails here, when the app is put
+// together, rather than as a wingspan shown beside a dinosaur's height.
+function sizeOf({ id, group, attributes }: Pick<DinosaurRecord, "id" | "group" | "attributes">): CatalogueEntry["size"] {
+  const measure = MEASURES[groupOf(id, group)];
+  const metres = attributes[SIZE_FIELDS[measure]];
+  if (typeof metres !== "number" || !(metres > 0)) throw new Error(`${id} has no ${measure}: ${JSON.stringify(metres)}`);
+  const other = MEASURE_ORDER.find((each) => each !== measure && attributes[SIZE_FIELDS[each]] != null);
+  if (other !== undefined) throw new Error(`${id} is measured by its ${measure}, not its ${other}`);
+  return { measure, metres };
+}
+
+// The quiz needs only what it compares: the mass of every creature, and
+// the height of a dinosaur alone, as no other is measured standing.
+export function readDinosaurs(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "group" | "attributes">>): Dinosaur[] {
+  return records.map((record) => {
+    const { measure, metres } = sizeOf(record);
+    return {
+      id: record.id,
+      name: { en: record.name.en, ru: record.name.ru },
+      measures: { mass: record.attributes.massKg, ...(measure === "height" ? { height: metres } : {}) }
+    };
+  });
+}
+
+// Care needs only who visits and what it eats. Only dinosaurs visit: a
+// visit asks for water and a bath, which mean nothing to a sea reptile.
+// A record with no known food type fails here, when the app is put
+// together, rather than as a visitor no food can feed.
+export function readVisitors(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "group" | "diet">>): Visitor[] {
+  return records.filter(({ id, group }) => groupOf(id, group) === "dinosaur").map(({ id, name, diet }) => {
     if (!isDiet(diet)) {
       throw new Error(`${id} has no known food type: ${JSON.stringify(diet)}`);
     }
@@ -48,7 +81,8 @@ export function readVisitors(records: ReadonlyArray<Pick<DinosaurRecord, "id" | 
 // in a language, fails here, when the app is put together, rather than as
 // a blank on a dinosaur's page.
 export function readCatalogue(records: readonly DinosaurRecord[]): CatalogueEntry[] {
-  return records.map(({ id, name, attributes, diet, description }) => {
+  return records.map((record) => {
+    const { id, name, group, attributes, diet, description } = record;
     if (!isDiet(diet)) {
       throw new Error(`${id} has no known food type: ${JSON.stringify(diet)}`);
     }
@@ -59,9 +93,10 @@ export function readCatalogue(records: readonly DinosaurRecord[]): CatalogueEntr
     return {
       id,
       name: { en: name.en, ru: name.ru },
+      group: groupOf(id, group),
       diet,
       description: { en: description.en, ru: description.ru },
-      height: attributes.heightMeters,
+      size: sizeOf(record),
       mass: attributes.massKg
     };
   });

@@ -637,7 +637,7 @@ describe("the result", () => {
 
 describe("dinosaurs found", () => {
   const newBadges = () =>
-    within(screen.getByRole("list", { name: "DINOSAURS" }))
+    within(screen.getByRole("list", { name: "ANIMALS" }))
       .getAllByRole("listitem")
       .flatMap((item) => (item.querySelector(".pairs-new-badge") ? [[item.querySelector(".pairs-found-name")?.textContent, symbolsOf(item.querySelector(".pairs-new-badge") ?? item)]] : []));
 
@@ -648,7 +648,7 @@ describe("dinosaurs found", () => {
 
     expect(newBadges().map(([name]) => name).sort()).toEqual(["STEGOSAURUS", "TRICERATOPS", "TYRANNOSAURUS"]);
     expect(newBadges().map(([, symbols]) => symbols)).toEqual([["sparkles"], ["sparkles"], ["sparkles"]]);
-    expect(within(screen.getByRole("list", { name: "DINOSAURS" })).getAllByText("NEW")).toHaveLength(3);
+    expect(within(screen.getByRole("list", { name: "ANIMALS" })).getAllByText("NEW")).toHaveLength(3);
   });
 
   it("are found once: one found before is not new again", async () => {
@@ -674,10 +674,10 @@ describe("dinosaurs found", () => {
   it("are neither counted nor stamped in the catalogue or on a page", async () => {
     const { user } = openPairsApp({ storage: stored({ found: ["triceratops", "stegosaurus"] }) });
 
-    await user.click(button("ALL DINOSAURS"));
+    await user.click(button("ANCIENT REPTILES"));
 
     expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
-    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name: "Triceratops" }));
+    await user.click(within(screen.getByRole("group", { name: "ANCIENT REPTILES" })).getByRole("button", { name: "Triceratops" }));
     expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
@@ -686,7 +686,7 @@ describe("dinosaurs found", () => {
     const before = storage.items.get(PROGRESS_KEY);
     const { user } = openPairsApp({ storage });
 
-    await user.click(button("ALL DINOSAURS"));
+    await user.click(button("ANCIENT REPTILES"));
 
     expect(storage.items.get(PROGRESS_KEY)).toBe(before);
   });

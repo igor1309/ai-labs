@@ -55,14 +55,14 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     await playDealt(app.user, app.clock, names);
     endWave(app.clock);
 
-    const cards = within(screen.getByRole("list", { name: "DINOSAURS" })).getAllByRole("listitem");
+    const cards = within(screen.getByRole("list", { name: "ANIMALS" })).getAllByRole("listitem");
     expect(cards.map((card) => card.querySelector(".pairs-new-badge")?.textContent ?? null)).toEqual(ids.map((_, at) => at < 2 ? null : "NEW"));
     expect(cards.slice(2).map((card) => symbolOf(card.querySelector(".pairs-new-badge") ?? card))).toEqual(ids.slice(2).map(() => "sparkles"));
     expect(storedPairs(app.storage)).toMatchObject({ found: ordered(ids) });
     await app.user.click(button("HOME"));
-    await app.user.click(button("ALL DINOSAURS"));
+    await app.user.click(button("ANCIENT REPTILES"));
 
-    const catalogue = screen.getByRole("group", { name: "ALL DINOSAURS" });
+    const catalogue = screen.getByRole("group", { name: "ANCIENT REPTILES" });
     expect(within(catalogue).queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
     const first = board.pals[0];
     if (!first) throw new Error("No dinosaur on the board");
