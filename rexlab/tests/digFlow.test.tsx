@@ -69,6 +69,10 @@ describe("the board's lift and collection star", () => {
         ? "fade-out var(--dig-gust) var(--ease-out) both"
         : "dig-gust var(--dig-gust) var(--ease-out) both");
 
+      // The star's endpoints are measured as the lift starts, with no
+      // resize needed.
+      const destination = chip.querySelector("svg")!;
+      destination.getBoundingClientRect = () => ({ left: 600, top: 32, width: 20, height: 20 } as DOMRect);
       act(() => app.timers.fire(GUST[timing]));
       expect(board().getAttribute("data-lifting")).toBe("true");
       expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
@@ -78,11 +82,13 @@ describe("the board's lift and collection star", () => {
       expect(getComputedStyle(board().querySelector(".dig-picture")!).animation).toBe(reducedMotion
         ? "fade-in var(--dig-lift) var(--ease-out) both"
         : "dig-lift var(--dig-lift) var(--ease-out) both");
-      const destination = chip.querySelector("svg")!;
-      destination.getBoundingClientRect = () => ({ left: 600, top: 32, width: 20, height: 20 } as DOMRect);
-      act(() => window.dispatchEvent(new Event("resize")));
       const star = document.querySelector<SVGSVGElement>(".dig-board-star")!;
-      expect([star.style.left, star.style.top, star.style.getPropertyValue("--star-x"), star.style.getPropertyValue("--star-y")]).toEqual(["610px", "42px", "-210px", "258px"]);
+      const ends = () => [star.style.left, star.style.top, star.style.getPropertyValue("--star-x"), star.style.getPropertyValue("--star-y")];
+      expect(ends()).toEqual(["610px", "42px", "-210px", "258px"]);
+      // A resize mid-flight measures the endpoints again.
+      destination.getBoundingClientRect = () => ({ left: 500, top: 12, width: 20, height: 20 } as DOMRect);
+      act(() => window.dispatchEvent(new Event("resize")));
+      expect(ends()).toEqual(["510px", "22px", "-110px", "278px"]);
       expect(getComputedStyle(star).animation).toBe(reducedMotion
         ? "fade-in var(--dig-lift) var(--ease-out) both"
         : "dig-board-star var(--dig-lift) var(--ease-out) both");

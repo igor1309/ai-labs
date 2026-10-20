@@ -164,6 +164,13 @@ function clearAlong(context: CanvasRenderingContext2D, { from, to, radius }: San
 // and where its last grains puffed, in the frame's pixels.
 type Stroke = { pointerId: number; rect: DOMRect; radius: number; last: SandPoint; puffed: SandPoint };
 
+// The board where it is now, as it slides aside for the question under a
+// held finger, or as it was pressed if it has no size now.
+const boardNow = (element: HTMLElement | null, pressed: DOMRect) => {
+  const rect = element?.getBoundingClientRect();
+  return rect && rect.width > 0 ? rect : pressed;
+};
+
 // A puff of grains, where it rises, as fractions of the board.
 type Puff = { id: number; left: number; top: number };
 
@@ -312,7 +319,7 @@ export function DigBoardScreen({
     const move = (event: PointerEvent) => {
       const current = stroke.current;
       if (!current || latest.current.locked || event.pointerId !== current.pointerId) return;
-      const at = toFrame(current.rect, event.clientX, event.clientY);
+      const at = toFrame(boardNow(board.current, current.rect), event.clientX, event.clientY);
       latest.current.onBrush({ from: current.last, to: at, radius: current.radius });
       current.last = at;
       setBrushAt(at);

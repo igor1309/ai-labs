@@ -90,7 +90,13 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
     expect(board().querySelector(".dig-brush")).not.toBeNull();
-    releaseAt(window, (time += 10), { x: 800, y: 590, pointer: 9 });
+    // The board slides 114px left under the held finger; the brush stays
+    // under it.
+    const slid = { left: -114, top: 0, x: -114, y: 0, width: 800, height: 600, right: 686, bottom: 600, toJSON: () => ({}) };
+    board().getBoundingClientRect = () => slid as DOMRect;
+    moveAt((time += 10), { x: 286, y: 300, pointer: 9 });
+    expect(board().querySelector<HTMLElement>(".dig-brush")!.style.left).toBe("50%");
+    releaseAt(window, (time += 10), { x: 286, y: 300, pointer: 9 });
     brushAll();
     expect([cleared(), board().hasAttribute("data-blown"), choices().length]).toEqual([1, false, offered[level].length]);
     // Digging is recorded only at the gust.
