@@ -33,6 +33,19 @@ const reward = () => screen.getByRole("region", { name: TEXTS.en.dugUp });
 // Tyrannosaurus is under the sand, and its closest look-alikes offered.
 const offered = { explorer: ["tyrannosaurus", "velociraptor", "compsognathus"], paleontologist: ["tyrannosaurus", "velociraptor", "compsognathus", "giganotosaurus"] };
 
+it("marks only the dinosaur under the sand correct in every answer position", () => {
+  const round = startRound(SHIPPED_DIG, [], undefined, () => 0.42, "explorer");
+  const correct = round.dinosaur.id;
+  const distractors = round.choices.filter((id) => id !== correct);
+
+  for (let position = 0; position <= distractors.length; position++) {
+    const choices = [...distractors];
+    choices.splice(position, 0, correct);
+    const presented = presentDigBoard({ ...round, blown: true, choices }, fakeBodyPicture, fakeTreasurePicture);
+    expect(presented.choices.filter((choice) => choice.correct).map((choice) => choice.id)).toEqual([correct]);
+  }
+});
+
 function openRound(level: Level, options: Parameters<typeof openDigApp>[0] = {}) {
   const app = openDigApp({ ageLevel: { level, revision: null }, ...options });
   fireEvent.click(homeTile(TEXTS[options.language ?? "en"].dig));

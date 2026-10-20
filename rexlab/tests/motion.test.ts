@@ -87,6 +87,23 @@ describe("the motion", () => {
     expect(timings.filter(({ value }) => /\d(ms|s)\b|cubic-bezier|steps\(|\b(ease|ease-in|ease-out|ease-in-out|linear)\b/.test(value))).toEqual([]);
   });
 
+  it("draws the treasure's route and visibly pulses the FIELD GUIDE on arrival", () => {
+    const route = declared(PLAIN, ".dig-treasure-route path");
+    expect(route).toMatchObject({ stroke: "#e39b2d", "stroke-dasharray": "1" });
+    expect(route.animation).toMatch(/^dig-treasure-route /);
+    const routeFrames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-treasure-route")!.body);
+    expect(declared(routeFrames, "10%")["stroke-dashoffset"]).toBe("calc(1 * var(--motion-amount))");
+    expect(declared(routeFrames, "to")["stroke-dashoffset"]).toBe("calc(0 * var(--motion-amount))");
+
+    const arrival = declared(PLAIN, ".dig-field-guide-button[data-landed][data-motion]");
+    expect(arrival.animation).toMatch(/^dig-guide-arrival /);
+    const arrivalFrames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-guide-arrival")!.body);
+    expect(declared(arrivalFrames, "45%")).toMatchObject({
+      scale: "calc(1 + 0.08 * var(--motion-amount))",
+      "box-shadow": "0 0 0 calc(8px * var(--motion-amount)) #e39b2d33"
+    });
+  });
+
   it("is only short fades with reduced motion", () => {
     expect(tokensOf(REDUCED)).toEqual({
       "--motion-standard": "160ms",

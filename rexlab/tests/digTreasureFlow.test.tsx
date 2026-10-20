@@ -49,12 +49,12 @@ function roundDraws(kind: TreasureKind): number[] {
 }
 
 // A round hiding `kind`: the app's draws are 0 until it starts.
-function openRoundHiding(kind: TreasureKind, storage: MemoryStorage) {
+function openRoundHiding(kind: TreasureKind, storage: MemoryStorage, options: { language?: "en" | "ru"; reducedMotion?: boolean } = {}) {
   const draws: number[] = [];
   const random: Random = () => draws.shift() ?? 0;
-  const app = openDigApp({ storage, random });
+  const app = openDigApp({ storage, random, ...options });
   draws.push(...roundDraws(kind));
-  fireEvent.click(homeTile("DIG"));
+  fireEvent.click(homeTile(options.language === "ru" ? "РАСКОПКИ" : "DIG"));
   placeBoard(800);
   return app;
 }
@@ -279,6 +279,16 @@ describe("a treasure in the sand", () => {
 });
 
 describe.each(TREASURE_KINDS)("a %s found", (kind) => {
+  it.each(["en", "ru"] as const)("names the discovery in %s, in both motion settings", (language) => {
+    for (const reducedMotion of [false, true]) {
+      const app = openRoundHiding(kind, stored({}), { language, reducedMotion });
+      brushTreasure();
+      expect(screen.getByText(TEXTS[language].treasures[kind]).getAttribute("aria-live")).toBe("polite");
+      landTreasure(app.timers, reducedMotion ? "reduced" : "motion");
+      app.unmount();
+    }
+  });
+
   it.each([
     { found: "first", before: {}, count: 1, fresh: "NEW!" },
     { found: "again", before: { [kind]: 1 }, count: 2, fresh: undefined }
