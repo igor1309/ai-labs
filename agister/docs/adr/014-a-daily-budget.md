@@ -6,7 +6,7 @@ description: "ADR-014: home sets a daily budget, a ceiling on what every run's c
 
 # ADR-014: A daily budget
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Topic:** Running work
 - **Date:** 2026-10-20
 - **Scope:** a limit on what Agister spends in a day, across runs
