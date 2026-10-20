@@ -44,3 +44,19 @@ Add each line to the style prompt in `style.md`.
 - `maiasaura`: Maiasaura, duck-like bill, small bony bump above the eyes, stands on all fours, long tail, blue-green and cream.
 - `corythosaurus`: Corythosaurus, tall round crest on the head like a helmet, duck-like bill, stands on all fours, red and gold.
 - `chasmosaurus`: Chasmosaurus, very wide and long solid frill covered in skin, no holes in the frill, short horns, four sturdy legs, purple-grey with a pink frill.
+
+## Flying and sea reptiles
+
+These are not dinosaurs: add each line to the flying or sea style prompt
+in `style.md` in place of the dinosaur one.
+
+- `quetzalcoatlus`: Quetzalcoatlus, a giant pterosaur, very long stiff neck, huge long pointed toothless beak, small rounded crest, long narrow wings spread wide, fine short fuzz on its body, pale grey and teal with an orange beak.
+- `pteranodon`: Pteranodon, a pterosaur, long toothless beak, long crest sweeping back from the head, long wings spread wide, short tail, fine short fuzz on its body, cream and slate blue with a red-orange crest.
+- `rhamphorhynchus`: Rhamphorhynchus, a small pterosaur, long narrow jaws with sharp teeth pointing forward, long thin tail ending in a small diamond-shaped vane, narrow wings spread, fine short fuzz on its body, olive green and yellow.
+- `dimorphodon`: Dimorphodon, a small pterosaur, big deep head like a puffin's with small teeth, short wings spread, long thin tail, fine short fuzz on its body, black and bright yellow.
+- `pterodactylus`: Pterodactylus, a small pterosaur, long slim beak with small teeth, small low crest, very short tail, wings spread, fine short fuzz on its body, brown and tan.
+- `mosasaurus`: Mosasaurus, a giant sea lizard, long body, big head with long jaws, four paddle flippers, a tail ending in a fin that bends down, blue-grey back and pale belly.
+- `elasmosaurus`: Elasmosaurus, a plesiosaur, extremely long neck held straight out forward, small head, round body, four long flippers, short tail, sea green and cream.
+- `kronosaurus`: Kronosaurus, a pliosaur, huge long head with big jaws, short thick neck, heavy body, four big flippers, short tail, brown and sand.
+- `plesiosaurus`: Plesiosaurus, a plesiosaur, long neck, small head, broad flat body, four flippers, short tail, orange-brown with a cream belly.
+- `ophthalmosaurus`: Ophthalmosaurus, an ichthyosaur, dolphin-shaped body, very big round eyes, long thin snout, a fin on its back, a half-moon tail fin, four flippers, blue with a white belly.
