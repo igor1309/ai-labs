@@ -788,42 +788,41 @@ describe("the FIELD GUIDE", () => {
 describe("the sorting board", () => {
   const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
-  it.each(["light", "dark"] as const)("is in the %s theme in every state, with every basket's symbol", async (theme) => {
+  // One board per test: a whole sort is long under pointer events.
+  it.each((["light", "dark"] as const).flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
     document.documentElement.dataset.theme = theme;
     try {
-      for (const property of PROPERTIES) {
-        const user = userEvent.setup();
-        const sorting = sortingBy(property);
-        const { unmount } = openBoard(sorting);
-        layOutBaskets(sorting);
-        const [missed, ...rest] = boardState(sorting).cards;
-        if (!missed) throw new Error("The board has no cards");
-        const right = missed.basket as Basket;
-        expectScreenIn(theme);
+      const user = userEvent.setup();
+      const sorting = sortingBy(property);
+      const { unmount } = openBoard(sorting);
+      layOutBaskets(sorting);
+      const [missed, ...rest] = boardState(sorting).cards;
+      if (!missed) throw new Error("The board has no cards");
+      const right = missed.basket as Basket;
+      expectScreenIn(theme);
 
-        await user.click(trayCard(missed));
-        expectScreenIn(theme);
-        await user.click(trayCard(missed));
-        await user.pointer([
-          { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
-          { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
-        ]);
-        expectScreenIn(theme);
-        await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
-        // The hint on the card and the right basket's glow.
-        expect(document.querySelector(".sort-hint")).not.toBeNull();
-        expect(document.querySelector(".basket-glow")).not.toBeNull();
-        expectScreenIn(theme);
+      await user.click(trayCard(missed));
+      expectScreenIn(theme);
+      await user.click(trayCard(missed));
+      await user.pointer([
+        { keys: "[TouchA>]", target: trayCard(missed), coords: { clientX: 200, clientY: 300 } },
+        { pointerName: "TouchA", coords: centreOf(sorting, otherBasket(sorting, right)) }
+      ]);
+      expectScreenIn(theme);
+      await user.pointer({ keys: "[/TouchA]", coords: centreOf(sorting, otherBasket(sorting, right)) });
+      // The hint on the card and the right basket's glow.
+      expect(document.querySelector(".sort-hint")).not.toBeNull();
+      expect(document.querySelector(".basket-glow")).not.toBeNull();
+      expectScreenIn(theme);
 
-        await dragTo(user, trayCard(missed), centreOf(sorting, right));
-        for (const card of rest) {
-          await user.click(trayCard(card));
-          await user.click(basketButton(card.basket as Basket));
-        }
-        expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
-        expectScreenIn(theme);
-        unmount();
+      await dragTo(user, trayCard(missed), centreOf(sorting, right));
+      for (const card of rest) {
+        await user.click(trayCard(card));
+        await user.click(basketButton(card.basket as Basket));
       }
+      expect(screen.getByRole("button", { name: "SEE RESULT" })).toBeDefined();
+      expectScreenIn(theme);
+      unmount();
     } finally {
       delete document.documentElement.dataset.theme;
     }
