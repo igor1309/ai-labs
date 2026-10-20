@@ -91,6 +91,8 @@ export type PortraitLayouts = Readonly<Partial<Record<Screen["kind"], readonly P
 export type Viewport = {
   sizeClass(): SizeClass;
   isScreenUpright(): boolean;
+  // The window's width in CSS pixels.
+  width(): number;
   subscribe(onChange: () => void): () => void;
 };
 
@@ -541,6 +543,7 @@ export function App({
             ageLevel={ageLevel.level}
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}
+            viewport={viewport}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}

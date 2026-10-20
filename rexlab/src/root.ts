@@ -37,6 +37,9 @@ const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
 export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
+  innerWidth: number;
+  addEventListener(type: "resize", listener: () => void): void;
+  removeEventListener(type: "resize", listener: () => void): void;
   screen: { orientation?: Pick<ScreenOrientation, "type" | "addEventListener" | "removeEventListener"> };
   navigator: { language: string };
   document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener"> & {
@@ -93,7 +96,7 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
-  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation);
+  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation, browser);
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);

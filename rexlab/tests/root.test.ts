@@ -5,7 +5,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps, filterDoubleTaps } from "../src/root.ts";
-import { browserDocument, manualScreenOrientation, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const NARROW = "(max-width: 599.98px)";
@@ -37,6 +37,7 @@ function browser({
     document: page.document,
     media,
     page,
+    ...manualWindow(1024),
     ...pictureBrowser()
   };
 }
@@ -185,6 +186,21 @@ describe("the app in a browser", () => {
 
     expect(seen).toEqual([["wide-short", false], ["tall", false], ["tall-narrow", false], ["tall-narrow", true]]);
     expect(read()).toEqual(["wide", false]);
+  });
+
+  it("wires the window's width, as it is resized, into the viewport", () => {
+    const given = browser();
+    const { viewport } = appProps(given);
+    const seen: number[] = [];
+    expect(viewport.width()).toBe(1024);
+
+    const unsubscribe = viewport.subscribe(() => seen.push(viewport.width()));
+    given.resize(820);
+    unsubscribe();
+    given.resize(1180);
+
+    expect(seen).toEqual([820]);
+    expect(viewport.width()).toBe(1180);
   });
 
   it("uses the window's portrait query for upright on a browser without screen.orientation", () => {
