@@ -174,9 +174,10 @@ describe("the board's lift and collection star", () => {
     expect(document.querySelector(".dig-board-star")).toBeNull();
     expect(app.timers.timers()).toEqual(phase === "gust" ? [GUST[timing]] : phase === "counted" ? [COUNT_SETTLE.motion] : []);
     prefersReduced = reducedMotion;
-    // jsdom has no layout. The board and the chip are laid out anew
-    // behind the gate, so the flight started again measures them where
-    // they are now, with no resize needed.
+    // jsdom has no layout. Supply the board and chip rectangles of the
+    // window turned back, so the flight started again measures them
+    // where they are then, with no resize needed. The board kept is
+    // placed on itself, so it is moved there too.
     const geometry = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
       return (this.matches(".dig-chip svg")
         ? { left: 600, top: 32, width: 20, height: 20 }
