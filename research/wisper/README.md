@@ -12,6 +12,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [mvp.md](mvp.md) | Draft MVP: our own native app |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `design/visual-language.pen` | Four visual languages for the panel, light and dark, plus Glass Ledger window sizes |
+| [design/README.md](design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |
 
 ## Visual language
 
@@ -36,7 +37,16 @@ Ledger's colours with a light and a dark value (theme axis `mode`), two
 fonts, and consolidated type, radius and spacing scales. "Glass Ledger —
 design system" shows them; "Glass Ledger — components" holds the reusable
 components, with a dark mirror built from instances. The v2 frames are bound
-to the tokens. New screens are built from the components.
+to the tokens. New screens are built from the components. [design/README.md](design/README.md) lists the tokens and components.
+
+The v3 column draws the owner's answers on calls as folders (2026-10-21),
+built from the components. Each call is a folder named `yyyy.MM.dd-HHmm
+<title>`, holding meta.json, audio.m4a, raw.md, final.md and summary.md.
+The title starts as the call app's name. Screen 1 v3 adds the optional
+Calendar permission, which from v3 names a call after the calendar event it
+overlaps. Screens 4 and 5 v3 rename a call inline and keep the timestamp
+prefix. Screen 6 v3 moves every call when the data folder changes, after a
+Move or Cancel confirm.
 
 ## Conclusion so far
 
