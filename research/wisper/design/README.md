@@ -25,8 +25,8 @@ Rules for new frames:
   hand.
 - A value neither the spec nor the owner set goes in the frame's "Open" line
   as "Proposed, not decided".
-- Change a screen in place, in the current column. Git keeps the history;
-  the Archive holds only what predates this cleanup.
+- Change a screen in place. Git keeps the history; the file holds only
+  current frames.
 
 ### Colour
 
@@ -103,8 +103,7 @@ from instances.
 | Where | Frames |
 |---|---|
 | Top, y < 0 | Glass Ledger — design system, Glass Ledger — components |
-| x = 0, y ≥ 0 | The current screens, one frame each, Light and Dark: Screens 1–8, then "Later — term chips" |
-| x ≥ 20000 | Archive, labelled "Archive · …": the brief, Proposals 1–4, window sizes, no footnote, and Screens 1–8 as original, v2, v3 and v4 |
+| x = 0, y ≥ 0 | One frame each, Light and Dark: Glass Ledger — window sizes (how the resizable panel adapts), Glass Ledger — no footnote (the panel before any term is selected), Screens 1–8, then "Later — term chips" |
 
 Current screens:
 
@@ -119,7 +118,8 @@ Current screens:
 | 7 — Menu bar item | Idle; recording |
 | 8 — Errors | No call audio; no microphone; disk full |
 
-The archived frames are history; the design review and the owner's answers
-name them, and their names only gained the prefix. Build only from the
-current screens. Screens 1 and 2 keep their one-off containers (setup blocks,
+Earlier frames are in git history: the four proposals and the brief at
+d5542163, the original Screens 1–8 at 32626465, v2 at dbd22607, v3 at
+a724a1c8 and v4 at fa2dc19f. Check out one of those commits to open them;
+build only from the current file. Screens 1 and 2 keep their one-off containers (setup blocks,
 the blocker card) hand-drawn; everything repeated is a component instance.
