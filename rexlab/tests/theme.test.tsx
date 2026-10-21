@@ -150,10 +150,11 @@ const textContrast = (text: Element) => {
 // lay over the navy, and every text read on it keeps text contrast with
 // what it is seen on. The two themes share no colour but the words on the
 // navy, so a surface left in the other theme shows. Symbols hidden from
-// reading, such as the faded stars, are pictures, not text.
-function expectScreenIn(theme: Theme) {
-  const surfaces = surfacesIn(document.body);
-  const texts = [document.body, ...document.body.querySelectorAll("*")].filter(
+// reading, such as the faded stars, are pictures, not text. Given a part,
+// only its surfaces and texts are checked, beside the page's own colour.
+function expectScreenIn(theme: Theme, part: Element = document.body) {
+  const surfaces = surfacesIn(part);
+  const texts = [part, ...part.querySelectorAll("*")].filter(
     (element) =>
       !element.closest('[aria-hidden="true"]') &&
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
@@ -226,12 +227,15 @@ async function quizResult({ theme, user }: Walk) {
   expectScreenIn(theme);
 }
 
+// The whole list, with every food type's card, is checked once; a food
+// chosen shows only cards already on it, so then only the choice is.
 async function catalogueList({ theme, user }: Walk) {
   await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
   expectScreenIn(theme);
   for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
-    await user.click(within(screen.getByRole("group", { name: "FOOD" })).getByRole("button", { name: food }));
-    expectScreenIn(theme);
+    const foods = screen.getByRole("group", { name: "FOOD" });
+    await user.click(within(foods).getByRole("button", { name: food }));
+    expectScreenIn(theme, foods);
   }
 }
 
