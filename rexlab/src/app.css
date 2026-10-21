@@ -902,6 +902,35 @@ body:has(.result) #version {
 [data-size="tall"] .featured-card {
   flex: 1 0 0;
   min-height: 280px;
+  container-type: inline-size;
+}
+
+/* Upright, the large card can be taller for its width than its picture
+   was drawn for, so the picture is sized by the card's width as well as
+   its height, and nothing of it is cut off. The pairs' three cards
+   spread three of their widths across, so they are no taller than that
+   width allows. DIG's sand keeps its 4:3 at no more than the width the
+   card leaves it, centred in the room it leaves: the card's padding and
+   the footer's margin keep its least room above and below it. */
+[data-size="tall"] .featured-card .pairs-tile-art {
+  container-type: size;
+}
+
+[data-size="tall"] .featured-card .pairs-tile-card {
+  height: min(84cqh, 40cqw);
+}
+
+[data-size="tall"] .featured-card[data-game="dig"] {
+  padding-top: 36px;
+}
+
+[data-size="tall"] .featured-card .dig-tile-picture {
+  max-height: calc((100cqw - 64px) * 3 / 4);
+  margin: auto 32px;
+}
+
+[data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer {
+  margin-top: 8px;
 }
 
 [data-size="tall"] .games-tiles {
