@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
-import { correctOf, type Question } from "../src/quiz/round.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -33,12 +33,6 @@ import {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-const byName = (name: string) => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
-  if (!found) throw new Error(`No ${name} in the shipped list`);
-  return found;
-};
 
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });

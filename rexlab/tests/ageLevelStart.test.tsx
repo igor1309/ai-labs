@@ -8,7 +8,7 @@ import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
-import { correctOf, type Question } from "../src/quiz/round.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import { badgeOf } from "./homePage.tsx";
 import {
   SHIPPED_CATALOGUE,

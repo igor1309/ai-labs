@@ -10,7 +10,7 @@ import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
-import { correctOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import { versionFooter } from "../src/root.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
@@ -60,10 +60,6 @@ const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" 
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
   en: { next: "NEXT", seeResult: "SEE RESULT", playAgain: "PLAY AGAIN", home: "HOME" },
   ru: { next: "ДАЛЬШЕ", seeResult: "РЕЗУЛЬТАТ", playAgain: "ЕЩЁ РАЗ", home: "ДОМОЙ" }
-};
-const PROMPTS: Record<Language, Record<Attribute, string>> = {
-  en: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?", length: "WHO IS LONGER?" },
-  ru: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?", length: "КТО ДЛИННЕЕ?" }
 };
 
 const nothing = () => {};

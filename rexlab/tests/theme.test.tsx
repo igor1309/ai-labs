@@ -7,7 +7,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
-import { correctOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Dinosaur } from "../src/quiz/round.ts";
 import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
@@ -68,12 +68,6 @@ import {
 
 // The WCAG AA contrast for text, which every text read in either theme keeps.
 const TEXT_CONTRAST = 4.5;
-
-const byName = (name: string): Dinosaur => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
-  if (!found) throw new Error(`No ${name} in the shipped list`);
-  return found;
-};
 
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });

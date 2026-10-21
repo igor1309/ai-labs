@@ -35,6 +35,7 @@ describe("generateRound", () => {
       );
 
       expect(unfit).toEqual([]);
+      expect(round).toHaveLength(ROUND_LENGTH);
       expect(new Set(round.map((q) => pairKey(q.left, q.right))).size).toBe(ROUND_LENGTH);
     }
   });
@@ -133,6 +134,23 @@ describe("fairPairs", () => {
     expect(isFair(tall, flier, "height")).toBe(false);
     expect(fairPairs([tall, flier], "height")).toEqual([]);
     expect(() => measureOf(flier, "height")).toThrow("flier has no height");
+  });
+});
+
+// The smaller of the pair answers LIGHTER and SHORTER, the larger every
+// other kind, whichever side each dinosaur stands on.
+describe("the right answer", () => {
+  const small = dinosaur("small", 100, 2, 4);
+  const large = dinosaur("large", 150, 3, 8);
+  const cases = (["heavier", "taller", "longer", "lighter", "shorter"] as const).flatMap((kind) =>
+    (["small left", "small right"] as const).map((order) => ({ kind, order }))
+  );
+
+  it.each(cases)("to $kind, with the $order, is the $kind one", ({ kind, order }) => {
+    const [left, right] = order === "small left" ? [small, large] : [large, small];
+    const expected = kind === "lighter" || kind === "shorter" ? small : large;
+
+    expect(correctOf({ kind, attribute: attributeOf(kind), left, right })).toBe(expected);
   });
 });
 

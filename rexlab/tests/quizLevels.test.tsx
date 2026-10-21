@@ -27,6 +27,8 @@ import {
   memoryStorage,
   pageAtRest,
   seededRandom,
+  shownQuestion,
+  wrongOf,
   type MemoryStorage
 } from "./support.ts";
 
@@ -76,19 +78,13 @@ const shownBest = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".b
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const tileBest = () => gameDoor("COMPARE").querySelector(".compare-tile-best")?.textContent;
 const onQuestion = () => screen.queryByRole("group", { name: "ANIMALS" }) !== null;
-const byName = (name: string | null) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.name.en === name);
 
 // Plays the round on screen to its result, the first `right` answers
-// correct and the rest wrong, checking each asks a question for its level.
+// correct and the rest wrong.
 async function finishWith(user: UserEvent, right: number) {
   for (let number = 1; number <= 10; number++) {
-    const heading = screen.getByRole("heading").textContent ?? "";
-    expect(["WHO IS HEAVIER?", "WHO IS TALLER?", "WHO IS LIGHTER?", "WHO IS SHORTER?", "WHO IS LONGER?"]).toContain(heading);
-    const [left, right_] = within(group()).getAllByRole("button").map((card) => byName(card.getAttribute("aria-label")));
-    if (!left || !right_) throw new Error("Expected two shipped dinosaurs");
-    const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("SHORTER") ? "shorter" : heading.includes("LONGER") ? "longer" : heading.includes("HEAVIER") ? "heavier" : "taller";
-    const correct = correctOf({ kind, attribute: kind === "taller" || kind === "shorter" ? "height" : kind === "longer" ? "length" : "mass", left, right: right_ });
-    const tapped = number <= right ? correct : correct === left ? right_ : left;
+    const question = shownQuestion();
+    const tapped = number <= right ? correctOf(question) : wrongOf(question);
     await user.click(within(group()).getByRole("button", { name: tapped.name.en }));
     await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
   }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Language } from "../src/language/language.ts";
-import { attributeOf, type Attribute, type Dinosaur, type QuestionKind } from "../src/quiz/round.ts";
+import { attributeOf, type Dinosaur, type QuestionKind } from "../src/quiz/round.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
