@@ -33313,7 +33313,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: the glyph itself; whether the time shows in the bar or only in the menu; both switches on by default; a call is Zoom, Telemost or a browser taking the microphone, and it ends 30 s after the microphone is released.",
+              "content": "Decided (owner, 2026-10-21; mvp.md): both switches on by default; a call is Zoom, Telemost or a browser taking the microphone, and it ends 30 s after the microphone is released. Still proposed: the glyph itself; whether the time shows in the bar or only in the menu.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,

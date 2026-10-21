@@ -49,7 +49,7 @@ Taken from the spike ([tests.md](research/tests.md) run 3) and from the chat sur
 | v0 spike | CLI over recordings; window sizes | Done ([tests.md](research/tests.md) run 3) |
 | v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; recording starts when a call starts and stops when it ends, or by hand; live text can be switched off; call folders named and renamed in the app | Owner runs a real call and reads along |
 | v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](research/needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
-| v3 after the call | Final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
+| v3 after the call | Final pass over the full tracks (VAD, better model) into a Markdown transcript; import an audio file through the final pass; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
 | Later | Auto-detected term chips under the live text; CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
 
 Assumption for v1: calls are taken on headphones, so no echo cancellation.
@@ -114,11 +114,11 @@ Controls (owner, 2026-10-21), following Amanu's two checkboxes:
   keeps the text so far.
 - Both are checkmark items in the menu bar menu and rows in Settings. The
   menu also opens the calls folder in Finder.
-- Proposed, not decided: both on by default; a call is detected when Zoom,
-  Telemost or a browser starts using the microphone, and ends 30 s after it
-  stops; a recording that stops on its own keeps the panel's text.
+- Both are on by default. A call is detected when Zoom, Telemost or a
+  browser starts using the microphone, and ends 30 s after it stops. A
+  recording that stops on its own keeps the panel's text.
 - Not in v1: Amanu's Pause and Import… Import (a file through the final
-  pass) is proposed for v3.
+  pass) is in v3.
 
 Call folders (owner, 2026-10-21), following Amanu:
 
