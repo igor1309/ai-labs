@@ -56,7 +56,9 @@ rebuild and the collection score.
   dinosaur unlike it; Hatchling, and Spinosaurus, which has no
   look-alike, from itself and two dinosaurs unlike it. Every choice is of
   a skeleton's look-alike group, so never a flying or sea reptile.
-- The dig stays LAB-283; the odd bone's "not mine" box stays LAB-285.
+- No dig before the build and no "not mine" box: the DIG game digs,
+  and leaving another dinosaur's bone aside is the judgement (LAB-283,
+  LAB-285 closed).
 - Explorer's body-area colours (LAB-314) and Paleontologist's turned
   pieces (LAB-318) are gone (LAB-389). The colours made placing a bone
   matching a colour; turning was finger work, not a decision. Explorer
