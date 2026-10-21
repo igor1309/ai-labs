@@ -18,8 +18,7 @@ spellings.
 The owner prefers tolmach's direction: a name for a person doing a useful role,
 not a software function. Bring 15 new candidates, all historical Russian
 names for interpreters, scribes, secretaries, clerks and attendants. Exclude
-everything from rounds 1 and 2. Tolkovnik is still a candidate; recheck it
-under the stricter search.
+everything from rounds 1 and 2.
 
 Method: same as round 2, with
 [brainstorming-prompt.md](../../prompts/brainstorming-prompt.md) (15 ideas,
@@ -30,5 +29,8 @@ with a source (a dictionary such as Sreznevsky, Dal or Vasmer, or Wikipedia),
 and say when a meaning is your own knowledge and not sourced.
 
 Output: the 15 ideas with the blueprint's table; the collision check on all
-15 plus tolkovnik, listing the GitHub, App Store and web results separately
+15, listing the GitHub, App Store and web results separately
 with links; your top 5. Return the result as Markdown.
+
+Update sent mid-round: the owner does not like tolkovnik. Drop it and close
+variants (tolkovatel, tolkach).
