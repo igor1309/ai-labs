@@ -48,7 +48,7 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
 | v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; manual start/stop | Owner runs a real call and reads along |
 | v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
 | v3 after the call | Stop when the call ends; final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb | Transcript file and summary without manual steps |
-| Later | CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
+| Later | Auto-detected term chips under the live text; CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
 
 Assumption for v1: calls are taken on headphones, so no echo cancellation.
 
@@ -73,6 +73,20 @@ the chosen engine's model is missing later, the app says so at launch, not
 after a call. Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
+
+Screen decisions (owner, 2026-10-21, after the design review):
+
+- Recording may start while the final-pass model downloads; the final pass
+  waits for it and the call screen says so.
+- Delete in the calls list removes the whole call (audio, transcript, summary
+  link) after a confirm.
+- Models are reused from other apps to save space, but only on an exact
+  match: the same file the engine expects (name, size and checksum), not just
+  the same model name. On this Mac two different files are both
+  "Whisper Large v3 Turbo": Superwhisper's `ggml-large-v3-turbo.bin` and
+  Amanu's quantized `ggml-large-v3-turbo-q5_0.bin`. Without an exact match the app downloads its
+  own copy. A reused file that disappears is caught by the launch check.
+- Auto-detected term chips under the live text go to Later.
 
 ## Open questions for the owner
 
