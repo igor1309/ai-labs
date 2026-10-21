@@ -134,8 +134,8 @@ describe("today's games", () => {
 
 function shownQuestion(): Question {
   const heading = screen.getByRole("heading").textContent ?? "";
-  const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("HEAVIER") ? "heavier" : "taller";
-  const attribute = kind === "taller" ? "height" : "mass";
+  const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("SHORTER") ? "shorter" : heading.includes("HEAVIER") ? "heavier" : "taller";
+  const attribute = kind === "taller" || kind === "shorter" ? "height" : "mass";
   const [left, right] = within(group())
     .getAllByRole("button")
     .map((card) => {

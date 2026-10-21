@@ -63,23 +63,24 @@ describe("generateRound", () => {
     expect([...asked].sort()).toEqual([...ATTRIBUTES].sort());
   });
 
-  it("lets Paleontologist rounds mix all three question kinds", () => {
+  it("lets Paleontologist rounds mix all four question kinds", () => {
     const asked = new Set<string>();
     for (const seed of SEEDS) {
       for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "paleontologist")) {
         asked.add(question.kind ?? "");
       }
-      if (asked.size === 3) break;
+      if (asked.size === 4) break;
     }
 
-    expect([...asked].sort()).toEqual(["heavier", "lighter", "taller"]);
-    expect(questionKindsForLevel("paleontologist")).toEqual(["heavier", "taller", "lighter"]);
+    expect([...asked].sort()).toEqual(["heavier", "lighter", "shorter", "taller"]);
+    expect(questionKindsForLevel("paleontologist")).toEqual(["heavier", "taller", "lighter", "shorter"]);
   });
 
   it.each(["hatchling", "explorer"] as const)("keeps %s rounds to today's two kinds", (level) => {
     const kinds = new Set(generateRound(SHIPPED_DINOSAURS, seededRandom(1), [], level).map((question) => question.kind));
 
     expect(kinds).not.toContain("lighter");
+    expect(kinds).not.toContain("shorter");
     expect([...kinds].sort()).toEqual(["heavier", "taller"]);
   });
 
@@ -133,6 +134,18 @@ describe("lighter questions", () => {
     expect(isFair(small, large, "mass")).toBe(true);
     expect(correctOf(question)).toBe(small);
     expect(measureOf(large, "mass")).toBeGreaterThanOrEqual(FAIR_RATIO * measureOf(small, "mass"));
+  });
+});
+
+describe("shorter questions", () => {
+  it("use a fair height pair and make the smaller hip height the right answer", () => {
+    const short = dinosaur("short", 100, 2);
+    const tall = dinosaur("tall", 150, 3);
+    const question = { kind: "shorter" as const, attribute: "height" as const, left: tall, right: short };
+
+    expect(isFair(short, tall, "height")).toBe(true);
+    expect(correctOf(question)).toBe(short);
+    expect(measureOf(tall, "height")).toBeGreaterThanOrEqual(FAIR_RATIO * measureOf(short, "height"));
   });
 });
 
