@@ -212,7 +212,7 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
         bubble.append(picture("hatch-bubble-bowl", bowl));
         const drop = element("span", "hatch-bubble-drop");
         drop.innerHTML = DROP_ICON;
-        bubble.append(drop);
+        bubble.append(drop, picture("hatch-bubble-bath", bath), picture("hatch-bubble-nest", nest));
         creature.append(bubble);
       }
     }

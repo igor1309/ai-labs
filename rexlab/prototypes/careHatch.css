@@ -396,7 +396,8 @@ button {
   }
 }
 
-/* Hungry shows an empty bowl, thirsty a drop of water. */
+/* Hungry shows an empty bowl, thirsty a drop of water, dirty a bath
+   and sleepy a nest. */
 .hatch-bubble {
   position: absolute;
   left: calc(var(--head-x) - 184px + 40px);
@@ -416,8 +417,17 @@ button {
 }
 
 .hatch-bubble-bowl,
-.hatch-bubble-drop {
+.hatch-bubble-drop,
+.hatch-bubble-bath,
+.hatch-bubble-nest {
   display: none;
+}
+
+.hatch-bubble-bath,
+.hatch-bubble-nest {
+  width: 110px;
+  height: 90px;
+  object-fit: contain;
 }
 
 .hatch-bubble-bowl {
@@ -432,13 +442,14 @@ button {
   height: 72px;
 }
 
-.hatch-creature[data-want="hungry"] .hatch-bubble,
-.hatch-creature[data-want="thirsty"] .hatch-bubble {
+.hatch-creature:not([data-want=""]) .hatch-bubble {
   display: flex;
 }
 
 .hatch-creature[data-want="hungry"] .hatch-bubble-bowl,
-.hatch-creature[data-want="thirsty"] .hatch-bubble-drop {
+.hatch-creature[data-want="thirsty"] .hatch-bubble-drop,
+.hatch-creature[data-want="dirty"] .hatch-bubble-bath,
+.hatch-creature[data-want="sleepy"] .hatch-bubble-nest {
   display: block;
 }
 
@@ -484,9 +495,41 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="spit"] .hatch-offered[data-item]:not([data-item=""]),
-.hatch-stage[data-reaction="not-now"] .hatch-offered[data-item]:not([data-item=""]) {
+.hatch-stage[data-reaction="spit"] .hatch-offered[data-item]:not([data-item=""]) {
   animation-name: refused;
+}
+
+/* Not wanted now: the item stops short of the mouth while the baby turns
+   its head away, then goes back. */
+.hatch-stage[data-reaction="not-now"] .hatch-offered[data-item]:not([data-item=""]) {
+  animation-name: declined;
+}
+
+@keyframes declined {
+  from {
+    opacity: 1;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+  35%,
+  70% {
+    opacity: 1;
+    translate: calc(150px * var(--motion-amount)) 0;
+  }
+  to {
+    opacity: 0;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+}
+
+.hatch-stage[data-reaction="not-now"] .hatch-baby-picture {
+  animation: turn-away 900ms var(--ease-out);
+}
+
+@keyframes turn-away {
+  25%,
+  75% {
+    scale: 1 1;
+  }
 }
 
 @keyframes refused {
@@ -539,8 +582,7 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="spit"] .hatch-baby,
-.hatch-stage[data-reaction="not-now"] .hatch-baby {
+.hatch-stage[data-reaction="spit"] .hatch-baby {
   animation: shake 420ms ease-in-out 300ms 2;
 }
 
@@ -640,8 +682,9 @@ button {
 /* A word the baby says: BLEH, YUM, BURP. */
 .hatch-say {
   position: absolute;
-  left: calc(var(--head-x) - 40px);
+  right: calc(968px - var(--head-x) + 10px);
   top: calc(var(--head-y) - 200px);
+  white-space: nowrap;
   color: #ffd166;
   font-size: 72px;
   font-weight: 800;
