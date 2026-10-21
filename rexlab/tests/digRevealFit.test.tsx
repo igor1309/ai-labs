@@ -10,7 +10,7 @@ import { contrast, fakeBodyPicture, manualTimers, seenOn, surfaceOf } from "./su
 import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom lays nothing out. Budget the delivered CSS of the fullest reveal,
-// the 42nd dinosaur dug up and named at the first pick, in each window,
+// the 52nd creature dug up and named at the first pick, in each window,
 // using conservative widths in ems: Lexend's bold Latin face and the
 // iPad's Cyrillic face. Names and levels use the shared measures.
 const WORD_EMS: Record<string, number> = {
@@ -47,8 +47,8 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
           language={language}
           name={name}
           picture={fakeBodyPicture("pachycephalosaurus")}
-          dugUp={42}
-          total={42}
+          dugUp={52}
+          total={52}
           treasures={128}
           newStar
           celebration="new-best"
@@ -117,7 +117,7 @@ describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((
         pixels(style(".level-badge").width) +
         5 * gap(cardStyle);
       expect(cardWidth).toBeLessThanOrEqual(width);
-      expect(card.textContent).toContain("42/42");
+      expect(card.textContent).toContain("52/52");
 
       const chip = style(".celebration");
       expect(wordWidth(text.celebrations["new-best"].text, pixels(chip.fontSize)) + horizontal(chip) + 30 + gap(chip)).toBeLessThanOrEqual(width);

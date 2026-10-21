@@ -97,7 +97,7 @@ describe("the catalogue's food chips", () => {
     expect(chipRow().previousElementSibling).toBe(screen.getByRole("button", { name: "HOME" }));
     expect(chips().map((each) => [each.getAttribute("aria-label"), symbolsOf(each), words(each)])).toEqual([
       ["ALL", ["funnel"], ""],
-      ["MEAT", ["beef"], "MEAT16"],
+      ["MEAT", ["beef"], "MEAT26"],
       ["PLANTS", ["leaf"], "PLANTS23"],
       ["BOTH", ["beef", "leaf"], "BOTH3"]
     ]);
@@ -129,7 +129,7 @@ describe("the catalogue's food chips", () => {
 
     expect(chosen()).toEqual(["MEAT"]);
     expect(cardNames()).toEqual(MEAT.map(({ name }) => name.en));
-    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(16);
+    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(26);
   });
 
   it("show every dinosaur again for ALL", async () => {
@@ -164,14 +164,14 @@ describe("the catalogue's food chips", () => {
     const user = openApp();
     await choose(user, "MEAT");
     await user.click(within(grid()).getByRole("button", { name: "Tyrannosaurus" }));
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 16"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 26"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
-    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "16 / 16"]);
+    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "26 / 26"]);
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
     await user.click(screen.getByRole("button", { name: "NEXT" }));
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 16"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 26"]);
   });
 
   it("stay chosen back from a page, its card in view", async () => {
@@ -195,7 +195,7 @@ describe("the catalogue's food chips", () => {
     await openCatalogue(user);
 
     expect(chosen()).toEqual(["ALL"]);
-    expect(cardNames()).toHaveLength(42);
+    expect(cardNames()).toHaveLength(52);
   });
 
   it("rise the cards of the food chosen in as a new list, the chosen look moving by the tokens", async () => {

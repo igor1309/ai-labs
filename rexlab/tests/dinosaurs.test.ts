@@ -8,6 +8,9 @@ import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SORTABLES, 
 
 // A flying reptile and a sea reptile, each measured by its group's own
 // measure.
+// The shipped records of dinosaurs, without the flying and sea reptiles.
+const dinosaurRecords = records.filter(({ group }) => group === "dinosaur");
+
 const PTERANODON: DinosaurRecord = {
   id: "pteranodon",
   name: { en: "Pteranodon", ru: "Птеранодон" },
@@ -230,8 +233,8 @@ describe("the shipped dinosaur list", () => {
   it("gives every visitor the food type of its own record", () => {
     const diets = (list: ReadonlyArray<{ id: string; diet: string }>) => Object.fromEntries(list.map(({ id, diet }) => [id, diet]));
 
-    expect(SHIPPED_VISITORS.map(({ id }) => id)).toEqual(records.map(({ id }) => id));
-    expect(diets(SHIPPED_VISITORS)).toEqual(diets(records));
+    expect(SHIPPED_VISITORS.map(({ id }) => id)).toEqual(dinosaurRecords.map(({ id }) => id));
+    expect(diets(SHIPPED_VISITORS)).toEqual(diets(dinosaurRecords));
   });
 
   // A silhouette board deals one dinosaur of each look-alike group, so the
@@ -336,7 +339,7 @@ describe("the shipped dinosaur list", () => {
   });
 
   it("keeps a worked-out hip height for every dinosaur", () => {
-    expect(HIP_HEIGHTS.map(([id]) => id)).toEqual(records.map(({ id }) => id));
+    expect(HIP_HEIGHTS.map(([id]) => id)).toEqual(dinosaurRecords.map(({ id }) => id));
   });
 
   // The size each of those dinosaurs sorts by: null where the sources'
@@ -373,7 +376,9 @@ describe("the shipped dinosaur list", () => {
 
 // The explicit values and exclusions of docs/sources.md (LAB-295).
 describe("the sorting traits in the shipped sources", () => {
-  const ids = (test: (dinosaur: Sortable) => boolean) => SHIPPED_SORTABLES.filter(test).map(({ id }) => id).sort();
+  const reptiles = new Set(records.filter(({ group }) => group !== "dinosaur").map(({ id }) => id));
+  const ids = (test: (dinosaur: Sortable) => boolean) => SHIPPED_SORTABLES.filter((each) => !reptiles.has(each.id) && test(each)).map(({ id }) => id).sort();
+  const reptileTraits = SHIPPED_SORTABLES.filter(({ id }) => reptiles.has(id)).map(({ id, legs, horns, feathers }) => [id, legs, horns, feathers]);
   it("names exactly the omnivores, dinosaurs that walked either way, and unsettled feathers", () => {
     expect(ids(({ diet }) => diet === "both")).toEqual(["gallimimus", "oviraptor", "troodon"]);
     expect(ids(({ legs }) => legs === "either")).toEqual(["corythosaurus", "edmontosaurus", "iguanodon", "maiasaura", "parasaurolophus", "plateosaurus"]);
@@ -383,5 +388,15 @@ describe("the sorting traits in the shipped sources", () => {
   it("keeps ambiguous posture and bristles off the corresponding boards", () => {
     expect(ids(({ legs }) => legs === null)).toEqual(["psittacosaurus", "spinosaurus"]);
     expect(ids(({ feathers }) => feathers === null)).toEqual(["heterodontosaurus", "psittacosaurus"]);
+  });
+
+  // A flying or sea reptile walked, if at all, on neither two legs nor
+  // four as a dinosaur did, and had no horns; a flier's fuzz may or may
+  // not have been feathers, and a swimmer is no question for that board.
+  it("leaves the flying and sea reptiles off the legs board, hornless, the fliers' feathers not known yet", () => {
+    const fliers = ["quetzalcoatlus", "pteranodon", "rhamphorhynchus", "dimorphodon", "pterodactylus"];
+    const swimmers = ["mosasaurus", "elasmosaurus", "kronosaurus", "plesiosaurus", "ophthalmosaurus"];
+
+    expect(reptileTraits).toEqual([...fliers.map((id) => [id, null, false, "unknown"]), ...swimmers.map((id) => [id, null, false, null])]);
   });
 });

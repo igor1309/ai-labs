@@ -1737,8 +1737,7 @@
   "quetzalcoatlus": {
     "traits": ["crest", "beak", "wing"],
     "spots": [
-      { "kind": "crest", "x": 280, "y": 66, "r": 25 },
-      { "kind": "eye", "x": 247, "y": 102, "r": 22 },
+      { "kind": "crest", "x": 280, "y": 66, "r": 40 },
       { "kind": "beak", "x": 133, "y": 167, "r": 45 },
       { "kind": "wing", "x": 640, "y": 200, "r": 80 },
       { "kind": "foot", "x": 587, "y": 380, "r": 40 }
@@ -1780,7 +1779,7 @@
     "traits": ["crest", "beak", "wing"],
     "spots": [
       { "kind": "crest", "x": 307, "y": 147, "r": 50 },
-      { "kind": "eye", "x": 191, "y": 203, "r": 25 },
+      { "kind": "eye", "x": 191, "y": 203, "r": 40 },
       { "kind": "beak", "x": 93, "y": 247, "r": 45 },
       { "kind": "wing", "x": 533, "y": 200, "r": 90 },
       { "kind": "foot", "x": 520, "y": 467, "r": 45 }
@@ -1821,8 +1820,8 @@
   "rhamphorhynchus": {
     "traits": ["wing"],
     "spots": [
-      { "kind": "eye", "x": 193, "y": 313, "r": 28 },
-      { "kind": "claw", "x": 127, "y": 233, "r": 30 },
+      { "kind": "eye", "x": 193, "y": 313, "r": 40 },
+      { "kind": "claw", "x": 127, "y": 233, "r": 40 },
       { "kind": "wing", "x": 640, "y": 200, "r": 90 },
       { "kind": "foot", "x": 440, "y": 460, "r": 40 },
       { "kind": "tail", "x": 727, "y": 467, "r": 45 }
@@ -1863,8 +1862,8 @@
   "dimorphodon": {
     "traits": ["wing"],
     "spots": [
-      { "kind": "eye", "x": 157, "y": 243, "r": 28 },
-      { "kind": "claw", "x": 180, "y": 133, "r": 30 },
+      { "kind": "eye", "x": 157, "y": 243, "r": 40 },
+      { "kind": "claw", "x": 180, "y": 133, "r": 40 },
       { "kind": "wing", "x": 600, "y": 227, "r": 90 },
       { "kind": "foot", "x": 400, "y": 447, "r": 40 },
       { "kind": "tail", "x": 720, "y": 480, "r": 45 }
@@ -1905,8 +1904,7 @@
   "pterodactylus": {
     "traits": ["crest", "wing"],
     "spots": [
-      { "kind": "crest", "x": 260, "y": 188, "r": 24 },
-      { "kind": "eye", "x": 213, "y": 216, "r": 24 },
+      { "kind": "crest", "x": 260, "y": 188, "r": 40 },
       { "kind": "wing", "x": 600, "y": 240, "r": 90 },
       { "kind": "foot", "x": 507, "y": 487, "r": 40 }
     ],
@@ -1946,7 +1944,7 @@
   "mosasaurus": {
     "traits": ["flipper"],
     "spots": [
-      { "kind": "eye", "x": 160, "y": 127, "r": 30 },
+      { "kind": "eye", "x": 160, "y": 127, "r": 40 },
       { "kind": "flipper", "x": 400, "y": 373, "r": 50 },
       { "kind": "tail", "x": 747, "y": 427, "r": 50 }
     ],
@@ -1986,7 +1984,7 @@
   "elasmosaurus": {
     "traits": ["flipper"],
     "spots": [
-      { "kind": "eye", "x": 93, "y": 91, "r": 28 },
+      { "kind": "eye", "x": 93, "y": 91, "r": 40 },
       { "kind": "flipper", "x": 573, "y": 440, "r": 50 },
       { "kind": "tail", "x": 727, "y": 287, "r": 40 }
     ],
@@ -2026,7 +2024,7 @@
   "kronosaurus": {
     "traits": ["flipper"],
     "spots": [
-      { "kind": "eye", "x": 236, "y": 120, "r": 30 },
+      { "kind": "eye", "x": 236, "y": 120, "r": 40 },
       { "kind": "flipper", "x": 160, "y": 360, "r": 50 },
       { "kind": "tail", "x": 733, "y": 260, "r": 40 }
     ],
@@ -2066,7 +2064,7 @@
   "plesiosaurus": {
     "traits": ["flipper"],
     "spots": [
-      { "kind": "eye", "x": 113, "y": 73, "r": 28 },
+      { "kind": "eye", "x": 113, "y": 73, "r": 40 },
       { "kind": "flipper", "x": 480, "y": 440, "r": 50 },
       { "kind": "tail", "x": 733, "y": 293, "r": 40 }
     ],
@@ -2106,7 +2104,7 @@
   "ophthalmosaurus": {
     "traits": ["flipper"],
     "spots": [
-      { "kind": "eye", "x": 227, "y": 220, "r": 35 },
+      { "kind": "eye", "x": 227, "y": 220, "r": 40 },
       { "kind": "flipper", "x": 393, "y": 387, "r": 50 },
       { "kind": "tail", "x": 733, "y": 253, "r": 55 }
     ],

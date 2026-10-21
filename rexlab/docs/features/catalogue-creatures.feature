@@ -39,3 +39,18 @@ Feature: Creatures in the catalogue that are not dinosaurs
     Given the dinosaur list the app ships with
     Then every creature is a dinosaur, a flying reptile or a sea reptile
     And a dinosaur has a height, a flying reptile a wingspan and a sea reptile a length, and none has another
+
+  Scenario: The flying and sea reptiles play in some games
+    Then COMPARE weighs them against the dinosaurs, and asks no height of them
+    And SORT, FIND THE PAIR and DIG deal them among the dinosaurs
+    But none visits in CARE and none is built in SKELETONS
+
+  Scenario: SORT deals a reptile only where its answer is known
+    Then no flying or sea reptile is dealt on a legs board
+    And every one goes in NO HORNS
+    And a flying reptile's fuzz puts it in NOT KNOWN YET, and no sea reptile is dealt on a feathers board
+
+  Scenario: Look-alikes tell a reptile by its wings or flippers
+    Then a flying reptile looks like the other fliers and the winged dinosaurs
+    And a long-necked swimmer looks like the other long necks at sea, and a big-headed one like the other big heads
+    And in DIG a flier shows a WING and a swimmer a FLIPPER, both telling kinds

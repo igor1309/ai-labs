@@ -30,7 +30,7 @@ Feature: Dig: starting a round and the board
     Then a round of the dig game starts at once
     And I see the sand board, the picture's 4:3 shape, as large as fits beside what the level shows
     And I see a "HOME" button with a 🏠 symbol, away from the board
-    And I see a ⭐ count of the dinosaurs I have dug up, out of all of them, such as "4/42"
+    And I see a ⭐ count of the dinosaurs I have dug up, out of all of them, such as "4/52"
     But when stored progress cannot be read I see no count (dig-progress.feature)
 
   Scenario: The title names the game until the dinosaur is named

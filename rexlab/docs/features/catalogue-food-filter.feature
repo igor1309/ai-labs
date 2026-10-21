@@ -21,12 +21,12 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     Given I am on the list of every dinosaur
     When I tap "MEAT"
     Then "MEAT" is chosen and "ALL" is not
-    And I see only the 16 cards with the "MEAT" tag, in the order of the dinosaur list
+    And I see only the 26 cards with the "MEAT" tag, in the order of the dinosaur list
 
   Scenario: ALL shows every dinosaur again
     Given I chose "PLANTS"
     When I tap "ALL"
-    Then I see all 42 cards
+    Then I see all 52 cards
 
   Scenario: Tapping the chosen chip changes nothing
     Given I chose "BOTH"
@@ -43,7 +43,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     When I tap the card of Tyrannosaurus
     Then I see its page at "1 / 16"
     When I tap the ← button
-    Then I see the page of the last meat-eater in the list, at "16 / 16"
+    Then I see the page of the last meat-eater in the list, at "26 / 26"
     When I tap the → button twice, a second apart
     Then I see the page of Velociraptor, at "2 / 16"
 
@@ -56,7 +56,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
   Scenario: The list opens on ALL after HOME
     Given I chose "MEAT"
     When I tap "HOME" and open "ANCIENT REPTILES" again
-    Then "ALL" is chosen and I see all 42 cards
+    Then "ALL" is chosen and I see all 52 cards
 
   Scenario: A chip changes the list smoothly
     Given I am on the list of every dinosaur

@@ -34,9 +34,9 @@ Feature: Dig: the level switch on the reveal
     And the next round started from the "DIG" tile plays Explorer too
 
   Scenario: Choosing a level does not leave the reveal
-    Given I am on the reveal with "5/42"
+    Given I am on the reveal with "5/52"
     When I choose Paleontologist on the level switch
-    Then I still see the dinosaur and "5/42"
+    Then I still see the dinosaur and "5/52"
     And no round starts until I tap "DIG AGAIN"
 
   Scenario Outline: Choosing a level moves

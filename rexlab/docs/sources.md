@@ -15,6 +15,11 @@ trusted for that alone.
    https://ucmp.berkeley.edu
 5. Encyclopaedia Britannica, https://www.britannica.com
 
+The flying and sea reptiles (LAB-379) are checked against the same
+sources. Where none of them gives a mass, a peer-reviewed estimate is
+trusted for the mass alone: Witton 2008 for pterosaurs (Zitteliana B28),
+Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
+
 ## Rules
 
 - Height is hip height: from the ground to the top of the hip, the
@@ -47,6 +52,12 @@ trusted for that alone.
   bones are measured, not estimated, where there is one; a juvenile, or
   a femur too small for the trusted sources' length, is not used.
 - Hip heights are kept to two figures.
+- A flying reptile is measured by its wingspan and a sea reptile by its
+  length, nose to tail, in metres, as the sources give them; neither
+  has a hip height, nor a height to compare. A mass worked out from a
+  relative's is scaled by the cube of the size, or by the paper's own
+  equation where it gives one, and the References table shows the
+  working.
 - Mass is the live body mass, in kilograms. It is an estimate: a value
   is right when it lies within the range the sources give.
 - Where the sources disagree, use a value inside the range most of them
@@ -87,6 +98,11 @@ trusted for that alone.
   feathers and the meat-eaters and omnivores, the ones a fossil can
   answer for, so its NO FEATHERS means skin that shows scales, not a
   plant-eater merely drawn without feathers.
+- A flying or sea reptile's `legs` are `null`: none walked as a
+  dinosaur did on two legs or four. Its `horns` are `false`; a
+  pterosaur's crest is not a horn. A flier's `feathers` are `unknown`,
+  as its fuzz may or may not have been a kind of feather, and a
+  swimmer's are `null`, no question for that board.
 - Size is `big` only for a dinosaur of 3000 kg or more and `small` only
   for one of 500 kg or less, and only when no source's estimate crosses
   that line; it is `null` in between and when the estimates cross a line
@@ -125,6 +141,16 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `oviraptor` | 30 kg | NHM: 2 m, 20 kg; Britannica: 1.8 m, about 32 kg (70 lb) |
 | `edmontosaurus` | 3.4 t | NHM: 13 m, 3,400 kg; no other trusted source gives a mass |
 | `gallimimus` | 490 kg | NHM: 6 m, 490 kg; no other trusted source gives a mass |
+| `quetzalcoatlus` | 250 kg | NHM: about 11 m wingspan, up to 250 kg; AMNH: wingspan around 10 m, Texas; Witton 2008: 9.64 m, 259 kg |
+| `pteranodon` | 25 kg | AMNH: wingspan up to 6 m, fish, "winged and toothless"; UCMP: about 25 pounds; Witton 2008: 5.96 m, 36.7 kg |
+| `rhamphorhynchus` | 2 kg | NHM: largest wingspan 1.8 m; Witton 2008: 0.89 m, 0.26 kg, scaled to 1.8 m by his basal-pterosaur equation; fish: Hone and others 2015 |
+| `dimorphodon` | 3 kg | AMNH: wingspan up to 1.4 m, light skull, southern England; NHM: Mary Anning, 1828; Witton 2008: 1.01 m, 1.24 kg, scaled to 1.4 m |
+| `pterodactylus` | 500 g | Britannica: wingspan 50 cm to well over 1 m, Late Jurassic, Germany; NHM: the first pterosaur found; Witton 2008's pterodactyloid equation: 0.52 kg at 1 m |
+| `mosasaurus` | 10 t | NHM: 11–12 m likely, some say 17–18 m; around 10 t; fish, squid and sharks |
+| `elasmosaurus` | 2.3 t | NHM: 72 neck bones, neck over 7 m; Welles 1952: 10.3 m; Zhao 2026: Styxosaurus 11.28 m, 3,080 kg, cubed to 10.3 m |
+| `kronosaurus` | 11 t | Zhao 2026: 10.4 m, 11,396 kg, Queensland |
+| `plesiosaurus` | 200 kg | NHM: about 3.5 m, fish and crustaceans, Anning's skeleton; Zhao 2026: Seeleyosaurus 3.66 m, 199 kg |
+| `ophthalmosaurus` | 940 kg | Motani: 4.0 m, 930–950 kg; NHM: eyes over 22 cm across, live birth |
 
 ## Hip heights
 

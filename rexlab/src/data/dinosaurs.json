@@ -1027,8 +1027,8 @@
     },
     "lookAlike": "winged",
     "description": {
-      "en": "NOT A DINOSAUR! ONE OF THE BIGGEST FLYING ANIMALS EVER, AS BIG AS A SMALL PLANE.",
-      "ru": "НЕ ДИНОЗАВР! ОДНО ИЗ САМЫХ БОЛЬШИХ ЛЕТАЮЩИХ ЖИВОТНЫХ, РАЗМЕРОМ С МАЛЕНЬКИЙ САМОЛЁТ."
+      "en": "NOT A DINOSAUR! ONE OF THE BIGGEST FLIERS EVER. ITS WINGS WERE AS WIDE AS A SMALL PLANE'S.",
+      "ru": "НЕ ДИНОЗАВР! ОДНО ИЗ САМЫХ БОЛЬШИХ ЛЕТАЮЩИХ ЖИВОТНЫХ. КРЫЛЬЯ КАК У МАЛЕНЬКОГО САМОЛЁТА."
     }
   },
   {
@@ -1051,8 +1051,8 @@
     },
     "lookAlike": "winged",
     "description": {
-      "en": "NOT A DINOSAUR! IT HAD NO TEETH AND SCOOPED UP FISH FROM THE SEA.",
-      "ru": "НЕ ДИНОЗАВР! У НЕГО НЕ БЫЛО ЗУБОВ, И ОН ЛОВИЛ РЫБУ В МОРЕ."
+      "en": "NOT A DINOSAUR! ITS NAME MEANS WINGED AND TOOTHLESS. IT ATE FISH.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ИМЯ ЗНАЧИТ КРЫЛАТЫЙ И БЕЗЗУБЫЙ. ОН ЕЛ РЫБУ."
     }
   },
   {
@@ -1075,8 +1075,8 @@
     },
     "lookAlike": "winged",
     "description": {
-      "en": "NOT A DINOSAUR! ITS SHARP TEETH POINTED FORWARD TO CATCH FISH, AND IT HAD A LONG TAIL.",
-      "ru": "НЕ ДИНОЗАВР! ОСТРЫЕ ЗУБЫ ТОРЧАЛИ ВПЕРЁД, ЧТОБЫ ЛОВИТЬ РЫБУ, А ХВОСТ БЫЛ ДЛИННЫМ."
+      "en": "NOT A DINOSAUR! IT HAD SHARP TEETH FOR CATCHING FISH AND A LONG TAIL.",
+      "ru": "НЕ ДИНОЗАВР! У НЕГО БЫЛИ ОСТРЫЕ ЗУБЫ, ЧТОБЫ ЛОВИТЬ РЫБУ, И ДЛИННЫЙ ХВОСТ."
     }
   },
   {
@@ -1142,7 +1142,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false,
+      "feathers": null,
       "size": "big"
     },
     "lookAlike": "big-head-swimmer",
@@ -1166,7 +1166,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false,
+      "feathers": null,
       "size": null
     },
     "lookAlike": "long-neck-swimmer",
@@ -1190,7 +1190,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false,
+      "feathers": null,
       "size": "big"
     },
     "lookAlike": "big-head-swimmer",
@@ -1214,7 +1214,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false,
+      "feathers": null,
       "size": "small"
     },
     "lookAlike": "long-neck-swimmer",
@@ -1238,7 +1238,7 @@
     "traits": {
       "legs": null,
       "horns": false,
-      "feathers": false,
+      "feathers": null,
       "size": null
     },
     "lookAlike": "big-head-swimmer",

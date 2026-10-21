@@ -7660,6 +7660,10 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   color: #1d2742;
 }
 
+[data-theme="dark"] .dig-treasure-name {
+  background: #f2b24b;
+}
+
 [data-theme="dark"] .dig-chip {
   background: #222a3d;
 }
