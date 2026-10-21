@@ -2,15 +2,17 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
   When the list of every dinosaur changes layout with the window (an
   iPad turned between landscape and upright, catalogue-portrait.feature,
   or a tall window resized across a change in how many cards stand in a
-  row), "HOME", the chips and the list glide and resize from where they
-  stand to their new places together, and inside the list each card
-  slides to its new place, over the shared standard motion (240 ms,
-  easing out), as the home page does (turn-motion.feature). Words and
-  pictures keep their shape. Under reduced motion the old layout only
-  fades into the new, over 160 ms. Nothing jumps, goes blank, shimmers
-  again or rises in again; the chosen chip stays chosen. Until the
-  motion settles, taps, swipes and keys do nothing. A resize that keeps
-  how many cards stand in a row moves nothing.
+  row or how the chips stand: spaced, closed up or two by two), "HOME",
+  the chips and the list glide and resize from where they stand to
+  their new places together, and inside the list each card slides to
+  its new place, over the shared standard motion (240 ms, easing out).
+  Words and pictures keep their shape. Under reduced motion the old
+  layout only fades into the new, over 160 ms. Nothing jumps, goes
+  blank, shimmers again or rises in again; the chosen chip stays chosen.
+  Until the motion settles, taps, swipes and keys do nothing; a window
+  that changes again meanwhile moves each part on from where it is, as
+  turn-motion.feature tells. A resize in the same size class that
+  changes none of these moves nothing.
 
   Through any of these the list keeps what the child was looking at,
   judged from before the motion began. A list at its end stays at its
@@ -67,6 +69,7 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
     Examples:
       | from        | to          | moves                                                 |
       | 744 by 1133 | 820 by 1180 | the cards slide from two to a row to three            |
+      | 700 by 1000 | 744 by 1000 | the chips glide from two rows to one, the list with them |
       | 820 by 1180 | 834 by 1194 | the list follows the window with no glide or fade     |
 
   Scenario: Taps and keys during the motion do nothing

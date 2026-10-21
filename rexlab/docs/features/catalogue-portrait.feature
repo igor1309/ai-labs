@@ -17,11 +17,12 @@ Feature: The dinosaur catalogue in a tall window
   button, each food chip's symbols, word and count on one line at their
   landscape sizes. The four stand in one row, each food chip as wide as
   its content and the three sharing out equally what width the row has
-  left. Where the row is too narrow, the space in each food chip closes
-  up first, its padding to 14 pixels before the symbols and 8 after the
-  count, 8 between its parts, and 8 between the chips. Where even that
-  is too narrow, "ALL" and "MEAT" stand on the first row and "PLANTS" and
-  "BOTH" on the second, 12 pixels apart, at their landscape spacing,
+  left. Where the row is too narrow, every food chip closes up at once,
+  its padding to 14 pixels before the symbols and 8 after the count, 8
+  between symbols, word and count, and 8 between the chips. Where even
+  that is too narrow, "ALL" and "MEAT" stand on the first row and
+  "PLANTS" and "BOTH" on the second, 12 pixels between the rows and
+  between the chips, at their landscape spacing,
   "ALL" still round and each food chip growing to share its row the same
   way. Sizes hold to within a pixel.
 
@@ -47,7 +48,7 @@ Feature: The dinosaur catalogue in a tall window
     And a window of <width> by 1000 CSS pixels
     When I open "ANCIENT REPTILES"
     Then the chips are in <rows>, <spacing>, every word and count on one line, none cut or overlapping
-    And every chip is 56 pixels tall, "ALL" round, every word 20 pixels tall
+    And every chip is 56 pixels tall, "ALL" round, every word in 20-pixel type, every count in 17
     And every card keeps its name on one line, as large as on a 1024 by 768 landscape iPad or larger, and its height, weight and food tag in one row
 
     Examples:
@@ -63,13 +64,15 @@ Feature: The dinosaur catalogue in a tall window
     Given a window of 744 by 1133 CSS pixels
     When I open "ANCIENT REPTILES"
     Then the first two cards fade and rise in one after the other, and the rows below with the second
-    When the window becomes 820 by 1180 CSS pixels and I tap "PLANTS"
+    When the window becomes 820 by 1180 CSS pixels and, once the list settles, I tap "PLANTS"
     Then the first three cards rise in one after the other, and the rows below with the third
 
   Scenario: Choosing a food upright
     Given a window of 820 by 1180 CSS pixels on the list of every dinosaur
-    When I tap "MEAT", then "ALL"
-    Then I saw only the 26 meat-eaters' cards, three to a row, then all 52
+    When I tap "MEAT"
+    Then I see only the 26 meat-eaters' cards, three to a row
+    When I tap "ALL"
+    Then I see all 52 cards
 
   Scenario: A card opens its page upright, under the picture asking to turn
     Given a window of 820 by 1180 CSS pixels on the list of every dinosaur
