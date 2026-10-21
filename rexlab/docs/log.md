@@ -2,6 +2,7 @@
 
 ## 2026-10-21
 
+- Ten flying and sea reptiles join the catalogue, COMPARE, SORT, FIND THE PAIR and DIG: Quetzalcoatlus, Pteranodon, Rhamphorhynchus, Dimorphodon and Pterodactylus; Mosasaurus, Elasmosaurus, Kronosaurus, Plesiosaurus and Ophthalmosaurus, each page opening NOT A DINOSAUR. DIG tells them by a wing or a flipper, and its treasure name now takes the dark theme's amber (LAB-381, LAB-383).
 - The catalogue is ANCIENT REPTILES / ДРЕВНИЕ ЯЩЕРЫ and is ready for creatures that are not dinosaurs: a flying or sea reptile's page names its group over its name and gives its wingspan or length, laid along an arrow on its card; COMPARE weighs them but never asks which is taller, CARE never has them visit, and a weight under a kilogram reads in grams. SORT's prompt is SORT THEM ALL / РАЗЛОЖИ ВСЕХ and DIG's last card EVERYONE DUG UP / ВСЕ ОТКОПАНЫ (LAB-380).
 
 ## 2026-10-20

@@ -12,6 +12,7 @@ import {
   type Round
 } from "../src/quiz/round.ts";
 import { SHIPPED_DINOSAURS, seededRandom } from "./support.ts";
+import records from "../src/data/dinosaurs.json";
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 
@@ -108,11 +109,12 @@ describe("the shipped dinosaur list", () => {
     expect(new Set(pairs).size).toBeGreaterThanOrEqual(ROUND_LENGTH);
   });
 
-  it("names each dinosaur once, with positive mass and height", () => {
+  it("names each creature once, with positive mass, and a positive height for the dinosaurs alone", () => {
+    const tall = SHIPPED_DINOSAURS.filter(({ measures }) => measures.height !== undefined);
+
     expect(new Set(SHIPPED_DINOSAURS.map((d) => d.id)).size).toBe(SHIPPED_DINOSAURS.length);
-    for (const { measures } of SHIPPED_DINOSAURS) {
-      expect(measures.mass).toBeGreaterThan(0);
-      expect(measures.height).toBeGreaterThan(0);
-    }
+    expect(SHIPPED_DINOSAURS.filter(({ measures }) => !(measures.mass > 0))).toEqual([]);
+    expect(tall.map(({ id }) => id)).toEqual(records.filter(({ group }) => group === "dinosaur").map(({ id }) => id));
+    expect(tall.filter(({ measures }) => !((measures.height ?? 0) > 0))).toEqual([]);
   });
 });

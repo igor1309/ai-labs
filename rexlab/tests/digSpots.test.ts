@@ -16,6 +16,14 @@ const oneDinosaur = (spots: unknown, traits: unknown = []): DigFile => ({ rex: {
 const spot = (kind: string, x = 200, y = 200, r = 50) => ({ kind, x, y, r });
 
 describe("the dig data", () => {
+  it("tells every flying reptile by a wing and every sea reptile by a flipper", () => {
+    const telling = (group: string) => records.filter((record) => record.group === group).map(({ id }) => [id, (digFile as DigFile)[id]?.traits]);
+
+    expect(telling("flying-reptile").filter(([, traits]) => !(traits as string[]).includes("wing"))).toEqual([]);
+    expect(telling("sea-reptile").filter(([, traits]) => !(traits as string[]).includes("flipper"))).toEqual([]);
+    expect(telling("dinosaur").filter(([, traits]) => (traits as string[]).includes("flipper"))).toEqual([]);
+  });
+
   it("gives every shipped dinosaur three to five spots, and names no other dinosaur", () => {
     expect(DUG.map(({ id }) => id)).toEqual(IDS);
     for (const { id, spots } of DUG) expect([id, spots.length >= 3 && spots.length <= 5]).toEqual([id, true]);
@@ -86,7 +94,7 @@ describe("reading the dig file", () => {
     ["two spots", [spot("eye"), spot("foot")], /3 to 5 spots/],
     ["six spots", ["eye", "foot", "tail", "claw", "horn", "beak"].map((kind) => spot(kind)), /3 to 5 spots/],
     ["a kind twice", [spot("eye"), spot("eye"), spot("tail")], /no kind of its own/],
-    ["an unknown kind", [spot("eye"), spot("wing"), spot("tail")], /no kind of its own/],
+    ["an unknown kind", [spot("eye"), spot("antenna"), spot("tail")], /no kind of its own/],
     ["a spot past the frame", [spot("eye", 780), spot("foot"), spot("tail")], /frame/]
   ])("fails on %s", (_, spots, message) => {
     expect(() => readDig(["rex"], oneDinosaur(spots))).toThrow(message);

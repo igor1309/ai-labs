@@ -41,7 +41,7 @@ Feature: Dig: stored progress
   Scenario Outline: Unusable stored progress counts as none
     Given the stored progress is <state>
     When I dig up a dinosaur
-    Then I see a first best score celebration and "1/42"
+    Then I see a first best score celebration and "1/52"
     And the stored progress is replaced by a readable record
 
     Examples:
@@ -58,7 +58,7 @@ Feature: Dig: stored progress
     Given I have dug up 4 dinosaurs
     And the browser can read stored progress but not save it
     When I dig up a new one
-    Then I see a new best score celebration and "5/42"
+    Then I see a new best score celebration and "5/52"
     And while the app stays open the dinosaur counts as dug up
     But after reloading the stored count is 4
 

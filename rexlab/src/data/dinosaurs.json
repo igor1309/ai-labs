@@ -1006,5 +1006,245 @@
       "en": "A COUSIN OF TRICERATOPS WITH A VERY LONG, WIDE FRILL. IT MAY HAVE SHOWN IT OFF IN BRIGHT COLOURS.",
       "ru": "РОДСТВЕННИК ТРИЦЕРАТОПСА С ОЧЕНЬ ДЛИННЫМ И ШИРОКИМ ВОРОТНИКОМ. ВОЗМОЖНО, ОН БЫЛ ЯРКО ОКРАШЕН."
     }
+  },
+  {
+    "id": "quetzalcoatlus",
+    "name": {
+      "en": "Quetzalcoatlus",
+      "ru": "Кетцалькоатль"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 250,
+      "wingspanMeters": 10
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! ONE OF THE BIGGEST FLIERS EVER. ITS WINGS WERE AS WIDE AS A SMALL PLANE'S.",
+      "ru": "НЕ ДИНОЗАВР! ОДНО ИЗ САМЫХ БОЛЬШИХ ЛЕТАЮЩИХ ЖИВОТНЫХ. КРЫЛЬЯ КАК У МАЛЕНЬКОГО САМОЛЁТА."
+    }
+  },
+  {
+    "id": "pteranodon",
+    "name": {
+      "en": "Pteranodon",
+      "ru": "Птеранодон"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 25,
+      "wingspanMeters": 6
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS NAME MEANS WINGED AND TOOTHLESS. IT ATE FISH.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ИМЯ ЗНАЧИТ КРЫЛАТЫЙ И БЕЗЗУБЫЙ. ОН ЕЛ РЫБУ."
+    }
+  },
+  {
+    "id": "rhamphorhynchus",
+    "name": {
+      "en": "Rhamphorhynchus",
+      "ru": "Рамфоринх"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 2,
+      "wingspanMeters": 1.8
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! IT HAD SHARP TEETH FOR CATCHING FISH AND A LONG TAIL.",
+      "ru": "НЕ ДИНОЗАВР! У НЕГО БЫЛИ ОСТРЫЕ ЗУБЫ, ЧТОБЫ ЛОВИТЬ РЫБУ, И ДЛИННЫЙ ХВОСТ."
+    }
+  },
+  {
+    "id": "dimorphodon",
+    "name": {
+      "en": "Dimorphodon",
+      "ru": "Диморфодон"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 3,
+      "wingspanMeters": 1.4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! MARY ANNING FOUND IT IN ENGLAND. HOLES IN ITS BIG HEAD KEPT IT LIGHT.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО НАШЛА МЭРИ ЭННИНГ В АНГЛИИ. ДЫРЫ В БОЛЬШОЙ ГОЛОВЕ ДЕЛАЛИ ЕЁ ЛЁГКОЙ."
+    }
+  },
+  {
+    "id": "pterodactylus",
+    "name": {
+      "en": "Pterodactylus",
+      "ru": "Птеродактиль"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 0.5,
+      "wingspanMeters": 1
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! THE FIRST FLYING REPTILE EVER FOUND. ITS WINGS WERE AS WIDE AS YOUR ARMS.",
+      "ru": "НЕ ДИНОЗАВР! ПЕРВЫЙ НАЙДЕННЫЙ ЛЕТАЮЩИЙ ЯЩЕР. ЕГО КРЫЛЬЯ БЫЛИ ШИРИНОЙ С ТВОИ РУКИ."
+    }
+  },
+  {
+    "id": "mosasaurus",
+    "name": {
+      "en": "Mosasaurus",
+      "ru": "Мозазавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 10000,
+      "lengthMeters": 12
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR, BUT A GIANT SEA LIZARD. IT ATE FISH, SQUID AND EVEN SHARKS.",
+      "ru": "НЕ ДИНОЗАВР, А ОГРОМНАЯ МОРСКАЯ ЯЩЕРИЦА. ЕЛ РЫБУ, КАЛЬМАРОВ И ДАЖЕ АКУЛ."
+    }
+  },
+  {
+    "id": "elasmosaurus",
+    "name": {
+      "en": "Elasmosaurus",
+      "ru": "Эласмозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 2300,
+      "lengthMeters": 10.3
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": null
+    },
+    "lookAlike": "long-neck-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS NECK WAS LONGER THAN A CAR, WITH 72 BONES. YOURS HAS 7.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ШЕЯ БЫЛА ДЛИННЕЕ МАШИНЫ, В НЕЙ 72 КОСТИ. А В ТВОЕЙ — 7."
+    }
+  },
+  {
+    "id": "kronosaurus",
+    "name": {
+      "en": "Kronosaurus",
+      "ru": "Кронозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 11000,
+      "lengthMeters": 10.4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! A SEA HUNTER FROM AUSTRALIA WITH A HUGE HEAD AND FOUR BIG FLIPPERS.",
+      "ru": "НЕ ДИНОЗАВР! МОРСКОЙ ОХОТНИК ИЗ АВСТРАЛИИ С ОГРОМНОЙ ГОЛОВОЙ И ЧЕТЫРЬМЯ ЛАСТАМИ."
+    }
+  },
+  {
+    "id": "plesiosaurus",
+    "name": {
+      "en": "Plesiosaurus",
+      "ru": "Плезиозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 200,
+      "lengthMeters": 3.5
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
+    "lookAlike": "long-neck-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! MARY ANNING FOUND THE FIRST WHOLE ONE. IT SWAM WITH FOUR FLIPPERS.",
+      "ru": "НЕ ДИНОЗАВР! ПЕРВОГО ЦЕЛОГО НАШЛА МЭРИ ЭННИНГ. ОН ПЛАВАЛ С ПОМОЩЬЮ ЧЕТЫРЁХ ЛАСТ."
+    }
+  },
+  {
+    "id": "ophthalmosaurus",
+    "name": {
+      "en": "Ophthalmosaurus",
+      "ru": "Офтальмозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 940,
+      "lengthMeters": 4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": null
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS EYES WERE AS BIG AS PLATES, AND ITS BABIES WERE BORN IN THE SEA.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ГЛАЗА БЫЛИ С ТАРЕЛКУ, А ДЕТЁНЫШИ РОЖДАЛИСЬ ПРЯМО В МОРЕ."
+    }
   }
 ]

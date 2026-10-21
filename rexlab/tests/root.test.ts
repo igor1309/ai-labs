@@ -130,11 +130,19 @@ describe("the app in a browser", () => {
     ]);
   });
 
-  it("lets every dinosaur of the shipped list visit, with its food type", () => {
-    const { visitors, dinosaurs } = appProps(browser());
+  it("lets every dinosaur of the shipped list visit, and no flying or sea reptile, with its food type", () => {
+    const { visitors, catalogue } = appProps(browser());
 
-    expect(visitors.map(({ id }) => id)).toEqual(dinosaurs.map(({ id }) => id));
+    expect(visitors.map(({ id }) => id)).toEqual(catalogue.filter(({ group }) => group === "dinosaur").map(({ id }) => id));
     expect(visitors.find(({ id }) => id === "tyrannosaurus")?.diet).toBe("meat");
+  });
+
+  it("builds no flying or sea reptile in SKELETONS", () => {
+    const { skeletons, catalogue } = appProps(browser());
+    const reptiles = catalogue.filter(({ group }) => group !== "dinosaur").map(({ id }) => id);
+
+    expect(reptiles).toHaveLength(10);
+    expect(skeletons.filter(({ id }) => reptiles.includes(id))).toEqual([]);
   });
 
   it("finds each care picture among the shipped files", () => {
