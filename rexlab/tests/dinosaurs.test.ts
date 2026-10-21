@@ -54,15 +54,15 @@ describe("readDinosaurs", () => {
     ]);
   });
 
-  it("reads only the mass of a creature that is no dinosaur, as none is measured standing", () => {
-    expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000 }]);
+  it("reads a sea reptile's length but no flying reptile length", () => {
+    expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000, length: 12 }]);
   });
 
-  it("reads a dinosaur's hip height as its size when its length is also known", () => {
+  it("reads a dinosaur's length separately from its hip height", () => {
     const record = { ...STEGOSAURUS, attributes: { massKg: 5000, heightMeters: 4, lengthMeters: 9 } };
 
     expect(readDinosaurs([record])).toEqual([
-      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4 } }
+      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4, length: 9 } }
     ]);
     expect(readCatalogue([record]).map(({ size }) => size)).toEqual([{ measure: "height", metres: 4 }]);
   });
@@ -313,12 +313,46 @@ describe("the shipped dinosaur list", () => {
     ["apatosaurus", 21],
     ["mamenchisaurus", 22],
     ["amargasaurus", 12],
-    ["plateosaurus", 7]
+    ["plateosaurus", 7],
+    ["parasaurolophus", 9],
+    ["iguanodon", 10],
+    ["edmontosaurus", 13],
+    ["maiasaura", 9],
+    ["corythosaurus", 10],
+    ["triceratops", 9],
+    ["protoceratops", 1.8],
+    ["psittacosaurus", 2],
+    ["styracosaurus", 5.5],
+    ["chasmosaurus", 5],
+    ["stegosaurus", 8.5],
+    ["kentrosaurus", 5],
+    ["ankylosaurus", 8],
+    ["pachycephalosaurus", 3],
+    ["spinosaurus", 14],
+    ["velociraptor", 1.8],
+    ["deinonychus", 3.4],
+    ["utahraptor", 5.5],
+    ["troodon", 2.4],
+    ["compsognathus", 0.7],
+    ["coelophysis", 2],
+    ["heterodontosaurus", 1.2],
+    ["gallimimus", 6],
+    ["oviraptor", 2],
+    ["microraptor", 0.8],
+    ["archaeopteryx", 0.5],
+    ["therizinosaurus", 10]
   ] as const)("keeps the %s's positive nose-to-tail length at %s m", (id, length) => {
     const value = records.find((record) => record.id === id)?.attributes.lengthMeters;
 
     expect(value).toBe(length);
     expect(value).toBeGreaterThan(0);
+  });
+
+  it("gives every shipped dinosaur a positive nose-to-tail length", () => {
+    for (const { id, attributes } of dinosaurRecords) {
+      expect({ id, length: attributes.lengthMeters }).toEqual({ id, length: expect.any(Number) });
+      expect(attributes.lengthMeters).toBeGreaterThan(0);
+    }
   });
 
   // Each height is the hip height docs/sources.md works out from the leg

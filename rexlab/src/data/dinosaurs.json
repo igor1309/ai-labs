@@ -33,6 +33,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.7,
+      "lengthMeters": 9,
       "massKg": 7000
     },
     "diet": "plants",
@@ -57,6 +58,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
+      "lengthMeters": 1.8,
       "massKg": 15
     },
     "diet": "meat",
@@ -106,6 +108,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.5,
+      "lengthMeters": 8.5,
       "massKg": 2700
     },
     "diet": "plants",
@@ -130,6 +133,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
+      "lengthMeters": 8,
       "massKg": 6000
     },
     "diet": "plants",
@@ -154,6 +158,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.6,
+      "lengthMeters": 14,
       "massKg": 7400
     },
     "diet": "meat",
@@ -203,6 +208,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
+      "lengthMeters": 9,
       "massKg": 3500
     },
     "diet": "plants",
@@ -227,6 +233,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
+      "lengthMeters": 3,
       "massKg": 450
     },
     "diet": "plants",
@@ -251,6 +258,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
+      "lengthMeters": 10,
       "massKg": 4000
     },
     "diet": "plants",
@@ -275,6 +283,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.32,
+      "lengthMeters": 0.7,
       "massKg": 3
     },
     "diet": "meat",
@@ -299,6 +308,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.9,
+      "lengthMeters": 6,
       "massKg": 490
     },
     "diet": "both",
@@ -373,6 +383,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
+      "lengthMeters": 0.8,
       "massKg": 1
     },
     "diet": "meat",
@@ -397,6 +408,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
+      "lengthMeters": 1.8,
       "massKg": 180
     },
     "diet": "plants",
@@ -496,6 +508,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 3,
+      "lengthMeters": 10,
       "massKg": 5000
     },
     "diet": "plants",
@@ -520,6 +533,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
+      "lengthMeters": 13,
       "massKg": 3400
     },
     "diet": "plants",
@@ -544,6 +558,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.87,
+      "lengthMeters": 3.4,
       "massKg": 75
     },
     "diet": "meat",
@@ -568,6 +583,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
+      "lengthMeters": 2,
       "massKg": 30
     },
     "diet": "both",
@@ -592,6 +608,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
+      "lengthMeters": 2,
       "massKg": 20
     },
     "diet": "meat",
@@ -616,6 +633,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.52,
+      "lengthMeters": 2,
       "massKg": 50
     },
     "diet": "plants",
@@ -640,6 +658,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
+      "lengthMeters": 5.5,
       "massKg": 2700
     },
     "diet": "plants",
@@ -664,6 +683,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
+      "lengthMeters": 5,
       "massKg": 1000
     },
     "diet": "plants",
@@ -763,6 +783,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
+      "lengthMeters": 5.5,
       "massKg": 350
     },
     "diet": "meat",
@@ -812,6 +833,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.16,
+      "lengthMeters": 0.5,
       "massKg": 1
     },
     "diet": "meat",
@@ -836,6 +858,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.88,
+      "lengthMeters": 2.4,
       "massKg": 50
     },
     "diet": "both",
@@ -860,6 +883,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
+      "lengthMeters": 1.2,
       "massKg": 2
     },
     "diet": "plants",
@@ -959,6 +983,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.1,
+      "lengthMeters": 9,
       "massKg": 3000
     },
     "diet": "plants",
@@ -983,6 +1008,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
+      "lengthMeters": 10,
       "massKg": 4000
     },
     "diet": "plants",
@@ -1007,6 +1033,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
+      "lengthMeters": 5,
       "massKg": 2500
     },
     "diet": "plants",

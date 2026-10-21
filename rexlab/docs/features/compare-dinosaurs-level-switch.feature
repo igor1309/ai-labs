@@ -6,9 +6,10 @@ Feature: Compare dinosaurs quiz: the level switch and its progress
   game (age-level-choice.feature), kept in the quiz's progress with each
   level's own best. Hatchling and Explorer still ask today's questions, WHO IS
   HEAVIER? and WHO IS TALLER? at a gap of 1.5 times or more
-  (compare-dinosaurs-start.feature); Paleontologist also asks WHO IS
-  LIGHTER? and WHO IS SHORTER? (compare-dinosaurs-lighter.feature and
-  compare-dinosaurs-shorter.feature). The levels' own questions
+  (compare-dinosaurs-start.feature); Explorer also asks WHO IS LONGER?
+  (compare-dinosaurs-longer.feature), and Paleontologist also asks WHO IS
+  LIGHTER?, WHO IS SHORTER? and WHO IS LONGER? (compare-dinosaurs-lighter.feature,
+  compare-dinosaurs-shorter.feature and compare-dinosaurs-longer.feature). The levels' own questions
   come in their own issues (docs/age-levels.md). It has no level offer.
 
   Background:

@@ -9,6 +9,7 @@ import {
   isFair,
   measureOf,
   pairKey,
+  questionKind,
   questionKindsForLevel,
   type Dinosaur,
   type Round
@@ -20,8 +21,8 @@ const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 
 const questionKeys = (round: Round) => round.map((q) => `${q.attribute}:${pairKey(q.left, q.right)}`);
 
-function dinosaur(id: string, mass: number, height: number): Dinosaur {
-  return { id, name: { en: id, ru: id }, measures: { mass, height } };
+function dinosaur(id: string, mass: number, height: number, length?: number): Dinosaur {
+  return { id, name: { en: id, ru: id }, measures: { mass, height, ...(length === undefined ? {} : { length }) } };
 }
 
 describe("generateRound", () => {
@@ -57,30 +58,43 @@ describe("generateRound", () => {
     const asked = new Set<string>();
     for (const seed of SEEDS) {
       if (asked.size === ATTRIBUTES.length) break;
-      for (const { attribute } of generateRound(SHIPPED_DINOSAURS, seededRandom(seed))) asked.add(attribute);
+      for (const { attribute } of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "paleontologist")) asked.add(attribute);
     }
 
     expect([...asked].sort()).toEqual([...ATTRIBUTES].sort());
   });
 
-  it("lets Paleontologist rounds mix all four question kinds", () => {
+  it("lets Paleontologist rounds mix all five question kinds", () => {
     const asked = new Set<string>();
     for (const seed of SEEDS) {
       for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "paleontologist")) {
         asked.add(question.kind ?? "");
       }
-      if (asked.size === 4) break;
+      if (asked.size === 5) break;
     }
 
-    expect([...asked].sort()).toEqual(["heavier", "lighter", "shorter", "taller"]);
-    expect(questionKindsForLevel("paleontologist")).toEqual(["heavier", "taller", "lighter", "shorter"]);
+    expect([...asked].sort()).toEqual(["heavier", "lighter", "longer", "shorter", "taller"]);
+    expect(questionKindsForLevel("paleontologist")).toEqual(["heavier", "taller", "lighter", "shorter", "longer"]);
   });
 
-  it.each(["hatchling", "explorer"] as const)("keeps %s rounds to today's two kinds", (level) => {
+  it("lets Explorer rounds mix longer with today's two kinds", () => {
+    const asked = new Set<string>();
+    for (const seed of SEEDS) {
+      for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "explorer")) asked.add(question.kind ?? "");
+      if (asked.size === 3) break;
+    }
+
+    expect([...asked].sort()).toEqual(["heavier", "longer", "taller"]);
+    expect(questionKindsForLevel("explorer")).toEqual(["heavier", "taller", "longer"]);
+  });
+
+  it("keeps Hatchling rounds to today's two kinds", () => {
+    const level = "hatchling" as const;
     const kinds = new Set(generateRound(SHIPPED_DINOSAURS, seededRandom(1), [], level).map((question) => question.kind));
 
     expect(kinds).not.toContain("lighter");
     expect(kinds).not.toContain("shorter");
+    expect(kinds).not.toContain("longer");
     expect([...kinds].sort()).toEqual(["heavier", "taller"]);
   });
 
@@ -149,6 +163,41 @@ describe("shorter questions", () => {
   });
 });
 
+describe("longer questions", () => {
+  it("use a fair length pair and make the longer creature the right answer", () => {
+    const short = dinosaur("short", 100, 2, 4);
+    const long = dinosaur("long", 150, 3, 8);
+    const question = { kind: "longer" as const, attribute: "length" as const, left: short, right: long };
+
+    expect(isFair(short, long, "length")).toBe(true);
+    expect(correctOf(question)).toBe(long);
+    expect(measureOf(long, "length")).toBeGreaterThanOrEqual(FAIR_RATIO * measureOf(short, "length"));
+    expect(questionKind({ attribute: "length", left: short, right: long })).toBe("longer");
+  });
+
+  // Every LONGER question is drawn from the fair length pairs, so the pool
+  // is checked whole and a few rounds show their questions come from it.
+  it("pairs only fair lengths, never a flying reptile", () => {
+    const pairs = fairPairs(SHIPPED_DINOSAURS, "length");
+    const flying = new Set(records.filter(({ group }) => group === "flying-reptile").map(({ id }) => id));
+
+    expect(pairs.length).toBeGreaterThanOrEqual(ROUND_LENGTH);
+    expect(pairs.filter(([a, b]) => flying.has(a.id) || flying.has(b.id))).toEqual([]);
+    for (const [a, b] of pairs) {
+      const [x, y] = [measureOf(a, "length"), measureOf(b, "length")];
+      expect(Math.max(x, y)).toBeGreaterThanOrEqual(FAIR_RATIO * Math.min(x, y));
+    }
+  });
+
+  it.each(["explorer", "paleontologist"] as const)("asks %s's LONGER questions of the fair length pairs alone", (level) => {
+    const pool = new Set(fairPairs(SHIPPED_DINOSAURS, "length").map(([a, b]) => pairKey(a, b)));
+    for (const seed of SEEDS.slice(0, 10)) {
+      const longer = generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], level).filter(({ kind }) => kind === "longer");
+      expect(longer.filter((question) => question.attribute !== "length" || !pool.has(pairKey(question.left, question.right)))).toEqual([]);
+    }
+  });
+});
+
 describe("the shipped dinosaur list", () => {
   it.each(ATTRIBUTES)("holds at least 10 different fair pairs for %s", (attribute) => {
     const pairs = fairPairs(SHIPPED_DINOSAURS, attribute).map(([a, b]) => pairKey(a, b));
@@ -156,12 +205,18 @@ describe("the shipped dinosaur list", () => {
     expect(new Set(pairs).size).toBeGreaterThanOrEqual(ROUND_LENGTH);
   });
 
-  it("names each creature once, with positive mass, and a positive height for the dinosaurs alone", () => {
+  it("names each creature once, with positive mass and a positive height for the dinosaurs alone", () => {
     const tall = SHIPPED_DINOSAURS.filter(({ measures }) => measures.height !== undefined);
 
     expect(new Set(SHIPPED_DINOSAURS.map((d) => d.id)).size).toBe(SHIPPED_DINOSAURS.length);
     expect(SHIPPED_DINOSAURS.filter(({ measures }) => !(measures.mass > 0))).toEqual([]);
     expect(tall.map(({ id }) => id)).toEqual(records.filter(({ group }) => group === "dinosaur").map(({ id }) => id));
     expect(tall.filter(({ measures }) => !((measures.height ?? 0) > 0))).toEqual([]);
+  });
+
+  it("has at least ten fair length pairs and no length on flying reptiles", () => {
+    const lengths = SHIPPED_DINOSAURS.filter(({ measures }) => measures.length !== undefined);
+    expect(fairPairs(SHIPPED_DINOSAURS, "length").length).toBeGreaterThanOrEqual(ROUND_LENGTH);
+    expect(lengths.some(({ id }) => records.find((record) => record.id === id)?.group === "flying-reptile")).toBe(false);
   });
 });
