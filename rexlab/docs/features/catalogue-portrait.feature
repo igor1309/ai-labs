@@ -6,9 +6,9 @@ Feature: The dinosaur catalogue in a tall window
   A row holds as many cards, up to four, as keep each card at least as
   wide as on a 1024 by 768 landscape iPad, 213 CSS pixels, worked out
   from the window's width less its side insets and the padding (a
-  scrollbar that takes room narrows the cards, never their count), so a name is
-  never smaller than there: fewer cards to a row rather than smaller
-  names. The padding, the gaps and the cards' look keep their landscape
+  scrollbar that takes room narrows the cards, never their count), so
+  a name is never smaller than there: fewer cards to a row rather than
+  smaller names. The padding, the gaps and the cards' look keep their landscape
   sizes. The rest is as catalogue.feature and
   catalogue-food-filter.feature tell; a turn is in
   catalogue-turn.feature. A tall-narrow window keeps the picture asking
@@ -19,7 +19,8 @@ Feature: The dinosaur catalogue in a tall window
   button, each food chip's symbols, word and count on one line at their
   landscape sizes. The four stand in one row, each food chip as wide as
   its content and the three sharing out equally what width the row has
-  left, its symbols, word and count centred in it. Where the row is too narrow, every food chip closes up at once,
+  left, its symbols, word and count centred in it. Where the row is too
+  narrow, every food chip closes up at once,
   its padding to 14 pixels before the symbols and 8 after the count, 8
   between symbols, word and count, and 8 between the chips. Where even
   that is too narrow, "ALL" and "MEAT" stand on the first row and
