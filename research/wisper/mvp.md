@@ -1,7 +1,7 @@
 # MVP draft
 
-Status: draft, not decided. An ADR follows once v1's open questions are
-answered.
+Status: draft. v1's architecture is decided in
+[adr-001-v1-architecture.md](adr-001-v1-architecture.md).
 
 ## Shape
 

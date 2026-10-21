@@ -10,6 +10,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
 | [mvp.md](mvp.md) | Draft MVP: our own native app |
+| [adr-001-v1-architecture.md](adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [naming-prompt-round-2.md](naming-prompt-round-2.md) | Second naming round, built on `prompts/` |
