@@ -1,5 +1,5 @@
 Feature: Compare dinosaurs quiz: starting a round and asking
-  A child picks which of two dinosaurs is heavier, taller or lighter,
+  A child picks which of two dinosaurs is heavier, taller, lighter or shorter,
   ten questions per round, and tries to beat their best score.
   home-tiles.feature tells how the games' tiles stand and scroll, and
   home-featured-card.feature how the large card features a game.

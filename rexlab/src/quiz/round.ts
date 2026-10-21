@@ -5,9 +5,9 @@ export type Attribute = "mass" | "height";
 
 export const ATTRIBUTES: readonly Attribute[] = ["mass", "height"];
 
-export type QuestionKind = "heavier" | "taller" | "lighter";
+export type QuestionKind = "heavier" | "taller" | "lighter" | "shorter";
 
-export const QUESTION_KINDS: readonly QuestionKind[] = ["heavier", "taller", "lighter"];
+export const QUESTION_KINDS: readonly QuestionKind[] = ["heavier", "taller", "lighter", "shorter"];
 
 const KINDS_BY_LEVEL: Record<QuizLevel, readonly QuestionKind[]> = {
   hatchling: ["heavier", "taller"],
@@ -20,7 +20,7 @@ export function questionKindsForLevel(level: QuizLevel): readonly QuestionKind[]
 }
 
 export function attributeOf(kind: QuestionKind): Attribute {
-  return kind === "taller" ? "height" : "mass";
+  return kind === "taller" || kind === "shorter" ? "height" : "mass";
 }
 
 export type Dinosaur = {
@@ -69,7 +69,7 @@ export function measureOf(dinosaur: Dinosaur, attribute: Attribute): number {
 }
 
 // A fair pair's values are never equal, so one dinosaur is always the
-// larger; LIGHTER questions choose the other one as their answer.
+// larger; LIGHTER and SHORTER questions choose the other one as their answer.
 export function largerOf({ attribute, left, right }: Question): Dinosaur {
   return measureOf(left, attribute) > measureOf(right, attribute) ? left : right;
 }
@@ -79,7 +79,8 @@ export function questionKind(question: Question): QuestionKind {
 }
 
 export function correctOf(question: Question): Dinosaur {
-  return questionKind(question) === "lighter"
+  const kind = questionKind(question);
+  return kind === "lighter" || kind === "shorter"
     ? (measureOf(question.left, question.attribute) < measureOf(question.right, question.attribute) ? question.left : question.right)
     : largerOf(question);
 }
