@@ -11,6 +11,9 @@ spike that tested Parakeet v3 live recognition lives with the research.
 | Path | What it holds |
 |---|---|
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
-| [../research/wisper/](../research/wisper/) | Research, MVP plan, ADR-001, naming and design (moving into `docs/`) |
+| [docs/adr-001-v1-architecture.md](docs/adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
+| [docs/audelin-naming-brief.md](docs/audelin-naming-brief.md) | The name: Audelin, CLI `audelin`, data in `~/.audelin` |
+| [docs/design/README.md](docs/design/README.md) | Glass Ledger design: tokens, components, Screens 1–8 in `visual-language.pen` |
+| [../research/wisper/](../research/wisper/) | Research and MVP plan (moving into `docs/research/`) |
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.

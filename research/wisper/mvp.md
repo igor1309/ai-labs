@@ -1,7 +1,7 @@
 # MVP draft
 
 Status: draft. v1's architecture is decided in
-[adr-001-v1-architecture.md](adr-001-v1-architecture.md).
+[adr-001-v1-architecture.md](../../audelin/docs/adr-001-v1-architecture.md).
 
 ## Shape
 
@@ -64,7 +64,7 @@ most audio a damaged file can lose, not a latency setting.
 Code structure (owner, 2026-10-21): one app for v1, but highly modular,
 following the owner's iFora `swift-vortex` package: small targets, each
 feature split into Core, adapters and UI, each with tests. See
-[ADR-001](adr-001-v1-architecture.md).
+[ADR-001](../../audelin/docs/adr-001-v1-architecture.md).
 
 Audio after a call (owner, 2026-10-21): kept as one compact stereo file (mic
 left, call right; Amanu's format, ~55 MB per hour) and deleted automatically
@@ -83,7 +83,7 @@ first launch opens setup and nothing else works until an engine is chosen. If
 the chosen engine's model is missing later, the app says so at launch, not
 after a call. This gate arrives with the final pass in v3; v1 setup asks only
 for the calls folder and the live model (2026-10-21,
-[ADR-001](adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+[ADR-001](../../audelin/docs/adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
 
