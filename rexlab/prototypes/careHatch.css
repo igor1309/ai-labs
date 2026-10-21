@@ -157,19 +157,22 @@ button {
   letter-spacing: 0.02em;
 }
 
+/* Each creature is placed by the page: one in the middle for a
+   Hatchling, twins side by side for an Explorer. The page also sets its
+   size, from half to full, and where its head is, in the creature's own
+   pixels: food goes there and words come from there. */
 .hatch-creature {
   position: absolute;
-  left: 184px;
-  top: 110px;
-  width: 600px;
-  height: 460px;
+  --size: 1;
+  --head-x: 50%;
+  --head-y: 30%;
 }
 
 /* The egg cracks a little more with each tap. */
 .hatch-egg {
   position: absolute;
-  left: 190px;
-  top: 150px;
+  left: calc(50% - 110px);
+  top: calc(100% - 310px);
   width: 220px;
   height: 290px;
   border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
@@ -196,7 +199,13 @@ button {
   width: 160px;
   height: 28px;
   opacity: 0;
-  background: linear-gradient(135deg, transparent 45%, #6b5a3a 46% 54%, transparent 55%) 0 0 / 40px 28px repeat-x;
+  background: linear-gradient(
+      135deg,
+      transparent 45%,
+      #6b5a3a 46% 54%,
+      transparent 55%
+    )
+    0 0 / 40px 28px repeat-x;
 }
 
 .hatch-creature[data-taps="1"] .hatch-egg::after {
@@ -229,7 +238,7 @@ button {
   animation: none;
 }
 
-.hatch-stage[data-reaction="wobble"] .hatch-egg {
+.hatch-creature[data-reaction="wobble"] .hatch-egg {
   animation: wobble 420ms var(--ease-out);
 }
 
@@ -242,29 +251,12 @@ button {
   }
 }
 
-/* The baby grows from half its full size, one step a met want. */
 .hatch-baby {
   position: absolute;
   inset: 0;
   transform-origin: 50% 100%;
-  scale: 0.5;
+  scale: var(--size);
   transition: scale 700ms var(--ease-overshoot);
-}
-
-.hatch-creature[data-grown="1"] .hatch-baby {
-  scale: 0.62;
-}
-
-.hatch-creature[data-grown="2"] .hatch-baby {
-  scale: 0.75;
-}
-
-.hatch-creature[data-grown="3"] .hatch-baby {
-  scale: 0.87;
-}
-
-.hatch-creature[data-grown="4"] .hatch-baby {
-  scale: 1;
 }
 
 .hatch-baby-picture,
@@ -284,36 +276,7 @@ button {
   pointer-events: none;
 }
 
-/* Where the baby's head is at each size, in stage pixels: the pictures'
-   heads sit about a fifth in from their edge and a third down, and the
-   baby grows from the middle of its feet. Food goes there and words
-   come from there. */
-.hatch-stage {
-  --head-x: 574px;
-  --head-y: 409px;
-}
-
-.hatch-stage[data-grown="1"] {
-  --head-x: 596px;
-  --head-y: 370px;
-}
-
-.hatch-stage[data-grown="2"] {
-  --head-x: 619px;
-  --head-y: 328px;
-}
-
-.hatch-stage[data-grown="3"] {
-  --head-x: 641px;
-  --head-y: 290px;
-}
-
-.hatch-stage[data-grown="4"] {
-  --head-x: 664px;
-  --head-y: 248px;
-}
-
-.hatch-stage[data-reaction="hatch"] .hatch-baby {
+.hatch-creature[data-reaction="hatch"] .hatch-baby {
   animation: hatch 600ms var(--ease-overshoot) both;
 }
 
@@ -391,7 +354,8 @@ button {
 
 @keyframes drift {
   50% {
-    translate: calc(10px * var(--motion-amount)) calc(-14px * var(--motion-amount));
+    translate: calc(10px * var(--motion-amount))
+      calc(-14px * var(--motion-amount));
     opacity: 0.6;
   }
 }
@@ -406,8 +370,8 @@ button {
 }
 
 .hatch-empty-bowl {
-  left: calc(var(--head-x) - 184px - 20px);
-  top: 380px;
+  left: calc(var(--head-x) - 20px);
+  top: calc(100% - 80px);
   width: 150px;
   height: 90px;
   object-fit: contain;
@@ -446,8 +410,8 @@ button {
 }
 
 .hatch-sweat {
-  left: calc(var(--head-x) - 184px - 30px);
-  top: calc(var(--head-y) - 110px - 80px);
+  left: calc(var(--head-x) - 30px);
+  top: calc(var(--head-y) - 80px);
   width: 44px;
   height: 44px;
   animation: fly-off 1200ms ease-out infinite;
@@ -487,7 +451,8 @@ button {
   }
   to {
     opacity: 0;
-    translate: calc(var(--fly-x, 0px) * var(--motion-amount)) calc(-70px * var(--motion-amount));
+    translate: calc(var(--fly-x, 0px) * var(--motion-amount))
+      calc(-70px * var(--motion-amount));
   }
 }
 
@@ -530,9 +495,9 @@ button {
 }
 
 /* Offered something it does not want now, it shows its want again. */
-.hatch-stage[data-reaction="not-now"] .hatch-empty-bowl,
-.hatch-stage[data-reaction="not-now"] .hatch-mud,
-.hatch-stage[data-reaction="not-now"] .hatch-zzz {
+.hatch-creature[data-reaction="not-now"] .hatch-empty-bowl,
+.hatch-creature[data-reaction="not-now"] .hatch-mud,
+.hatch-creature[data-reaction="not-now"] .hatch-zzz {
   animation: pulse 450ms var(--ease-out) 2;
 }
 
@@ -554,7 +519,7 @@ button {
   pointer-events: none;
 }
 
-.hatch-stage[data-reaction] .hatch-offered[data-item]:not([data-item=""]) {
+.hatch-creature[data-reaction] .hatch-offered[data-item]:not([data-item=""]) {
   animation: feed 900ms var(--ease-out) both;
 }
 
@@ -574,13 +539,15 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="spit"] .hatch-offered[data-item]:not([data-item=""]) {
+.hatch-creature[data-reaction="spit"]
+  .hatch-offered[data-item]:not([data-item=""]) {
   animation-name: refused;
 }
 
 /* Not wanted now: the item stops short of the mouth while the baby turns
    its head away, then goes back. */
-.hatch-stage[data-reaction="not-now"] .hatch-offered[data-item]:not([data-item=""]) {
+.hatch-creature[data-reaction="not-now"]
+  .hatch-offered[data-item]:not([data-item=""]) {
   animation-name: declined;
 }
 
@@ -600,7 +567,7 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="not-now"] .hatch-baby-picture {
+.hatch-creature[data-reaction="not-now"] .hatch-baby-picture {
   animation: turn-away 900ms var(--ease-out);
 }
 
@@ -622,17 +589,22 @@ button {
   }
   to {
     opacity: 0;
-    translate: calc(600px * var(--motion-amount)) calc(-200px * var(--motion-amount));
+    translate: calc(600px * var(--motion-amount))
+      calc(-200px * var(--motion-amount));
     rotate: calc(200deg * var(--motion-amount));
   }
 }
 
-.hatch-stage[data-reaction="wash"] .hatch-offered[data-item]:not([data-item=""]),
-.hatch-stage[data-reaction="splash"] .hatch-offered[data-item]:not([data-item=""]),
-.hatch-stage[data-reaction="sleep"] .hatch-offered[data-item]:not([data-item=""]),
-.hatch-stage[data-reaction="bounce"] .hatch-offered[data-item]:not([data-item=""]) {
-  left: 300px;
-  top: 470px;
+.hatch-creature[data-reaction="wash"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="splash"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="sleep"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="bounce"]
+  .hatch-offered[data-item]:not([data-item=""]) {
+  left: calc(50% - 180px);
+  top: calc(100% - 100px);
   width: 360px;
   height: 160px;
   animation-name: under;
@@ -650,8 +622,8 @@ button {
 }
 
 /* The baby's reactions. */
-.hatch-stage[data-reaction="eat"] .hatch-baby,
-.hatch-stage[data-reaction="drink"] .hatch-baby {
+.hatch-creature[data-reaction="eat"] .hatch-baby,
+.hatch-creature[data-reaction="drink"] .hatch-baby {
   animation: chomp 300ms ease-in-out 360ms 3;
 }
 
@@ -661,7 +633,7 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="spit"] .hatch-baby {
+.hatch-creature[data-reaction="spit"] .hatch-baby {
   animation: shake 420ms ease-in-out 300ms 2;
 }
 
@@ -674,13 +646,13 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="spit"] .hatch-baby-picture {
+.hatch-creature[data-reaction="spit"] .hatch-baby-picture {
   filter: hue-rotate(60deg) saturate(1.4);
 }
 
-.hatch-stage[data-reaction="giggle"] .hatch-baby,
-.hatch-stage[data-reaction="wash"] .hatch-baby,
-.hatch-stage[data-reaction="splash"] .hatch-baby {
+.hatch-creature[data-reaction="giggle"] .hatch-baby,
+.hatch-creature[data-reaction="wash"] .hatch-baby,
+.hatch-creature[data-reaction="splash"] .hatch-baby {
   animation: wiggle 160ms ease-in-out 4;
 }
 
@@ -690,12 +662,12 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="bounce"] .hatch-baby,
-.hatch-stage[data-reaction="dance"] .hatch-baby {
+.hatch-creature[data-reaction="bounce"] .hatch-baby,
+.hatch-creature[data-reaction="dance"] .hatch-baby {
   animation: hop 400ms var(--ease-out) 2;
 }
 
-.hatch-stage[data-reaction="dance"] .hatch-baby {
+.hatch-creature[data-reaction="dance"] .hatch-baby {
   animation-iteration-count: 6;
 }
 
@@ -706,7 +678,7 @@ button {
   }
 }
 
-.hatch-stage[data-reaction="sleep"] .hatch-baby {
+.hatch-creature[data-reaction="sleep"] .hatch-baby {
   animation: nap 900ms ease-in-out both;
 }
 
@@ -720,10 +692,10 @@ button {
 }
 
 /* Bubbles in the bath, sparkles when it grows or dances. */
-.hatch-stage[data-reaction="wash"] .hatch-creature::after,
-.hatch-stage[data-reaction="splash"] .hatch-creature::after,
-.hatch-stage[data-reaction="dance"] .hatch-creature::after,
-.hatch-stage[data-reaction="hatch"] .hatch-creature::after {
+.hatch-creature[data-reaction="wash"]::after,
+.hatch-creature[data-reaction="splash"]::after,
+.hatch-creature[data-reaction="dance"]::after,
+.hatch-creature[data-reaction="hatch"]::after {
   content: "";
   position: absolute;
   inset: -40px;
@@ -737,8 +709,8 @@ button {
   animation: rise 900ms var(--ease-out) both;
 }
 
-.hatch-stage[data-reaction="dance"] .hatch-creature::after,
-.hatch-stage[data-reaction="hatch"] .hatch-creature::after {
+.hatch-creature[data-reaction="dance"]::after,
+.hatch-creature[data-reaction="hatch"]::after {
   background:
     radial-gradient(circle at 20% 70%, #ffd166 0 14px, transparent 15px),
     radial-gradient(circle at 70% 30%, #ef476f 0 12px, transparent 13px),
@@ -761,7 +733,7 @@ button {
 /* A word the baby says: BLEH, YUM, BURP. */
 .hatch-say {
   position: absolute;
-  right: calc(968px - var(--head-x) + 10px);
+  right: calc(100% - var(--head-x) + 10px);
   top: calc(var(--head-y) - 200px);
   white-space: nowrap;
   color: #ffd166;
@@ -771,7 +743,7 @@ button {
   pointer-events: none;
 }
 
-.hatch-stage[data-reaction] .hatch-say:not(:empty) {
+.hatch-creature[data-reaction] .hatch-say:not(:empty) {
   animation: pop 1000ms var(--ease-overshoot) 300ms both;
 }
 
@@ -841,8 +813,8 @@ button {
 /* A hand under the egg until it is first tapped. */
 .hatch-hint {
   position: absolute;
-  left: 330px;
-  top: 400px;
+  left: calc(50% + 30px);
+  top: calc(100% - 60px);
   width: 96px;
   height: 96px;
   pointer-events: none;
@@ -861,6 +833,54 @@ button {
 
 @keyframes point {
   50% {
-    translate: calc(-10px * var(--motion-amount)) calc(-16px * var(--motion-amount));
+    translate: calc(-10px * var(--motion-amount))
+      calc(-16px * var(--motion-amount));
   }
+}
+
+/* An Explorer's twins: the one an item goes to stands on a light ring,
+   moved by tapping the other. */
+.hatch-ring {
+  position: absolute;
+  left: 15%;
+  bottom: -24px;
+  width: 70%;
+  height: 56px;
+  border-radius: 50%;
+  background: #ffd16633;
+  box-shadow: 0 0 0 6px #ffd166;
+  opacity: 0;
+  scale: 0.7;
+  transition:
+    opacity 300ms,
+    scale 300ms var(--ease-overshoot);
+}
+
+.hatch-creature[data-chosen="true"] .hatch-ring {
+  opacity: 1;
+  scale: 1;
+}
+
+/* The level to play, to compare them: 🥚 Hatchling, 🦖 Explorer. */
+.hatch-levels {
+  position: absolute;
+  right: 56px;
+  top: 40px;
+  display: flex;
+  gap: 10px;
+}
+
+.hatch-level {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #fffdf8;
+  font-size: 32px;
+  opacity: 0.45;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-level[data-on="true"] {
+  opacity: 1;
+  box-shadow: 0 0 0 4px #1d2742;
 }

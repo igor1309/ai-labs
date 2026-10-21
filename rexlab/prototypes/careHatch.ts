@@ -21,7 +21,12 @@ type Food = "plants" | "meat";
 export type Want = "hungry" | "thirsty" | "dirty" | "sleepy";
 export type Language = "en" | "ru";
 
-export type Baby = { id: string; name: Record<Language, string>; eats: readonly Food[]; picture: string };
+export type Baby = {
+  id: string;
+  name: Record<Language, string>;
+  eats: readonly Food[];
+  picture: string;
+};
 
 // What the child just made happen, which the stage plays.
 export type Reaction =
@@ -38,32 +43,68 @@ export type Reaction =
   | "giggle"
   | "dance";
 
+export type Level = "hatchling" | "explorer";
+export const LEVELS: readonly Level[] = ["hatchling", "explorer"];
+
+// A baby being raised: what it still wants, and how far it has grown out
+// of the steps it takes to fill its shadow.
+export type Raising = {
+  baby: Baby;
+  wants: readonly Want[];
+  grown: number;
+  steps: number;
+};
+
+// A Hatchling raises one baby through all four wants. An Explorer raises
+// twins, a plant-eater and a meat-eater, through hunger and one other
+// want each; the item goes to the baby the child last tapped.
 export type Nursery =
   | { phase: "egg"; taps: number }
-  | { phase: "baby"; baby: Baby; wants: readonly Want[]; grown: number }
-  | { phase: "grown"; baby: Baby };
+  | { phase: "babies"; babies: readonly Raising[]; chosen: number }
+  | { phase: "grown"; babies: readonly Baby[] };
+
+export type Target = Item | "egg" | `baby-${number}`;
 
 export const WANTS: readonly Want[] = ["hungry", "thirsty", "dirty", "sleepy"];
-export const ITEMS: readonly Item[] = ["plants", "meat", "water", "bath", "nest"];
+export const ITEMS: readonly Item[] = [
+  "plants",
+  "meat",
+  "water",
+  "bath",
+  "nest",
+];
 const TAPS_TO_HATCH = 3;
 
 // Land dinosaurs only: water and a bath mean nothing to a flying or sea
 // reptile.
-const BODIES = import.meta.glob<string>("../src/assets/dinos/*/body.webp", { eager: true, import: "default" });
+const BODIES = import.meta.glob<string>("../src/assets/dinos/*/body.webp", {
+  eager: true,
+  import: "default",
+});
 export const BABIES: readonly Baby[] = records
   .filter((record) => record.group === "dinosaur")
   .map((record) => ({
     id: record.id,
-    name: { en: record.name.en.toUpperCase(), ru: record.name.ru.toUpperCase() },
+    name: {
+      en: record.name.en.toUpperCase(),
+      ru: record.name.ru.toUpperCase(),
+    },
     eats: record.diet === "both" ? ["plants", "meat"] : [record.diet as Food],
-    picture: BODIES[`../src/assets/dinos/${record.id}/body.webp`] ?? ""
+    picture: BODIES[`../src/assets/dinos/${record.id}/body.webp`] ?? "",
   }));
+const eatsOnly = (food: Food) =>
+  BABIES.filter((baby) => baby.eats.length === 1 && baby.eats[0] === food);
+export const PLANT_EATERS = eatsOnly("plants");
+export const MEAT_EATERS = eatsOnly("meat");
 
 export const anEgg = (): Nursery => ({ phase: "egg", taps: 0 });
 
 // `random` gives a number in [0, 1), as Math.random does; tests pass
 // their own.
 export type Random = () => number;
+
+const pick = <T>(items: readonly T[], random: Random): T =>
+  items[Math.floor(random() * items.length)] as T;
 
 function shuffled<T>(items: readonly T[], random: Random): T[] {
   const result = [...items];
@@ -74,38 +115,127 @@ function shuffled<T>(items: readonly T[], random: Random): T[] {
   return result;
 }
 
-// The want an item meets, and what the baby does with it otherwise.
-const MEETS: Record<Item, Want> = { plants: "hungry", meat: "hungry", water: "thirsty", bath: "dirty", nest: "sleepy" };
-const MET: Record<Item, Reaction> = { plants: "eat", meat: "eat", water: "drink", bath: "wash", nest: "sleep" };
-const PLAYED: Partial<Record<Item, Reaction>> = { bath: "splash", nest: "bounce" };
+// The babies that hatch at a level, unless a test names them.
+export function hatch(
+  level: Level,
+  random: Random,
+  named?: readonly Baby[],
+): Raising[] {
+  if (level === "hatchling") {
+    const baby = named?.[0] ?? pick(BABIES, random);
+    return [
+      { baby, wants: shuffled(WANTS, random), grown: 0, steps: WANTS.length },
+    ];
+  }
+  const twins =
+    named ??
+    shuffled([pick(PLANT_EATERS, random), pick(MEAT_EATERS, random)], random);
+  return twins.map((baby) => {
+    const wants = shuffled<Want>(
+      ["hungry", pick(WANTS.slice(1), random)],
+      random,
+    );
+    return { baby, wants, grown: 0, steps: wants.length };
+  });
+}
 
-// Taps the egg, the baby or an item, and says what happens.
-export function tap(nursery: Nursery, target: Item | "egg" | "baby", random: Random, hatchling?: Baby): [Nursery, Reaction | undefined] {
+// The want an item meets, and what the baby does with it otherwise.
+const MEETS: Record<Item, Want> = {
+  plants: "hungry",
+  meat: "hungry",
+  water: "thirsty",
+  bath: "dirty",
+  nest: "sleepy",
+};
+const MET: Record<Item, Reaction> = {
+  plants: "eat",
+  meat: "eat",
+  water: "drink",
+  bath: "wash",
+  nest: "sleep",
+};
+const PLAYED: Partial<Record<Item, Reaction>> = {
+  bath: "splash",
+  nest: "bounce",
+};
+
+export const babyAt = (target: Target): number | undefined =>
+  target.startsWith("baby-") ? Number(target.slice(5)) : undefined;
+
+// Taps the egg, a baby or an item, and says what happens.
+export function tap(
+  nursery: Nursery,
+  target: Target,
+  random: Random,
+  level: Level = "hatchling",
+  named?: readonly Baby[],
+): [Nursery, Reaction | undefined] {
   if (nursery.phase === "egg") {
     if (target !== "egg") return [nursery, undefined];
-    if (nursery.taps + 1 < TAPS_TO_HATCH) return [{ phase: "egg", taps: nursery.taps + 1 }, "wobble"];
-    const baby = hatchling ?? (BABIES[Math.floor(random() * BABIES.length)] as Baby);
-    return [{ phase: "baby", baby, wants: shuffled(WANTS, random), grown: 0 }, "hatch"];
+    if (nursery.taps + 1 < TAPS_TO_HATCH)
+      return [{ phase: "egg", taps: nursery.taps + 1 }, "wobble"];
+    return [
+      { phase: "babies", babies: hatch(level, random, named), chosen: 0 },
+      "hatch",
+    ];
   }
-  if (nursery.phase === "grown" || target === "egg") return [nursery, undefined];
-  if (target === "baby") return [nursery, "giggle"];
+  if (nursery.phase === "grown" || target === "egg")
+    return [nursery, undefined];
+  const tapped = babyAt(target);
+  if (tapped !== undefined)
+    return nursery.babies[tapped] === undefined
+      ? [nursery, undefined]
+      : [{ ...nursery, chosen: tapped }, "giggle"];
 
-  const { baby, wants } = nursery;
-  if ((target === "plants" || target === "meat") && !baby.eats.includes(target)) return [nursery, "spit"];
-  if (wants[0] !== MEETS[target]) return [nursery, PLAYED[target] ?? "not-now"];
-  const grown = nursery.grown + 1;
-  if (grown === WANTS.length) return [{ phase: "grown", baby }, "dance"];
-  return [{ phase: "baby", baby, wants: wants.slice(1), grown }, MET[target]];
+  const item = target as Item;
+  const raising = nursery.babies[nursery.chosen] as Raising;
+  if (
+    (item === "plants" || item === "meat") &&
+    !raising.baby.eats.includes(item)
+  )
+    return [nursery, "spit"];
+  if (raising.wants[0] !== MEETS[item])
+    return [nursery, PLAYED[item] ?? "not-now"];
+  const babies = nursery.babies.map((each, index) =>
+    index === nursery.chosen
+      ? { ...each, wants: each.wants.slice(1), grown: each.grown + 1 }
+      : each,
+  );
+  if (babies.every((each) => each.wants.length === 0))
+    return [
+      { phase: "grown", babies: babies.map((each) => each.baby) },
+      "dance",
+    ];
+  // A baby that has all it wants hands the turn to one that still wants.
+  const chosen =
+    (babies[nursery.chosen] as Raising).wants.length > 0
+      ? nursery.chosen
+      : babies.findIndex((each) => each.wants.length > 0);
+  return [{ phase: "babies", babies, chosen }, MET[item]];
 }
 
 const PICTURES: Record<Item, string> = { plants, meat, water, bath, nest };
 const LABELS: Record<Language, Record<Item | "home", string>> = {
-  en: { plants: "PLANTS", meat: "MEAT", water: "WATER", bath: "BATH", nest: "NEST", home: "HOME" },
-  ru: { plants: "РАСТЕНИЯ", meat: "МЯСО", water: "ВОДА", bath: "ВАННА", nest: "ГНЕЗДО", home: "ДОМОЙ" }
+  en: {
+    plants: "PLANTS",
+    meat: "MEAT",
+    water: "WATER",
+    bath: "BATH",
+    nest: "NEST",
+    home: "HOME",
+  },
+  ru: {
+    plants: "РАСТЕНИЯ",
+    meat: "МЯСО",
+    water: "ВОДА",
+    bath: "ВАННА",
+    nest: "ГНЕЗДО",
+    home: "ДОМОЙ",
+  },
 };
 const SAYS: Record<Language, Partial<Record<Reaction, string>>> = {
   en: { spit: "BLEH!", "not-now": "NOPE!", eat: "YUM!" },
-  ru: { spit: "ФУ!", "not-now": "НЕ-А", eat: "НЯМ!" }
+  ru: { spit: "ФУ!", "not-now": "НЕ-А", eat: "НЯМ!" },
 };
 const BURP: Record<Language, string> = { en: "BURP!", ru: "ИК!" };
 const SNEEZE: Record<Language, string> = { en: "ACHOO!", ru: "АПЧХИ!" };
@@ -119,12 +249,18 @@ const HOME_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8M5 9.5V21h5v-6h4v6h5V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const HAND_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0-.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-4.6-2.2L4 15.5a1.6 1.6 0 0 1 2.4-2.1L9 16" fill="#fffdf8" stroke="#1d2742" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const DROP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4 5 6 8.5 6 11.5a6 6 0 0 1-12 0C6 11.5 8 8 12 3z" fill="#4aa3df"/></svg>';
+const DROP_ICON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4 5 6 8.5 6 11.5a6 6 0 0 1-12 0C6 11.5 8 8 12 3z" fill="#4aa3df"/></svg>';
 
-function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, attributes: Record<string, string> = {}): HTMLElementTagNameMap[K] {
+function element<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className: string,
+  attributes: Record<string, string> = {},
+): HTMLElementTagNameMap[K] {
   const made = document.createElement(tag);
   made.className = className;
-  for (const [name, value] of Object.entries(attributes)) made.setAttribute(name, value);
+  for (const [name, value] of Object.entries(attributes))
+    made.setAttribute(name, value);
   return made;
 }
 
@@ -134,13 +270,47 @@ function picture(className: string, src: string): HTMLImageElement {
 
 function storedLanguage(): Language {
   try {
-    return window.localStorage.getItem("rexlab-language") === "ru" ? "ru" : "en";
+    return window.localStorage.getItem("rexlab-language") === "ru"
+      ? "ru"
+      : "en";
   } catch {
     return "en";
   }
 }
 
-export type Options = { random?: Random; sounds?: Sounds; language?: Language; now?: () => number; later?: (run: () => void, ms: number) => void };
+export type Options = {
+  random?: Random;
+  sounds?: Sounds;
+  language?: Language;
+  level?: Level;
+  now?: () => number;
+  later?: (run: () => void, ms: number) => void;
+};
+
+// Where each baby stands on the stage, by how many there are.
+type Box = { left: number; top: number; width: number; height: number };
+const BOXES: Record<Level, readonly Box[]> = {
+  hatchling: [{ left: 184, top: 110, width: 600, height: 460 }],
+  explorer: [
+    { left: 24, top: 190, width: 450, height: 380 },
+    { left: 494, top: 190, width: 450, height: 380 },
+  ],
+};
+
+// A baby grows from half its full size. The pictures face left and are
+// turned to face the items, so the head sits about a fifth in from the
+// right and a third down; it grows from the middle of its feet.
+function sizeOf(raising: Raising | undefined, box: Box) {
+  const size =
+    raising === undefined ? 1 : 0.5 + (0.5 * raising.grown) / raising.steps;
+  return {
+    size,
+    headX: box.width / 2 + 0.3 * box.width * size,
+    headY: box.height - 0.7 * box.height * size,
+  };
+}
+
+const LEVEL_ICONS: Record<Level, string> = { hatchling: "🥚", explorer: "🦖" };
 
 // Draws the nursery into `root` and plays it there, the frame scaled to
 // fit the window. Taps during a reaction are ignored, so a quick double
@@ -151,86 +321,155 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
   const language = options.language ?? storedLanguage();
   const now = options.now ?? (() => performance.now());
   const later = options.later ?? ((run, ms) => window.setTimeout(run, ms));
+  let level = options.level ?? "hatchling";
   let nursery = anEgg();
   let busyUntil = Number.NEGATIVE_INFINITY;
+  // Babies whose next want waits until they finish with the last one.
+  const resting = new Set<number>();
   const friends: Baby[] = [];
 
   const frame = element("div", "hatch-frame");
   frame.lang = language;
   const home = element("a", "hatch-home", { href: "/" });
   home.innerHTML = `${HOME_ICON}<span>${LABELS[language].home}</span>`;
+  const switcher = element("div", "hatch-levels");
+  for (const each of LEVELS) {
+    const button = element("button", "hatch-level", {
+      type: "button",
+      "data-level": each,
+      "aria-label": each,
+    });
+    button.textContent = LEVEL_ICONS[each];
+    switcher.append(button);
+  }
   const row = element("div", "hatch-friends");
   const stage = element("div", "hatch-stage");
   const name = element("h1", "hatch-name");
-  const say = element("div", "hatch-say");
-  const offered = picture("hatch-offered", "");
   const tray = element("div", "hatch-tray");
   for (const item of ITEMS) {
-    const button = element("button", "hatch-item", { type: "button", "data-target": item });
+    const button = element("button", "hatch-item", {
+      type: "button",
+      "data-target": item,
+    });
     button.append(picture("hatch-item-picture", PICTURES[item]));
     const label = element("span", "hatch-item-label");
     label.textContent = LABELS[language][item];
     button.append(label);
     tray.append(button);
   }
-  stage.append(element("div", "hatch-glow"), element("div", "hatch-sun"), element("div", "hatch-ground"), name, offered, say);
-  frame.append(home, row, stage, tray);
+  stage.append(
+    element("div", "hatch-glow"),
+    element("div", "hatch-sun"),
+    element("div", "hatch-ground"),
+    name,
+  );
+  frame.append(home, row, switcher, stage, tray);
   root.replaceChildren(frame);
 
-  const fit = () => root.style.setProperty("--hatch-scale", String(Math.min(window.innerWidth / 1440, window.innerHeight / 900)));
+  const fit = () =>
+    root.style.setProperty(
+      "--hatch-scale",
+      String(Math.min(window.innerWidth / 1440, window.innerHeight / 900)),
+    );
   fit();
   window.addEventListener("resize", fit);
 
-  let creature: HTMLElement = element("div", "hatch-creature");
-  stage.append(creature);
+  let creatures: HTMLElement[] = [];
 
-  // The egg, or the baby with what it wants shown on it: an empty bowl,
-  // a drop of water, mud, or sleepy Zzz. The pictures face left, so the
-// baby is turned to face the items on the right.
-  const drawCreature = (arrived: boolean) => {
-    // The items wait, greyed out, until there is a baby to give them to.
-    frame.dataset.phase = nursery.phase;
-    if (arrived) {
-      const next = element("div", "hatch-creature");
-      creature.replaceWith(next);
-      creature = next;
+  // Puts out the eggs, or the babies with their shadows and the signs of
+  // what they want: an empty bowl, sweat, mud or Zzz. Hungry is never
+  // shown as the food to give.
+  const arrive = () => {
+    for (const creature of creatures) creature.remove();
+    const boxes = BOXES[level];
+    creatures = boxes.map((box, index) => {
+      const creature = element("div", "hatch-creature");
+      Object.assign(creature.style, {
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+      });
       if (nursery.phase === "egg") {
-        const egg = element("button", "hatch-egg", { type: "button", "data-target": "egg", "aria-label": "egg" });
+        const egg = element("button", "hatch-egg", {
+          type: "button",
+          "data-target": "egg",
+          "aria-label": "egg",
+        });
         egg.append(element("span", "hatch-egg-spots"));
-        const hint = element("span", "hatch-hint");
-        hint.innerHTML = HAND_ICON;
-        creature.append(egg, hint);
-      } else {
-        // The grown dinosaur's shadow, the size the baby grows to.
-        creature.append(picture("hatch-shadow", nursery.baby.picture));
-        const baby = element("button", "hatch-baby", { type: "button", "data-target": "baby" });
-        baby.append(picture("hatch-baby-picture", nursery.baby.picture));
-        for (let spot = 0; spot < 4; spot += 1) baby.append(element("span", `hatch-mud hatch-mud-${spot}`));
-        baby.append(element("span", "hatch-zzz"));
-        creature.append(baby);
-        // Hungry: an empty bowl waits in front of it. Thirsty: the sun
-        // beats down and it sweats.
-        creature.append(picture("hatch-empty-bowl", bowl));
+        creature.append(egg);
+        if (index === boxes.length - 1) {
+          const hint = element("span", "hatch-hint");
+          hint.innerHTML = HAND_ICON;
+          creature.append(hint);
+        }
+      } else if (nursery.phase === "babies") {
+        const { baby } = nursery.babies[index] as Raising;
+        creature.append(
+          element("span", "hatch-ring"),
+          picture("hatch-shadow", baby.picture),
+        );
+        const button = element("button", "hatch-baby", {
+          type: "button",
+          "data-target": `baby-${index}`,
+          "aria-label": baby.name[language],
+        });
+        button.append(picture("hatch-baby-picture", baby.picture));
+        for (let spot = 0; spot < 4; spot += 1)
+          button.append(element("span", `hatch-mud hatch-mud-${spot}`));
+        button.append(element("span", "hatch-zzz"));
+        creature.append(button, picture("hatch-empty-bowl", bowl));
         for (let drop = 0; drop < 3; drop += 1) {
           const sweat = element("span", `hatch-sweat hatch-sweat-${drop}`);
           sweat.innerHTML = DROP_ICON;
           creature.append(sweat);
         }
+        creature.append(
+          picture("hatch-offered", ""),
+          element("div", "hatch-say"),
+        );
       }
-    }
-    if (nursery.phase === "egg") {
-      creature.dataset.phase = "egg";
-      creature.dataset.taps = String(nursery.taps);
-      delete stage.dataset.grown;
-      name.textContent = "";
-      return;
-    }
-    creature.dataset.phase = nursery.phase;
-    creature.dataset.grown = nursery.phase === "grown" ? String(WANTS.length) : String(nursery.grown);
-    stage.dataset.grown = creature.dataset.grown;
-    creature.dataset.want = nursery.phase === "baby" ? (nursery.wants[0] ?? "") : "";
-    creature.querySelector(".hatch-baby")?.setAttribute("aria-label", nursery.baby.name[language]);
-    name.textContent = nursery.baby.name[language];
+      stage.append(creature);
+      return creature;
+    });
+  };
+
+  const draw = () => {
+    // The items wait, greyed out, until there is a baby to give them to.
+    frame.dataset.phase = nursery.phase;
+    frame.dataset.level = level;
+    for (const button of switcher.children)
+      (button as HTMLElement).dataset.on = String(
+        (button as HTMLElement).dataset.level === level,
+      );
+    creatures.forEach((creature, index) => {
+      const box = BOXES[level][index] as Box;
+      if (nursery.phase === "egg") {
+        creature.dataset.taps = String(nursery.taps);
+        return;
+      }
+      const raising =
+        nursery.phase === "babies" ? nursery.babies[index] : undefined;
+      const { size, headX, headY } = sizeOf(raising, box);
+      creature.style.setProperty("--size", String(size));
+      creature.style.setProperty("--head-x", `${headX}px`);
+      creature.style.setProperty("--head-y", `${headY}px`);
+      creature.dataset.want =
+        raising === undefined || resting.has(index)
+          ? ""
+          : (raising.wants[0] ?? "");
+      creature.dataset.chosen = String(
+        nursery.phase === "babies" &&
+          level === "explorer" &&
+          nursery.chosen === index,
+      );
+    });
+    name.textContent =
+      nursery.phase === "babies"
+        ? (nursery.babies[nursery.chosen] as Raising).baby.name[language]
+        : nursery.phase === "grown"
+          ? nursery.babies.map((baby) => baby.name[language]).join(" + ")
+          : "";
   };
 
   const drawFriends = () => {
@@ -239,56 +478,108 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
         const face = picture("hatch-friend", friend.picture);
         face.alt = friend.name[language];
         return face;
-      })
+      }),
     );
   };
 
-  // Restarts the stage's reaction, so the same one twice plays twice.
-  const play = (reaction: Reaction, item?: Item) => {
-    delete stage.dataset.reaction;
-    void stage.offsetWidth;
-    stage.dataset.reaction = reaction;
-    offered.src = item === undefined ? "" : PICTURES[item];
-    offered.dataset.item = item ?? "";
+  // Plays a reaction on the creatures it belongs to, restarting it so the
+  // same one twice plays twice.
+  const play = (reaction: Reaction, actors: readonly number[], item?: Item) => {
     let words = SAYS[language][reaction] ?? "";
     if (reaction === "eat" && random() < 1 / 3) words = BURP[language];
-    if ((reaction === "wash" || reaction === "splash") && random() < 1 / 3) words = SNEEZE[language];
-    say.textContent = words;
-    sounds.play(reaction, words === BURP[language] ? "burp" : words === SNEEZE[language] ? "sneeze" : undefined);
+    if ((reaction === "wash" || reaction === "splash") && random() < 1 / 3)
+      words = SNEEZE[language];
+    creatures.forEach((creature, index) => {
+      delete creature.dataset.reaction;
+      if (!actors.includes(index)) return;
+      void creature.offsetWidth;
+      creature.dataset.reaction = reaction;
+      const offered =
+        creature.querySelector<HTMLImageElement>(".hatch-offered");
+      if (offered !== null) {
+        offered.src = item === undefined ? "" : PICTURES[item];
+        offered.dataset.item = item ?? "";
+      }
+      const say = creature.querySelector(".hatch-say");
+      if (say !== null) say.textContent = words;
+    });
+    stage.dataset.reaction = reaction;
+    sounds.play(
+      reaction,
+      words === BURP[language]
+        ? "burp"
+        : words === SNEEZE[language]
+          ? "sneeze"
+          : undefined,
+    );
+  };
+
+  const restart = () => {
+    nursery = anEgg();
+    resting.clear();
+    arrive();
+    draw();
+    delete stage.dataset.reaction;
   };
 
   frame.addEventListener("click", (event) => {
-    const button = (event.target as Element).closest<HTMLElement>("[data-target]");
+    const levelButton = (event.target as Element).closest<HTMLElement>(
+      ".hatch-level",
+    );
+    if (levelButton !== null) {
+      level = levelButton.dataset.level as Level;
+      restart();
+      return;
+    }
+    const button = (event.target as Element).closest<HTMLElement>(
+      "[data-target]",
+    );
     if (button === null || now() < busyUntil) return;
-    const target = button.dataset.target as Item | "egg" | "baby";
-    const [next, reaction] = tap(nursery, target, random);
+    const target = button.dataset.target as Target;
+    const before = nursery;
+    const [next, reaction] = tap(nursery, target, random, level);
     if (reaction === undefined) return;
-    const arrived = next.phase !== nursery.phase && next.phase !== "grown";
-    const changed = next !== nursery;
     nursery = next;
     busyUntil = now() + REACTION_MS;
-    drawCreature(arrived);
-    // The next want shows once the baby has finished with this one.
-    if (changed && nursery.phase === "baby") {
+    const actor =
+      babyAt(target) ?? (before.phase === "babies" ? before.chosen : 0);
+    if (before.phase === "egg" && next.phase === "babies") arrive();
+    const all = creatures.map((_, index) => index);
+    // A want shows once the baby has hatched, or finished with the last.
+    const hatched = before.phase === "egg" && next.phase === "babies";
+    const met =
+      before.phase === "babies" &&
+      next.phase === "babies" &&
+      next !== before &&
+      babyAt(target) === undefined;
+    if (hatched || met) {
       const shown = nursery;
-      creature.dataset.want = "";
+      const waiting = hatched ? all : [actor];
+      for (const index of waiting) resting.add(index);
       later(() => {
-        if (nursery === shown) drawCreature(false);
+        for (const index of waiting) resting.delete(index);
+        if (nursery === shown) draw();
       }, REACTION_MS);
     }
-    play(reaction, ITEMS.includes(target as Item) ? (target as Item) : undefined);
+    draw();
+    const together =
+      reaction === "wobble" || reaction === "hatch" || reaction === "dance";
+    play(
+      reaction,
+      together ? all : [actor],
+      ITEMS.includes(target as Item) ? (target as Item) : undefined,
+    );
     if (reaction === "dance" && nursery.phase === "grown") {
-      const friend = nursery.baby;
+      const grown = nursery.babies;
       busyUntil = now() + DANCE_MS;
       later(() => {
-        friends.push(friend);
+        friends.push(...grown);
         drawFriends();
-        nursery = anEgg();
-        drawCreature(true);
-        delete stage.dataset.reaction;
+        restart();
       }, DANCE_MS);
     }
   });
   frame.addEventListener("contextmenu", (event) => event.preventDefault());
-  drawCreature(true);
+  arrive();
+  draw();
 }
