@@ -17,7 +17,9 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 
 The owner chose Proposal 4, Glass Ledger (2026-10-21): Ledger Mono's time
 gutter, arrows and footnote card on Night Glass's blurred floating panel.
-The panel is resizable; the window-sizes frame proposes how it adapts.
+The panel is resizable; the window-sizes frame proposes how it adapts. The
+explanation card stays in the panel (owner, 2026-10-21); the no-footnote
+frame shows the panel before any term is selected.
 
 ## Conclusion so far
 

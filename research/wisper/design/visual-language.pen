@@ -12266,6 +12266,2767 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "f1TNkj",
+      "x": 0,
+      "y": 5628,
+      "name": "Glass Ledger — no footnote",
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 40,
+      "padding": 56,
+      "children": [
+        {
+          "type": "frame",
+          "id": "F0Kiqa",
+          "name": "Info",
+          "width": 1100,
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "N6wMSH",
+              "name": "Number",
+              "fill": "#0E9F92",
+              "content": "PROPOSAL 4 · NO FOOTNOTE",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "LqscY",
+              "name": "Title",
+              "fill": "#111318",
+              "content": "Nothing selected yet",
+              "fontFamily": "IBM Plex Mono",
+              "fontSize": 38,
+              "fontWeight": "600",
+              "letterSpacing": -1
+            },
+            {
+              "type": "text",
+              "id": "oKuLB",
+              "name": "Idea",
+              "fill": "#444444",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "The card stays in the panel (owner, 2026-10-21) but exists only once a term is selected. Until then the log is plain: no [n] marks, no card, no highlighted chip. Terms heard still collect in the footer, and clicking a chip selects that term's latest line.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Xv9vV",
+              "name": "Open",
+              "fill": "#B4540A",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Proposed, not decided: Default inserts the card under its line when it appears, pushing later lines down (no sideways reflow). Wide keeps the margin column reserved with a quiet hint, so the log measure never changes when the first footnote lands.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "UdX7x",
+          "name": "Light",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "AYTN6",
+              "name": "Label",
+              "fill": "#666666",
+              "content": "Light",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "i0ebCQ",
+              "name": "Sizes",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CUXcq",
+                  "name": "default",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WtgO8",
+                      "name": "Size",
+                      "fill": "#333333",
+                      "content": "Default · 396 pt",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pcI9I",
+                      "name": "Desktop",
+                      "fill": "#E3E5E8",
+                      "cornerRadius": 10,
+                      "padding": 24,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yiy4s",
+                          "name": "Panel",
+                          "width": 396,
+                          "fill": "#FFFFFFE6",
+                          "cornerRadius": 16,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000040",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "lPlGh",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "#0000001A",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                11,
+                                16
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "TKLSe",
+                                  "name": "Rec",
+                                  "gap": 10,
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "waHvb",
+                                      "name": "Wave",
+                                      "gap": 3,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "aQ5If",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "r3cfD",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "ziO6m",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "BrT1S",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "V9BHNW",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "p8Rm7F",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "AjoX4",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "B60ng",
+                                      "name": "Time",
+                                      "fill": "#8A909A",
+                                      "content": "REC 00:12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11.5,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "k37X6",
+                                  "name": "Keys",
+                                  "fill": "#8A909A",
+                                  "content": "⌃⌥⌘E",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Y3zMo",
+                              "name": "Log",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 12,
+                              "padding": [
+                                12,
+                                16,
+                                14,
+                                16
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "e9mseP",
+                                  "name": "Entry 12:41",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "GxuTF",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "YOzuf",
+                                          "name": "Time",
+                                          "fill": "#8A909A",
+                                          "content": "12:41",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "dvGQP",
+                                          "name": "Dir",
+                                          "fill": "#C27A06",
+                                          "content": "←",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "N5izM2",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "lrZzh",
+                                          "name": "text",
+                                          "fill": "#16181D",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Давай зафиксируем RACI по запуску — кто у нас accountable за SLA поддержки?",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "I6QjZ",
+                                  "name": "Entry 12:42",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "UBqdP",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "qmbze",
+                                          "name": "Time",
+                                          "fill": "#8A909A",
+                                          "content": "12:42",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "RKEMd",
+                                          "name": "Dir",
+                                          "fill": "#0E9F92",
+                                          "content": "→",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "Nj5Dm",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "N9rdj",
+                                          "name": "text",
+                                          "fill": "#16181D",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Accountable — я. По SLA отвечает команда Ильи, они же ведут on-call.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "vNSvY",
+                                  "name": "Entry 12:44",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "JMDOn",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "k7wD0u",
+                                          "name": "Time",
+                                          "fill": "#8A909A",
+                                          "content": "12:44",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "oWggI",
+                                          "name": "Dir",
+                                          "fill": "#C27A06",
+                                          "content": "←",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "WqJlL",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "qH1Mp",
+                                          "name": "text",
+                                          "fill": "#16181D",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Окей. Тогда OKR на квартал синхронизируем до пятницы.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "OAS6R",
+                                  "name": "Entry 12:47",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "IBwE0",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "CDRBN",
+                                          "name": "Time",
+                                          "fill": "#8A909A",
+                                          "content": "12:47",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "J7rF1",
+                                          "name": "Dir",
+                                          "fill": "#0E9F92",
+                                          "content": "→",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "C9Zqk",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "bhtij",
+                                          "name": "settled",
+                                          "fill": "#16181D",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "И ещё по NPS —",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "tTCYz",
+                                          "name": "Pending line",
+                                          "gap": 2,
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "x2L0a1",
+                                              "name": "pending",
+                                              "fill": "#8A909A",
+                                              "content": "дашборд кто-то уже собирал",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "rectangle",
+                                              "id": "iEZhy",
+                                              "name": "Caret",
+                                              "fill": "#0E9F92",
+                                              "width": 2,
+                                              "height": 15
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "FaQsF",
+                              "name": "Terms footer",
+                              "width": "fill_container",
+                              "stroke": "#0000001A",
+                              "strokeWidth": {
+                                "top": 1
+                              },
+                              "gap": 8,
+                              "padding": [
+                                9,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "HWb2u",
+                                  "name": "Label",
+                                  "fill": "#8A909A",
+                                  "content": "terms",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "sotlk",
+                                  "name": "Term RACI",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "OVmw3",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "RACI",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "q6ikU",
+                                  "name": "Term SLA",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "z5wQF",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "SLA",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "V4xV8N",
+                                  "name": "Term on-call",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Vjy9s",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "on-call",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "HoSeN",
+                                  "name": "Term OKR",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "RTS2s",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "OKR",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "yFpxR",
+                                  "name": "Term NPS",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "LSSf4",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "NPS",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Go3j2",
+                                  "name": "Hint",
+                                  "fill": "#8A909A",
+                                  "content": "выдели → [n]",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "C3Ggi",
+                  "name": "wide",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RVsAD",
+                      "name": "Size",
+                      "fill": "#333333",
+                      "content": "Wide · 680 pt",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p08sYA",
+                      "name": "Desktop",
+                      "fill": "#E3E5E8",
+                      "cornerRadius": 10,
+                      "padding": 24,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qvqob",
+                          "name": "Panel",
+                          "width": 680,
+                          "fill": "#FFFFFFE6",
+                          "cornerRadius": 16,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000040",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "vRBqc",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "#0000001A",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                11,
+                                16
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "g5YrI",
+                                  "name": "Rec",
+                                  "gap": 10,
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "JKLVy",
+                                      "name": "Wave",
+                                      "gap": 3,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "PYsXt",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "CvH9E",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "F1ORs",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "N6giU7",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "zlMzR",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "s6JgWr",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "dTGBn",
+                                          "name": "Bar",
+                                          "fill": "#0E9F92",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "R0XrHL",
+                                      "name": "Time",
+                                      "fill": "#8A909A",
+                                      "content": "REC 00:12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11.5,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "UnHrA",
+                                  "name": "Keys",
+                                  "fill": "#8A909A",
+                                  "content": "⌃⌥⌘E",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "KSDEE",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "GNm2f",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 12,
+                                  "padding": [
+                                    12,
+                                    16,
+                                    14,
+                                    16
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "s0S3T",
+                                      "name": "Entry 12:41",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "OsH3J",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "K3YY7",
+                                              "name": "Time",
+                                              "fill": "#8A909A",
+                                              "content": "12:41",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "zBcB6",
+                                              "name": "Dir",
+                                              "fill": "#C27A06",
+                                              "content": "←",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "EIJYR",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "XU7We",
+                                              "name": "text",
+                                              "fill": "#16181D",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Давай зафиксируем RACI по запуску — кто у нас accountable за SLA поддержки?",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "hYrcB",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "jkGZO",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "OPdRM",
+                                              "name": "Time",
+                                              "fill": "#8A909A",
+                                              "content": "12:42",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "RQxsK",
+                                              "name": "Dir",
+                                              "fill": "#0E9F92",
+                                              "content": "→",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "P0CZaU",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "RNIzi",
+                                              "name": "text",
+                                              "fill": "#16181D",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Accountable — я. По SLA отвечает команда Ильи, они же ведут on-call.",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "LxNy6",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "VgWv2",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "UAvnb",
+                                              "name": "Time",
+                                              "fill": "#8A909A",
+                                              "content": "12:44",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "hAccW",
+                                              "name": "Dir",
+                                              "fill": "#C27A06",
+                                              "content": "←",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "RaBoB",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "q29J8I",
+                                              "name": "text",
+                                              "fill": "#16181D",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Окей. Тогда OKR на квартал синхронизируем до пятницы.",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "o0XaOA",
+                                      "name": "Entry 12:47",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "ILyH7",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "UT3Bk",
+                                              "name": "Time",
+                                              "fill": "#8A909A",
+                                              "content": "12:47",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "lWmp9",
+                                              "name": "Dir",
+                                              "fill": "#0E9F92",
+                                              "content": "→",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "m3L8w",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "VImLP",
+                                              "name": "settled",
+                                              "fill": "#16181D",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "И ещё по NPS —",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "frame",
+                                              "id": "JxdCg",
+                                              "name": "Pending line",
+                                              "gap": 2,
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "cTF7E",
+                                                  "name": "pending",
+                                                  "fill": "#8A909A",
+                                                  "content": "дашборд кто-то уже собирал",
+                                                  "lineHeight": 1.55,
+                                                  "fontFamily": "IBM Plex Mono",
+                                                  "fontSize": 13,
+                                                  "fontWeight": "normal"
+                                                },
+                                                {
+                                                  "type": "rectangle",
+                                                  "id": "r4spk",
+                                                  "name": "Caret",
+                                                  "fill": "#0E9F92",
+                                                  "width": 2,
+                                                  "height": 15
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "PohCp",
+                                  "name": "Margin notes",
+                                  "width": 230,
+                                  "layout": "vertical",
+                                  "padding": [
+                                    12,
+                                    16,
+                                    14,
+                                    0
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "VUU4H",
+                                      "name": "Empty margin",
+                                      "width": "fill_container",
+                                      "cornerRadius": 10,
+                                      "stroke": "#00000024",
+                                      "strokeWidth": 1,
+                                      "layout": "vertical",
+                                      "gap": 6,
+                                      "padding": 12,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "AJ2Mf",
+                                          "name": "Head",
+                                          "fill": "#8A909A",
+                                          "content": "сноски",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 11.5,
+                                          "fontWeight": "600"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "b6gYBN",
+                                          "name": "Hint",
+                                          "fill": "#8A909A",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Выдели термин в тексте — объяснение появится здесь, рядом со строкой.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 11.5,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "HyNgc",
+                              "name": "Terms footer",
+                              "width": "fill_container",
+                              "stroke": "#0000001A",
+                              "strokeWidth": {
+                                "top": 1
+                              },
+                              "gap": 8,
+                              "padding": [
+                                9,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Z5bx6m",
+                                  "name": "Label",
+                                  "fill": "#8A909A",
+                                  "content": "terms",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "jOLol",
+                                  "name": "Term RACI",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "awvkI",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "RACI",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gMAci",
+                                  "name": "Term SLA",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "lls97",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "SLA",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "AVaR2",
+                                  "name": "Term on-call",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "DL3zf",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "on-call",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xn3NZ",
+                                  "name": "Term OKR",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "qsBMO",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "OKR",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "vEr4N",
+                                  "name": "Term NPS",
+                                  "cornerRadius": 4,
+                                  "stroke": "#00000026",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "t7syG",
+                                      "name": "Text",
+                                      "fill": "#16181D",
+                                      "content": "NPS",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Q0SPp",
+          "name": "Dark",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "IL68m",
+              "name": "Label",
+              "fill": "#666666",
+              "content": "Dark",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "DUvzY",
+              "name": "Sizes",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XObWR",
+                  "name": "default",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AgSYf",
+                      "name": "Size",
+                      "fill": "#333333",
+                      "content": "Default · 396 pt",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eIstz",
+                      "name": "Desktop",
+                      "fill": "#1F2228",
+                      "cornerRadius": 10,
+                      "padding": 24,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Zpu22",
+                          "name": "Panel",
+                          "width": 396,
+                          "fill": "#15171CEB",
+                          "cornerRadius": 16,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000080",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "MuOu7",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "#FFFFFF14",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                11,
+                                16
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "mUpX3",
+                                  "name": "Rec",
+                                  "gap": 10,
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "zHQeu",
+                                      "name": "Wave",
+                                      "gap": 3,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "q7Wxrh",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "vZdm9",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "FikDx",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "rhf1c",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "SHibH",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "tBpaq",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "V715F",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "A0aXI",
+                                      "name": "Time",
+                                      "fill": "#7C828D",
+                                      "content": "REC 00:12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11.5,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ZIvka",
+                                  "name": "Keys",
+                                  "fill": "#7C828D",
+                                  "content": "⌃⌥⌘E",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "e9aok",
+                              "name": "Log",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 12,
+                              "padding": [
+                                12,
+                                16,
+                                14,
+                                16
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "icGsk",
+                                  "name": "Entry 12:41",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "RtmPA",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "I3Yjb",
+                                          "name": "Time",
+                                          "fill": "#7C828D",
+                                          "content": "12:41",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "v9GpT",
+                                          "name": "Dir",
+                                          "fill": "#F5B454",
+                                          "content": "←",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "QKRlO",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "S4CmjM",
+                                          "name": "text",
+                                          "fill": "#E8EAED",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Давай зафиксируем RACI по запуску — кто у нас accountable за SLA поддержки?",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "tqgO1",
+                                  "name": "Entry 12:42",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "X9sumt",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "c3tOT",
+                                          "name": "Time",
+                                          "fill": "#7C828D",
+                                          "content": "12:42",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "M7uGpt",
+                                          "name": "Dir",
+                                          "fill": "#4FD1C5",
+                                          "content": "→",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "aKunG",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "jSwoP",
+                                          "name": "text",
+                                          "fill": "#E8EAED",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Accountable — я. По SLA отвечает команда Ильи, они же ведут on-call.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "uAIAq",
+                                  "name": "Entry 12:44",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "ECoh6",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "CfqAK",
+                                          "name": "Time",
+                                          "fill": "#7C828D",
+                                          "content": "12:44",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "ZfeWM",
+                                          "name": "Dir",
+                                          "fill": "#F5B454",
+                                          "content": "←",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "H18wju",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "UpxvM",
+                                          "name": "text",
+                                          "fill": "#E8EAED",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Окей. Тогда OKR на квартал синхронизируем до пятницы.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "V7Pit",
+                                  "name": "Entry 12:47",
+                                  "width": "fill_container",
+                                  "gap": 10,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "VQGMK",
+                                      "name": "Gutter",
+                                      "width": 60,
+                                      "gap": 6,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "LdANg",
+                                          "name": "Time",
+                                          "fill": "#7C828D",
+                                          "content": "12:47",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "hg77U",
+                                          "name": "Dir",
+                                          "fill": "#4FD1C5",
+                                          "content": "→",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "WWbNz",
+                                      "name": "Text",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "LA4Py",
+                                          "name": "settled",
+                                          "fill": "#E8EAED",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "И ещё по NPS —",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "normal"
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "HluEz",
+                                          "name": "Pending line",
+                                          "gap": 2,
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "I9YeH",
+                                              "name": "pending",
+                                              "fill": "#7C828D",
+                                              "content": "дашборд кто-то уже собирал",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "rectangle",
+                                              "id": "h0W2RN",
+                                              "name": "Caret",
+                                              "fill": "#4FD1C5",
+                                              "width": 2,
+                                              "height": 15
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bKCrn",
+                              "name": "Terms footer",
+                              "width": "fill_container",
+                              "stroke": "#FFFFFF14",
+                              "strokeWidth": {
+                                "top": 1
+                              },
+                              "gap": 8,
+                              "padding": [
+                                9,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "c8DaWE",
+                                  "name": "Label",
+                                  "fill": "#7C828D",
+                                  "content": "terms",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "VzcQA",
+                                  "name": "Term RACI",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "IrQdG",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "RACI",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Fnib1",
+                                  "name": "Term SLA",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "vK6tV",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "SLA",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Snu1r",
+                                  "name": "Term on-call",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "TVWV5",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "on-call",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "WSRrz",
+                                  "name": "Term OKR",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "b5PpWv",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "OKR",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "FrN2m",
+                                  "name": "Term NPS",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "rkGMX",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "NPS",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "QTuVZ",
+                                  "name": "Hint",
+                                  "fill": "#7C828D",
+                                  "content": "выдели → [n]",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "sbJYK",
+                  "name": "wide",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Lej9S",
+                      "name": "Size",
+                      "fill": "#333333",
+                      "content": "Wide · 680 pt",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HEOfs",
+                      "name": "Desktop",
+                      "fill": "#1F2228",
+                      "cornerRadius": 10,
+                      "padding": 24,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zrCoF",
+                          "name": "Panel",
+                          "width": 680,
+                          "fill": "#15171CEB",
+                          "cornerRadius": 16,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000080",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "DiFzP",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "#FFFFFF14",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                11,
+                                16
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "nffsw",
+                                  "name": "Rec",
+                                  "gap": 10,
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "Z5mWbk",
+                                      "name": "Wave",
+                                      "gap": 3,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "tu9yM",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "Fl6wa",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "tHw1R",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "wWPzn",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "NYXjy",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "qjxZK",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "mvjLR",
+                                          "name": "Bar",
+                                          "fill": "#4FD1C5",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "D65NUT",
+                                      "name": "Time",
+                                      "fill": "#7C828D",
+                                      "content": "REC 00:12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11.5,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yh0Dl",
+                                  "name": "Keys",
+                                  "fill": "#7C828D",
+                                  "content": "⌃⌥⌘E",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "fmMGz",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "zPpsp",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 12,
+                                  "padding": [
+                                    12,
+                                    16,
+                                    14,
+                                    16
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "l2H2W",
+                                      "name": "Entry 12:41",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "dCnSy",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "MC3cx",
+                                              "name": "Time",
+                                              "fill": "#7C828D",
+                                              "content": "12:41",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "QB2hK",
+                                              "name": "Dir",
+                                              "fill": "#F5B454",
+                                              "content": "←",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "w5nTlD",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "TegAS",
+                                              "name": "text",
+                                              "fill": "#E8EAED",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Давай зафиксируем RACI по запуску — кто у нас accountable за SLA поддержки?",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "AJ6lk",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "S6OChq",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "hiBHg",
+                                              "name": "Time",
+                                              "fill": "#7C828D",
+                                              "content": "12:42",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "bn7Eo",
+                                              "name": "Dir",
+                                              "fill": "#4FD1C5",
+                                              "content": "→",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "i0MIp",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "LYsYZ",
+                                              "name": "text",
+                                              "fill": "#E8EAED",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Accountable — я. По SLA отвечает команда Ильи, они же ведут on-call.",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "lT2PZ",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "v9SPW",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "Z4U8h8",
+                                              "name": "Time",
+                                              "fill": "#7C828D",
+                                              "content": "12:44",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "fFI3m",
+                                              "name": "Dir",
+                                              "fill": "#F5B454",
+                                              "content": "←",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "f4WyQJ",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "AFYWy",
+                                              "name": "text",
+                                              "fill": "#E8EAED",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "Окей. Тогда OKR на квартал синхронизируем до пятницы.",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "tnobP",
+                                      "name": "Entry 12:47",
+                                      "width": "fill_container",
+                                      "gap": 10,
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "im6Ay",
+                                          "name": "Gutter",
+                                          "width": 60,
+                                          "gap": 6,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "Z3aFpg",
+                                              "name": "Time",
+                                              "fill": "#7C828D",
+                                              "content": "12:47",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "GQUgr",
+                                              "name": "Dir",
+                                              "fill": "#4FD1C5",
+                                              "content": "→",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "Z7jxk",
+                                          "name": "Text",
+                                          "width": "fill_container",
+                                          "layout": "vertical",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "W9NiWq",
+                                              "name": "settled",
+                                              "fill": "#E8EAED",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "И ещё по NPS —",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "IBM Plex Mono",
+                                              "fontSize": 13,
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "frame",
+                                              "id": "qchlX",
+                                              "name": "Pending line",
+                                              "gap": 2,
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "FJCSY",
+                                                  "name": "pending",
+                                                  "fill": "#7C828D",
+                                                  "content": "дашборд кто-то уже собирал",
+                                                  "lineHeight": 1.55,
+                                                  "fontFamily": "IBM Plex Mono",
+                                                  "fontSize": 13,
+                                                  "fontWeight": "normal"
+                                                },
+                                                {
+                                                  "type": "rectangle",
+                                                  "id": "v9q3g",
+                                                  "name": "Caret",
+                                                  "fill": "#4FD1C5",
+                                                  "width": 2,
+                                                  "height": 15
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "K1wuw0",
+                                  "name": "Margin notes",
+                                  "width": 230,
+                                  "layout": "vertical",
+                                  "padding": [
+                                    12,
+                                    16,
+                                    14,
+                                    0
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "g3vAj",
+                                      "name": "Empty margin",
+                                      "width": "fill_container",
+                                      "cornerRadius": 10,
+                                      "stroke": "#FFFFFF1F",
+                                      "strokeWidth": 1,
+                                      "layout": "vertical",
+                                      "gap": 6,
+                                      "padding": 12,
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "nxgKI",
+                                          "name": "Head",
+                                          "fill": "#7C828D",
+                                          "content": "сноски",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 11.5,
+                                          "fontWeight": "600"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "szWdI",
+                                          "name": "Hint",
+                                          "fill": "#7C828D",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Выдели термин в тексте — объяснение появится здесь, рядом со строкой.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "IBM Plex Mono",
+                                          "fontSize": 11.5,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "wZlNf",
+                              "name": "Terms footer",
+                              "width": "fill_container",
+                              "stroke": "#FFFFFF14",
+                              "strokeWidth": {
+                                "top": 1
+                              },
+                              "gap": 8,
+                              "padding": [
+                                9,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "FChO6",
+                                  "name": "Label",
+                                  "fill": "#7C828D",
+                                  "content": "terms",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "IBM Plex Mono",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "o2fRVd",
+                                  "name": "Term RACI",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "FenBw",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "RACI",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "JIYS7",
+                                  "name": "Term SLA",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "gpjK2",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "SLA",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "LWrFH",
+                                  "name": "Term on-call",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Utzbp",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "on-call",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "KVDpf",
+                                  "name": "Term OKR",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "SiwLC",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "OKR",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "QH5Pj",
+                                  "name": "Term NPS",
+                                  "cornerRadius": 4,
+                                  "stroke": "#FFFFFF26",
+                                  "strokeWidth": 1,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "v7Or6",
+                                      "name": "Text",
+                                      "fill": "#E8EAED",
+                                      "content": "NPS",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "IBM Plex Mono",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"
