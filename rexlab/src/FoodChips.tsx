@@ -37,6 +37,7 @@ export type FoodChipsProps = {
   // window; undefined where the chips stand beside HOME.
   row: number | undefined;
   widths: ChipWidths;
+  onContents?: (contents: readonly ChipContent[]) => void;
   onChoose: (food: Food) => void;
 };
 
@@ -44,7 +45,7 @@ export type FoodChipsProps = {
 // shown. On a row of their own they stand as their measured parts let
 // them, which the stylesheet reads from `data-arrangement`; the two rows
 // they would stand in two by two are one row otherwise.
-export function FoodChips({ language, choices, chosen, row, widths, onChoose }: FoodChipsProps) {
+export function FoodChips({ language, choices, chosen, row, widths, onContents, onChoose }: FoodChipsProps) {
   const text = TEXTS[language];
   const group = useRef<HTMLDivElement>(null);
   const [contents, setContents] = useState<readonly ChipContent[]>([]);
@@ -55,19 +56,19 @@ export function FoodChips({ language, choices, chosen, row, widths, onChoose }: 
   useLayoutEffect(() => {
     const measure = () => {
       const faces = [...(group.current?.querySelectorAll(".food-chip:not([data-food='all']) .food-chip-face") ?? [])];
-      setContents(
-        faces.map((face) => {
-          const part = (selector: string) => {
-            const found = face.querySelector(selector);
-            return found ? widths.width(found) : 0;
-          };
-          return { symbols: part(".food-chip-symbols"), word: part(".food-chip-word"), count: part(".food-chip-count") };
-        })
-      );
+      const measured = faces.map((face) => {
+        const part = (selector: string) => {
+          const found = face.querySelector(selector);
+          return found ? widths.width(found) : 0;
+        };
+        return { symbols: part(".food-chip-symbols"), word: part(".food-chip-word"), count: part(".food-chip-count") };
+      });
+      setContents(measured);
+      onContents?.(measured);
     };
     measure();
     return widths.subscribe(measure);
-  }, [widths, language, counts]);
+  }, [widths, language, counts, onContents]);
 
   const chip = ({ food, count }: FoodChoice) => {
     const word = food === "all" ? text.everyFood : text.diets[food];
@@ -91,7 +92,7 @@ export function FoodChips({ language, choices, chosen, row, widths, onChoose }: 
   };
 
   return (
-    <div ref={group} className="food-chips" role="group" aria-label={text.foodChoice} data-arrangement={row === undefined ? undefined : chipArrangement(row, contents)}>
+    <div ref={group} className="food-chips" role="group" aria-label={text.foodChoice} data-turn-part="catalogue-chips" data-arrangement={row === undefined ? undefined : chipArrangement(row, contents)}>
       <div className="food-chips-row">{choices.slice(0, FIRST_ROW).map(chip)}</div>
       <div className="food-chips-row">{choices.slice(FIRST_ROW).map(chip)}</div>
     </div>

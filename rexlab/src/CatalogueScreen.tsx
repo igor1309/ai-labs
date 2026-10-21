@@ -1,12 +1,14 @@
 import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { useLayoutEffect, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
+import type { ChipContent } from "./chipArrangement.ts";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import { FoodChips, type ChipWidths, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SharedPicture } from "./SharedPicture.tsx";
+import { useKeptList, type LayoutKeeping } from "./useKeptList.ts";
 
 // How a creature's size is measured: a dinosaur's height, a flying
 // reptile's wingspan or a sea reptile's length.
@@ -42,6 +44,8 @@ export type CatalogueScreenProps = {
   chipRow: number | undefined;
   // How the chips' parts are measured, for how they stand on their row.
   chipWidths: ChipWidths;
+  onChipContents: (contents: readonly ChipContent[]) => void;
+  layoutKeeping: LayoutKeeping;
   // The dinosaur whose page the child came back from, undefined when the
   // catalogue opens from the home page.
   returning: string | undefined;
@@ -50,39 +54,42 @@ export type CatalogueScreenProps = {
   onHome: () => void;
 };
 
-export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chipRow, chipWidths, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
+export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chipRow, chipWidths, onChipContents, layoutKeeping, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
-  const grid = useRef<HTMLDivElement>(null);
+  const returningIndex = returning === undefined ? undefined : dinosaurs.findIndex(({ id }) => id === returning);
+  const list = useKeptList(layoutKeeping, columns, returningIndex === -1 ? undefined : returningIndex);
 
   // Back from a page, its card is in view, so its picture has a card to
   // shrink back into wherever the list was scrolled to.
   useLayoutEffect(() => {
     if (returning === undefined) return;
-    const cards = [...(grid.current?.children ?? [])] as HTMLElement[];
+    const cards = [...(list.ref.current?.children ?? [])] as HTMLElement[];
     cards.find((card) => card.dataset.id === returning)?.scrollIntoView({ block: "nearest" });
-  }, [returning]);
+  }, [returning, list.ref]);
 
   return (
     <main className="catalogue" aria-label={text.catalogue}>
       {/* HOME and the chips in one row, or in a tall window the chips
           on a row of their own under HOME, and the cards under them. */}
       <header className="catalogue-bar">
-        <Button className="home-button" onClick={onHome}>
+        <Button className="home-button" data-turn-part="catalogue-home" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
         </Button>
-        <FoodChips language={language} choices={foods} chosen={food} row={chipRow} widths={chipWidths} onChoose={onFood} />
+        <FoodChips language={language} choices={foods} chosen={food} row={chipRow} widths={chipWidths} onContents={onChipContents} onChoose={onFood} />
       </header>
       {/* The cards rise in when the catalogue opens from home, and again
           for each food chosen, as a list of their own: back from a page,
           the picture shrinking into its card is the motion. */}
       <div
         key={food}
-        ref={grid}
+        ref={list.ref}
+        onScroll={list.onScroll}
         className="catalogue-grid"
         role="group"
         aria-label={text.catalogue}
         data-rise={returning === undefined || undefined}
+        data-turn-part="catalogue-list"
         style={{ "--columns": columns } as CSSProperties}
       >
         {dinosaurs.map((view, index) => (
@@ -109,6 +116,7 @@ function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language
       className="card catalogue-card"
       aria-label={name}
       data-id={id}
+      data-turn-part={`catalogue-card-${id}`}
       style={{ "--card": place } as CSSProperties}
       onClick={() => onOpen(id)}
     >

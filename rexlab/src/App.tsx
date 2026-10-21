@@ -5,6 +5,7 @@ import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { catalogueColumns, catalogueRow, type SideInsets } from "./catalogueColumns.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
@@ -260,7 +261,6 @@ export function App({
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
   const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, reducedMotion: careProps.reducedMotion, startTimer }));
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
-  useLayoutTurns(turns, viewport, size, { screen: screen.kind, portrait, gated: gateShown });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -432,11 +432,21 @@ export function App({
   // The food chosen is kept going to a page and back, but the catalogue
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
+  const [chipContents, setChipContents] = useState<readonly ChipContent[]>([]);
   const shown = ofFood(catalogue, food);
   // The catalogue's cards in a row, and in a tall window, where the chips
   // stand on a row of their own, that row's width, by the window.
   const columns = useSyncExternalStore(viewport.subscribe, () => catalogueColumns(viewport.width(), viewport.sizeClass(), viewport.sideInsets()));
   const chipRow = useSyncExternalStore(viewport.subscribe, () => (viewport.sizeClass() === "tall" ? catalogueRow(viewport.width(), viewport.sideInsets()) : undefined));
+  const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chipRow === undefined ? "landscape" : chipArrangement(chipRow, chipContents)}`;
+  useLayoutTurns(
+    turns,
+    viewport,
+    size,
+    screen.kind === "catalogue" && catalogueArrangement !== undefined
+      ? { screen: screen.kind, portrait, gated: gateShown, arrangement: catalogueArrangement }
+      : { screen: screen.kind, portrait, gated: gateShown }
+  );
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
@@ -519,6 +529,8 @@ export function App({
             columns={columns}
             chipRow={chipRow}
             chipWidths={chipWidths}
+            onChipContents={setChipContents}
+            layoutKeeping={turns}
             returning={screen.returning}
             onFood={chooseFood}
             onOpen={openDinosaur}

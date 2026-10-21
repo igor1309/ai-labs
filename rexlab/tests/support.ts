@@ -64,9 +64,15 @@ export type PictureClock = { loadPicture: LoadPicture; pictures: PictureStore; s
 export const pictureClock = (loadPicture: LoadPicture, startTimer: StartTimer): PictureClock => ({ loadPicture, pictures: pictureStore(loadPicture), startTimer });
 
 // Pictures for tests that are not about them: each is loaded the moment
-// it is asked for, so nothing waits on the timer, which never fires.
+// it is asked for, and any layout motion settles at the next microtask.
 export function loadedPictures(): PictureClock {
-  return pictureClock((_url, done) => done("loaded"), () => () => {});
+  return pictureClock(
+    (_url, done) => done("loaded"),
+    (_ms, fire) => {
+      queueMicrotask(fire);
+      return () => {};
+    }
+  );
 }
 
 export type ManualPictures = PictureClock & {

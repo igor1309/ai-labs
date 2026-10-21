@@ -2,8 +2,9 @@ import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { TurnStyle } from "./turnMotion.ts";
 
 // The layout a screen stands in: the screen, whether its portrait layout
-// applies, and whether the picture asking to turn covers it.
-export type ScreenLayout = { screen: string; portrait: boolean; gated: boolean };
+// applies, whether the picture asking to turn covers it, and its arrangement
+// where a screen has more than one layout in the same size class.
+export type ScreenLayout = { screen: string; portrait: boolean; gated: boolean; arrangement?: string };
 
 // The page's changes of layout: `apply` makes one and moves the page as
 // `style` says, and a change is running until its motion settles.
@@ -28,7 +29,8 @@ export type WindowChanges = {
 // or out over a page at rest. Any other change follows the window.
 export function turnStyle(from: ScreenLayout | undefined, to: ScreenLayout): TurnStyle {
   if (!from || from.screen !== to.screen || from.gated || to.gated) return "still";
-  return from.portrait === to.portrait ? "follow" : "glide";
+  const arrangementChanged = from.arrangement !== undefined && to.arrangement !== undefined && from.arrangement !== to.arrangement;
+  return from.portrait === to.portrait && !arrangementChanged ? "follow" : "glide";
 }
 
 // The keys a motion holds back: no key reaches the page, nor moves its
@@ -79,7 +81,7 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
   }, [viewport]);
   const resized = useSyncExternalStore(resizes.subscribe, resizes.count);
   const last = useRef<ScreenLayout>(undefined);
-  const { screen, portrait, gated } = layout;
+  const { screen, portrait, gated, arrangement } = layout;
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -114,12 +116,12 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const next = { screen, portrait, gated };
+    const next: ScreenLayout = arrangement === undefined ? { screen, portrait, gated } : { screen, portrait, gated, arrangement };
     turns.apply(() => {
       root.dataset.size = size;
     }, turnStyle(last.current, next));
     last.current = next;
-  }, [turns, size, screen, portrait, gated, resized]);
+  }, [turns, size, screen, portrait, gated, arrangement, resized]);
 
   useLayoutEffect(
     () => () => {
