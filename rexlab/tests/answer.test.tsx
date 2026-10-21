@@ -140,7 +140,7 @@ describe("answering a question", () => {
       expect(within(cardOf(big)).getByText(largerValue)).toBeDefined();
       expect(within(cardOf(small)).getByText(smallerValue)).toBeDefined();
       expect(symbolOf(within(cardOf(big)).getByText(largerValue).parentElement ?? cardOf(big))).toBe(attribute === "mass" ? "weight" : "ruler");
-      expect(score(choose(startPlay([question]), tapped.id))).toBe(answer === "right answer" ? 1 : 0);
+      expect(score(choose(startPlay([question], "hatchling"), tapped.id))).toBe(answer === "right answer" ? 1 : 0);
       const next = screen.getByRole("button", { name: "NEXT" });
       expect([next.textContent, symbolOf(next)]).toEqual(["NEXT", "arrow-right"]);
     }

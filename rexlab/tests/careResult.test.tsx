@@ -20,7 +20,7 @@ import {
   visitorsFrom,
   welcomeVisitor
 } from "./careApp.tsx";
-import { SHIPPED_VISITORS, fakeBodyPicture, fakeItemPicture, manualPictures, memoryStorage, symbolOf } from "./support.ts";
+import { SHIPPED_VISITORS, fakeBodyPicture, fakeItemPicture, manualPictures, memoryStorage, quizSaved, symbolOf } from "./support.ts";
 
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
@@ -307,9 +307,9 @@ describe("care progress", () => {
     openCareApp({ storage });
 
     expect([storage.items.get(LANGUAGE_KEY), storage.items.get(THEME_KEY)]).toEqual(["en", "dark"]);
-    expect(localProgress(() => storage).load()).toEqual(QUIZ["compare-dinosaurs"]);
+    expect(localProgress(() => storage).load()).toEqual(quizSaved(9, 4));
     expect(document.documentElement.dataset.theme).toBe("dark");
-    localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
+    localProgress(() => storage).save(quizSaved(10, 5));
     expect(storedCare(storage)).toEqual({ bestScore: 8, visitsFinished: 1, friends: ["tyrannosaurus"] });
   });
 
@@ -328,7 +328,7 @@ describe("care progress", () => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(storedCare(storage)).toEqual({ bestScore: 6, visitsFinished: 1, friends: ["tyrannosaurus"] });
-    expect(localProgress(() => storage).load()).toEqual(quizReadable ? QUIZ["compare-dinosaurs"] : { bestScore: null, roundsPlayed: 0 });
+    expect(localProgress(() => storage).load()).toEqual(quizReadable ? quizSaved(9, 4) : quizSaved(null, 0));
   });
 
   it("goes on when progress cannot be read: the score and departure, no best, and a friend while the app is open", async () => {

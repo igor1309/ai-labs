@@ -25,8 +25,7 @@ import {
   seededRandom,
   symbolOf,
   type MemoryStorage,
-  gameDoor,
-  unsetAgeLevel
+  gameDoor
 } from "./support.ts";
 
 afterEach(() => {
@@ -61,6 +60,12 @@ const stored = (storage: MemoryStorage) => {
   return raw === undefined ? undefined : JSON.parse(raw);
 };
 const storedGame = (storage: MemoryStorage) => stored(storage)?.games["compare-dinosaurs"];
+// The quiz's entry as a round saves it, its best at Hatchling.
+const savedGame = (bestScore: number, roundsPlayed: number) => ({ bestScore, explorerBest: null, paleontologistBest: null, roundsPlayed });
+
+// The age level picked, Hatchling, whose best a record saved before the
+// quiz had levels holds.
+const HATCHLING = { load: () => ({ level: "hatchling" as const, revision: null }), save: () => {} };
 
 function openApp(storage: MemoryStorage, seed = 21) {
   render(
@@ -74,7 +79,8 @@ function openApp(storage: MemoryStorage, seed = 21) {
       viewport={manualViewport("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
-      {...lightDevice()} {...unsetAgeLevel()}
+      {...lightDevice()}
+      ageLevelStore={HATCHLING}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
@@ -177,7 +183,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 5);
 
-    expect(storedGame(storage)).toEqual({ bestScore: 9, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(9, 4));
   });
 
   it("celebrates a new best score and keeps it", async () => {
@@ -191,7 +197,7 @@ describe("stored progress", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("7");
     expect(shownBeaten()).toEqual(["6", "arrow-right"]);
-    expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(7, 4));
   });
 
   it.each([7, 5])("does not celebrate %i against a best of 7, and the best stays 7", async (points) => {
@@ -205,7 +211,7 @@ describe("stored progress", () => {
     expect(confetti()).toBe(0);
     expect(shownBest()).toBe("7");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(7, 4));
   });
 
   it("celebrates the first finished round as the first best", async () => {
@@ -219,7 +225,7 @@ describe("stored progress", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("4");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedGame(storage)).toEqual({ bestScore: 4, roundsPlayed: 1 });
+    expect(storedGame(storage)).toEqual(savedGame(4, 1));
   });
 
   it("does not celebrate a first round of 0, which still sets the best", async () => {
@@ -231,7 +237,7 @@ describe("stored progress", () => {
     expect(celebrations()).toEqual([]);
     expect(confetti()).toBe(0);
     expect(shownBest()).toBe("0");
-    expect(storedGame(storage)).toEqual({ bestScore: 0, roundsPlayed: 1 });
+    expect(storedGame(storage)).toEqual(savedGame(0, 1));
   });
 
   it("does not record a round left early, and goes home without asking", async () => {
@@ -260,7 +266,7 @@ describe("stored progress", () => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(shownBest()).toBe("4");
-    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 4, roundsPlayed: 1 } } });
+    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": savedGame(4, 1) } });
   });
 
   it("shows the score but no best and no celebration when storage cannot be read", async () => {

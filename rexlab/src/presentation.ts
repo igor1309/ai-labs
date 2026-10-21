@@ -11,7 +11,7 @@ import type { Language } from "./language/language.ts";
 import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
-import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
+import { bestForLevel as bestForQuizLevel, type Attribute, type Celebration, type Option, type QuestionState, type RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
@@ -89,8 +89,8 @@ function presentScore(score: number, total: number, best: number | undefined, pr
   return { score, total, best, beaten: celebration === "new-best" ? previousBest : undefined, celebration };
 }
 
-export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && CELEBRATIONS[celebration]);
+export function presentResult({ level, score, total, progress, previousBest, celebration }: RoundResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForQuizLevel(progress, level) ?? undefined, previousBest, celebration && CELEBRATIONS[celebration]);
 }
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };

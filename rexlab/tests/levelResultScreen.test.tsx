@@ -5,7 +5,7 @@ import { AGE_LEVELS } from "../src/ageLevel.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { ResultScreen } from "../src/ResultScreen.tsx";
-import { SortResultScreen, type SortResultScreenProps } from "../src/SortResultScreen.tsx";
+import { LevelResultScreen, type LevelResultScreenProps } from "../src/LevelResultScreen.tsx";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { withPictures } from "./pictures.tsx";
 import { contrast, fakeBodyPicture, sameColour, seenOn, surfaceOf } from "./support.ts";
@@ -16,10 +16,10 @@ const result = {
   celebration: null, hero: fakeBodyPicture("tyrannosaurus")
 } as const;
 
-function openResult(props: Partial<SortResultScreenProps> = {}) {
+function openResult(props: Partial<LevelResultScreenProps> = {}) {
   const callbacks = { onLevel: vi.fn(), onPlayAgain: vi.fn(), onHome: vi.fn() };
-  const given: SortResultScreenProps = { ...result, level: "explorer", ...callbacks, ...props };
-  const view = render(<SortResultScreen {...given} />, withPictures);
+  const given: LevelResultScreenProps = { ...result, level: "explorer", ...callbacks, ...props };
+  const view = render(<LevelResultScreen {...given} />, withPictures);
   return { ...view, ...callbacks, given };
 }
 
@@ -31,7 +31,7 @@ const element = (selector: string) => {
 };
 const style = (selector: string) => getComputedStyle(element(selector));
 
-describe("the sorting result's level switch", () => {
+describe("the result's level switch, in the sorting game and the quiz", () => {
   it.each(AGE_LEVELS)("shows %s chosen, youngest first with their pictures, above PLAY AGAIN", (level) => {
     openResult({ level });
 
@@ -58,7 +58,7 @@ describe("the sorting result's level switch", () => {
     expect(view.onLevel.mock.calls).toEqual([[level]]);
     expect([view.onPlayAgain.mock.calls, view.onHome.mock.calls]).toEqual([[], []]);
     expect(within(levelSwitch()).getByRole("button", { pressed: true }).textContent).toBe("🦖EXPLORER");
-    view.rerender(<SortResultScreen {...view.given} level={level} />);
+    view.rerender(<LevelResultScreen {...view.given} level={level} />);
     expect(screen.getByRole("main")).toBe(main);
     expect([screen.getByLabelText("SCORE").textContent, screen.getByLabelText("BEST SCORE").textContent]).toEqual(["5/8", "BEST7"]);
     expect(within(levelSwitch()).getByRole("button", { pressed: true }).textContent).toBe(`${{ hatchling: "🥚", explorer: "🦖", paleontologist: "🦴" }[level]}${TEXTS.en.ageLevels[level].name}`);
@@ -100,7 +100,7 @@ const wordWidth = (word: string, size: number) => (WORD_EMS[word] ?? NaN) * size
 
 describe.each(
   WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme, windowWidth, windowHeight] as const)))
-)("the sorting result in %s, %s at %i by %i", (language, theme, windowWidth, windowHeight) => {
+)("the result with levels in %s, %s at %i by %i", (language, theme, windowWidth, windowHeight) => {
   function pixels(value: string): number {
     if (value === "0") return 0;
     const plain = /^([\d.]+)(px|vh)$/.exec(value);
