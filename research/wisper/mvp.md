@@ -56,8 +56,15 @@ Chunk size: 4 s by default (owner, 2026-10-21). It is a setting in debug
 builds so other sizes can be tried on real calls; release builds use the
 default.
 
+Audio after a call (owner, 2026-10-21): kept as one compact stereo file (mic
+left, call right; Amanu's format, ~55 MB per hour) and deleted automatically
+after 7 days. The transcript is never deleted with it. A pinned call keeps
+its audio until unpinned. Audio is removed only after the transcript is
+written and checked: Amanu's audit found it deleting the only copy after a
+failed recognition.
+
 ## Open questions for the owner
 
-- **How long audio is kept**, and where.
+- **Where audio and transcripts live** on disk.
 - **Final-pass engine for v3:** Parakeet v3 over the whole file, or Whisper
   Large v3 Turbo already on this Mac. Needs a side-by-side on one call.
