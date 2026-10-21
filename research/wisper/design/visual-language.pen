@@ -21813,7 +21813,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -21880,7 +21881,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -21970,7 +21972,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -24443,7 +24446,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -24510,7 +24514,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -24600,7 +24605,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "IBM Plex Mono",
-                                      "fontSize": 10.5
+                                      "fontSize": 10.5,
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -31151,7 +31157,8 @@
                                               "content": "Parakeet v3",
                                               "lineHeight": 1.55,
                                               "fontFamily": "IBM Plex Mono",
-                                              "fontSize": 12.5
+                                              "fontSize": 12.5,
+                                              "fontWeight": "normal"
                                             },
                                             {
                                               "type": "text",
@@ -31696,7 +31703,8 @@
                                               "content": "Parakeet v3",
                                               "lineHeight": 1.55,
                                               "fontFamily": "IBM Plex Mono",
-                                              "fontSize": 12.5
+                                              "fontSize": 12.5,
+                                              "fontWeight": "normal"
                                             },
                                             {
                                               "type": "text",
@@ -32025,7 +32033,8 @@
                                                   "content": "2 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -32047,7 +32056,8 @@
                                                   "content": "3 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -32093,7 +32103,8 @@
                                                   "content": "6 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -32115,7 +32126,8 @@
                                                   "content": "8 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             }
@@ -32477,7 +32489,8 @@
                                               "content": "Parakeet v3",
                                               "lineHeight": 1.55,
                                               "fontFamily": "IBM Plex Mono",
-                                              "fontSize": 12.5
+                                              "fontSize": 12.5,
+                                              "fontWeight": "normal"
                                             },
                                             {
                                               "type": "text",
@@ -33022,7 +33035,8 @@
                                               "content": "Parakeet v3",
                                               "lineHeight": 1.55,
                                               "fontFamily": "IBM Plex Mono",
-                                              "fontSize": 12.5
+                                              "fontSize": 12.5,
+                                              "fontWeight": "normal"
                                             },
                                             {
                                               "type": "text",
@@ -33351,7 +33365,8 @@
                                                   "content": "2 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -33373,7 +33388,8 @@
                                                   "content": "3 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -33419,7 +33435,8 @@
                                                   "content": "6 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             },
@@ -33441,7 +33458,8 @@
                                                   "content": "8 с",
                                                   "lineHeight": 1.55,
                                                   "fontFamily": "IBM Plex Mono",
-                                                  "fontSize": 12
+                                                  "fontSize": 12,
+                                                  "fontWeight": "normal"
                                                 }
                                               ]
                                             }
@@ -33756,7 +33774,8 @@
                                   "content": "Не записывает",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -33828,7 +33847,8 @@
                                   "content": "Показать панель",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -33853,7 +33873,8 @@
                                   "content": "Звонки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -33878,7 +33899,8 @@
                                   "content": "Настройки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -33934,7 +33956,8 @@
                                   "content": "Выйти",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -34126,7 +34149,8 @@
                                   "content": "Запись · 00:12:47",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34197,7 +34221,8 @@
                                   "content": "Показать панель",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34222,7 +34247,8 @@
                                   "content": "Звонки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34247,7 +34273,8 @@
                                   "content": "Настройки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -34303,7 +34330,8 @@
                                   "content": "Выйти",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -34539,7 +34567,8 @@
                                   "content": "Не записывает",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34611,7 +34640,8 @@
                                   "content": "Показать панель",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34636,7 +34666,8 @@
                                   "content": "Звонки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34661,7 +34692,8 @@
                                   "content": "Настройки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -34717,7 +34749,8 @@
                                   "content": "Выйти",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -34909,7 +34942,8 @@
                                   "content": "Запись · 00:12:47",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -34980,7 +35014,8 @@
                                   "content": "Показать панель",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -35005,7 +35040,8 @@
                                   "content": "Звонки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -35030,7 +35066,8 @@
                                   "content": "Настройки…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -35086,7 +35123,8 @@
                                   "content": "Выйти",
                                   "lineHeight": 1.45,
                                   "fontFamily": "IBM Plex Sans",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "text",
@@ -44702,7 +44740,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -44769,7 +44808,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -44859,7 +44899,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -44926,7 +44967,8 @@
                                       "content": "bb · открыть тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -47130,7 +47172,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -47197,7 +47240,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -47287,7 +47331,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -47354,7 +47399,8 @@
                                       "content": "bb · открыть тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -77426,7 +77472,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: no hotkey for start/stop; the 4 s steps follow the default chunk size; whether text for the minutes before the model arrived is filled in later (drawn: it is not; final.md covers it). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): text for the minutes before the live model arrived is filled in from the recorded audio and marked «дописано позже», drawn dimmer. Still proposed: no hotkey for start/stop; the 4 s steps follow the default chunk size. RACI was never spoken in the spike, so its spelling here is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -78353,6 +78399,313 @@
                                       "fontWeight": "normal"
                                     }
                                   ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "q1RJV",
+                  "name": "Model arrived: text filled in",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ToVPB",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Model arrived: text filled in",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "yM53X",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Once Parakeet v3 is here, the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tKgb2",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "K8tB0",
+                          "name": "Panel",
+                          "width": 396,
+                          "fill": "$glass",
+                          "cornerRadius": "$radius-panel",
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000040",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "bAVcU",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "$rule",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                "$space-8",
+                                "$space-12",
+                                "$space-8",
+                                "$space-16"
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "EaWnk",
+                                  "name": "Rec",
+                                  "gap": "$space-8",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "cDWD5",
+                                      "name": "Wave",
+                                      "gap": "$space-2",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "vk4Lg",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "aXkDe",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "Ya2Nf",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "nv1it",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "RCfIy",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "a601R",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "HBuIZ",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Q5GAtk",
+                                      "name": "Status",
+                                      "fill": "$gutter",
+                                      "content": "REC 00:05:02",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "U05yd",
+                                  "name": "Stop",
+                                  "fill": "$errBg",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "rectangle",
+                                      "cornerRadius": "$radius-bar",
+                                      "id": "WrbN1",
+                                      "name": "Square",
+                                      "fill": "$rec",
+                                      "width": 7,
+                                      "height": 7
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "AVClM",
+                                      "name": "Label",
+                                      "fill": "$rec",
+                                      "content": "Стоп",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "G0wql",
+                              "name": "Log",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$space-12",
+                              "padding": [
+                                "$space-12",
+                                "$space-16"
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Z3VSD",
+                                  "name": "Added late",
+                                  "opacity": 0.6,
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-8",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "ZjhtR",
+                                      "name": "Late label",
+                                      "fill": "$gutter",
+                                      "content": "дописано позже · 12:30–12:33",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "id": "HjMo7",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:31",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:31"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Всем привет. Начнём с ролей по запуску."
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "kCEeI",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:32",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:32"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Да, и сразу по слог — кто дежурит."
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "SDYRY",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "id": "PscAV",
+                                  "type": "ref",
+                                  "ref": "ysZuS",
+                                  "name": "Entry 12:34",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "KM1eH": {
+                                      "content": "12:34"
+                                    },
+                                    "IMPcg": {
+                                      "content": "Окей. Тогда RACI соберём сегодня."
+                                    }
+                                  }
                                 }
                               ]
                             }
@@ -79817,7 +80170,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -79884,7 +80238,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -79974,7 +80329,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -80990,6 +81346,313 @@
                                       "fontWeight": "normal"
                                     }
                                   ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i6ahG",
+                  "name": "Model arrived: text filled in",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HXURV",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Model arrived: text filled in",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Uah4s",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Once Parakeet v3 is here, the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qPjqG",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "GZ4OD",
+                          "name": "Panel",
+                          "width": 396,
+                          "fill": "$glass",
+                          "cornerRadius": "$radius-panel",
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#00000080",
+                              "offset": {
+                                "x": 0,
+                                "y": 12
+                              },
+                              "blur": 32
+                            }
+                          ],
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "VOStf",
+                              "name": "Header",
+                              "width": "fill_container",
+                              "stroke": "$rule",
+                              "strokeWidth": {
+                                "bottom": 1
+                              },
+                              "padding": [
+                                "$space-8",
+                                "$space-12",
+                                "$space-8",
+                                "$space-16"
+                              ],
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "QDuMo",
+                                  "name": "Rec",
+                                  "gap": "$space-8",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "X2UWe",
+                                      "name": "Wave",
+                                      "gap": "$space-2",
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "a0FHJ3",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 6
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "sw8sz",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 12
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "ewkKm",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 9
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "uXqbd",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 14
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "UYfTt",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 7
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "gnlfl",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 11
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": 2,
+                                          "id": "VsXE2",
+                                          "name": "Bar",
+                                          "fill": "$selBg",
+                                          "width": 3,
+                                          "height": 5
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ZR5Ca",
+                                      "name": "Status",
+                                      "fill": "$gutter",
+                                      "content": "REC 00:05:02",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "WXZv5",
+                                  "name": "Stop",
+                                  "fill": "$errBg",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "rectangle",
+                                      "cornerRadius": "$radius-bar",
+                                      "id": "mZ3b4",
+                                      "name": "Square",
+                                      "fill": "$rec",
+                                      "width": 7,
+                                      "height": 7
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "OAQ57",
+                                      "name": "Label",
+                                      "fill": "$rec",
+                                      "content": "Стоп",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "d9zM1",
+                              "name": "Log",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$space-12",
+                              "padding": [
+                                "$space-12",
+                                "$space-16"
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Q9eVTu",
+                                  "name": "Added late",
+                                  "opacity": 0.6,
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-8",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "wVRdp",
+                                      "name": "Late label",
+                                      "fill": "$gutter",
+                                      "content": "дописано позже · 12:30–12:33",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "id": "eOB1A",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:31",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:31"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Всем привет. Начнём с ролей по запуску."
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "N9G43R",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:32",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:32"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Да, и сразу по слог — кто дежурит."
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "XRfFi",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "id": "f5wIc9",
+                                  "type": "ref",
+                                  "ref": "ysZuS",
+                                  "name": "Entry 12:34",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "KM1eH": {
+                                      "content": "12:34"
+                                    },
+                                    "IMPcg": {
+                                      "content": "Окей. Тогда RACI соберём сегодня."
+                                    }
+                                  }
                                 }
                               ]
                             }
@@ -82454,7 +83117,8 @@
                                       "content": "⌃⌥⌘E → bb",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -82521,7 +83185,8 @@
                                       "content": "bb отвечает…",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -82611,7 +83276,8 @@
                                       "content": "bb · тред ↗",
                                       "lineHeight": 1.55,
                                       "fontFamily": "$font-data",
-                                      "fontSize": "$type-caption"
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 },
@@ -84418,7 +85084,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: the summary's layout (drawn as short paragraphs from summary.md) and the state while the bb thread is still working (drawn as one line).",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): the summary sits above the transcript, collapsed to 3–4 lines with «показать всё», keeping «bb · тред ↗»; the summary-pending state stays as drawn.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -84875,13 +85541,25 @@
                                   "type": "text",
                                   "id": "vukR4",
                                   "name": "Line 3",
+                                  "opacity": 0.6,
                                   "fill": "$text",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Открыто: собирал ли кто-то дашборд NPS.",
+                                  "content": "Открыто: собирал ли кто-то дашборд NPS, и кто ведёт ретро по запуску…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font-ui",
                                   "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "cvhNs",
+                                  "name": "Show more",
+                                  "fill": "$me",
+                                  "content": "показать всё ↓",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -85419,13 +86097,25 @@
                                   "type": "text",
                                   "id": "IpqnL",
                                   "name": "Line 3",
+                                  "opacity": 0.6,
                                   "fill": "$text",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Открыто: собирал ли кто-то дашборд NPS.",
+                                  "content": "Открыто: собирал ли кто-то дашборд NPS, и кто ведёт ретро по запуску…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font-ui",
                                   "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "NW1E9",
+                                  "name": "Show more",
+                                  "fill": "$me",
+                                  "content": "показать всё ↓",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -86478,13 +87168,25 @@
                                   "type": "text",
                                   "id": "J9wFV",
                                   "name": "Line 3",
+                                  "opacity": 0.6,
                                   "fill": "$text",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Открыто: собирал ли кто-то дашборд NPS.",
+                                  "content": "Открыто: собирал ли кто-то дашборд NPS, и кто ведёт ретро по запуску…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font-ui",
                                   "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AJQAU",
+                                  "name": "Show more",
+                                  "fill": "$me",
+                                  "content": "показать всё ↓",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -87022,13 +87724,25 @@
                                   "type": "text",
                                   "id": "UuZ0K",
                                   "name": "Line 3",
+                                  "opacity": 0.6,
                                   "fill": "$text",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Открыто: собирал ли кто-то дашборд NPS.",
+                                  "content": "Открыто: собирал ли кто-то дашборд NPS, и кто ведёт ретро по запуску…",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font-ui",
                                   "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ue7NA",
+                                  "name": "Show more",
+                                  "fill": "$me",
+                                  "content": "показать всё ↓",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -87695,7 +88409,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: the progress line; the failure's wording and its example cause (a full disk); what the path field shows after a failed move (drawn: the new folder, with the calls left behind named in the banner).",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): the error names the count moved, the call that failed and why, then Повторить; after a failed move the path keeps the old folder with «часть звонков ещё здесь», and the setting changes only when every call has moved. Still proposed: the progress line.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -87892,7 +88606,7 @@
                                           "id": "qYLqC",
                                           "name": "Hint",
                                           "fill": "$gutter",
-                                          "content": "5 звонков · аудио 135 MB · настройки — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB · настройки — в ~/.wisper",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -88158,7 +88872,7 @@
                           "y": 52,
                           "descendants": {
                             "png3k": {
-                              "content": "Перенести 5 звонков (135 MB)?"
+                              "content": "Перенести 52 звонка (135 MB)?"
                             },
                             "vPdox": {
                               "content": "Из ~/Recordings/wisper в ~/Documents/wisper, по одному звонку. Пока идёт перенос, запись не начнётся."
@@ -88360,7 +89074,7 @@
                                               "id": "voDJc",
                                               "name": "Hint",
                                               "fill": "$sub",
-                                              "content": "3 из 5 · 81 из 135 MB",
+                                              "content": "31 из 52 · 81 из 135 MB",
                                               "lineHeight": 1.45,
                                               "fontFamily": "$font-data",
                                               "fontSize": "$type-small",
@@ -88632,7 +89346,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "Example cause: the new disk filled up. Calls not yet moved stay where they were; Повторить picks up from there.",
+                      "content": "The path still shows the old folder: the setting changes only when every call has moved. Повторить picks up from the failed call.",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -88744,7 +89458,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Documents/wisper"
+                                                  "content": "~/Recordings/wisper"
                                                 }
                                               }
                                             },
@@ -88762,6 +89476,17 @@
                                           ]
                                         },
                                         {
+                                          "type": "text",
+                                          "id": "hmiHZ",
+                                          "name": "Still here",
+                                          "fill": "$warn",
+                                          "content": "часть звонков ещё здесь",
+                                          "lineHeight": 1.45,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-small",
+                                          "fontWeight": "normal"
+                                        },
+                                        {
                                           "id": "TJqZs",
                                           "type": "ref",
                                           "ref": "qAImO",
@@ -88769,10 +89494,10 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "uxXzz": {
-                                              "content": "Перенесено 3 из 5: на диске нет места"
+                                              "content": "Перенесено 31 из 52"
                                             },
                                             "q9Ta7": {
-                                              "content": "2 звонка остались в ~/Recordings/wisper."
+                                              "content": "«Zoom 2» — не удалось: нет места на диске."
                                             }
                                           }
                                         },
@@ -89623,7 +90348,7 @@
                                           "id": "LVeZm",
                                           "name": "Hint",
                                           "fill": "$gutter",
-                                          "content": "5 звонков · аудио 135 MB · настройки — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB · настройки — в ~/.wisper",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -89889,7 +90614,7 @@
                           "y": 52,
                           "descendants": {
                             "png3k": {
-                              "content": "Перенести 5 звонков (135 MB)?"
+                              "content": "Перенести 52 звонка (135 MB)?"
                             },
                             "vPdox": {
                               "content": "Из ~/Recordings/wisper в ~/Documents/wisper, по одному звонку. Пока идёт перенос, запись не начнётся."
@@ -90091,7 +90816,7 @@
                                               "id": "DVntv",
                                               "name": "Hint",
                                               "fill": "$sub",
-                                              "content": "3 из 5 · 81 из 135 MB",
+                                              "content": "31 из 52 · 81 из 135 MB",
                                               "lineHeight": 1.45,
                                               "fontFamily": "$font-data",
                                               "fontSize": "$type-small",
@@ -90363,7 +91088,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "Example cause: the new disk filled up. Calls not yet moved stay where they were; Повторить picks up from there.",
+                      "content": "The path still shows the old folder: the setting changes only when every call has moved. Повторить picks up from the failed call.",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -90475,7 +91200,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Documents/wisper"
+                                                  "content": "~/Recordings/wisper"
                                                 }
                                               }
                                             },
@@ -90493,6 +91218,17 @@
                                           ]
                                         },
                                         {
+                                          "type": "text",
+                                          "id": "yZzKO",
+                                          "name": "Still here",
+                                          "fill": "$warn",
+                                          "content": "часть звонков ещё здесь",
+                                          "lineHeight": 1.45,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-small",
+                                          "fontWeight": "normal"
+                                        },
+                                        {
                                           "id": "Z86wR",
                                           "type": "ref",
                                           "ref": "qAImO",
@@ -90500,10 +91236,10 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "uxXzz": {
-                                              "content": "Перенесено 3 из 5: на диске нет места"
+                                              "content": "Перенесено 31 из 52"
                                             },
                                             "q9Ta7": {
-                                              "content": "2 звонка остались в ~/Recordings/wisper."
+                                              "content": "«Zoom 2» — не удалось: нет места на диске."
                                             }
                                           }
                                         },
