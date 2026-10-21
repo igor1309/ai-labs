@@ -1,9 +1,19 @@
-import { act, render, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App } from "../src/App.tsx";
+import type { HomeGame } from "../src/HomePage.tsx";
+import type { Language } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { topLine } from "./homeCorner.ts";
+import { TILE_COUNTS, TITLE_EMS, gamesWidths, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
+import { LEVEL_EMS } from "./levelEms.ts";
+import { openMenu, outsideMenu } from "./menus.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import {
   SHIPPED_CATALOGUE,
+  SHIPPED_DIG,
   SHIPPED_DINOSAURS,
   emptyCare,
   emptyDig,
@@ -18,9 +28,12 @@ import {
   lightDevice,
   loadedPictures,
   manualViewport,
+  memoryStorage,
   seededRandom,
   tilesRow,
-  unsetAgeLevel
+  unsetAgeLevel,
+  type ManualViewport,
+  type MemoryStorage
 } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
@@ -48,6 +61,8 @@ const UPRIGHT = [
 // indicator. An iPad upright has no inset at its sides.
 const IPAD_MINI_UPRIGHT: SafeArea = { top: 24, right: 0, bottom: 20, left: 0 };
 
+const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
+
 const px = (value: string) => Number.parseFloat(value) || 0;
 
 const part = (selector: string) => {
@@ -56,36 +71,48 @@ const part = (selector: string) => {
   return found;
 };
 
-// The home page in a tall window `width` by `height`, its large card
-// COMPARE's, with the static page's version footer outside the app.
-function openUpright(width: number, height: number) {
+// The home page in a window `width` by `height`, its large card
+// `featured`'s, in `language`, with the progress `storage` keeps, upright
+// unless `viewport` stands otherwise, and with the static page's version
+// footer outside the app.
+function openUpright(
+  width: number,
+  height: number,
+  { language = "en", featured = "compare", storage = memoryStorage(), viewport = manualViewport("portrait") }: { language?: Language; featured?: HomeGame; storage?: MemoryStorage; viewport?: ManualViewport } = {}
+) {
   openWindow(width, height);
   const footer = Object.assign(document.createElement("footer"), { id: "version" });
   document.body.append(footer);
   onTestFinished(() => footer.remove());
-  const viewport = manualViewport("portrait");
+  const progress = () => storage;
   render(
     <App
-      {...featuring("compare")}
+      {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
       portraitLayouts={{ home: ["tall"] }}
       viewport={viewport}
-      progress={emptyProgress()}
+      progress={localProgress(progress)}
       {...englishDevice()}
+      deviceLanguage={DEVICES[language]}
       {...lightDevice()}
       {...unsetAgeLevel()}
       {...emptyCare()}
+      careProgress={localCareProgress(progress)}
       {...emptySorting()}
+      sortingProgress={localSortingProgress(progress)}
       {...emptyPairs()}
+      pairsProgress={localPairsProgress(progress)}
       {...emptySkeletons()}
+      skeletonProgress={localSkeletonProgress(progress)}
       {...emptyDig()}
+      digProgress={localDigProgress(progress)}
       {...loadedPictures()}
     />
   );
-  return { viewport };
+  return { viewport, user: userEvent.setup() };
 }
 
 // The upright page as the browser lays it out from the stylesheet: a
@@ -249,5 +276,223 @@ describe("the home page upright", () => {
       IPAD_MINI_UPRIGHT.bottom
     ]);
     expect([inset.layout.column, inset.layout.peek]).toEqual([without.layout.column, without.layout.peek]);
+  });
+});
+
+// home-portrait.feature's "Every word fits the tightest tall windows": a
+// best of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, 120
+// stars in FIND THE PAIR and 7 dinosaurs dug up in DIG.
+const scored = () =>
+  memoryStorage({
+    [PROGRESS_KEY]: JSON.stringify({
+      schemaVersion: 1,
+      games: {
+        "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 },
+        "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: [] },
+        "sort-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: null, roundsPlayed: 2 },
+        "find-the-pair": { stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] },
+        "skeleton-assembly": { earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] },
+        dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] }
+      }
+    })
+  });
+
+// Each tile's count, in the tiles' order.
+const COUNTS: Record<HomeGame, string> = {
+  compare: "7",
+  catalogue: String(SHIPPED_CATALOGUE.length),
+  pairs: "120",
+  skeletons: "3",
+  dig: "7",
+  sort: "6",
+  care: "8"
+};
+
+const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care"];
+
+// The outline's examples: the language, the window's width, 800 tall,
+// and the game the large card features.
+const TIGHTEST: ReadonlyArray<readonly [Language, number, HomeGame]> = [
+  ["en", 600, "compare"],
+  ["ru", 600, "catalogue"],
+  ["ru", 600, "pairs"],
+  ["ru", 677, "compare"],
+  ["ru", 700, "compare"],
+  ["ru", 677, "skeletons"]
+];
+
+// The large card's name: its size and the lines it takes in a card
+// `cardWidth` wide.
+function featuredName(cardWidth: number) {
+  const title = featuredCard().querySelector(".featured-card-title");
+  if (!title?.textContent) throw new Error("No name on the large card");
+  const style = getComputedStyle(title);
+  const size = px(style.fontSize);
+  const spacing = px(style.letterSpacing);
+  const room = roomFor(title, () => cardWidth);
+  const lines = linesOf(title.textContent, size, spacing, room);
+  if (!Array.isArray(lines)) throw new Error(`${lines.missing}: no width in ems`);
+  return { size, lines, wide: lines.filter((line) => widthOf(line, size, spacing) > room), wraps: style.whiteSpace !== "nowrap" };
+}
+
+describe("every word on the upright home page", () => {
+  it.each(TIGHTEST)(
+    "fits in %s in a %i by 800 window, featuring %s: the large card's name as at 1024 by 768 landscape, every title and count at its least, and the corner clear",
+    (language, width, featured) => {
+      const { viewport } = openUpright(1024, 768, { language, featured, storage: scored(), viewport: manualViewport("landscape") });
+      const card = featuredCard();
+      const landscape = featuredName(gamesWidths(1024).get(card) ?? Number.NaN);
+
+      openWindow(width, 800);
+      act(() => viewport.resize("tall", true));
+
+      const home = getComputedStyle(part(".home"));
+      const upright = featuredName(width - px(home.paddingLeft) - px(home.paddingRight));
+      expect(upright.size).toBeGreaterThanOrEqual(landscape.size);
+      expect(upright.lines.length).toBeLessThanOrEqual(landscape.lines.length);
+      expect([upright.wide, upright.wraps]).toEqual([[], true]);
+      const badge = card.querySelector<HTMLElement>(".featured-card-badge");
+      expect([badge?.parentElement, badge && getComputedStyle(badge).position, badge && getComputedStyle(badge).top, badge && getComputedStyle(badge).right]).toEqual([card, "absolute", "24px", "24px"]);
+
+      const row = tilesRow();
+      const column = styleAt(row, [width, 800]).px("grid-auto-columns");
+      expect(column).toBeGreaterThan(0);
+      const titles = tileTitles();
+      const shown = TILE_ORDER.filter((game) => game !== featured);
+      expect(titles.map((title) => title.textContent)).toEqual([...shown.map((game) => TEXTS[language][game === "compare" ? "quizCard" : game === "catalogue" ? "catalogueTile" : game]), TEXTS[language].moreComing].filter((_, at) => shown[at] !== "pairs"));
+      const overflowing = titles.flatMap((title) => {
+        const style = getComputedStyle(title);
+        const words = title.textContent ?? "";
+        const least = title.className === "more-coming-title" ? 20 : 24;
+        const needed = (TITLE_EMS[words] ?? Number.NaN) * px(style.fontSize) + px(style.letterSpacing) * words.length;
+        const room = roomFor(title, () => column);
+        return [
+          ...(style.whiteSpace === "nowrap" ? [] : [`${words}: may wrap`]),
+          ...(px(style.fontSize) >= least ? [] : [`${words}: ${style.fontSize}`]),
+          ...(needed <= room ? [] : [`${words}: ${needed.toFixed(1)}px in ${room.toFixed(1)}px`])
+        ];
+      });
+      expect(overflowing).toEqual([]);
+
+      const pairs = row.querySelector(".pairs-tile-title");
+      if (pairs) {
+        const style = getComputedStyle(pairs);
+        const size = px(style.fontSize);
+        const spacing = px(style.letterSpacing);
+        const room = roomFor(pairs, () => column);
+        const lines = linesOf(pairs.textContent ?? "", size, spacing, room);
+        expect(size).toBeGreaterThanOrEqual(24);
+        expect(Array.isArray(lines) && lines.length <= 2 && lines.every((line) => widthOf(line, size, spacing) <= room)).toBe(true);
+      }
+
+      const counts = [...row.querySelectorAll<HTMLElement>(TILE_COUNTS)];
+      expect(counts.map((count) => [count.textContent, count.parentElement === count.closest("button"), getComputedStyle(count).position, px(getComputedStyle(count).fontSize) >= 20])).toEqual(
+        shown.map((game) => [COUNTS[game], true, "absolute", true])
+      );
+
+      const line = topLine(width, language);
+      expect(line.museumWraps).toBe(false);
+      expect(line.between).toBeGreaterThanOrEqual(line.cornerGap);
+      expect(Math.max(line.cornerEnd, line.wordmarkEnd)).toBeLessThanOrEqual(line.greetingTop);
+    }
+  );
+});
+
+// jsdom lays nothing out, so the width of each choice's name in the
+// language and theme menus is given here in ems of its face at the
+// chosen one's weight, rounded up: Lexend's for English, and the iPad's
+// own face for the Cyrillic names, which Lexend has no letters for. The
+// age levels' are LEVEL_EMS.
+const MENU_EMS: Record<string, number> = { ...LEVEL_EMS, English: 3.6, Русский: 3.9, Системная: 5.2, Светлая: 3.9, Тёмная: 3.5 };
+
+const MENUS = { language: "languageMenu", theme: "themeMenu", "age level": "ageLevelMenu" } as const;
+
+describe("the parents' menus upright", () => {
+  it.each(Object.keys(MENUS) as Array<keyof typeof MENUS>)("open the %s menu whole inside a 600 by 800 window in Russian, each name on one line, and a tap outside closes it and opens nothing", async (name) => {
+    const { user } = openUpright(600, 800, { language: "ru" });
+    const label = TEXTS.ru[MENUS[name]];
+
+    const menu = await openMenu(user, label);
+
+    // The menu hangs under the parents' menus, its right edge on theirs,
+    // which stand at the corner's right.
+    const style = getComputedStyle(menu);
+    expect([style.position, style.top, style.right, style.boxSizing]).toEqual(["absolute", "calc(100% + 8px)", "0px", "border-box"]);
+    const corner = getComputedStyle(part(".home-corner"));
+    const menus = getComputedStyle(part(".parent-menus"));
+    expect(menus.position).toBe("relative");
+    const right = 600 - px(corner.right) - px(corner.paddingRight);
+    expect(right - px(style.width)).toBeGreaterThanOrEqual(0);
+    const choices = within(menu).getAllByRole("menuitemradio");
+    const rows = choices.map((choice) => px(getComputedStyle(choice).height));
+    const height = px(style.paddingTop) + rows.reduce((sum, row) => sum + row, 0) + px(style.gap) * (rows.length - 1) + px(style.paddingBottom);
+    const buttons = [...part(".parent-menus").querySelectorAll(".parent-menu-button")].map((button) => px(getComputedStyle(button).minHeight));
+    const top = px(corner.top) + px(corner.paddingTop) + px(menus.paddingTop) + Math.max(...buttons) + px(menus.paddingBottom) + 8;
+    expect(top + height).toBeLessThanOrEqual(800);
+
+    // Each name stands on one line beside its symbol and room for the ✓,
+    // which the chosen row draws.
+    const room = px(style.width) - px(style.paddingLeft) - px(style.paddingRight);
+    const tick = px(within(menu).getByRole("menuitemradio", { checked: true }).querySelector("svg.lucide-check")?.getAttribute("width") ?? "");
+    expect(tick).toBeGreaterThan(0);
+    const overflowing = choices.flatMap((choice) => {
+      const row = getComputedStyle(choice);
+      const symbol = choice.firstElementChild;
+      const words = choice.querySelector(".parent-menu-words");
+      if (!symbol || symbol === words || !words) throw new Error("A choice without its symbol or words");
+      const symbolWidth = px(getComputedStyle(symbol).width) || px(symbol.getAttribute("width") ?? "");
+      const wordsRoom = room - px(row.paddingLeft) - px(row.paddingRight) - symbolWidth - tick - px(row.gap) * 2;
+      return [...words.children].flatMap((text) => {
+        const shown = text.textContent ?? "";
+        const textStyle = getComputedStyle(text);
+        const width = (MENU_EMS[shown] ?? Number.NaN) * px(textStyle.fontSize) + px(textStyle.letterSpacing) * shown.length;
+        return textStyle.whiteSpace === "nowrap" && width <= wordsRoom ? [] : [`${shown}: ${width.toFixed(1)}px in ${wordsRoom.toFixed(1)}px, ${textStyle.whiteSpace}`];
+      });
+    });
+    expect(overflowing).toEqual([]);
+
+    // The backdrop is fixed to the whole window: the corner it stands in,
+    // upright on the page, has no transform or filter to pin it there.
+    const backdrop = getComputedStyle(outsideMenu());
+    expect([backdrop.position, backdrop.top, backdrop.right, backdrop.bottom, backdrop.left]).toEqual(["fixed", "0px", "0px", "0px", "0px"]);
+    expect([corner.transform || "none", corner.filter || "none"]).toEqual(["none", "none"]);
+    await user.click(outsideMenu());
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect([featuredCard().isConnected, tilesRow().isConnected, document.querySelector(".menu-backdrop")]).toEqual([true, true, null]);
+  });
+});
+
+describe("turning the window", () => {
+  it("keeps the open menu and the large card, which does not rise in again, and stands the row of tiles at its start", async () => {
+    const { viewport, user } = openUpright(1180, 820, { viewport: manualViewport("landscape") });
+    const card = featuredCard();
+    const row = tilesRow();
+    const rise = getComputedStyle(card).animationName;
+    const landscape = getComputedStyle(part(".games")).flexDirection;
+    // Swiped to MORE COMING, the last column.
+    row.scrollLeft = 1000;
+    await openMenu(user, "Theme");
+
+    openWindow(820, 1180);
+    act(() => viewport.resize("tall", true));
+
+    expect([document.documentElement.dataset.size, document.querySelector(".orientation-gate")?.hasAttribute("data-shown")]).toEqual(["tall", false]);
+    expect(getComputedStyle(part(".games")).flexDirection).toBe("column");
+    expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
+    // The same card, never drawn anew, rises in only as it is first drawn.
+    expect([featuredCard(), card.dataset.game, getComputedStyle(card).animationName]).toEqual([card, "compare", rise]);
+    expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
+    expect(within(row).getAllByRole("button")[1]?.getAttribute("aria-label")).toBe("ALL DINOSAURS");
+
+    row.scrollLeft = 1000;
+    openWindow(1180, 820);
+    act(() => viewport.resize("wide", false));
+
+    expect(document.documentElement.dataset.size).toBe("wide");
+    expect(getComputedStyle(part(".games")).flexDirection).toBe(landscape);
+    expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
+    expect([featuredCard(), getComputedStyle(card).animationName]).toEqual([card, rise]);
+    expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
   });
 });

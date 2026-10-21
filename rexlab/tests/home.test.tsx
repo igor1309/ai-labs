@@ -8,6 +8,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
+import { TILE_COUNTS, TITLE_EMS, TITLE_TEXTS, columnGapOf, gamesWidths, linesOf, roomFor, sidesOf, tileTitles, widthOf } from "./homeTitles.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { pairsRecord } from "./pairsApp.tsx";
 import { keptSkeletons } from "./skeletonsApp.tsx";
@@ -125,77 +126,7 @@ const pairsTile = () => screen.getByRole("button", { name: "FIND THE PAIR" });
 
 const skeletonsTile = () => screen.getByRole("button", { name: "SKELETONS" });
 
-// jsdom lays nothing out, so the width of each title in every language
-// is given here in ems of its bold face, rounded up: Lexend's for the
-// Latin words, and the iPad's own face for the Cyrillic ones, which
-// Lexend has no letters for. A title missing here fails the test that
-// reads it.
-const TITLE_EMS: Record<string, number> = {
-  COMPARE: 5.1,
-  СРАВНИ: 4.1,
-  "ALL DINOSAURS": 8.6,
-  // ALL DINOSAURS may wrap on the large card, so each of its words is here.
-  ALL: 2.0,
-  DINOSAURS: 6.4,
-  ВСЕ: 2.1,
-  CARE: 2.8,
-  ЗАБОТА: 4.0,
-  SORT: 2.9,
-  РАЗЛОЖИ: 5.2,
-  // FIND THE PAIR's title may wrap, so each line it may take is here.
-  "FIND THE PAIR": 8.1,
-  "FIND THE": 5.2,
-  "THE PAIR": 5.1,
-  FIND: 2.8,
-  THE: 2.1,
-  PAIR: 2.7,
-  "НАЙДИ ПАРУ": 6.6,
-  НАЙДИ: 3.7,
-  ПАРУ: 2.7,
-  SKELETONS: 6.2,
-  СКЕЛЕТЫ: 4.8,
-  DIG: 2.1,
-  РАСКОПКИ: 5.8,
-  "MORE COMING": 7.9,
-  "СКОРО ЕЩЁ": 6.0
-};
-
-// The words each tile's title on the home page shows.
-const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing"> = {
-  "compare-tile-title": "quizCard",
-  "catalogue-tile-title": "catalogueTile",
-  "care-tile-title": "care",
-  "sort-tile-title": "sort",
-  "skeletons-tile-title": "skeletons",
-  "dig-tile-title": "dig",
-  "more-coming-title": "moreComing"
-};
-
 const px = (value: string) => Number.parseFloat(value) || 0;
-
-// jsdom keeps a gap as it is written, unexpanded.
-const columnGapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? "");
-
-const sidesOf = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth);
-
-// The widths the large card and the tiles' row take on a page `width`
-// wide: they grow from nothing by their shares of what the page's
-// padding, the gap and their own sides leave. A width set, capped or
-// floored any other way fails here, since this sum would not see it.
-function gamesWidths(width: number) {
-  const home = document.querySelector(".home");
-  const games = document.querySelector(".games");
-  if (!home || !games) throw new Error("No games on the page");
-  const parts = [...games.children].map((part) => ({ part, style: getComputedStyle(part) }));
-  expect(parts.map(({ style }) => [style.flexBasis, style.minWidth, style.maxWidth, style.width])).toEqual(parts.map(() => ["0px", "0px", "none", "auto"]));
-  expect([home, games].map((element) => [getComputedStyle(element).maxWidth, getComputedStyle(element).width])).toEqual([
-    ["none", "auto"],
-    ["none", "auto"]
-  ]);
-  const free = width - sidesOf(getComputedStyle(home)) - columnGapOf(getComputedStyle(games)) * (parts.length - 1) - parts.reduce((sum, { style }) => sum + sidesOf(style), 0);
-  const shares = parts.reduce((sum, { style }) => sum + Number(style.flexGrow), 0);
-  return new Map(parts.map(({ part, style }) => [part, (free * Number(style.flexGrow)) / shares + sidesOf(style)]));
-}
 
 // The width of every column of tiles, as the row writes it.
 function tileColumnWidth() {
@@ -209,42 +140,6 @@ function tileColumnWidth() {
 function cardWidth(card: Element, width: number) {
   const part = [...gamesWidths(width)].find(([part]) => part === card);
   return part ? part[1] : tileColumnWidth();
-}
-
-// The width a title has on a page `width` wide: its card's width, short
-// of the sides of the card and the row, and of the row's other parts and
-// the gaps between them.
-function roomFor(title: Element, width: number) {
-  const row = title.parentElement;
-  const card = title.closest("button, .more-coming");
-  if (!row || !card) throw new Error("A title outside the games");
-  const others = [...row.children].filter((child) => child !== title);
-  return (
-    cardWidth(card, width) -
-    sidesOf(getComputedStyle(card)) -
-    sidesOf(getComputedStyle(row)) -
-    // A symbol drawn straight into the row is as wide as it is drawn.
-    others.reduce((sum, other) => sum + (px(getComputedStyle(other).width) || px(other.getAttribute("width") ?? "")), 0) -
-    columnGapOf(getComputedStyle(row)) * others.length
-  );
-}
-
-// The width of `words` at `size` and `spacing` between letters.
-const widthOf = (words: string, size: number, spacing: number) => (TITLE_EMS[words] ?? Number.NaN) * size + spacing * words.length;
-
-// The lines `words` wrap onto in `room` at `size` and `spacing`, a word
-// at a time, or the line whose width in ems is missing here.
-function linesOf(words: string, size: number, spacing: number, room: number): string[] | { missing: string } {
-  const lines: string[] = [];
-  for (const word of words.split(" ")) {
-    const last = lines.at(-1);
-    const joined = last === undefined ? word : `${last} ${word}`;
-    if (TITLE_EMS[joined] === undefined) return { missing: joined };
-    if (last !== undefined && widthOf(joined, size, spacing) <= room) lines[lines.length - 1] = joined;
-    else lines.push(word);
-  }
-  const missing = lines.find((line) => TITLE_EMS[line] === undefined);
-  return missing === undefined ? lines : { missing };
 }
 
 // The windows the home page's budgets keep: the shared ones, and more
@@ -397,13 +292,13 @@ describe("the home page", () => {
       );
       const shown = TILE_TITLES.filter(([game]) => game !== featured);
 
-      const titles = [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
+      const titles = tileTitles();
       expect(titles.map((title) => [title.textContent, getComputedStyle(title).whiteSpace])).toEqual(
         [...shown.map(([, title]) => title).filter((title) => title !== "FIND THE PAIR"), "MORE COMING"].map((title) => [title, "nowrap"])
       );
       const overflowing = titles.flatMap((title) => {
         const style = getComputedStyle(title);
-        const room = roomFor(title, width);
+        const room = roomFor(title, (card) => cardWidth(card, width));
         const key = TITLE_TEXTS[title.className];
         // A size worked out by the browser, such as one from the tile's
         // width, cannot be read here, so a title's size is in pixels.
@@ -420,7 +315,7 @@ describe("the home page", () => {
       const tiles = shown.map(([, title]) => homeTile(title));
       expect(tiles.map((tile) => px(getComputedStyle(tile.querySelector('[class$="-tile-title"]') ?? tile).fontSize) >= 24)).toEqual(tiles.map(() => true));
       expect(px(getComputedStyle(document.querySelector(".more-coming-title") ?? document.body).fontSize)).toBeGreaterThanOrEqual(20);
-      const counts = tiles.map((tile) => tile.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count"));
+      const counts = tiles.map((tile) => tile.querySelector(TILE_COUNTS));
       expect(counts.map((count) => [count?.textContent, count?.parentElement === count?.closest("button"), getComputedStyle(count ?? document.body).position])).toEqual(
         shown.map(([, , count]) => [count, true, "absolute"])
       );
@@ -432,7 +327,7 @@ describe("the home page", () => {
       expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", "pairs-tile-symbol"]);
       const size = px(getComputedStyle(title).fontSize);
       expect(size).toBeGreaterThanOrEqual(24);
-      const room = roomFor(title, width);
+      const room = roomFor(title, (card) => cardWidth(card, width));
       const spacing = px(getComputedStyle(title).letterSpacing);
       expect(
         LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, spacing, room)).filter(
@@ -781,7 +676,7 @@ describe("the large card", () => {
         const style = getComputedStyle(title);
         const size = px(style.fontSize);
         const spacing = px(style.letterSpacing);
-        const room = roomFor(title, width);
+        const room = roomFor(title, (card) => cardWidth(card, width));
         const tiles = [...tilesRow().querySelectorAll('[class$="-tile-title"]')].map((other) => px(getComputedStyle(other).fontSize));
         const found = [
           // A size worked out by the browser cannot be read here.
