@@ -5,6 +5,7 @@ import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } fr
 import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
+import { closingPicture, type PictureMotion } from "./closingPicture.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
@@ -110,8 +111,9 @@ export type AppProps = CareGameProps &
     chipWidths: ChipWidths;
     // How the page's parts are found, measured and animated, and the page
     // cross-faded, as a screen goes to its other layout.
-    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer">;
+    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation">;
     pictureTransition?: PictureTransition;
+    pictureMotion: PictureMotion;
     pageVisibility: PageVisibility;
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
@@ -199,6 +201,7 @@ export function App({
   chipWidths,
   layoutMotion,
   pictureTransition,
+  pictureMotion,
   pageVisibility,
   progress,
   deviceLanguage,
@@ -237,7 +240,9 @@ export function App({
     subscribe: viewport.subscribe
   }), [viewport, portraitSizes]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
-  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, reducedMotion: careProps.reducedMotion, startTimer }));
+  const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
+  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, continuation: closing.take, reducedMotion: careProps.reducedMotion, startTimer }));
+  useLayoutEffect(() => closing.arrive(screen.kind === "catalogue" ? screen.returning : undefined), [closing, screen]);
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
@@ -447,7 +452,9 @@ export function App({
   const step = (from: number, way: Step) =>
     showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, way);
 
-  const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id });
+  const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id }, {
+    also: () => { if (!careProps.reducedMotion()) closing.start(shown[index]!.id); }
+  });
 
   const content = () => {
     switch (screen.kind) {

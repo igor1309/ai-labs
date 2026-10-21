@@ -172,6 +172,7 @@ export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
       calledOff.push(id);
     },
     Date: { now: () => now.getTime() },
+    performance: { now: () => 0 },
     decoding,
     timers,
     stopped,
@@ -481,8 +482,9 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 // are not about them: every part is measured where it stands in any
 // layout, so nothing glides, and a fade changes the layout and ends at
 // once; every chip's parts take no width, so the chips stand on one row.
-export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths"> {
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion"> {
   return {
+    pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
     chipWidths: { width: () => 0, subscribe: () => () => {} },
     layoutMotion: {
       parts: document,
@@ -534,9 +536,9 @@ export function countedStarts() {
 // The featured game for tests that are not about its choice: `game`,
 // already chosen for the clock's day, so the choice draws nothing from
 // the random source, and starts counted where no test reads them.
-export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "featuredStore" | "startCounter"> {
+export function featuring(game: HomeGame = "compare"): Pick<AppProps, "now" | "pictureMotion" | "featuredStore" | "startCounter"> {
   const now = new Date(2026, 9, 18, 9, 30);
-  return { now: () => now, featuredStore: featuredSpy({ timesStarted: new Map(), lastFeatured: { game, on: calendarDay(now) } }), startCounter: countedStarts().startCounter };
+  return { pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }, now: () => now, featuredStore: featuredSpy({ timesStarted: new Map(), lastFeatured: { game, on: calendarDay(now) } }), startCounter: countedStarts().startCounter };
 }
 
 // The version footer for tests that are not about it: its name is dropped.

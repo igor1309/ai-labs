@@ -401,6 +401,19 @@ describe("the app in a browser", () => {
     expect(appProps({ ...browser(), ...pictureBrowser(now) }).now()).toEqual(now);
   });
 
+  it("takes the picture close's timing from the stylesheet and its elapsed time from the monotonic clock", () => {
+    let time = 42;
+    const values: Record<string, string> = { "--motion-screen": "480ms", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
+    const { pictureMotion } = appProps({
+      ...browser(),
+      performance: { now: () => time },
+      getComputedStyle: () => ({ getPropertyValue: (name) => values[name] ?? "0px" })
+    });
+    expect([pictureMotion.duration, pictureMotion.easing, pictureMotion.now()]).toEqual([480, "cubic-bezier(0.1, 1, 0.5, 1)", 42]);
+    time = 130;
+    expect(pictureMotion.now()).toBe(130);
+  });
+
   it("keeps start counts and the day's featured game beside the other progress in local storage, for the next visit", () => {
     const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
     const visit = appProps(given);

@@ -162,6 +162,14 @@ function uprightList(size: WindowSize, language: Language = "en") {
   const gap = styleAt(list, size).columnGap();
   const inside = width - px(mainStyle.paddingLeft) - px(mainStyle.paddingRight);
   const scrollbar = list.offsetWidth - list.clientWidth;
+  const chipBounds = chipLayout(inside - px(barStyle.paddingLeft) - px(barStyle.paddingRight), size, language);
+  const chipTop = px(mainStyle.paddingTop) + styleAt(home, size).px("height") + styleAt(bar, size).rowGap();
+  const chipBottom = chipTop + chipBounds.height;
+  const cardsTop = chipBottom + styleAt(main, size).rowGap();
+  expect(chipBounds.bounds.every(({ top, bottom }) => top >= 0 && bottom <= chipBounds.height)).toBe(true);
+  expect(chipBottom).toBe(chipTop + (chipGroup(language).dataset.arrangement === "stacked" ? 124 : 56));
+  expect(cardsTop - (chipTop + chipBounds.bounds.at(-1)!.bottom)).toBe(28);
+  expect(cardsTop).toBeLessThan(size[1]);
   return {
     home: { left: px(mainStyle.paddingLeft) + px(barStyle.paddingLeft), top: px(mainStyle.paddingTop) },
     // How far under HOME the chips stand, and the cards under the chips.
@@ -198,9 +206,22 @@ function chipLayout(row: number, size: WindowSize, language: Language = "en") {
     const style = styleAt(part(".food-chip-face", chip), size);
     return { before: style.px("padding-left"), after: style.px("padding-right"), between: style.columnGap() };
   });
+  const bounds = rows.reduce<Array<{ top: number; bottom: number }>>((result, { holder, chips }) => {
+    const top = result.length === 0 ? 0 : result.at(-1)!.bottom + styleAt(group, size).rowGap();
+    const chipHeight = Math.max(...chips.map((chip) => styleAt(chip, size).px("height")));
+    const rowHeight = stacked && styleAt(holder, size).value("height") && styleAt(holder, size).value("height") !== "auto" ? styleAt(holder, size).px("height") : chipHeight;
+    expect(chipHeight).toBe(56);
+    expect(rowHeight).toBeGreaterThanOrEqual(chipHeight);
+    result.push({ top, bottom: top + rowHeight });
+    return result;
+  }, []);
+  const declaredHeight = styleAt(group, size).value("height");
+  const height = declaredHeight && declaredHeight !== "auto" ? styleAt(group, size).px("height") : bounds.at(-1)!.bottom;
+  expect(bounds.every(({ top, bottom }) => top >= 0 && bottom <= height)).toBe(true);
   const all = part(".food-chip[data-food='all']", group);
   const allFace = getComputedStyle(part(".food-chip-face", all));
   return {
+    height, bounds,
     rows: rows.map(({ chips }) => chips.map((chip) => chip.getAttribute("aria-label"))),
     rowGap: stacked ? styleAt(group, size).rowGap() : 0,
     apart: rows.map(({ holder }) => styleAt(holder, size).columnGap()),

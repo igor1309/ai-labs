@@ -55,6 +55,7 @@ export type Browser = {
   requestAnimationFrame(fire: () => void): number;
   cancelAnimationFrame(id: number): void;
   Date: { now(): number };
+  performance: { now(): number };
 };
 
 // A screen glides to its other layout over app.css's --motion-standard,
@@ -224,6 +225,11 @@ export function appProps(browser: Browser): AppProps {
     random: Math.random,
     viewport,
     portraitLayouts: { home: ["tall"], catalogue: ["tall"] },
+    pictureMotion: {
+      now: () => browser.performance.now(),
+      duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-screen")),
+      easing: browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--ease-out").trim()
+    },
     // A chip's parts as the browser lays them out, which change with no
     // change of the window as the bundled font comes in for the system's.
     chipWidths: {

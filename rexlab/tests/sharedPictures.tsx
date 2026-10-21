@@ -4,7 +4,7 @@ import type { PictureTransition } from "../src/SharedPicture.tsx";
 type Picture = { props: ViewTransitionProps; element: HTMLElement };
 
 // The props and mounted pictures handed to React's ViewTransition.
-// The browser owns shared-picture geometry and interpolation.
+// The native picture itself is outside the document.
 export function recordedSharedPictures() {
   const mounted = new Map<string, Picture>();
   const Transition: PictureTransition = (props) => {

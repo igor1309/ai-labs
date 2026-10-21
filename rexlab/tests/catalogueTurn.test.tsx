@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { addTransitionType, startTransition, type ViewTransitionProps } from "react";
+import { addTransitionType, startTransition, ViewTransition, type ViewTransitionProps } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
@@ -38,7 +38,7 @@ import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
 
 vi.mock("react", async (actual) => {
   const react = await actual<typeof import("react")>();
-  return { ...react, addTransitionType: vi.fn(react.addTransitionType), startTransition: vi.fn(react.startTransition) };
+  return { ...react, ViewTransition: vi.fn((props: ViewTransitionProps) => react.createElement(react.ViewTransition, props)), addTransitionType: vi.fn(react.addTransitionType), startTransition: vi.fn(react.startTransition) };
 });
 
 const GLIDE = 240;
@@ -49,6 +49,7 @@ type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: 
 
 const nameOf = (element: Element) => element.getAttribute("data-turn-part") ?? "";
 const recordedName = (element: Element) => {
+  if (element.hasAttribute("data-closing-picture")) return "closing-picture";
   if (element.hasAttribute("data-turn-frame")) return `frame of ${nameOf(element.nextElementSibling!)}`;
   return nameOf(element);
 };
@@ -61,8 +62,10 @@ function listGeometry(width: number, height: number, size: SizeClass, count = ID
   const columns = catalogueColumns(width, size, 0, 0);
   const card = (width - 112 - (columns - 1) * 20) / columns;
   const row = cardHeight(card);
-  const listHeight = height - 40 - (size === "tall" ? 56 + 24 + 56 : 56) - 28;
-  return { columns, card, row, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
+  const stacked = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement === "stacked";
+  const top = size === "tall" ? 40 + 56 + 24 + (stacked ? 124 : 56) + 28 : 124;
+  const listHeight = height - top;
+  return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
 }
 
 function listMetrics(list: HTMLElement, count = IDS.length) {
@@ -98,7 +101,7 @@ function expectedCardBox(id: string, list: HTMLElement, width: number, height: n
   const column = index % layout.columns;
   return {
     left: 56 + column * (layout.card + 20),
-    top: (size === "tall" ? 200 : 124) + row * (layout.row + 20) - list.scrollTop,
+    top: layout.top + (row * (layout.row + 20) - list.scrollTop),
     width: layout.card,
     height: layout.row
   };
@@ -106,6 +109,12 @@ function expectedCardBox(id: string, list: HTMLElement, width: number, height: n
 
 function boxFor(element: Element, width: number, height: number, size: SizeClass): Box {
   const name = nameOf(element);
+  if (element.matches(".dinosaur-stage-picture")) return { left: 100, top: 170, width: 680, height: 510 };
+  if (element.matches(".catalogue-picture")) {
+    const card = element.closest(".catalogue-card")!;
+    const box = boxFor(card, width, height, size);
+    return { left: box.left + 16, top: box.top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
+  }
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
   if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
   if (name === "catalogue-chips") {
@@ -128,19 +137,19 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     const left = 56 + foods.slice(0, index).reduce((sum, value) => sum + (value === "all" ? all : foodWidth) + gap, 0);
     return { left, top: 120 + row * (56 + (arrangement === "stacked" ? 12 : 0)), width: food === "all" ? all : foodWidth, height: 56 };
   }
-  if (name === "catalogue-list") return { left: 0, top: size === "tall" ? 200 : 124, width, height: list.listHeight };
+  if (name === "catalogue-list") return { left: 0, top: list.top, width, height: list.listHeight };
   if (name.startsWith("catalogue-card-")) {
     const index = IDS.indexOf(name.slice("catalogue-card-".length));
     const row = Math.floor(index / list.columns);
     const column = index % list.columns;
-    return { left: 56 + column * (list.card + 20), top: (size === "tall" ? 200 : 124) + row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0), width: list.card, height: list.row };
+    return { left: 56 + column * (list.card + 20), top: list.top + (row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0)), width: list.card, height: list.row };
   }
   return { left: 0, top: 0, width: 1, height: 1 };
 }
 
 type Rising = { y: number; opacity: number; running: boolean };
 
-function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait", rising = new Map<string, Rising>() }: { reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait"; rising?: Map<string, Rising> } = {}) {
+function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait", rising = new Map<string, Rising>(), productionPictures = false }: { productionPictures?: boolean; reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait"; rising?: Map<string, Rising> } = {}) {
   openWindow(width, height);
   const viewport = manualViewport(initial);
   const animations: Recorded[] = [];
@@ -152,16 +161,25 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const paints: Array<{ fire: () => void; stopped: boolean }> = [];
   const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     const name = this.getAttribute("data-turn-part");
-    if (name) return new DOMRect(...Object.values(boxFor(this, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass)) as [number, number, number, number]);
+    if (name || this.matches(".dinosaur-stage-picture, .catalogue-picture")) return new DOMRect(...Object.values(boxFor(this, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass)) as [number, number, number, number]);
     return new DOMRect();
   });
   onTestFinished(() => spy.mockRestore());
+  const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: HTMLElement) {
+    const list = this.closest<HTMLElement>(".catalogue-grid");
+    if (!list) return;
+    listMetrics(list);
+    const size = document.documentElement.dataset.size as SizeClass;
+    list.scrollTop = rowScroll(this.dataset.id!, window.innerWidth, window.innerHeight, size);
+  });
+  onTestFinished(() => scroll.mockRestore());
   const measure = (element: Element) => {
     const box = boxFor(element, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass);
     const drawing = rising.get(nameOf(element));
     return drawing ? { ...box, top: box.top + drawing.y } : box;
   };
   const shared = recordedSharedPictures();
+  let clock = 0;
   render(
     <App
       {...featuring()}
@@ -184,7 +202,8 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
       {...emptyDig()}
       chipWidths={emChipWidths()}
       reducedMotion={() => reduced}
-      pictureTransition={shared.Transition}
+      {...(productionPictures ? {} : { pictureTransition: shared.Transition })}
+      pictureMotion={{ now: () => clock, duration: 320, easing: EASE_OUT }}
       layoutMotion={{
         parts: document,
         measure,
@@ -213,7 +232,26 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   );
   act(() => pictures.finishAll());
   const user = userEvent.setup();
+  // The native transition paints above the document until a viewport
+  // change cancels it, independently of the app's turn animations.
+  let nativeDrawing: HTMLElement | undefined;
+  const native = {
+    draw: (box: Box) => {
+      nativeDrawing = document.createElement("div");
+      nativeDrawing.dataset.nativeClose = "";
+      Object.assign(nativeDrawing.style, { position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+      document.body.append(nativeDrawing);
+    },
+    drawn: (): Box => {
+      if (!nativeDrawing) throw new Error("Native picture is not drawn");
+      const { style } = nativeDrawing;
+      return { left: Number.parseFloat(style.left), top: Number.parseFloat(style.top), width: Number.parseFloat(style.width), height: Number.parseFloat(style.height) };
+    },
+    skip: () => { nativeDrawing?.remove(); nativeDrawing = undefined; }
+  };
+  onTestFinished(native.skip);
   const resize = (to: readonly [number, number, SizeClass]) => {
+    native.skip();
     openWindow(to[0], to[1]);
     act(() => viewport.resize(to[2], to[2] === "tall" || to[2] === "tall-narrow"));
   };
@@ -223,7 +261,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const updateFade = () => act(() => fades.at(-1)?.update());
   const endFade = () => act(() => fades.at(-1)?.finished());
   const parts = () => [...document.querySelectorAll<HTMLElement>("[data-turn-part]")];
-  return { user, pictures, shared, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
+  return { native, advance: (ms: number) => { clock += ms; }, user, pictures, shared, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
 }
 
 const own = ({ name }: Recorded) => !name.startsWith("frame of ");
@@ -268,6 +306,142 @@ function expectSharedPair(from: { props: ViewTransitionProps }[], to: { props: V
     expect(sharedClass(props, types)).toBe("dinosaur-share");
   }
 }
+
+// At Bezier parameter 0.5, elapsed x is 0.3425 and eased y is 0.875.
+// This is the native close's drawn box just before a resize skips it.
+const closeFraction = 0.3425;
+const mixBox = (from: Box, to: Box, progress: number): Box => ({
+  left: from.left + (to.left - from.left) * progress,
+  top: from.top + (to.top - from.top) * progress,
+  width: from.width + (to.width - from.width) * progress,
+  height: from.height + (to.height - from.height) * progress
+});
+
+function pictureGlide(app: ReturnType<typeof openCatalogue>) {
+  const animation = app.animations.filter(({ name, cancelled }) => name === "closing-picture" && !cancelled).at(-1);
+  if (!animation) throw new Error("No closing picture glide");
+  const destination = app.measure(card("baryonyx").querySelector(".catalogue-picture")!);
+  const start = animation.keyframes[0]!;
+  const [x = 0, y = 0] = String(start.translate).split(" ").map(Number.parseFloat);
+  const [sx = 1, sy = 1] = String(start.scale).split(" ").map(Number);
+  return { animation, destination, from: { left: destination.left + x, top: destination.top + y, width: destination.width * sx, height: destination.height * sy } };
+}
+
+function expectBox(actual: Box, expected: Box) {
+  for (const key of ["left", "top", "width", "height"] as const) expect(actual[key]).toBeCloseTo(expected[key], 6);
+}
+
+async function closeBaryonyx(app: ReturnType<typeof openCatalogue>) {
+  await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+  await app.user.click(card("baryonyx"));
+  const page = app.measure(document.querySelector(".dinosaur-stage-picture")!);
+  await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogue }));
+  listMetrics(app.grid());
+  return { page, target: app.measure(card("baryonyx").querySelector(".catalogue-picture")!) };
+}
+
+describe("the picture's close interrupted by a turn", () => {
+  it("continues the skipped native close from its drawn box, then follows a second turn from the glide's drawn box", async () => {
+    const app = openCatalogue();
+    const { page, target } = await closeBaryonyx(app);
+    // The native transition owns this drawing until the viewport skips it.
+    app.advance(320 * closeFraction);
+    app.native.draw(mixBox(page, target, 0.875));
+    const nativeBox = app.native.drawn();
+    expect(document.querySelector("[data-native-close]")).not.toBeNull();
+    app.resize([820, 1180, "tall"]);
+
+    const first = pictureGlide(app);
+    expect(document.querySelector("[data-native-close]")).toBeNull();
+    expectBox(first.from, nativeBox);
+    expect(first.animation.options).toEqual({ duration: 240, easing: EASE_OUT });
+    expect(first.animation.keyframes[1]).toMatchObject({ translate: "0px 0px", scale: "1 1" });
+    const picture = card("baryonyx").querySelector<HTMLElement>(".catalogue-picture")!;
+    const copy = document.querySelector<HTMLElement>("[data-closing-picture]")!;
+    expect(copy.parentElement).toBe(document.body);
+    expect(copy.style.position).toBe("fixed");
+    expect([copy.style.left, copy.style.top, copy.style.width, copy.style.height]).toEqual([`${first.destination.left}px`, `${first.destination.top}px`, `${first.destination.width}px`, `${first.destination.height}px`]);
+    expect(copy.getAttribute("src")).toBe(picture.getAttribute("src"));
+    expect(picture.style.visibility).toBe("hidden");
+    expectWholeInList(app.grid(), "baryonyx");
+
+    app.progress(0.4);
+    app.advance(320);
+    app.resize([1180, 820, "wide"]);
+    const second = pictureGlide(app);
+    expect(first.animation.cancelled).toBe(true);
+    expectBox(second.from, mixBox(first.from, first.destination, 0.4));
+    expect(second.animation.keyframes[1]).toMatchObject({ translate: "0px 0px", scale: "1 1" });
+    expectWholeInList(app.grid(), "baryonyx");
+    expect(document.querySelectorAll("[data-closing-picture]")).toHaveLength(1);
+    app.settle();
+    expect(document.querySelector("[data-closing-picture]")).toBeNull();
+    expect(picture.style.visibility).toBe("");
+    expectBox(app.measure(picture), second.destination);
+    expect(app.animations.filter(({ name, cancelled }) => name === "closing-picture" && !cancelled)).toEqual([]);
+  });
+
+  it.each([320, 500])("adds no picture glide after the close has ended at %i ms", async (elapsed) => {
+    const app = openCatalogue();
+    await closeBaryonyx(app);
+    app.advance(elapsed);
+    app.resize([820, 1180, "tall"]);
+    expect(app.animations.some(({ name }) => name === "closing-picture")).toBe(false);
+    expect(document.querySelector("[data-closing-picture]")).toBeNull();
+    expectWholeInList(app.grid(), "baryonyx");
+    app.settle();
+  });
+
+  it("adds no picture glide under reduced motion", async () => {
+    const app = openCatalogue(1180, 820, { reduced: true });
+    await closeBaryonyx(app);
+    app.advance(320 * closeFraction);
+    app.resize([820, 1180, "tall"]);
+    app.updateFade();
+    expect(app.animations).toEqual([]);
+    expect(document.querySelector("[data-closing-picture]")).toBeNull();
+    expectWholeInList(app.grid(), "baryonyx");
+    app.endFade();
+  });
+
+  it("drops the close on the next screen change", async () => {
+    const app = openCatalogue();
+    await closeBaryonyx(app);
+    await app.user.click(screen.getByRole("button", { name: "HOME" }));
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    app.resize([820, 1180, "tall"]);
+    expect(app.animations.some(({ name }) => name === "closing-picture")).toBe(false);
+    app.settle();
+  });
+});
+
+describe("the production shared picture binding", () => {
+  it("gives React the same picture name and sharing props on a real card open and Back", async () => {
+    const app = openCatalogue(1180, 820, { productionPictures: true });
+    const pictures = () => [...new Map(vi.mocked(ViewTransition).mock.calls.map(([props]) => props).filter(({ name }) => name?.startsWith("dinosaur-")).map((props) => [props.name, props])).values()];
+    vi.mocked(ViewTransition).mockClear();
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    const cards = pictures();
+    expect(new Set(cards.map(({ name }) => name))).toEqual(new Set(IDS.map((id) => `dinosaur-${id}`)));
+    expect(cards.every(({ children }) => (children as { props: { className: string } }).props.className === "catalogue-picture")).toBe(true);
+    vi.mocked(ViewTransition).mockClear();
+    clearScreenTransitions();
+    await app.user.click(card("baryonyx"));
+    const page = pictures();
+    expect(page.map(({ name }) => name)).toEqual(["dinosaur-baryonyx"]);
+    expect((page[0]!.children as { props: { className: string } }).props.className).toBe("dinosaur-stage-picture");
+    expectSharedPair(cards.map((props) => ({ props })), page.map((props) => ({ props })), screenTransitionTypes(OPEN_DINOSAUR));
+    vi.mocked(ViewTransition).mockClear();
+    clearScreenTransitions();
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogue }));
+    const returned = pictures();
+    expectSharedPair(page.map((props) => ({ props })), returned.map((props) => ({ props })), screenTransitionTypes(CLOSE_DINOSAUR));
+    for (const props of [...cards, ...page, ...returned]) {
+      expect(props.default).toBe("none");
+      expect(props.share).toEqual({ [OPEN_DINOSAUR]: "dinosaur-share", [CLOSE_DINOSAUR]: "dinosaur-share", default: "none" });
+    }
+  });
+});
 
 describe("catalogue turn styles", () => {
   it.each([
@@ -558,6 +732,7 @@ describe("catalogue's shared turn", () => {
     list.scrollTop = rowScroll("gallimimus", from[0], from[1], "tall");
     fireEvent.scroll(list);
     const beforeArrangement = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement;
+    const beforeTop = app.measure(list).top;
     app.resize(to);
     const expectedArrangement = to[0] === 744 ? "closed" : "spaced";
     expect(beforeArrangement).toBe(from[0] === 700 ? "stacked" : from[0] === 744 ? "closed" : "spaced");
@@ -568,6 +743,11 @@ describe("catalogue's shared turn", () => {
       expect(moving).toEqual(new Set(["catalogue-chips", "catalogue-chip-meat", "catalogue-chip-plants", "catalogue-chip-both", "catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
     } else {
       expect(moving).toEqual(new Set());
+    }
+    expect(app.measure(list).top).toBe(from[0] === 700 ? beforeTop - 68 : beforeTop);
+    if (glides) {
+      const glide = app.animations.find(({ name, cancelled }) => name === "catalogue-list" && !cancelled)!;
+      expect(glide.keyframes.map(({ translate }) => translate)).toEqual([`0px ${from[0] === 700 ? 68 : 0}px`, "0px 0px"]);
     }
     expect(app.fades).toHaveLength(0);
     expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", to[0], to[1], "tall"));
