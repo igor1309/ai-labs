@@ -10,8 +10,9 @@ a native binary for the system-audio permission anyway, and a browser tab
 cannot float over the Zoom window. A local server can come later if the
 transcript should reach a phone.
 
-Not a fork of Amanu: its live engine is the part we would replace, and the
-rest (call detection, crash recovery, summaries) is not what we need first.
+Not a fork of Amanu: its live engine is the part we would replace. Audelin
+replaces Amanu rather than running next to it (owner, 2026-10-21): one app
+records every call, with or without live text.
 Timur Khakhalev's OpenWhispr rework took ~35 PRs plus CI and test cleanup
 ([chat](chat-khakhalev-2026-10-21.md) § 1), which is the cost a fork brings.
 Amanu (MIT) and FluidAudio (Apache-2.0) are references we may copy from.
@@ -46,9 +47,9 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
 | Version | Scope | Done when |
 |---|---|---|
 | v0 spike | CLI over recordings; window sizes | Done ([tests.md](tests.md) run 3) |
-| v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; manual start/stop; call folders named and renamed in the app | Owner runs a real call and reads along |
+| v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; recording starts when a call starts and stops when it ends, or by hand; live text can be switched off; call folders named and renamed in the app | Owner runs a real call and reads along |
 | v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
-| v3 after the call | Stop when the call ends; final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
+| v3 after the call | Final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
 | Later | Auto-detected term chips under the live text; CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
 
 Assumption for v1: calls are taken on headphones, so no echo cancellation.
@@ -100,6 +101,24 @@ Screen decisions (owner, 2026-10-21, after the design review):
   Amanu's quantized `ggml-large-v3-turbo-q5_0.bin`. Without an exact match the app downloads its
   own copy. A reused file that disappears is caught by the launch check.
 - Auto-detected term chips under the live text go to Later.
+
+Controls (owner, 2026-10-21), following Amanu's two checkboxes:
+
+- «Записывать звонки автоматически»: when on, recording starts when a
+  call starts and stops when it ends. A recording started by hand is
+  stopped by hand. This is v1, not v3.
+- «Живой текст»: when off, the call is only recorded; its text comes from
+  the final pass (v3). Switching it on mid-call starts live text and fills
+  the minutes already recorded from the audio on disk, marked «дописано
+  позже», as when the live model arrives late. Switching it off mid-call
+  keeps the text so far.
+- Both are checkmark items in the menu bar menu and rows in Settings. The
+  menu also opens the calls folder in Finder.
+- Proposed, not decided: both on by default; a call is detected when Zoom,
+  Telemost or a browser starts using the microphone, and ends 30 s after it
+  stops; a recording that stops on its own keeps the panel's text.
+- Not in v1: Amanu's Pause and Import… Import (a file through the final
+  pass) is proposed for v3.
 
 Call folders (owner, 2026-10-21), following Amanu:
 

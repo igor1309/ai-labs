@@ -99,6 +99,7 @@ from instances.
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after the live model arrived |
+| Checkbox/On, /Off | `ufHXu`, `zhXsW` | `Label` |
 | Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 
 ## Frames
@@ -114,11 +115,11 @@ Current screens:
 |---|---|
 | 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, live model downloading |
 | 2 — Launch blocker | Model missing; downloading |
-| 3 — Live panel states | Not recording; recording; live model downloading; text filled in after it arrives; settling; selection survives appends; sent to bb with each card step |
+| 3 — Live panel states | Not recording; recording; live model downloading; live text off; text filled in after it arrives; settling; selection survives appends; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
 | 5 — Call after it ends | Waiting for the final-pass model; final pass running; failed; summary pending; done; renaming the title |
 | 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |
-| 7 — Menu bar item | Idle; recording |
+| 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
 | 8 — Errors | No call audio; no microphone; disk full |
 
 Earlier frames are in git history: the four proposals and the brief at
