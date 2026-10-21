@@ -48,3 +48,11 @@ export function skeletonPictures(files: PictureFiles, parts: Readonly<Record<str
     return url;
   };
 }
+
+const WHOLE_SKELETON = /(?:^|\/)assets\/skeletons\/([^/]+)\/skeleton\.webp$/;
+
+// The ids of the dinosaurs with a whole skeleton drawn, each at
+// `assets/skeletons/<id>/skeleton.webp`, cut into pieces or not.
+export function wholeSkeletons(files: PictureFiles): ReadonlySet<string> {
+  return new Set(Object.keys(files).flatMap((path) => WHOLE_SKELETON.exec(path)?.[1] ?? []));
+}

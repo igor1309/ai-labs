@@ -232,8 +232,9 @@ const CLIMB_CARD_FLOOR = 150;
 const LARGE_CARD_FLOORS: Record<LargeLevel, number> = { explorer: 130, paleontologist: 120 };
 
 // A card is found once its pair is, open while turned over, and face down
-// otherwise. Only a board of the climb shows its climb level.
-export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string): PairsBoardView {
+// otherwise. A skeleton card shows the dinosaur's whole skeleton, any other
+// its body picture. Only a board of the climb shows its climb level.
+export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string, skeletonPicture: SkeletonPicture): PairsBoardView {
   const { rows, columns } = shapeOf(board.level);
   return {
     climbLevel: "climbLevel" in board.level ? board.level.climbLevel : undefined,
@@ -245,7 +246,7 @@ export function presentPairsBoard(board: Board, language: Language, bodyPicture:
       ({ pal, face }, place): PairCardView => ({
         id: pal.id,
         name: pal.name[language],
-        picture: bodyPicture(pal.id),
+        picture: face === "skeleton" ? skeletonPicture(pal.id, "skeleton") : bodyPicture(pal.id),
         face,
         state: board.found.includes(pal.id) ? "found" : board.open.includes(place) ? "open" : "down"
       })

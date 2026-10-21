@@ -125,15 +125,16 @@ export function readSortables(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
 
 const isFact = (value: unknown): value is boolean | null => value === null || typeof value === "boolean";
 
-// Find the pair needs who is dealt and whose silhouettes look alike. A
+// Find the pair needs who is dealt, whose silhouettes look alike, and
+// which of them has a whole skeleton drawn, by the ids in `skeletons`. A
 // record with no look-alike group fails here, when the app is put
 // together, rather than as two silhouettes no child can tell apart.
-export function readPals(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "lookAlike">>): Pal[] {
+export function readPals(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "lookAlike">>, skeletons: ReadonlySet<string>): Pal[] {
   return records.map(({ id, name, lookAlike }) => {
     if (typeof lookAlike !== "string" || !lookAlike.trim()) {
       throw new Error(`${id} has no look-alike group: ${JSON.stringify(lookAlike)}`);
     }
-    return { id, name: { en: name.en, ru: name.ru }, lookAlike };
+    return { id, name: { en: name.en, ru: name.ru }, lookAlike, skeleton: skeletons.has(id) };
   });
 }
 

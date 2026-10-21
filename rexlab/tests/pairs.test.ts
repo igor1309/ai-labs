@@ -17,7 +17,7 @@ import {
 } from "../src/pairs/index.ts";
 import { seededRandom, SHIPPED_PALS } from "./support.ts";
 
-const pal = (id: string, lookAlike = id): Pal => ({ id, name: { en: id, ru: id }, lookAlike });
+const pal = (id: string, lookAlike = id, skeleton = true): Pal => ({ id, name: { en: id, ru: id }, lookAlike, skeleton });
 
 const REX = pal("tyrannosaurus", "big-hunter");
 const TRIKE = pal("triceratops", "horned-face");
@@ -30,7 +30,7 @@ const board = (pals: readonly Pal[] = [REX, TRIKE, STEGO], level: BoardLevel = {
   pals,
   cards: pals.flatMap((one) => [
     { pal: one, face: "picture" as const },
-    { pal: one, face: shapeOf(level).silhouettes ? ("silhouette" as const) : ("picture" as const) }
+    { pal: one, face: shapeOf(level).match }
   ]),
   open: [],
   found: [],
@@ -65,12 +65,14 @@ function choices<T>(items: readonly T[], k: number): T[][] {
 
 // The fewest of `before`'s dinosaurs any board of `level` dealt from `pals`
 // can have, found by trying every way to deal it: on a board of pictures
-// any dinosaurs, on a silhouette board one of each of some look-alike
-// groups, each group's taken from the others if it has any.
-function fewestRepeated(pals: readonly Pal[], level: BoardLevel, before: Board): number {
-  const { pairs, silhouettes } = shapeOf(level);
+// any dinosaurs, on a silhouette or skeleton board one of each of some
+// look-alike groups, each group's taken from the others if it has any, on
+// a skeleton board only from those with a whole skeleton.
+function fewestRepeated(all: readonly Pal[], level: BoardLevel, before: Board): number {
+  const { pairs, match } = shapeOf(level);
+  const pals = match === "skeleton" ? all.filter(({ skeleton }) => skeleton) : all;
   const repeated = (pal: Pal) => before.pals.some(({ id }) => id === pal.id);
-  if (!silhouettes) return Math.max(0, pairs - pals.filter((pal) => !repeated(pal)).length);
+  if (match === "picture") return Math.max(0, pairs - pals.filter((pal) => !repeated(pal)).length);
   const groups = [...new Set(pals.map(({ lookAlike }) => lookAlike))];
   const onlyRepeated = (group: string) => pals.filter(({ lookAlike }) => lookAlike === group).every(repeated);
   return Math.min(...choices(groups, pairs).map((chosen) => chosen.filter(onlyRepeated).length));
@@ -96,11 +98,23 @@ describe("dealing a board", () => {
     expect({ level: dealt.level, open: dealt.open, found: dealt.found, tries: dealt.tries }).toEqual({ level, open: [], found: [], tries: 0 });
   });
 
-  it("deals Explorer 9 pairs in 3 rows of 6, and Paleontologist 12 in 4 rows of 6, each a picture to its silhouette", () => {
+  it("deals Explorer 9 pairs in 3 rows of 6, each a picture to its silhouette, and Paleontologist 12 in 4 rows of 6, each a picture to its skeleton", () => {
     expect(LARGE_LEVELS).toEqual({
-      explorer: { pairs: 9, rows: 3, columns: 6, silhouettes: true },
-      paleontologist: { pairs: 12, rows: 4, columns: 6, silhouettes: true }
+      explorer: { pairs: 9, rows: 3, columns: 6, match: "silhouette" },
+      paleontologist: { pairs: 12, rows: 4, columns: 6, match: "skeleton" }
     });
+  });
+
+  it("deals on a skeleton board only dinosaurs with a whole skeleton, one of each look-alike group", () => {
+    const drawn = Array.from({ length: 12 }, (_, at) => pal(`drawn${at}`, `group${at}`));
+    const undrawn = Array.from({ length: 12 }, (_, at) => pal(`undrawn${at}`, `other${at}`, false));
+    const random = seededRandom(3);
+
+    for (let deal = 0; deal < 20; deal++) {
+      expect(idsOf(dealBoard([...undrawn, ...drawn], { large: "paleontologist" }, random)).sort()).toEqual(drawn.map(({ id }) => id).sort());
+    }
+    expect(() => dealBoard([...undrawn, ...drawn.slice(1), pal("drawn12", "group1")], { large: "paleontologist" }, random)).toThrow("Too few dinosaurs for the paleontologist board");
+    expect(dealBoard(undrawn.slice(0, 9), { large: "explorer" }, random).pals).toHaveLength(9);
   });
 
   it.each([
@@ -109,7 +123,7 @@ describe("dealing a board", () => {
     ["climb level 3", { climbLevel: 3 }, ["picture", "silhouette"]],
     ["climb level 4", { climbLevel: 4 }, ["picture", "silhouette"]],
     ["Explorer", { large: "explorer" }, ["picture", "silhouette"]],
-    ["Paleontologist", { large: "paleontologist" }, ["picture", "silhouette"]]
+    ["Paleontologist", { large: "paleontologist" }, ["picture", "skeleton"]]
   ] as const)("matches each %s picture to %j", (_, level, faces) => {
     const dealt = dealBoard(SHIPPED_PALS, level, seededRandom(7));
 
@@ -138,7 +152,7 @@ describe("dealing a board", () => {
     }
   });
 
-  it.each(LEVELS.filter(([, level]) => shapeOf(level).silhouettes))("deals no two look-alikes on a %s board of silhouettes", (_, level) => {
+  it.each(LEVELS.filter(([, level]) => shapeOf(level).match !== "picture"))("deals no two look-alikes on a %s board of silhouettes or skeletons", (_, level) => {
     const random = seededRandom(5);
     for (let deal = 0; deal < 50; deal++) {
       const groups = dealBoard(SHIPPED_PALS, level, random).pals.map(({ lookAlike }) => lookAlike);
@@ -164,7 +178,7 @@ describe("dealing a board", () => {
         const groups = next.pals.map(({ lookAlike }) => lookAlike);
 
         expect(new Set(idsOf(next)).size).toBe(shapeOf(nextLevel).pairs);
-        if (shapeOf(nextLevel).silhouettes) expect(new Set(groups).size).toBe(groups.length);
+        if (shapeOf(nextLevel).match !== "picture") expect(new Set(groups).size).toBe(groups.length);
         expect(repeatedOn(next, before)).toHaveLength(fewestRepeated(SHIPPED_PALS, nextLevel, before));
       }
     }
@@ -175,7 +189,7 @@ describe("dealing a board", () => {
     for (let deal = 0; deal < 50; deal++) {
       const before = dealBoard(SHIPPED_PALS, { large: "paleontologist" }, random);
       const next = dealBoard(SHIPPED_PALS, { large: "paleontologist" }, random, before);
-      const others = SHIPPED_PALS.filter(({ id }) => !idsOf(before).includes(id));
+      const others = SHIPPED_PALS.filter(({ id, skeleton }) => skeleton && !idsOf(before).includes(id));
 
       for (const id of repeatedOn(next, before)) {
         const group = SHIPPED_PALS.find((each) => each.id === id)?.lookAlike;

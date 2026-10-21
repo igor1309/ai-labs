@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import skeletonPlaces from "../src/data/skeletons.json";
-import { skeletonPictures } from "../src/dinosaurPictures.ts";
+import { skeletonPictures, wholeSkeletons } from "../src/dinosaurPictures.ts";
 import { readSkeletons, type SkeletonsFile } from "../src/dinosaurs.ts";
 import { presentPuzzle, presentSkeletonChoices, presentSkeletonResult } from "../src/presentation.ts";
 import { appProps } from "../src/root.ts";
@@ -223,6 +223,21 @@ describe("skeletonPictures", () => {
   });
 });
 
+describe("wholeSkeletons", () => {
+  it("finds each dinosaur with a whole skeleton, whether or not it is cut, and nothing else", () => {
+    const files = {
+      "./assets/skeletons/triceratops/skeleton.webp": "/assets/skeleton-a1.webp",
+      "./assets/skeletons/triceratops/skull.webp": "/assets/skull-b2.webp",
+      "./assets/skeletons/pteranodon/skeleton.webp": "/assets/skeleton-c3.webp",
+      "./assets/skeletons/stegosaurus/skull.webp": "/assets/skull-d4.webp",
+      "./assets/dinos/mosasaurus/skeleton.webp": "/assets/skeleton-e5.webp",
+      "./assets/skeletons/diplodocus/skeleton.png": "/assets/skeleton-f6.png"
+    };
+
+    expect([...wholeSkeletons(files)]).toEqual(["triceratops", "pteranodon"]);
+  });
+});
+
 const skeletonOf = (id: string): Skeleton => {
   const found = SHIPPED_SKELETONS.find((each) => each.id === id);
   if (!found) throw new Error(`No ${id} skeleton is shipped`);
@@ -430,6 +445,28 @@ describe("the whole skeletons", () => {
 
   it("are each a see-through picture in the body picture's 800 by 600 frame", () => {
     expect(drawn.map(({ id }) => [id, readWebp(readFileSync(whole(id)))])).toEqual(drawn.map(({ id }) => [id, { width: 800, height: 600, alpha: true }]));
+  });
+
+  it("are each given to find the pair, the dinosaur dealt on a skeleton board, its picture its own file", () => {
+    const { pals, skeletonPicture } = shippedApp();
+
+    expect(pals.filter(({ skeleton }) => skeleton).map(({ id }) => id)).toEqual(drawn.map(({ id }) => id));
+    expect(drawn.map(({ id }) => fileOf(skeletonPicture(id, "skeleton")))).toEqual(drawn.map(({ id }) => whole(id)));
+  });
+
+  // find-the-pair-skeletons.feature: a skeleton on a turned card stands
+  // apart from the card's art by its dark outline in light, the darkest
+  // twentieth of it, and by its pale bone in dark, its median.
+  it("each stand at least 3:1 on a card's art, by the outline in light and the bone in dark", async () => {
+    const seen = await Promise.all(
+      drawn.map(async ({ id }) => {
+        const shades = await shadesOf(whole(id));
+        const at = (share: number) => shades[Math.floor(shades.length * share)] ?? "#000000";
+        return { id, light: contrast(at(0.05), PALETTE.light["surface-2"] ?? "") >= 3, dark: contrast(at(0.5), PALETTE.dark["surface-2"] ?? "") >= 3 };
+      })
+    );
+
+    expect(seen).toEqual(drawn.map(({ id }) => ({ id, light: true, dark: true })));
   });
 });
 

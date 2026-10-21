@@ -2,9 +2,10 @@ Feature: Find the pair: age levels
   Find the pair has a mode for each age level (docs/age-levels.md). Its
   Hatchling mode is today's game, the climb from 3 to 6 pairs that
   find-the-pair-start.feature calls levels 1 to 4. Explorer and
-  Paleontologist each deal one larger board, a picture to its
-  silhouette; Paleontologist's turns to a skeleton in LAB-301. The welcome screen's level switch is the child's own
-  choice in this game (age-level-choice.feature).
+  Paleontologist each deal one larger board: Explorer's a picture to its
+  silhouette, Paleontologist's a picture to its skeleton
+  (find-the-pair-skeletons.feature). The welcome screen's level switch
+  is the child's own choice in this game (age-level-choice.feature).
 
   Background:
     Given an iPad in landscape
@@ -60,12 +61,12 @@ Feature: Find the pair: age levels
     Given the level switch shows <level> chosen
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
-    And each pair matches a picture to its silhouette
+    And each pair matches a picture to its <match>
 
     Examples:
-      | level          | pairs | rows | columns |
-      | Explorer       | 9     | 3    | 6       |
-      | Paleontologist | 12    | 4    | 6       |
+      | level          | pairs | rows | columns | match      |
+      | Explorer       | 9     | 3    | 6       | silhouette |
+      | Paleontologist | 12    | 4    | 6       | skeleton   |
 
   Scenario: The climb level shows only for Hatchling
     Given the level switch shows Hatchling chosen

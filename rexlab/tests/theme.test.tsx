@@ -520,7 +520,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the welcome", pairsWelcome],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
       ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("EXPLORER")],
-      ["Paleontologist's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("PALEONTOLOGIST")],
+      ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsLargeBoard("PALEONTOLOGIST")],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
   ],
@@ -938,6 +938,25 @@ describe("the FIND THE PAIR tile", () => {
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+  });
+});
+
+describe("a board of skeletons", () => {
+  it.each(["light", "dark"] as const)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
+    const timers = manualTimers();
+    const { user } = openApp({ device: manualAppearance(theme), timers });
+    await playPairs(user, "PALEONTOLOGIST");
+
+    await playBoard(user, timers);
+
+    expectScreenIn(theme);
+    // Its bones keep their colours, which stand on the art as the whole
+    // skeletons' contrast test in skeletons.test.ts measures.
+    const skeletons = [...document.querySelectorAll('.pair-card[data-face="skeleton"] img')];
+    expect(skeletons).toHaveLength(12);
+    expect(skeletons.map((picture) => [picture.classList.contains("pair-silhouette"), getComputedStyle(picture).filter])).toEqual(skeletons.map(() => [false, "none"]));
+    const art = skeletons[0]?.closest(".pair-card-art") ?? document.body;
+    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
   });
 });
 
