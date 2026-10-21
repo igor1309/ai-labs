@@ -2,7 +2,7 @@
 // Everything else under quiz/ is reached only through this file.
 import { choose, currentChoice, currentQuestion, isLastQuestion, next, score, startPlay, type Play } from "./play.ts";
 import { bestForLevel, finishRound, type BeatBest, type Celebration, type QuizLevel, type QuizProgress } from "./progress.ts";
-import { correctOf, generateRound, measureOf, questionKind, type Attribute, type Dinosaur, type QuestionKind, type Random } from "./round.ts";
+import { correctOf, generateRound, measureOf, type Attribute, type Dinosaur, type QuestionKind, type Random } from "./round.ts";
 
 export type { Attribute, BeatBest, Celebration, Dinosaur, Play, QuizLevel, QuizProgress, QuestionKind, Random };
 export type { Beaten } from "./progress.ts";
@@ -63,7 +63,7 @@ export function questionState(play: Play): QuestionState {
   });
   return {
     attribute: question.attribute,
-    kind: questionKind(question),
+    kind: question.kind,
     number: play.index + 1,
     total: play.round.length,
     last: isLastQuestion(play),

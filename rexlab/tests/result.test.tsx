@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
-import { largerOf, type Question } from "../src/quiz/round.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -25,32 +25,18 @@ import {
   seededRandom,
   symbolOf,
   type MemoryStorage,
-  gameDoor
+  gameDoor,
+  shownQuestion,
+  wrongOf
 } from "./support.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const byName = (name: string) => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
-  if (!found) throw new Error(`No ${name} in the shipped list`);
-  return found;
-};
-
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
-
-function shownQuestion(): Question {
-  const heading = screen.getByRole("heading").textContent ?? "";
-  const attribute = heading.includes("HEAVIER") || heading.includes("LIGHTER") ? "mass" : heading.includes("LONGER") ? "length" : "height";
-  const [left, right] = within(group())
-    .getAllByRole("button")
-    .map((card) => byName(card.getAttribute("aria-label") ?? ""));
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
-}
 
 // A stored record in the section 5 format of docs/mvp-infrastructure.md.
 const record = (bestScore: number | null, roundsPlayed: number) =>
@@ -101,8 +87,7 @@ async function answer(user: UserEvent, correct: number, count = 10) {
   await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= count; number++) {
     const question = shownQuestion();
-    const larger = largerOf(question);
-    const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
+    const tapped = number <= correct ? correctOf(question) : wrongOf(question);
     await user.click(cardOf(tapped.name.en));
     if (number < 10) await user.click(screen.getByRole("button", { name: "NEXT" }));
   }

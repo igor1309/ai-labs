@@ -7,7 +7,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
-import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Dinosaur } from "../src/quiz/round.ts";
 import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
@@ -61,33 +61,17 @@ import {
   type MemoryStorage,
   featuredCard,
   gameDoor,
-  unsetAgeLevel
+  unsetAgeLevel,
+  shownQuestion,
+  wrongOf
 } from "./support.ts";
 
 // The WCAG AA contrast for text, which every text read in either theme keeps.
 const TEXT_CONTRAST = 4.5;
 
-const byName = (name: string): Dinosaur => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
-  if (!found) throw new Error(`No ${name} in the shipped list`);
-  return found;
-};
-
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
-
-function shownQuestion(): Question {
-  const heading = screen.getByRole("heading").textContent ?? "";
-  const attribute = heading.includes("HEAVIER") || heading.includes("LIGHTER") ? "mass" : heading.includes("LONGER") ? "length" : "height";
-  const [left, right] = within(group())
-    .getAllByRole("button")
-    .map((card) => byName(card.getAttribute("aria-label") ?? ""));
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
-}
-
-const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function openApp({
   device = manualAppearance("light"),
@@ -203,7 +187,7 @@ async function answer(user: UserEvent, from: number, to: number, check: () => vo
   for (let number = from; number <= to; number++) {
     check();
     const question = shownQuestion();
-    await user.click(cardOf(number === 1 ? smallerOf(question) : largerOf(question)));
+    await user.click(cardOf(number === 1 ? wrongOf(question) : correctOf(question)));
     check();
     await user.click(screen.getByRole("button", { name: number < 10 ? "NEXT" : "SEE RESULT" }));
   }
@@ -573,7 +557,7 @@ describe("the System theme", () => {
     const device = manualAppearance("light");
     const { user } = openApp({ device });
     await user.click(gameDoor("COMPARE"));
-    await user.click(cardOf(smallerOf(shownQuestion())));
+    await user.click(cardOf(wrongOf(shownQuestion())));
     expectScreenIn("light");
     const answered = document.body.innerHTML;
 
@@ -888,10 +872,10 @@ describe("marks", () => {
     await user.click(gameDoor("COMPARE"));
     const question = shownQuestion();
 
-    await user.click(cardOf(smallerOf(question)));
+    await user.click(cardOf(wrongOf(question)));
 
     expectScreenIn(theme);
-    const marks = [largerOf(question), smallerOf(question)].map((dinosaur) => {
+    const marks = [correctOf(question), wrongOf(question)].map((dinosaur) => {
       const mark = within(cardOf(dinosaur)).getByRole("img", { name: /^(RIGHT|WRONG)$/ });
       return { symbol: symbolOf(mark), colour: getComputedStyle(mark).backgroundColor, card: surfaceOf(mark.parentElement ?? mark) };
     });

@@ -31,11 +31,8 @@ export type Dinosaur = {
 };
 
 export type Question = {
+  kind: QuestionKind;
   attribute: Attribute;
-  // The kind is optional for callers that construct questions by attribute;
-  // generated rounds always carry it so a mass question can ask either
-  // HEAVIER or LIGHTER.
-  kind?: QuestionKind;
   left: Dinosaur;
   right: Dinosaur;
 };
@@ -74,13 +71,8 @@ export function largerOf({ attribute, left, right }: Question): Dinosaur {
   return measureOf(left, attribute) > measureOf(right, attribute) ? left : right;
 }
 
-export function questionKind(question: Question): QuestionKind {
-  return question.kind ?? (question.attribute === "mass" ? "heavier" : question.attribute === "height" ? "taller" : "longer");
-}
-
 export function correctOf(question: Question): Dinosaur {
-  const kind = questionKind(question);
-  return kind === "lighter" || kind === "shorter"
+  return question.kind === "lighter" || question.kind === "shorter"
     ? (measureOf(question.left, question.attribute) < measureOf(question.right, question.attribute) ? question.left : question.right)
     : largerOf(question);
 }
