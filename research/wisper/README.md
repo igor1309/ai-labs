@@ -17,7 +17,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
 | [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
-| `design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark; earlier proposals and versions in an Archive area |
+| `design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
 | [design/README.md](design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |
 
 ## Visual language
@@ -38,8 +38,8 @@ The design system is locked (2026-10-21): the file's variables hold Glass
 Ledger's colours with a light and a dark value (theme axis `mode`), two
 fonts, and consolidated type, radius and spacing scales. Each screen has one
 current frame, built from the components, which draws the owner's answers of
-2026-10-21 recorded in mvp.md. The earlier versions (originals, v2, v3, v4)
-and the four proposals sit in the file's Archive area.
+2026-10-21 recorded in mvp.md. Earlier versions and the four proposals
+are in git history.
 [design/README.md](design/README.md) lists the tokens, components and screens.
 
 ## Conclusion so far
