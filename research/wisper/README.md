@@ -27,6 +27,10 @@ call after it ends, settings, menu bar item and errors. Values neither spec
 nor owner set are marked as proposals in each frame. The gallery's "Screen
 references" section holds the sites surveyed for them (inventory-59).
 
+The v2 frames beside Screens 1–5 and 8 apply the design review and the
+owner's answers of 2026-10-21 (recorded in mvp.md on branch `wisper`). The originals
+are kept unchanged. Term chips moved to a separate "Later" frame.
+
 ## Conclusion so far
 
 No installed app fits without either paying a subscription or living with a
