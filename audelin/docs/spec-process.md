@@ -20,7 +20,11 @@ holds a `SPEC.md` and a `QA.md`, and nothing else.
 
 ```text
 spec/                        the user: journeys across the app, and references
-  menu-bar/                  the user (Screen 7)
+  menu-bar/                  the user: the menu's status and commands (Screen 7)
+  switches/                  the user: the two checkmarks, in the menu and Settings
+  auto-record/               the user: when recordings start and stop on their own
+  call-titles/               the user: what a call is titled, and renaming it
+  debug-menu/                the user of a debug build: test triggers
   live-panel/                the user: the panel window, header and banners (Screens 3, 8)
   transcript-view/           the user: reading the call in the panel
   selection/                 the user: a selection while the text changes
@@ -30,8 +34,8 @@ spec/                        the user: journeys across the app, and references
   settings-window/           the user (Screen 6)
   recording-session/         live-panel, menu-bar: start, stop, keep the audio
   live-recognition/          transcript-view, live-panel: text from the audio
-  call-watcher/              menu-bar: calls start and stop recordings
-  calls-catalogue/           calls-list, call-screen: find, rename, delete
+  call-watcher/              auto-record, call-titles: call apps on the microphone
+  calls-catalogue/           calls-list, call-screen, call-titles: find, rename, delete
   folder-move/               settings-window: move the calls folder
   setup/                     setup-screen, settings-window: settings, launch check
   call-folder-names/         calls-catalogue, recording-session
