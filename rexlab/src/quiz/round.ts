@@ -1,18 +1,18 @@
 import type { Language } from "../language/language.ts";
 import type { QuizLevel } from "./progress.ts";
 
-export type Attribute = "mass" | "height";
+export type Attribute = "mass" | "height" | "length";
 
-export const ATTRIBUTES: readonly Attribute[] = ["mass", "height"];
+export const ATTRIBUTES: readonly Attribute[] = ["mass", "height", "length"];
 
-export type QuestionKind = "heavier" | "taller" | "lighter" | "shorter";
+export type QuestionKind = "heavier" | "taller" | "lighter" | "shorter" | "longer";
 
-export const QUESTION_KINDS: readonly QuestionKind[] = ["heavier", "taller", "lighter", "shorter"];
+export const QUESTION_KINDS: readonly QuestionKind[] = ["heavier", "taller", "lighter", "shorter", "longer"];
 
 const KINDS_BY_LEVEL: Record<QuizLevel, readonly QuestionKind[]> = {
   hatchling: ["heavier", "taller"],
-  explorer: ["heavier", "taller"],
-  paleontologist: QUESTION_KINDS
+  explorer: ["heavier", "taller", "longer"],
+  paleontologist: ["heavier", "taller", "lighter", "shorter", "longer"]
 };
 
 export function questionKindsForLevel(level: QuizLevel): readonly QuestionKind[] {
@@ -20,21 +20,21 @@ export function questionKindsForLevel(level: QuizLevel): readonly QuestionKind[]
 }
 
 export function attributeOf(kind: QuestionKind): Attribute {
-  return kind === "taller" || kind === "shorter" ? "height" : "mass";
+  return kind === "taller" || kind === "shorter" ? "height" : kind === "longer" ? "length" : "mass";
 }
 
 export type Dinosaur = {
   id: string;
   name: Record<Language, string>;
-  // Every dinosaur's mass; a height only where it is measured standing.
-  measures: { mass: number; height?: number };
+  // Every creature's mass; height and length only where the sources give them.
+  measures: { mass: number; height?: number; length?: number };
 };
 
 export type Question = {
   attribute: Attribute;
-  // The kind is optional for callers that construct today's questions by
-  // attribute; generated rounds always carry it so a mass question can ask
-  // either HEAVIER or LIGHTER.
+  // The kind is optional for callers that construct questions by attribute;
+  // generated rounds always carry it so a mass question can ask either
+  // HEAVIER or LIGHTER.
   kind?: QuestionKind;
   left: Dinosaur;
   right: Dinosaur;
@@ -75,7 +75,7 @@ export function largerOf({ attribute, left, right }: Question): Dinosaur {
 }
 
 export function questionKind(question: Question): QuestionKind {
-  return question.kind ?? (question.attribute === "mass" ? "heavier" : "taller");
+  return question.kind ?? (question.attribute === "mass" ? "heavier" : question.attribute === "height" ? "taller" : "longer");
 }
 
 export function correctOf(question: Question): Dinosaur {

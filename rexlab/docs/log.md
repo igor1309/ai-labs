@@ -2,6 +2,7 @@
 
 ## 2026-10-21
 
+- Explorer and Paleontologist compare rounds now mix WHO IS LONGER? with their other questions, using the creatures' lengths (LAB-394).
 - Paleontologist compare rounds now mix WHO IS SHORTER? with heavier, taller and lighter questions, with the dinosaur with the smaller hip height winning (LAB-392).
 - Paleontologist compare rounds now mix WHO IS LIGHTER? with heavier and taller questions, with the lighter dinosaur winning (LAB-391).
 - The compare quiz's result screen has the level switch above PLAY AGAIN, as sorting's does, and each level keeps its own best, which the COMPARE tile shows for the level the quiz plays; every level still asks today's questions, and a best saved before is Hatchling's (LAB-390).

@@ -54,15 +54,15 @@ describe("readDinosaurs", () => {
     ]);
   });
 
-  it("reads only the mass of a creature that is no dinosaur, as none is measured standing", () => {
-    expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000 }]);
+  it("reads a sea reptile's length but no flying reptile length", () => {
+    expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000, length: 12 }]);
   });
 
-  it("reads a dinosaur's hip height as its size when its length is also known", () => {
+  it("reads a dinosaur's length separately from its hip height", () => {
     const record = { ...STEGOSAURUS, attributes: { massKg: 5000, heightMeters: 4, lengthMeters: 9 } };
 
     expect(readDinosaurs([record])).toEqual([
-      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4 } }
+      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4, length: 9 } }
     ]);
     expect(readCatalogue([record]).map(({ size }) => size)).toEqual([{ measure: "height", metres: 4 }]);
   });

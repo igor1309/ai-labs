@@ -48,11 +48,12 @@ import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx
 // attribute, celebration, food type, need, item, basket, bone piece or
 // museum stand fails the typecheck here until it is given a presentation.
 
-const PROMPTS: Record<QuestionState["kind"], Prompt> = { heavier: "mass", taller: "height", lighter: "lighter", shorter: "shorter" };
+const PROMPTS: Record<QuestionState["kind"], Prompt> = { heavier: "mass", taller: "height", lighter: "lighter", shorter: "shorter", longer: "longer" };
 
 const FORMATS: Record<Attribute, (value: number, language: Language) => string> = {
   mass: formatMass,
-  height: formatLength
+  height: formatLength,
+  length: formatLength
 };
 
 const CELEBRATIONS: Record<Celebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
