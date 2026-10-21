@@ -6756,6 +6756,120 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   color: #5c647a;
 }
 
+/* The mystery skeleton's tile, after the dinosaurs: a large "?" on the
+   second surface, ringed in terracotta, in place of a picture and a
+   name. */
+.skeleton-mystery {
+  outline: 3px solid #c9583d;
+  outline-offset: -1.5px;
+  background: #e6e2d9;
+}
+
+.skeleton-mystery-mark {
+  align-items: center;
+  justify-content: center;
+  color: #c9583d;
+  font-size: min(160px, 50cqi);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* The mystery's guess: beside its finished skeleton, a panel as wide as
+   the reward's, of the three dinosaurs' cards, each its body picture over
+   its name, and the clue below them. A wrong guess wobbles and rests
+   aside, faded and tilted. */
+.skeleton-guess {
+  flex: 380 1 0;
+  min-width: 360px;
+  box-sizing: border-box;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 28px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-guess-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeleton-guess-card {
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 2px solid #5c647a;
+  border-radius: 22px;
+  background: #e6e2d9;
+  container-type: inline-size;
+  transition: opacity var(--motion-small) var(--ease-out);
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.skeleton-guess-card[data-wrong] {
+  opacity: 0.45;
+  rotate: calc(-3deg * var(--motion-amount));
+  border-color: #c9583d;
+  animation: wobble var(--motion-alive) var(--ease-out);
+}
+
+.skeleton-guess-picture {
+  display: block;
+  width: 100%;
+  height: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name on one line shrinks from 20px only as much as a long name needs
+   to fit the card. */
+.skeleton-guess-name {
+  flex-shrink: 0;
+  font-size: min(20px, calc(100cqi / (var(--letters) * 0.75)));
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.skeleton-clue {
+  flex-shrink: 0;
+  min-height: 64px;
+  margin: 0;
+  display: flex;
+}
+
+.skeleton-clue-line {
+  flex: 1 1 auto;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  background: #e39b2d;
+  color: #1d2742;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+.skeleton-clue-line svg {
+  flex-shrink: 0;
+}
+
 .skeleton-best {
   margin: 0;
   display: flex;
@@ -7686,6 +7800,32 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 
 [data-theme="dark"] .skeleton-fact {
   background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-guess {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .skeleton-mystery,
+[data-theme="dark"] .skeleton-guess-card {
+  background: #222a3d;
+}
+
+[data-theme="dark"] .skeleton-mystery {
+  outline-color: #e57a5d;
+}
+
+[data-theme="dark"] .skeleton-mystery-mark {
+  color: #e57a5d;
+}
+
+[data-theme="dark"] .skeleton-guess-card {
+  border-color: #a4aec7;
+}
+
+[data-theme="dark"] .skeleton-guess-card[data-wrong] {
+  border-color: #e57a5d;
 }
 
 [data-theme="dark"] .level-badge {

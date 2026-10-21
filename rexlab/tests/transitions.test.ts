@@ -11,6 +11,7 @@ import { dealBoard, finishBoard as finishPairs, NO_PAIRS, turn } from "../src/pa
 import { transitionFor as pairsTransitionFor } from "../src/pairsGame.tsx";
 import { NEXT_QUESTION } from "../src/QuestionScreen.tsx";
 import { choose, finishPlay, next, startRound } from "../src/quiz/index.ts";
+import { transitionFor as quizTransitionFor } from "../src/quizGame.tsx";
 import { SCREEN_CHANGE } from "../src/screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
 import { finishSkeleton, openCollection, startPuzzle, wait } from "../src/skeletons/index.ts";
@@ -21,17 +22,10 @@ import { SHIPPED_DIG, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SKELETONS, SHIPPE
 
 type AppScreen = Parameters<typeof transitionFor>[0];
 
-const first = startRound(SHIPPED_DINOSAURS, seededRandom(1));
-const firstQuestion = first.round[0];
-if (!firstQuestion) throw new Error("Expected a first question");
-const answered = choose(first, firstQuestion.left.id);
-const question = (play = first): AppScreen => ({ kind: "question", play });
-
 // One screen of each kind of the app's, as a change starts or ends on it.
 const APP: AppScreen[] = [
   { kind: "home" },
-  question(),
-  { kind: "result", result: finishPlay(answered, undefined, beatBest) },
+  { kind: "compare" },
   { kind: "catalogue", returning: undefined },
   { kind: "dinosaur", index: 0 },
   { kind: "care" },
@@ -58,8 +52,6 @@ describe("the app's transition for each change", () => {
   });
 
   it.each([
-    ["an answer chosen", question(), question(answered), undefined],
-    ["the next question", question(answered), question(next(answered)), NEXT_QUESTION],
     ["a food chosen", { kind: "catalogue", returning: undefined }, { kind: "catalogue", returning: undefined }, undefined],
     ["a page closed to its card", { kind: "dinosaur", index: 3 }, { kind: "catalogue", returning: "stegosaurus" }, CLOSE_DINOSAUR]
   ] satisfies Array<[string, AppScreen, AppScreen, string | undefined]>)("for %s", (_change, from, to, type) => {
@@ -84,6 +76,34 @@ describe("the app's transition for each change", () => {
 function plainChanges<Screen>(screens: readonly Screen[], kind: (screen: Screen) => string | undefined) {
   return screens.flatMap((from) => screens.map((to) => ({ from, to, fromKind: kind(from), toKind: kind(to), type: kind(from) === kind(to) ? undefined : SCREEN_CHANGE })));
 }
+
+describe("the compare quiz's transition for each change", () => {
+  type QuizScreen = Parameters<typeof quizTransitionFor>[0];
+  const first = startRound(SHIPPED_DINOSAURS, "hatchling", seededRandom(1));
+  const firstQuestion = first.round[0];
+  if (!firstQuestion) throw new Error("Expected a first question");
+  const answered = choose(first, firstQuestion.left.id);
+  const screens: QuizScreen[] = [undefined, { kind: "question", play: first }, { kind: "result", result: finishPlay(answered, undefined, beatBest) }];
+
+  it.each(plainChanges(screens, (screen) => screen?.kind))("from $fromKind to $toKind", ({ from, to, type }) => {
+    expect(quizTransitionFor(from, to, undefined)).toBe(type);
+  });
+
+  it("changes the question at once as an answer is chosen", () => {
+    expect(quizTransitionFor({ kind: "question", play: first }, { kind: "question", play: answered }, undefined)).toBeUndefined();
+  });
+
+  it("animates only the cards as the next question shows", () => {
+    expect(quizTransitionFor({ kind: "question", play: answered }, { kind: "question", play: next(answered) }, undefined)).toBe(NEXT_QUESTION);
+  });
+
+  it("shows a round started over the round kept from before as the plain screen change", () => {
+    const again = startRound(SHIPPED_DINOSAURS, "hatchling", seededRandom(2), answered);
+
+    expect(quizTransitionFor({ kind: "question", play: answered }, { kind: "question", play: again }, "start")).toBe(SCREEN_CHANGE);
+    expect(quizTransitionFor(undefined, { kind: "question", play: again }, "start")).toBe(SCREEN_CHANGE);
+  });
+});
 
 describe("dinosaur care's transition for each change", () => {
   type CareScreen = Parameters<typeof careTransitionFor>[0];
@@ -163,10 +183,14 @@ describe("the skeleton game's transition for each change", () => {
   if (!skeleton) throw new Error("Expected a skeleton");
   const puzzle = startPuzzle(skeleton, skeleton.cuts.hatchling);
   const order = SHIPPED_SKELETONS.map(({ id }) => id);
+  const finished = { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) };
+  const result = finishSkeleton(openCollection(undefined, order), finished, order, beatBest).result;
+  const choices = SHIPPED_PALS.slice(0, 3);
   const screens: SkeletonScreen[] = [
     { kind: "choice" },
-    { kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } },
-    { kind: "result", result: finishSkeleton(openCollection(undefined, order), { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) }, order, beatBest).result },
+    { kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined },
+    { kind: "guess", puzzle: finished, result, choices, wrong: [] },
+    { kind: "result", result },
     { kind: "museum" }
   ];
 
@@ -175,7 +199,11 @@ describe("the skeleton game's transition for each change", () => {
   });
 
   it("changes a puzzle at once as time counts towards help", () => {
-    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { silhouette: false, homeShown: true } })).toBeUndefined();
+    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined })).toBeUndefined();
+  });
+
+  it("changes a mystery's guess at once as a guess is wrong", () => {
+    expect(skeletonTransitionFor({ kind: "guess", puzzle: finished, result, choices, wrong: [] }, { kind: "guess", puzzle: finished, result, choices, wrong: [choices[1]?.id ?? ""] })).toBeUndefined();
   });
 });
 

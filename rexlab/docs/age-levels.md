@@ -48,10 +48,10 @@ this table in step as they land.
 
 | Game | 🥚 Hatchling | 🦖 Explorer | 🦴 Paleontologist |
 | --- | --- | --- | --- |
-| Skeleton (LAB-270, `skeleton-levels.md`) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, help in steps | 10–12 pieces, a partial outline, distractor bones; later, mystery skeleton (LAB-284) and odd bone out (LAB-285) |
+| Skeleton (LAB-270, `skeleton-levels.md`) | today's game: four pieces, the right way up, on a full outline; a mystery skeleton at every level (LAB-284) | 6–8 pieces, help in steps | 10–12 pieces, a partial outline, distractor bones |
 | Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to skeleton (LAB-301) |
 | Care (LAB-294) | today's game: need bubbles and the matching item | one-step missions | the reasoning puzzle of LAB-281 |
 | Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 8 cards; diet adds BOTH | 10 cards, legs or feathers, with TWO OR FOUR or NOT KNOWN YET |
-| Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter and shorter, then earlier or later |
+| Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter (LAB-391) and shorter (LAB-392); earlier/later stays as later work |
 | Reading (LAB-273) | the first letter, with a picture cue | the missing letter, from 3 tiles | the name built from shuffled letters |
 | Dig (LAB-335, `dig-levels.md`) | brush the sand off a dinosaur; the last grains blow away at 95% | a mystery dinosaur, named from 3 pictures once three quarters show | the same from 4 pictures |

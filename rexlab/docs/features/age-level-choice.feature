@@ -5,8 +5,9 @@ Feature: A child's own level choice in a game
   a switch (find-the-pair-levels.feature), and remembers its choice
   (find-the-pair-level-progress.feature); so do the sorting game, on
   its result screen (sort-dinosaurs-level-switch.feature), the
-  skeleton game (skeleton-assembly-levels.feature) and the dig game, on
-  its reveal (dig-level-switch.feature). These rules are
+  skeleton game (skeleton-assembly-levels.feature), the dig game, on
+  its reveal (dig-level-switch.feature), and the compare quiz, on its
+  result screen (compare-dinosaurs-level-switch.feature). These rules are
   checked on the shared rule of age-level-start.feature, given the
   child's choice and the level it was made under.
 

@@ -5,6 +5,28 @@
 - `LAB-*` issues live in the Multica workspace `ai-labs`, which is not the
   CLI default: `multica --workspace-id 4bffb154-c309-4416-917d-22a9fb2b5950 issue get LAB-<n>`.
 
+## Designing in pen.dev
+
+- Work only on the `.pen` in your own worktree, through the pencil MCP. Do
+  it yourself; never ask the owner to open a file or click in the editor.
+  Do not use the `pen` CLI: it runs pen.dev's own agent.
+- The MCP sends a call to the Pen.app window that has its exact `filePath`
+  open. If no window has it, the call silently goes to the last-focused
+  window, which may be another agent's file.
+- So first open your file in its own window: `open -a Pen <absolute path>`.
+  Then give focus back to any other agent's window with
+  `open -a Pen <their path>`; that only focuses it.
+- Pass your absolute `filePath` on every call. Before the first edit, prove
+  the route with a read-only `Get` (e.g. a count of top-level frames).
+- Pen.app does not auto-save a file you opened; it only writes a backup,
+  and the MCP has no save. To save, focus your window (`open -a Pen <your
+  path>`), check that the front window's `AXDocument` (via `osascript`
+  and System Events) is exactly your path, send ⌘S, then give focus back.
+  Never press ⌘S without that check: every window is titled `rexlab.pen`.
+  Commit the file from your worktree.
+- Never edit another agent's document or branch. If you did, tell that
+  agent at once, with what you changed.
+
 ## Pull request merge workflow
 
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and

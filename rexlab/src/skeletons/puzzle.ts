@@ -39,6 +39,8 @@ export type Skeleton = {
   name: Record<Language, string>;
   // The one short anatomy fact its finished skeleton reveals.
   fact: Record<Language, string>;
+  // The clue a wrong guess at its mystery gives: what tells it apart.
+  clue: Record<Language, string>;
   // The frame the outline is drawn in, which the dinosaur's body picture
   // shares, and its cuts, each piece's home in it.
   frame: { width: number; height: number };

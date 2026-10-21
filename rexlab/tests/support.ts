@@ -407,6 +407,12 @@ export function memoryStorage(
   };
 }
 
+// The quiz's progress as the app keeps it, with `bestScore` its Hatchling
+// best, as a best saved before the quiz had levels reads, and no other.
+export function quizSaved(bestScore: number | null, roundsPlayed: number) {
+  return { progress: { best: { hatchling: bestScore, explorer: null, paleontologist: null }, roundsPlayed }, levelChoice: undefined };
+}
+
 // Progress for tests that are not about it: none kept yet, and saving works.
 export function emptyProgress() {
   const storage = memoryStorage();
@@ -539,7 +545,7 @@ export function unsetAgeLevel(): Pick<AppProps, "ageLevelStore"> {
 // it alone, once `choice` is chosen when one is given: the quiz's state of
 // the question, presented as the app presents it.
 export function questionView(question: Question, language: Language, choice?: string) {
-  const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question));
+  const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question), "hatchling");
   return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture);
 }
 

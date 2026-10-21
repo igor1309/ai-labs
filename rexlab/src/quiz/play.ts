@@ -1,15 +1,17 @@
-import { largerOf, type Question, type Round } from "./round.ts";
+import type { QuizLevel } from "./progress.ts";
+import { correctOf, type Question, type Round } from "./round.ts";
 
-// A round being played: the question on screen and the dinosaur chosen for
-// each question answered so far, in order.
+// A round being played at its level: the question on screen and the
+// dinosaur chosen for each question answered so far, in order.
 export type Play = {
+  level: QuizLevel;
   round: Round;
   index: number;
   choices: readonly string[];
 };
 
-export function startPlay(round: Round): Play {
-  return { round, index: 0, choices: [] };
+export function startPlay(round: Round, level: QuizLevel): Play {
+  return { level, round, index: 0, choices: [] };
 }
 
 export function currentQuestion(play: Play): Question {
@@ -49,6 +51,6 @@ export function next(play: Play): Play {
 export function score(play: Play): number {
   return play.choices.filter((choice, index) => {
     const question = play.round[index];
-    return question !== undefined && largerOf(question).id === choice;
+    return question !== undefined && correctOf(question).id === choice;
   }).length;
 }

@@ -345,7 +345,7 @@ const scored = () =>
     [PROGRESS_KEY]: JSON.stringify({
       schemaVersion: 1,
       games: {
-        "compare-dinosaurs": { bestScore: 7, roundsPlayed: 3 },
+        "compare-dinosaurs": { bestScore: 7, explorerBest: 7, paleontologistBest: null, roundsPlayed: 3 },
         "dinosaur-care": { bestScore: 8, visitsFinished: 1, friends: [] },
         "sort-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: null, roundsPlayed: 2 },
         "find-the-pair": { stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] },

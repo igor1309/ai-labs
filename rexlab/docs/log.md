@@ -2,6 +2,10 @@
 
 ## 2026-10-21
 
+- Paleontologist compare rounds now mix WHO IS SHORTER? with heavier, taller and lighter questions, with the dinosaur with the smaller hip height winning (LAB-392).
+- Paleontologist compare rounds now mix WHO IS LIGHTER? with heavier and taller questions, with the lighter dinosaur winning (LAB-391).
+- The compare quiz's result screen has the level switch above PLAY AGAIN, as sorting's does, and each level keeps its own best, which the COMPARE tile shows for the level the quiz plays; every level still asks today's questions, and a best saved before is Hatchling's (LAB-390).
+- The skeleton game has a mystery skeleton: once a skeleton has its star, a "?" tile after the dinosaurs builds one already built with its name hidden, then asks WHOSE SKELETON IS IT? from three dinosaurs; a wrong guess boings, rests aside and gives a clue, such as LOOK AT ITS THREE HORNS!, and the right one reveals the dinosaur. It earns no new star (LAB-284).
 - The skeleton game comes alive: a bone picked up, fitted or missed is heard, a missed bone wobbles back, a fitted skull snaps its jaw and a tail swishes, and the finished skeleton stomps and roars before its body shows. Explorer's pieces are no longer coloured by body area and Paleontologist's no longer arrive turned, so bones are placed by their shape (LAB-389).
 - Turning the iPad, or resizing a window between landscape and portrait, glides the home page to its other layout instead of jumping: RexLab, the corner, the greeting, the large card and the tiles move to their new places together while the rest fades in; under reduced motion it only fades. The tiles keep the column the child was looking at, an open parents' menu stays open, and taps wait until the motion settles (LAB-375).
 - A hatch and grow care prototype for a playtest replaces the care mission one, at `/prototypes/care-hatch.html`, with all three age levels: a Hatchling raises one baby that shows its wants on itself, an Explorer raises plant- and meat-eating twins, and a Paleontologist raises a trio, reads each one's diet from its teeth and keeps them in a field notebook (LAB-387).

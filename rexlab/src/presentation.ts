@@ -11,11 +11,12 @@ import type { Language } from "./language/language.ts";
 import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
-import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
+import { bestForLevel as bestForQuizLevel, type Attribute, type Celebration, type Option, type QuestionState, type RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { SkeletonGuessScreenProps } from "./SkeletonGuessScreen.tsx";
 import type { ShownBadge } from "./LevelBadge.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
 import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
@@ -30,6 +31,7 @@ import {
   type Museum,
   type BodyArea,
   type HelpStep,
+  type Kin,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
@@ -46,7 +48,7 @@ import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx
 // attribute, celebration, food type, need, item, basket, bone piece or
 // museum stand fails the typecheck here until it is given a presentation.
 
-const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
+const PROMPTS: Record<QuestionState["kind"], Prompt> = { heavier: "mass", taller: "height", lighter: "lighter", shorter: "shorter" };
 
 const FORMATS: Record<Attribute, (value: number, language: Language) => string> = {
   mass: formatMass,
@@ -59,7 +61,7 @@ export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "tota
 
 export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string): QuestionView {
   // Once answered, the right answer is marked whichever card was tapped,
-  // so a wrong answer still shows the child which one is larger.
+  // so a wrong answer still shows the child which one wins.
   const card = ({ dinosaur, value, correct, chosen }: Option): DinosaurCardView => ({
     id: dinosaur.id,
     name: dinosaur.name[language],
@@ -69,7 +71,7 @@ export function presentQuestion(question: QuestionState, language: Language, bod
     chosen
   });
   return {
-    prompt: PROMPTS[question.attribute],
+    prompt: PROMPTS[question.kind],
     number: question.number,
     total: question.total,
     left: card(question.left),
@@ -87,8 +89,8 @@ function presentScore(score: number, total: number, best: number | undefined, pr
   return { score, total, best, beaten: celebration === "new-best" ? previousBest : undefined, celebration };
 }
 
-export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && CELEBRATIONS[celebration]);
+export function presentResult({ level, score, total, progress, previousBest, celebration }: RoundResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForQuizLevel(progress, level) ?? undefined, previousBest, celebration && CELEBRATIONS[celebration]);
 }
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
@@ -393,6 +395,26 @@ export function presentSkeletonResult(
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
     newStar,
     badge: badge && SHOWN_BADGES[badge]
+  };
+}
+
+export type SkeletonGuessView = Pick<SkeletonGuessScreenProps, "skeleton" | "frame" | "choices" | "clue">;
+
+// The finished mystery skeleton beside the dinosaurs it is guessed from,
+// each by its name and body picture, and its clue once a guess is wrong.
+export function presentSkeletonGuess(
+  skeleton: Skeleton,
+  choices: readonly Kin[],
+  wrong: readonly string[],
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  bodyPicture: (dinosaurId: string) => string
+): SkeletonGuessView {
+  return {
+    skeleton: skeletonPicture(skeleton.id, "skeleton"),
+    frame: skeleton.frame,
+    choices: choices.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), wrong: wrong.includes(id) })),
+    clue: wrong.length > 0 ? skeleton.clue[language] : undefined
   };
 }
 

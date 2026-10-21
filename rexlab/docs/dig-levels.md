@@ -169,9 +169,6 @@ Storyboard" row of `../design/rexlab.pen`.
 | LAB-361 Motion | the motion and the reveal |
 | LAB-362 Treasures | treasures in the sand and the FIELD GUIDE |
 
-The brush of LAB-341 is a component of its own, so the skeleton
-game's dig (LAB-283) brushes the same sand.
-
 ## Accepted by the owner
 
 - The game's name: "DIG", "РАСКОПКИ".

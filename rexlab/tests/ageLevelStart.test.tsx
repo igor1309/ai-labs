@@ -8,7 +8,7 @@ import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
-import { largerOf, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Question } from "../src/quiz/round.ts";
 import { badgeOf } from "./homePage.tsx";
 import {
   SHIPPED_CATALOGUE,
@@ -37,11 +37,11 @@ import {
 
 const TODAY = new Date(2026, 9, 18, 9, 30);
 
-// Progress kept before the age level, a quiz best of 6 among it.
+// Progress kept, a quiz best of 6 at every level among it.
 const KEPT = JSON.stringify({
   schemaVersion: 1,
   games: {
-    "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 },
+    "compare-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: 6, roundsPlayed: 3 },
     "dinosaur-care": { bestScore: 4, visitsFinished: 2, friends: ["triceratops"] },
     "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 },
     "find-the-pair": { stars: 40, level: 2, boardsOnLevel: 1, best: {}, found: ["stegosaurus"] },
@@ -102,12 +102,10 @@ const button = (name: string) => screen.getByRole("button", { name });
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 
 // Games with only Hatchling retain their play at every age level
-// (age-level-start.feature). Sorting and the skeleton game have their own
-// levels and flow tests. Each game, by its tile, and the taps that take
-// it from its
-// first screen into play.
+// (age-level-start.feature). Sorting, the skeleton game and the compare
+// quiz have their own levels and flow tests. Each game, by its tile, and
+// the taps that take it from its first screen into play.
 const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]> = [
-  ["the compare quiz", "COMPARE", []],
   ["the catalogue", "ANCIENT REPTILES", []],
   ["the care game", "CARE", [() => button("NEW VISITOR")]]
 ];
@@ -135,7 +133,9 @@ describe("today's games", () => {
 });
 
 function shownQuestion(): Question {
-  const attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
+  const heading = screen.getByRole("heading").textContent ?? "";
+  const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("SHORTER") ? "shorter" : heading.includes("HEAVIER") ? "heavier" : "taller";
+  const attribute = kind === "taller" || kind === "shorter" ? "height" : "mass";
   const [left, right] = within(group())
     .getAllByRole("button")
     .map((card) => {
@@ -144,7 +144,7 @@ function shownQuestion(): Question {
       return found;
     });
   if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
+  return { kind, attribute, left, right };
 }
 
 // Plays a compare quiz round from the home page, every question answered
@@ -152,7 +152,7 @@ function shownQuestion(): Question {
 async function answerEveryQuestionRight(user: UserEvent) {
   await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= 10; number++) {
-    await user.click(within(group()).getByRole("button", { name: largerOf(shownQuestion()).name.en }));
+    await user.click(within(group()).getByRole("button", { name: correctOf(shownQuestion()).name.en }));
     if (number < 10) await user.click(button("NEXT"));
   }
   await user.click(button("SEE RESULT"));
@@ -169,6 +169,7 @@ describe("the same play", () => {
     expect(screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"))).toEqual(["NEW BEST SCORE"]);
     await user.click(button("HOME"));
     expect(badgeOf(gameDoor("COMPARE"))?.textContent).toBe("10");
-    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: 10, roundsPlayed: 4 });
+    const best = (at: AgeLevel) => (at === level ? 10 : 6);
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: best("hatchling"), explorerBest: best("explorer"), paleontologistBest: best("paleontologist"), roundsPlayed: 4 });
   });
 });

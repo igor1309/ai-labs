@@ -4,9 +4,9 @@ import { NO_DIG, TREASURE_KINDS, type DigProgress, type Treasures } from "./dig/
 import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
-import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
+import { NO_PROGRESS } from "./quiz/index.ts";
 import { BADGES, NO_SKELETONS, type Badge, type SkeletonProgress } from "./skeletons/index.ts";
-import { NO_SORTING, type SortingProgress } from "./sorting/index.ts";
+import { NO_SORTING } from "./sorting/index.ts";
 import type { LevelChoice } from "./startLevel.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
@@ -17,9 +17,10 @@ export type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 
 type Entry = Record<string, unknown>;
 
-// The quiz's progress, under its game in the shared record.
+// The quiz's progress and the child's last choice on its level switch,
+// under its game in the shared record.
 export function localProgress(storage: () => KeyValueStorage) {
-  return gameProgress<GameProgress>(storage, "compare-dinosaurs", NO_PROGRESS, readRounds);
+  return levelledProgress(storage, "compare-dinosaurs", NO_PROGRESS);
 }
 
 // Dinosaur care's progress, beside the quiz's in the same record.
@@ -33,24 +34,32 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
-  const entry = gameProgress<StoredSorting>(storage, "sort-dinosaurs", storedSorting(NO_SORTING, undefined), readSorting);
+  return levelledProgress(storage, "sort-dinosaurs", NO_SORTING);
+}
+
+// A game's best on each level, its finished rounds and the child's last
+// choice on its level switch, under `game` in the shared record.
+function levelledProgress(storage: () => KeyValueStorage, game: string, empty: LevelledProgress) {
+  const entry = gameProgress<StoredLevels>(storage, game, storedLevels(empty, undefined), readLevels);
   return {
-    load(): { progress: SortingProgress; levelChoice: LevelChoice | undefined } | undefined {
+    load(): { progress: LevelledProgress; levelChoice: LevelChoice | undefined } | undefined {
       const stored = entry.load();
       if (stored === undefined) return undefined;
       const { bestScore, explorerBest, paleontologistBest, roundsPlayed, levelChoice } = stored;
       return { progress: { best: { hatchling: bestScore, explorer: explorerBest, paleontologist: paleontologistBest }, roundsPlayed }, levelChoice };
     },
 
-    save({ progress, levelChoice }: { progress: SortingProgress; levelChoice: LevelChoice | undefined }): void {
-      entry.save(storedSorting(progress, levelChoice));
+    save({ progress, levelChoice }: { progress: LevelledProgress; levelChoice: LevelChoice | undefined }): void {
+      entry.save(storedLevels(progress, levelChoice));
     }
   };
 }
 
+type LevelledProgress = { best: Record<"hatchling" | "explorer" | "paleontologist", number | null>; roundsPlayed: number };
+
 // The original bestScore field stays Hatchling's so progress saved before
 // levels keeps its meaning; the other levels have their own fields.
-type StoredSorting = {
+type StoredLevels = {
   bestScore: number | null;
   explorerBest: number | null;
   paleontologistBest: number | null;
@@ -58,11 +67,11 @@ type StoredSorting = {
   levelChoice?: LevelChoice;
 };
 
-function storedSorting({ best, roundsPlayed }: SortingProgress, levelChoice: LevelChoice | undefined): StoredSorting {
+function storedLevels({ best, roundsPlayed }: LevelledProgress, levelChoice: LevelChoice | undefined): StoredLevels {
   return { bestScore: best.hatchling, explorerBest: best.explorer, paleontologistBest: best.paleontologist, roundsPlayed, ...(levelChoice && { levelChoice }) };
 }
 
-function readSorting(entry: Entry): StoredSorting | undefined {
+function readLevels(entry: Entry): StoredLevels | undefined {
   const rounds = readRounds(entry);
   const { explorerBest = null, paleontologistBest = null, levelChoice } = entry;
   if (!rounds || !(explorerBest === null || isCount(explorerBest)) || !(paleontologistBest === null || isCount(paleontologistBest))) return undefined;

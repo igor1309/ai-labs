@@ -90455,6 +90455,2168 @@
     },
     {
       "type": "frame",
+      "id": "sGGT8",
+      "x": 9584,
+      "y": 31240,
+      "name": "Skeletons · Choose — Light · Mystery skeleton after the dinosaurs",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "i9IRRE",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "zDr6S",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Pgu07",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "zgbV8",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "y5IGql",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XR5aN",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "on6Wr",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "NeTwQ",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "BUILD A SKELETON",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FP2C9",
+              "name": "Museum Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "K9nkK5",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "htSac",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "N7hrn",
+              "name": "Best",
+              "height": 44,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "y26Ko5",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "D3qicc",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "1/5",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tov7c",
+          "name": "Level Switch",
+          "width": 648,
+          "height": 72,
+          "fill": "$fm-surface-2",
+          "cornerRadius": 36,
+          "stroke": "$fm-line",
+          "strokeWidth": 1,
+          "gap": 4,
+          "padding": 6,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "dUenX",
+              "name": "HATCHLING Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 30,
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "PHD4B",
+                  "name": "HATCHLING Picture",
+                  "fill": "$fm-ink",
+                  "content": "🥚",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "S96Nns",
+                  "name": "HATCHLING Name",
+                  "fill": "$fm-ink",
+                  "content": "HATCHLING",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "600",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uXsK4",
+              "name": "EXPLORER Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-ink",
+              "cornerRadius": 30,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$fm-shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 10
+              },
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lIUzS",
+                  "name": "EXPLORER Picture",
+                  "fill": "$fm-surface",
+                  "content": "🦖",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "mZHeE",
+                  "name": "EXPLORER Name",
+                  "fill": "$fm-surface",
+                  "content": "EXPLORER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "W3C13A",
+              "name": "PALEONTOLOGIST Segment",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 30,
+              "gap": 8,
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RUDd7",
+                  "name": "PALEONTOLOGIST Picture",
+                  "fill": "$fm-ink",
+                  "content": "🦴",
+                  "fontFamily": "Inter",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kK6fP",
+                  "name": "PALEONTOLOGIST Name",
+                  "fill": "$fm-ink",
+                  "content": "PALEONTOLOGIST",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "600",
+                  "letterSpacing": 0.5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xrbXA",
+          "name": "Choices",
+          "width": "fill_container",
+          "height": 628,
+          "layout": "vertical",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "fXF5u",
+              "name": "Row Top",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "T4clu",
+                  "name": "Choice TYRANNOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-amber",
+                  "strokeWidth": 3,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "guN8l",
+                      "name": "Choice Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/tyrannosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "EiAyz",
+                          "name": "Built Star",
+                          "width": 52,
+                          "height": 52,
+                          "fill": "$fm-amber",
+                          "cornerRadius": 26,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Hg9aL",
+                              "name": "Built Star Icon",
+                              "width": 28,
+                              "height": 28,
+                              "icon": "star",
+                              "library": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q6CER4",
+                      "name": "Choice Row",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RNMkh",
+                          "name": "Choice Name",
+                          "fill": "$fm-ink",
+                          "content": "TYRANNOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 30,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "o8HUV5",
+                  "name": "Choice TRICERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HNKdm",
+                      "name": "Choice Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      },
+                      "justifyContent": "end"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "A3dSh2",
+                      "name": "Choice Row",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "O1Uzuo",
+                          "name": "Choice Name",
+                          "fill": "$fm-ink",
+                          "content": "TRICERATOPS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 30,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IXIA1",
+                  "name": "Choice STEGOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "t1OtIl",
+                      "name": "Choice Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/stegosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "justifyContent": "end"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "c7xcat",
+                      "name": "Choice Row",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "biu8h",
+                          "name": "Choice Name",
+                          "fill": "$fm-ink",
+                          "content": "STEGOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 30,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iqZkO",
+              "name": "Row Bottom",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 28,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "zSJFe",
+                  "name": "Choice BRACHIOSAURUS",
+                  "width": 424,
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SxdX9",
+                      "name": "Choice Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/brachiosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "justifyContent": "end"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eF14C",
+                      "name": "Choice Row",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "AVK9n",
+                          "name": "Choice Name",
+                          "fill": "$fm-ink",
+                          "content": "BRACHIOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 30,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TgTLA",
+                  "name": "Choice SPINOSAURUS",
+                  "width": 424,
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "f391H",
+                      "name": "Choice Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/spinosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "justifyContent": "end"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kZo7l",
+                      "name": "Choice Row",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VVrF8",
+                          "name": "Choice Name",
+                          "fill": "$fm-ink",
+                          "content": "SPINOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 30,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UkAIQ",
+                  "name": "Choice MYSTERY SKELETON",
+                  "width": 424,
+                  "height": "fill_container",
+                  "fill": "#e6e2d9",
+                  "cornerRadius": 28,
+                  "stroke": "#c9583d",
+                  "strokeWidth": 3,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "padding": [
+                    16,
+                    24,
+                    18,
+                    24
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K9NG7",
+                      "name": "Mystery Mark",
+                      "fill": "#c9583d",
+                      "content": "?",
+                      "lineHeight": 1,
+                      "fontFamily": "Lexend",
+                      "fontSize": 160,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "NYIZQ",
+      "x": 11184,
+      "y": 31240,
+      "name": "Skeletons · Guess — Light · Mystery T. rex · Wrong pick rests aside, clue shows",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "bePRm",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "WJPW7",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OP9xo",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "J95lj",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RsEwp",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OjQft",
+                  "name": "Title Mark",
+                  "width": 52,
+                  "height": 52,
+                  "fill": "#2F4A3F",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "q6jpBA",
+                      "name": "Title Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "bone",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "W9po4k",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "WHOSE SKELETON IS IT?",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kBom7",
+              "name": "Best",
+              "height": 44,
+              "fill": "$fm-amber",
+              "cornerRadius": 22,
+              "gap": 8,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "FBaZZ",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#FFFFFF"
+                },
+                {
+                  "type": "text",
+                  "id": "LDgcU",
+                  "name": "Best Text",
+                  "fill": "#FFFFFF",
+                  "content": "2/3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "XYpty",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "children": [
+            {
+              "type": "frame",
+              "id": "YrVVk",
+              "name": "Board",
+              "clip": true,
+              "width": 920,
+              "height": 690,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bOC1W",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Skeleton Alone",
+                  "width": 920,
+                  "height": 690,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-tyrannosaurus.webp",
+                    "mode": "stretch"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DgzJ1",
+              "name": "Guess",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "#fffdf8",
+              "cornerRadius": 28,
+              "stroke": "#1d27421f",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mo8Jj",
+                  "name": "Choices",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "eF4m4",
+                      "name": "Guess STEGOSAURUS",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#e6e2d9",
+                      "cornerRadius": 22,
+                      "stroke": "#5c647a",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "fgM7Z",
+                          "name": "Body",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/stegosaurus.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "Mfw6f",
+                          "name": "Name",
+                          "fill": "#1d2742",
+                          "content": "STEGOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WxR24",
+                      "name": "Guess ALLOSAURUS · Wrong",
+                      "opacity": 0.45,
+                      "rotation": 3.0000000000000004,
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#e6e2d9",
+                      "cornerRadius": 22,
+                      "stroke": "#c9583d",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qnBmy",
+                          "name": "Body",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/allosaurus.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "pggP4",
+                          "name": "Name",
+                          "fill": "#1d2742",
+                          "content": "ALLOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "F47do",
+                      "name": "Guess TYRANNOSAURUS",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#e6e2d9",
+                      "cornerRadius": 22,
+                      "stroke": "#5c647a",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "xE3nv",
+                          "name": "Body",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/tyrannosaurus.webp",
+                            "mode": "contain"
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "GABG4",
+                          "name": "Name",
+                          "fill": "#1d2742",
+                          "content": "TYRANNOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CGFnf",
+                  "name": "Clue",
+                  "width": "fill_container",
+                  "fill": "#e39b2d",
+                  "cornerRadius": 20,
+                  "gap": 12,
+                  "padding": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "l7tZ7d",
+                      "name": "Search Icon",
+                      "width": 26,
+                      "height": 26,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "#1d2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nKKlP",
+                      "name": "Clue Text",
+                      "fill": "#1d2742",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "LOOK AT ITS TINY ARMS!",
+                      "lineHeight": 1.2,
+                      "fontFamily": "Lexend",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "cr2TU",
+      "x": -1536,
+      "y": 42170,
+      "name": "Field Guide Midnight · Compare — Result — Light · Explorer · 7/10 · Level switch above AGAIN",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-base",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "Cp5o7",
+          "x": 0,
+          "y": 780,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 1440,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "cJk2A",
+          "x": 40,
+          "y": 250,
+          "name": "Hero Art",
+          "width": 640,
+          "height": 480,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "PrGbI",
+          "x": 700,
+          "y": 80,
+          "name": "Celebration",
+          "width": 680,
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "nfVYO",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "m8FRG",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "7",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 220,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "h1KdW",
+                  "name": "Score Total",
+                  "fill": "$fm-amber",
+                  "content": "/ 10",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 60,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z9DWvM",
+              "name": "Stars",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HjFMu",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Z7282d",
+                  "name": "Star 2",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "H825H8",
+                  "name": "Star 3",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "wqaOB",
+                  "name": "Star 4",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "e9nHG",
+                  "name": "Star 5",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "i2H7zq",
+                  "name": "Star 6",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "n2f5v",
+                  "name": "Star 7",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "P0TMxY",
+                  "name": "Star 8",
+                  "fill": "#FFFFFF33",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "XCT1c",
+                  "name": "Star 9",
+                  "fill": "#FFFFFF33",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dJIr6",
+                  "name": "Star 10",
+                  "fill": "#FFFFFF33",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Fea1S",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "WELL DONE!",
+              "fontFamily": "Lexend",
+              "fontSize": 48,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "kTXPn",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "d5M4CT",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "BEST",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "b6o9hP",
+                  "name": "Best New",
+                  "fill": "$fm-on-base",
+                  "content": "8",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wldkb",
+              "name": "Level Switch",
+              "width": 648,
+              "height": 72,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ror0R",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "G3bBGm",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "L0Umj",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "HATCHLING",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TraCl",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wBDjr",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "x6Y9C5",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-base",
+                      "content": "EXPLORER",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "M8O90r",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QxRsx",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u7wF3Z",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-on-base",
+                      "content": "PALEONTOLOGIST",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fchx2",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k8JWdk",
+                  "name": "Play Again Button",
+                  "height": 80,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "lglqu",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qp3KO",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "AGAIN",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "naVem",
+                  "name": "Home Button",
+                  "height": 80,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "QHy3d",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eIAji",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "HOME",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "p7xkHQ",
+      "x": 24,
+      "y": 42170,
+      "name": "Field Guide Midnight · Compare — Result — Dark · Russian · Paleontologist · New best 10/10 · Level switch above ЕЩЁ РАЗ",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$fm-base",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "KNzrC",
+          "x": 0,
+          "y": 780,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 1440,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "g9gJ1",
+          "x": 40,
+          "y": 250,
+          "name": "Hero Art",
+          "width": 640,
+          "height": 480,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "p16iC",
+          "x": 700,
+          "y": 80,
+          "name": "Celebration",
+          "width": 680,
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "m6jq3Q",
+              "name": "New Best Badge",
+              "height": 72,
+              "fill": "$fm-amber",
+              "cornerRadius": 36,
+              "gap": 12,
+              "padding": [
+                0,
+                28,
+                0,
+                22
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "x4DO7",
+                  "name": "Badge Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                },
+                {
+                  "type": "text",
+                  "id": "w9e4Is",
+                  "name": "Badge Text",
+                  "fill": "#1D2742",
+                  "content": "НОВЫЙ РЕКОРД!",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Nivxm",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "sOqXg",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 220,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "O58Xri",
+                  "name": "Score Total",
+                  "fill": "$fm-amber",
+                  "content": "/ 10",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 60,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JCsZS",
+              "name": "Stars",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e33lCz",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "EGe8a",
+                  "name": "Star 2",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "CkRqx",
+                  "name": "Star 3",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Hw6tf",
+                  "name": "Star 4",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "VsHBB",
+                  "name": "Star 5",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Glwzk",
+                  "name": "Star 6",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cH5AX",
+                  "name": "Star 7",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "t5ESdw",
+                  "name": "Star 8",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "aRhM8",
+                  "name": "Star 9",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "K3wLvp",
+                  "name": "Star 10",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 52,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "bmk6W",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "МОЛОДЕЦ!",
+              "fontFamily": "Lexend",
+              "fontSize": 48,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "nFS4m",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pI1L4",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "РЕКОРД",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "rmWvz",
+                  "name": "Best New",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "a2NQ6",
+              "name": "Level Switch",
+              "width": 648,
+              "height": 72,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "B07sv",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PxBYZ",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "wrjCR",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "ДЕТЁНЫШ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qJ2PV",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "w98T1",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "YI4f3",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-on-base",
+                      "content": "ИССЛЕДОВАТЕЛЬ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rQ4sV",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WKiJ0",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nOQrA",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-base",
+                      "content": "ПАЛЕОНТОЛОГ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v7gmSn",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mJ9KZ",
+                  "name": "Play Again Button",
+                  "height": 80,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "LN1gT",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "wOpEK",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "ЕЩЁ РАЗ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "q1rDIt",
+                  "name": "Home Button",
+                  "height": 80,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "K9RxDD",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zyRUl",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "ДОМОЙ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
       "id": "xDeqe",
       "x": 7900,
       "y": 35720,

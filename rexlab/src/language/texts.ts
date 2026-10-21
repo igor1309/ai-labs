@@ -32,7 +32,7 @@ export type Texts = {
   creatures: string;
   // Between the two dinosaur cards.
   versus: string;
-  prompts: { mass: string; height: string };
+  prompts: { mass: string; height: string; lighter: string; shorter: string };
   marks: { correct: string; wrong: string };
   next: string;
   seeResult: string;
@@ -146,6 +146,10 @@ export type Texts = {
   // way back to the choice of dinosaurs.
   star: string;
   buildAnother: string;
+  // The mystery skeleton's tile, read out, and the question its finished
+  // skeleton asks.
+  mystery: string;
+  whoseSkeleton: string;
   // A level badge's name.
   badges: { explorer: string; paleontologist: string };
   // The museum's stands, and a stand's ways to build its skeleton: the

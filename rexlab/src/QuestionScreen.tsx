@@ -1,4 +1,4 @@
-import { ArrowRight, Check, House, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, ArrowRight, Check, Feather, House, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
 import { ViewTransition } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
@@ -8,10 +8,10 @@ import { Picture } from "./Picture.tsx";
 // What the prompt asks about.
 export type Prompt = keyof Texts["prompts"];
 
-const SYMBOLS: Record<Prompt, LucideIcon> = { mass: Scale, height: Ruler };
+const SYMBOLS: Record<Prompt, LucideIcon> = { mass: Scale, height: Ruler, lighter: Feather, shorter: ArrowDownToLine };
 
 // The symbol beside a revealed value, of what the value measures.
-const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler };
+const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler, lighter: Weight, shorter: Ruler };
 
 export type Mark = keyof Texts["marks"];
 
