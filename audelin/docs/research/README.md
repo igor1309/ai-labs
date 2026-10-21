@@ -1,8 +1,9 @@
-# wisper — live call transcript for Russian calls with English terms
+# Audelin research — live call transcript for Russian calls with English terms
 
 Research for a small macOS app: during a call, show a smooth live transcript
 of both sides, let the owner select a term with its sentence, and later
-explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
+explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt,
+under the working name wisper.
 
 | File | What it holds |
 |---|---|

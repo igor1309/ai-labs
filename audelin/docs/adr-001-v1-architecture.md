@@ -1,14 +1,14 @@
 ---
 date: 2026-10-21
 model: claude-opus-5-5
-description: "wisper v1 is one modular macOS app: record first, live ASR per track, ports and adapters"
+description: "Audelin v1 is one modular macOS app: record first, live ASR per track, ports and adapters"
 ---
 
 # ADR-001 — One modular app for v1
 
 ## Executive summary
 
-wisper v1 (scope in [mvp.md](research/mvp.md) § Versions) is one native macOS app.
+Audelin v1 (scope in [mvp.md](research/mvp.md) § Versions) is one native macOS app.
 It writes the mic and the call audio to disk as two tracks, and a live
 Parakeet v3 stream per track reads that written audio. The streams' updates
 become text that settles in place in a floating panel and is logged as

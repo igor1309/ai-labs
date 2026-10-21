@@ -73,7 +73,7 @@ its audio until unpinned. Audio is removed only after the transcript is
 written and checked: Amanu's audit found it deleting the only copy after a
 failed recognition.
 
-Data folder (owner, 2026-10-21): app-internal files in `~/.<app name>`;
+Data folder (owner, 2026-10-21): app-internal files in `~/.audelin`;
 calls in a visible, changeable folder (see Storage and bb output below).
 Works because the app is not sandboxed (no App Store build).
 
@@ -132,9 +132,9 @@ Edge cases (owner, 2026-10-21, accepted as proposed):
 
 Storage and bb output (owner, 2026-10-21):
 
-- Call folders live in a visible folder (default `~/Recordings/<app name>`,
+- Call folders live in a visible folder (default `~/Recordings/Audelin`,
   changeable), so they can be renamed in Finder. Settings, logs and other
-  app-internal files stay in `~/.<app name>`.
+  app-internal files stay in `~/.audelin`.
 - The app writes `summary.md` itself. It starts a bb thread
   (`bb thread spawn --json`), waits for it (`bb thread wait <id>`), reads the
   answer (`bb thread output <id> --json`) and saves it in the call folder;
@@ -153,6 +153,8 @@ v4 screen details (decided by the agents, owner delegated, 2026-10-21):
 - After a failed move the folder setting still shows the old folder, with a
   note that some calls are there. It changes only when every call has moved.
 
-## Open questions for the owner
+## Name
 
-- **App name**, which also names the data folder.
+Audelin (owner, 2026-10-21): CLI `audelin`, data in `~/.audelin`, calls in
+`~/Recordings/Audelin`. The Russian UI uses Latin "Audelin" too. See
+[audelin-naming-brief.md](../audelin-naming-brief.md).

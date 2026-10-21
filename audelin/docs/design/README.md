@@ -1,4 +1,4 @@
-# wisper design — Glass Ledger
+# Audelin design — Glass Ledger
 
 The design lives in one file, [visual-language.pen](visual-language.pen).
 This page indexes it: the locked design system, the components, and where
