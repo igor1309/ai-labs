@@ -77,3 +77,6 @@
 - Run anything that waits for minutes (a Codex review, a CI watch, a long
   test run) in the background, never as a foreground command. Act on its
   completion notice; do not poll its output.
+- Run `codex exec` with the prompt from a file (`codex exec ... - < prompt.md`)
+  or with `< /dev/null`; given an open input it waits forever. Stop a stuck
+  background run with TaskStop, not `pkill -f`.
