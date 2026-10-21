@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatHeight, formatMass } from "../src/formatValue.ts";
+import { formatLength, formatMass } from "../src/formatValue.ts";
 import type { Language } from "../src/language/language.ts";
-import { SHIPPED_DINOSAURS } from "./support.ts";
+import { SHIPPED_CATALOGUE } from "./support.ts";
 
 describe("formatMass", () => {
   it.each<[number, string]>([
+    [0.07, "70 G"],
+    [0.5, "500 G"],
+    [0.9996, "1 KG"],
     [15, "15 KG"],
     [14.6, "15 KG"],
     [999, "999 KG"],
@@ -18,13 +21,13 @@ describe("formatMass", () => {
   });
 });
 
-describe("formatHeight", () => {
+describe("formatLength", () => {
   it.each<[number, string]>([
     [3, "3 M"],
     [0.5, "0.5 M"],
     [12.26, "12.3 M"]
-  ])("writes a height of %s as %s", (metres, text) => {
-    expect(formatHeight(metres, "en")).toBe(text);
+  ])("writes a length of %s as %s", (metres, text) => {
+    expect(formatLength(metres, "en")).toBe(text);
   });
 });
 
@@ -34,26 +37,28 @@ describe("values in the chosen language", () => {
   it.each<[Language, "mass" | "height", number, string]>([
     ["en", "mass", 15, "15 KG"],
     ["ru", "mass", 15, "15 КГ"],
+    ["en", "mass", 0.5, "500 G"],
+    ["ru", "mass", 0.5, "500 Г"],
     ["ru", "mass", 1000, "1 Т"],
     ["en", "mass", 6500, "6.5 T"],
     ["ru", "mass", 6500, "6,5 Т"],
     ["en", "height", 3, "3 M"],
     ["ru", "height", 3, "3 М"]
   ])("writes in %s a %s of %s as %s", (language, measure, value, text) => {
-    expect((measure === "mass" ? formatMass : formatHeight)(value, language)).toBe(text);
+    expect((measure === "mass" ? formatMass : formatLength)(value, language)).toBe(text);
   });
 
   const formats: Record<Language, { point: string; mass: string; height: string }> = {
-    en: { point: "\\.", mass: "(KG|T)", height: "M" },
-    ru: { point: ",", mass: "(КГ|Т)", height: "М" }
+    en: { point: "\\.", mass: "(G|KG|T)", height: "M" },
+    ru: { point: ",", mass: "(Г|КГ|Т)", height: "М" }
   };
 
-  it.each(["en", "ru"] as const)("writes every shipped mass and height in %s as a plain number and its unit", (language) => {
+  it.each(["en", "ru"] as const)("writes every shipped mass and size in %s as a plain number and its unit", (language) => {
     const { point, mass, height } = formats[language];
     const plain = (unit: string) => new RegExp(`^(?:[1-9]\\d*(?:${point}[1-9])?|0${point}[1-9]) ${unit}$`);
-    for (const { measures } of SHIPPED_DINOSAURS) {
-      expect(formatMass(measures.mass, language)).toMatch(plain(mass));
-      expect(formatHeight(measures.height, language)).toMatch(plain(height));
+    for (const entry of SHIPPED_CATALOGUE) {
+      expect(formatMass(entry.mass, language)).toMatch(plain(mass));
+      expect(formatLength(entry.size.metres, language)).toMatch(plain(height));
     }
   });
 });

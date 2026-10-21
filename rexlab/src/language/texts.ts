@@ -28,14 +28,15 @@ export type Texts = {
   portraitLayoutComing: string;
   home: string;
   progress: string;
-  dinosaurs: string;
+  // A group of creatures, dinosaurs or not, read out.
+  creatures: string;
   // Between the two dinosaur cards.
   versus: string;
   prompts: { mass: string; height: string };
   marks: { correct: string; wrong: string };
   next: string;
   seeResult: string;
-  units: { kilograms: string; tonnes: string; metres: string };
+  units: { grams: string; kilograms: string; tonnes: string; metres: string };
   celebrations: { "first-best": Celebrated; "new-best": Celebrated };
   stars: (score: number, total: number) => string;
   score: string;
@@ -43,7 +44,7 @@ export type Texts = {
   bestScore: string;
   best: string;
   playAgain: string;
-  // The catalogue of every dinosaur: its title, and its home tile's,
+  // The catalogue of every creature: its title, and its home tile's,
   // short enough for a tile among many.
   catalogue: string;
   catalogueTile: string;
@@ -52,7 +53,10 @@ export type Texts = {
   // and the chip that shows them all.
   foodChoice: string;
   everyFood: string;
-  tall: string;
+  // What a creature's size measures: its height, wingspan or length.
+  measures: { height: string; wingspan: string; length: string };
+  // The groups of creatures that are not dinosaurs, named on their pages.
+  groups: { "flying-reptile": string; "sea-reptile": string };
   heavy: string;
   // A dinosaur's place among those of the food chosen, such as "1 / 30".
   position: string;

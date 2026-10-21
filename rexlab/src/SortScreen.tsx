@@ -181,7 +181,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
         {text.sortPrompt}
       </h1>
       <div className="sort-tray-area">
-        <div className="sort-tray" role="group" aria-label={text.dinosaurs} style={{ "--columns": Math.ceil(tray.length / rows) } as CSSProperties}>
+        <div className="sort-tray" role="group" aria-label={text.creatures} style={{ "--columns": Math.ceil(tray.length / rows) } as CSSProperties}>
           {tray.map((card, place) => {
             if (!card) return <span key={`slot-${place}`} className="sort-slot" />;
             const back = returns[card.id];

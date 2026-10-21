@@ -90,9 +90,9 @@ Feature: A double tap counts as one tap
     Then the → button has taken me two dinosaurs on
 
   Scenario Outline: The catalogue counts one start for each opening from home
-    Given the large card features ALL DINOSAURS
+    Given the large card features ANCIENT REPTILES
     When I <open>, both before the catalogue shows
-    Then once it shows, ALL DINOSAURS has counted one more start
+    Then once it shows, ANCIENT REPTILES has counted one more start
 
     Examples:
       | open                                                          |

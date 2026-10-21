@@ -28,7 +28,7 @@ Feature: Sort dinosaurs: starting a round and the board
     Given I am on the home page
     When I tap the "SORT" card
     Then a round of the sorting game starts
-    And I see the prompt "SORT THE DINOSAURS"
+    And I see the prompt "SORT THEM ALL"
     And I see two baskets and six dinosaur cards to sort
     And each card shows its name, large and in capitals, and its own dinosaur's picture once loaded (sort-dinosaurs-pictures.feature)
     And I see a "HOME" button with a 🏠 symbol, away from the dinosaur cards

@@ -97,7 +97,7 @@ function openApp(storage: MemoryStorage) {
 }
 
 const button = (name: string) => screen.getByRole("button", { name });
-const group = () => screen.getByRole("group", { name: "DINOSAURS" });
+const group = () => screen.getByRole("group", { name: "ANIMALS" });
 
 // Games with only Hatchling retain their play at every age level
 // (age-level-start.feature). Sorting and the skeleton game have their own
@@ -106,7 +106,7 @@ const group = () => screen.getByRole("group", { name: "DINOSAURS" });
 // first screen into play.
 const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]> = [
   ["the compare quiz", "COMPARE", []],
-  ["the catalogue", "ALL DINOSAURS", []],
+  ["the catalogue", "ANCIENT REPTILES", []],
   ["the care game", "CARE", [() => button("NEW VISITOR")]]
 ];
 

@@ -1,12 +1,12 @@
 import { askedNeed, NEEDS as CARE_NEEDS, suitableItems, type CareResult, type Celebration as CareCelebration, type Item, type Need, type Visit, type Visitor } from "./care/index.ts";
 import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } from "./CareResultScreen.tsx";
-import type { CatalogueEntry, Diet } from "./catalogue.ts";
-import type { CatalogueCardView } from "./CatalogueScreen.tsx";
+import type { CatalogueEntry, Diet, Group, Measure } from "./catalogue.ts";
+import type { CatalogueCardView, Measure as ShownMeasure } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
 import { asking, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
 import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
-import { formatHeight, formatMass } from "./formatValue.ts";
+import { formatLength, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
 import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
@@ -50,7 +50,7 @@ const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
 
 const FORMATS: Record<Attribute, (value: number, language: Language) => string> = {
   mass: formatMass,
-  height: formatHeight
+  height: formatLength
 };
 
 const CELEBRATIONS: Record<Celebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
@@ -93,6 +93,11 @@ export function presentResult({ score, total, progress, previousBest, celebratio
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
 
+const MEASURES: Record<Measure, ShownMeasure> = { height: "height", wingspan: "wingspan", length: "length" };
+
+// A dinosaur's page names no group: only the creatures that are none do.
+const GROUPS: Record<Group, Pick<DinosaurPageView, "group">> = { dinosaur: {}, "flying-reptile": { group: "flying-reptile" }, "sea-reptile": { group: "sea-reptile" } };
+
 // `found` is the ids of the dinosaurs found in find the pair.
 export function presentCatalogueCard(
   entry: CatalogueEntry,
@@ -104,7 +109,7 @@ export function presentCatalogueCard(
     id: entry.id,
     name: entry.name[language],
     picture: bodyPicture(entry.id),
-    height: formatHeight(entry.height, language),
+    size: { measure: MEASURES[entry.size.measure], value: formatLength(entry.size.metres, language) },
     mass: formatMass(entry.mass, language),
     diet: DIETS[entry.diet],
     found: found.includes(entry.id)
@@ -117,7 +122,7 @@ export function presentDinosaurPage(
   bodyPicture: (dinosaurId: string) => string,
   found: readonly string[]
 ): DinosaurPageView {
-  return { ...presentCatalogueCard(entry, language, bodyPicture, found), description: entry.description[language] };
+  return { ...presentCatalogueCard(entry, language, bodyPicture, found), ...GROUPS[entry.group], description: entry.description[language] };
 }
 
 const ITEMS: Record<Item, CareItem> = { plants: "plants", meat: "meat", water: "water", bath: "bath", nest: "nest" };

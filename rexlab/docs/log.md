@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-21
+
+- The catalogue is ANCIENT REPTILES / ДРЕВНИЕ ЯЩЕРЫ and is ready for creatures that are not dinosaurs: a flying or sea reptile's page names its group over its name and gives its wingspan or length, laid along an arrow on its card; COMPARE weighs them but never asks which is taller, CARE never has them visit, and a weight under a kilogram reads in grams. SORT's prompt is SORT THEM ALL / РАЗЛОЖИ ВСЕХ and DIG's last card EVERYONE DUG UP / ВСЕ ОТКОПАНЫ (LAB-380).
+
 ## 2026-10-20
 
 - DIG's Explorer and Paleontologist choice cards show each dinosaur's name in capitals beneath its picture, in the chosen language, and expose the same name to screen readers (LAB-378).

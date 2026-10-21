@@ -6,9 +6,31 @@ import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors, ty
 import type { Dinosaur as Sortable, Property } from "../src/sorting/index.ts";
 import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, SHIPPED_PALS, SHIPPED_SORTABLES, SHIPPED_VISITORS } from "./support.ts";
 
+// A flying reptile and a sea reptile, each measured by its group's own
+// measure.
+const PTERANODON: DinosaurRecord = {
+  id: "pteranodon",
+  name: { en: "Pteranodon", ru: "Птеранодон" },
+  group: "flying-reptile",
+  attributes: { massKg: 25, wingspanMeters: 6 },
+  diet: "meat",
+  traits: { legs: null, size: null, horns: false, feathers: "unknown" },
+  description: { en: "NOT A DINOSAUR.", ru: "НЕ ДИНОЗАВР." },
+  lookAlike: "winged"
+};
+
+const MOSASAURUS: DinosaurRecord = {
+  ...PTERANODON,
+  id: "mosasaurus",
+  name: { en: "Mosasaurus", ru: "Мозазавр" },
+  group: "sea-reptile",
+  attributes: { massKg: 10000, lengthMeters: 12 }
+};
+
 const STEGOSAURUS: DinosaurRecord = {
   id: "stegosaurus",
   name: { en: "Stegosaurus", ru: "Стегозавр" },
+  group: "dinosaur",
   attributes: { massKg: 5000, heightMeters: 4 },
   diet: "plants",
   traits: { legs: 4, size: null, horns: null, feathers: false },
@@ -19,8 +41,8 @@ const STEGOSAURUS: DinosaurRecord = {
 describe("readDinosaurs", () => {
   it("reads each record's id, English and Russian names, mass and height", () => {
     const dinosaurs = readDinosaurs([
-      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, attributes: { massKg: 5000, heightMeters: 4 } },
-      { id: "compsognathus", name: { en: "Compsognathus", ru: "Компсогнат" }, attributes: { massKg: 3, heightMeters: 0.3 } }
+      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, group: "dinosaur", attributes: { massKg: 5000, heightMeters: 4 } },
+      { id: "compsognathus", name: { en: "Compsognathus", ru: "Компсогнат" }, group: "dinosaur", attributes: { massKg: 3, heightMeters: 0.3 } }
     ]);
 
     expect(dinosaurs).toEqual([
@@ -28,11 +50,39 @@ describe("readDinosaurs", () => {
       { id: "compsognathus", name: { en: "Compsognathus", ru: "Компсогнат" }, measures: { mass: 3, height: 0.3 } }
     ]);
   });
+
+  it("reads only the mass of a creature that is no dinosaur, as none is measured standing", () => {
+    expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000 }]);
+  });
+
+  it.each([undefined, "", "bird", "Dinosaur"])("fails on a record whose group is %j", (group) => {
+    const record = { ...STEGOSAURUS, group } as DinosaurRecord;
+
+    expect(() => readDinosaurs([record])).toThrow(`stegosaurus has no known group: ${JSON.stringify(group)}`);
+    expect(() => readCatalogue([record])).toThrow(`stegosaurus has no known group: ${JSON.stringify(group)}`);
+    expect(() => readVisitors([record])).toThrow(`stegosaurus has no known group: ${JSON.stringify(group)}`);
+  });
+
+  it.each([
+    [STEGOSAURUS, { massKg: 5000 }, "stegosaurus has no height: undefined"],
+    [STEGOSAURUS, { massKg: 5000, heightMeters: 0 }, "stegosaurus has no height: 0"],
+    [PTERANODON, { massKg: 25, heightMeters: 1 }, "pteranodon has no wingspan: undefined"],
+    [MOSASAURUS, { massKg: 10000, wingspanMeters: 2 }, "mosasaurus has no length: undefined"],
+    [STEGOSAURUS, { massKg: 5000, heightMeters: 4, lengthMeters: 9 }, "stegosaurus is measured by its height, not its length"],
+    [PTERANODON, { massKg: 25, wingspanMeters: 6, heightMeters: 1 }, "pteranodon is measured by its wingspan, not its height"]
+  ])("fails on a record with no size by its group's measure alone: %#", (record, attributes, message) => {
+    expect(() => readDinosaurs([{ ...record, attributes }])).toThrow(message);
+    expect(() => readCatalogue([{ ...record, attributes }])).toThrow(message);
+  });
 });
 
 describe("readVisitors", () => {
   it("reads each record's id, names and food type", () => {
     expect(readVisitors([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, diet: "plants" }]);
+  });
+
+  it("leaves out every creature that is no dinosaur, as a visit's water and bath mean nothing to it", () => {
+    expect(readVisitors([PTERANODON, STEGOSAURUS, MOSASAURUS]).map(({ id }) => id)).toEqual(["stegosaurus"]);
   });
 
   it.each([undefined, "", "fish", "Meat"])("fails on a record whose food type is %j", (diet) => {
@@ -43,16 +93,24 @@ describe("readVisitors", () => {
 });
 
 describe("readCatalogue", () => {
-  it("reads each record's id, names, food type, descriptions, height and mass", () => {
+  it("reads each record's id, names, group, food type, descriptions, size and mass", () => {
     expect(readCatalogue([STEGOSAURUS])).toEqual([
       {
         id: "stegosaurus",
         name: { en: "Stegosaurus", ru: "Стегозавр" },
+        group: "dinosaur",
         diet: "plants",
         description: { en: "PLATES ON ITS BACK.", ru: "ПЛАСТИНЫ НА СПИНЕ." },
-        height: 4,
+        size: { measure: "height", metres: 4 },
         mass: 5000
       }
+    ]);
+  });
+
+  it("reads a flying reptile's wingspan and a sea reptile's length as their sizes", () => {
+    expect(readCatalogue([PTERANODON, MOSASAURUS]).map(({ group, size }) => ({ group, size }))).toEqual([
+      { group: "flying-reptile", size: { measure: "wingspan", metres: 6 } },
+      { group: "sea-reptile", size: { measure: "length", metres: 12 } }
     ]);
   });
 

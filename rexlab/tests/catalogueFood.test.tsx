@@ -72,7 +72,7 @@ const chipRow = (language: Language = "en") => screen.getByRole("group", { name:
 const chips = (language: Language = "en") => within(chipRow(language)).getAllByRole("button");
 const chip = (name: string) => within(chipRow()).getByRole("button", { name });
 const chosen = () => chips().filter((each) => each.getAttribute("aria-pressed") === "true").map((each) => each.getAttribute("aria-label"));
-const grid = () => screen.getByRole("group", { name: "ALL DINOSAURS" });
+const grid = () => screen.getByRole("group", { name: "ANCIENT REPTILES" });
 const cardNames = () => within(grid()).getAllByRole("button").map((card) => card.getAttribute("aria-label"));
 const position = () => screen.queryByLabelText("NUMBER")?.textContent;
 const pageName = () => screen.queryByRole("heading", { level: 1 })?.textContent;
@@ -180,7 +180,7 @@ describe("the catalogue's food chips", () => {
     const last = ofDiet("plants").at(-1)?.name.en ?? "";
     await user.click(within(grid()).getByRole("button", { name: last }));
 
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
 
     expect(chosen()).toEqual(["PLANTS"]);
     expect(cardNames()).toHaveLength(23);
@@ -202,7 +202,7 @@ describe("the catalogue's food chips", () => {
     const user = openApp();
     await choose(user, "MEAT");
     await user.click(screen.getByRole("button", { name: "Tyrannosaurus" }));
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     expect(grid().dataset.rise).toBeUndefined();
     const before = grid();
 
