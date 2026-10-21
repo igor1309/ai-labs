@@ -454,11 +454,16 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
   frame.append(home, row, notebookButton, switcher, stage, tray, notebookPages);
   root.replaceChildren(frame);
 
-  const fit = () =>
+  // A screen taller than the frame's shape stretches the frame down, so
+  // the extra height goes to the stage and items, not to empty bands.
+  const fit = () => {
+    const scale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
+    root.style.setProperty("--hatch-scale", String(scale));
     root.style.setProperty(
-      "--hatch-scale",
-      String(Math.min(window.innerWidth / 1440, window.innerHeight / 900)),
+      "--hatch-height",
+      `${Math.max(900, window.innerHeight / scale)}px`,
     );
+  };
   fit();
   window.addEventListener("resize", fit);
 
@@ -474,7 +479,8 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
       const creature = element("div", "hatch-creature");
       Object.assign(creature.style, {
         left: `${box.left}px`,
-        top: `${box.top}px`,
+        // Placed from the stage's foot, which a tall screen moves down.
+        bottom: `${720 - box.top - box.height}px`,
         width: `${box.width}px`,
         height: `${box.height}px`,
       });

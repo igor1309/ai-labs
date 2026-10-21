@@ -381,6 +381,18 @@ describe("the hatch and grow page", () => {
     expect(phase()).toBe("egg");
   });
 
+  it("stretches the frame down to fill a screen taller than its shape", () => {
+    // An iPad in landscape: the width sets the scale, so the frame grows
+    // from 900 to 1000 pixels high rather than leaving empty bands.
+    Object.assign(window, { innerWidth: 1152, innerHeight: 800 });
+    start();
+
+    expect([
+      root.style.getPropertyValue("--hatch-scale"),
+      root.style.getPropertyValue("--hatch-height"),
+    ]).toEqual(["0.8", "1000px"]);
+  });
+
   it("speaks Russian when the app does", () => {
     start({ language: "ru" });
     hatch();
