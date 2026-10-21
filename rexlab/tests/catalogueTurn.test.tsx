@@ -56,6 +56,45 @@ function listGeometry(width: number, height: number, size: SizeClass, count = ID
   return { columns, card, row, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
 }
 
+function listMetrics(list: HTMLElement, count = IDS.length) {
+  Object.defineProperties(list, {
+    clientHeight: { configurable: true, get: () => listGeometry(window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass, count).listHeight },
+    scrollHeight: { configurable: true, get: () => listGeometry(window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass, count).scrollHeight }
+  });
+}
+
+function rowScroll(id: string, width: number, height: number, size: SizeClass, count = IDS.length) {
+  const layout = listGeometry(width, height, size, count);
+  const index = IDS.indexOf(id);
+  return Math.min(Math.floor(index / layout.columns) * (layout.row + 20), layout.scrollHeight - layout.listHeight);
+}
+
+function cardIn(list: HTMLElement, id: string) {
+  const found = list.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]:not([data-turn-frame])`);
+  if (!found) throw new Error(`No ${id} card in the list`);
+  return found;
+}
+
+function expectWholeInList(list: HTMLElement, id: string) {
+  const listBox = list.getBoundingClientRect();
+  const cardBox = cardIn(list, id).getBoundingClientRect();
+  expect(cardBox.top).toBeGreaterThanOrEqual(listBox.top);
+  expect(cardBox.bottom).toBeLessThanOrEqual(listBox.bottom);
+}
+
+function expectedCardBox(id: string, list: HTMLElement, width: number, height: number, size: SizeClass): Box {
+  const layout = listGeometry(width, height, size);
+  const index = IDS.indexOf(id);
+  const row = Math.floor(index / layout.columns);
+  const column = index % layout.columns;
+  return {
+    left: 56 + column * (layout.card + 20),
+    top: (size === "tall" ? 200 : 124) + row * (layout.row + 20) - list.scrollTop,
+    width: layout.card,
+    height: layout.row
+  };
+}
+
 function boxFor(element: Element, width: number, height: number, size: SizeClass): Box {
   const name = nameOf(element);
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
@@ -163,9 +202,12 @@ describe("catalogue's shared turn", () => {
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     await app.user.click(screen.getByRole("button", { name: "MEAT" }));
     expect(app.grid().querySelectorAll("[data-turn-part^='catalogue-card-']")).toHaveLength(26);
+    const chips = document.querySelector<HTMLElement>(".food-chips");
+    expect(chips?.dataset.arrangement).toBeUndefined();
     app.resize([820, 1180, "tall"]);
 
     expect(document.documentElement.dataset.size).toBe("tall");
+    expect(chips?.dataset.arrangement).toBe("spaced");
     expect([...new Set(app.animations.filter(own).map(({ name }) => name))]).toEqual([
       "catalogue-home",
       "catalogue-chips",
@@ -175,6 +217,7 @@ describe("catalogue's shared turn", () => {
     expect(app.animations.filter(own).every(({ options }) => options.duration === GLIDE && options.easing === EASE_OUT)).toBe(true);
     expect(app.animations.filter(own).flatMap(({ keyframes }) => keyframes.flatMap((frame) => Object.keys(frame))).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
     expect(app.animations.filter(({ name }) => name.startsWith("frame of ")).length).toBeGreaterThan(0);
+    expect(app.animations.filter(({ name }) => name.startsWith("catalogue-card-")).map(({ name }) => name)).toHaveLength(26);
     expect(within(app.grid()).getAllByRole("button")).toHaveLength(26);
     expect(screen.getByRole("button", { name: "MEAT" }).getAttribute("aria-pressed")).toBe("true");
     app.settle();
@@ -194,35 +237,29 @@ describe("catalogue's shared turn", () => {
   });
 
   it.each([
-    ["row of Gallimimus at its top", 3, 0, "gallimimus", 0, "gallimimus", 0],
-    ["60 pixels of Gallimimus hidden", 3, 60, "gallimimus", 0, "gallimimus", 0],
-    ["200 pixels of row before Gallimimus hidden", 2, 200, "gallimimus", 0, "gallimimus", 0],
-    ["row of Parasaurolophus at its top", 2, 0, "parasaurolophus", 2, "spinosaurus", 2],
-    ["end", 99999, 0, "ophthalmosaurus", 0, "ophthalmosaurus", 3]
-  ] as const)("keeps the %s row there and back", async (_, scroll, hidden, uprightId, uprightPlace, backId, backPlace) => {
+    ["row of Gallimimus at its top", 3, 0, "gallimimus", "gallimimus"],
+    ["60 pixels of Gallimimus hidden", 3, 60, "gallimimus", "gallimimus"],
+    ["200 pixels of row before Gallimimus hidden", 2, 200, "gallimimus", "gallimimus"],
+    ["row of Parasaurolophus at its top", 2, 0, "parasaurolophus", "spinosaurus"],
+    ["end", 99999, 0, "ophthalmosaurus", "ophthalmosaurus"]
+  ] as const)("keeps the %s row there and back", async (_, scroll, hidden, uprightId, backId) => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     const list = app.grid();
-    Object.defineProperties(list, {
-      clientHeight: { configurable: true, get: () => listGeometry(window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass).listHeight },
-      scrollHeight: { configurable: true, get: () => listGeometry(window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass).scrollHeight }
-    });
+    listMetrics(list);
     const landscape = listGeometry(1180, 820, "wide");
     list.scrollTop = scroll === 99999 ? landscape.scrollHeight - landscape.listHeight : scroll * (landscape.row + 20) + hidden;
     fireEvent.scroll(list);
-    const oldScroll = list.scrollTop;
     app.resize([820, 1180, "tall"]);
     const upright = app.grid();
-    expect(upright.scrollTop).not.toBe(oldScroll);
-    if (scroll === 99999) expect(upright.scrollTop).toBeGreaterThan(oldScroll);
-    const uprightCards = [...upright.querySelectorAll<HTMLElement>(".catalogue-card:not([data-turn-frame])")];
-    const position = uprightCards.findIndex((each) => each.dataset.id === uprightId);
-    expect(position % 3).toBe(uprightPlace);
+    expect(upright.scrollTop).toBeCloseTo(scroll === 99999 ? upright.scrollHeight - upright.clientHeight : rowScroll(uprightId, 820, 1180, "tall"));
+    if (scroll === 99999) expectWholeInList(upright, uprightId);
+    else expect(cardIn(upright, uprightId).getBoundingClientRect().top).toBeCloseTo(upright.getBoundingClientRect().top);
     app.settle();
     app.resize([1180, 820, "wide"]);
     const back = app.grid();
-    const backCards = [...back.querySelectorAll<HTMLElement>(".catalogue-card:not([data-turn-frame])")];
-    expect(backCards.findIndex((each) => each.dataset.id === backId) % 4).toBe(backPlace);
+    expect(back.scrollTop).toBeCloseTo(scroll === 99999 ? back.scrollHeight - back.clientHeight : rowScroll(backId, 1180, 820, "wide"));
+    if (scroll === 99999) expectWholeInList(back, backId);
     app.settle();
   });
 
@@ -232,9 +269,28 @@ describe("catalogue's shared turn", () => {
     await app.user.click(card("baryonyx"));
     expect([screen.getByRole("heading", { level: 1 }).textContent, screen.getByLabelText("NUMBER").textContent]).toEqual(["BARYONYX", "29 / 52"]);
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
-    expect(screen.getByRole("button", { name: "Baryonyx" })).toBeDefined();
+    const list = app.grid();
+    listMetrics(list);
+    app.settle();
     app.resize([820, 1180, "tall"]);
-    expect(screen.getByRole("button", { name: "Baryonyx" }).getAttribute("data-turn-part")).toBe("catalogue-card-baryonyx");
+    expect(list.scrollTop).toBeCloseTo(rowScroll("baryonyx", 820, 1180, "tall"));
+    expectWholeInList(list, "baryonyx");
+    expect(app.animations.some(({ name }) => name === "catalogue-card-baryonyx")).toBe(true);
+    app.settle();
+  });
+
+  it("keeps the row the child scrolled to after coming back from Baryonyx, not Baryonyx", async () => {
+    const app = openCatalogue();
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(card("baryonyx"));
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const list = app.grid();
+    listMetrics(list);
+    app.settle();
+    list.scrollTop = rowScroll("gallimimus", 1180, 820, "wide");
+    fireEvent.scroll(list);
+    app.resize([820, 1180, "tall"]);
+    expect(list.scrollTop).toBeCloseTo(rowScroll("gallimimus", 820, 1180, "tall"));
     app.settle();
   });
 
@@ -243,8 +299,14 @@ describe("catalogue's shared turn", () => {
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     await app.user.click(card("baryonyx"));
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const list = app.grid();
+    listMetrics(list);
     app.resize([820, 1180, "tall"]);
-    expect(screen.getByRole("button", { name: "Baryonyx" }).querySelector("img")).toBeTruthy();
+    const baryonyx = cardIn(list, "baryonyx");
+    expect(baryonyx.querySelector("img")).toBeTruthy();
+    expect(baryonyx.getBoundingClientRect()).toEqual(new DOMRect(...Object.values(expectedCardBox("baryonyx", list, 820, 1180, "tall")) as [number, number, number, number]));
+    expectWholeInList(list, "baryonyx");
+    expect(app.animations.filter(({ name }) => name === "catalogue-card-baryonyx")).toHaveLength(1);
     app.settle();
   });
 
@@ -257,14 +319,26 @@ describe("catalogue's shared turn", () => {
     await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
     app.resize(from);
     app.settle();
+    app.animations.length = 0;
     const list = app.grid();
-    Object.defineProperties(list, { clientHeight: { configurable: true, value: 500 }, scrollHeight: { configurable: true, value: 4000 } });
-    list.scrollTop = 3 * (listGeometry(from[0], from[1], "tall").row + 20);
+    listMetrics(list);
+    list.scrollTop = rowScroll("gallimimus", from[0], from[1], "tall");
     fireEvent.scroll(list);
+    const beforeArrangement = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement;
     app.resize(to);
-    expect(app.animations.filter(({ cancelled }) => !cancelled).filter(own).length > 0).toBe(glides);
+    const expectedArrangement = to[0] === 744 ? "closed" : "spaced";
+    expect(beforeArrangement).toBe(from[0] === 700 ? "stacked" : from[0] === 744 ? "closed" : "spaced");
+    expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe(expectedArrangement);
+    const moving = new Set(app.animations.filter(({ cancelled }) => !cancelled).filter(own).map(({ name }) => name));
+    expect(moving.size > 0).toBe(glides);
+    if (glides) {
+      expect(moving).toEqual(new Set(["catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
+    } else {
+      expect(moving).toEqual(new Set());
+    }
     expect(app.fades).toHaveLength(0);
-    expect(within(app.grid()).getAllByRole("button").find((each) => each.getAttribute("aria-label") === "Галлимим")).toBeDefined();
+    expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", to[0], to[1], "tall"));
+    expect(cardIn(app.grid(), "gallimimus").getBoundingClientRect().top).toBeCloseTo(app.grid().getBoundingClientRect().top);
     if (glides) app.settle();
   });
 

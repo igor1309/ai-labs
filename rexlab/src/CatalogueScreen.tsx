@@ -1,5 +1,5 @@
 import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
-import { useLayoutEffect, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import type { ChipContent } from "./chipArrangement.ts";
 import { DietTag, type Diet } from "./DietTag.tsx";
@@ -57,15 +57,9 @@ export type CatalogueScreenProps = {
 export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chipRow, chipWidths, onChipContents, layoutKeeping, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
   const returningIndex = returning === undefined ? undefined : dinosaurs.findIndex(({ id }) => id === returning);
+  // Back from a page, its card is scrolled into view, so its picture has a
+  // card to shrink back into wherever the list was scrolled to.
   const list = useKeptList(layoutKeeping, columns, returningIndex === -1 ? undefined : returningIndex);
-
-  // Back from a page, its card is in view, so its picture has a card to
-  // shrink back into wherever the list was scrolled to.
-  useLayoutEffect(() => {
-    if (returning === undefined) return;
-    const cards = [...(list.ref.current?.children ?? [])] as HTMLElement[];
-    cards.find((card) => card.dataset.id === returning)?.scrollIntoView({ block: "nearest" });
-  }, [returning, list.ref]);
 
   return (
     <main className="catalogue" aria-label={text.catalogue}>

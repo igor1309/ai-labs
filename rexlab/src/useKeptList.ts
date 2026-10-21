@@ -7,51 +7,62 @@ export type LayoutKeeping = {
 };
 
 // Keeps where the catalogue's vertical list stands through a change of its
-// columns or card height. The returning card takes precedence until the
-// catalogue has settled, so the shared picture has a whole card to shrink
-// into even when a turn starts during the closing transition.
+// columns or card height. Back from a page, the list scrolls the card come
+// back to (`returning`, its index in the list) into view, and that card is
+// where the list stands until the child scrolls it, so the shared picture
+// has a whole card to shrink into even when a turn starts during the
+// closing transition; neither a scroll during a turn nor one that only puts
+// the list back counts as the child's.
 export function useKeptList(keeping: LayoutKeeping, columns: number, returning?: number) {
   const list = useRef<HTMLDivElement>(null);
   const anchor = useRef<ListAnchor>(0);
-  const laidOut = useRef<ListRows>({ columns, row: 0, gap: 0 });
+  const columnsNow = useRef(columns);
   const restored = useRef<number>(undefined);
-  const returningNow = useRef<number>(returning);
+  const returnedTo = useRef<number>(undefined);
 
-  returningNow.current = returning;
+  columnsNow.current = columns;
+
+  useLayoutEffect(() => {
+    returnedTo.current = returning;
+    const element = list.current;
+    if (returning === undefined || !element) return;
+    const card = [...element.children].filter((child) => !child.hasAttribute("data-turn-frame"))[returning];
+    card?.scrollIntoView({ block: "nearest" });
+    restored.current = element.scrollTop;
+  }, [returning]);
 
   const rowsIn = (element: HTMLElement): ListRows => {
     const card = element.firstElementChild;
     const row = card instanceof HTMLElement ? card.getBoundingClientRect().height : 0;
-    const gap = Number.parseFloat(getComputedStyle(element).rowGap) || 0;
-    return { columns, row, gap };
+    const style = getComputedStyle(element);
+    const gap = Number.parseFloat(style.rowGap) || Number.parseFloat(style.gap) || 0;
+    return { columns: columnsNow.current, row, gap };
   };
-
-  // Set before the parent starts its layout change, after the new cards have
-  // been laid out, so the inverse uses the rows the browser will show.
-  useLayoutEffect(() => {
-    const element = list.current;
-    if (element) laidOut.current = rowsIn(element);
-  });
 
   const standing = (element: HTMLElement) =>
     listAnchor(
       { scroll: element.scrollTop, height: element.clientHeight, scrollHeight: element.scrollHeight },
-      laidOut.current,
-      returningNow.current
+      rowsIn(element),
+      returnedTo.current
     );
 
   useLayoutEffect(
     () =>
       keeping.keep({
         hold: () => {
-          const kept = anchor.current;
+          // The card come back to is kept without waiting for a scroll
+          // event to have updated the anchor before the turn starts.
+          const kept = returnedTo.current ?? anchor.current;
           return () => {
             const element = list.current;
             if (!element) return;
+            // The DOM has the new layout after `change`, while the child
+            // layout effect that records it has not run yet. Read its rows
+            // here so the old anchor is converted with the new columns.
             element.scrollTop = anchoredListScroll(
               kept,
               { height: element.clientHeight, scrollHeight: element.scrollHeight },
-              laidOut.current
+              rowsIn(element)
             );
             restored.current = element.scrollTop;
           };
@@ -68,6 +79,7 @@ export function useKeptList(keeping: LayoutKeeping, columns: number, returning?:
     const element = list.current;
     if (!element || keeping.isRunning() || element.scrollTop === restored.current) return;
     restored.current = undefined;
+    returnedTo.current = undefined;
     anchor.current = standing(element);
   };
 
