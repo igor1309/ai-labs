@@ -11,6 +11,11 @@ let package = Package(
         .executableTarget(
             name: "wisper-spike",
             dependencies: [.product(name: "FluidAudio", package: "FluidAudio")]
-        )
+        ),
+        .executableTarget(
+            name: "wisper-load",
+            dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )

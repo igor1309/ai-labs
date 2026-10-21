@@ -77,6 +77,28 @@ is not known).
 - Mixed scripts appear: «Митинг рекорд» then «meeting recording»; «stop
   zone» / «Stop zoom».
 
+## Run 4 — two live streams at once
+
+[`spike/`](spike/) `wisper-load` feeds run 2's 263 s recording to one or two
+`SlidingWindowAsrManager`s at once (4 s chunks, shared models), as fast as
+possible. Mac load average was ~6 from other work; nothing else used the Neural
+Engine.
+
+Ten alternating repeats after a first pair, ranges over the ten:
+
+| Streams | Wall time | CPU (user + sys) | Peak memory | Updates per stream |
+|---|---|---|---|---|
+| 1 | 3.56–3.75 s | 3.5–3.9 s | 103–106 MB | 66 |
+| 2 | 3.61–3.73 s | 6.1–6.9 s | 133–136 MB | 66 |
+
+The very first 1-stream run peaked at 498 MB and used 6.2 s of CPU; no repeat
+came near it, so it was a one-off, probably the models' first load (not
+checked). Each stream processed 263 s of audio in under 4 s, about 70× real
+time. A second stream adds CPU and ~30 MB but no wall time: the two run in
+parallel. Two live streams («я» and «они») need
+about 3% of the engine's capacity. Latency at real-time pace was not measured
+here.
+
 ## Not yet measured
 
 - Latency from speech to text, per engine.
