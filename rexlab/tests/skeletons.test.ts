@@ -437,10 +437,13 @@ describe("the whole skeletons", () => {
   const whole = (id: string) => join(ROOT, "src/assets/skeletons", id, "skeleton.webp");
   const drawn = records.filter(({ id }) => existsSync(whole(id)));
 
-  it("cover every look-alike group", () => {
-    const groups = new Set(records.map(({ lookAlike }) => lookAlike));
+  // Two of each group of two or more, so a Paleontologist board after
+  // another can deal fresh dinosaurs of the groups they share (LAB-386).
+  it("cover every look-alike group, twice where it has two dinosaurs or more", () => {
+    const groups = [...new Set(records.map(({ lookAlike }) => lookAlike))];
+    const count = (group: string, list: ReadonlyArray<{ lookAlike: string }>) => list.filter(({ lookAlike }) => lookAlike === group).length;
 
-    expect([...groups].filter((group) => !drawn.some(({ lookAlike }) => lookAlike === group))).toEqual([]);
+    expect(groups.map((group) => [group, count(group, drawn)])).toEqual(groups.map((group) => [group, Math.min(2, count(group, records))]));
   });
 
   it("are each a see-through picture in the body picture's 800 by 600 frame", () => {

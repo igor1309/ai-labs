@@ -2,6 +2,8 @@
 
 ## 2026-10-21
 
+- Three Russian descriptions read correctly: Allosaurus, Mamenchisaurus and Maiasaura (LAB-384).
+- Find the pair at Paleontologist deals from 26 skeletons, two of each look-alike group that has two dinosaurs or more, so a board after another repeats at most one of its dinosaurs, not nine (LAB-386).
 - Find the pair at Paleontologist pairs each dinosaur's picture with its whole skeleton, dealing the dinosaurs that have one, one of each look-alike group; Hatchling and Explorer keep their silhouettes (LAB-301).
 - On the upright home page the large card shows its whole picture on a tall card too: FIND THE PAIR's cards and DIG's sand no longer run off its sides (LAB-327).
 - The home page stands upright on an iPad in portrait, in Split View or Stage Manager, and in a tall Mac window: the corner and greeting on top, the large card across the width, and under it the row of tiles running to the right edge with the next column peeking in; turning the window keeps an open parents' menu and the large card and puts the tiles back at their start. Other screens, and the home page on an upright iPhone, still ask to turn sideways (LAB-327).

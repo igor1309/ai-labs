@@ -10,4 +10,6 @@ Brachiosaurus's and Spinosaurus's skeletons were generated the same way on 2026-
 
 Whole skeletons of Velociraptor, Ankylosaurus, Parasaurolophus, Pachycephalosaurus, Compsognathus, Gallimimus, Therizinosaurus, Pteranodon, Elasmosaurus and Mosasaurus were generated the same way on 2026-10-21, with `scripts/skeleton-picture.sh`, for FIND THE PAIR's Paleontologist board (LAB-385); they are not cut into pieces.
 
+Whole skeletons of Allosaurus, Styracosaurus, Deinonychus, Diplodocus, Kentrosaurus, Iguanodon, Coelophysis, Oviraptor, Quetzalcoatlus, Kronosaurus and Plesiosaurus were generated the same way on 2026-10-21, with `scripts/skeleton-picture.sh`, a second for each look-alike group of FIND THE PAIR's Paleontologist board (LAB-386); they are not cut into pieces.
+
 How to make and cut a skeleton: `art/skeletons.md`.
