@@ -8,7 +8,8 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
   its new place, over the shared standard motion (240 ms, easing out).
   Words and pictures keep their shape. Under reduced motion the old
   layout only fades into the new, over 160 ms. Nothing jumps, goes
-  blank, shimmers again or rises in again; the chosen chip stays chosen.
+  blank, shimmers again or rises in again: a card still rising in glides on from where
+  it is drawn and arrives whole. The chosen chip stays chosen.
   Until the motion settles, taps, swipes and keys do nothing; a window
   that changes again meanwhile moves each part on from where it is, as
   turn-motion.feature tells. A resize in the same size class that
@@ -52,7 +53,7 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
   Scenario: Back from a page, then turned, the dinosaur stays in view
     Given a window of 1180 by 820 CSS pixels on the page of Baryonyx, card 29
     When I tap the "ANCIENT REPTILES" button
-    And the window becomes 820 by 1180 CSS pixels
+    And once the picture has shrunk into its card the window becomes 820 by 1180 CSS pixels
     Then the list stands upright with the card of Baryonyx whole in view, its picture shrunk into it
 
   Scenario: A turn while the picture shrinks into its card
@@ -62,7 +63,7 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
     Then the picture lands in the card's upright place, whole in view, and nothing jumps
 
   Scenario Outline: A resize in a tall window
-    Given a window of <from> CSS pixels on the list of every dinosaur, the row of Gallimimus at its top
+    Given the app is in Russian, and a window of <from> CSS pixels on the list of every dinosaur, the row of Gallimimus at its top
     When the window becomes <to> CSS pixels
     Then <moves>, and Gallimimus's card is first in the top row
 

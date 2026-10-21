@@ -4,7 +4,9 @@ Feature: The dinosaur catalogue in a tall window
   dinosaur stands upright: "HOME" at the top left, the food chips on
   their own row 24 pixels under it, and the cards 28 pixels under them.
   A row holds as many cards, up to four, as keep each card at least as
-  wide as on a 1024 by 768 landscape iPad, 213 CSS pixels, so a name is
+  wide as on a 1024 by 768 landscape iPad, 213 CSS pixels, worked out
+  from the window's width less its side insets and the padding (a
+  scrollbar that takes room narrows the cards, never their count), so a name is
   never smaller than there: fewer cards to a row rather than smaller
   names. The padding, the gaps and the cards' look keep their landscape
   sizes. The rest is as catalogue.feature and
@@ -17,7 +19,7 @@ Feature: The dinosaur catalogue in a tall window
   button, each food chip's symbols, word and count on one line at their
   landscape sizes. The four stand in one row, each food chip as wide as
   its content and the three sharing out equally what width the row has
-  left. Where the row is too narrow, every food chip closes up at once,
+  left, its symbols, word and count centred in it. Where the row is too narrow, every food chip closes up at once,
   its padding to 14 pixels before the symbols and 8 after the count, 8
   between symbols, word and count, and 8 between the chips. Where even
   that is too narrow, "ALL" and "MEAT" stand on the first row and
@@ -27,7 +29,7 @@ Feature: The dinosaur catalogue in a tall window
   way. Sizes hold to within a pixel.
 
   Scenario Outline: The list stands upright
-    Given a window of <width> by <height> CSS pixels, with no safe areas
+    Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
     When I open "ANCIENT REPTILES"
     Then I see no picture asking to turn sideways or to make the window wider
     And "HOME" stands alone at the top left, and the food chips are in <rows> under it
@@ -75,7 +77,7 @@ Feature: The dinosaur catalogue in a tall window
     Then I see all 52 cards
 
   Scenario: A card opens its page upright, under the picture asking to turn
-    Given a window of 820 by 1180 CSS pixels on the list of every dinosaur
+    Given a window of 820 by 1180 CSS pixels on the list of every dinosaur, the device's screen upright
     When I tap the card of Triceratops
     Then the page of Triceratops opens, its picture growing from the card
     And the picture asking to turn sideways fades in over the page
