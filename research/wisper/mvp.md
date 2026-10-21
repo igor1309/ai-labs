@@ -63,8 +63,9 @@ its audio until unpinned. Audio is removed only after the transcript is
 written and checked: Amanu's audit found it deleting the only copy after a
 failed recognition.
 
-Data folder (owner, 2026-10-21): `~/.<app name>` by default, changeable in
-settings. Works because the app is not sandboxed (no App Store build).
+Data folder (owner, 2026-10-21): app-internal files in `~/.<app name>`;
+calls in a visible, changeable folder (see Storage and bb output below).
+Works because the app is not sandboxed (no App Store build).
 
 Final-pass engine (owner, 2026-10-21): not fixed in code. It is a required
 setting with no built-in default, and the app does not start without it: the
@@ -115,6 +116,18 @@ Edge cases (owner, 2026-10-21, accepted as proposed):
   `meta.json`.
 - If the live model (Parakeet v3) is still downloading when a call starts,
   audio is recorded anyway and live text starts once the model arrives.
+
+Storage and bb output (owner, 2026-10-21):
+
+- Call folders live in a visible folder (default `~/Recordings/<app name>`,
+  changeable), so they can be renamed in Finder. Settings, logs and other
+  app-internal files stay in `~/.<app name>`.
+- The app writes `summary.md` itself. It starts a bb thread
+  (`bb thread spawn --json`), waits for it (`bb thread wait <id>`), reads the
+  answer (`bb thread output <id> --json`) and saves it in the call folder;
+  `meta.json` keeps the thread id for follow-up questions. The agent never
+  writes into the call folder. The ⌃⌥⌘E explanation comes back to the panel
+  the same way.
 
 ## Open questions for the owner
 
