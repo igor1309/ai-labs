@@ -21,9 +21,14 @@
 - Pen.app does not auto-save a file you opened; it only writes a backup,
   and the MCP has no save. To save, focus your window (`open -a Pen <your
   path>`), check that the front window's `AXDocument` (via `osascript`
-  and System Events) is exactly your path, send ⌘S, then give focus back.
-  Never press ⌘S without that check: every window is titled `rexlab.pen`.
-  Commit the file from your worktree.
+  and System Events) is exactly your path, then click Pen's File › Save
+  through System Events (`click menu item "Save" of menu 1 of menu bar
+  item "File" of menu bar 1` of process "Pen"), and give focus back. A ⌘S
+  keystroke goes to the terminal while it is the front app, and ⌘W does
+  not close a Pen window. Never save without that check: every window is
+  titled `rexlab.pen`. Commit the file from your worktree.
+- A `.pen` file is JSON. To start a new one, write
+  `{"version": "2.21", "children": []}` to its path, then open it.
 - Never edit another agent's document or branch. If you did, tell that
   agent at once, with what you changed.
 

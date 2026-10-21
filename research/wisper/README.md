@@ -11,6 +11,13 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
 | [mvp.md](mvp.md) | Draft MVP: our own native app |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
+| `design/visual-language.pen` | Four visual languages for the panel, light and dark, plus Glass Ledger window sizes |
+
+## Visual language
+
+The owner chose Proposal 4, Glass Ledger (2026-10-21): Ledger Mono's time
+gutter, arrows and footnote card on Night Glass's blurred floating panel.
+The panel is resizable; the window-sizes frame proposes how it adapts.
 
 ## Conclusion so far
 
