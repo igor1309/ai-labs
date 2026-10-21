@@ -2,9 +2,10 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type PortraitLayouts } from "../src/App.tsx";
+import type { ChipWidths } from "../src/FoodChips.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { emChipWidths, laidOutWidth } from "./chipWidths.ts";
+import { emChipWidths, laidOutWidth, manualChipWidths } from "./chipWidths.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import {
@@ -93,7 +94,7 @@ const gateShown = () => part(".orientation-gate").hasAttribute("data-shown");
 async function openList(
   width: number,
   height: number,
-  { language = "en", viewport = manualViewport("portrait") }: { language?: Language; viewport?: ManualViewport } = {}
+  { language = "en", viewport = manualViewport("portrait"), chipWidths = emChipWidths() }: { language?: Language; viewport?: ManualViewport; chipWidths?: ChipWidths } = {}
 ) {
   openWindow(width, height);
   const user = userEvent.setup();
@@ -119,7 +120,7 @@ async function openList(
       {...emptySkeletons()}
       {...emptyDig()}
       {...pageAtRest()}
-      chipWidths={emChipWidths()}
+      chipWidths={chipWidths}
     />
   );
   await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
@@ -186,7 +187,7 @@ function uprightList(size: WindowSize, language: Language = "en") {
 // food chip's spacing, and "ALL"'s box. Each food chip is at least as
 // wide as its padding, its parts and the gaps between them, and grows
 // into what its row leaves.
-function chipLayout(row: number, size: WindowSize, language: Language = "en") {
+function chipLayout(row: number, size: WindowSize, language: Language = "en", measuredWidth = laidOutWidth) {
   const group = chipGroup(language);
   const stacked = styleAt(group, size).value("flex-direction") === "column";
   const rows = stacked ? [...group.children].map((each) => ({ holder: each, chips: [...each.children] })) : [{ holder: group, chips: [...group.querySelectorAll(".food-chip")] }];
@@ -198,7 +199,7 @@ function chipLayout(row: number, size: WindowSize, language: Language = "en") {
     if (chip.getAttribute("data-food") === "all") return style.px("width");
     sized(chip, size, { "flex-grow": "1", "flex-shrink": "0", "flex-basis": "auto" });
     sized(face, size, { "flex-grow": "1", "justify-content": "center", "box-sizing": "border-box" });
-    const parts = [".food-chip-symbols", ".food-chip-word", ".food-chip-count"].map((selector) => laidOutWidth(part(selector, face)));
+    const parts = [".food-chip-symbols", ".food-chip-word", ".food-chip-count"].map((selector) => measuredWidth(part(selector, face)));
     return style.px("padding-left") + parts.reduce((sum, width) => sum + width, 0) + style.columnGap() * (parts.length - 1) + style.px("padding-right");
   };
   const food = [...group.querySelectorAll(".food-chip:not([data-food='all'])")];
@@ -405,6 +406,33 @@ describe("the list of every dinosaur upright", () => {
 });
 
 describe("every word upright", () => {
+  it.each([
+    [40, "spaced", 82, "closed"],
+    [82, "closed", 122, "stacked"],
+    [122, "stacked", 82, "closed"],
+    [82, "closed", 40, "spaced"]
+  ] as const)("a font notification changes PLANTS from %i px (%s) to %i px (%s) without resizing", async (before, from, after, to) => {
+    const contents = (word: number) => [{ symbols: 22, word: 58, count: 37 }, { symbols: 22, word, count: 37 }, { symbols: 46, word: 60, count: 36 }];
+    const widths = manualChipWidths(contents(before));
+    await openList(744, 1133, { chipWidths: widths });
+    const size: WindowSize = [744, 1133];
+    const row = uprightList(size).chipRow;
+    expect(row).toBe(632);
+    expect(chipGroup().dataset.arrangement).toBe(from);
+    expect(chipLayout(row, size, "en", widths.width).overflowing).toEqual([]);
+
+    widths.set(contents(after));
+    expect(chipGroup().dataset.arrangement).toBe(from);
+    act(() => widths.notify());
+
+    expect([window.innerWidth, window.innerHeight]).toEqual(size);
+    expect(chipGroup().dataset.arrangement).toBe(to);
+    const shown = chipLayout(row, size, "en", widths.width);
+    expect(shown.rows.length).toBe(to === "stacked" ? 2 : 1);
+    expect(shown.overflowing).toEqual([]);
+    expect(chips().every((chip) => getComputedStyle(chip).whiteSpace === "nowrap")).toBe(true);
+  });
+
   it.each(WORDS)("fits in %s in a %i by 1000 window, the chips %s, at their landscape look, and every card's name on one line as large as in landscape", async (language, width, arrangement) => {
     await openList(width, 1000, { language });
     const size: WindowSize = [width, 1000];

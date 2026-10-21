@@ -1,4 +1,5 @@
 import type { ChipWidths } from "../src/FoodChips.tsx";
+import type { ChipContent } from "../src/chipArrangement.ts";
 import { BASKET_EMS } from "./basketWidths.ts";
 
 // jsdom lays nothing out, so the width of each count a food chip shows is
@@ -31,3 +32,26 @@ export function laidOutWidth(part: Element): number {
 // The chips' parts measured as the stylesheet lays them out, in a test
 // whose fonts never change.
 export const emChipWidths = (): ChipWidths => ({ width: laidOutWidth, subscribe: () => () => {} });
+
+// A font's measured parts change separately from its notification.
+export function manualChipWidths(initial: readonly ChipContent[]) {
+  let contents = initial;
+  const listeners = new Set<() => void>();
+  return {
+    width: (part: Element) => {
+      const food = part.closest(".food-chip")?.getAttribute("data-food") ?? "";
+      const content = contents[["meat", "plants", "both"].indexOf(food)];
+      if (!content) throw new Error(`No measured chip for ${food}`);
+      if (part.matches(".food-chip-symbols")) return content.symbols;
+      if (part.matches(".food-chip-word")) return content.word;
+      if (part.matches(".food-chip-count")) return content.count;
+      throw new Error(`No measured part for ${part.className}`);
+    },
+    subscribe: (onChange: () => void) => {
+      listeners.add(onChange);
+      return () => { listeners.delete(onChange); };
+    },
+    set: (next: readonly ChipContent[]) => { contents = next; },
+    notify: () => listeners.forEach((listener) => listener())
+  } satisfies ChipWidths & { set(next: readonly ChipContent[]): void; notify(): void };
+}

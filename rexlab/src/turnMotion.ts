@@ -126,8 +126,8 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // are measured again before every frame. Each part glides from its old
 // place to its new one by translation, its change of size shown by a
 // clip of what it holds and a frame drawn under it, without scaling its
-// content. A closing picture travels above those clips by translation
-// and scale; what the page marks to fade fades in meanwhile. A
+// content. A closing picture travels above those clips in a changing
+// box, fitted whole; what the page marks to fade fades in meanwhile. A
 // glide takes over the page's own animations on a part, such as its
 // entrance, from where and how faded they draw it: left running, they
 // would draw it off its new place, their translation giving way to the
@@ -334,11 +334,11 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       if (element === picture?.element) {
         const copy = picture.draw(box);
         const offset = { x: old.box.left - box.left, y: old.box.top - box.top };
+        // Only the fixed copy is laid out as its box changes, so contain
+        // fits the picture whole without unequal scales stretching it.
+        const bounds = (box: Box): Keyframe => ({ left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
         starts.push(() => drawings.set(element, {
-          animations: [animate(copy.element, [
-            { translate: `${offset.x}px ${offset.y}px`, scale: `${old.box.width / box.width} ${old.box.height / box.height}`, transformOrigin: "0 0" },
-            { translate: "0px 0px", scale: "1 1", transformOrigin: "0 0" }
-          ], options)],
+          animations: [animate(copy.element, [bounds(old.box), bounds(box)], options)],
           offset, size: { width: old.box.width, height: old.box.height }, opacity: 1, frame: copy, release: undefined
         }));
         continue;

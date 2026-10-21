@@ -159,18 +159,23 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   });
   const fades: Array<{ update: () => void; finished: () => void; captured: ReturnType<typeof arrangement> }> = [];
   const paints: Array<{ fire: () => void; stopped: boolean }> = [];
+  const nearestScrolls: Array<{ id: string; scroll: number; card: DOMRect; list: DOMRect }> = [];
   const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     const name = this.getAttribute("data-turn-part");
     if (name || this.matches(".dinosaur-stage-picture, .catalogue-picture")) return new DOMRect(...Object.values(boxFor(this, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass)) as [number, number, number, number]);
     return new DOMRect();
   });
   onTestFinished(() => spy.mockRestore());
-  const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: HTMLElement) {
+  const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: HTMLElement, options) {
     const list = this.closest<HTMLElement>(".catalogue-grid");
     if (!list) return;
+    expect(options).toMatchObject({ block: "nearest" });
     listMetrics(list);
-    const size = document.documentElement.dataset.size as SizeClass;
-    list.scrollTop = rowScroll(this.dataset.id!, window.innerWidth, window.innerHeight, size);
+    const card = this.getBoundingClientRect();
+    const bounds = list.getBoundingClientRect();
+    const delta = card.top < bounds.top ? card.top - bounds.top : card.bottom > bounds.bottom ? card.bottom - bounds.bottom : 0;
+    list.scrollTop = Math.max(0, Math.min(list.scrollTop + delta, list.scrollHeight - list.clientHeight));
+    nearestScrolls.push({ id: this.dataset.id!, scroll: list.scrollTop, card: this.getBoundingClientRect(), list: bounds });
   });
   onTestFinished(() => scroll.mockRestore());
   const measure = (element: Element) => {
@@ -261,7 +266,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const updateFade = () => act(() => fades.at(-1)?.update());
   const endFade = () => act(() => fades.at(-1)?.finished());
   const parts = () => [...document.querySelectorAll<HTMLElement>("[data-turn-part]")];
-  return { native, advance: (ms: number) => { clock += ms; }, user, pictures, shared, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
+  return { native, nearestScrolls, advance: (ms: number) => { clock += ms; }, user, pictures, shared, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
 }
 
 const own = ({ name }: Recorded) => !name.startsWith("frame of ");
@@ -322,28 +327,65 @@ function pictureGlide(app: ReturnType<typeof openCatalogue>) {
   if (!animation) throw new Error("No closing picture glide");
   const destination = app.measure(card("baryonyx").querySelector(".catalogue-picture")!);
   const start = animation.keyframes[0]!;
-  const [x = 0, y = 0] = String(start.translate).split(" ").map(Number.parseFloat);
-  const [sx = 1, sy = 1] = String(start.scale).split(" ").map(Number);
-  return { animation, destination, from: { left: destination.left + x, top: destination.top + y, width: destination.width * sx, height: destination.height * sy } };
+  const end = animation.keyframes[1]!;
+  expectBox({ left: px(end.left), top: px(end.top), width: px(end.width), height: px(end.height) }, destination);
+  return { animation, destination, from: { left: px(start.left), top: px(start.top), width: px(start.width), height: px(start.height) } };
+}
+
+function expectPictureFit(copy: HTMLElement, animation: Recorded) {
+  const style = getComputedStyle(copy);
+  expect(style.objectFit).toBe("contain");
+  expect(copy.style.transform).toBe("");
+  for (const frame of animation.keyframes) {
+    expect(frame.transform).toBeUndefined();
+  }
+  // jsdom draws no bitmap: fit its 800 by 600 image in the animated
+  // bounds, then apply any scale, as the browser does after object-fit.
+  const [start, end] = animation.keyframes;
+  const scales = animation.keyframes.map((frame) => {
+    const value = String(frame.scale ?? (style.scale || "none"));
+    const [x = 1, y = x] = value === "none" ? [1, 1] : value.split(" ").map(Number);
+    return { x, y };
+  });
+  for (const progress of [0, 0.4, 0.875, 1]) {
+    const width = px(start!.width) + (px(end!.width) - px(start!.width)) * progress;
+    const height = px(start!.height) + (px(end!.height) - px(start!.height)) * progress;
+    const fit = Math.min(width / 800, height / 600);
+    const sx = scales[0]!.x + (scales[1]!.x - scales[0]!.x) * progress;
+    const sy = scales[0]!.y + (scales[1]!.y - scales[0]!.y) * progress;
+    const image = { width: 800 * fit * sx, height: 600 * fit * sy };
+    expect(image.width / image.height).toBeCloseTo(4 / 3, 6);
+    expect(image.width).toBeLessThanOrEqual(width + 1e-6);
+    expect(image.height).toBeLessThanOrEqual(height + 1e-6);
+  }
 }
 
 function expectBox(actual: Box, expected: Box) {
   for (const key of ["left", "top", "width", "height"] as const) expect(actual[key]).toBeCloseTo(expected[key], 6);
 }
 
-async function closeBaryonyx(app: ReturnType<typeof openCatalogue>) {
+async function closeBaryonyx(app: ReturnType<typeof openCatalogue>, loaded = false) {
   await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+  expect(app.pictures.loading()).toContain("/pictures/baryonyx.webp");
+  if (loaded) act(() => app.pictures.finish("/pictures/baryonyx.webp"));
   await app.user.click(card("baryonyx"));
-  const page = app.measure(document.querySelector(".dinosaur-stage-picture")!);
+  const picture = document.querySelector(".dinosaur-stage-picture")!;
+  expect(picture.getAttribute("src")).toBe(loaded ? "/pictures/baryonyx.webp" : null);
+  expect(picture.getAttribute("data-picture")).toBe(loaded ? "shown" : "loading");
+  const page = app.measure(picture);
   await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogue }));
   listMetrics(app.grid());
   return { page, target: app.measure(card("baryonyx").querySelector(".catalogue-picture")!) };
 }
 
 describe("the picture's close interrupted by a turn", () => {
-  it("continues the skipped native close from its drawn box, then follows a second turn from the glide's drawn box", async () => {
+  it.each([true, false])("continues the skipped native close from its drawn box through two turns, loaded: %s", async (loaded) => {
     const app = openCatalogue();
-    const { page, target } = await closeBaryonyx(app);
+    const { page, target } = await closeBaryonyx(app, loaded);
+    const nearest = app.nearestScrolls.find(({ id }) => id === "baryonyx")!;
+    expect(nearest.card.bottom).toBeCloseTo(nearest.list.bottom);
+    expect(nearest.scroll).toBeLessThan(app.grid().scrollTop);
+    expect(app.grid().scrollTop).toBeCloseTo(rowScroll("baryonyx", 1180, 820, "wide"));
     // The native transition owns this drawing until the viewport skips it.
     app.advance(320 * closeFraction);
     app.native.draw(mixBox(page, target, 0.875));
@@ -355,13 +397,15 @@ describe("the picture's close interrupted by a turn", () => {
     expect(document.querySelector("[data-native-close]")).toBeNull();
     expectBox(first.from, nativeBox);
     expect(first.animation.options).toEqual({ duration: 240, easing: EASE_OUT });
-    expect(first.animation.keyframes[1]).toMatchObject({ translate: "0px 0px", scale: "1 1" });
+    expect(first.from.width / first.from.height).not.toBeCloseTo(first.destination.width / first.destination.height, 2);
     const picture = card("baryonyx").querySelector<HTMLElement>(".catalogue-picture")!;
     const copy = document.querySelector<HTMLElement>("[data-closing-picture]")!;
     expect(copy.parentElement).toBe(document.body);
     expect(copy.style.position).toBe("fixed");
     expect([copy.style.left, copy.style.top, copy.style.width, copy.style.height]).toEqual([`${first.destination.left}px`, `${first.destination.top}px`, `${first.destination.width}px`, `${first.destination.height}px`]);
-    expect(copy.getAttribute("src")).toBe(picture.getAttribute("src"));
+    expect(copy.getAttribute("src")).toBe(loaded ? "/pictures/baryonyx.webp" : null);
+    expect(copy.dataset.picture).toBe(loaded ? "shown" : "loading");
+    expectPictureFit(copy, first.animation);
     expect(picture.style.visibility).toBe("hidden");
     expectWholeInList(app.grid(), "baryonyx");
 
@@ -371,12 +415,17 @@ describe("the picture's close interrupted by a turn", () => {
     const second = pictureGlide(app);
     expect(first.animation.cancelled).toBe(true);
     expectBox(second.from, mixBox(first.from, first.destination, 0.4));
-    expect(second.animation.keyframes[1]).toMatchObject({ translate: "0px 0px", scale: "1 1" });
+    const nextCopy = document.querySelector<HTMLElement>("[data-closing-picture]")!;
+    expect(nextCopy.getAttribute("src")).toBe(loaded ? "/pictures/baryonyx.webp" : null);
+    expect(nextCopy.dataset.picture).toBe(loaded ? "shown" : "loading");
+    expectPictureFit(nextCopy, second.animation);
     expectWholeInList(app.grid(), "baryonyx");
     expect(document.querySelectorAll("[data-closing-picture]")).toHaveLength(1);
     app.settle();
     expect(document.querySelector("[data-closing-picture]")).toBeNull();
     expect(picture.style.visibility).toBe("");
+    expect(picture.getAttribute("src")).toBe(loaded ? "/pictures/baryonyx.webp" : null);
+    expect(picture.dataset.picture).toBe(loaded ? "shown" : "loading");
     expectBox(app.measure(picture), second.destination);
     expect(app.animations.filter(({ name, cancelled }) => name === "closing-picture" && !cancelled)).toEqual([]);
   });

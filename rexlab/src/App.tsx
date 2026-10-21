@@ -242,7 +242,6 @@ export function App({
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, continuation: closing.take, reducedMotion: careProps.reducedMotion, startTimer }));
-  useLayoutEffect(() => closing.arrive(screen.kind === "catalogue" ? screen.returning : undefined), [closing, screen]);
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
@@ -412,6 +411,9 @@ export function App({
       : { screen: screen.kind, portrait, gated: gateShown },
     applyCatalogueLayout
   );
+  // The keeper puts the returned card's row back before its picture's
+  // closing target is read, so the native close and continuation agree.
+  useLayoutEffect(() => closing.arrive(screen.kind === "catalogue" ? screen.returning : undefined), [closing, screen]);
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
