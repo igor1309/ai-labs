@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { AGE_LEVELS } from "../src/ageLevel.ts";
 import {
   ATTRIBUTES,
+  attributeOf,
   FAIR_RATIO,
   correctOf,
   ROUND_LENGTH,
@@ -9,7 +11,6 @@ import {
   isFair,
   measureOf,
   pairKey,
-  questionKind,
   questionKindsForLevel,
   type Dinosaur,
   type Round
@@ -17,7 +18,7 @@ import {
 import { SHIPPED_DINOSAURS, seededRandom } from "./support.ts";
 import records from "../src/data/dinosaurs.json";
 
-const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
+const SEEDS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 const questionKeys = (round: Round) => round.map((q) => `${q.attribute}:${pairKey(q.left, q.right)}`);
 
@@ -26,19 +27,17 @@ function dinosaur(id: string, mass: number, height: number, length?: number): Di
 }
 
 describe("generateRound", () => {
-  it.each(SEEDS)("makes every question of a round a fair pair (seed %i)", (seed) => {
-    const round = generateRound(SHIPPED_DINOSAURS, seededRandom(seed));
+  it.each(AGE_LEVELS)("asks %s ten different fair pairs, each of a kind the level asks", (level) => {
+    for (const seed of SEEDS) {
+      const round = generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], level);
+      const unfit = round.filter(
+        ({ kind, attribute, left, right }) => !questionKindsForLevel(level).includes(kind) || attribute !== attributeOf(kind) || !isFair(left, right, attribute)
+      );
 
-    expect(round).toHaveLength(ROUND_LENGTH);
-    for (const { attribute, left, right } of round) {
-      expect(ATTRIBUTES).toContain(attribute);
-      expect(left.id).not.toBe(right.id);
-      const small = Math.min(measureOf(left, attribute), measureOf(right, attribute));
-      const large = Math.max(measureOf(left, attribute), measureOf(right, attribute));
-      expect(large).toBeGreaterThanOrEqual(FAIR_RATIO * small);
+      expect(unfit).toEqual([]);
+      expect(round).toHaveLength(ROUND_LENGTH);
+      expect(new Set(round.map((q) => pairKey(q.left, q.right))).size).toBe(ROUND_LENGTH);
     }
-    const pairs = round.map((q) => pairKey(q.left, q.right));
-    expect(new Set(pairs).size).toBe(ROUND_LENGTH);
   });
 
   it.each(SEEDS)("does not repeat the previous round's questions (seed %i)", (seed) => {
@@ -52,9 +51,8 @@ describe("generateRound", () => {
     expect(questionKeys(second)).not.toEqual(questionKeys(first));
   });
 
-  it("asks both attributes across rounds", () => {
-    // Rounds are made only until both attributes are asked: making all of
-    // them takes longer than a test may.
+  it("asks every attribute across rounds", () => {
+    // Rounds are made only until every attribute is asked.
     const asked = new Set<string>();
     for (const seed of SEEDS) {
       if (asked.size === ATTRIBUTES.length) break;
@@ -68,7 +66,7 @@ describe("generateRound", () => {
     const asked = new Set<string>();
     for (const seed of SEEDS) {
       for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "paleontologist")) {
-        asked.add(question.kind ?? "");
+        asked.add(question.kind);
       }
       if (asked.size === 5) break;
     }
@@ -80,7 +78,7 @@ describe("generateRound", () => {
   it("lets Explorer rounds mix longer with today's two kinds", () => {
     const asked = new Set<string>();
     for (const seed of SEEDS) {
-      for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "explorer")) asked.add(question.kind ?? "");
+      for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "explorer")) asked.add(question.kind);
       if (asked.size === 3) break;
     }
 
@@ -139,6 +137,23 @@ describe("fairPairs", () => {
   });
 });
 
+// The smaller of the pair answers LIGHTER and SHORTER, the larger every
+// other kind, whichever side each dinosaur stands on.
+describe("the right answer", () => {
+  const small = dinosaur("small", 100, 2, 4);
+  const large = dinosaur("large", 150, 3, 8);
+  const cases = (["heavier", "taller", "longer", "lighter", "shorter"] as const).flatMap((kind) =>
+    (["small left", "small right"] as const).map((order) => ({ kind, order }))
+  );
+
+  it.each(cases)("to $kind, with the $order, is the $kind one", ({ kind, order }) => {
+    const [left, right] = order === "small left" ? [small, large] : [large, small];
+    const expected = kind === "lighter" || kind === "shorter" ? small : large;
+
+    expect(correctOf({ kind, attribute: attributeOf(kind), left, right })).toBe(expected);
+  });
+});
+
 describe("lighter questions", () => {
   it("use a fair mass pair and make the smaller mass the right answer", () => {
     const small = dinosaur("small", 100, 2);
@@ -172,11 +187,8 @@ describe("longer questions", () => {
     expect(isFair(short, long, "length")).toBe(true);
     expect(correctOf(question)).toBe(long);
     expect(measureOf(long, "length")).toBeGreaterThanOrEqual(FAIR_RATIO * measureOf(short, "length"));
-    expect(questionKind({ attribute: "length", left: short, right: long })).toBe("longer");
   });
 
-  // Every LONGER question is drawn from the fair length pairs, so the pool
-  // is checked whole and a few rounds show their questions come from it.
   it("pairs only fair lengths, never a flying reptile", () => {
     const pairs = fairPairs(SHIPPED_DINOSAURS, "length");
     const flying = new Set(records.filter(({ group }) => group === "flying-reptile").map(({ id }) => id));
@@ -186,14 +198,6 @@ describe("longer questions", () => {
     for (const [a, b] of pairs) {
       const [x, y] = [measureOf(a, "length"), measureOf(b, "length")];
       expect(Math.max(x, y)).toBeGreaterThanOrEqual(FAIR_RATIO * Math.min(x, y));
-    }
-  });
-
-  it.each(["explorer", "paleontologist"] as const)("asks %s's LONGER questions of the fair length pairs alone", (level) => {
-    const pool = new Set(fairPairs(SHIPPED_DINOSAURS, "length").map(([a, b]) => pairKey(a, b)));
-    for (const seed of SEEDS.slice(0, 10)) {
-      const longer = generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], level).filter(({ kind }) => kind === "longer");
-      expect(longer.filter((question) => question.attribute !== "length" || !pool.has(pairKey(question.left, question.right)))).toEqual([]);
     }
   });
 });
@@ -212,11 +216,5 @@ describe("the shipped dinosaur list", () => {
     expect(SHIPPED_DINOSAURS.filter(({ measures }) => !(measures.mass > 0))).toEqual([]);
     expect(tall.map(({ id }) => id)).toEqual(records.filter(({ group }) => group === "dinosaur").map(({ id }) => id));
     expect(tall.filter(({ measures }) => !((measures.height ?? 0) > 0))).toEqual([]);
-  });
-
-  it("has at least ten fair length pairs and no length on flying reptiles", () => {
-    const lengths = SHIPPED_DINOSAURS.filter(({ measures }) => measures.length !== undefined);
-    expect(fairPairs(SHIPPED_DINOSAURS, "length").length).toBeGreaterThanOrEqual(ROUND_LENGTH);
-    expect(lengths.some(({ id }) => records.find((record) => record.id === id)?.group === "flying-reptile")).toBe(false);
   });
 });

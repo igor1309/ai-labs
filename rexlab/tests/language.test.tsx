@@ -10,7 +10,7 @@ import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
-import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import { versionFooter } from "../src/root.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
@@ -50,7 +50,9 @@ import {
   type MemoryStorage,
   featuredCard,
   gameDoor,
-  unsetAgeLevel
+  unsetAgeLevel,
+  shownQuestion,
+  wrongOf
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
 
@@ -58,10 +60,6 @@ const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" 
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
   en: { next: "NEXT", seeResult: "SEE RESULT", playAgain: "PLAY AGAIN", home: "HOME" },
   ru: { next: "ДАЛЬШЕ", seeResult: "РЕЗУЛЬТАТ", playAgain: "ЕЩЁ РАЗ", home: "ДОМОЙ" }
-};
-const PROMPTS: Record<Language, Record<Attribute, string>> = {
-  en: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?", length: "WHO IS LONGER?" },
-  ru: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?", length: "КТО ДЛИННЕЕ?" }
 };
 
 const nothing = () => {};
@@ -123,7 +121,7 @@ function expectShownIn(language: Language) {
 function renderQuestion(
   language: Language,
   {
-    question = { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") },
+    question = { kind: "heavier", attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") },
     choice,
     last = false
   }: { question?: Question; choice?: string; last?: boolean } = {}
@@ -339,7 +337,7 @@ describe("Russian text", () => {
     [
       "mass prompt",
       () => {
-        renderQuestion("ru", { question: { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") } });
+        renderQuestion("ru", { question: { kind: "heavier", attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") } });
         return screen.getByRole("heading");
       },
       "КТО ТЯЖЕЛЕЕ?"
@@ -347,7 +345,7 @@ describe("Russian text", () => {
     [
       "height prompt",
       () => {
-        renderQuestion("ru", { question: { attribute: "height", left: byName("Triceratops"), right: byName("Velociraptor") } });
+        renderQuestion("ru", { question: { kind: "taller", attribute: "height", left: byName("Triceratops"), right: byName("Velociraptor") } });
         return screen.getByRole("heading");
       },
       "КТО ВЫШЕ?"
@@ -492,10 +490,10 @@ describe("the sorting result", () => {
 
 describe("revealed values", () => {
   it.each<[Language, Question, string, string]>([
-    ["en", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 T", "15 KG"],
-    ["ru", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 Т", "15 КГ"],
-    ["en", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3.4 M", "1.5 M"],
-    ["ru", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3,4 М", "1,5 М"]
+    ["en", { kind: "heavier", attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 T", "15 KG"],
+    ["ru", { kind: "heavier", attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 Т", "15 КГ"],
+    ["en", { kind: "taller", attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3.4 M", "1.5 M"],
+    ["ru", { kind: "taller", attribute: "height", left: byName("Brachiosaurus"), right: byName("Stegosaurus") }, "3,4 М", "1,5 М"]
   ])("are written in %s", (language, question, leftValue, rightValue) => {
     renderQuestion(language, { question, choice: question.left.id });
 
@@ -592,24 +590,13 @@ function openPlay(language: Language, progressStorage = memoryStorage()): Play {
   return { language, user, viewport, timers, look, seen };
 }
 
-function shownQuestion(language: Language): Question {
-  const heading = screen.getByRole("heading").textContent ?? "";
-  const attribute: Attribute = heading.includes(PROMPTS[language].mass) ? "mass" : heading.includes(PROMPTS[language].length) ? "length" : "height";
-  const [left, right] = within(screen.getByRole("group"))
-    .getAllByRole("button")
-    .map((card) => byName(card.getAttribute("aria-label") ?? "", language));
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
-}
-
 // Plays a round from its first question, the first `correct` answers
 // right and the rest wrong, looking at each question before and after its
 // answer and at the result.
 async function playRound({ language, user, look }: Play, correct: number) {
   for (let number = 1; number <= 10; number++) {
     const question = shownQuestion(language);
-    const larger = largerOf(question);
-    const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
+    const tapped = number <= correct ? correctOf(question) : wrongOf(question);
     look();
     await user.click(within(screen.getByRole("group")).getByRole("button", { name: tapped.name[language] }));
     look();
