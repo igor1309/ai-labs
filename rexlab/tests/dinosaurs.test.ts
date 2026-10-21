@@ -58,6 +58,15 @@ describe("readDinosaurs", () => {
     expect(readDinosaurs([PTERANODON, MOSASAURUS]).map(({ measures }) => measures)).toEqual([{ mass: 25 }, { mass: 10000 }]);
   });
 
+  it("reads a dinosaur's hip height as its size when its length is also known", () => {
+    const record = { ...STEGOSAURUS, attributes: { massKg: 5000, heightMeters: 4, lengthMeters: 9 } };
+
+    expect(readDinosaurs([record])).toEqual([
+      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4 } }
+    ]);
+    expect(readCatalogue([record]).map(({ size }) => size)).toEqual([{ measure: "height", metres: 4 }]);
+  });
+
   it.each([undefined, "", "bird", "Dinosaur"])("fails on a record whose group is %j", (group) => {
     const record = { ...STEGOSAURUS, group } as DinosaurRecord;
 
@@ -71,7 +80,8 @@ describe("readDinosaurs", () => {
     [STEGOSAURUS, { massKg: 5000, heightMeters: 0 }, "stegosaurus has no height: 0"],
     [PTERANODON, { massKg: 25, heightMeters: 1 }, "pteranodon has no wingspan: undefined"],
     [MOSASAURUS, { massKg: 10000, wingspanMeters: 2 }, "mosasaurus has no length: undefined"],
-    [STEGOSAURUS, { massKg: 5000, heightMeters: 4, lengthMeters: 9 }, "stegosaurus is measured by its height, not its length"],
+    [STEGOSAURUS, { massKg: 5000, heightMeters: 4, wingspanMeters: 1 }, "stegosaurus is measured by its height, not its wingspan"],
+    [PTERANODON, { massKg: 25, wingspanMeters: 6, lengthMeters: 4 }, "pteranodon is measured by its wingspan, not its length"],
     [PTERANODON, { massKg: 25, wingspanMeters: 6, heightMeters: 1 }, "pteranodon is measured by its wingspan, not its height"]
   ])("fails on a record with no size by its group's measure alone: %#", (record, attributes, message) => {
     expect(() => readDinosaurs([{ ...record, attributes }])).toThrow(message);
@@ -286,6 +296,29 @@ describe("the shipped dinosaur list", () => {
 
     expect(value).toBeGreaterThanOrEqual(low);
     expect(value).toBeLessThanOrEqual(high);
+  });
+
+  it.each([
+    ["tyrannosaurus", 12],
+    ["allosaurus", 9.7],
+    ["dilophosaurus", 7],
+    ["carnotaurus", 8],
+    ["giganotosaurus", 13],
+    ["baryonyx", 10],
+    ["ceratosaurus", 7],
+    ["yutyrannus", 7.5],
+    ["brachiosaurus", 22],
+    ["diplodocus", 26],
+    ["argentinosaurus", 35],
+    ["apatosaurus", 21],
+    ["mamenchisaurus", 22],
+    ["amargasaurus", 12],
+    ["plateosaurus", 7]
+  ] as const)("keeps the %s's positive nose-to-tail length at %s m", (id, length) => {
+    const value = records.find((record) => record.id === id)?.attributes.lengthMeters;
+
+    expect(value).toBe(length);
+    expect(value).toBeGreaterThan(0);
   });
 
   // Each height is the hip height docs/sources.md works out from the leg
