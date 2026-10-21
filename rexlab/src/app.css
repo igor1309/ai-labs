@@ -286,6 +286,21 @@ body {
   pointer-events: none;
 }
 
+/* A part changing size glides with its frame drawn under it, a copy of
+   the part with none of its content, sized from its old box to its new
+   one: the part's own frame is taken off meanwhile, and its parent holds
+   the copy where the part stands, under every part it holds. */
+[data-turn-frames] {
+  contain: layout;
+}
+
+[data-turn-framed] {
+  border-color: transparent !important;
+  outline-color: transparent !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
 /* A screen's content, its own padding included, is at most 1440 pixels
    wide and centred: on a wider window each side of every screen, and the
    fixed parts at the window's edges, add what lies beyond it, which

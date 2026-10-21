@@ -42,6 +42,17 @@ function browser({
   };
 }
 
+// A view transition's end, settled by the test.
+function settling() {
+  let resolve = () => {};
+  let reject = (_: Error) => {};
+  const promise = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve: () => resolve(), reject: (error: Error) => reject(error) };
+}
+
 const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
@@ -164,31 +175,59 @@ describe("the app in a browser", () => {
     expect(reducedMotion()).toBe(false);
   });
 
-  it("moves the page to its other layout through the browser: parts found in the document, measured as drawn, animated by the browser, faded by its view transition", () => {
+  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, animated by the browser, faded by its view transition until it has finished", async () => {
     const fades: unknown[] = [];
+    const ended = settling();
     const given = browser();
-    const document = Object.assign(given.document, { startViewTransition: ((update: unknown) => void fades.push(update)) as unknown as Document["startViewTransition"] });
+    const document = Object.assign(given.document, {
+      startViewTransition: ((update: unknown) => (fades.push(update), { finished: ended.promise })) as unknown as Document["startViewTransition"]
+    });
     const { layoutMotion } = appProps({ ...given, document });
     const box = { left: 1, top: 2, width: 3, height: 4 };
     const animation = { cancel: () => {}, effect: null };
     const animated: unknown[] = [];
     const part = { getBoundingClientRect: () => box, animate: (...args: unknown[]) => (animated.push(args), animation) } as unknown as Element;
     const change = () => {};
+    let finished = 0;
 
-    layoutMotion.startViewTransition(change);
+    layoutMotion.startViewTransition(change, () => finished++);
 
     expect(layoutMotion.parts).toBe(document);
     expect(layoutMotion.measure(part)).toBe(box);
     expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
-    expect(fades).toEqual([change]);
+    expect([fades, finished]).toEqual([[change], 0]);
+
+    ended.resolve();
+    await ended.promise;
+
+    expect(finished).toBe(1);
   });
 
-  it("changes the layout at once in a browser with no view transitions", () => {
-    let changed = 0;
+  it("ends the fade once the view transition is skipped, too", async () => {
+    const ended = settling();
+    const given = browser();
+    const document = Object.assign(given.document, { startViewTransition: (() => ({ finished: ended.promise })) as unknown as Document["startViewTransition"] });
+    let finished = 0;
+    appProps({ ...given, document }).layoutMotion.startViewTransition(
+      () => {},
+      () => finished++
+    );
 
-    appProps(browser()).layoutMotion.startViewTransition(() => changed++);
+    ended.reject(new Error("skipped"));
+    await ended.promise.catch(() => {});
 
-    expect(changed).toBe(1);
+    expect(finished).toBe(1);
+  });
+
+  it("changes the layout at once in a browser with no view transitions, its fade then ended", () => {
+    const steps: string[] = [];
+
+    appProps(browser()).layoutMotion.startViewTransition(
+      () => steps.push("change"),
+      () => steps.push("finished")
+    );
+
+    expect(steps).toEqual(["change", "finished"]);
   });
 
   it.each(["ru-RU", "en-GB"])("takes the device language %s from the browser", (language) => {

@@ -151,7 +151,7 @@ describe("the motion", () => {
     const ms = (token: string | undefined) => Number.parseFloat(token ?? "");
     const root = PLAIN.find(({ prelude }) => prelude.split(",").map((selector) => selector.trim()).includes("::view-transition-new(root)"));
 
-    expect(TURN_TIMING).toEqual({ glide: ms(tokensOf(PLAIN)["--motion-standard"]), easing: tokensOf(PLAIN)["--ease-out"], fade: ms(tokensOf(REDUCED)["--motion-standard"]) });
+    expect([TURN_TIMING, ms(tokensOf(REDUCED)["--motion-standard"])]).toEqual([{ glide: ms(tokensOf(PLAIN)["--motion-standard"]), easing: tokensOf(PLAIN)["--ease-out"] }, 160]);
     expect(declarationsOf(root?.body ?? "")).toEqual([
       { property: "animation-duration", value: "var(--motion-standard)" },
       { property: "animation-timing-function", value: "var(--ease-out)" }

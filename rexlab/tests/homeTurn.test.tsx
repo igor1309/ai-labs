@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
+import { extendPart, turnFrame } from "../src/root.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { openMenu } from "./menus.ts";
 import {
@@ -39,7 +40,6 @@ import { openWindow } from "./windowSizes.ts";
 // test lays them out and their animations recorded.
 
 const GLIDE = 240;
-const FADE = 160;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // The parts of the home page both layouts share, COMPARE featured, in
@@ -49,36 +49,53 @@ const PARTS = ["wordmark", "corner", "greeting", "featured-card", "tiles", "tile
 // Those that stand on the page itself, not in another part.
 const OUTER = ["wordmark", "corner", "greeting", "featured-card", "tiles"];
 
+// Those that paint a frame of their own, by the stylesheet.
+const FRAMED = PARTS.filter((name) => name === "featured-card" || name.startsWith("tile-") || name === "more-coming");
+
 type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: KeyframeAnimationOptions; progress: number; cancelled: boolean };
 
 const nameOf = (element: Element) => element.getAttribute("data-turn-part") ?? "";
 
-// Where the test lays a part out in each layout: every part stands
-// somewhere else, and is larger, upright than in landscape.
+// A part's frame is named for the part it is drawn under, which follows it.
+const recordedName = (element: Element) => (element.hasAttribute("data-turn-frame") ? `frame of ${nameOf(element.nextElementSibling!)}` : nameOf(element));
+
+// Where the page lays a part out in each layout, in the test's window as
+// it is now: every part stands somewhere else, and is larger, upright
+// than in landscape, and each stands and is sized by the window's width
+// and height too. The tiles stand where the row is scrolled to.
 function laidOut(name: string, size: string | undefined): Box {
   const at = PARTS.indexOf(name);
-  return size === "tall" ? { left: 40 + 6 * at, top: 90 + 30 * at, width: 400, height: 260 } : { left: 100 + 10 * at, top: 50 + 20 * at, width: 300, height: 200 };
+  const [width, height] = [window.innerWidth, window.innerHeight];
+  const scrolled = name.startsWith("tile-") || name === "more-coming" ? (document.querySelector(".games-tiles")?.scrollLeft ?? 0) : 0;
+  return size === "tall"
+    ? { left: 40 + 6 * at + (width - 820) / 4 - scrolled, top: 90 + 30 * at + (height - 1180) / 8, width: 400 + (width - 820) / 2, height: 260 + (height - 1180) / 4 }
+    : { left: 100 + 10 * at + (width - 1180) / 4 - scrolled, top: 50 + 20 * at + (height - 820) / 8, width: 300 + (width - 1180) / 2, height: 200 + (height - 820) / 4 };
 }
 
 const offsetOf = (keyframe: Keyframe | undefined) => String(keyframe?.translate ?? "0px 0px").split(" ").map(Number.parseFloat);
 
 // The home page in a window `width` by `height` of `size`, a screen
 // `upright` or not, its pictures loaded, its timers fired by hand, and
-// the device asking for reduced motion when `reduced`. A part is drawn
-// where the test lays it out, moved by the animation running on it and
-// on the parts around it, as far as each has gone.
+// the device asking for reduced motion when `reduced`. A part is
+// measured where the test lays it out, its frame drawn and its window
+// widened by the browser's own means, and its animations recorded; a
+// view transition's update and its end wait for the test.
 function openTurning(width: number, height: number, size: SizeClass, { upright = size.startsWith("tall"), reduced = false } = {}) {
   openWindow(width, height);
   const viewport = manualViewport("landscape");
   viewport.resize(size, upright);
   const pictures = manualPictures();
   const animations: Recorded[] = [];
-  const fades: Array<() => void> = [];
-  const running = (element: Element) => animations.filter((animation) => animation.name === nameOf(element) && !animation.cancelled).at(-1);
+  const frames: Array<{ name: string; box: Box }> = [];
+  const extended: Array<{ name: string; right: number; bottom: number }> = [];
+  const fades: Array<{ update: () => void; finished: () => void }> = [];
+  const running = (name: string) => animations.filter((animation) => animation.name === name && !animation.cancelled).at(-1);
+  // Where a part is drawn: where it is laid out, moved by the animation
+  // running on it and on the parts around it, as far as each has gone.
   const drawn = (element: Element): Box => {
     const box = { ...laidOut(nameOf(element), document.documentElement.dataset.size) };
     for (let part: Element | null = element; part; part = part.parentElement?.closest("[data-turn-part]") ?? null) {
-      const animation = running(part);
+      const animation = running(nameOf(part));
       const [x = 0, y = 0] = offsetOf(animation?.keyframes[0]);
       box.left += x * (1 - (animation?.progress ?? 1));
       box.top += y * (1 - (animation?.progress ?? 1));
@@ -106,10 +123,19 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
       {...emptyDig()}
       layoutMotion={{
         parts: document,
-        measure: drawn,
+        measure: (element) => laidOut(nameOf(element), document.documentElement.dataset.size),
+        frame: (element, box) => {
+          const frame = turnFrame(element, box);
+          if (frame) frames.push({ name: nameOf(element), box });
+          return frame;
+        },
+        extend: (element, right, bottom) => {
+          extended.push({ name: nameOf(element), right, bottom });
+          return extendPart(element, right, bottom);
+        },
         animate: (element, keyframes, options) => {
           const animation: Recorded = {
-            name: nameOf(element),
+            name: recordedName(element),
             keyframes,
             options,
             progress: 0,
@@ -120,11 +146,8 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
           animations.push(animation);
           return animation;
         },
-        startViewTransition: (update) => {
-          fades.push(update);
-          update();
-        },
-        timing: { glide: GLIDE, easing: EASE_OUT, fade: FADE }
+        startViewTransition: (update, finished) => void fades.push({ update, finished }),
+        timing: { glide: GLIDE, easing: EASE_OUT }
       }}
       {...pictures}
     />
@@ -136,7 +159,12 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
   };
   // Every motion running has gone `progress` of its way.
   const halfWay = (progress: number) => animations.filter(({ cancelled }) => !cancelled).forEach((animation) => (animation.progress = progress));
-  return { pictures, animations, fades, drawn, resize, halfWay, user: userEvent.setup() };
+  // The browser runs the update of the view transition `at`, then ends it.
+  const updateFade = (at: number) => act(() => fades[at]?.update());
+  const endFade = (at: number) => act(() => fades[at]?.finished());
+  // The animations of the parts themselves, apart from their frames'.
+  const glides = () => animations.filter(({ name }) => !name.startsWith("frame of "));
+  return { pictures, animations, frames, extended, fades, drawn, resize, halfWay, updateFade, endFade, glides, user: userEvent.setup() };
 }
 
 const turning = () => document.documentElement.hasAttribute("data-turning");
@@ -147,55 +175,119 @@ const gate = () => document.querySelector(".orientation-gate")!;
 describe("the home page glides to its other layout", () => {
   it.each([
     // An iPad turned, both ways, and a Mac window made upright on a
-    // screen that stays landscape.
+    // screen that stays landscape: its parts grow, shrink, and grow wider
+    // as they shrink shorter.
     [[1180, 820, "wide"], [820, 1180, "tall"], true],
     [[820, 1180, "tall"], [1180, 820, "wide"], false],
     [[1440, 900, "wide"], [900, 1000, "tall"], false]
-  ] as const)("from %j to %j, the theme menu open, every shared part together over 240 ms easing out, by translation and clip alone", async (from, to, screenUpright) => {
+  ] as const)("from %j to %j, the theme menu open, every shared part together over 240 ms easing out from where it was drawn, by translation and clip alone", async (from, to, screenUpright) => {
     const app = openTurning(from[0], from[1], from[2]);
     await openMenu(app.user, "Theme");
     const card = featuredCard();
     const rise = getComputedStyle(card).animationName;
     const pictures = [...document.querySelectorAll("img")];
-    const before = Object.fromEntries(OUTER.map((name) => [name, laidOut(name, from[2])]));
+    const before = Object.fromEntries(PARTS.map((name) => [name, laidOut(name, from[2])]));
 
     app.resize(to, screenUpright);
 
+    const after = Object.fromEntries(PARTS.map((name) => [name, laidOut(name, to[2])]));
+    const glideOf = (name: string) => app.glides().find((animation) => animation.name === name);
     expect(sizeShown()).toBe(to[2]);
-    expect(app.animations.map(({ name }) => name)).toEqual(PARTS);
-    expect(app.animations.map(({ options }) => options)).toEqual(PARTS.map(() => ({ duration: GLIDE, easing: EASE_OUT })));
-    // A part that grows shows it by its clip; none is scaled or resized.
-    expect(app.animations.flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
-    expect(app.animations.some(({ keyframes }) => "clipPath" in (keyframes[0] ?? {}))).toBe(to[2] === "tall");
-    // Each part on the page starts from where it stood before the change.
-    expect(OUTER.map((name) => app.animations.find((animation) => animation.name === name)?.keyframes[0]?.translate)).toEqual(
-      OUTER.map((name) => {
-        const after = laidOut(name, to[2]);
-        return `${before[name]!.left - after.left}px ${before[name]!.top - after.top}px`;
-      })
+    expect(app.glides().map(({ name }) => name)).toEqual(PARTS);
+    expect(app.animations.map(({ options }) => options)).toEqual(app.animations.map(() => ({ duration: GLIDE, easing: EASE_OUT })));
+    // Each part on the page starts from where it was drawn before the
+    // window changed, though the page was laid out for the new one first.
+    expect(OUTER.map((name) => glideOf(name)?.keyframes[0]?.translate)).toEqual(OUTER.map((name) => `${before[name]!.left - after[name]!.left}px ${before[name]!.top - after[name]!.top}px`));
+    // A part with a frame of its own glides with it drawn under it, sized
+    // from its old box to its new one; the part itself is only moved and
+    // clipped, never scaled or resized.
+    expect(app.glides().flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
+    expect(app.frames).toEqual(FRAMED.map((name) => ({ name, box: after[name] })));
+    expect(FRAMED.map((name) => app.animations.find((animation) => animation.name === `frame of ${name}`)?.keyframes.map(({ width, height }) => [width, height]))).toEqual(
+      FRAMED.map((name) => [
+        [`${before[name]!.width}px`, `${before[name]!.height}px`],
+        [`${after[name]!.width}px`, `${after[name]!.height}px`]
+      ])
     );
+    // The row's window goes from its old box to its new one, widened past
+    // its new box while it shrinks.
+    const right = Math.max(0, before.tiles!.width - after.tiles!.width);
+    const bottom = Math.max(0, before.tiles!.height - after.tiles!.height);
+    expect([glideOf("tiles")?.keyframes.map(({ clipPath }) => clipPath), app.extended]).toEqual([
+      [`inset(0px ${Math.max(0, after.tiles!.width - before.tiles!.width)}px ${Math.max(0, after.tiles!.height - before.tiles!.height)}px 0px)`, `inset(0px ${right}px ${bottom}px 0px)`],
+      right > 0 || bottom > 0 ? [{ name: "tiles", right, bottom }] : []
+    ]);
+    // The open menu hangs below the corner, past its box, and moves with
+    // it uncut.
     const menu = screen.getByRole("menu", { name: "Theme" });
+    expect([getComputedStyle(menu).position, getComputedStyle(menu).top]).toEqual(["absolute", "calc(100% + 8px)"]);
+    expect([glideOf("corner")?.keyframes.some((keyframe) => "clipPath" in keyframe), app.frames.some(({ name }) => name === "corner"), app.extended.some(({ name }) => name === "corner")]).toEqual([false, false, false]);
     expect([menu.hasAttribute("data-leaving"), menu.closest("[data-turn-part]"), app.fades]).toEqual([false, partNamed("corner"), []]);
     expect([featuredCard(), getComputedStyle(card).animationName, [...document.querySelectorAll("img")], app.pictures.loading()]).toEqual([card, rise, pictures, []]);
     expect([turning(), app.pictures.timers()]).toEqual([true, [GLIDE]]);
 
     act(() => app.pictures.fire(GLIDE));
 
-    expect([turning(), screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")]).toEqual([false, false]);
+    expect([turning(), screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving"), document.querySelectorAll("[data-turn-frame]").length, tilesRow().style.paddingRight]).toEqual([false, false, 0, ""]);
+  });
+
+  it("draws a part's frame as a copy of the part alone under it, hidden from taps and assistive technology, its own frame taken off, and the row's window widened by padding as it shrinks", () => {
+    const app = openTurning(820, 1180, "tall");
+    const card = featuredCard();
+    const row = tilesRow();
+
+    app.resize([1180, 820, "wide"]);
+
+    const frame = card.previousElementSibling as HTMLElement;
+    const { right, bottom } = app.extended[0]!;
+    expect([frame.className, frame.hasAttribute("data-turn-frame"), frame.hasAttribute("data-turn-part"), frame.childNodes.length, frame.getAttribute("aria-hidden"), frame.hasAttribute("inert")]).toEqual([card.className, true, false, 0, "true", true]);
+    expect([frame.style.position, frame.style.zIndex, frame.style.width, frame.style.height, frame.style.animation, frame.style.pointerEvents]).toEqual(["absolute", "-1", "300px", "200px", "none", "none"]);
+    expect([card.hasAttribute("data-turn-framed"), getComputedStyle(card).boxShadow, card.parentElement?.hasAttribute("data-turn-frames")]).toEqual([true, "none", true]);
+    expect([row.style.paddingRight, row.style.marginRight, row.style.paddingBottom, row.style.marginBottom]).toEqual([`${right}px`, `${-right}px`, `${bottom}px`, `${-bottom}px`]);
+
+    act(() => app.pictures.fire(GLIDE));
+
+    expect([document.querySelectorAll("[data-turn-frame]").length, card.hasAttribute("data-turn-framed"), card.parentElement?.hasAttribute("data-turn-frames"), row.getAttribute("style")]).toEqual([0, false, false, "--tile-column: 310px;"]);
+  });
+
+  it("starts each tile from where the child's swipe left it", () => {
+    const app = openTurning(1180, 820, "wide");
+    const row = layOutTilesRow();
+    swipeTiles(row, 334);
+    // Where SKELETONS stands within the row.
+    const within = (size: SizeClass) => {
+      const [row, tile] = [laidOut("tiles", size), laidOut("tile-skeletons", size)];
+      return [tile.left - row.left, tile.top - row.top];
+    };
+    const [left, top] = within("wide");
+
+    app.resize([820, 1180, "tall"]);
+
+    const [x, y] = within("tall");
+    expect(app.glides().find(({ name }) => name === "tile-skeletons")?.keyframes[0]?.translate).toBe(`${left! - x!}px ${top! - y!}px`);
   });
 });
 
 describe("under reduced motion", () => {
-  it("only fades the landscape layout into the upright one, over 160 ms, nothing moving or resizing", () => {
+  it("only fades the landscape layout into the upright one, nothing moving or resizing, and holds keys until the view transition has finished", async () => {
     const app = openTurning(1180, 820, "wide", { reduced: true });
+    const card = featuredCard();
+    act(() => card.focus());
 
     app.resize([820, 1180, "tall"]);
 
-    expect([app.fades.length, app.animations, sizeShown(), turning(), app.pictures.timers()]).toEqual([1, [], "tall", true, [FADE]]);
+    expect([app.fades.length, app.animations, sizeShown(), turning(), app.pictures.timers()]).toEqual([1, [], "wide", true, []]);
 
-    act(() => app.pictures.fire(FADE));
+    app.updateFade(0);
+    await app.user.keyboard("{Enter}");
+
+    expect([sizeShown(), turning(), screen.queryByLabelText("PROGRESS")]).toEqual(["tall", true, null]);
+
+    app.endFade(0);
 
     expect(turning()).toBe(false);
+    await app.user.keyboard("{Enter}");
+    expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
   });
 });
 
@@ -223,17 +315,36 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 718]);
   });
 
-  it("judges where the row stands from before the motion began", () => {
+  it("judges where the row stands from before the motion began, through every change that cuts it short", () => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
     swipeTiles(row, 334);
 
     app.resize([820, 1180, "tall"]);
     swipeTiles(row, 0);
-    act(() => app.pictures.fire(GLIDE));
+    app.halfWay(0.5);
     app.resize([1180, 820, "wide"]);
 
     expect(row.scrollLeft).toBe(334);
+  });
+
+  // Upright in a window 1400 wide, the four columns stand 310 wide and
+  // fit, the row not scrolling.
+  it.each([
+    ['"SKELETONS" at its left edge', 334],
+    ["at their end", 718]
+  ] as const)("swiped with %s, stands at its start once a window it fits has settled, and there in the next", (_, swiped) => {
+    const app = openTurning(1180, 820, "wide");
+    const row = layOutTilesRow();
+    swipeTiles(row, swiped);
+
+    app.resize([1400, 1500, "tall"]);
+
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -32]);
+    act(() => app.pictures.fire(GLIDE));
+    app.resize([1180, 820, "wide"]);
+
+    expect(row.scrollLeft).toBe(0);
   });
 });
 
@@ -245,6 +356,8 @@ describe("taps and keys during the motion", () => {
 
     app.resize([820, 1180, "tall"]);
     await app.user.keyboard("{Enter}");
+    // With no tap reaching the page, a press lands on the document.
+    await app.user.pointer({ keys: "[MouseLeft]", target: document.documentElement });
 
     // No tap reaches the page, nor swipe scrolls the row.
     expect([getComputedStyle(document.body).pointerEvents, getComputedStyle(tilesRow()).overflowX]).toEqual(["none", "hidden"]);
@@ -295,7 +408,9 @@ describe("a resize that keeps the layout", () => {
 describe("a window that changes again mid-motion", () => {
   it.each([
     [[1180, 820, "wide"], "landscape"],
-    [[900, 1180, "tall"], "upright"]
+    [[900, 1180, "tall"], "upright"],
+    // A Mac window made shorter alone, its width and size class kept.
+    [[820, 1000, "tall"], "upright"]
   ] as const)("to %j glides every part on from where it is to the %s layout, with no jump", (to, _layout) => {
     const app = openTurning(1180, 820, "wide");
     app.resize([820, 1180, "tall"]);
@@ -305,7 +420,7 @@ describe("a window that changes again mid-motion", () => {
 
     app.resize(to);
 
-    const fresh = app.animations.slice(first.length);
+    const fresh = app.glides().slice(first.filter(({ name }) => !name.startsWith("frame of ")).length);
     expect([first.every(({ cancelled }) => cancelled), fresh.map(({ name }) => name), sizeShown()]).toEqual([true, PARTS, to[2]]);
     expect(OUTER.map((name) => fresh.find((animation) => animation.name === name)?.keyframes[0]?.translate)).toEqual(
       OUTER.map((name) => {
@@ -320,13 +435,27 @@ describe("a window that changes again mid-motion", () => {
     expect(turning()).toBe(false);
   });
 
-  it("fades again under reduced motion", () => {
+  it.each([
+    [[1180, 820, "wide"], "to the other layout"],
+    [[712, 1180, "tall"], "keeping the layout"]
+  ] as const)("fades again under reduced motion, %s, holding until the last fade has finished", (to, _change) => {
     const app = openTurning(1180, 820, "wide", { reduced: true });
     app.resize([820, 1180, "tall"]);
 
-    app.resize([1180, 820, "wide"]);
+    app.resize(to);
 
-    expect([app.fades.length, app.animations, sizeShown(), app.pictures.timers()]).toEqual([2, [], "wide", [FADE]]);
+    expect([app.fades.length, app.animations]).toEqual([2, []]);
+
+    // The browser runs the first update, outdated, and skips its fade.
+    app.updateFade(0);
+    app.endFade(0);
+
+    expect([sizeShown(), turning()]).toEqual(["wide", true]);
+
+    app.updateFade(1);
+    app.endFade(1);
+
+    expect([sizeShown(), turning(), app.pictures.timers()]).toEqual([to[2], false, []]);
   });
 
   it("to a size with no layout for the page shows the picture, every part at rest", () => {
@@ -337,8 +466,19 @@ describe("a window that changes again mid-motion", () => {
 
     app.resize([393, 852, "tall-narrow"]);
 
-    expect([app.animations.every(({ cancelled }) => cancelled), app.animations.length, turning(), app.pictures.timers()]).toEqual([true, glides, false, []]);
+    expect([app.animations.every(({ cancelled }) => cancelled), app.animations.length, turning(), app.pictures.timers(), document.querySelectorAll("[data-turn-frame]").length]).toEqual([true, glides, false, [], 0]);
     expect(gate().hasAttribute("data-shown")).toBe(true);
+  });
+
+  it("to a size with no layout for the page under reduced motion shows the picture, though the fade's update comes after", () => {
+    const app = openTurning(1180, 820, "wide", { reduced: true });
+    app.resize([820, 1180, "tall"]);
+
+    app.resize([393, 852, "tall-narrow"]);
+    app.updateFade(0);
+    app.endFade(0);
+
+    expect([sizeShown(), gate().hasAttribute("data-shown"), turning()]).toEqual(["tall-narrow", true, false]);
   });
 });
 

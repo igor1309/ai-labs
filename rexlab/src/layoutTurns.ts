@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { TurnStyle } from "./turnMotion.ts";
 
 // The layout a screen stands in: the screen, whether its portrait layout
@@ -7,15 +7,18 @@ export type ScreenLayout = { screen: string; portrait: boolean; gated: boolean }
 
 // The page's changes of layout: `apply` makes one and moves the page as
 // `style` says, and a change is running until its motion settles.
+// `redrawn` tells that the page may be drawn otherwise than when it last
+// settled, and `halt` stops whatever runs or waits.
 export type LayoutTurns = {
   apply(change: () => void, style: TurnStyle): void;
+  redrawn(): void;
+  halt(): void;
   isRunning(): boolean;
   subscribe(onChange: () => void): () => void;
 };
 
-// The window's width, and its changes.
+// The window's changes, of any of its sizes.
 export type WindowChanges = {
-  width(): number;
   subscribe(onChange: () => void): () => void;
 };
 
@@ -32,15 +35,38 @@ export function turnStyle(from: ScreenLayout | undefined, to: ScreenLayout): Tur
 // focus, until the motion settles.
 const KEYS = ["keydown", "keypress", "keyup"];
 
+// The presses a motion holds back. A press during it lands on the document,
+// past a page that takes no tap, and would take the focus there; it still
+// reaches the double-tap filter, which counts it.
+const PRESSES = ["pointerdown", "mousedown"];
+
+// What may draw the page otherwise than it last settled, between changes
+// of the window: a scroll, and an animation or transition of its own
+// ending.
+const REDRAWS = ["scroll", "animationend", "transitionend"];
+
 // Sets the window's size class on the document, as `data-size`, through
-// `turns`, on every change of the window or of `layout`, each moving the
-// page as `turnStyle` says: a motion still running goes on to where the
-// latest window puts each part, and what a screen keeps is put back even
-// where nothing glides. While a motion runs, the document is marked
-// `data-turning`, where the stylesheet lets no tap or swipe reach the
-// page, and keys are held back.
+// `turns`, on every change of the window, of any of its sizes, or of
+// `layout`, each moving the page as `turnStyle` says: a motion still
+// running goes on to where the latest window puts each part, and what a
+// screen keeps is put back even where nothing glides. While a motion
+// runs, the document is marked `data-turning`, where the stylesheet lets
+// no tap or swipe reach the page, and keys and presses are held back.
 export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size: string, layout: ScreenLayout) {
-  const width = useSyncExternalStore(viewport.subscribe, viewport.width);
+  // Each change of the window counts, though it leaves the size class and
+  // the width as they were: the page's parts may be sized by its height.
+  const resizes = useMemo(() => {
+    let count = 0;
+    return {
+      subscribe: (onChange: () => void) =>
+        viewport.subscribe(() => {
+          count++;
+          onChange();
+        }),
+      count: () => count
+    };
+  }, [viewport]);
+  const resized = useSyncExternalStore(resizes.subscribe, resizes.count);
   const last = useRef<ScreenLayout>(undefined);
   const { screen, portrait, gated } = layout;
 
@@ -51,11 +77,20 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    const press = (event: Event) => {
+      if (turns.isRunning()) event.preventDefault();
+    };
+    const redrawn = () => turns.redrawn();
     KEYS.forEach((type) => window.addEventListener(type, hold, { capture: true }));
+    PRESSES.forEach((type) => window.addEventListener(type, press, { capture: true }));
+    REDRAWS.forEach((type) => window.addEventListener(type, redrawn, { capture: true }));
     const stop = turns.subscribe(() => root.toggleAttribute("data-turning", turns.isRunning()));
     return () => {
       stop();
+      turns.halt();
       KEYS.forEach((type) => window.removeEventListener(type, hold, { capture: true }));
+      PRESSES.forEach((type) => window.removeEventListener(type, press, { capture: true }));
+      REDRAWS.forEach((type) => window.removeEventListener(type, redrawn, { capture: true }));
       root.removeAttribute("data-turning");
     };
   }, [turns]);
@@ -67,7 +102,7 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
       root.dataset.size = size;
     }, turnStyle(last.current, next));
     last.current = next;
-  }, [turns, size, screen, portrait, gated, width]);
+  }, [turns, size, screen, portrait, gated, resized]);
 
   useLayoutEffect(
     () => () => {

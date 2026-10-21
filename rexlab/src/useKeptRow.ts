@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef } from "react";
 import { anchoredScroll, rowAnchor, type RowAnchor, type RowColumns } from "./rowAnchor.ts";
 
-// What a screen keeps through a change of its layout: each keeper is
-// called before every change and returns how to restore after it, until
-// its stop is called. While a motion runs, nothing the child does counts.
+// What a screen keeps through a change of its layout: each keeper holds
+// what it keeps before every change, puts it back after it, and takes it
+// afresh once the page has settled at rest, until its stop is called.
+// While a motion runs, nothing the child does counts.
 export type LayoutKeeping = {
-  keep(keeper: () => () => void): () => void;
+  keep(keeper: { hold(): () => void; rest(): void }): () => void;
   isRunning(): boolean;
 };
 
@@ -13,7 +14,9 @@ export type LayoutKeeping = {
 // report it, through every change of the page's layout or of its
 // columns' width. Where it stands is judged from before a motion began:
 // neither a scroll during one nor one that only puts the row back moves
-// it.
+// it, and changes that cut one short all put it back from there. Once
+// the page settles, it stands where the row was put back, which may be
+// at its start where the row no longer scrolls.
 // `columns` are the row's columns as the page now lays them out. Gives
 // the row's ref and its scroll handler.
 export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
@@ -30,16 +33,24 @@ export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
     laidOut.current = columns;
   });
 
+  const standing = (element: HTMLElement) => rowAnchor({ scroll: element.scrollLeft, width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
+
   useLayoutEffect(
     () =>
-      keeping.keep(() => {
-        const kept = anchor.current;
-        return () => {
+      keeping.keep({
+        hold: () => {
+          const kept = anchor.current;
+          return () => {
+            const element = row.current;
+            if (!element) return;
+            element.scrollLeft = anchoredScroll(kept, { width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
+            restored.current = element.scrollLeft;
+          };
+        },
+        rest: () => {
           const element = row.current;
-          if (!element) return;
-          element.scrollLeft = anchoredScroll(kept, { width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
-          restored.current = element.scrollLeft;
-        };
+          if (element) anchor.current = standing(element);
+        }
       }),
     [keeping]
   );
@@ -48,7 +59,7 @@ export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
     const element = row.current;
     if (!element || keeping.isRunning() || element.scrollLeft === restored.current) return;
     restored.current = undefined;
-    anchor.current = rowAnchor({ scroll: element.scrollLeft, width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
+    anchor.current = standing(element);
   };
 
   return { ref: row, onScroll };

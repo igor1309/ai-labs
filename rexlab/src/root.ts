@@ -18,6 +18,7 @@ import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
+import { TURN_PART, type Box, type TurnFrame } from "./turnMotion.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
 // hash. Never inlined, so a picture is cached as a file of its own.
@@ -53,9 +54,92 @@ export type Browser = {
 };
 
 // A screen glides to its other layout over app.css's --motion-standard,
-// easing out, and under reduced motion fades over the 160 ms reduced
-// motion sets --motion-standard to.
-export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fade: 160 };
+// easing out. Under reduced motion it fades by the root view transition,
+// timed by the stylesheet.
+export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+
+// A colour that paints nothing, as a browser gives it computed.
+const CLEAR = /^(transparent|rgba\(0, 0, 0, 0\))$/;
+
+// Whether `style` paints a frame: a background, a border, an outline or a
+// shadow.
+function paintsFrame(style: CSSStyleDeclaration): boolean {
+  const drawn = (width: string, line: string) => (Number.parseFloat(style.getPropertyValue(width)) || 0) > 0 && style.getPropertyValue(line) !== "none";
+  return (
+    style.backgroundImage !== "none" ||
+    !CLEAR.test(style.backgroundColor) ||
+    style.boxShadow !== "none" ||
+    drawn("outline-width", "outline-style") ||
+    ["top", "right", "bottom", "left"].some((side) => drawn(`border-${side}-width`, `border-${side}-style`))
+  );
+}
+
+// Draws a part's frame at `box`, under it: a copy of the part alone, none
+// of its content, its classes and attributes giving it the part's
+// background, border, radius and shadow, which the stylesheet takes off
+// the part meanwhile. The part's parent holds the copy where it stands,
+// as its scroll moves it, and under each part it holds.
+export function turnFrame(element: Element, box: Box): TurnFrame | undefined {
+  const view = element.ownerDocument.defaultView;
+  const parent = element.parentElement;
+  if (!view || !parent || !paintsFrame(view.getComputedStyle(element))) return undefined;
+  const copy = element.cloneNode(false) as HTMLElement;
+  copy.removeAttribute(TURN_PART);
+  copy.removeAttribute("id");
+  copy.setAttribute("data-turn-frame", "");
+  copy.setAttribute("aria-hidden", "true");
+  copy.setAttribute("inert", "");
+  Object.assign(copy.style, {
+    position: "absolute",
+    left: "0px",
+    top: "0px",
+    zIndex: "-1",
+    margin: "0px",
+    boxSizing: "border-box",
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    minWidth: "0px",
+    minHeight: "0px",
+    maxWidth: "none",
+    maxHeight: "none",
+    animation: "none",
+    transition: "none",
+    pointerEvents: "none"
+  });
+  parent.setAttribute("data-turn-frames", "");
+  element.before(copy);
+  // The copy stands at its parent's origin, wherever the part is.
+  const origin = copy.getBoundingClientRect();
+  copy.style.left = `${box.left - origin.left}px`;
+  copy.style.top = `${box.top - origin.top}px`;
+  element.setAttribute("data-turn-framed", "");
+  return {
+    element: copy,
+    remove: () => {
+      copy.remove();
+      element.removeAttribute("data-turn-framed");
+      if (![...parent.children].some((child) => child.hasAttribute("data-turn-frame"))) parent.removeAttribute("data-turn-frames");
+    }
+  };
+}
+
+// Widens what a part shows of what it holds, `right` and `bottom` pixels
+// past its box: as much padding on those sides, and as much margin off,
+// so neither its content nor anything around it moves.
+export function extendPart(element: Element, right: number, bottom: number): () => void {
+  const view = element.ownerDocument.defaultView;
+  if (!view || !(element instanceof HTMLElement)) return () => {};
+  const style = view.getComputedStyle(element);
+  const px = (property: string) => Number.parseFloat(style.getPropertyValue(property)) || 0;
+  const sides = { paddingRight: element.style.paddingRight, paddingBottom: element.style.paddingBottom, marginRight: element.style.marginRight, marginBottom: element.style.marginBottom };
+  Object.assign(element.style, {
+    paddingRight: `${px("padding-right") + right}px`,
+    paddingBottom: `${px("padding-bottom") + bottom}px`,
+    marginRight: `${px("margin-right") - right}px`,
+    marginBottom: `${px("margin-bottom") - bottom}px`
+  });
+  return () => Object.assign(element.style, sides);
+}
 
 // Each pointer event the double-tap filter reads, and the step of a touch
 // it is.
@@ -116,15 +200,21 @@ export function appProps(browser: Browser): AppProps {
     random: Math.random,
     viewport,
     portraitLayouts: { home: ["tall"] },
-    // A box as drawn includes the animation running on it. A browser with
-    // no view transitions changes the layout at once.
+    // A browser with no view transitions changes the layout at once, and
+    // its fade has then ended.
     layoutMotion: {
       parts: browser.document,
       measure: (element) => element.getBoundingClientRect(),
+      frame: turnFrame,
+      extend: extendPart,
       animate: (element, keyframes, options) => element.animate(keyframes, options),
-      startViewTransition: (update) => {
-        if (browser.document.startViewTransition) browser.document.startViewTransition(update);
-        else update();
+      startViewTransition: (update, finished) => {
+        if (!browser.document.startViewTransition) {
+          update();
+          finished();
+          return;
+        }
+        browser.document.startViewTransition(update).finished.then(finished, finished);
       },
       timing: TURN_TIMING
     },

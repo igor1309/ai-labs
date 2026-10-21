@@ -423,15 +423,20 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 
 // The page's motion between layouts for tests that are not about it:
 // every part is measured where it stands in any layout, so nothing
-// glides, and a fade changes the layout at once.
+// glides, and a fade changes the layout and ends at once.
 export function pageAtRest(): Pick<AppProps, "layoutMotion"> {
   return {
     layoutMotion: {
       parts: document,
       measure: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+      frame: () => undefined,
+      extend: () => () => {},
       animate: () => ({ cancel: () => {}, effect: null }),
-      startViewTransition: (update) => update(),
-      timing: { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fade: 160 }
+      startViewTransition: (update, finished) => {
+        update();
+        finished();
+      },
+      timing: { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
     }
   };
 }
@@ -725,13 +730,14 @@ export function tilesRow(): HTMLElement {
 // window's right edge, and in landscape it takes four sevenths of what
 // the page's 56-pixel sides and the large card's 28-pixel gap leave. Its
 // columns, of two each, are as wide and as far apart as the stylesheet
-// sets them in the test's window.
+// sets them in the test's window. A tile's frame, drawn under it as it
+// glides, takes no place in them.
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
   const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
   const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
   const scrollWidth = () => {
-    const columns = Math.ceil(row.children.length / 2);
+    const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
     return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
   };
   Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
@@ -753,9 +759,10 @@ export const homeTile = (name: string) => within(tilesRow()).getByRole("button",
 // when it features the game.
 export const gameDoor = (name: string) => within(document.body).getByRole("button", { name });
 
-// The home page's large card, featuring today's game.
+// The home page's large card, featuring today's game, not the frame drawn
+// under it as it glides.
 export function featuredCard(): HTMLElement {
-  const card = document.querySelector<HTMLElement>(".featured-card");
+  const card = document.querySelector<HTMLElement>(".featured-card:not([data-turn-frame])");
   if (!card) throw new Error("No featured card on the page");
   return card;
 }
