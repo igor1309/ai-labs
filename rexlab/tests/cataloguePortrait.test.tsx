@@ -546,4 +546,36 @@ describe("the list upright, used", () => {
     expect(listBottom).toBeLessThanOrEqual(1133 - IPAD_MINI_UPRIGHT.bottom);
     expect([inset.layout.columns, inset.layout.card]).toEqual([without.layout.columns, without.layout.card]);
   });
+
+  it("scrolled to its end at 744 by 1133 with the home indicator, shows its last card whole, above the indicator", async () => {
+    await openList(744, 1133);
+    const sheet = Object.assign(document.createElement("style"), { textContent: appStylesheet(IPAD_MINI_UPRIGHT) });
+    document.head.append(sheet);
+    onTestFinished(() => sheet.remove());
+    const list = grid();
+    const cards = [...list.children].filter((child) => child.classList.contains("catalogue-card"));
+    const { columns, card } = uprightList([744, 1133]);
+    const [main, bar, listStyle] = [part(".catalogue"), part(".catalogue-bar"), list].map((element) => getComputedStyle(element));
+    if (!main || !bar || !listStyle) throw new Error("No style for the screen");
+    // The screen as its flex column lays it out: the bar at the top, at
+    // its height, and the list growing into what is left over the
+    // screen's bottom padding, less its own margins.
+    const barHeight = 56 + styleAt(part(".catalogue-bar"), [744, 1133]).rowGap() + 56;
+    const listTop = px(main.paddingTop) + barHeight + styleAt(part(".catalogue"), [744, 1133]).rowGap() + px(listStyle.marginTop);
+    const listBottom = 1133 - px(main.paddingBottom) - px(listStyle.marginBottom);
+    const rowHeight = (card * 200) / 317 + 14 + 1.25 * Math.min(20, 0.07 * card) + 10 + 32 + 18;
+    const rows = Math.ceil(cards.length / columns);
+    const gap = px(listStyle.rowGap);
+    const content = px(listStyle.paddingTop) + rows * rowHeight + (rows - 1) * gap + px(listStyle.paddingBottom);
+    const clientHeight = listBottom - listTop;
+    Object.defineProperties(list, { clientHeight: { configurable: true, value: clientHeight }, scrollHeight: { configurable: true, value: content } });
+    list.scrollTop = list.scrollHeight - list.clientHeight;
+    const lastTop = listTop + px(listStyle.paddingTop) + (rows - 1) * (rowHeight + gap) - list.scrollTop;
+
+    expect([listStyle.flexGrow, listStyle.flexShrink, listStyle.flexBasis, listStyle.height, listStyle.maxHeight, listStyle.overflowY]).toEqual(["1", "1", "0px", "auto", "none", "auto"]);
+    expect(content).toBeGreaterThan(clientHeight);
+    expect(lastTop).toBeGreaterThanOrEqual(listTop);
+    expect(lastTop + rowHeight).toBeLessThanOrEqual(listBottom);
+    expect(lastTop + rowHeight).toBeLessThanOrEqual(1133 - IPAD_MINI_UPRIGHT.bottom - 48);
+  });
 });

@@ -248,9 +248,36 @@ describe("catalogue's shared turn", () => {
     expect(app.grid().querySelectorAll("[data-turn-part^='catalogue-card-']")).toHaveLength(26);
     const chips = document.querySelector<HTMLElement>(".food-chips");
     expect(chips?.dataset.arrangement).toBeUndefined();
+    const meat = SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ id }) => id);
+    const before = new Map(meat.map((id) => [id, app.measure(card(id))]));
+    const listBefore = app.measure(app.grid());
     app.resize([820, 1180, "tall"]);
 
     expect(document.documentElement.dataset.size).toBe("tall");
+    // Each card starts from its landscape place in the list and its size,
+    // and slides to its upright place there, the list gliding them all;
+    // its frame's clip goes from the one width to the other.
+    const listNow = app.measure(app.grid());
+    const glides = meat.map((id) => {
+      const { offset, end, widths } = glideOf(app.animations, `catalogue-card-${id}`);
+      const was = before.get(id)!;
+      const now = app.measure(card(id));
+      const round = (value: number) => Math.round(value * 100) / 100;
+      return {
+        id,
+        actual: { from: [offset.x, offset.y].map(round), to: end, widths: widths.map(round) },
+        expected: {
+          from: [was.left - listBefore.left - (now.left - listNow.left), was.top - listBefore.top - (now.top - listNow.top)].map(round),
+          to: "0px 0px",
+          widths: [was.width, now.width].map(round)
+        }
+      };
+    });
+    expect(glides.map(({ id, actual }) => ({ id, ...actual }))).toEqual(glides.map(({ id, expected }) => ({ id, ...expected })));
+    // Only a card at the list's top left keeps its place in the list.
+    const still = glides.filter(({ expected }) => expected.from.every((value) => value === 0)).map(({ id }) => id);
+    expect(still.every((id) => app.measure(card(id)).left === 56 && app.measure(card(id)).top === listNow.top)).toBe(true);
+    expect(still.length).toBeLessThanOrEqual(1);
     expect(chips?.dataset.arrangement).toBe("spaced");
     expect([...new Set(app.animations.filter(own).map(({ name }) => name))]).toEqual([
       "catalogue-home",
