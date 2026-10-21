@@ -173,7 +173,7 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     button.append(label);
     tray.append(button);
   }
-  stage.append(element("div", "hatch-glow"), element("div", "hatch-ground"), name, offered, say);
+  stage.append(element("div", "hatch-glow"), element("div", "hatch-sun"), element("div", "hatch-ground"), name, offered, say);
   frame.append(home, row, stage, tray);
   root.replaceChildren(frame);
 
@@ -208,12 +208,14 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
         for (let spot = 0; spot < 4; spot += 1) baby.append(element("span", `hatch-mud hatch-mud-${spot}`));
         baby.append(element("span", "hatch-zzz"));
         creature.append(baby);
-        const bubble = element("div", "hatch-bubble");
-        bubble.append(picture("hatch-bubble-bowl", bowl));
-        const drop = element("span", "hatch-bubble-drop");
-        drop.innerHTML = DROP_ICON;
-        bubble.append(drop, picture("hatch-bubble-bath", bath), picture("hatch-bubble-nest", nest));
-        creature.append(bubble);
+        // Hungry: an empty bowl waits in front of it. Thirsty: the sun
+        // beats down and it sweats.
+        creature.append(picture("hatch-empty-bowl", bowl));
+        for (let drop = 0; drop < 3; drop += 1) {
+          const sweat = element("span", `hatch-sweat hatch-sweat-${drop}`);
+          sweat.innerHTML = DROP_ICON;
+          creature.append(sweat);
+        }
       }
     }
     if (nursery.phase === "egg") {
