@@ -134,9 +134,8 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   });
 
-  it("keeps an unsaved board's best, star, climb and dinosaurs in memory, restoring only saved progress on reload", async () => {
-    const saved = entry({ stars: 2, best: { [played]: ids.length + 2 } });
-    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(saved) }, { save: false });
+  it("keeps an unsaved board's best, star and dinosaurs in memory", async () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(entry({ stars: 2, best: { [played]: ids.length + 2 } })) }, { save: false });
     const app = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
     await playPairs(app.user);
     await playDealt(app.user, app.clock, names, 1);
@@ -149,12 +148,30 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     await app.user.click(button("HOME"));
     await app.user.click(button("FIND THE PAIR"));
     expect(screen.getByLabelText("STARS").textContent).toBe("3");
-    await app.user.click(button("PLAY"));
+  });
+
+  it("keeps an unsaved board's best and climb in memory for the next board", async () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(entry({ stars: 2, best: { [played]: ids.length + 2 } })) }, { save: false });
+    const app = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
+    await playPairs(app.user);
+    await playDealt(app.user, app.clock, names, 1);
+    endWave(app.clock);
+    await app.user.click(button("PLAY AGAIN"));
     const next = dealt(level === "hatchling" ? 1 : { large: level }, { previous: board });
     await playDealt(app.user, app.clock, namesOf(next), 2);
     endWave(app.clock);
     expect(bestShown()).toBe(`BEST${ids.length + 1}`);
     expect(celebrations()).toEqual(level === "hatchling" ? ["NEW LEVEL 2"] : []);
+  });
+
+  it("restores only saved progress on reload after an unsaved board", async () => {
+    const saved = entry({ stars: 2, best: { [played]: ids.length + 2 } });
+    const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(saved) }, { save: false });
+    const app = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
+    await playPairs(app.user);
+    await playDealt(app.user, app.clock, names, 1);
+    endWave(app.clock);
+    expect(celebrations()).toEqual(["NEW BEST SCORE"]);
     app.unmount();
 
     const reopened = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
