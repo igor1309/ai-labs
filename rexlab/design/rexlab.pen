@@ -98669,7 +98669,7 @@
                   "type": "frame",
                   "id": "VfUVT",
                   "name": "Chip ALL",
-                  "width": "fill_container",
+                  "width": 56,
                   "height": 56,
                   "fill": "$fm-surface",
                   "cornerRadius": 28,
@@ -99021,9 +99021,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -99040,7 +99040,7 @@
                           "type": "frame",
                           "id": "Ta8sg",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -99052,14 +99052,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "k9I87g",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -99088,14 +99091,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "aTske",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -99241,9 +99247,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -99260,7 +99266,7 @@
                           "type": "frame",
                           "id": "omEGs",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -99272,14 +99278,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "bdzsO",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -99308,14 +99317,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "B61aC",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -99470,9 +99482,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -99489,7 +99501,7 @@
                           "type": "frame",
                           "id": "GWD9A",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -99501,14 +99513,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "cze2R",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -99537,14 +99552,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "R9gLgL",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -99652,9 +99670,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -99671,7 +99689,7 @@
                           "type": "frame",
                           "id": "YsBZb",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -99683,14 +99701,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "aKa8G",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -99719,14 +99740,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "fP8XW",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -99843,9 +99867,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -99862,7 +99886,7 @@
                           "type": "frame",
                           "id": "UXO4l",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -99874,14 +99898,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "AUi9T",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -99910,14 +99937,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "vLz4e",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100025,9 +100055,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100044,7 +100074,7 @@
                           "type": "frame",
                           "id": "JD8FG",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100056,14 +100086,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "emhrC",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -100092,14 +100125,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "FbTGV",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100216,9 +100252,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100235,7 +100271,7 @@
                           "type": "frame",
                           "id": "z1ivVG",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100247,14 +100283,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "LiUB9",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -100283,14 +100322,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "B8eSmD",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100398,9 +100440,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100417,7 +100459,7 @@
                           "type": "frame",
                           "id": "XU8Fi",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100429,14 +100471,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "qwGeK",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -100465,14 +100510,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "tfJKV",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100589,9 +100637,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100608,7 +100656,7 @@
                           "type": "frame",
                           "id": "VwaIb",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100620,14 +100668,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "Aa40J",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -100656,14 +100707,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "H8SVXb",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100771,9 +100825,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100790,7 +100844,7 @@
                           "type": "frame",
                           "id": "f4pWuJ",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100802,14 +100856,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "U2XrO",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -100838,14 +100895,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "DxKqa",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -100962,9 +101022,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -100981,7 +101041,7 @@
                           "type": "frame",
                           "id": "IBRac",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -100993,14 +101053,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "CAjYY",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -101029,14 +101092,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "a9kw7",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -101144,9 +101210,9 @@
                       "gap": 10,
                       "padding": [
                         14,
-                        16,
+                        12,
                         18,
-                        16
+                        12
                       ],
                       "children": [
                         {
@@ -101163,7 +101229,7 @@
                           "type": "frame",
                           "id": "u1KNMU",
                           "name": "Chips",
-                          "gap": 6,
+                          "gap": 4,
                           "children": [
                             {
                               "type": "frame",
@@ -101175,14 +101241,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "kd71L",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "ruler",
@@ -101211,14 +101280,17 @@
                               "gap": 6,
                               "padding": [
                                 0,
-                                8
+                                6
                               ],
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "icon",
                                   "id": "UrHaq",
+                                  "x": 8,
+                                  "y": 8,
                                   "name": "Chip Icon",
+                                  "enabled": false,
                                   "width": 16,
                                   "height": 16,
                                   "icon": "weight",
@@ -101278,1171 +101350,6 @@
                           ]
                         }
                       ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "hQUze",
-      "x": 9544,
-      "y": 31240,
-      "name": "Skeletons · Choose — Light · Mystery tile after a first star",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "alignItems": "center",
-      "children": [
-        {
-          "type": "frame",
-          "id": "XZ5vY",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "o2N8zC",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "P5qF1E",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "CwXw2",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "tcccG",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "DUvEG",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#2F4A3F",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "qI73x",
-                      "name": "Title Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "bone",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "k81Tp",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "BUILD A SKELETON",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "b9idJK",
-              "name": "Museum Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                22,
-                0,
-                18
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "Js61G",
-                  "name": "Museum Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "landmark",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "vP4sE",
-                  "name": "Museum Text",
-                  "fill": "$fm-ink",
-                  "content": "MUSEUM",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "700",
-                  "letterSpacing": 1
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "kNSmw",
-              "name": "Best",
-              "height": 44,
-              "fill": "$fm-surface-2",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "tsHdT",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "trophy",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "DvFFa",
-                  "name": "Best Text",
-                  "fill": "$fm-ink",
-                  "content": "1/5",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "WEpAl",
-          "name": "Level Switch",
-          "width": 648,
-          "height": 72,
-          "fill": "$fm-surface-2",
-          "cornerRadius": 36,
-          "stroke": "$fm-line",
-          "strokeWidth": 1,
-          "gap": 4,
-          "padding": 6,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "H6cQGR",
-              "name": "HATCHLING Segment",
-              "width": "fill_container",
-              "height": "fill_container",
-              "fill": "#00000000",
-              "cornerRadius": 30,
-              "gap": 8,
-              "padding": [
-                0,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "bNIi4",
-                  "name": "HATCHLING Picture",
-                  "fill": "$fm-ink",
-                  "content": "🥚",
-                  "fontFamily": "Inter",
-                  "fontSize": 22,
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "oqgOk",
-                  "name": "HATCHLING Name",
-                  "fill": "$fm-ink",
-                  "content": "HATCHLING",
-                  "fontFamily": "Lexend",
-                  "fontSize": 16,
-                  "fontWeight": "600",
-                  "letterSpacing": 0.5
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "pFAu1",
-              "name": "EXPLORER Segment",
-              "width": "fill_container",
-              "height": "fill_container",
-              "fill": "$fm-ink",
-              "cornerRadius": 30,
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "$fm-shadow",
-                "offset": {
-                  "x": 0,
-                  "y": 4
-                },
-                "blur": 10
-              },
-              "gap": 8,
-              "padding": [
-                0,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "CXEM5",
-                  "name": "EXPLORER Picture",
-                  "fill": "$fm-surface",
-                  "content": "🦖",
-                  "fontFamily": "Inter",
-                  "fontSize": 22,
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "l6FldF",
-                  "name": "EXPLORER Name",
-                  "fill": "$fm-surface",
-                  "content": "EXPLORER",
-                  "fontFamily": "Lexend",
-                  "fontSize": 16,
-                  "fontWeight": "700",
-                  "letterSpacing": 0.5
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "zdWta",
-              "name": "PALEONTOLOGIST Segment",
-              "width": "fill_container",
-              "height": "fill_container",
-              "fill": "#00000000",
-              "cornerRadius": 30,
-              "gap": 8,
-              "padding": [
-                0,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "swoNx",
-                  "name": "PALEONTOLOGIST Picture",
-                  "fill": "$fm-ink",
-                  "content": "🦴",
-                  "fontFamily": "Inter",
-                  "fontSize": 22,
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "hhfY6",
-                  "name": "PALEONTOLOGIST Name",
-                  "fill": "$fm-ink",
-                  "content": "PALEONTOLOGIST",
-                  "fontFamily": "Lexend",
-                  "fontSize": 16,
-                  "fontWeight": "600",
-                  "letterSpacing": 0.5
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "oPBGg",
-          "name": "Choices",
-          "width": "fill_container",
-          "height": 628,
-          "layout": "vertical",
-          "gap": 20,
-          "children": [
-            {
-              "type": "frame",
-              "id": "szu97",
-              "name": "Row Top",
-              "width": "fill_container",
-              "height": "fill_container",
-              "gap": 28,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "Ag7Fk",
-                  "name": "Choice TYRANNOSAURUS",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-amber",
-                  "strokeWidth": 3,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "layout": "vertical",
-                  "gap": 8,
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "E9XLk",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/tyrannosaurus.webp",
-                        "mode": "contain"
-                      },
-                      "justifyContent": "end",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "xudTm",
-                          "name": "Built Star",
-                          "width": 52,
-                          "height": 52,
-                          "fill": "$fm-amber",
-                          "cornerRadius": 26,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "e2x60",
-                              "name": "Built Star Icon",
-                              "width": 28,
-                              "height": 28,
-                              "icon": "star",
-                              "library": "lucide",
-                              "fill": "#FFFFFF"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "NJSMx",
-                      "name": "Choice Row",
-                      "width": "fill_container",
-                      "gap": 12,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Kw2DE",
-                          "name": "Choice Name",
-                          "fill": "$fm-ink",
-                          "content": "TYRANNOSAURUS",
-                          "fontFamily": "Lexend",
-                          "fontSize": 30,
-                          "fontWeight": "700",
-                          "letterSpacing": 1
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Z7C6E",
-                  "name": "Choice TRICERATOPS",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "layout": "vertical",
-                  "gap": 8,
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "f5BMP",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/triceratops.webp",
-                        "mode": "contain"
-                      },
-                      "justifyContent": "end"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "SDoU4",
-                      "name": "Choice Row",
-                      "width": "fill_container",
-                      "gap": 12,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "TrpUg",
-                          "name": "Choice Name",
-                          "fill": "$fm-ink",
-                          "content": "TRICERATOPS",
-                          "fontFamily": "Lexend",
-                          "fontSize": 30,
-                          "fontWeight": "700",
-                          "letterSpacing": 1
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "YWp7o",
-                  "name": "Choice STEGOSAURUS",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "layout": "vertical",
-                  "gap": 8,
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "FnjvK",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/stegosaurus.webp",
-                        "mode": "contain"
-                      },
-                      "justifyContent": "end"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "LAp7M",
-                      "name": "Choice Row",
-                      "width": "fill_container",
-                      "gap": 12,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "luIMB",
-                          "name": "Choice Name",
-                          "fill": "$fm-ink",
-                          "content": "STEGOSAURUS",
-                          "fontFamily": "Lexend",
-                          "fontSize": 30,
-                          "fontWeight": "700",
-                          "letterSpacing": 1
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "DOxLg",
-              "name": "Row Bottom",
-              "width": "fill_container",
-              "height": "fill_container",
-              "gap": 28,
-              "justifyContent": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "NaRjz",
-                  "name": "Choice BRACHIOSAURUS",
-                  "width": 424,
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "layout": "vertical",
-                  "gap": 8,
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "afk24",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/brachiosaurus.webp",
-                        "mode": "contain"
-                      },
-                      "justifyContent": "end"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "OcG0u",
-                      "name": "Choice Row",
-                      "width": "fill_container",
-                      "gap": 12,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "oDp1c",
-                          "name": "Choice Name",
-                          "fill": "$fm-ink",
-                          "content": "BRACHIOSAURUS",
-                          "fontFamily": "Lexend",
-                          "fontSize": 30,
-                          "fontWeight": "700",
-                          "letterSpacing": 1
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "BMv0I",
-                  "name": "Choice SPINOSAURUS",
-                  "width": 424,
-                  "height": "fill_container",
-                  "fill": "$fm-surface",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-line",
-                  "strokeWidth": 1,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$fm-shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 8
-                    },
-                    "blur": 24
-                  },
-                  "layout": "vertical",
-                  "gap": 8,
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "rfZ1Q",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/spinosaurus.webp",
-                        "mode": "contain"
-                      },
-                      "justifyContent": "end"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "lZ5AP",
-                      "name": "Choice Row",
-                      "width": "fill_container",
-                      "gap": 12,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Vm2mD",
-                          "name": "Choice Name",
-                          "fill": "$fm-ink",
-                          "content": "SPINOSAURUS",
-                          "fontFamily": "Lexend",
-                          "fontSize": 30,
-                          "fontWeight": "700",
-                          "letterSpacing": 1
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "qB9wj",
-                  "name": "Choice MYSTERY",
-                  "width": 424,
-                  "height": "fill_container",
-                  "fill": "$fm-surface-2",
-                  "cornerRadius": 28,
-                  "stroke": "$fm-terra",
-                  "strokeWidth": 3,
-                  "layout": "vertical",
-                  "padding": [
-                    16,
-                    24,
-                    18,
-                    24
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "T7jEJ",
-                      "name": "Choice Art",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Elqez",
-                          "name": "Mystery Mark",
-                          "fill": "$fm-terra",
-                          "content": "?",
-                          "fontFamily": "Lexend",
-                          "fontSize": 160,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "Q4Jhk",
-      "x": 11104,
-      "y": 31240,
-      "name": "Skeletons · Guess — Light · Mystery Triceratops · Wrong pick wobbles, clue shown",
-      "theme": {
-        "mode": "light"
-      },
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": "$fm-bg",
-      "layout": "vertical",
-      "gap": 28,
-      "padding": [
-        40,
-        56,
-        48,
-        56
-      ],
-      "children": [
-        {
-          "type": "frame",
-          "id": "F44Oe",
-          "name": "Top Bar",
-          "width": "fill_container",
-          "gap": 24,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "m9FcM",
-              "name": "Home Button",
-              "height": 56,
-              "fill": "$fm-surface",
-              "cornerRadius": 16,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "gap": 10,
-              "padding": [
-                0,
-                20,
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "p4rMB",
-                  "name": "Home Icon",
-                  "width": 24,
-                  "height": 24,
-                  "icon": "house",
-                  "library": "lucide",
-                  "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "tSj13",
-                  "name": "Home Text",
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "XG1VX",
-              "name": "Title",
-              "width": "fill_container",
-              "gap": 14,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "j6oWW",
-                  "name": "Title Mark",
-                  "width": 52,
-                  "height": 52,
-                  "fill": "#2F4A3F",
-                  "cornerRadius": 14,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "V8Ub7Q",
-                      "name": "Title Icon",
-                      "width": 28,
-                      "height": 28,
-                      "icon": "bone",
-                      "library": "lucide",
-                      "fill": "#FFFFFF"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "tstHF",
-                  "name": "Title Text",
-                  "fill": "$fm-ink",
-                  "content": "WHOSE SKELETON IS IT?",
-                  "fontFamily": "Lexend",
-                  "fontSize": 40,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "S1vcs4",
-              "x": 1233,
-              "y": 6,
-              "name": "Best",
-              "enabled": false,
-              "height": 44,
-              "fill": "$fm-amber",
-              "cornerRadius": 22,
-              "gap": 8,
-              "padding": [
-                0,
-                16
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "PdqG0",
-                  "name": "Best Icon",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "star",
-                  "library": "lucide",
-                  "fill": "#FFFFFF"
-                },
-                {
-                  "type": "text",
-                  "id": "ZHAFT",
-                  "name": "Best Text",
-                  "fill": "#FFFFFF",
-                  "content": "2/3",
-                  "fontFamily": "Lexend",
-                  "fontSize": 20,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "pxBaw",
-          "name": "Body",
-          "width": "fill_container",
-          "height": "fill_container",
-          "gap": 28,
-          "children": [
-            {
-              "type": "frame",
-              "id": "gcajw",
-              "name": "Board",
-              "clip": true,
-              "width": 920,
-              "height": 690,
-              "fill": "$fm-surface",
-              "cornerRadius": 28,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "layout": "none",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "hGErI",
-                  "x": 0,
-                  "y": 0,
-                  "name": "Skeleton Complete",
-                  "width": 920,
-                  "height": 690,
-                  "fill": {
-                    "type": "image",
-                    "enabled": true,
-                    "url": "images/skeleton-triceratops.webp",
-                    "mode": "stretch"
-                  }
-                },
-                {
-                  "type": "frame",
-                  "id": "KM2vu",
-                  "x": 0,
-                  "y": 0,
-                  "name": "Body Fades In",
-                  "enabled": false,
-                  "width": 920,
-                  "height": 690,
-                  "fill": {
-                    "type": "image",
-                    "enabled": true,
-                    "url": "images/tyrannosaurus.webp",
-                    "mode": "contain"
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "MUg6M",
-              "name": "Guess",
-              "width": "fill_container",
-              "height": "fill_container",
-              "fill": "$fm-surface",
-              "cornerRadius": 28,
-              "stroke": "$fm-line",
-              "strokeWidth": 1,
-              "layout": "vertical",
-              "gap": 14,
-              "padding": 28,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "WnOub",
-                  "name": "Guess BARYONYX · wrong, rests aside",
-                  "opacity": 0.45,
-                  "rotation": 3.0000000000000004,
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface-2",
-                  "cornerRadius": 22,
-                  "stroke": "$fm-terra",
-                  "strokeWidth": 2,
-                  "layout": "vertical",
-                  "gap": 4,
-                  "padding": [
-                    10,
-                    12
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "aMOQw",
-                      "name": "Body Picture",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/baryonyx.webp",
-                        "mode": "contain"
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "id": "YKo7I",
-                      "name": "Name",
-                      "fill": "$fm-ink",
-                      "content": "BARYONYX",
-                      "fontFamily": "Lexend",
-                      "fontSize": 20,
-                      "fontWeight": "800"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "DMddM",
-                  "name": "Guess PROTOCERATOPS",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface-2",
-                  "cornerRadius": 22,
-                  "stroke": "$fm-ink-soft",
-                  "strokeWidth": 2,
-                  "layout": "vertical",
-                  "gap": 4,
-                  "padding": [
-                    10,
-                    12
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "cpRiJ",
-                      "name": "Body Picture",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/protoceratops.webp",
-                        "mode": "contain"
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "id": "S1rcC",
-                      "name": "Name",
-                      "fill": "$fm-ink",
-                      "content": "PROTOCERATOPS",
-                      "fontFamily": "Lexend",
-                      "fontSize": 20,
-                      "fontWeight": "800"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "amNai",
-                  "name": "Guess TRICERATOPS",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "$fm-surface-2",
-                  "cornerRadius": 22,
-                  "stroke": "$fm-ink-soft",
-                  "strokeWidth": 2,
-                  "layout": "vertical",
-                  "gap": 4,
-                  "padding": [
-                    10,
-                    12
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "T4ubH",
-                      "name": "Body Picture",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "fill": {
-                        "type": "image",
-                        "enabled": true,
-                        "url": "images/triceratops.webp",
-                        "mode": "contain"
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "id": "KWRF1",
-                      "name": "Name",
-                      "fill": "$fm-ink",
-                      "content": "TRICERATOPS",
-                      "fontFamily": "Lexend",
-                      "fontSize": 20,
-                      "fontWeight": "800"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "B7S3OF",
-                  "name": "Clue",
-                  "width": "fill_container",
-                  "fill": "$fm-amber",
-                  "cornerRadius": 20,
-                  "gap": 12,
-                  "padding": 16,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "TIoEu",
-                      "name": "Clue Icon",
-                      "width": 26,
-                      "height": 26,
-                      "icon": "search",
-                      "library": "lucide",
-                      "fill": "$fm-ink"
-                    },
-                    {
-                      "type": "text",
-                      "id": "x7ys4M",
-                      "name": "Clue Text",
-                      "fill": "$fm-ink",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "LOOK AT ITS THREE HORNS!",
-                      "fontFamily": "Lexend",
-                      "fontSize": 22,
-                      "fontWeight": "700"
                     }
                   ]
                 }
