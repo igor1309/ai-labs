@@ -113,6 +113,8 @@ describe("the window's shape through app props", () => {
     const app = await openPuzzle("TYRANNOSAURUS", { portraitLayouts: { skeletons: ["tall"] } });
     act(() => app.viewport.turn("portrait"));
     expect(gate().hasAttribute("data-shown")).toBe(false);
+    // The page's motion to its portrait layout settles.
+    act(() => app.pictures.fire(240));
     for (let second = 0; second < 4; second++) act(() => app.pictures.fire(1000));
     act(() => app.visibility.switchTo("hidden"));
     expect(app.pictures.timers()).toEqual([]);

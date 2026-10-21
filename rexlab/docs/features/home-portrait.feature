@@ -6,7 +6,7 @@ Feature: The home page in a tall window
   columns of two, order and sideways scroll as in landscape
   (home-tiles.feature). Nothing else changes. A tall-narrow window keeps
   the picture asking to turn or widen (window-shape.feature). Turning
-  reflows straight to the other layout; its motion is LAB-375's.
+  glides to the other layout (turn-motion.feature).
 
   The padding, the greeting's 48-pixel line and the gaps keep their
   landscape sizes, 292 CSS pixels in all. The tiles' row takes 36% of
@@ -83,14 +83,13 @@ Feature: The home page in a tall window
   Scenario: Turning the window keeps the open menu and the large card
     Given a window of 1180 by 820 CSS pixels
     And the large card features COMPARE
-    And I am on the home page with the tiles swiped to "MORE COMING" and the theme menu open
+    And I am on the home page with the theme menu open
     When the window becomes 820 by 1180 CSS pixels
     Then the home page shows its upright layout with the theme menu still open
     And the large card features the same game, and does not rise in again
-    And the row of tiles stands at its start, "ANCIENT REPTILES" at its left edge
     When the window becomes 1180 by 820 CSS pixels
     Then the home page shows its landscape layout with the theme menu still open
-    And the large card does not rise in again, and the row of tiles stands at its start
+    And the large card does not rise in again
 
   Scenario: Safe areas stay clear upright
     Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator

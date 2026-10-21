@@ -85,9 +85,3 @@ Feature: The window's shape
       | width | height | shown                                                                   |
       | 820   | 1180   | the home page shows its upright layout, with no picture asking to turn |
       | 393   | 852    | I see the picture asking to turn sideways                               |
-
-  @next
-  Scenario: A screen with a portrait layout reflows to it smoothly (LAB-375)
-    Given a screen whose portrait layout is built
-    When the window becomes portrait
-    Then it reflows with the shared motion tokens, never a jump, and only fades with reduced motion

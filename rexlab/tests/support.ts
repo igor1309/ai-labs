@@ -1,5 +1,5 @@
 import type { AgeLevel } from "../src/ageLevel.ts";
-import { act, within } from "@testing-library/react";
+import { act, fireEvent, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import records from "../src/data/dinosaurs.json";
@@ -23,6 +23,8 @@ import { startPlay } from "../src/quiz/play.ts";
 import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
+import type { LayoutKeeping } from "../src/useKeptRow.ts";
+import { styleAt } from "./windowSizes.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
@@ -135,12 +137,15 @@ export function manualPictures(): ManualPictures {
 
 // What the app takes from a browser to load pictures and keep time, as
 // spies: the source of each image it decodes, the timers it started, by
-// their id, and the ids of those it stopped. No image ever finishes
-// decoding, no timer ever fires and the clock stands at `now`.
+// their id, the ids of those it stopped, and the frames it asked for and
+// the ids of those it called off. No image ever finishes decoding, no
+// timer or frame ever fires and the clock stands at `now`.
 export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
   const decoding: string[] = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
   const stopped: number[] = [];
+  const frames: Array<() => void> = [];
+  const calledOff: number[] = [];
   class Image {
     src = "";
     decode() {
@@ -154,10 +159,16 @@ export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
     clearTimeout: (id: number) => {
       stopped.push(id);
     },
+    requestAnimationFrame: (fire: () => void) => frames.push(fire) - 1,
+    cancelAnimationFrame: (id: number) => {
+      calledOff.push(id);
+    },
     Date: { now: () => now.getTime() },
     decoding,
     timers,
-    stopped
+    stopped,
+    frames,
+    calledOff
   };
 }
 
@@ -314,7 +325,9 @@ export function browserDocument(initial: DocumentVisibilityState = "visible", { 
   const footer = { setAttribute: (name: string, value: string) => void (attributes[name] = value) };
   const document = Object.assign(target, {
     visibilityState: initial,
-    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null)
+    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null),
+    // No part of the page is marked to move as the window turns.
+    querySelectorAll: (() => []) as unknown as ParentNode["querySelectorAll"]
   });
   return {
     document,
@@ -416,6 +429,33 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
   const storage = memoryStorage();
   return { digDinosaurs: SHIPPED_DIG, digProgress: localDigProgress(() => storage), sandContext: () => null };
 }
+
+// The page's motion between layouts for tests that are not about it:
+// every part is measured where it stands in any layout, so nothing
+// glides, and a fade changes the layout and ends at once.
+export function pageAtRest(): Pick<AppProps, "layoutMotion"> {
+  return {
+    layoutMotion: {
+      parts: document,
+      measure: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+      frame: () => undefined,
+      extend: () => () => {},
+      animate: () => ({ cancel: () => {}, effect: null }),
+      animations: () => [],
+      opacity: () => 1,
+      nextFrame: () => () => {},
+      startViewTransition: (update, finished) => {
+        update();
+        finished();
+      },
+      timing: { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    }
+  };
+}
+
+// A page that keeps nothing through a change of layout, for a screen
+// rendered alone.
+export const keptNothing: LayoutKeeping = { keep: () => () => {}, isRunning: () => false };
 
 // The language for tests that are not about it: an English device, no
 // language chosen yet, and a version footer nobody reads.
@@ -672,6 +712,32 @@ export function tilesRow(): HTMLElement {
   return row;
 }
 
+// The home page's row of tiles laid out as a browser would, which jsdom
+// does not: upright it runs from the page's 56-pixel padding to the
+// window's right edge, and in landscape it takes four sevenths of what
+// the page's 56-pixel sides and the large card's 28-pixel gap leave. Its
+// columns, of two each, are as wide and as far apart as the stylesheet
+// sets them in the test's window. A tile's frame, drawn under it as it
+// glides, takes no place in them.
+export function layOutTilesRow(): HTMLElement {
+  const row = tilesRow();
+  const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
+  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const scrollWidth = () => {
+    const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
+    return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
+  };
+  Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
+  return row;
+}
+
+// The child swipes the row of tiles to `scroll`, as the browser reports
+// it in a scroll event.
+export function swipeTiles(row: HTMLElement, scroll: number) {
+  row.scrollLeft = scroll;
+  fireEvent.scroll(row);
+}
+
 // A game's own tile on the home page, apart from the large card. The
 // large card's game has no tile.
 export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
@@ -680,9 +746,10 @@ export const homeTile = (name: string) => within(tilesRow()).getByRole("button",
 // when it features the game.
 export const gameDoor = (name: string) => within(document.body).getByRole("button", { name });
 
-// The home page's large card, featuring today's game.
+// The home page's large card, featuring today's game, not the frame drawn
+// under it as it glides.
 export function featuredCard(): HTMLElement {
-  const card = document.querySelector<HTMLElement>(".featured-card");
+  const card = document.querySelector<HTMLElement>(".featured-card:not([data-turn-frame])");
   if (!card) throw new Error("No featured card on the page");
   return card;
 }

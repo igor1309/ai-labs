@@ -73,6 +73,7 @@ const PRESENTATION = [
   "SharedPicture.tsx",
   "SkeletonBar.tsx",
   "formatValue.ts",
+  "useKeptRow.ts",
   "usePointerState.ts"
 ];
 // The catalogue's own model of a dinosaur, apart from the quiz's.
@@ -115,6 +116,11 @@ const BEST_SCORE = "bestScore.ts";
 const SCREEN_STATE = "screens.ts";
 // The timers of a visit, a board or a puzzle, stopped together as it ends.
 const OWNED_TIMERS = "ownedTimers.ts";
+// The motion of a screen to its other layout as the window turns, and
+// where a row of columns stands through it.
+const TURN_MOTION = ["turnMotion.ts", "rowAnchor.ts"];
+// How App sets each window's layout through the turn motion.
+const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
   it("is read from the source", () => {
@@ -262,6 +268,17 @@ describe("the import graph", () => {
   it("keeps the timers a game's occurrence owns free of the rest of the app", () => {
     expect(["careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(OWNED_TIMERS))).toEqual([]);
     expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
+  });
+
+  it("keeps the turn motion and the row's anchor free of the rest of the app", () => {
+    expect(TURN_MOTION.filter((file) => !GRAPH.has(file))).toEqual([]);
+    expect(edges((file) => TURN_MOTION.includes(file), () => true)).toEqual([]);
+  });
+
+  it("keeps App's layout turns free of all but the turn motion, and the row's keeping free of all but the row's anchor", () => {
+    expect(GRAPH.get("App.tsx")).toContain(LAYOUT_TURNS);
+    expect(edges((file) => file === LAYOUT_TURNS, (target) => target !== "turnMotion.ts")).toEqual([]);
+    expect(edges((file) => file === "useKeptRow.ts", (target) => target !== "rowAnchor.ts")).toEqual([]);
   });
 
   it("leaves the composition root to the composition root", () => {

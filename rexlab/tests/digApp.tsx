@@ -23,6 +23,7 @@ import {
   manualVisibility,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   unreadVersion,
   type MemoryStorage,
   type ManualViewport,
@@ -86,6 +87,7 @@ export function openDigApp({
       digDinosaurs={SHIPPED_DIG}
       digProgress={localDigProgress(local)}
       sandContext={() => null}
+      {...pageAtRest()}
       reducedMotion={typeof reducedMotion === "function" ? reducedMotion : () => reducedMotion}
       {...timers}
     />

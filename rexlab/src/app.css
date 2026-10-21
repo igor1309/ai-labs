@@ -276,6 +276,33 @@ body {
   overscroll-behavior: none;
 }
 
+/* While a screen moves to its other layout, no tap or swipe reaches the
+   page, nor scrolls it: it would land where a part no longer stands. The
+   app holds keys and the wheel back meanwhile. */
+[data-turning],
+[data-turning] body {
+  touch-action: none;
+}
+
+[data-turning] body {
+  pointer-events: none;
+}
+
+/* A part changing size glides with its frame drawn under it, a copy of
+   the part with none of its content, sized from its old box to its new
+   one: the part's own frame is taken off meanwhile, and its parent holds
+   the copy where the part stands, under every part it holds. */
+[data-turn-frames] {
+  contain: layout;
+}
+
+[data-turn-framed] {
+  border-color: transparent !important;
+  outline-color: transparent !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
 /* A screen's content, its own padding included, is at most 1440 pixels
    wide and centred: on a wider window each side of every screen, and the
    fixed parts at the window's edges, add what lies beyond it, which
@@ -941,6 +968,12 @@ body:has(.result) #version {
   height: clamp(360px, 36dvh, 520px);
   margin-right: -56px;
   grid-auto-columns: var(--tile-column);
+}
+
+/* The row stays where the page put it until the motion to the other
+   layout settles: no swipe scrolls it meanwhile. */
+[data-turning] .games-tiles {
+  overflow-x: hidden;
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the

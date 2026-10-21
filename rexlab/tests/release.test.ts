@@ -15,7 +15,7 @@ describe("stampVersion", () => {
     const html = stampVersion(INDEX_HTML, "v1.2.3");
 
     expect(pageVersion(html)).toBe("v1.2.3");
-    expect(html).toContain('<footer id="version" aria-label="Version">v1.2.3</footer>');
+    expect(html).toContain('<footer id="version" aria-label="Version" data-turn-fade>v1.2.3</footer>');
     expect(html).not.toContain("%REXLAB_VERSION%");
   });
 });

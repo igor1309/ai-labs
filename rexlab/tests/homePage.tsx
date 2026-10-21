@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
-import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture, manualViewport } from "./support.ts";
+import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture, keptNothing, manualViewport } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
@@ -36,6 +36,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       startTimer={() => nothing}
       viewport={manualViewport("landscape")}
       upright={false}
+      layoutKeeping={keptNothing}
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={score(7)}

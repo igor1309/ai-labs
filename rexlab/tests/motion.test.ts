@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MENU_EXIT } from "../src/ParentMenu.tsx";
+import { TURN_TIMING } from "../src/root.ts";
 
 type Rule = { prelude: string; body: string };
 
@@ -145,6 +146,17 @@ describe("the motion", () => {
     );
     expect(moving.length).toBeGreaterThan(0);
     expect(moving.filter((selector) => MOVING.test(reducedTransitions.get(selector) ?? "transform"))).toEqual([]);
+  });
+
+  it("glides a screen to its other layout over the standard token, easing out, and fades it by the root view transition, over 160 ms with reduced motion", () => {
+    const ms = (token: string | undefined) => Number.parseFloat(token ?? "");
+    const root = PLAIN.find(({ prelude }) => prelude.split(",").map((selector) => selector.trim()).includes("::view-transition-new(root)"));
+
+    expect([TURN_TIMING, ms(tokensOf(REDUCED)["--motion-standard"])]).toEqual([{ glide: ms(tokensOf(PLAIN)["--motion-standard"]), easing: tokensOf(PLAIN)["--ease-out"] }, 160]);
+    expect(declarationsOf(root?.body ?? "")).toEqual([
+      { property: "animation-duration", value: "var(--motion-standard)" },
+      { property: "animation-timing-function", value: "var(--ease-out)" }
+    ]);
   });
 
   it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {

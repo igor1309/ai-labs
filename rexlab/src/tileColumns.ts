@@ -3,8 +3,10 @@
 // safe-area inset (an iPad upright has its insets at the top and bottom),
 // so the row is the window's width short of that padding alone.
 const ROW_START = 56;
-const COLUMN = 310;
-const GAP = 24;
+// The columns' width, which the landscape row keeps, and the gap between
+// them in either layout, as the stylesheet sets them.
+export const TILE_COLUMN = 310;
+export const TILE_GAP = 24;
 // The least of the next column that shows at the row's edge, and the
 // least of it that hides there.
 const PEEK = 24;
@@ -16,11 +18,11 @@ const PEEK = 24;
 // is the last, to show it whole.
 export function tileColumnWidth(windowWidth: number, columns: number): number {
   const shown = windowWidth - ROW_START;
-  const whole = Math.floor((shown + GAP) / (COLUMN + GAP));
-  if (whole >= columns) return COLUMN;
-  const peek = shown - whole * (COLUMN + GAP);
-  if (peek < PEEK && whole > 0) return Math.floor((shown - PEEK) / whole - GAP);
-  if (peek <= COLUMN - PEEK) return COLUMN;
-  if (whole + 1 === columns) return Math.floor((shown - (columns - 1) * GAP) / columns);
-  return Math.floor((shown - PEEK) / (whole + 1) - GAP);
+  const whole = Math.floor((shown + TILE_GAP) / (TILE_COLUMN + TILE_GAP));
+  if (whole >= columns) return TILE_COLUMN;
+  const peek = shown - whole * (TILE_COLUMN + TILE_GAP);
+  if (peek < PEEK && whole > 0) return Math.floor((shown - PEEK) / whole - TILE_GAP);
+  if (peek <= TILE_COLUMN - PEEK) return TILE_COLUMN;
+  if (whole + 1 === columns) return Math.floor((shown - (columns - 1) * TILE_GAP) / columns);
+  return Math.floor((shown - PEEK) / (whole + 1) - TILE_GAP);
 }

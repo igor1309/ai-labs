@@ -27,6 +27,7 @@ import {
   manualViewport,
   manualPictures,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
   symbolOf,
@@ -68,6 +69,7 @@ function openApp({
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
     />
   );
   return userEvent.setup();

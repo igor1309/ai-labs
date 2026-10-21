@@ -22,6 +22,7 @@ import {
   lightDevice,
   loadedPictures,
   manualViewport,
+  pageAtRest,
   tilesRow,
   unsetAgeLevel
 } from "./support.ts";
@@ -187,6 +188,7 @@ function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       {...loadedPictures()}
     />
   );
