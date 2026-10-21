@@ -46,10 +46,14 @@ const PRESSES = ["pointerdown", "mousedown"];
 // the window, which still counts each of them.
 const CLICKS = ["click"];
 
+// The wheel a motion holds back: a trackpad's swipe, which would scroll
+// the page under parts that no longer stand where they are drawn.
+const WHEELS = ["wheel"];
+
 // What may draw the page otherwise than it last settled, between changes
 // of the window: a scroll, and an animation or transition of its own
-// ending.
-const REDRAWS = ["scroll", "animationend", "transitionend"];
+// starting, ending or cut short.
+const REDRAWS = ["scroll", "animationstart", "animationend", "animationcancel", "transitionrun", "transitionend", "transitioncancel"];
 
 // Sets the window's size class on the document, as `data-size`, through
 // `turns`, on every change of the window, of any of its sizes, or of
@@ -57,8 +61,8 @@ const REDRAWS = ["scroll", "animationend", "transitionend"];
 // running goes on to where the latest window puts each part, and what a
 // screen keeps is put back even where nothing glides. While a motion
 // runs, the document is marked `data-turning`, where the stylesheet lets
-// no tap or swipe reach the page, and keys, presses and clicks are held
-// back.
+// no tap or swipe reach the page, and keys, presses, clicks and the wheel
+// are held back.
 export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size: string, layout: ScreenLayout) {
   // Each change of the window counts, though it leaves the size class and
   // the width as they were: the page's parts may be sized by its height.
@@ -91,6 +95,9 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
     KEYS.forEach((type) => window.addEventListener(type, hold, { capture: true }));
     PRESSES.forEach((type) => window.addEventListener(type, press, { capture: true }));
     CLICKS.forEach((type) => document.addEventListener(type, hold, { capture: true }));
+    // A browser listens to the wheel on the window passively unless told
+    // otherwise, and then scrolls whatever the listener says.
+    WHEELS.forEach((type) => window.addEventListener(type, hold, { capture: true, passive: false }));
     REDRAWS.forEach((type) => window.addEventListener(type, redrawn, { capture: true }));
     const stop = turns.subscribe(() => root.toggleAttribute("data-turning", turns.isRunning()));
     return () => {
@@ -99,6 +106,7 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
       KEYS.forEach((type) => window.removeEventListener(type, hold, { capture: true }));
       PRESSES.forEach((type) => window.removeEventListener(type, press, { capture: true }));
       CLICKS.forEach((type) => document.removeEventListener(type, hold, { capture: true }));
+      WHEELS.forEach((type) => window.removeEventListener(type, hold, { capture: true }));
       REDRAWS.forEach((type) => window.removeEventListener(type, redrawn, { capture: true }));
       root.removeAttribute("data-turning");
     };

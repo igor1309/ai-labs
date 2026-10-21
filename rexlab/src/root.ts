@@ -18,7 +18,7 @@ import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
-import { TURN_PART, type Box, type TurnFrame } from "./turnMotion.ts";
+import { TURN_PART, type Box, type PageAnimation, type TurnFrame } from "./turnMotion.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
 // hash. Never inlined, so a picture is cached as a file of its own.
@@ -50,6 +50,8 @@ export type Browser = {
   Image: new () => DecodingImage;
   setTimeout(fire: () => void, ms: number): number;
   clearTimeout(id: number): void;
+  requestAnimationFrame(fire: () => void): number;
+  cancelAnimationFrame(id: number): void;
   Date: { now(): number };
 };
 
@@ -141,6 +143,26 @@ export function extendPart(element: Element, right: number, bottom: number): () 
   return () => Object.assign(element.style, sides);
 }
 
+// The animations the page runs on `element` itself, its entrance or a
+// transition, that are still running: one finished holds still. An
+// endless one has no end to finish at, and goes on.
+export function pageAnimations(element: Pick<Element, "getAnimations">): PageAnimation[] {
+  return element
+    .getAnimations()
+    .filter((animation) => animation.playState === "running")
+    .map((animation) => ({
+      finish: () => {
+        if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+      }
+    }));
+}
+
+// The opacity `element` itself is drawn at, its animations' included.
+export function drawnOpacity(element: Element): number {
+  const view = element.ownerDocument.defaultView;
+  return view ? Number.parseFloat(view.getComputedStyle(element).opacity) : 1;
+}
+
 // Each pointer event the double-tap filter reads, and the step of a touch
 // it is.
 const TOUCH_STEPS = { pointerdown: "press", pointermove: "move", pointerup: "release", pointercancel: "cancel" } as const;
@@ -208,6 +230,12 @@ export function appProps(browser: Browser): AppProps {
       frame: turnFrame,
       extend: extendPart,
       animate: (element, keyframes, options) => element.animate(keyframes, options),
+      animations: pageAnimations,
+      opacity: drawnOpacity,
+      nextFrame: (fire) => {
+        const id = browser.requestAnimationFrame(fire);
+        return () => browser.cancelAnimationFrame(id);
+      },
       startViewTransition: (update, finished) => {
         if (!browser.document.startViewTransition) {
           update();

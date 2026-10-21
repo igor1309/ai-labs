@@ -276,7 +276,7 @@ body {
 
 /* While a screen moves to its other layout, no tap or swipe reaches the
    page, nor scrolls it: it would land where a part no longer stands. The
-   app holds keys back meanwhile. */
+   app holds keys and the wheel back meanwhile. */
 [data-turning],
 [data-turning] body {
   touch-action: none;

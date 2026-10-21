@@ -4,6 +4,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
+import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
 import type { TapInput } from "../src/tapFilter.ts";
@@ -45,9 +46,15 @@ import { openWindow } from "./windowSizes.ts";
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
-// The parts of the home page both layouts share, COMPARE featured, in
-// the page's order.
-const PARTS = ["wordmark", "corner", "greeting", "featured-card", "tiles", "tile-catalogue", "tile-pairs", "tile-skeletons", "tile-dig", "tile-sort", "tile-care", "more-coming"];
+// The parts of the home page both layouts share, `featured` on the large
+// card and every other game a tile, in the page's order.
+const partsFeaturing = (featured: HomeGame) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
+
+// Those parts with COMPARE featured.
+const PARTS = partsFeaturing("compare");
+
+// Every part the home page may mark, whichever game it features.
+const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.map((game) => `tile-${game}`), "more-coming"];
 
 // Those that stand on the page itself, not in another part.
 const OUTER = ["wordmark", "corner", "greeting", "featured-card", "tiles"];
@@ -78,7 +85,7 @@ const VERSION_FOOTER = /<footer id="version"[^>]*>[^<]*<\/footer>/.exec(readFile
 // than in landscape, and each stands and is sized by the window's width
 // and height too. The tiles stand where the row is scrolled to.
 function laidOut(name: string, size: string | undefined): Box {
-  const at = PARTS.indexOf(name);
+  const at = ANY_PART.indexOf(name);
   const [width, height] = [window.innerWidth, window.innerHeight];
   const scrolled = name.startsWith("tile-") || name === "more-coming" ? (document.querySelector(".games-tiles")?.scrollLeft ?? 0) : 0;
   return size === "tall"
@@ -88,14 +95,25 @@ function laidOut(name: string, size: string | undefined): Box {
 
 const offsetOf = (keyframe: Keyframe | undefined) => String(keyframe?.translate ?? "0px 0px").split(" ").map(Number.parseFloat);
 
+// How the page's own animations draw a part, apart from where it is laid
+// out: `y` pixels below it, at `opacity`, and whether one still runs, as
+// the large card's entrance does as the page opens.
+type OwnDrawing = { y: number; opacity: number; running: boolean };
+
 // The home page in a window `width` by `height` of `size`, under
-// index.html's version footer, a screen `upright` or not, its pictures
-// loaded, its timers fired by hand, and
-// the device asking for reduced motion when `reduced`. A part is
-// measured where the test lays it out, its frame drawn and its window
-// widened by the browser's own means, and its animations recorded; a
-// view transition's update and its end wait for the test.
-function openTurning(width: number, height: number, size: SizeClass, { upright = size.startsWith("tall"), reduced = false } = {}) {
+// index.html's version footer, a screen `upright` or not, `featured` on
+// its large card, its pictures loaded, its timers fired by hand, and the
+// device asking for reduced motion when `reduced`. A part is measured
+// where the test lays it out, moved as `own` says the page's own
+// animations draw it, its frame drawn and its window widened by the
+// browser's own means, and its animations recorded; a view transition's
+// update and its end, and every frame, wait for the test.
+function openTurning(
+  width: number,
+  height: number,
+  size: SizeClass,
+  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>() } = {}
+) {
   openWindow(width, height);
   const viewport = manualViewport("landscape");
   viewport.resize(size, upright);
@@ -104,6 +122,7 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
   const frames: Array<{ name: string; box: Box }> = [];
   const extended: Array<{ name: string; right: number; bottom: number }> = [];
   const fades: Array<{ update: () => void; finished: () => void }> = [];
+  const paints: Array<{ fire: () => void; stopped: boolean }> = [];
   const running = (name: string) => animations.filter((animation) => animation.name === name && !animation.cancelled).at(-1);
   // Where a part is drawn: where it is laid out, moved by the animation
   // running on it and on the parts around it, as far as each has gone.
@@ -119,7 +138,7 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
   };
   render(
     <App
-      {...featuring("compare")}
+      {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -138,7 +157,10 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
       {...emptyDig()}
       layoutMotion={{
         parts: document,
-        measure: (element) => laidOut(nameOf(element), document.documentElement.dataset.size),
+        measure: (element) => {
+          const box = laidOut(nameOf(element), document.documentElement.dataset.size);
+          return { ...box, top: box.top + (own.get(nameOf(element))?.y ?? 0) };
+        },
         frame: (element, box) => {
           const frame = turnFrame(element, box);
           if (frame) frames.push({ name: nameOf(element), box });
@@ -161,6 +183,14 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
           animations.push(animation);
           return animation;
         },
+        // An animation ends where the part is laid out.
+        animations: (element) => (own.get(nameOf(element))?.running ? [{ finish: () => void own.delete(nameOf(element)) }] : []),
+        opacity: (element) => own.get(nameOf(element))?.opacity ?? 1,
+        nextFrame: (fire) => {
+          const paint = { fire, stopped: false };
+          paints.push(paint);
+          return () => void (paint.stopped = true);
+        },
         startViewTransition: (update, finished) => void fades.push({ update, finished }),
         timing: { glide: GLIDE, easing: EASE_OUT }
       }}
@@ -179,10 +209,20 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
   // The browser runs the update of the view transition `at`, then ends it.
   const updateFade = (at: number) => act(() => fades[at]?.update());
   const endFade = (at: number) => act(() => fades[at]?.finished());
+  // The frames asked for and not called off nor drawn yet.
+  const waiting = () => paints.filter(({ stopped }) => !stopped);
+  // The browser draws a frame, calling first what waits for it.
+  const paint = () =>
+    act(() =>
+      waiting().forEach((frame) => {
+        frame.stopped = true;
+        frame.fire();
+      })
+    );
   // The animations of the parts themselves, apart from their frames' and
   // the fades.
   const glides = () => animations.filter(ownGlide);
-  return { pictures, animations, frames, extended, fades, drawn, resize, halfWay, updateFade, endFade, glides, user: userEvent.setup() };
+  return { pictures, animations, frames, extended, fades, own, drawn, resize, halfWay, updateFade, endFade, waiting, paint, glides, user: userEvent.setup() };
 }
 
 const turning = () => document.documentElement.hasAttribute("data-turning");
@@ -250,6 +290,32 @@ describe("the home page glides to its other layout", () => {
     expect([turning(), screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving"), document.querySelectorAll("[data-turn-frame]").length, tilesRow().style.paddingRight]).toEqual([false, false, 0, ""]);
   });
 
+  it("glides the large card on from where its entrance draws it when the window turns as the page opens, the entrance ended, with no jump", () => {
+    const app = openTurning(1180, 820, "wide", { own: new Map([["featured-card", { y: 16, opacity: 0, running: true }]]) });
+    // Half-way through its entrance, the card is drawn 8 pixels below its
+    // place, half faded in.
+    app.own.set("featured-card", { y: 8, opacity: 0.5, running: true });
+    app.paint();
+    const before = laidOut("featured-card", "wide");
+
+    app.resize([820, 1180, "tall"]);
+
+    const after = laidOut("featured-card", "tall");
+    const glide = app.glides().find(({ name }) => name === "featured-card");
+    const frame = app.animations.find(({ name }) => name === "frame of featured-card");
+    expect([app.own.has("featured-card"), app.waiting()]).toEqual([false, []]);
+    expect([glide?.keyframes.map(({ translate, opacity }) => [translate, opacity]), frame?.keyframes.map(({ translate, opacity }) => [translate, opacity])]).toEqual([
+      [
+        [`${before.left - after.left}px ${before.top + 8 - after.top}px`, 0.5],
+        ["0px 0px", 1]
+      ],
+      [
+        [`${before.left - after.left}px ${before.top + 8 - after.top}px`, 0.5],
+        ["0px 0px", 1]
+      ]
+    ]);
+  });
+
   it("draws a part's frame as a copy of the part alone under it, hidden from taps and assistive technology, its own frame taken off, and the row's window widened by padding as it shrinks", () => {
     const app = openTurning(820, 1180, "tall");
     const card = featuredCard();
@@ -302,6 +368,37 @@ describe("the home page glides to its other layout", () => {
     act(() => app.pictures.fire(GLIDE));
 
     expect(faded.every(({ cancelled }) => cancelled)).toBe(true);
+  });
+});
+
+describe("an animation of the page's own", () => {
+  // The browser tells each as it is told on the page.
+  const told = (type: string) => act(() => void featuredCard().dispatchEvent(new Event(type, { bubbles: true })));
+
+  it.each(["animationend", "animationcancel", "transitionend", "transitioncancel"])("ending, told by %s, has the page measured again at once, so the next glide starts the large card from where it then stands", (type) => {
+    const app = openTurning(1180, 820, "wide", { own: new Map([["featured-card", { y: 16, opacity: 1, running: true }]]) });
+    const before = laidOut("featured-card", "wide");
+    app.own.delete("featured-card");
+
+    told(type);
+    app.resize([820, 1180, "tall"]);
+
+    const after = laidOut("featured-card", "tall");
+    expect([app.glides().find(({ name }) => name === "featured-card")?.keyframes[0]?.translate, app.waiting()]).toEqual([`${before.left - after.left}px ${before.top - after.top}px`, []]);
+  });
+
+  it.each(["animationstart", "transitionrun"])("starting, told by %s, has the page measured again before every frame, so the next glide starts the large card from where it was last drawn", (type) => {
+    const app = openTurning(1180, 820, "wide");
+    const before = laidOut("featured-card", "wide");
+    app.own.set("featured-card", { y: 6, opacity: 1, running: true });
+
+    told(type);
+    app.own.set("featured-card", { y: 3, opacity: 1, running: true });
+    app.paint();
+    app.resize([820, 1180, "tall"]);
+
+    const after = laidOut("featured-card", "tall");
+    expect(app.glides().find(({ name }) => name === "featured-card")?.keyframes[0]?.translate).toBe(`${before.left - after.left}px ${before.top + 3 - after.top}px`);
   });
 });
 
@@ -542,6 +639,33 @@ describe("taps and keys during the motion", () => {
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
   });
 
+  it("a trackpad's swipe scrolls nothing and reaches nothing, and once it settles scrolls as before", () => {
+    const listened = vi.spyOn(window, "addEventListener");
+    onTestFinished(() => listened.mockRestore());
+    const app = openTurning(1180, 820, "wide");
+    const reached: WheelEvent[] = [];
+    const onWheel = (event: WheelEvent) => void reached.push(event);
+    document.body.addEventListener("wheel", onWheel);
+    onTestFinished(() => document.body.removeEventListener("wheel", onWheel));
+    // Whether the browser scrolls for a swipe over the row.
+    const swipe = () => {
+      const event = new WheelEvent("wheel", { deltaX: 120, bubbles: true, cancelable: true });
+      act(() => void tilesRow().dispatchEvent(event));
+      return !event.defaultPrevented;
+    };
+
+    app.resize([820, 1180, "tall"]);
+
+    expect([swipe(), reached.length]).toEqual([false, 0]);
+    // A browser takes a listener on the window for the wheel as one that
+    // never stops a scroll, unless told otherwise.
+    expect(listened.mock.calls.filter(([type]) => type === "wheel").map(([, , options]) => options)).toEqual([{ capture: true, passive: false }]);
+
+    act(() => app.pictures.fire(GLIDE));
+
+    expect([swipe(), reached.length]).toEqual([true, 1]);
+  });
+
   it("leave the double-tap filter's rule as it was: a tap during it is the first of a double tap", () => {
     const app = openTurning(1180, 820, "wide");
     filterTaps();
@@ -670,6 +794,31 @@ describe("a window the screen has no layout for", () => {
     app.resize([393, 852, "tall-narrow"]);
 
     expect([gate().hasAttribute("data-shown"), app.animations, app.fades, turning(), app.pictures.timers()]).toEqual([true, [], [], false, []]);
+  });
+});
+
+describe("whichever game the large card features", () => {
+  it.each(HOME_GAMES)("featuring %s, each tile the row shows is marked for its own game and glides, its frame sized from its old box to its new one", (featured) => {
+    const app = openTurning(1180, 820, "wide", { featured });
+    const tiles = partsFeaturing(featured).filter((name) => name.startsWith("tile-"));
+
+    expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured));
+    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b(\w+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name.slice("tile-".length), name]));
+
+    const before = Object.fromEntries(tiles.map((name) => [name, laidOut(name, "wide")]));
+
+    app.resize([820, 1180, "tall"]);
+
+    expect(app.glides().map(({ name }) => name)).toEqual(partsFeaturing(featured));
+    expect(tiles.map((name) => app.animations.find((animation) => animation.name === `frame of ${name}`)?.keyframes.map(({ width, height }) => [width, height]))).toEqual(
+      tiles.map((name) => {
+        const after = laidOut(name, "tall");
+        return [
+          [`${before[name]!.width}px`, `${before[name]!.height}px`],
+          [`${after.width}px`, `${after.height}px`]
+        ];
+      })
+    );
   });
 });
 

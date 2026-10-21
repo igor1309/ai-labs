@@ -4,7 +4,7 @@ import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { TURN_TIMING, appProps, extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
+import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -175,7 +175,7 @@ describe("the app in a browser", () => {
     expect(reducedMotion()).toBe(false);
   });
 
-  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, framed and widened by the browser's own means, animated by the browser, timed by the motion tokens, faded by its view transition until it has finished", async () => {
+  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, framed and widened by the browser's own means, animated by the browser, the page's own animations and opacity read from it, its frames asked of it, timed by the motion tokens, faded by its view transition until it has finished", async () => {
     const fades: unknown[] = [];
     const ended = settling();
     const given = browser();
@@ -199,12 +199,37 @@ describe("the app in a browser", () => {
     // motion.test.ts holds TURN_TIMING to.
     expect([layoutMotion.frame, layoutMotion.extend, layoutMotion.timing]).toEqual([turnFrame, extendPart, TURN_TIMING]);
     expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
+    expect([layoutMotion.animations, layoutMotion.opacity]).toEqual([pageAnimations, drawnOpacity]);
+    let painted = 0;
+    const stop = layoutMotion.nextFrame(() => painted++);
+    given.frames[0]?.();
+    stop();
+    expect([given.frames.length, painted, given.calledOff]).toEqual([1, 1, [0]]);
     expect([fades, finished]).toEqual([[change], 0]);
 
     ended.resolve();
     await ended.promise;
 
     expect(finished).toBe(1);
+  });
+
+  it("finds the page's own animations on an element by those still running, and finishes each where it ends, an endless one going on", () => {
+    const finished: string[] = [];
+    const animation = (name: string, playState: AnimationPlayState, endTime: number) =>
+      ({ playState, effect: { getComputedTiming: () => ({ endTime }) }, finish: () => void finished.push(name) }) as unknown as Animation;
+    const element = { getAnimations: () => [animation("entrance", "running", 320), animation("ended", "finished", 320), animation("shimmer", "running", Infinity), animation("paused", "paused", 320)] };
+
+    const running = pageAnimations(element);
+    running.forEach((found) => found.finish());
+
+    expect([running.length, finished]).toEqual([2, ["entrance"]]);
+  });
+
+  it.each([
+    ["in a window, as the window computes it", { defaultView: { getComputedStyle: () => ({ opacity: "0.25" }) } }, 0.25],
+    ["outside any window, as full", { defaultView: null }, 1]
+  ])("reads the opacity an element is drawn at %s", (_, ownerDocument, opacity) => {
+    expect(drawnOpacity({ ownerDocument } as unknown as Element)).toBe(opacity);
   });
 
   it("ends the fade once the view transition is skipped, too", async () => {

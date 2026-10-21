@@ -29,6 +29,10 @@ export type TurnFrame = { element: Element; remove(): void };
 // afresh from the page as it now stands.
 export type Keeper = { hold(): () => void; rest(): void };
 
+// An animation of the page's own, not a motion's, running on an element,
+// such as a card's entrance: `finish` ends it where it would end, at once.
+export type PageAnimation = { finish(): void };
+
 // How a change moves the page. `glide`: the layout changes, and the parts
 // glide to their new places, or under reduced motion the page fades.
 // `follow`: the layout stays; it applies at once, and a motion still
@@ -50,6 +54,14 @@ export type TurnMotionSeams = {
   // pixels past its box, nothing moving, until the returned stop.
   extend(element: Element, right: number, bottom: number): () => void;
   animate(element: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions): TurnAnimation;
+  // The animations of the page's own running on `element` itself, none
+  // of a motion's: each may draw it elsewhere from frame to frame.
+  animations(element: Element): PageAnimation[];
+  // The opacity `element` itself is drawn at now.
+  opacity(element: Element): number;
+  // Calls `fire` before the page is next drawn, unless the returned stop
+  // is called first.
+  nextFrame(fire: () => void): () => void;
   reducedMotion(): boolean;
   // The root view transition: a cross-fade from the page as drawn to the
   // page `update` makes, calling `finished` once it has ended, or been
@@ -68,8 +80,9 @@ export type TurnMotion = {
   // stop is called.
   keep(keeper: Keeper): () => void;
   // Tells that the page may be drawn otherwise than it was last measured,
-  // as after a scroll or an animation of its own: at rest, its parts are
-  // measured again.
+  // as after a scroll, or as an animation of its own starts or ends: at
+  // rest, its parts are measured again, and before every frame while such
+  // an animation runs.
   redrawn(): void;
   // Stops any motion, every part at rest, and drops whatever a change
   // still waits for, such as a fade's update.
@@ -101,18 +114,25 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // drawn: the boxes they were measured at as the page last stood at rest,
 // or where a motion still running draws them. By the time a window's
 // change is told, the page has already been laid out for it, so a part
-// is measured before a change only where the page has gained it since. Each part glides from
-// its old place to its new one by translation, its change of size shown
-// by a clip of what it holds and a frame drawn under it, so no word or
-// picture is scaled; what the page marks to fade fades in meanwhile.
-// Each change outdates every one before it, and nothing a change left
-// waiting acts once it is outdated.
-export function turnMotion({ parts, measure, frame, extend, animate, reducedMotion, startViewTransition, startTimer, timing }: TurnMotionSeams): TurnMotion {
+// is measured before a change only where the page has gained it since.
+// At rest, while an animation of the page's own draws a part elsewhere
+// from frame to frame, on the part or on an element around it, the parts
+// are measured again before every frame. Each part glides from its old
+// place to its new one by translation, its change of size shown by a
+// clip of what it holds and a frame drawn under it, so no word or
+// picture is scaled; what the page marks to fade fades in meanwhile. A
+// glide takes over the page's own animations on a part, such as its
+// entrance, from where and how faded they draw it: left running, they
+// would draw it off its new place, their translation giving way to the
+// glide's. Each change outdates every one before it, and nothing a
+// change left waiting acts once it is outdated.
+export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing }: TurnMotionSeams): TurnMotion {
   const keepers = new Set<Keeper>();
   const listeners = new Set<() => void>();
   let drawn = new Map<string, Box>();
   let drawings = new Map<Element, Drawing>();
   let running: (() => void) | undefined;
+  let watching: (() => void) | undefined;
   let changes = 0;
 
   const setRunning = (next: typeof running) => {
@@ -142,6 +162,37 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
 
   const remeasure = () => {
     drawn = new Map([...marked()].map(([name, element]) => [name, measure(element)]));
+  };
+
+  // Whether an animation of the page's own runs on a marked part or on an
+  // element around it, which carries the part with it.
+  const stirring = () => {
+    const seen = new Set<Element>();
+    for (const part of marked().values()) {
+      for (let element: Element | null = part; element && !seen.has(element); element = element.parentElement) {
+        seen.add(element);
+        if (animations(element).length > 0) return true;
+      }
+    }
+    return false;
+  };
+
+  const unwatch = () => {
+    watching?.();
+    watching = undefined;
+  };
+
+  // At rest, measures the page again before its next frame while an
+  // animation of its own draws a part elsewhere from frame to frame, so
+  // the boxes kept are those last drawn.
+  const watch = () => {
+    unwatch();
+    if (running || !stirring()) return;
+    watching = nextFrame(() => {
+      watching = undefined;
+      remeasure();
+      watch();
+    });
   };
 
   const kept = (change: () => void) => {
@@ -174,6 +225,10 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
     return drawing ? lerp(drawing.opacity, 1, progressOf(drawing)) : resting;
   };
 
+  // The opacity a part is drawn at now: as a motion or an animation of the
+  // page's own on it draws it, or full.
+  const partOpacity = (element: Element) => (drawings.has(element) || animations(element).length === 0 ? opacityOf(element, 1) : opacity(element));
+
   // Each part as drawn now: where it was last measured, moved as the
   // motions running draw it. A part the page has gained since it was
   // last measured is measured as it stands.
@@ -182,7 +237,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
     for (const [name, element] of marked()) {
       const laidOut = drawn.get(name);
       if (!laidOut) {
-        found.set(name, { element, box: measure(element), opacity: 1 });
+        found.set(name, { element, box: measure(element), opacity: partOpacity(element) });
         continue;
       }
       const drawing = drawings.get(element);
@@ -196,7 +251,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
           width: lerp(drawing?.size?.width ?? laidOut.width, laidOut.width, progress),
           height: lerp(drawing?.size?.height ?? laidOut.height, laidOut.height, progress)
         },
-        opacity: opacityOf(element, 1)
+        opacity: partOpacity(element)
       });
     }
     return found;
@@ -210,6 +265,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
     if (change) kept(change);
     remeasure();
     keepers.forEach((keeper) => keeper.rest());
+    watch();
   };
 
   const settle = (change: number) => {
@@ -217,11 +273,15 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
   };
 
   const glide = (change: () => void, current: number) => {
+    unwatch();
     const before = places();
     // What fades goes on from the opacity it is drawn at, or from none.
     const fadedFrom = new Map([...parts.querySelectorAll(`[${TURN_FADE}]`)].map((element) => [element, opacityOf(element, 0)]));
     cancelAll();
     kept(change);
+    // The glide goes on from where the page's own animations on a part
+    // drew it, which end where the part is laid out.
+    for (const element of marked().values()) animations(element).forEach((animation) => animation.finish());
     remeasure();
     const after = new Map([...marked()].map(([name, element]) => [name, { element, box: drawn.get(name) ?? measure(element) }]));
     const options = { duration: timing.glide, easing: timing.easing };
@@ -304,6 +364,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
   // The fade runs until the view transition has finished, its own timer
   // the stylesheet's.
   const fade = (change: () => void, current: number) => {
+    unwatch();
     setRunning(() => {});
     startViewTransition(
       () => {
@@ -330,10 +391,13 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
       return () => keepers.delete(keeper);
     },
     redrawn: () => {
-      if (!running) remeasure();
+      if (running) return;
+      remeasure();
+      watch();
     },
     halt: () => {
       changes++;
+      unwatch();
       cancelAll();
       setRunning(undefined);
     },

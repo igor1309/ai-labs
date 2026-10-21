@@ -137,12 +137,15 @@ export function manualPictures(): ManualPictures {
 
 // What the app takes from a browser to load pictures and keep time, as
 // spies: the source of each image it decodes, the timers it started, by
-// their id, and the ids of those it stopped. No image ever finishes
-// decoding, no timer ever fires and the clock stands at `now`.
+// their id, the ids of those it stopped, and the frames it asked for and
+// the ids of those it called off. No image ever finishes decoding, no
+// timer or frame ever fires and the clock stands at `now`.
 export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
   const decoding: string[] = [];
   const timers: Array<{ ms: number; fire: () => void }> = [];
   const stopped: number[] = [];
+  const frames: Array<() => void> = [];
+  const calledOff: number[] = [];
   class Image {
     src = "";
     decode() {
@@ -156,10 +159,16 @@ export function pictureBrowser(now = new Date(2026, 9, 18, 9, 30)) {
     clearTimeout: (id: number) => {
       stopped.push(id);
     },
+    requestAnimationFrame: (fire: () => void) => frames.push(fire) - 1,
+    cancelAnimationFrame: (id: number) => {
+      calledOff.push(id);
+    },
     Date: { now: () => now.getTime() },
     decoding,
     timers,
-    stopped
+    stopped,
+    frames,
+    calledOff
   };
 }
 
@@ -432,6 +441,9 @@ export function pageAtRest(): Pick<AppProps, "layoutMotion"> {
       frame: () => undefined,
       extend: () => () => {},
       animate: () => ({ cancel: () => {}, effect: null }),
+      animations: () => [],
+      opacity: () => 1,
+      nextFrame: () => () => {},
       startViewTransition: (update, finished) => {
         update();
         finished();

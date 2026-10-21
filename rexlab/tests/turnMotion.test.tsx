@@ -7,10 +7,12 @@ const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 type Started = TurnAnimation & { element: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions; progress: number | null; cancelled: boolean };
 
 // The engine over a page of marked parts whose boxes the test sets: a
-// part's box is where the page lays it out now. A part `framed` paints a
-// frame, drawn as a box of its own. The animations it starts, its frames,
-// view transitions and timers only record, and each step is logged in
-// order.
+// part's box is where the page lays it out now, and draws it, its own
+// animations included. A part `framed` paints a frame, drawn as a box of
+// its own. The page's own animations run on an element until finished,
+// each part drawn at the opacity the test sets. The animations it starts,
+// its frames, view transitions, timers and frames asked for only record,
+// and each step is logged in order.
 function harness({ reduced = false } = {}) {
   const page = document.createElement("div");
   const boxes = new Map<Element, Box>();
@@ -22,9 +24,14 @@ function harness({ reduced = false } = {}) {
   const extended = new Map<Element, { right: number; bottom: number }>();
   const transitions: Array<{ update: () => void; finished: () => void }> = [];
   const timers: Array<{ ms: number; fire: () => void; stopped: boolean }> = [];
+  const playing = new Map<Element, { finished: boolean }>();
+  const opacities = new Map<Element, number>();
+  const paints: Array<{ fire: () => void; stopped: boolean }> = [];
   const settings = { reduced };
-  const nameOf = (element: Element) =>
-    element.getAttribute(TURN_PART) ?? (element.hasAttribute(TURN_FADE) ? "fade" : `frame of ${frames.find((frame) => frame.element === element)?.part.getAttribute(TURN_PART)}`);
+  const nameOf = (element: Element) => {
+    if (element === page) return "page";
+    return element.getAttribute(TURN_PART) ?? (element.hasAttribute(TURN_FADE) ? "fade" : `frame of ${frames.find((frame) => frame.element === element)?.part.getAttribute(TURN_PART)}`);
+  };
   const motion = turnMotion({
     parts: page,
     measure: (element) => {
@@ -70,6 +77,26 @@ function harness({ reduced = false } = {}) {
       animations.push(started);
       return started;
     },
+    animations: (element) => {
+      const own = playing.get(element);
+      if (!own || own.finished) return [];
+      return [
+        {
+          finish: () => {
+            log.push(`finish ${nameOf(element)}`);
+            own.finished = true;
+          }
+        }
+      ];
+    },
+    opacity: (element) => opacities.get(element) ?? 1,
+    nextFrame: (fire) => {
+      const paint = { fire, stopped: false };
+      paints.push(paint);
+      return () => {
+        paint.stopped = true;
+      };
+    },
     reducedMotion: () => settings.reduced,
     startViewTransition: (update, finished) => {
       log.push("view transition");
@@ -110,6 +137,22 @@ function harness({ reduced = false } = {}) {
     log.push("change");
     laidOut.forEach(([element, box]) => boxes.set(element, box));
   };
+  // An animation of the page's own starts on `element`, which draws it at
+  // `opacity`.
+  const play = (element: Element, opacity = 1) => {
+    const own = { finished: false };
+    playing.set(element, own);
+    opacities.set(element, opacity);
+    return own;
+  };
+  // The frames asked for and not called off nor drawn yet.
+  const waiting = () => paints.filter(({ stopped }) => !stopped);
+  // The browser draws a frame, calling first what waits for it.
+  const paint = () =>
+    waiting().forEach((frame) => {
+      frame.stopped = true;
+      frame.fire();
+    });
   const animationOf = (element: Element) => animations.filter((started) => started.element === element).at(-1);
   const running = (element: Element) => animations.filter((started) => started.element === element && !started.cancelled).at(-1);
   const frameOf = (element: Element) => frames.filter((frame) => frame.part === element && !frame.removed).at(-1);
@@ -160,7 +203,7 @@ function harness({ reduced = false } = {}) {
     }
     return shown;
   };
-  return { page, boxes, log, animations, frames, extended, transitions, timers, settings, motion, part, fading, drawn, layout, animationOf, frameOf, keeper, visible, drawnAt };
+  return { page, boxes, log, animations, frames, extended, transitions, timers, opacities, settings, motion, part, fading, drawn, layout, play, waiting, paint, animationOf, frameOf, keeper, visible, drawnAt };
 }
 
 const box = (left: number, top: number, width: number, height: number): Box => ({ left, top, width, height });
@@ -606,6 +649,75 @@ describe("the fade under reduced motion", () => {
     motion.transitions[0]?.update();
 
     expect([motion.log, motion.animations.length]).toEqual([["view transition", "cancel card", "cancel frame of card", "unframe card", "change", "measure card"], 2]);
+  });
+});
+
+describe("the page's own animations", () => {
+  it.each([
+    ["on the part itself", "part"],
+    ["on an element around it", "around"]
+  ] as const)("measure the page again before every frame while one runs %s, until it has ended, so a glide starts from where the part was last drawn", (_, on) => {
+    const motion = harness();
+    const screen = document.createElement("div");
+    motion.page.append(screen);
+    const card = motion.part("card", box(56, 132, 400, 500), { outer: screen });
+    const entrance = motion.play(on === "part" ? card : screen);
+    motion.drawn();
+
+    expect(motion.waiting().length).toBe(1);
+
+    motion.boxes.set(card, box(56, 124, 400, 500));
+    motion.paint();
+    // The animation ends by this frame.
+    motion.boxes.set(card, box(56, 116, 400, 500));
+    entrance.finished = true;
+    motion.paint();
+
+    expect([motion.log, motion.waiting()]).toEqual([["measure card", "measure card"], []]);
+
+    motion.motion.apply(motion.layout([[card, box(56, 300, 400, 500)]]), "glide");
+
+    expect(motion.animationOf(card)?.keyframes[0]).toEqual({ translate: "0px -184px" });
+  });
+
+  it("measure nothing before frames while a motion runs, and again once it settles, until the motion halts", () => {
+    const motion = harness();
+    const card = motion.part("card", box(56, 132, 400, 500));
+    motion.play(motion.page);
+    motion.drawn();
+
+    motion.motion.apply(motion.layout([[card, box(56, 300, 400, 500)]]), "glide");
+    motion.motion.redrawn();
+
+    expect([motion.waiting(), motion.log]).toEqual([[], ["change", "measure card"]]);
+
+    motion.timers[0]?.fire();
+
+    expect(motion.waiting().length).toBe(1);
+
+    motion.motion.halt();
+    motion.paint();
+
+    expect([motion.waiting(), motion.log.slice(-1)]).toEqual([[], ["measure card"]]);
+  });
+
+  it("are taken over by a glide on the part they run on: it goes on from where and how faded they draw it, and they end before its new place is measured, those around it left running", () => {
+    const motion = harness();
+    const screen = document.createElement("div");
+    motion.page.append(screen);
+    const card = motion.part("card", box(56, 124, 400, 500), { outer: screen, frame: true });
+    const entrance = motion.play(card, 0.5);
+    const around = motion.play(screen);
+    motion.drawn();
+
+    motion.motion.apply(motion.layout([[card, box(56, 300, 700, 300)]]), "glide");
+
+    expect([motion.log, entrance.finished, around.finished]).toEqual([["change", "finish card", "measure card", "frame card"], true, false]);
+    expect(motion.animationOf(card)?.keyframes.map(({ translate, opacity }) => ({ translate, opacity }))).toEqual([
+      { translate: "0px -176px", opacity: 0.5 },
+      { translate: "0px 0px", opacity: 1 }
+    ]);
+    expect(motion.animationOf(motion.frameOf(card)!.element)?.keyframes.map(({ opacity }) => opacity)).toEqual([0.5, 1]);
   });
 });
 
