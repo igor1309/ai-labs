@@ -1,7 +1,7 @@
 # MVP draft
 
 Status: draft. v1's architecture is decided in
-[adr-001-v1-architecture.md](../adr-001-v1-architecture.md).
+[adr-001-v1-architecture.md](adr-001-v1-architecture.md).
 
 ## Shape
 
@@ -14,14 +14,14 @@ Not a fork of Amanu: its live engine is the part we would replace. Audelin
 replaces Amanu rather than running next to it (owner, 2026-10-21): one app
 records every call, with or without live text.
 Timur Khakhalev's OpenWhispr rework took ~35 PRs plus CI and test cleanup
-([chat](chat-khakhalev-2026-10-21.md) § 1), which is the cost a fork brings.
+([chat](research/chat-khakhalev-2026-10-21.md) § 1), which is the cost a fork brings.
 Amanu (MIT) and FluidAudio (Apache-2.0) are references we may copy from.
 MacParakeet code is GPL-3.0 and is not copied.
 
 ## Technical rules
 
-Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
-([chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) § 3–4).
+Taken from the spike ([tests.md](research/tests.md) run 3) and from the chat survey
+([chat-khakhalev-2026-10-21.md](research/chat-khakhalev-2026-10-21.md) § 3–4).
 
 1. **Record first.** Mic and call audio go to disk as two separate tracks, in
    short pieces, before anything reads them. The live text is a view over
@@ -46,9 +46,9 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
 
 | Version | Scope | Done when |
 |---|---|---|
-| v0 spike | CLI over recordings; window sizes | Done ([tests.md](tests.md) run 3) |
+| v0 spike | CLI over recordings; window sizes | Done ([tests.md](research/tests.md) run 3) |
 | v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; recording starts when a call starts and stops when it ends, or by hand; live text can be switched off; call folders named and renamed in the app | Owner runs a real call and reads along |
-| v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
+| v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](research/needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
 | v3 after the call | Final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
 | Later | Auto-detected term chips under the live text; CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
 
@@ -65,7 +65,7 @@ most audio a damaged file can lose, not a latency setting.
 Code structure (owner, 2026-10-21): one app for v1, but highly modular,
 following the owner's iFora `swift-vortex` package: small targets, each
 feature split into Core, adapters and UI, each with tests. See
-[ADR-001](../adr-001-v1-architecture.md).
+[ADR-001](adr-001-v1-architecture.md).
 
 Audio after a call (owner, 2026-10-21): kept as one compact stereo file (mic
 left, call right; Amanu's format, ~55 MB per hour) and deleted automatically
@@ -84,7 +84,7 @@ first launch opens setup and nothing else works until an engine is chosen. If
 the chosen engine's model is missing later, the app says so at launch, not
 after a call. This gate arrives with the final pass in v3; v1 setup asks only
 for the calls folder and the live model (2026-10-21,
-[ADR-001](../adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+[ADR-001](adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
 
@@ -177,4 +177,4 @@ v4 screen details (decided by the agents, owner delegated, 2026-10-21):
 Audelin (owner, 2026-10-21): CLI `audelin`, data in `~/.audelin`, calls in
 `~/Recordings/Audelin`. In Russian it is Одели́н, stressed on the last
 syllable (owner, 2026-10-21). The Russian UI uses Latin "Audelin" too. See
-[audelin-naming-brief.md](../audelin-naming-brief.md).
+[audelin-naming-brief.md](audelin-naming-brief.md).
