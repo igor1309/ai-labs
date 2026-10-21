@@ -54,10 +54,13 @@ has none of its own.
 - **Oracle:** [mvp.md](mvp.md), [the design](design/README.md), ADR-001 and
   the owner's rulings, plus the client's spec for a component. Every
   scenario traces to it.
-- **`## Open`**, above the scenarios, always present (`None.` when empty).
-  Where the oracle is silent or ambiguous — a threshold, a limit, a choice
-  between two readings — the scenario is not written; the question goes
-  here. A spec with an open item is not done.
+- **Gaps are the agent's to close, not the owner's.** Where the oracle is
+  silent or ambiguous — a threshold, a limit, a title, a choice between two
+  readings — the agent researches it (the docs, the platform, comparable
+  apps), has Codex challenge its proposal, decides and writes the scenario.
+  Each such decision is one line in `## Decided`, above the scenarios, with
+  its grounds, so the owner can overturn it. A gap is never handed to the
+  owner as an open question (owner, 2026-10-22).
 
 ## QA.md
 
@@ -75,9 +78,9 @@ to run reports, never into `QA.md`.
 2. Each spec is reviewed against its oracle and its client's spec only:
    observer, capabilities, traceability in both directions (every scenario
    traces to the oracle; every behaviour the oracle names is a scenario, a
-   reference, a non-goal or an open question) and `## Open`. A finding that
+   reference or a non-goal) and `## Decided`. A finding that
    asks for mechanism is out of scope.
-3. A spec is done when the review is clean and `## Open` reads `None.`
+3. A spec is done when the review is clean.
 
 ## Tracking
 
@@ -87,9 +90,9 @@ In Multica, project Audelin:
   child is done.
 - **One child issue per spec**, covering its `SPEC.md` and `QA.md`. It names
   the observer and the spec it follows ("after LAB-…").
-- **Open questions** go to the owner as a comment on that spec's issue, and
-  the issue is blocked until they are ruled. The ruling lands in the spec.
-  Other specs carry on.
+- **Decisions** the agent took for a spec are listed in its issue's closing
+  comment. The owner overturns one by commenting; the spec changes and the
+  issue reopens.
 - **Build issues** (LAB-401 to LAB-407) stay as feature slices. Each names
   the specs whose scenarios it implements, and is done when those scenarios
   pass their `QA.md` rows. LAB-408 runs the user spec on a real call.
