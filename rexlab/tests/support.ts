@@ -1,5 +1,5 @@
 import type { AgeLevel } from "../src/ageLevel.ts";
-import { act, fireEvent, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import records from "../src/data/dinosaurs.json";
@@ -18,10 +18,11 @@ import { SIDE_INSETS } from "../src/mediaViewport.ts";
 import type { StartTimer } from "../src/ownedTimers.ts";
 import { pictureStore, type LoadPicture, type PictureStore } from "../src/Picture.tsx";
 import type { Language } from "../src/language/language.ts";
-import { presentQuestion } from "../src/presentation.ts";
+import { PROMPTS, presentQuestion } from "../src/presentation.ts";
 import { choose, questionState, type Random } from "../src/quiz/index.ts";
 import { startPlay } from "../src/quiz/play.ts";
-import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
+import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
 import type { LayoutKeeping } from "../src/useKeptRow.ts";
@@ -213,6 +214,21 @@ export function loadShownPictures(given: PictureClock) {
 }
 
 // A seeded random source (mulberry32): each seed is one repeatable run.
+// The question on screen, read back by its prompt in `language` and the
+// shipped dinosaurs named on its two cards.
+export function shownQuestion(language: Language = "en"): Question {
+  const heading = screen.getByRole("heading").textContent ?? "";
+  const kind = QUESTION_KINDS.find((each) => heading.includes(TEXTS[language].prompts[PROMPTS[each]]));
+  if (!kind) throw new Error(`No question asks "${heading}"`);
+  const [left, right] = within(screen.getByRole("group", { name: TEXTS[language].creatures }))
+    .getAllByRole("button")
+    .map((card) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.name[language] === card.getAttribute("aria-label")));
+  if (!left || !right) throw new Error("Expected two shipped dinosaurs on the cards");
+  return { kind, attribute: attributeOf(kind), left, right };
+}
+
+export const wrongOf = (question: Question) => (correctOf(question) === question.left ? question.right : question.left);
+
 export function seededRandom(seed: number): Random {
   let state = seed >>> 0;
   return () => {

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Language } from "../src/language/language.ts";
-import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
+import { attributeOf, type Dinosaur, type QuestionKind } from "../src/quiz/round.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -51,15 +51,15 @@ async function answerAndGoOn(user: UserEvent) {
 }
 
 describe("a question", () => {
-  it.each<[Attribute, string, string]>([
-    ["mass", "scale", "WHO IS HEAVIER?"],
-    ["height", "ruler", "WHO IS TALLER?"]
-  ])("comparing %s shows the %s symbol, its prompt and two dinosaur cards", (attribute, symbol, prompt) => {
+  it.each<[QuestionKind, string, string]>([
+    ["heavier", "scale", "WHO IS HEAVIER?"],
+    ["taller", "ruler", "WHO IS TALLER?"]
+  ])("asking %s shows the %s symbol, its prompt and two dinosaur cards", (kind, symbol, prompt) => {
     const nothing = () => {};
     render(
       <QuestionScreen
         language="en"
-        {...questionView({ attribute, left: byName("Triceratops"), right: byName("Velociraptor") }, "en")}
+        {...questionView({ kind, attribute: attributeOf(kind), left: byName("Triceratops"), right: byName("Velociraptor") }, "en")}
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}
@@ -105,7 +105,7 @@ describe("a dinosaur card's picture", () => {
     const nothing = () => {};
     for (const [left, right] of pairs) {
       const { unmount } = render(
-        <QuestionScreen language={language} {...questionView({ attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />,
+        <QuestionScreen language={language} {...questionView({ kind: "heavier", attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />,
         withPictures
       );
 

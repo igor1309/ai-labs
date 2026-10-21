@@ -5,7 +5,7 @@ import { App } from "../src/App.tsx";
 import { formatLength, formatMass } from "../src/formatValue.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
-import { largerOf, measureOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { attributeOf, correctOf, measureOf, type Attribute, type Dinosaur, type Question, type QuestionKind } from "../src/quiz/round.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -32,7 +32,9 @@ import {
   symbolOf,
   type ManualPictures,
   gameDoor,
-  unsetAgeLevel
+  unsetAgeLevel,
+  shownQuestion,
+  wrongOf
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
 
@@ -66,18 +68,6 @@ const outlineOf = (card: HTMLElement) => {
 const opacityOf = (card: HTMLElement) => Number(getComputedStyle(card).opacity || 1);
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
-// The question on screen, read back from the shipped list by its prompt
-// and the names on its cards.
-function shownQuestion(): Question {
-  const heading = screen.getByRole("heading").textContent ?? "";
-  const attribute: Attribute = heading.includes("HEAVIER") || heading.includes("LIGHTER") ? "mass" : heading.includes("LONGER") ? "length" : "height";
-  const [left, right] = cards().map((card) => byName(card.getAttribute("aria-label") ?? ""));
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
-}
-
-const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
-
 function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof loadedPictures> = loadedPictures()) {
   render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />);
   const user = userEvent.setup();
@@ -94,7 +84,7 @@ function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof l
 // pictures each Next asks for finish loading.
 async function answerUpTo(user: UserEvent, number: number, pictures?: ManualPictures) {
   for (;;) {
-    await user.click(cardOf(largerOf(shownQuestion())));
+    await user.click(cardOf(correctOf(shownQuestion())));
     if (progress() === `${number}/10`) return;
     await user.click(screen.getByRole("button", { name: "NEXT" }));
     if (pictures) act(() => pictures.loading().forEach(pictures.finish));
@@ -105,21 +95,21 @@ const picturesShown = () => cards().map((card) => within(card).getByRole("img").
 const looks = () => cards().map((card) => within(card).getByRole("img").dataset.picture);
 
 describe("answering a question", () => {
-  const examples: Array<[string, Attribute, string, string, string, string]> = [
-    ["WHO IS HEAVIER?", "mass", "Triceratops", "Velociraptor", "7 T", "15 KG"],
-    ["WHO IS TALLER?", "height", "Brachiosaurus", "Stegosaurus", "3.4 M", "1.5 M"]
+  const examples: Array<[string, QuestionKind, string, string, string, string]> = [
+    ["WHO IS HEAVIER?", "heavier", "Triceratops", "Velociraptor", "7 T", "15 KG"],
+    ["WHO IS TALLER?", "taller", "Brachiosaurus", "Stegosaurus", "3.4 M", "1.5 M"]
   ];
-  const cases = examples.flatMap(([prompt, attribute, larger, smaller, largerValue, smallerValue]) =>
+  const cases = examples.flatMap(([prompt, kind, larger, smaller, largerValue, smallerValue]) =>
     (["right answer", "wrong answer"] as const).flatMap((answer) =>
-      (["left", "right"] as const).map((side) => ({ prompt, attribute, larger, smaller, largerValue, smallerValue, answer, side }))
+      (["left", "right"] as const).map((side) => ({ prompt, kind, larger, smaller, largerValue, smallerValue, answer, side }))
     )
   );
 
   it.each(cases)(
     '"$prompt" about $larger and $smaller, $larger on the $side: a $answer',
-    async ({ prompt, attribute, larger, smaller, largerValue, smallerValue, answer, side }) => {
+    async ({ prompt, kind, larger, smaller, largerValue, smallerValue, answer, side }) => {
       const [big, small] = [byName(larger), byName(smaller)];
-      const question: Question = side === "left" ? { attribute, left: big, right: small } : { attribute, left: small, right: big };
+      const question: Question = side === "left" ? { kind, attribute: attributeOf(kind), left: big, right: small } : { kind, attribute: attributeOf(kind), left: small, right: big };
       const tapped = answer === "right answer" ? big : small;
       const chosen: string[] = [];
       const nothing = () => {};
@@ -141,7 +131,7 @@ describe("answering a question", () => {
       expect([big, small].map((dinosaur) => opacityOf(cardOf(dinosaur)))).toEqual(answer === "right answer" ? [1, 0.7] : [1, 1]);
       expect(within(cardOf(big)).getByText(largerValue)).toBeDefined();
       expect(within(cardOf(small)).getByText(smallerValue)).toBeDefined();
-      expect(symbolOf(within(cardOf(big)).getByText(largerValue).parentElement ?? cardOf(big))).toBe(attribute === "mass" ? "weight" : "ruler");
+      expect(symbolOf(within(cardOf(big)).getByText(largerValue).parentElement ?? cardOf(big))).toBe(kind === "heavier" ? "weight" : "ruler");
       expect(score(choose(startPlay([question], "hatchling"), tapped.id))).toBe(answer === "right answer" ? 1 : 0);
       const next = screen.getByRole("button", { name: "NEXT" });
       expect([next.textContent, symbolOf(next)]).toEqual(["NEXT", "arrow-right"]);
@@ -224,7 +214,7 @@ describe("answering a question", () => {
 
     for (let number = 1; number <= 10; number++) {
       const question = shownQuestion();
-      const [right, wrong] = [largerOf(question), smallerOf(question)];
+      const [right, wrong] = [correctOf(question), wrongOf(question)];
       const tapped = number % 2 === 0 ? right : wrong;
       await user.click(cardOf(tapped));
 
@@ -260,7 +250,7 @@ describe("answering a question", () => {
     render(
       <QuestionScreen
         language="en"
-        {...questionView({ attribute: "mass", left: big, right: small }, "en", small.id)}
+        {...questionView({ kind: "heavier", attribute: "mass", left: big, right: small }, "en", small.id)}
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}
@@ -284,11 +274,11 @@ describe("answering a question", () => {
     const { user, start } = startRound(13);
     await start();
     const question = shownQuestion();
-    await user.click(cardOf(smallerOf(question)));
+    await user.click(cardOf(wrongOf(question)));
     const answered = document.body.innerHTML;
 
-    await user.click(cardOf(largerOf(question)));
-    await user.click(cardOf(smallerOf(question)));
+    await user.click(cardOf(correctOf(question)));
+    await user.click(cardOf(wrongOf(question)));
 
     expect(document.body.innerHTML).toBe(answered);
   });
@@ -339,7 +329,7 @@ describe("Next", () => {
     await start();
     const shown: Array<Array<string | undefined>> = [];
     for (let number = 1; number < 10; number++) {
-      await user.click(cardOf(largerOf(shownQuestion())));
+      await user.click(cardOf(correctOf(shownQuestion())));
       await user.click(screen.getByRole("button", { name: "NEXT" }));
       // A question's pictures show at once only if they were asked for
       // before it opened.
@@ -358,7 +348,7 @@ describe("Next", () => {
     // Question 3 opens and asks for question 4's pictures, which stay
     // loading.
     await user.click(screen.getByRole("button", { name: "NEXT" }));
-    await user.click(cardOf(largerOf(shownQuestion())));
+    await user.click(cardOf(correctOf(shownQuestion())));
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
 
