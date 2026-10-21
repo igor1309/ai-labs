@@ -313,7 +313,22 @@ describe("the shipped dinosaur list", () => {
     ["apatosaurus", 21],
     ["mamenchisaurus", 22],
     ["amargasaurus", 12],
-    ["plateosaurus", 7]
+    ["plateosaurus", 7],
+    ["parasaurolophus", 9],
+    ["iguanodon", 10],
+    ["edmontosaurus", 13],
+    ["maiasaura", 9],
+    ["corythosaurus", 10],
+    ["triceratops", 9],
+    ["protoceratops", 1.8],
+    ["psittacosaurus", 2],
+    ["styracosaurus", 5.5],
+    ["chasmosaurus", 5],
+    ["stegosaurus", 8.5],
+    ["kentrosaurus", 5],
+    ["ankylosaurus", 8],
+    ["pachycephalosaurus", 3],
+    ["spinosaurus", 14]
   ] as const)("keeps the %s's positive nose-to-tail length at %s m", (id, length) => {
     const value = records.find((record) => record.id === id)?.attributes.lengthMeters;
 

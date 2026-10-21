@@ -138,21 +138,27 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `mamenchisaurus` | 12 t | Length 22 m: NHM; AMNH (M. hochuanensis): 18 m, 4 m at the shoulder, 13 short tons; NHM: 22 m |
 | `amargasaurus` | 9 t | Length 12 m and mass 9,000 kg: NHM; no other trusted source gives a mass |
 | `plateosaurus` | 4 t | Length 7 m: NHM; Britannica: 7–8 m; NHM: 4,000 kg |
-| `maiasaura` | 3 t | NHM: 9 m, 2,500 kg; UCMP: 3–4 short tons; Britannica: 9 m |
-| `corythosaurus` | 4 t | Britannica: 9 m, 3–5 t; NHM: 10 m |
-| `chasmosaurus` | 2.5 t | NHM: 5 m, 2,500 kg; AMNH: about 5.2 m |
-| `protoceratops` | 180 kg | NHM: 1.8 m, 400 kg; Britannica: 1.8 m, about 180 kg (400 lb), so NHM's figure is likely the pounds |
-| `stegosaurus` | 2.7 t | AMNH: 8.5 m, 2,720 kg; Britannica: about 2 tons; NHM gives no mass |
-| `parasaurolophus` | 3.5 t | NHM: 9 m, 5,000 kg; Britannica: 10 m, 3–4 tons |
+| `maiasaura` | 3 t | Length 9 m and mass 2,500 kg: NHM; UCMP: 3–4 short tons; Britannica: 9 m |
+| `corythosaurus` | 4 t | Length 10 m: NHM; Britannica: 9 m, 3–5 t |
+| `chasmosaurus` | 2.5 t | Length 5 m: NHM; AMNH: about 5.2 m |
+| `triceratops` | 7 t | Length 9 m: NHM; AMNH: 6–8.5 m; Britannica: about 9 m |
+| `ankylosaurus` | 6 t | Length 8 m: NHM; Britannica: 6–8 m |
+| `spinosaurus` | 7.4 t | Length 14 m: NHM; Britannica: about 15 m; NHM's estimate is retained |
+| `pachycephalosaurus` | 450 kg | Length 3 m: NHM; Britannica: up to 5 m, a larger estimate |
+| `styracosaurus` | 2.7 t | Length 5.5 m: NHM; Britannica: about 5.5 m |
+| `kentrosaurus` | 1 t | Length 5 m: NHM; no other trusted source gives a length |
+| `protoceratops` | 180 kg | Length 1.8 m: NHM and Britannica; NHM's 400 kg likely means pounds; Britannica: about 180 kg (400 lb) |
+| `stegosaurus` | 2.7 t | Length 8.5 m: AMNH; Britannica: about 2 tons; NHM gives no mass |
+| `parasaurolophus` | 3.5 t | Length 9 m: NHM; Britannica: 10 m, 3–4 tons; NHM mass 5,000 kg is above Britannica's range |
 | `brachiosaurus` | 50 t | Length 22 m: NHM; Britannica: 18–22 m; NHM: 46,900 kg; Britannica: 55–66 tons, and close to 80 t |
 | `diplodocus` | 15 t | Length 26 m: NHM; NHM's estimate is 24–26 m; AMNH: about 26 m |
 | `argentinosaurus` | 70 t | Length 35 m: NHM; Britannica: about 30 m. The incomplete fossil makes the upper estimate uncertain |
 | `apatosaurus` | 23 t | Length 21 m: NHM; Britannica: about 23 m |
-| `psittacosaurus` | 50 kg | AMNH: 60 cm tall, 130 cm long, 23–80 kg; NHM: 2 m, 50 kg |
+| `psittacosaurus` | 50 kg | Length 2 m and mass 50 kg: NHM; AMNH: 1.3 m, 23–80 kg; NHM's length is the larger estimate |
 | `coelophysis` | 20 kg | Britannica: about 2 m, 18–23 kg, and 23–45 kg; NHM: 2 m, 27 kg |
 | `iguanodon` | 4 t | Length 10 m: NHM; Britannica: 9 m, four to five tons; NHM: 4,000 kg |
 | `oviraptor` | 30 kg | NHM: 2 m, 20 kg; Britannica: 1.8 m, about 32 kg (70 lb) |
-| `edmontosaurus` | 3.4 t | NHM: 13 m, 3,400 kg; no other trusted source gives a mass |
+| `edmontosaurus` | 3.4 t | Length 13 m and mass 3,400 kg: NHM; no other trusted source gives a mass |
 | `gallimimus` | 490 kg | NHM: 6 m, 490 kg; no other trusted source gives a mass |
 | `quetzalcoatlus` | 250 kg | NHM: about 11 m wingspan, up to 250 kg; AMNH: wingspan around 10 m, Texas; Witton 2008: 9.64 m, 259 kg |
 | `pteranodon` | 25 kg | AMNH: wingspan up to 6 m, fish, "winged and toothless"; UCMP: about 25 pounds; Witton 2008: 5.96 m, 36.7 kg |
