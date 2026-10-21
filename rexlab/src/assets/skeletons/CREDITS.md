@@ -8,4 +8,6 @@ Paleontologist's pieces, ten to twelve per skeleton, are cut on 2026-10-19 by sc
 
 Brachiosaurus's and Spinosaurus's skeletons were generated the same way on 2026-10-19, with `scripts/skeleton-picture.sh`, and cut at every level by `scripts/cut-skeleton.py` on 2026-10-20.
 
+Whole skeletons of Velociraptor, Ankylosaurus, Parasaurolophus, Pachycephalosaurus, Compsognathus, Gallimimus, Therizinosaurus, Pteranodon, Elasmosaurus and Mosasaurus were generated the same way on 2026-10-21, with `scripts/skeleton-picture.sh`, for FIND THE PAIR's Paleontologist board (LAB-385); they are not cut into pieces.
+
 How to make and cut a skeleton: `art/skeletons.md`.
