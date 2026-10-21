@@ -107,7 +107,8 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    context.
 10. **Ports and adapters.** Cores declare the ports they need: audio capture,
    recording writer and recorded-audio reader, live recognition, call store,
-   settings, model provider, clock. Live recognition and the v3 final pass are
+   settings, model provider, call detection (a call app taking and releasing
+   the microphone starts and stops a recording), clock. Live recognition and the v3 final pass are
    different ports that share audio references and transcript types. Only the
    app target creates adapters.
    **Logging is a decorator in the composition root** (owner, 2026-10-21).
@@ -135,7 +136,7 @@ Domain        CallDomain (call, meta.json, folder and title rules)
 Features      LiveSessionCore / LiveSessionUI (NSPanel + NSTextView)
               CallsCore / CallsUI
               SetupCore / SetupUI
-Adapters      AudioCapture · Recorder · FluidAudioASR
+Adapters      AudioCapture · Recorder · FluidAudioASR · CallDetector
               FileCallStore · SettingsStore · ModelStore
 ```
 
