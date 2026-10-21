@@ -26,6 +26,7 @@ import {
   manualAppearance,
   manualViewport,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
   unreadVersion,
@@ -58,6 +59,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
     />
   );
   return userEvent.setup();

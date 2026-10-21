@@ -23,6 +23,7 @@ import {
   manualViewport,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   unreadVersion,
   type ManualViewport,
   type ManualTimers,
@@ -104,6 +105,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       pairsProgress={localPairsProgress(() => storage)}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       reducedMotion={() => reducedMotion}

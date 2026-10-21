@@ -20,6 +20,7 @@ import {
   manualViewport,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   unreadVersion,
   type ManualViewport,
   type MemoryStorage,
@@ -76,6 +77,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
       pairsProgress={localPairsProgress(() => storage)}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       reducedMotion={() => reducedMotion}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}

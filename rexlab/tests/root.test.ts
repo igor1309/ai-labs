@@ -4,7 +4,7 @@ import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { appProps, filterDoubleTaps } from "../src/root.ts";
+import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -40,6 +40,17 @@ function browser({
     ...manualWindow(1024),
     ...pictureBrowser()
   };
+}
+
+// A view transition's end, settled by the test.
+function settling() {
+  let resolve = () => {};
+  let reject = (_: Error) => {};
+  const promise = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve: () => resolve(), reject: (error: Error) => reject(error) };
 }
 
 const record = (bestScore: number, roundsPlayed: number) =>
@@ -162,6 +173,90 @@ describe("the app in a browser", () => {
     given.media.change(REDUCED_MOTION, false);
 
     expect(reducedMotion()).toBe(false);
+  });
+
+  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, framed and widened by the browser's own means, animated by the browser, the page's own animations and opacity read from it, its frames asked of it, timed by the motion tokens, faded by its view transition until it has finished", async () => {
+    const fades: unknown[] = [];
+    const ended = settling();
+    const given = browser();
+    const document = Object.assign(given.document, {
+      startViewTransition: ((update: unknown) => (fades.push(update), { finished: ended.promise })) as unknown as Document["startViewTransition"]
+    });
+    const { layoutMotion } = appProps({ ...given, document });
+    const box = { left: 1, top: 2, width: 3, height: 4 };
+    const animation = { cancel: () => {}, effect: null };
+    const animated: unknown[] = [];
+    const part = { getBoundingClientRect: () => box, animate: (...args: unknown[]) => (animated.push(args), animation) } as unknown as Element;
+    const change = () => {};
+    let finished = 0;
+
+    layoutMotion.startViewTransition(change, () => finished++);
+
+    expect(layoutMotion.parts).toBe(document);
+    expect(layoutMotion.measure(part)).toBe(box);
+    // A part's frame and the row's window are drawn as homeTurn.test.tsx
+    // proves of them, timed by the stylesheet's tokens, which
+    // motion.test.ts holds TURN_TIMING to.
+    expect([layoutMotion.frame, layoutMotion.extend, layoutMotion.timing]).toEqual([turnFrame, extendPart, TURN_TIMING]);
+    expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
+    expect([layoutMotion.animations, layoutMotion.opacity]).toEqual([pageAnimations, drawnOpacity]);
+    let painted = 0;
+    const stop = layoutMotion.nextFrame(() => painted++);
+    given.frames[0]?.();
+    stop();
+    expect([given.frames.length, painted, given.calledOff]).toEqual([1, 1, [0]]);
+    expect([fades, finished]).toEqual([[change], 0]);
+
+    ended.resolve();
+    await ended.promise;
+
+    expect(finished).toBe(1);
+  });
+
+  it("finds the page's own animations on an element by those still running, and finishes each where it ends, an endless one going on", () => {
+    const finished: string[] = [];
+    const animation = (name: string, playState: AnimationPlayState, endTime: number) =>
+      ({ playState, effect: { getComputedTiming: () => ({ endTime }) }, finish: () => void finished.push(name) }) as unknown as Animation;
+    const element = { getAnimations: () => [animation("entrance", "running", 320), animation("ended", "finished", 320), animation("shimmer", "running", Infinity), animation("paused", "paused", 320)] };
+
+    const running = pageAnimations(element);
+    running.forEach((found) => found.finish());
+
+    expect([running.length, finished]).toEqual([2, ["entrance"]]);
+  });
+
+  it.each([
+    ["in a window, as the window computes it", { defaultView: { getComputedStyle: () => ({ opacity: "0.25" }) } }, 0.25],
+    ["outside any window, as full", { defaultView: null }, 1]
+  ])("reads the opacity an element is drawn at %s", (_, ownerDocument, opacity) => {
+    expect(drawnOpacity({ ownerDocument } as unknown as Element)).toBe(opacity);
+  });
+
+  it("ends the fade once the view transition is skipped, too", async () => {
+    const ended = settling();
+    const given = browser();
+    const document = Object.assign(given.document, { startViewTransition: (() => ({ finished: ended.promise })) as unknown as Document["startViewTransition"] });
+    let finished = 0;
+    appProps({ ...given, document }).layoutMotion.startViewTransition(
+      () => {},
+      () => finished++
+    );
+
+    ended.reject(new Error("skipped"));
+    await ended.promise.catch(() => {});
+
+    expect(finished).toBe(1);
+  });
+
+  it("changes the layout at once in a browser with no view transitions, its fade then ended", () => {
+    const steps: string[] = [];
+
+    appProps(browser()).layoutMotion.startViewTransition(
+      () => steps.push("change"),
+      () => steps.push("finished")
+    );
+
+    expect(steps).toEqual(["change", "finished"]);
   });
 
   it.each(["ru-RU", "en-GB"])("takes the device language %s from the browser", (language) => {

@@ -1,5 +1,5 @@
 import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -8,7 +8,8 @@ import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { tileColumnWidth } from "./tileColumns.ts";
+import { TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
+import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 
@@ -42,10 +43,12 @@ export type HomePageProps = {
   startTimer: ParentMenuProps<string>["startTimer"];
   // The window, whose width the tiles' columns follow upright.
   viewport: WindowWidth;
-  // Whether the window stands upright. A turn puts the tiles' row back at
-  // its start: its columns change, so where it was swiped to points at
-  // other tiles.
+  // Whether the window stands upright, where the tiles' columns narrow
+  // with its width.
   upright: boolean;
+  // Where the page keeps where the tiles' row was swiped to, through each
+  // change of its layout.
+  layoutKeeping: LayoutKeeping;
   // The game the large card features today, beside its own tile.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
@@ -96,6 +99,7 @@ export function HomePage({
   startTimer,
   viewport,
   upright,
+  layoutKeeping,
   featured,
   faceOff,
   best,
@@ -118,10 +122,6 @@ export function HomePage({
   const text = TEXTS[language];
   const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
   const [openMenu, setOpenMenu] = useState<Menu>();
-  const tilesRow = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (tilesRow.current) tilesRow.current.scrollLeft = 0;
-  }, [upright]);
   const menu = (name: Menu) => ({
     open: openMenu === name,
     onOpen: () => setOpenMenu(name),
@@ -186,7 +186,7 @@ export function HomePage({
   // game is on the page twice.
   const tiles: Record<HomeGame, ReactNode> = {
     compare: (
-      <Button key="compare" className="card compare-tile" aria-label={games.compare.name} onClick={games.compare.onOpen}>
+      <Button key="compare" className="card compare-tile" data-turn-part="tile-compare" aria-label={games.compare.name} onClick={games.compare.onOpen}>
         {games.compare.picture}
         <span className="compare-tile-row">
           <span className="compare-tile-symbol" aria-hidden="true">
@@ -198,7 +198,7 @@ export function HomePage({
       </Button>
     ),
     catalogue: (
-      <Button key="catalogue" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
+      <Button key="catalogue" className="card catalogue-tile" data-turn-part="tile-catalogue" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
         {games.catalogue.picture}
         {/* The book sits in the picture's other corner: beside the
             title it would leave ANCIENT REPTILES too little of the row on
@@ -215,7 +215,7 @@ export function HomePage({
       </Button>
     ),
     care: (
-      <Button key="care" className="card care-tile" aria-label={games.care.name} onClick={games.care.onOpen}>
+      <Button key="care" className="card care-tile" data-turn-part="tile-care" aria-label={games.care.name} onClick={games.care.onOpen}>
         {games.care.picture}
         <span className="care-tile-row">
           <span className="care-tile-symbol" aria-hidden="true">
@@ -227,7 +227,7 @@ export function HomePage({
       </Button>
     ),
     sort: (
-      <Button key="sort" className="card sort-tile" aria-label={games.sort.name} onClick={games.sort.onOpen}>
+      <Button key="sort" className="card sort-tile" data-turn-part="tile-sort" aria-label={games.sort.name} onClick={games.sort.onOpen}>
         {games.sort.picture}
         <span className="sort-tile-row">
           <span className="sort-tile-symbol" aria-hidden="true">
@@ -239,7 +239,7 @@ export function HomePage({
       </Button>
     ),
     pairs: (
-      <Button key="pairs" className="card pairs-tile" aria-label={games.pairs.name} onClick={games.pairs.onOpen}>
+      <Button key="pairs" className="card pairs-tile" data-turn-part="tile-pairs" aria-label={games.pairs.name} onClick={games.pairs.onOpen}>
         {games.pairs.picture}
         <span className="pairs-tile-row">
           <span className="pairs-tile-symbol" aria-hidden="true">
@@ -251,7 +251,7 @@ export function HomePage({
       </Button>
     ),
     skeletons: (
-      <Button key="skeletons" className="card skeletons-tile" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen}>
+      <Button key="skeletons" className="card skeletons-tile" data-turn-part="tile-skeletons" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen}>
         {games.skeletons.picture}
         <span className="skeletons-tile-row">
           <span className="skeletons-tile-symbol" aria-hidden="true">
@@ -263,7 +263,7 @@ export function HomePage({
       </Button>
     ),
     dig: (
-      <Button key="dig" className="card dig-tile" aria-label={games.dig.name} onClick={games.dig.onOpen}>
+      <Button key="dig" className="card dig-tile" data-turn-part="tile-dig" aria-label={games.dig.name} onClick={games.dig.onOpen}>
         {games.dig.picture}
         <span className="dig-tile-row">
           <span className="dig-tile-symbol" aria-hidden="true">
@@ -278,16 +278,23 @@ export function HomePage({
   const shown = HOME_GAMES.filter((game) => game !== featured);
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
+  const column = upright ? tileColumnWidth(windowWidth, columns) : TILE_COLUMN;
+  const tilesRow = useKeptRow(layoutKeeping, { column, gap: TILE_GAP });
   const today = games[featured];
   const FeaturedSymbol = today.symbol;
+  // Each part both layouts share is marked, so it glides to its place in
+  // the other as the window turns; a tile's name holds its game, so it
+  // pairs with itself wherever it stands. The bands of rock, along the
+  // bottom of a page each layout makes otherwise tall, fade in where the
+  // new one puts them; upright their holder draws no box to fade.
   return (
     <main className="home">
       <div className="strata" aria-hidden="true">
-        <div className="stratum stratum-1" />
-        <div className="stratum stratum-2" />
-        <div className="stratum stratum-3" />
+        <div className="stratum stratum-1" data-turn-fade="" />
+        <div className="stratum stratum-2" data-turn-fade="" />
+        <div className="stratum stratum-3" data-turn-fade="" />
       </div>
-      <p className="wordmark">
+      <p className="wordmark" data-turn-part="wordmark">
         <span className="wordmark-mark" aria-hidden="true">
           <Footprints size={18} />
         </span>
@@ -296,8 +303,9 @@ export function HomePage({
       {/* The corner holds the museum, for the child, beside the menus for
           parents. An open menu's backdrop is stacked here too, over the
           museum and under the menus, so a tap on the museum then only
-          closes the menu. */}
-      <div className="home-corner">
+          closes the menu. An open menu hangs in it, so it moves with its
+          button as the window turns. */}
+      <div className="home-corner" data-turn-part="corner">
         {/* An open menu is closed by a tap anywhere outside it, and that tap
             does nothing else: a parent closing a menu never starts a round. */}
         {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
@@ -356,13 +364,14 @@ export function HomePage({
           />
         </div>
       </div>
-      <h1 className="greeting">{text.greeting}</h1>
+      <h1 className="greeting" data-turn-part="greeting">{text.greeting}</h1>
       <div className="games">
         {/* The large card is today's game's door, its tile left out of
             the row. It stays as the tiles scroll. */}
         <Button
           className="card featured-card"
           data-game={featured}
+          data-turn-part="featured-card"
           aria-label={today.name}
           onClick={today.onOpen}
         >
@@ -382,11 +391,17 @@ export function HomePage({
             games still to come stand under the last of them. Upright,
             the columns narrow by the window's width so the next one
             peeks in, which the stylesheet cannot work out. */}
-        <div ref={tilesRow} className="games-tiles" style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}>
+        <div
+          ref={tilesRow.ref}
+          className="games-tiles"
+          data-turn-part="tiles"
+          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}
+          onScroll={tilesRow.onScroll}
+        >
           {shown.map((game) => tiles[game])}
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}
-          <div className="more-coming">
+          <div className="more-coming" data-turn-part="more-coming">
             <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
             <span className="more-coming-row">
               <Lock size={22} aria-hidden="true" />

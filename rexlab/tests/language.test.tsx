@@ -37,6 +37,7 @@ import {
   manualViewport,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   questionView,
   sameColour,
   seededRandom,
@@ -105,6 +106,7 @@ function openApp({
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       {...timers}
     />
   );
