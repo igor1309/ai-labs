@@ -855,6 +855,63 @@ body:has(.result) #version {
   scrollbar-width: none;
 }
 
+/* In a tall window the home page stands upright: the corner and the
+   greeting on top, the large card across the width under them, and under
+   it the row of tiles, 36% of the height within the landscape row's
+   bounds, running to the window's right edge. The large card takes the
+   height the rest leaves, so the safe areas come off it, but no less than
+   280 pixels: below that the whole page scrolls. The wordmark, the corner
+   and the version footer then scroll with it, so they stand on the page
+   rather than the window, which is the same where it does not scroll.
+   HomePage gives the columns' width, narrowed so the next one peeks in. */
+[data-size="tall"] .wordmark,
+[data-size="tall"] .home-corner {
+  position: absolute;
+}
+
+/* The bands of rock lie against the page, and their holder takes no
+   place, nor a gap, in its column. */
+[data-size="tall"] .home .strata {
+  display: contents;
+}
+
+[data-size="tall"] body:has(.home) {
+  position: relative;
+}
+
+[data-size="tall"] body:has(.home) #version {
+  position: absolute;
+}
+
+[data-size="tall"] .greeting {
+  line-height: 48px;
+}
+
+/* In a window 600 pixels wide the corner would run into "RexLab", so the
+   museum's sides narrow, keeping its word and its tap's height. */
+[data-size="tall"] .home-museum {
+  padding: 0 16px 0 12px;
+}
+
+[data-size="tall"] .games {
+  flex: 1 0 auto;
+  height: auto;
+  flex-direction: column;
+}
+
+[data-size="tall"] .featured-card {
+  flex: 1 0 0;
+  min-height: 280px;
+}
+
+[data-size="tall"] .games-tiles {
+  flex: none;
+  height: clamp(360px, 36vh, 520px);
+  height: clamp(360px, 36dvh, 520px);
+  margin-right: -56px;
+  grid-auto-columns: var(--tile-column);
+}
+
 /* The games still to come: a faded dinosaur's shape over a lock, on the
    paper's shade, after the last tile. It is no card, so it neither
    brightens nor presses in. */

@@ -69,7 +69,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(seed)}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={manualViewport("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}

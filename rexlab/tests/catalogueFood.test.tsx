@@ -42,7 +42,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

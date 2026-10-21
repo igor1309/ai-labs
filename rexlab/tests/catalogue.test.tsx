@@ -53,7 +53,7 @@ function openApp({
       catalogue={catalogue}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

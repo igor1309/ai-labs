@@ -242,12 +242,29 @@ export function manualViewport(initial: "portrait" | "landscape"): ManualViewpor
   return {
     sizeClass: () => size,
     isScreenUpright: () => upright,
+    // The test's window, which openWindow sizes for the stylesheet too.
+    width: () => window.innerWidth,
     subscribe: (onChange) => {
       listeners.add(onChange);
       return () => listeners.delete(onChange);
     },
     turn: (to) => resize(to === "portrait" ? "tall" : "wide", to === "portrait"),
     resize
+  };
+}
+
+// A browser window `width` wide, resized only when the test resizes it.
+// Spread into a browser, its resize sizes the browser it was spread into.
+export function manualWindow(width: number) {
+  const listeners = new Set<() => void>();
+  return {
+    innerWidth: width,
+    addEventListener: (_: "resize", listener: () => void) => void listeners.add(listener),
+    removeEventListener: (_: "resize", listener: () => void) => void listeners.delete(listener),
+    resize(this: { innerWidth: number }, to: number) {
+      this.innerWidth = to;
+      listeners.forEach((onResize) => onResize());
+    }
   };
 }
 

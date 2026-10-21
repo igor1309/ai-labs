@@ -1,5 +1,5 @@
 import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -8,6 +8,7 @@ import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
+import { tileColumnWidth } from "./tileColumns.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 
@@ -24,6 +25,12 @@ export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs",
 // symbol.
 type Badge = { symbol: LucideIcon; value: number };
 
+// The window's width and its changes.
+export type WindowWidth = {
+  width(): number;
+  subscribe(onChange: () => void): () => void;
+};
+
 export type HomePageProps = {
   language: Language;
   onLanguage: (language: Language) => void;
@@ -33,6 +40,12 @@ export type HomePageProps = {
   onAgeLevel: (level: AgeLevel) => void;
   // Times each menu's way out.
   startTimer: ParentMenuProps<string>["startTimer"];
+  // The window, whose width the tiles' columns follow upright.
+  viewport: WindowWidth;
+  // Whether the window stands upright. A turn puts the tiles' row back at
+  // its start: its columns change, so where it was swiped to points at
+  // other tiles.
+  upright: boolean;
   // The game the large card features today, beside its own tile.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
@@ -81,6 +94,8 @@ export function HomePage({
   ageLevel,
   onAgeLevel,
   startTimer,
+  viewport,
+  upright,
   featured,
   faceOff,
   best,
@@ -101,7 +116,12 @@ export function HomePage({
   onDig
 }: HomePageProps) {
   const text = TEXTS[language];
+  const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
   const [openMenu, setOpenMenu] = useState<Menu>();
+  const tilesRow = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (tilesRow.current) tilesRow.current.scrollLeft = 0;
+  }, [upright]);
   const menu = (name: Menu) => ({
     open: openMenu === name,
     onOpen: () => setOpenMenu(name),
@@ -256,6 +276,8 @@ export function HomePage({
     )
   };
   const shown = HOME_GAMES.filter((game) => game !== featured);
+  // The tiles and the games still to come, in columns of two.
+  const columns = Math.ceil((shown.length + 1) / 2);
   const today = games[featured];
   const FeaturedSymbol = today.symbol;
   return (
@@ -357,8 +379,10 @@ export function HomePage({
         </Button>
         {/* The other games stand in columns of two, in a fixed order, and
             scroll sideways beside the large card when they do not fit. The
-            games still to come stand under the last of them. */}
-        <div className="games-tiles">
+            games still to come stand under the last of them. Upright,
+            the columns narrow by the window's width so the next one
+            peeks in, which the stylesheet cannot work out. */}
+        <div ref={tilesRow} className="games-tiles" style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}>
           {shown.map((game) => tiles[game])}
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}

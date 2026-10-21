@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { itemPictures } from "../src/itemPictures.ts";
 import { appProps } from "../src/root.ts";
-import { browserDocument, browserQueries, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
+import { browserDocument, browserQueries, manualWindow, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -36,7 +36,7 @@ describe("itemPictures", () => {
 });
 
 describe("every care picture", () => {
-  const itemPicture = appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).itemPicture;
+  const itemPicture = appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...manualWindow(1024), ...pictureBrowser() }).itemPicture;
   const fileOf = (name: string) => join(ROOT, itemPicture(name).replace(/\?.*$/, ""));
 
   it("is a 400×300 WebP with alpha, of its own, read from its file", () => {

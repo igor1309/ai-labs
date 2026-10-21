@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { SCREEN_CHANGE } from "../src/screens.ts";
+import { topLine } from "./homeCorner.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
 import { PALETTE, contrast, gameDoor, symbolOf } from "./support.ts";
@@ -35,34 +36,8 @@ const brightness = (element: Element) => {
   return match?.[1] === undefined ? 1 : Number(match[1]);
 };
 
-// jsdom lays nothing out, so the width of each word in the top corners
-// is given here in ems of its face, rounded up: Lexend's at the weight
-// it is shown in for the Latin words, and the iPad's own bold face for
-// the Cyrillic one, which Lexend has no letters for.
-const WORD_EMS: Record<string, number> = { RexLab: 3.8, MUSEUM: 4.6, МУЗЕЙ: 3.5, EN: 1.5, RU: 1.5 };
-
-const wordWidth = (words: string, style: CSSStyleDeclaration) => (WORD_EMS[words] ?? Number.NaN) * px(style.fontSize) + px(style.letterSpacing) * words.length;
-
-const sides = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight);
-
-// A row's width: its sides, its parts and the gaps between them.
-const rowWidth = (row: Element, parts: number[]) => {
-  const style = getComputedStyle(row);
-  return sides(style) + parts.reduce((sum, part) => sum + part, 0) + px(style.gap) * (parts.length - 1);
-};
-
-// The width a box takes for its content: its own width if it sets one,
-// held between its least and its most.
-const boxWidth = (box: Element, content: number) => {
-  const style = getComputedStyle(box);
-  const most = px(style.maxWidth) || Number.POSITIVE_INFINITY;
-  return Math.min(most, Math.max(px(style.minWidth), px(style.width) || content));
-};
-
 // A size the style leaves to the layout.
 const unset = (value: string) => ["", "auto", "none"].includes(value);
-
-const drawnWidth = (symbol: Element | null) => px(symbol?.getAttribute("width") ?? "");
 
 const partOf = (selector: string) => {
   const part = document.querySelector(selector);
@@ -156,43 +131,12 @@ describe("the museum on the home page", () => {
       openWindow(width, height);
       openHomeApp({ deviceLanguage: DEVICES[language] });
 
-      const button = museumButton(language);
-      const museumStyle = getComputedStyle(button);
-      expect(museumStyle.whiteSpace).toBe("nowrap");
-      const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
-      // Each button shows its face: a symbol or a picture, and at most a code.
-      const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
-        const style = getComputedStyle(menuButton);
-        const face = menuButton.querySelector(".parent-menu-face");
-        if (!face) throw new Error("A parents' menu button shows nothing");
-        const symbol = menuButton.querySelector("svg");
-        const picture = menuButton.querySelector(".parent-menu-picture");
-        const code = menuButton.querySelector(".parent-menu-code")?.textContent;
-        const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(getComputedStyle(picture).width)] : []), ...(code ? [wordWidth(code, style)] : [])];
-        expect(parts.length).toBeGreaterThan(0);
-        return boxWidth(menuButton, rowWidth(menuButton, [rowWidth(face, parts)]));
-      });
-      expect(menuButtons).toHaveLength(3);
-      const corner = partOf(".home-corner");
-      // The widths add up along one row, every part centred on it.
-      for (const row of [corner, partOf(".parent-menus"), button, partOf(".wordmark")]) {
-        const style = getComputedStyle(row);
-        expect([style.display, style.flexDirection || "row", style.flexWrap || "nowrap", style.alignItems]).toEqual(["flex", "row", "nowrap", "center"]);
-      }
-      const cornerWidth = boxWidth(corner, rowWidth(corner, [museum, boxWidth(partOf(".parent-menus"), rowWidth(partOf(".parent-menus"), menuButtons))]));
-      const wordmark = partOf(".wordmark");
-      const wordmarkStyle = getComputedStyle(wordmark);
-      const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), wordWidth("RexLab", wordmarkStyle)]);
+      const line = topLine(width, language);
 
-      const cornerLeft = width - px(getComputedStyle(corner).right) - cornerWidth;
-      expect(cornerLeft - (px(wordmarkStyle.left) + wordmarkWidth)).toBeGreaterThanOrEqual(px(getComputedStyle(corner).gap));
+      expect(line.museumWraps).toBe(false);
+      expect(line.between).toBeGreaterThanOrEqual(line.cornerGap);
       // The corner and the wordmark end above where the greeting begins.
-      const greetingTop = px(getComputedStyle(partOf(".home")).paddingTop);
-      const menusStyle = getComputedStyle(partOf(".parent-menus"));
-      const menuHeight = Math.max(...[...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => px(getComputedStyle(menuButton).minHeight)));
-      const cornerHeight = Math.max(px(museumStyle.height), px(menusStyle.paddingTop) + menuHeight + px(menusStyle.paddingBottom));
-      expect(px(getComputedStyle(corner).top) + cornerHeight).toBeLessThanOrEqual(greetingTop);
-      expect(px(wordmarkStyle.top) + px(wordmarkStyle.height)).toBeLessThanOrEqual(greetingTop);
+      expect(Math.max(line.cornerEnd, line.wordmarkEnd)).toBeLessThanOrEqual(line.greetingTop);
     }
   );
 

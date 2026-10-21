@@ -1,6 +1,6 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { SizeClass } from "../src/App.tsx";
+import type { PortraitSizeClass, SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { openMenu } from "./menus.ts";
 import { hints, openHomeApp, openPuzzle } from "./skeletonsApp.tsx";
@@ -78,10 +78,29 @@ describe("the window's shape through app props", () => {
     expect(overlay.hasAttribute("inert")).toBe(true);
   });
 
-  it.each<SizeClass>(["tall", "tall-narrow"])("allows only the named screen's portrait layout in %s", async (size) => {
+  it.each<[SizeClass, readonly PortraitSizeClass[], boolean]>([
+    ["wide", ["tall"], false],
+    ["wide-short", ["tall"], false],
+    ["tall", ["tall"], false],
+    ["tall-narrow", ["tall"], true],
+    ["tall", ["tall-narrow"], true],
+    ["tall-narrow", ["tall-narrow"], false],
+    ["tall", ["tall", "tall-narrow"], false],
+    ["tall-narrow", ["tall", "tall-narrow"], false],
+    ["tall", [], true],
+    ["tall-narrow", [], true]
+  ])("in %s, with the home page built for %j, shows the picture over it: %s", (size, sizes, shown) => {
     const viewport = manualViewport("landscape");
     viewport.resize(size, true);
-    const app = openHomeApp({ viewport, portraitLayouts: new Set(["home"]) });
+    openHomeApp({ viewport, portraitLayouts: { home: sizes } });
+    expect(gate().hasAttribute("data-shown")).toBe(shown);
+    expect(behind().hasAttribute("inert")).toBe(shown);
+  });
+
+  it("shows the picture over a screen not named, in the size class the home page is built for", async () => {
+    const viewport = manualViewport("landscape");
+    viewport.resize("tall", true);
+    const app = openHomeApp({ viewport, portraitLayouts: { home: ["tall"] } });
     expect(gate().hasAttribute("data-shown")).toBe(false);
     await app.user.click(gameDoor("COMPARE"));
     expect(gate().hasAttribute("data-shown")).toBe(true);
@@ -91,7 +110,7 @@ describe("the window's shape through app props", () => {
   });
 
   it("keeps help running for a game with a portrait layout and still pauses for a hidden page", async () => {
-    const app = await openPuzzle("TYRANNOSAURUS", { portraitLayouts: new Set(["skeletons"]) });
+    const app = await openPuzzle("TYRANNOSAURUS", { portraitLayouts: { skeletons: ["tall"] } });
     act(() => app.viewport.turn("portrait"));
     expect(gate().hasAttribute("data-shown")).toBe(false);
     for (let second = 0; second < 4; second++) act(() => app.pictures.fire(1000));

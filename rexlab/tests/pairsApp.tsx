@@ -88,7 +88,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}

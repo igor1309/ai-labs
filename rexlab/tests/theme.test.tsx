@@ -113,7 +113,7 @@ function openApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(41)}
-      portraitLayouts={new Set()}
+      portraitLayouts={{}}
       viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language}

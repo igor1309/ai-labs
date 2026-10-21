@@ -5,7 +5,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps, filterDoubleTaps } from "../src/root.ts";
-import { browserDocument, manualScreenOrientation, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const NARROW = "(max-width: 599.98px)";
@@ -37,6 +37,7 @@ function browser({
     document: page.document,
     media,
     page,
+    ...manualWindow(1024),
     ...pictureBrowser()
   };
 }
@@ -167,14 +168,17 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
+  it("gives the home page alone a portrait layout, for a tall window only", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"] });
+  });
+
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
     const screen = manualScreenOrientation("landscape-primary");
     const given = browser({ screenOrientation: screen.orientation });
-    const { viewport, portraitLayouts } = appProps(given);
+    const { viewport } = appProps(given);
     const read = () => [viewport.sizeClass(), viewport.isScreenUpright()];
     const seen: unknown[] = [];
     expect(read()).toEqual(["wide", false]);
-    expect(portraitLayouts.size).toBe(0);
     expect(given.media.queries).toEqual([PORTRAIT, NARROW, SHORT, DARK, REDUCED_MOTION]);
 
     const unsubscribe = viewport.subscribe(() => seen.push(read()));
@@ -190,6 +194,21 @@ describe("the app in a browser", () => {
 
     expect(seen).toEqual([["wide-short", false], ["tall", false], ["tall-narrow", false], ["tall-narrow", true]]);
     expect(read()).toEqual(["wide", false]);
+  });
+
+  it("wires the window's width, as it is resized, into the viewport", () => {
+    const given = browser();
+    const { viewport } = appProps(given);
+    const seen: number[] = [];
+    expect(viewport.width()).toBe(1024);
+
+    const unsubscribe = viewport.subscribe(() => seen.push(viewport.width()));
+    given.resize(820);
+    unsubscribe();
+    given.resize(1180);
+
+    expect(seen).toEqual([820]);
+    expect(viewport.width()).toBe(1180);
   });
 
   it("uses the window's portrait query for upright on a browser without screen.orientation", () => {
