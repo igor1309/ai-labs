@@ -2,7 +2,7 @@
 
 ## 2026-10-21
 
-- A hatch and grow care prototype for a playtest replaces the care mission one, at `/prototypes/care-hatch.html`: a mystery egg hatches a baby land dinosaur that shows what it wants, reacts to every item, grows into its grown shadow with each want met, then dances and joins a row of friends (LAB-387).
+- A hatch and grow care prototype for a playtest replaces the care mission one, at `/prototypes/care-hatch.html`, with all three age levels: a Hatchling raises one baby that shows its wants on itself, an Explorer raises plant- and meat-eating twins, and a Paleontologist raises a trio, reads each one's diet from its teeth and keeps them in a field notebook (LAB-387).
 - Three Russian descriptions read correctly: Allosaurus, Mamenchisaurus and Maiasaura (LAB-384).
 - Find the pair at Paleontologist deals from 26 skeletons, two of each look-alike group that has two dinosaurs or more, so a board after another repeats at most one of its dinosaurs, not nine (LAB-386).
 - Find the pair at Paleontologist pairs each dinosaur's picture with its whole skeleton, dealing the dinosaurs that have one, one of each look-alike group; Hatchling and Explorer keep their silhouettes (LAB-301).
