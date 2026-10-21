@@ -11558,7 +11558,7 @@
                       "fill": "$sub",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "~/.wisper",
+                      "content": "~/.audelin",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-data",
                       "fontSize": "$type-caption",
@@ -11691,7 +11691,7 @@
                       "id": "Feu5Z",
                       "name": "Title",
                       "fill": "$text",
-                      "content": "wisper — настройка",
+                      "content": "Audelin — настройка",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-small",
@@ -13487,7 +13487,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Required: nothing else opens until it is done. Models: Parakeet v3 is the live model, so it is a required line, not a choice; below it the final-pass engine is chosen, with no default. Each model says where it comes from: «есть», «есть · из Amanu» (reused only on an exact file match: name, size and checksum) or «↓ size» (the app downloads its own copy). Then the calls folder (visible, default ~/Recordings/wisper; settings and logs stay in ~/.wisper) and the permissions: microphone, call audio, and Calendar, optional and marked v3, which names a call after the event it overlaps. Continue waits only for an engine choice, never for a download: a call started before the live model arrives records audio, and live text starts once it is here.",
+              "content": "Required: nothing else opens until it is done. Models: Parakeet v3 is the live model, so it is a required line, not a choice; below it the final-pass engine is chosen, with no default. Each model says where it comes from: «есть», «есть · из Amanu» (reused only on an exact file match: name, size and checksum) or «↓ size» (the app downloads its own copy). Then the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin) and the permissions: microphone, call audio, and Calendar, optional and marked v3, which names a call after the event it overlaps. Continue waits only for an engine choice, never for a download: a call started before the live model arrives records audio, and live text starts once it is here.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -13500,7 +13500,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: «wisper» is a working name, and it names both folders. Whether Amanu's q5_0 file is the exact file the Whisper engine expects is checked at runtime; «из Amanu» here assumes it is.",
+              "content": "Whether Amanu's q5_0 file is the exact file the Whisper engine expects is checked at runtime; «из Amanu» here assumes it is.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -13602,7 +13602,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "Feu5Z": {
-                                  "content": "wisper — настройка"
+                                  "content": "Audelin — настройка"
                                 }
                               }
                             },
@@ -13908,7 +13908,7 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "gKt90": {
-                                              "content": "~/Recordings/wisper"
+                                              "content": "~/Recordings/Audelin"
                                             }
                                           }
                                         },
@@ -13932,7 +13932,7 @@
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.wisper.",
+                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.audelin.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-small",
@@ -14292,7 +14292,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "Feu5Z": {
-                                  "content": "wisper — настройка"
+                                  "content": "Audelin — настройка"
                                 }
                               }
                             },
@@ -14599,7 +14599,7 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "gKt90": {
-                                              "content": "~/Recordings/wisper"
+                                              "content": "~/Recordings/Audelin"
                                             }
                                           }
                                         },
@@ -14623,7 +14623,7 @@
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.wisper.",
+                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.audelin.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-small",
@@ -15002,7 +15002,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "Feu5Z": {
-                                  "content": "wisper — настройка"
+                                  "content": "Audelin — настройка"
                                 }
                               }
                             },
@@ -15308,7 +15308,7 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "gKt90": {
-                                              "content": "~/Recordings/wisper"
+                                              "content": "~/Recordings/Audelin"
                                             }
                                           }
                                         },
@@ -15347,7 +15347,7 @@
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.wisper.",
+                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.audelin.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-small",
@@ -15752,7 +15752,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "Feu5Z": {
-                                  "content": "wisper — настройка"
+                                  "content": "Audelin — настройка"
                                 }
                               }
                             },
@@ -16059,7 +16059,7 @@
                                           "width": "fill_container",
                                           "descendants": {
                                             "gKt90": {
-                                              "content": "~/Recordings/wisper"
+                                              "content": "~/Recordings/Audelin"
                                             }
                                           }
                                         },
@@ -16098,7 +16098,7 @@
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.wisper.",
+                                      "content": "Звонки — папки: их можно переименовать в Finder. Аудио ~55 MB в час, хранится 7 дней. Настройки и журналы — в ~/.audelin.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-small",
@@ -16461,7 +16461,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: «wisper» is a working name, so ~/.wisper/models is a placeholder for the app's own copy.",
+              "content": "The app's own copy goes in ~/.audelin/models; ~/.audelin is the data folder the naming brief sets.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -16787,7 +16787,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "gKt90": {
-                                  "content": "→ ~/.wisper/models/ggml-large-v3-turbo-q5_0.bin"
+                                  "content": "→ ~/.audelin/models/ggml-large-v3-turbo-q5_0.bin"
                                 }
                               }
                             },
@@ -17254,7 +17254,7 @@
                               "width": "fill_container",
                               "descendants": {
                                 "gKt90": {
-                                  "content": "→ ~/.wisper/models/ggml-large-v3-turbo-q5_0.bin"
+                                  "content": "→ ~/.audelin/models/ggml-large-v3-turbo-q5_0.bin"
                                 }
                               }
                             },
@@ -22789,7 +22789,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Opened from Стоп or the calls list. The header shows the title (click to rename inline; the yyyy.MM.dd-HHmm prefix stays fixed), the call's folder in the visible ~/Recordings/wisper and its five files: meta.json, audio.m4a, raw.md, final.md, summary.md. Until the final pass ends, the live text is shown and labelled; a pass recorded during the model's download waits and starts by itself, and a failed pass names its cause and links to the log. The app writes summary.md itself from the bb thread's output and shows it above the transcript, with «bb · тред ↗» for follow-up.",
+              "content": "Opened from Стоп or the calls list. The header shows the title (click to rename inline; the yyyy.MM.dd-HHmm prefix stays fixed), the call's folder in the visible ~/Recordings/Audelin and its five files: meta.json, audio.m4a, raw.md, final.md, summary.md. Until the final pass ends, the live text is shown and labelled; a pass recorded during the model's download waits and starts by itself, and a failed pass names its cause and links to the log. The app writes summary.md itself from the bb thread's output and shows it above the transcript, with «bb · тред ↗» for follow-up.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -23026,7 +23026,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -23443,7 +23443,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -23860,7 +23860,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -24295,7 +24295,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -24667,7 +24667,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -25054,7 +25054,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -25473,7 +25473,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -25890,7 +25890,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -26307,7 +26307,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -26742,7 +26742,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -27114,7 +27114,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -27501,7 +27501,7 @@
                                       "width": "fill_container",
                                       "descendants": {
                                         "gKt90": {
-                                          "content": "~/Recordings/wisper/2026.10.21-1230 Запуск: роли и SLA/"
+                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
                                         }
                                       }
                                     },
@@ -27754,7 +27754,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "One page, label column on the left: the calls folder (visible, default ~/Recordings/wisper; settings and logs stay in ~/.wisper), the final-pass engine (required), audio cleanup stated rather than set (7 days, pin to keep), the explain hotkey; chunk size only in debug builds. Changing the folder asks once with the count and size, then moves every call one by one (copy, check, delete the source): only Move or Cancel. No recording starts during a move and no move starts during a recording. A failed move names the count moved, the call that failed and why, offers Повторить, and keeps the old folder until every call has moved.",
+              "content": "One page, label column on the left: the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin), the final-pass engine (required), audio cleanup stated rather than set (7 days, pin to keep), the explain hotkey; chunk size only in debug builds. Changing the folder asks once with the count and size, then moves every call one by one (copy, check, delete the source): only Move or Cancel. No recording starts during a move and no move starts during a recording. A failed move names the count moved, the call that failed and why, offers Повторить, and keeps the old folder until every call has moved.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -27916,7 +27916,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -27940,7 +27940,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -28219,7 +28219,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -28243,7 +28243,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -28719,7 +28719,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -28743,7 +28743,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -28920,7 +28920,7 @@
                               "content": "Перенести 52 звонка (135 MB)?"
                             },
                             "HMOgX/vPdox": {
-                              "content": "Из ~/Recordings/wisper в ~/Documents/wisper, по одному звонку. Пока идёт перенос, запись не начнётся."
+                              "content": "Из ~/Recordings/Audelin в ~/Documents/Audelin, по одному звонку. Пока идёт перенос, запись не начнётся."
                             },
                             "HMOgX/l61dFl": {
                               "id": "I5zU8r",
@@ -29055,7 +29055,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Documents/wisper"
+                                                  "content": "~/Documents/Audelin"
                                                 }
                                               }
                                             },
@@ -29378,7 +29378,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -29705,7 +29705,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -30036,7 +30036,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -30060,7 +30060,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -30339,7 +30339,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -30363,7 +30363,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -30839,7 +30839,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -30863,7 +30863,7 @@
                                           "fill": "$gutter",
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
-                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.wisper",
+                                          "content": "52 звонка · аудио 135 MB (≈55 MB в час) · настройки и журналы — в ~/.audelin",
                                           "lineHeight": 1.45,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-small",
@@ -31040,7 +31040,7 @@
                               "content": "Перенести 52 звонка (135 MB)?"
                             },
                             "HMOgX/vPdox": {
-                              "content": "Из ~/Recordings/wisper в ~/Documents/wisper, по одному звонку. Пока идёт перенос, запись не начнётся."
+                              "content": "Из ~/Recordings/Audelin в ~/Documents/Audelin, по одному звонку. Пока идёт перенос, запись не начнётся."
                             },
                             "HMOgX/l61dFl": {
                               "id": "HGHBK",
@@ -31175,7 +31175,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Documents/wisper"
+                                                  "content": "~/Documents/Audelin"
                                                 }
                                               }
                                             },
@@ -31498,7 +31498,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -31825,7 +31825,7 @@
                                               "width": "fill_container",
                                               "descendants": {
                                                 "gKt90": {
-                                                  "content": "~/Recordings/wisper"
+                                                  "content": "~/Recordings/Audelin"
                                                 }
                                               }
                                             },
@@ -34459,7 +34459,7 @@
                                       "content": "Диск заполнен — запись остановлена"
                                     },
                                     "q9Ta7": {
-                                      "content": "Всё до 12:47 сохранено в ~/.wisper. Освободите место, чтобы продолжить."
+                                      "content": "Всё до 12:47 сохранено в ~/Recordings/Audelin. Освободите место, чтобы продолжить."
                                     }
                                   }
                                 },
@@ -35312,7 +35312,7 @@
                                       "content": "Диск заполнен — запись остановлена"
                                     },
                                     "q9Ta7": {
-                                      "content": "Всё до 12:47 сохранено в ~/.wisper. Освободите место, чтобы продолжить."
+                                      "content": "Всё до 12:47 сохранено в ~/Recordings/Audelin. Освободите место, чтобы продолжить."
                                     }
                                   }
                                 },
