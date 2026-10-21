@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TURN_PART, turnMotion, type Box, type TurnAnimation } from "../src/turnMotion.ts";
+import { TURN_FADE, TURN_PART, turnMotion, type Box, type TurnAnimation } from "../src/turnMotion.ts";
 
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -23,7 +23,8 @@ function harness({ reduced = false } = {}) {
   const transitions: Array<{ update: () => void; finished: () => void }> = [];
   const timers: Array<{ ms: number; fire: () => void; stopped: boolean }> = [];
   const settings = { reduced };
-  const nameOf = (element: Element) => element.getAttribute(TURN_PART) ?? `frame of ${frames.find((frame) => frame.element === element)?.part.getAttribute(TURN_PART)}`;
+  const nameOf = (element: Element) =>
+    element.getAttribute(TURN_PART) ?? (element.hasAttribute(TURN_FADE) ? "fade" : `frame of ${frames.find((frame) => frame.element === element)?.part.getAttribute(TURN_PART)}`);
   const motion = turnMotion({
     parts: page,
     measure: (element) => {
@@ -92,6 +93,13 @@ function harness({ reduced = false } = {}) {
     if (frame) framed.add(element);
     return element;
   };
+  // An element the page marks to fade in where each layout puts it.
+  const fading = () => {
+    const element = document.createElement("div");
+    element.setAttribute(TURN_FADE, "");
+    page.append(element);
+    return element;
+  };
   // The page as first drawn, its parts measured where they stand.
   const drawn = () => {
     motion.redrawn();
@@ -103,7 +111,8 @@ function harness({ reduced = false } = {}) {
     laidOut.forEach(([element, box]) => boxes.set(element, box));
   };
   const animationOf = (element: Element) => animations.filter((started) => started.element === element).at(-1);
-  const frameOf = (element: Element) => frames.filter((frame) => frame.part === element).at(-1);
+  const running = (element: Element) => animations.filter((started) => started.element === element && !started.cancelled).at(-1);
+  const frameOf = (element: Element) => frames.filter((frame) => frame.part === element && !frame.removed).at(-1);
   // A keeper that logs each step.
   const keeper = () => ({
     hold: () => {
@@ -120,7 +129,7 @@ function harness({ reduced = false } = {}) {
     const offset = (keyframe: Keyframe | undefined) => String(keyframe?.translate ?? "0px 0px").split(" ").map(Number.parseFloat);
     const insets = (keyframe: Keyframe | undefined) => (/inset\((.*)\)/.exec(String(keyframe?.clipPath ?? "")) ?? ["", "0px 0px 0px 0px"])[1]!.split(" ").map(Number.parseFloat);
     const box = boxes.get(element)!;
-    const animation = animationOf(element);
+    const animation = running(element);
     const [start, end] = animation?.keyframes ?? [];
     const [x0 = 0, y0 = 0] = offset(start);
     const left = box.left + at(x0, 0);
@@ -137,7 +146,21 @@ function harness({ reduced = false } = {}) {
     const height = at(Number.parseFloat(String(from?.height)), Number.parseFloat(String(to?.height)));
     return { left, top, width: Math.max(shown.width, width), height: Math.max(shown.height, height) };
   };
-  return { page, boxes, log, animations, frames, extended, transitions, timers, settings, motion, part, drawn, layout, animationOf, frameOf, keeper, visible };
+  // What the page shows of `element` now: as `visible` has it, as far
+  // as its own glide has gone, moved too by the glide of each part
+  // around it, as far as that has gone.
+  const drawnAt = (element: Element): Box => {
+    const shown = visible(element, running(element)?.progress ?? 1);
+    for (let outer = element.parentElement?.closest(`[${TURN_PART}]`); outer; outer = outer.parentElement?.closest(`[${TURN_PART}]`)) {
+      const animation = running(outer);
+      const [x = 0, y = 0] = String(animation?.keyframes[0]?.translate ?? "0px 0px").split(" ").map(Number.parseFloat);
+      const left = 1 - (animation?.progress ?? 1);
+      shown.left += x * left;
+      shown.top += y * left;
+    }
+    return shown;
+  };
+  return { page, boxes, log, animations, frames, extended, transitions, timers, settings, motion, part, fading, drawn, layout, animationOf, frameOf, keeper, visible, drawnAt };
 }
 
 const box = (left: number, top: number, width: number, height: number): Box => ({ left, top, width, height });
@@ -296,6 +319,26 @@ describe("the turn motion", () => {
     expect(motion.animationOf(corner)).toBeUndefined();
   });
 
+  it("fades in each element the page marks to fade where the new layout puts it, over the glide, and on from where a further change finds it", () => {
+    const motion = harness();
+    const card = motion.part("card", box(56, 116, 400, 500));
+    const bands = motion.fading();
+    motion.drawn();
+
+    motion.motion.apply(motion.layout([[card, box(56, 200, 400, 500)]]), "glide");
+
+    expect([motion.animationOf(bands)?.keyframes, motion.animationOf(bands)?.options]).toEqual([[{ opacity: 0 }, { opacity: 1 }], { duration: GLIDE, easing: EASE_OUT }]);
+
+    motion.animations.forEach((started) => (started.progress = 0.25));
+    motion.motion.apply(motion.layout([[card, box(56, 116, 400, 500)]]), "follow");
+
+    expect(motion.animationOf(bands)?.keyframes).toEqual([{ opacity: 0.25 }, { opacity: 1 }]);
+
+    motion.timers[1]?.fire();
+
+    expect(motion.animations.filter(({ element }) => element === bands).map(({ cancelled }) => cancelled)).toEqual([true, true]);
+  });
+
   it("lets each screen keep what it keeps: held before the change, put back after it, before the new places are measured, and taken afresh once the page settles", () => {
     const motion = harness();
     const row = motion.part("row", box(600, 116, 500, 600), { frame: true });
@@ -313,6 +356,7 @@ describe("the turn motion", () => {
   it("only fades under reduced motion: the root view transition makes the change, nothing translates or clips, and it runs until the transition has finished", () => {
     const motion = harness({ reduced: true });
     const card = motion.part("card", box(56, 116, 400, 500), { frame: true });
+    motion.fading();
     motion.drawn();
     motion.motion.keep(motion.keeper());
 
@@ -379,6 +423,44 @@ describe("the turn motion", () => {
     ]);
   });
 
+  it.each([
+    ["moves only with the row around it, its place and size in the row kept", box(56 + 334, 700, 310, 280)],
+    ["moves and resizes within the row as the row moves", box(56, 700, 290, 160)]
+  ])("starts a part that %s on from where it is drawn when a further change cuts the glide short, with no jump", (_, there) => {
+    const motion = harness();
+    const row = motion.part("row", box(600, 116, 500, 600));
+    const tile = motion.part("tile", box(934, 116, 310, 280), { outer: row, frame: true });
+    motion.drawn();
+    motion.motion.apply(motion.layout([[row, box(56, 700, 764, 360)], [tile, there]]), "glide");
+    motion.animations.forEach((started) => (started.progress = 0.5));
+    const where = [row, tile].map(motion.drawnAt);
+
+    motion.motion.apply(motion.layout([[row, box(600, 116, 500, 600)], [tile, box(934, 116, 310, 280)]]), "follow");
+
+    expect([row, tile].map(motion.drawnAt)).toEqual(where);
+    motion.animations.forEach((started) => (started.progress = 1));
+    expect([row, tile].map(motion.drawnAt)).toEqual([box(600, 116, 500, 600), box(934, 116, 310, 280)]);
+  });
+
+  it("starts a part fading in within a row that moves on from where it is drawn when a further change cuts the glide short, with no jump", () => {
+    const motion = harness();
+    const row = motion.part("row", box(600, 116, 500, 600));
+    motion.drawn();
+    const tile = document.createElement("div");
+    tile.setAttribute(TURN_PART, "tile");
+    motion.motion.apply(() => {
+      motion.layout([[row, box(56, 700, 764, 360)]])();
+      row.append(tile);
+      motion.boxes.set(tile, box(56, 700, 310, 280));
+    }, "glide");
+    motion.animations.forEach((started) => (started.progress = 0.5));
+    const where = motion.drawnAt(tile);
+
+    motion.motion.apply(motion.layout([[row, box(600, 116, 500, 600)], [tile, box(934, 116, 310, 280)]]), "follow");
+
+    expect([motion.drawnAt(tile), motion.animationOf(tile)?.keyframes[0]?.opacity]).toEqual([where, 0.5]);
+  });
+
   it("follows a resize that keeps the layout at once, measuring the page anew, and glides on from where the parts are drawn where a motion still runs", () => {
     const motion = harness();
     const card = motion.part("card", box(56, 700, 764, 360), { frame: true });
@@ -415,6 +497,22 @@ describe("the turn motion", () => {
       [true],
       [true, false]
     ]);
+  });
+
+  it.each([
+    ["at rest", []],
+    ["mid-glide", [box(56, 200, 700, 300)]]
+  ])("takes what each screen keeps afresh once a change where nothing moves has put the page at rest, %s", (_, glides) => {
+    const motion = harness();
+    const card = motion.part("card", box(56, 116, 400, 500));
+    motion.drawn();
+    motion.motion.keep(motion.keeper());
+    glides.forEach((to) => motion.motion.apply(motion.layout([[card, to]]), "glide"));
+    motion.log.length = 0;
+
+    motion.motion.apply(motion.layout([[card, box(0, 0, 393, 852)]]), "still");
+
+    expect(motion.log.slice(-5)).toEqual(["hold", "change", "restore", "measure card", "rest"]);
   });
 
   it("halts, every part at rest, so nothing a change left waiting acts afterwards", () => {

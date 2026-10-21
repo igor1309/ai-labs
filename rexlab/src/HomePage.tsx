@@ -284,13 +284,15 @@ export function HomePage({
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in
   // the other as the window turns; a tile's name holds its game, so it
-  // pairs with itself wherever it stands.
+  // pairs with itself wherever it stands. The bands of rock, along the
+  // bottom of a page each layout makes otherwise tall, fade in where the
+  // new one puts them; upright their holder draws no box to fade.
   return (
     <main className="home">
       <div className="strata" aria-hidden="true">
-        <div className="stratum stratum-1" />
-        <div className="stratum stratum-2" />
-        <div className="stratum stratum-3" />
+        <div className="stratum stratum-1" data-turn-fade="" />
+        <div className="stratum stratum-2" data-turn-fade="" />
+        <div className="stratum stratum-3" data-turn-fade="" />
       </div>
       <p className="wordmark" data-turn-part="wordmark">
         <span className="wordmark-mark" aria-hidden="true">

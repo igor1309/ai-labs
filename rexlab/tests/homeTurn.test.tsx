@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { extendPart, turnFrame } from "../src/root.ts";
@@ -56,8 +58,19 @@ type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: 
 
 const nameOf = (element: Element) => element.getAttribute("data-turn-part") ?? "";
 
-// A part's frame is named for the part it is drawn under, which follows it.
-const recordedName = (element: Element) => (element.hasAttribute("data-turn-frame") ? `frame of ${nameOf(element.nextElementSibling!)}` : nameOf(element));
+// A part's frame is named for the part it is drawn under, which follows it,
+// and what the page fades by its id or its classes.
+const recordedName = (element: Element) => {
+  if (element.hasAttribute("data-turn-frame")) return `frame of ${nameOf(element.nextElementSibling!)}`;
+  if (element.hasAttribute("data-turn-fade")) return `faded ${element.id || element.className}`;
+  return nameOf(element);
+};
+
+// Whether an animation is a part's own glide, not its frame's nor a fade.
+const ownGlide = ({ name }: { name: string }) => !name.startsWith("frame of ") && !name.startsWith("faded ");
+
+// index.html's version footer, which stands outside the app.
+const VERSION_FOOTER = /<footer id="version"[^>]*>[^<]*<\/footer>/.exec(readFileSync(join(import.meta.dirname, "../index.html"), "utf8"))![0];
 
 // Where the page lays a part out in each layout, in the test's window as
 // it is now: every part stands somewhere else, and is larger, upright
@@ -74,8 +87,9 @@ function laidOut(name: string, size: string | undefined): Box {
 
 const offsetOf = (keyframe: Keyframe | undefined) => String(keyframe?.translate ?? "0px 0px").split(" ").map(Number.parseFloat);
 
-// The home page in a window `width` by `height` of `size`, a screen
-// `upright` or not, its pictures loaded, its timers fired by hand, and
+// The home page in a window `width` by `height` of `size`, under
+// index.html's version footer, a screen `upright` or not, its pictures
+// loaded, its timers fired by hand, and
 // the device asking for reduced motion when `reduced`. A part is
 // measured where the test lays it out, its frame drawn and its window
 // widened by the browser's own means, and its animations recorded; a
@@ -153,6 +167,8 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
     />
   );
   act(() => pictures.finishAll());
+  document.body.insertAdjacentHTML("beforeend", VERSION_FOOTER);
+  onTestFinished(() => document.getElementById("version")?.remove());
   const resize = (to: readonly [number, number, SizeClass], screenUpright = to[2].startsWith("tall")) => {
     openWindow(to[0], to[1]);
     act(() => viewport.resize(to[2], screenUpright));
@@ -162,8 +178,9 @@ function openTurning(width: number, height: number, size: SizeClass, { upright =
   // The browser runs the update of the view transition `at`, then ends it.
   const updateFade = (at: number) => act(() => fades[at]?.update());
   const endFade = (at: number) => act(() => fades[at]?.finished());
-  // The animations of the parts themselves, apart from their frames'.
-  const glides = () => animations.filter(({ name }) => !name.startsWith("frame of "));
+  // The animations of the parts themselves, apart from their frames' and
+  // the fades.
+  const glides = () => animations.filter(ownGlide);
   return { pictures, animations, frames, extended, fades, drawn, resize, halfWay, updateFade, endFade, glides, user: userEvent.setup() };
 }
 
@@ -171,6 +188,7 @@ const turning = () => document.documentElement.hasAttribute("data-turning");
 const sizeShown = () => document.documentElement.dataset.size;
 const partNamed = (name: string) => document.querySelector(`[data-turn-part="${name}"]`)!;
 const gate = () => document.querySelector(".orientation-gate")!;
+const themeMenuOpen = () => screen.getByRole("button", { name: "Theme" }).getAttribute("aria-expanded") === "true";
 
 describe("the home page glides to its other layout", () => {
   it.each([
@@ -266,6 +284,53 @@ describe("the home page glides to its other layout", () => {
     const [x, y] = within("tall");
     expect(app.glides().find(({ name }) => name === "tile-skeletons")?.keyframes[0]?.translate).toBe(`${left! - x!}px ${top! - y!}px`);
   });
+
+  it("fades in what both layouts do not share, the bands of rock and the version footer, where the new layout puts them, over the same motion", () => {
+    const app = openTurning(1180, 820, "wide");
+
+    app.resize([820, 1180, "tall"]);
+
+    const faded = app.animations.filter(({ name }) => name.startsWith("faded "));
+    expect(faded.map(({ name, keyframes, options }) => [name, keyframes, options])).toEqual(
+      ["stratum stratum-1", "stratum stratum-2", "stratum stratum-3", "version"].map((name) => [`faded ${name}`, [{ opacity: 0 }, { opacity: 1 }], { duration: GLIDE, easing: EASE_OUT }])
+    );
+
+    act(() => app.pictures.fire(GLIDE));
+
+    expect(faded.every(({ cancelled }) => cancelled)).toBe(true);
+  });
+});
+
+describe("a part's frame in a browser", () => {
+  // A part 120 by 80 laid out at 934, 116 on the window, in a parent
+  // whose box starts at 600, 100 and that is scrolled by `scroll`. The
+  // browser draws an element its parent holds at `left` and `top` that
+  // far from the parent's box, less its scroll.
+  it.each([
+    ["stands still", { left: 0, top: 0 }],
+    ["is scrolled", { left: 334, top: 20 }]
+  ])("is drawn where the part is laid out, inside a parent that %s", (_, scroll) => {
+    const parent = document.createElement("div");
+    const part = document.createElement("div");
+    part.style.backgroundColor = "rgb(246, 241, 230)";
+    parent.append(part);
+    document.body.append(parent);
+    onTestFinished(() => parent.remove());
+    Object.assign(parent, { scrollLeft: scroll.left, scrollTop: scroll.top });
+    const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const at = (offset: string) => Number.parseFloat(offset) || 0;
+      if (this.parentElement !== parent) return new DOMRect();
+      return new DOMRect(600 - parent.scrollLeft + at(this.style.left), 100 - parent.scrollTop + at(this.style.top), at(this.style.width), at(this.style.height));
+    });
+    onTestFinished(() => spy.mockRestore());
+    const laidOut = { left: 934, top: 116, width: 120, height: 80 };
+
+    const frame = turnFrame(part, laidOut)!.element as HTMLElement;
+
+    expect([frame.style.left, frame.style.top]).toEqual([`${934 - 600 + scroll.left}px`, `${116 - 100 + scroll.top}px`]);
+    const { left, top, width, height } = frame.getBoundingClientRect();
+    expect({ left, top, width, height }).toEqual(laidOut);
+  });
 });
 
 describe("under reduced motion", () => {
@@ -348,6 +413,26 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
   });
 });
 
+describe("a turn through the picture asking to turn keeps the tiles the child was looking at", () => {
+  // Upright in a window 1400 wide, the four columns fit, the row not
+  // scrolling, so it stands at its start, though the child left it at its
+  // end before the picture showed.
+  it("stands at its start once a window it fits has settled after the picture, and there in the next", () => {
+    const app = openTurning(1180, 820, "wide");
+    const row = layOutTilesRow();
+    swipeTiles(row, 718);
+
+    app.resize([393, 852, "tall-narrow"]);
+    app.resize([1400, 1500, "tall"]);
+
+    expect([gate().hasAttribute("data-shown"), turning(), row.scrollLeft]).toEqual([false, false, 0]);
+
+    app.resize([1180, 820, "wide"]);
+
+    expect(row.scrollLeft).toBe(0);
+  });
+});
+
 describe("taps and keys during the motion", () => {
   it("do nothing, and once it ends the large card is still focused and Enter opens its game", async () => {
     const app = openTurning(1180, 820, "wide");
@@ -368,6 +453,40 @@ describe("taps and keys during the motion", () => {
     expect([getComputedStyle(document.body).pointerEvents, getComputedStyle(tilesRow()).overflowX, document.activeElement]).toEqual(["auto", "auto", card]);
     await app.user.keyboard("{Enter}");
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
+  });
+
+  // Escape closes the open menu, and ArrowDown moves its focus to the
+  // next choice, once the motion has settled.
+  it.each([
+    ["{Escape}", "glide", [false, "button"]],
+    ["{ArrowDown}", "glide", [true, "next choice"]],
+    ["{Escape}", "fade", [false, "button"]],
+    ["{ArrowDown}", "fade", [true, "next choice"]]
+  ] as const)("%s reaches nothing during a %s, the theme menu open with its ticked choice focused until it settles", async (key, motion, settled) => {
+    const app = openTurning(1180, 820, "wide", { reduced: motion === "fade" });
+    const menu = await openMenu(app.user, "Theme");
+    const ticked = within(menu).getByRole("menuitemradio", { checked: true });
+    const focused = () => {
+      if (document.activeElement === ticked) return "ticked choice";
+      if (document.activeElement === ticked.nextElementSibling) return "next choice";
+      return document.activeElement === screen.getByRole("button", { name: "Theme" }) ? "button" : "elsewhere";
+    };
+
+    app.resize([820, 1180, "tall"]);
+    await app.user.keyboard(key);
+    if (motion === "fade") {
+      app.updateFade(0);
+      await app.user.keyboard(key);
+    }
+
+    expect([turning(), themeMenuOpen(), focused()]).toEqual([true, true, "ticked choice"]);
+
+    if (motion === "fade") app.endFade(0);
+    else act(() => app.pictures.fire(GLIDE));
+
+    expect([turning(), themeMenuOpen(), focused()]).toEqual([false, true, "ticked choice"]);
+    await app.user.keyboard(key);
+    expect([themeMenuOpen(), focused()]).toEqual(settled);
   });
 
   it("leave the double-tap filter's rule as it was: a tap during it is the first of a double tap", () => {
@@ -420,7 +539,7 @@ describe("a window that changes again mid-motion", () => {
 
     app.resize(to);
 
-    const fresh = app.glides().slice(first.filter(({ name }) => !name.startsWith("frame of ")).length);
+    const fresh = app.glides().slice(first.filter(ownGlide).length);
     expect([first.every(({ cancelled }) => cancelled), fresh.map(({ name }) => name), sizeShown()]).toEqual([true, PARTS, to[2]]);
     expect(OUTER.map((name) => fresh.find((animation) => animation.name === name)?.keyframes[0]?.translate)).toEqual(
       OUTER.map((name) => {

@@ -3,6 +3,11 @@
 // and a part inside another moves with it.
 export const TURN_PART = "data-turn-part";
 
+// The attribute that marks what a page does not share between its
+// layouts, such as bands behind it: it fades in where the new layout
+// puts it, over the glide.
+export const TURN_FADE = "data-turn-fade";
+
 export type Box = { left: number; top: number; width: number; height: number };
 
 // An animation as `element.animate` starts it: its eased progress tells
@@ -77,10 +82,18 @@ export type TurnMotion = {
 // A part's place as drawn: its box and its opacity.
 type Place = { element: Element; box: Box; opacity: number };
 
-// A glide started on a part: from where it was drawn to where it is laid
-// out, by its eased progress, with the frame drawn for it and how to
-// narrow it back.
-type Drawing = { animations: TurnAnimation[]; from: Place; to: Box; frame: TurnFrame | undefined; release: (() => void) | undefined };
+// A motion started on an element: by its eased progress, from `offset`
+// off where it is laid out to there, from `size`, where it shows one, to
+// its own, and from `opacity` to full, with the frame drawn for it and how
+// to narrow it back. The parts around it move it further by their own.
+type Drawing = {
+  animations: TurnAnimation[];
+  offset: { x: number; y: number };
+  size: { width: number; height: number } | undefined;
+  opacity: number;
+  frame: TurnFrame | undefined;
+  release: (() => void) | undefined;
+};
 
 const lerp = (from: number, to: number, progress: number) => from + (to - from) * progress;
 
@@ -91,8 +104,9 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // is measured before a change only where the page has gained it since. Each part glides from
 // its old place to its new one by translation, its change of size shown
 // by a clip of what it holds and a frame drawn under it, so no word or
-// picture is scaled. Each change outdates every one before it, and
-// nothing a change left waiting acts once it is outdated.
+// picture is scaled; what the page marks to fade fades in meanwhile.
+// Each change outdates every one before it, and nothing a change left
+// waiting acts once it is outdated.
 export function turnMotion({ parts, measure, frame, extend, animate, reducedMotion, startViewTransition, startTimer, timing }: TurnMotionSeams): TurnMotion {
   const keepers = new Set<Keeper>();
   const listeners = new Set<() => void>();
@@ -136,42 +150,76 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
     restores.forEach((restore) => restore());
   };
 
-  // Each part as drawn now. A part the page has gained since it was last
-  // measured is measured as it stands.
+  const progressOf = (drawing: Drawing) => drawing.animations[0]?.effect?.getComputedTiming().progress ?? 1;
+
+  // How far the motions on `element` and on each part around it draw it
+  // off where it is laid out, as far as each has gone. A part that moves
+  // only with a part around it has no motion of its own.
+  const moved = (element: Element) => {
+    let [x, y] = [0, 0];
+    for (let part = element.closest(`[${TURN_PART}]`); part; part = part.parentElement?.closest(`[${TURN_PART}]`) ?? null) {
+      const drawing = drawings.get(part);
+      if (!drawing) continue;
+      const left = 1 - progressOf(drawing);
+      x += drawing.offset.x * left;
+      y += drawing.offset.y * left;
+    }
+    return { x, y };
+  };
+
+  // The opacity `element` itself is drawn at now, or `resting` where no
+  // motion runs on it.
+  const opacityOf = (element: Element, resting: number) => {
+    const drawing = drawings.get(element);
+    return drawing ? lerp(drawing.opacity, 1, progressOf(drawing)) : resting;
+  };
+
+  // Each part as drawn now: where it was last measured, moved as the
+  // motions running draw it. A part the page has gained since it was
+  // last measured is measured as it stands.
   const places = (): Map<string, Place> => {
     const found = new Map<string, Place>();
     for (const [name, element] of marked()) {
-      const drawing = drawings.get(element);
-      if (!drawing) {
-        found.set(name, { element, box: drawn.get(name) ?? measure(element), opacity: 1 });
+      const laidOut = drawn.get(name);
+      if (!laidOut) {
+        found.set(name, { element, box: measure(element), opacity: 1 });
         continue;
       }
-      const progress = drawing.animations[0]?.effect?.getComputedTiming().progress ?? 1;
-      const { from, to } = drawing;
+      const drawing = drawings.get(element);
+      const progress = drawing ? progressOf(drawing) : 1;
+      const { x, y } = moved(element);
       found.set(name, {
         element,
         box: {
-          left: lerp(from.box.left, to.left, progress),
-          top: lerp(from.box.top, to.top, progress),
-          width: lerp(from.box.width, to.width, progress),
-          height: lerp(from.box.height, to.height, progress)
+          left: laidOut.left + x,
+          top: laidOut.top + y,
+          width: lerp(drawing?.size?.width ?? laidOut.width, laidOut.width, progress),
+          height: lerp(drawing?.size?.height ?? laidOut.height, laidOut.height, progress)
         },
-        opacity: lerp(from.opacity, 1, progress)
+        opacity: opacityOf(element, 1)
       });
     }
     return found;
   };
 
-  const settle = (change: number) => {
-    if (change !== changes) return;
+  // Stops any motion, every part at rest, after `change` if one is
+  // given, and takes the page afresh as it then stands.
+  const rest = (change?: () => void) => {
     cancelAll();
     setRunning(undefined);
+    if (change) kept(change);
     remeasure();
     keepers.forEach((keeper) => keeper.rest());
   };
 
+  const settle = (change: number) => {
+    if (change === changes) rest();
+  };
+
   const glide = (change: () => void, current: number) => {
     const before = places();
+    // What fades goes on from the opacity it is drawn at, or from none.
+    const fadedFrom = new Map([...parts.querySelectorAll(`[${TURN_FADE}]`)].map((element) => [element, opacityOf(element, 0)]));
     cancelAll();
     kept(change);
     remeasure();
@@ -191,10 +239,15 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
     // Every frame is drawn before any part moves, each where its part is
     // laid out.
     const starts: Array<() => void> = [];
+    const fadeIn = (element: Element, opacity: number) =>
+      starts.push(() =>
+        drawings.set(element, { animations: [animate(element, [{ opacity }, { opacity: 1 }], options)], offset: { x: 0, y: 0 }, size: undefined, opacity, frame: undefined, release: undefined })
+      );
+    for (const element of parts.querySelectorAll(`[${TURN_FADE}]`)) fadeIn(element, fadedFrom.get(element) ?? 0);
     for (const [name, { element, box }] of after) {
       const old = before.get(name);
       if (!old) {
-        starts.push(() => drawings.set(element, { animations: [animate(element, [{ opacity: 0 }, { opacity: 1 }], options)], from: { element, box, opacity: 0 }, to: box, frame: undefined, release: undefined }));
+        fadeIn(element, 0);
         continue;
       }
       const outer = around(element);
@@ -209,7 +262,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
       // its box but its content, which may reach past it, as an open menu
       // does: it only moves, its content laid out anew at once.
       const sized = framed !== undefined || holds;
-      const from: Place = { element, box: sized ? old.box : { ...old.box, width: box.width, height: box.height }, opacity: old.opacity };
+      const size = sized ? { width: old.box.width, height: old.box.height } : undefined;
       // A part that holds others and shrinks shows them past its new box
       // for as long as its old one is drawn.
       const right = holds ? Math.max(0, old.box.width - box.width) : 0;
@@ -239,7 +292,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
           }
           animations.push(animate(framed.element, [frameStart, frameEnd], options));
         }
-        drawings.set(element, { animations, from, to: box, frame: framed, release });
+        drawings.set(element, { animations, offset: { x, y }, size, opacity: old.opacity, frame: framed, release });
       });
     }
     starts.forEach((start) => start());
@@ -266,17 +319,10 @@ export function turnMotion({ parts, measure, frame, extend, animate, reducedMoti
   return {
     apply: (change, style) => {
       const current = ++changes;
-      if (style === "still") {
-        cancelAll();
-        setRunning(undefined);
-        kept(change);
-        remeasure();
-      } else if (style === "glide" || running) {
+      if (style === "glide" || (style === "follow" && running)) {
         (reducedMotion() ? fade : glide)(change, current);
       } else {
-        kept(change);
-        remeasure();
-        keepers.forEach((keeper) => keeper.rest());
+        rest(change);
       }
     },
     keep: (keeper) => {
