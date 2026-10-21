@@ -58,6 +58,10 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
   relative's is scaled by the cube of the size, or by the paper's own
   equation where it gives one, and the References table shows the
   working.
+- A dinosaur's length is nose to tail, in metres, as the sources give
+  it, kept beside its hip height, which stays its size (LAB-393). Where
+  they disagree, the NHM figure is used when it lies within or near the
+  others' range, and the References row notes the disagreement.
 - Mass is the live body mass, in kilograms. It is an estimate: a value
   is right when it lies within the range the sources give.
 - Where the sources disagree, use a value inside the range most of them
@@ -119,25 +123,34 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 
 | Dinosaur | Mass | References |
 | --- | --- | --- |
-| `ceratosaurus` | 1 t | Britannica: about 2 m tall, 1–2 t; NHM: 7 m, 980 kg |
+| `ceratosaurus` | 1 t | Length 7 m: NHM; NHM's text says about 6–7 m. Britannica: about 2 m tall, 1–2 t |
+| `tyrannosaurus` | 8 t | Length 12 m: NHM (normally estimated); AMNH: 12–18 m; Smithsonian: 11.6 m; Britannica: up to 12 m. AMNH's upper estimate is the outlier |
+| `allosaurus` | 2.3 t | Length 9.7 m: NHM; Britannica: 7–9 m, so the largest NHM specimen is above Britannica's range |
+| `dilophosaurus` | 400 kg | Length 7 m: NHM and Britannica; NHM's review article says an adult reached around 6 m |
+| `carnotaurus` | 1.5 t | Length 8 m: NHM; Britannica: 7.5–8 m |
+| `giganotosaurus` | 7 t | Length 13 m: NHM; AMNH: about 13 m; estimates of the incomplete skeleton range around 12–13 m |
+| `baryonyx` | 1.7 t | Length 10 m: NHM; Britannica: about 10 m |
 | `utahraptor` | 350 kg | NHM: 5.5 m, 350 kg; Britannica: much larger than Deinonychus (3 m, 1.8 m) |
-| `yutyrannus` | 1.4 t | NHM: 7.5 m, 1,100 kg; Britannica: 1,400 kg; AMNH: about 1.5 t; feathers in all three |
+| `yutyrannus` | 1.4 t | Length 7.5 m: NHM; Britannica: about 9 m. NHM's estimate is retained; NHM: 1,100 kg; Britannica: 1,400 kg; AMNH: about 1.5 t; feathers in all three |
 | `archaeopteryx` | 1 kg | NHM: 0.5 m, magpie-sized; AMNH: adults raven-sized; Smithsonian: ravens weigh 0.45–1.6 kg |
 | `troodon` | 50 kg | Britannica: up to 2.4 m long, about 50 kg; NHM: omnivorous, feathered |
 | `heterodontosaurus` | 2 kg | Britannica: about 1 m, up to 2.5 kg, ate low plants; NHM: 1.2 m, herbivorous |
-| `mamenchisaurus` | 12 t | AMNH (M. hochuanensis): 18 m, 4 m at the shoulder, 13 short tons; NHM: 22 m |
-| `amargasaurus` | 9 t | NHM: 12 m, 9,000 kg; no other trusted source gives a mass |
-| `plateosaurus` | 4 t | NHM: 7 m, 4,000 kg; Britannica: 7–8 m |
+| `mamenchisaurus` | 12 t | Length 22 m: NHM; AMNH (M. hochuanensis): 18 m, 4 m at the shoulder, 13 short tons; NHM: 22 m |
+| `amargasaurus` | 9 t | Length 12 m and mass 9,000 kg: NHM; no other trusted source gives a mass |
+| `plateosaurus` | 4 t | Length 7 m: NHM; Britannica: 7–8 m; NHM: 4,000 kg |
 | `maiasaura` | 3 t | NHM: 9 m, 2,500 kg; UCMP: 3–4 short tons; Britannica: 9 m |
 | `corythosaurus` | 4 t | Britannica: 9 m, 3–5 t; NHM: 10 m |
 | `chasmosaurus` | 2.5 t | NHM: 5 m, 2,500 kg; AMNH: about 5.2 m |
 | `protoceratops` | 180 kg | NHM: 1.8 m, 400 kg; Britannica: 1.8 m, about 180 kg (400 lb), so NHM's figure is likely the pounds |
 | `stegosaurus` | 2.7 t | AMNH: 8.5 m, 2,720 kg; Britannica: about 2 tons; NHM gives no mass |
 | `parasaurolophus` | 3.5 t | NHM: 9 m, 5,000 kg; Britannica: 10 m, 3–4 tons |
-| `brachiosaurus` | 50 t | NHM: 22 m, 46,900 kg; Britannica: 55–66 tons, and close to 80 t |
+| `brachiosaurus` | 50 t | Length 22 m: NHM; Britannica: 18–22 m; NHM: 46,900 kg; Britannica: 55–66 tons, and close to 80 t |
+| `diplodocus` | 15 t | Length 26 m: NHM; NHM's estimate is 24–26 m; AMNH: about 26 m |
+| `argentinosaurus` | 70 t | Length 35 m: NHM; Britannica: about 30 m. The incomplete fossil makes the upper estimate uncertain |
+| `apatosaurus` | 23 t | Length 21 m: NHM; Britannica: about 23 m |
 | `psittacosaurus` | 50 kg | AMNH: 60 cm tall, 130 cm long, 23–80 kg; NHM: 2 m, 50 kg |
 | `coelophysis` | 20 kg | Britannica: about 2 m, 18–23 kg, and 23–45 kg; NHM: 2 m, 27 kg |
-| `iguanodon` | 4 t | NHM: 10 m, 4,000 kg; Britannica: 9 m, four to five tons |
+| `iguanodon` | 4 t | Length 10 m: NHM; Britannica: 9 m, four to five tons; NHM: 4,000 kg |
 | `oviraptor` | 30 kg | NHM: 2 m, 20 kg; Britannica: 1.8 m, about 32 kg (70 lb) |
 | `edmontosaurus` | 3.4 t | NHM: 13 m, 3,400 kg; no other trusted source gives a mass |
 | `gallimimus` | 490 kg | NHM: 6 m, 490 kg; no other trusted source gives a mass |
