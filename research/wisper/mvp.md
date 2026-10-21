@@ -33,7 +33,8 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
    noise reduction (the chat agreed this hurts recognition).
 4. **Live engine: Parakeet v3** through FluidAudio's sliding window, no
    language hint. Our own layer keeps unconfirmed text and replaces it in
-   place when confirmed text arrives; FluidAudio does not do this.
+   place when confirmed text arrives; FluidAudio does not do this. It also merges words repeated at chunk
+   edges (tests.md run 3b).
 5. **Never overwrite raw text.** Later passes write new files next to it:
    raw → fixed → summary.
 6. **LLM work goes to bb** (`bb thread spawn`), as Gristmill does. No API

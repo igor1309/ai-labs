@@ -62,6 +62,21 @@ audio is not committed). Context 2 s left and 2 s right in every run.
 Outcome: 4 s is the best of the four; 2 s is faster but breaks words. The
 default 11 s is what makes a live view feel stuck.
 
+### Run 3b — 4 s chunk over run 2's audio (263 s, owner's commentary)
+
+Compared with the text Superwhisper saved for the same call (Parakeet
+Multilanguage, `meta.json`; whether that text is the live one or a final pass
+is not known).
+
+- Updates every 4 s, all the way through; no stalls over 4.4 minutes.
+- **Words repeat at chunk edges:** «показывает. / показывается», «что /
+  что-то», «у меня / у меня», «видеть / видеть», «вывод вывод». Superwhisper's
+  text has almost none of these. Our layer has to merge the overlap.
+- Names drift from chunk to chunk: «паракид», «Ракет», «Паркит», «маг
+  паракит», «MacParkit»; Superwhisper has «Паракит» throughout.
+- Mixed scripts appear: «Митинг рекорд» then «meeting recording»; «stop
+  zone» / «Stop zoom».
+
 ## Not yet measured
 
 - Latency from speech to text, per engine.
