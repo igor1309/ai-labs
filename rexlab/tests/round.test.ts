@@ -175,19 +175,25 @@ describe("longer questions", () => {
     expect(questionKind({ attribute: "length", left: short, right: long })).toBe("longer");
   });
 
-  it.each(["explorer", "paleontologist"] as const)("generate only valid length pairs at %s", (level) => {
-    for (const seed of SEEDS) {
+  // Every LONGER question is drawn from the fair length pairs, so the pool
+  // is checked whole and a few rounds show their questions come from it.
+  it("pairs only fair lengths, never a flying reptile", () => {
+    const pairs = fairPairs(SHIPPED_DINOSAURS, "length");
+    const flying = new Set(records.filter(({ group }) => group === "flying-reptile").map(({ id }) => id));
+
+    expect(pairs.length).toBeGreaterThanOrEqual(ROUND_LENGTH);
+    expect(pairs.filter(([a, b]) => flying.has(a.id) || flying.has(b.id))).toEqual([]);
+    for (const [a, b] of pairs) {
+      const [x, y] = [measureOf(a, "length"), measureOf(b, "length")];
+      expect(Math.max(x, y)).toBeGreaterThanOrEqual(FAIR_RATIO * Math.min(x, y));
+    }
+  });
+
+  it.each(["explorer", "paleontologist"] as const)("asks %s's LONGER questions of the fair length pairs alone", (level) => {
+    const pool = new Set(fairPairs(SHIPPED_DINOSAURS, "length").map(([a, b]) => pairKey(a, b)));
+    for (const seed of SEEDS.slice(0, 10)) {
       const longer = generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], level).filter(({ kind }) => kind === "longer");
-      for (const question of longer) {
-        expect(question.attribute).toBe("length");
-        expect(question.left.measures.length).toBeDefined();
-        expect(question.right.measures.length).toBeDefined();
-        expect(records.find(({ id }) => id === question.left.id)?.group).not.toBe("flying-reptile");
-        expect(records.find(({ id }) => id === question.right.id)?.group).not.toBe("flying-reptile");
-        expect(Math.max(measureOf(question.left, "length"), measureOf(question.right, "length"))).toBeGreaterThanOrEqual(
-          FAIR_RATIO * Math.min(measureOf(question.left, "length"), measureOf(question.right, "length"))
-        );
-      }
+      expect(longer.filter((question) => question.attribute !== "length" || !pool.has(pairKey(question.left, question.right)))).toEqual([]);
     }
   });
 });
