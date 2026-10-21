@@ -130,11 +130,13 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `carnotaurus` | 1.5 t | Length 8 m: NHM; Britannica: 7.5–8 m |
 | `giganotosaurus` | 7 t | Length 13 m: NHM; AMNH: about 13 m; estimates of the incomplete skeleton range around 12–13 m |
 | `baryonyx` | 1.7 t | Length 10 m: NHM; Britannica: about 10 m |
-| `utahraptor` | 350 kg | NHM: 5.5 m, 350 kg; Britannica: much larger than Deinonychus (3 m, 1.8 m) |
+| `utahraptor` | 350 kg | Length 5.5 m and mass 350 kg: NHM; Britannica: much larger than Deinonychus (3 m, 1.8 m) |
+| `velociraptor` | 15 kg | Length 1.8 m: NHM and AMNH; Britannica: about 2 m |
+| `deinonychus` | 75 kg | Length 3.4 m: NHM; AMNH: 7 ft (2.1 m), a smaller estimate |
 | `yutyrannus` | 1.4 t | Length 7.5 m: NHM; Britannica: about 9 m. NHM's estimate is retained; NHM: 1,100 kg; Britannica: 1,400 kg; AMNH: about 1.5 t; feathers in all three |
-| `archaeopteryx` | 1 kg | NHM: 0.5 m, magpie-sized; AMNH: adults raven-sized; Smithsonian: ravens weigh 0.45–1.6 kg |
-| `troodon` | 50 kg | Britannica: up to 2.4 m long, about 50 kg; NHM: omnivorous, feathered |
-| `heterodontosaurus` | 2 kg | Britannica: about 1 m, up to 2.5 kg, ate low plants; NHM: 1.2 m, herbivorous |
+| `archaeopteryx` | 1 kg | Length 0.5 m: NHM, magpie-sized; AMNH: adults raven-sized; Smithsonian: ravens weigh 0.45–1.6 kg |
+| `troodon` | 50 kg | Length 2.4 m: Britannica; NHM gives no length and reports the name is disputed |
+| `heterodontosaurus` | 2 kg | Length 1.2 m: NHM; Britannica: about 1 m, up to 2.5 kg, ate low plants |
 | `mamenchisaurus` | 12 t | Length 22 m: NHM; AMNH (M. hochuanensis): 18 m, 4 m at the shoulder, 13 short tons; NHM: 22 m |
 | `amargasaurus` | 9 t | Length 12 m and mass 9,000 kg: NHM; no other trusted source gives a mass |
 | `plateosaurus` | 4 t | Length 7 m: NHM; Britannica: 7–8 m; NHM: 4,000 kg |
@@ -155,11 +157,14 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `argentinosaurus` | 70 t | Length 35 m: NHM; Britannica: about 30 m. The incomplete fossil makes the upper estimate uncertain |
 | `apatosaurus` | 23 t | Length 21 m: NHM; Britannica: about 23 m |
 | `psittacosaurus` | 50 kg | Length 2 m and mass 50 kg: NHM; AMNH: 1.3 m, 23–80 kg; NHM's length is the larger estimate |
-| `coelophysis` | 20 kg | Britannica: about 2 m, 18–23 kg, and 23–45 kg; NHM: 2 m, 27 kg |
+| `coelophysis` | 20 kg | Length 2 m: NHM and Britannica; Britannica: 18–23 kg, and 23–45 kg; NHM: 27 kg |
 | `iguanodon` | 4 t | Length 10 m: NHM; Britannica: 9 m, four to five tons; NHM: 4,000 kg |
-| `oviraptor` | 30 kg | NHM: 2 m, 20 kg; Britannica: 1.8 m, about 32 kg (70 lb) |
+| `oviraptor` | 30 kg | Length 2 m: NHM; Britannica: 1.8 m, about 32 kg (70 lb); NHM: 20 kg |
 | `edmontosaurus` | 3.4 t | Length 13 m and mass 3,400 kg: NHM; no other trusted source gives a mass |
-| `gallimimus` | 490 kg | NHM: 6 m, 490 kg; no other trusted source gives a mass |
+| `gallimimus` | 490 kg | Length 6 m and mass 490 kg: NHM; no other trusted source gives a length or mass |
+| `compsognathus` | 3 kg | Length 0.7 m: NHM; Britannica: about 1 m |
+| `microraptor` | 1 kg | Length 0.8 m: NHM (its text says around 0.77 m); no other trusted source gives a length |
+| `therizinosaurus` | 5 t | Length 10 m: NHM; Britannica: up to 10 m; the fossil record is incomplete |
 | `quetzalcoatlus` | 250 kg | NHM: about 11 m wingspan, up to 250 kg; AMNH: wingspan around 10 m, Texas; Witton 2008: 9.64 m, 259 kg |
 | `pteranodon` | 25 kg | AMNH: wingspan up to 6 m, fish, "winged and toothless"; UCMP: about 25 pounds; Witton 2008: 5.96 m, 36.7 kg |
 | `rhamphorhynchus` | 2 kg | NHM: largest wingspan 1.8 m; Witton 2008: 0.89 m, 0.26 kg, scaled to 1.8 m by his basal-pterosaur equation; fish: Hone and others 2015 |

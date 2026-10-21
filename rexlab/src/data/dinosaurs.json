@@ -58,6 +58,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
+      "lengthMeters": 1.8,
       "massKg": 15
     },
     "diet": "meat",
@@ -282,6 +283,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.32,
+      "lengthMeters": 0.7,
       "massKg": 3
     },
     "diet": "meat",
@@ -306,6 +308,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.9,
+      "lengthMeters": 6,
       "massKg": 490
     },
     "diet": "both",
@@ -380,6 +383,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
+      "lengthMeters": 0.8,
       "massKg": 1
     },
     "diet": "meat",
@@ -504,6 +508,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 3,
+      "lengthMeters": 10,
       "massKg": 5000
     },
     "diet": "plants",
@@ -553,6 +558,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.87,
+      "lengthMeters": 3.4,
       "massKg": 75
     },
     "diet": "meat",
@@ -577,6 +583,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
+      "lengthMeters": 2,
       "massKg": 30
     },
     "diet": "both",
@@ -601,6 +608,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
+      "lengthMeters": 2,
       "massKg": 20
     },
     "diet": "meat",
@@ -775,6 +783,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
+      "lengthMeters": 5.5,
       "massKg": 350
     },
     "diet": "meat",
@@ -824,6 +833,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.16,
+      "lengthMeters": 0.5,
       "massKg": 1
     },
     "diet": "meat",
@@ -848,6 +858,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.88,
+      "lengthMeters": 2.4,
       "massKg": 50
     },
     "diet": "both",
@@ -872,6 +883,7 @@
     "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
+      "lengthMeters": 1.2,
       "massKg": 2
     },
     "diet": "plants",
