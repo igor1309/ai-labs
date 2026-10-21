@@ -5,7 +5,7 @@ import { App, type SizeClass } from "../src/App.tsx";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { extendPart, pageAnimations, turnFrame } from "../src/root.ts";
+import { extendPart, turnFrame } from "../src/root.ts";
 import { drawnOpacity } from "../src/root.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { turnStyle, type ScreenLayout } from "../src/layoutTurns.ts";
@@ -36,7 +36,7 @@ const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const IDS = SHIPPED_CATALOGUE.map(({ id }) => id);
 
-type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: KeyframeAnimationOptions; cancelled: boolean };
+type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: KeyframeAnimationOptions; cancelled: boolean; progress: number };
 
 const nameOf = (element: Element) => element.getAttribute("data-turn-part") ?? "";
 const recordedName = (element: Element) => {
@@ -99,7 +99,26 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
   const name = nameOf(element);
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
   if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
-  if (name === "catalogue-chips") return size === "tall" ? { left: 56, top: 120, width: width - 112, height: 56 } : { left: 200, top: 40, width: width - 256, height: 56 };
+  if (name === "catalogue-chips") {
+    if (size !== "tall") return { left: 200, top: 40, width: width - 256, height: 56 };
+    const arrangement = (element as HTMLElement).dataset.arrangement;
+    return { left: 56, top: 120, width: width - 112, height: arrangement === "stacked" ? 124 : 56 };
+  }
+  if (name.startsWith("catalogue-chip-")) {
+    const chip = element as HTMLElement;
+    const food = chip.dataset.food;
+    const group = chip.closest<HTMLElement>(".food-chips");
+    const arrangement = group?.dataset.arrangement;
+    const rowWidth = width - 112;
+    const gap = arrangement === "closed" ? 8 : 12;
+    const row = arrangement === "stacked" ? (food === "all" || food === "meat" ? 0 : 1) : 0;
+    const foods = arrangement === "stacked" ? (row === 0 ? ["all", "meat"] : ["plants", "both"]) : ["all", "meat", "plants", "both"];
+    const index = foods.indexOf(food ?? "");
+    const all = 56;
+    const foodWidth = arrangement === "stacked" ? rowWidth - all - gap : (rowWidth - all - gap * 3) / 3;
+    const left = 56 + foods.slice(0, index).reduce((sum, value) => sum + (value === "all" ? all : foodWidth) + gap, 0);
+    return { left, top: 120 + row * (56 + (arrangement === "stacked" ? 12 : 0)), width: food === "all" ? all : foodWidth, height: 56 };
+  }
   if (name === "catalogue-list") return { left: 0, top: size === "tall" ? 200 : 124, width, height: list.listHeight };
   if (name.startsWith("catalogue-card-")) {
     const index = IDS.indexOf(name.slice("catalogue-card-".length));
@@ -110,7 +129,9 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
   return { left: 0, top: 0, width: 1, height: 1 };
 }
 
-function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait" }: { reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait" } = {}) {
+type Rising = { y: number; opacity: number; running: boolean };
+
+function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait", rising = new Map<string, Rising>() }: { reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait"; rising?: Map<string, Rising> } = {}) {
   openWindow(width, height);
   const viewport = manualViewport(initial);
   const animations: Recorded[] = [];
@@ -122,7 +143,11 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     return new DOMRect();
   });
   onTestFinished(() => spy.mockRestore());
-  const measure = (element: Element) => boxFor(element, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass);
+  const measure = (element: Element) => {
+    const box = boxFor(element, window.innerWidth, window.innerHeight, document.documentElement.dataset.size as SizeClass);
+    const drawing = rising.get(nameOf(element));
+    return drawing ? { ...box, top: box.top + drawing.y } : box;
+  };
   render(
     <App
       {...featuring()}
@@ -151,12 +176,15 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
         frame: turnFrame,
         extend: extendPart,
         animate: (element, keyframes, options) => {
-          const animation: Recorded = { name: recordedName(element), keyframes, options, cancelled: false, cancel: () => void (animation.cancelled = true), effect: { getComputedTiming: () => ({ progress: 0 }) } };
+          const animation: Recorded = { name: recordedName(element), keyframes, options, cancelled: false, progress: 0, cancel: () => void (animation.cancelled = true), effect: { getComputedTiming: () => ({ progress: animation.progress }) } };
           animations.push(animation);
           return animation;
         },
-        animations: (element) => "getAnimations" in element && typeof element.getAnimations === "function" ? pageAnimations(element as Element & { getAnimations: Element["getAnimations"] }) : [],
-        opacity: drawnOpacity,
+        animations: (element) => {
+          const drawing = rising.get(nameOf(element));
+          return drawing?.running ? [{ finish: () => Object.assign(drawing, { running: false, y: 0, opacity: 1 }) }] : [];
+        },
+        opacity: (element) => rising.get(nameOf(element))?.opacity ?? drawnOpacity(element),
         nextFrame: (fire) => {
           const paint = { fire, stopped: false };
           paints.push(paint);
@@ -175,10 +203,12 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     act(() => viewport.resize(to[2], to[2] === "tall" || to[2] === "tall-narrow"));
   };
   const settle = () => act(() => pictures.fire(GLIDE));
+  const paint = () => act(() => paints.filter(({ stopped }) => !stopped).forEach((frame) => { frame.stopped = true; frame.fire(); }));
+  const progress = (at: number) => animations.filter(({ cancelled }) => !cancelled).forEach((animation) => (animation.progress = at));
   const updateFade = () => act(() => fades.at(-1)?.update());
   const endFade = () => act(() => fades.at(-1)?.finished());
   const parts = () => [...document.querySelectorAll<HTMLElement>("[data-turn-part]")];
-  return { user, pictures, animations, fades, paints, resize, settle, updateFade, endFade, parts, viewport, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
+  return { user, pictures, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
 }
 
 const own = ({ name }: Recorded) => !name.startsWith("frame of ");
@@ -211,6 +241,10 @@ describe("catalogue's shared turn", () => {
     expect([...new Set(app.animations.filter(own).map(({ name }) => name))]).toEqual([
       "catalogue-home",
       "catalogue-chips",
+      "catalogue-chip-all",
+      "catalogue-chip-meat",
+      "catalogue-chip-plants",
+      "catalogue-chip-both",
       "catalogue-list",
       ...SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ id }) => `catalogue-card-${id}`)
     ]);
@@ -222,6 +256,22 @@ describe("catalogue's shared turn", () => {
     expect(screen.getByRole("button", { name: "MEAT" }).getAttribute("aria-pressed")).toBe("true");
     app.settle();
     expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
+  });
+
+  it("takes a card's glide from where its entrance is drawn, without restarting the entrance", async () => {
+    const rising = new Map<string, Rising>([["catalogue-card-tyrannosaurus", { y: 0, opacity: 1, running: true }]]);
+    const app = openCatalogue(1180, 820, { rising });
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    Object.assign(rising.get("catalogue-card-tyrannosaurus"), { y: 18, opacity: 0.4 });
+    app.paint();
+    app.animations.length = 0;
+
+    app.resize([820, 1180, "tall"]);
+
+    const glide = app.animations.find(({ name }) => name === "catalogue-card-tyrannosaurus");
+    expect(glide?.keyframes[0]).toMatchObject({ translate: "0px 18px", opacity: 0.4 });
+    expect(rising.get("catalogue-card-tyrannosaurus")).toEqual({ y: 0, opacity: 1, running: false });
+    app.settle();
   });
 
   it("under reduced motion only fades the old list into the upright list for 160 ms", async () => {
@@ -294,6 +344,24 @@ describe("catalogue's shared turn", () => {
     app.settle();
   });
 
+  it("starts a newly chosen food at its own top when the next turn begins", async () => {
+    const app = openCatalogue();
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const all = app.grid();
+    listMetrics(all);
+    all.scrollTop = all.scrollHeight - all.clientHeight;
+    fireEvent.scroll(all);
+
+    await app.user.click(screen.getByRole("button", { name: "PLANTS" }));
+    const plants = app.grid();
+    listMetrics(plants, SHIPPED_CATALOGUE.filter(({ diet }) => diet === "plants").length);
+    expect(plants.scrollTop).toBe(0);
+
+    app.resize([820, 1180, "tall"]);
+    expect(app.grid().scrollTop).toBe(0);
+    app.settle();
+  });
+
   it("lands the shared picture in Baryonyx's upright card when the turn starts during its shrink", async () => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
@@ -337,7 +405,7 @@ describe("catalogue's shared turn", () => {
     const moving = new Set(app.animations.filter(({ cancelled }) => !cancelled).filter(own).map(({ name }) => name));
     expect(moving.size > 0).toBe(glides);
     if (glides) {
-      expect(moving).toEqual(new Set(["catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
+      expect(moving).toEqual(new Set(["catalogue-chips", "catalogue-chip-meat", "catalogue-chip-plants", "catalogue-chip-both", "catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
     } else {
       expect(moving).toEqual(new Set());
     }
@@ -345,6 +413,31 @@ describe("catalogue's shared turn", () => {
     expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", to[0], to[1], "tall"));
     expect(cardIn(app.grid(), "gallimimus").getBoundingClientRect().top).toBeCloseTo(app.grid().getBoundingClientRect().top);
     if (glides) app.settle();
+  });
+
+  it("continues a catalogue turn from its drawn parts through a second resize and keeps the list anchor", async () => {
+    const app = openCatalogue(744, 1133, { language: "ru" });
+    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    app.resize([744, 1133, "tall"]);
+    app.settle();
+    const list = app.grid();
+    listMetrics(list);
+    list.scrollTop = rowScroll("gallimimus", 744, 1133, "tall");
+    fireEvent.scroll(list);
+
+    app.resize([820, 1180, "tall"]);
+    const first = app.animations.find(({ name }) => name === "catalogue-card-gallimimus");
+    const firstFrame = app.animations.find(({ name }) => name === "frame of catalogue-card-gallimimus");
+    const firstWidth = (at: number) => Number(String(firstFrame?.keyframes[at]?.width).replace("px", ""));
+    app.progress(0.5);
+
+    app.resize([834, 1194, "tall"]);
+    const second = app.animations.filter(({ name, cancelled }) => name === "catalogue-card-gallimimus" && !cancelled).at(-1);
+    const secondFrame = app.animations.filter(({ name, cancelled }) => name === "frame of catalogue-card-gallimimus" && !cancelled).at(-1);
+    expect(second?.keyframes[0]?.translate).toBe("0px 0px");
+    expect(Number(String(secondFrame?.keyframes[0]?.width).replace("px", ""))).toBeCloseTo((firstWidth(0) + firstWidth(1)) / 2);
+    expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", 834, 1194, "tall"));
+    app.settle();
   });
 
   it("holds taps and keys during the turn, keeping Triceratops focused", async () => {

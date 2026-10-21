@@ -66,6 +66,10 @@ export type PageVisibility = {
 
 export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
 
+// The viewport boundary's safe-area values, kept independent of any screen's
+// geometry types.
+export type ViewportInsets = { left: number; right: number };
+
 // The size classes in which a screen with no portrait layout for them
 // shows the picture asking to turn or widen.
 export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
@@ -80,7 +84,7 @@ export type Viewport = {
   // The window's width in CSS pixels.
   width(): number;
   // The window's safe-area insets at its left and right edges.
-  sideInsets(): { left: number; right: number };
+  sideInsets(): ViewportInsets;
   subscribe(onChange: () => void): () => void;
 };
 

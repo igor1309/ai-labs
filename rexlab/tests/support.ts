@@ -5,7 +5,7 @@ import { join } from "node:path";
 import records from "../src/data/dinosaurs.json";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
-import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport } from "../src/App.tsx";
+import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport, ViewportInsets } from "../src/App.tsx";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readDig, type DigFile } from "../src/dig/index.ts";
@@ -252,8 +252,6 @@ export type ManualViewport = Viewport & {
   turn(to: "portrait" | "landscape"): void;
   resize(size: SizeClass, upright: boolean): void;
 };
-
-type ViewportInsets = { left: number; right: number };
 
 // Window and screen changes are independent and only happen on request.
 // The window's sides have the safe-area insets `sideInsets`, none unless
