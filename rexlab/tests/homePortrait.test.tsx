@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App } from "../src/App.tsx";
-import type { HomeGame } from "../src/HomePage.tsx";
+import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -114,11 +114,33 @@ function openUpright(
   return { viewport, user: userEvent.setup() };
 }
 
+type Side = "Top" | "Right" | "Bottom" | "Left";
+
+// A length the sum counts, in pixels, or `unset` where none is set. A
+// length it cannot count fails here, since the sum would not see it.
+function length(value: string, unset: number) {
+  if (value === "none" || value === "auto") return unset;
+  if (!/^-?[\d.]+(px)?$/.test(value)) throw new Error(`The upright sum cannot count ${value}`);
+  return px(value);
+}
+
+const margins = (style: CSSStyleDeclaration, ...sides: Side[]) => sides.reduce((sum, side) => sum + length(style[`margin${side}`], 0), 0);
+const insides = (style: CSSStyleDeclaration, ...sides: Side[]) => sides.reduce((sum, side) => sum + length(style[`padding${side}`], 0) + length(style[`border${side}Width`], 0), 0);
+
+// The height a part's least and most heights leave of `outer`, the
+// height with its paddings and borders it would take. Each counts them
+// too where its box is its content's.
+function heightWithin(style: CSSStyleDeclaration, outer: number) {
+  const box = style.boxSizing === "border-box" ? 0 : insides(style, "Top", "Bottom");
+  return Math.max(length(style.minHeight, 0) + box, Math.min(length(style.maxHeight, Infinity) + box, outer));
+}
+
 // The upright page as the browser lays it out from the stylesheet: a
 // column of the greeting and the games, the games a column of the large
 // card over the row, the large card growing into the height the rest
-// leaves, from nothing to at least its least height. A size set any
-// other way fails here, since this sum would not see it.
+// leaves, from nothing to at least its least height. Each part's
+// margins, paddings, borders and least and most heights are counted, so
+// a size set any other way fails here, since this sum would not see it.
 function uprightLayout(size: WindowSize) {
   const [width, height] = size;
   const home = part(".home");
@@ -126,30 +148,41 @@ function uprightLayout(size: WindowSize) {
   const games = part(".games");
   const card = featuredCard();
   const row = tilesRow();
-  const [homeStyle, gamesStyle, cardStyle, rowStyle] = [home, games, card, row].map((element) => getComputedStyle(element));
-  if (!homeStyle || !gamesStyle || !cardStyle || !rowStyle) throw new Error("No style for the page");
+  const [homeStyle, greetingStyle, gamesStyle, cardStyle, rowStyle] = [home, greeting, games, card, row].map((element) => getComputedStyle(element));
+  if (!homeStyle || !greetingStyle || !gamesStyle || !cardStyle || !rowStyle) throw new Error("No style for the page");
   const inFlow = (child: Element) => getComputedStyle(child).position === "static" && getComputedStyle(child).display !== "contents";
   expect([...home.children].filter(inFlow)).toEqual([greeting, games]);
   expect([...home.querySelectorAll(".stratum")].map((band) => getComputedStyle(band).position)).toEqual(["absolute", "absolute", "absolute"]);
   expect([...games.children]).toEqual([card, row]);
-  expect([homeStyle.display, homeStyle.flexDirection, px(homeStyle.minHeight)]).toEqual(["flex", "column", height]);
+  expect([homeStyle.display, homeStyle.flexDirection, homeStyle.boxSizing, px(homeStyle.minHeight), homeStyle.maxHeight]).toEqual(["flex", "column", "border-box", height, "none"]);
   expect([gamesStyle.display, gamesStyle.flexDirection, gamesStyle.flexGrow, gamesStyle.height]).toEqual(["flex", "column", "1", "auto"]);
   expect([cardStyle.flexGrow, cardStyle.flexBasis, cardStyle.height, rowStyle.flexGrow, rowStyle.flexShrink]).toEqual(["1", "0px", "auto", "0", "0"]);
+  // The greeting is one line tall, and the large card as wide as the
+  // games inside the page's sides.
+  expect(greetingStyle.height).toBe("auto");
+  expect([home, games, card].map((element) => [getComputedStyle(element).width, getComputedStyle(element).maxWidth])).toEqual([home, games, card].map(() => ["auto", "none"]));
+  expect(["auto", "normal", "stretch"]).toContain(cardStyle.alignSelf);
   // The row reaches past the games above and below by as much as its
   // own padding, which keeps the tiles' shadows.
   expect(px(rowStyle.marginTop) + px(rowStyle.paddingTop)).toBe(0);
   expect(px(rowStyle.marginBottom) + px(rowStyle.paddingBottom)).toBe(0);
 
-  const top = px(homeStyle.paddingTop);
-  const bottom = px(homeStyle.paddingBottom);
-  const rowHeight = px(rowStyle.height);
-  const rest = top + px(getComputedStyle(greeting).lineHeight) + styleAt(home, size).rowGap() + styleAt(games, size).rowGap() + rowHeight + bottom;
-  const cardHeight = Math.max(px(cardStyle.minHeight), height - rest);
+  const top = insides(homeStyle, "Top");
+  const bottom = insides(homeStyle, "Bottom");
+  const greetingHeight = heightWithin(greetingStyle, px(greetingStyle.lineHeight) + insides(greetingStyle, "Top", "Bottom")) + margins(greetingStyle, "Top", "Bottom");
+  const rowSides = insides(rowStyle, "Top", "Bottom");
+  const rowBox = heightWithin(rowStyle, length(rowStyle.height, Number.NaN) + (rowStyle.boxSizing === "border-box" ? 0 : rowSides));
+  const rowHeight = rowBox - rowSides;
+  const rest =
+    top + greetingHeight + styleAt(home, size).rowGap() + insides(gamesStyle, "Top", "Bottom") + margins(gamesStyle, "Top", "Bottom") + styleAt(games, size).rowGap() + rowBox + margins(rowStyle, "Top", "Bottom") + bottom;
+  const cardHeight = heightWithin(cardStyle, height - rest - margins(cardStyle, "Top", "Bottom"));
+  const gamesStart = insides(homeStyle, "Left") + margins(gamesStyle, "Left") + insides(gamesStyle, "Left");
+  const gamesEnd = width - margins(homeStyle, "Left", "Right") - insides(homeStyle, "Right") - margins(gamesStyle, "Right") - insides(gamesStyle, "Right");
   // The row runs from the page's padding to its margin past the page's
   // other side.
-  const rowStart = px(homeStyle.paddingLeft);
-  const rowEnd = width - px(homeStyle.paddingRight) - px(rowStyle.marginRight);
-  const shown = rowEnd - rowStart - px(rowStyle.paddingLeft) - px(rowStyle.paddingRight);
+  const rowStart = gamesStart + margins(rowStyle, "Left");
+  const rowEnd = gamesEnd - margins(rowStyle, "Right");
+  const shown = rowEnd - rowStart - insides(rowStyle, "Left", "Right");
   const columnValue = styleAt(row, size).value("grid-auto-columns");
   expect(columnValue).toMatch(/^[\d.]+px$/);
   const column = px(columnValue);
@@ -157,11 +190,11 @@ function uprightLayout(size: WindowSize) {
   const columns = Math.ceil(row.children.length / 2);
   const whole = Math.floor((shown + gap) / (column + gap));
   return {
-    card: { width: width - px(homeStyle.paddingLeft) - px(homeStyle.paddingRight), height: cardHeight },
+    card: { width: gamesEnd - gamesStart - margins(cardStyle, "Left", "Right"), height: cardHeight },
     row: { height: rowHeight, start: rowStart, end: rowEnd, rows: rowStyle.gridTemplateRows, rowGap: styleAt(row, size).rowGap() },
     column,
     peek: whole >= columns ? 0 : shown - whole * (column + gap),
-    page: rest + cardHeight,
+    page: rest + margins(cardStyle, "Top", "Bottom") + cardHeight,
     tilesEnd: bottom
   };
 }
@@ -275,6 +308,174 @@ describe("the home page upright", () => {
       IPAD_MINI_UPRIGHT.bottom
     ]);
     expect([inset.layout.column, inset.layout.peek]).toEqual([without.layout.column, without.layout.peek]);
+  });
+});
+
+// A box the large card's picture draws, from the card's top left corner.
+type Box = { left: number; top: number; right: number; bottom: number };
+
+// A length the large card's picture is given, as jsdom writes it: in
+// pixels, a share of `whole`, `whole` less some pixels, a share of the
+// container's inline size `inline` less some pixels, or the least of two
+// of these.
+function lengthIn(value: string, whole: number, inline: number): number {
+  const least = /^min\((.+), (.+)\)$/.exec(value);
+  if (least) return Math.min(lengthIn(least[1] ?? "", whole, inline), lengthIn(least[2] ?? "", whole, inline));
+  const inner = /^calc\((.+)\)$/.exec(value)?.[1] ?? value;
+  const contained = /^([\d.]+) \* \(100cqi - ([\d.]+)px\)$/.exec(inner);
+  if (contained) return Number(contained[1]) * (inline - Number(contained[2]));
+  const short = /^100% - ([\d.]+)px$/.exec(inner);
+  if (short) return whole - Number(short[1]);
+  const share = /^(-?[\d.]+)%$/.exec(inner);
+  if (share) return (Number(share[1]) / 100) * whole;
+  if (/^[\d.]+px$/.test(inner)) return px(inner);
+  throw new Error(`Cannot read the length ${value}`);
+}
+
+// The inline size of the container `element`'s cqi is read against: the
+// nearest that is one, `widthOf` giving the width of each it may be.
+function containerOf(element: Element, widthOf: (container: Element) => number) {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const style = getComputedStyle(parent);
+    if (style.containerType === "inline-size" || style.containerType === "size") return widthOf(parent) - insides(style, "Left", "Right");
+  }
+  return Number.NaN;
+}
+
+const ratioOf = (value: string) => {
+  const [across, down] = value.split(" / ").map(Number);
+  if (!across || !down) throw new Error(`Cannot read the aspect ratio ${value}`);
+  return across / down;
+};
+
+// The box a box `width` by `height` at `left`, `top` takes once its
+// `translate` and `rotate`, about its centre, move it.
+function moved(style: CSSStyleDeclaration, left: number, top: number, width: number, height: number): Box {
+  const [across = "0%", down = "0%"] = style.translate === "none" ? [] : style.translate.split(" ");
+  const turn = (style.rotate === "none" || !style.rotate ? 0 : Number.parseFloat(style.rotate)) * (Math.PI / 180);
+  const centreX = left + lengthIn(across, width, Number.NaN) + width / 2;
+  const centreY = top + lengthIn(down, height, Number.NaN) + height / 2;
+  const halfWidth = (width * Math.abs(Math.cos(turn)) + height * Math.abs(Math.sin(turn))) / 2;
+  const halfHeight = (width * Math.abs(Math.sin(turn)) + height * Math.abs(Math.cos(turn))) / 2;
+  return { left: centreX - halfWidth, top: centreY - halfHeight, right: centreX + halfWidth, bottom: centreY + halfHeight };
+}
+
+// The height of the large card's name strip, a card `cardWidth` wide:
+// its paddings and margins round the name's lines or its symbol, the
+// taller.
+function footerHeight(cardWidth: number) {
+  const footer = getComputedStyle(part(".featured-card-footer"));
+  const title = getComputedStyle(part(".featured-card-title"));
+  const { size, lines } = featuredName(cardWidth);
+  const line = title.lineHeight.endsWith("px") ? px(title.lineHeight) : Number(title.lineHeight) * size;
+  expect([footer.display, footer.flexDirection, footer.height]).toEqual(["flex", "row", "auto"]);
+  return insides(footer, "Top", "Bottom") + margins(footer, "Top", "Bottom") + Math.max(px(getComputedStyle(part(".featured-card-symbol")).height), lines.length * line);
+}
+
+// Each box the large card's picture draws in a card `width` by `height`,
+// as the stylesheet places it, and each way it would show less than its
+// whole picture. The picture takes the card's height its name strip
+// leaves.
+function featuredPicture(width: number, height: number) {
+  const card = featuredCard();
+  const cardStyle = getComputedStyle(card);
+  const picture = card.firstElementChild;
+  if (!(picture instanceof HTMLElement)) throw new Error("No picture on the large card");
+  const style = getComputedStyle(picture);
+  expect([cardStyle.display, cardStyle.flexDirection, style.flexGrow, style.flexBasis, px(style.minHeight)]).toEqual(["flex", "column", "1", "0px", 0]);
+  const room = {
+    left: insides(cardStyle, "Left"),
+    top: insides(cardStyle, "Top"),
+    width: width - insides(cardStyle, "Left", "Right"),
+    height: height - insides(cardStyle, "Top", "Bottom") - footerHeight(width)
+  };
+  const cut: string[] = [];
+  const inline = () => containerOf(picture.firstElementChild ?? picture, (container) => (container === card ? width : room.width));
+  if (picture.matches(".face-off")) {
+    // Two pictures, each a share of the room inside its padding, at its
+    // sides and its foot.
+    expect([style.boxSizing, style.justifyContent, style.alignItems]).toEqual(["border-box", "space-between", "flex-end"]);
+    const inside = { left: room.left + insides(style, "Left"), right: room.left + room.width - insides(style, "Right"), bottom: room.top + room.height - insides(style, "Bottom") };
+    const shown = [...picture.children].map((child) => {
+      const childStyle = getComputedStyle(child);
+      if (childStyle.objectFit !== "contain") cut.push(`${child.className}: ${childStyle.objectFit}`);
+      return { width: lengthIn(childStyle.width, inside.right - inside.left, Number.NaN), height: lengthIn(childStyle.height, room.height - insides(style, "Top", "Bottom"), Number.NaN) };
+    });
+    const [first, last] = [shown[0], shown.at(-1)];
+    if (!first || !last || shown.length !== 2) throw new Error("No two pictures face off");
+    return {
+      cut: first.width + last.width <= inside.right - inside.left ? cut : [...cut, "the two pictures overlap"],
+      boxes: [
+        { left: inside.left, top: inside.bottom - first.height, right: inside.left + first.width, bottom: inside.bottom },
+        { left: inside.right - last.width, top: inside.bottom - last.height, right: inside.right, bottom: inside.bottom }
+      ]
+    };
+  }
+  if (picture.matches(".pairs-tile-art")) {
+    // Three cards of the dinosaur's picture's shape, each placed from
+    // the art's middle by its own size.
+    expect([style.position, insides(style, "Top", "Right", "Bottom", "Left"), margins(style, "Top", "Right", "Bottom", "Left")]).toEqual(["relative", 0, 0]);
+    const boxes = [...picture.children].map((child) => {
+      const childStyle = getComputedStyle(child);
+      expect([childStyle.position, childStyle.boxSizing]).toEqual(["absolute", "border-box"]);
+      const cardHeight = lengthIn(childStyle.height, room.height, inline());
+      const cardWidth = cardHeight * ratioOf(childStyle.aspectRatio);
+      cut.push(...[...child.querySelectorAll("img")].filter((image) => getComputedStyle(image).objectFit !== "contain").map((image) => `${image.className}: ${getComputedStyle(image).objectFit}`));
+      return moved(childStyle, room.left + lengthIn(childStyle.left, room.width, Number.NaN), room.top + lengthIn(childStyle.top, room.height, Number.NaN), cardWidth, cardHeight);
+    });
+    return { cut, boxes };
+  }
+  if (!(picture instanceof HTMLImageElement)) throw new Error(`No picture the budget knows: ${picture.className}`);
+  const fixed = (side: "Top" | "Bottom") => (style[`margin${side}`] === "auto" ? 0 : px(style[`margin${side}`]));
+  const free = room.height - fixed("Top") - fixed("Bottom");
+  if (style.objectFit === "contain") {
+    // A picture as wide as the card, shrunk whole into it inside its
+    // padding.
+    expect([style.width, style.boxSizing, insides(style, "Left", "Right") < room.width, insides(style, "Top", "Bottom") < free]).toEqual(["100%", "border-box", true, true]);
+    return { cut, boxes: [{ left: room.left, top: room.top + fixed("Top"), right: room.left + room.width, bottom: room.top + fixed("Top") + free }] };
+  }
+  // A picture filling a box of its own shape, as wide as its height
+  // makes it unless its most width cuts it.
+  expect([style.objectFit, style.width, style.alignSelf, ratioOf(style.aspectRatio)]).toEqual(["cover", "auto", "center", picture.width / picture.height]);
+  const pictureHeight = Math.min(free, lengthIn(style.maxHeight === "none" ? `${free}px` : style.maxHeight, room.height, inline()));
+  const pictureWidth = pictureHeight * ratioOf(style.aspectRatio);
+  const most = lengthIn(style.maxWidth, room.width, inline());
+  if (pictureWidth > most + 0.5) cut.push(`${picture.className}: ${pictureWidth.toFixed(1)}px wide, cut to ${most.toFixed(1)}px`);
+  const left = room.left + (room.width - Math.min(pictureWidth, most)) / 2;
+  const top = room.top + (style.marginTop === "auto" ? (free - pictureHeight) / (style.marginBottom === "auto" ? 2 : 1) : fixed("Top"));
+  return { cut, boxes: [{ left, top, right: left + Math.min(pictureWidth, most), bottom: top + pictureHeight }] };
+}
+
+describe("the large card's picture upright", () => {
+  it.each(HOME_GAMES.flatMap((game) => UPRIGHT.map(([width, height]) => [game, width, height] as const)))(
+    "shows %s's whole picture inside the large card in a %i by %i window",
+    (game, width, height) => {
+      openUpright(width, height, { featured: game });
+      const { card } = uprightLayout([width, height]);
+      const { cut, boxes } = featuredPicture(card.width, card.height);
+      const outside = boxes.filter((box) => box.left < 0 || box.top < 0 || box.right > card.width || box.bottom > card.height).map((box) => Object.values(box).map((side) => side.toFixed(1)).join(" "));
+
+      expect(boxes.length).toBeGreaterThan(0);
+      expect({ cut, outside }).toEqual({ cut: [], outside: [] });
+    }
+  );
+
+  it("keeps every tile's picture as it is in landscape", () => {
+    const { viewport } = openUpright(1180, 820, { viewport: manualViewport("landscape") });
+    const properties = ["height", "width", "max-height", "max-width", "margin-top", "margin-right", "margin-bottom", "margin-left", "padding-top", "padding-right", "padding-bottom", "padding-left", "translate", "rotate", "aspect-ratio", "object-fit", "container-type"];
+    const pictures = () =>
+      [...tilesRow().querySelectorAll(".face-off, img, .pairs-tile-art, .pairs-tile-card")].map((picture) => {
+        const style = getComputedStyle(picture);
+        return [picture.className, ...properties.map((property) => style.getPropertyValue(property))];
+      });
+    const landscape = pictures();
+
+    openWindow(820, 1180);
+    act(() => viewport.resize("tall", true));
+
+    expect(document.documentElement.dataset.size).toBe("tall");
+    expect(landscape.map(([name]) => name)).toEqual(expect.arrayContaining(["pairs-tile-art", "pairs-tile-card pairs-tile-card-first", "picture dig-tile-picture"]));
+    expect(pictures()).toEqual(landscape);
   });
 });
 

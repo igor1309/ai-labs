@@ -904,6 +904,37 @@ body:has(.result) #version {
   min-height: 280px;
 }
 
+/* Upright, the large card may be too narrow for FIND THE PAIR's cards
+   at its height: the three span 2.27 times their height, so they are no
+   taller than the art's width allows, short of the sides the other
+   pictures keep. */
+[data-size="tall"] .featured-card .pairs-tile-art {
+  container-type: inline-size;
+}
+
+[data-size="tall"] .featured-card .pairs-tile-card {
+  height: min(84%, (100cqi - 64px) / 2.27);
+}
+
+/* Nor may DIG's sand, which fills its 4:3 card, be cut at its sides: it
+   is no taller than the card's width allows, and centred between the
+   card's top and its name, at least as far from them as in landscape. */
+[data-size="tall"] .featured-card[data-game="dig"] {
+  container-type: inline-size;
+  box-sizing: border-box;
+  padding-top: 36px;
+}
+
+[data-size="tall"] .featured-card .dig-tile-picture {
+  max-height: calc((100cqi - 64px) * 3 / 4);
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+[data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer {
+  margin-top: 8px;
+}
+
 [data-size="tall"] .games-tiles {
   flex: none;
   height: clamp(360px, 36vh, 520px);
