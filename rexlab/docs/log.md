@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-21
+
+- The home page stands upright on an iPad in portrait, in Split View or Stage Manager, and in a tall Mac window: the corner and greeting on top, the large card across the width, and under it the row of tiles running to the right edge with the next column peeking in; turning the window keeps an open parents' menu and the large card and puts the tiles back at their start. Other screens, and the home page on an upright iPhone, still ask to turn sideways (LAB-327).
+
 ## 2026-10-20
 
 - DIG's Explorer and Paleontologist choice cards show each dinosaur's name in capitals beneath its picture, in the chosen language, and expose the same name to screen readers (LAB-378).
