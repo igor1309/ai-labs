@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
-import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
@@ -16,21 +15,8 @@ import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
-import { presentCatalogueCard, presentDinosaurPage, presentQuestion, presentResult } from "./presentation.ts";
-import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
-import {
-  choose,
-  finishPlay,
-  next,
-  questionState,
-  startRound,
-  type Dinosaur,
-  type GameProgress,
-  type Play,
-  type Random,
-  type RoundResult
-} from "./quiz/index.ts";
-import { ResultScreen } from "./ResultScreen.tsx";
+import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
+import { useQuizGame, type QuizGameProps } from "./quizGame.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
@@ -38,12 +24,6 @@ import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
-
-export type ProgressStore = {
-  // The progress kept so far, or undefined when it cannot be read at all.
-  load(): GameProgress | undefined;
-  save(progress: GameProgress): void;
-};
 
 export type LanguageStore = {
   // The language a parent chose, or undefined when none can be read.
@@ -102,19 +82,17 @@ export type Viewport = {
 export type { CareProgressStore } from "./careGame.tsx";
 export type { DigProgressStore, SandContext } from "./digGame.tsx";
 export type { PairsProgressStore } from "./pairsGame.tsx";
+export type { ProgressStore } from "./quizGame.tsx";
 export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx";
 
 export type AppProps = CareGameProps &
   PairsGameProps &
+  QuizGameProps &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
   Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
-    dinosaurs: readonly Dinosaur[];
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
-    // The URL of the body picture of the dinosaur with this id.
-    bodyPicture: (dinosaurId: string) => string;
-    random: Random;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
@@ -123,7 +101,6 @@ export type AppProps = CareGameProps &
     // cross-faded, as a screen goes to its other layout.
     layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer">;
     pageVisibility: PageVisibility;
-    progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
     languageStore: LanguageStore;
@@ -168,15 +145,12 @@ const SKELETONS_TILE = "triceratops";
 // come.
 const MORE_COMING = "triceratops";
 
-// The dinosaur cheering the child on at the end of a round.
-const HERO = "tyrannosaurus";
-
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
 type Screen =
   | { kind: "home" }
-  | { kind: "question"; play: Play }
-  | { kind: "result"; result: RoundResult }
+  // The compare quiz, which keeps its own screens.
+  | { kind: "compare" }
   // The id of the dinosaur whose page the child came back from, if any.
   | { kind: "catalogue"; returning: string | undefined }
   // The dinosaur's place among those of the food chosen.
@@ -192,13 +166,11 @@ type Screen =
   // And the dig game.
   | { kind: "dig" };
 
-// A new question animates only its pair of cards, and an answer chosen,
-// or a food, changes the screen at once. A dinosaur's page opens from its
+// A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
 // arrow's direction, which `step` gives: on a short or wrapping list the
 // two places alone cannot tell previous from next.
 export function transitionFor(from: Screen, to: Screen, step: Step | undefined): string | undefined {
-  if (from.kind === "question" && to.kind === "question") return from.play.index === to.play.index ? undefined : NEXT_QUESTION;
   if (from.kind === "dinosaur" && to.kind === "dinosaur") return step === undefined ? undefined : STEPS[step];
   if (from.kind === "catalogue" && to.kind === "dinosaur") return OPEN_DINOSAUR;
   if (from.kind === "dinosaur" && to.kind === "catalogue") return CLOSE_DINOSAUR;
@@ -258,7 +230,6 @@ export function App({
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
   const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
-  const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
@@ -306,29 +277,18 @@ export function App({
     ageLevelStore.save(picked);
   };
 
-  // A round opens at once, its pictures shimmering until they load. It is
-  // counted with the change, so a second COMPARE or PLAY AGAIN before the
-  // question shows finds a round already asked for and starts nothing.
-  const playNewRound = () => {
-    const started = startRound(dinosaurs, random, lastPlay);
-    go((current) => (current.kind === "question" ? current : { kind: "question", play: started }), {
-      also: () => {
-        setLastPlay(started);
-        startCounter.countStart("compare");
-      }
-    });
-  };
-
-  // Each update moves from the state it is given, not the one last
-  // rendered, so a tap that lands after the screen has already moved on
-  // changes nothing.
-  const play = (move: (play: Play) => Play) =>
-    go((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => go({ kind: "home" });
 
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
+
+  const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, home, counting("compare"));
+
+  // A round starts at once from the tile, with no welcome screen.
+  const openCompare = () => {
+    quiz.start(() => set({ kind: "compare" }));
+  };
 
   const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"));
 
@@ -405,23 +365,6 @@ export function App({
     dig.start(() => set({ kind: "dig" }));
   };
 
-  // The next question shows at once, and only if the round is still where
-  // Next was tapped: a second tap changes nothing more.
-  const goOn = (from: Play) => {
-    const to = next(from);
-    go((current) => (current.kind === "question" && current.play === from ? { ...current, play: to } : current));
-  };
-
-  // A round is recorded only here, when its result is shown, so a round
-  // left early changes nothing.
-  const seeResult = (finished: Play) => {
-    const result = finishPlay(finished, progress.load(), beatBest);
-    if (result.progress) {
-      progress.save(result.progress);
-    }
-    go({ kind: "result", result });
-  };
-
   // The food chosen is kept going to a page and back, but the catalogue
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
@@ -470,34 +413,8 @@ export function App({
 
   const content = () => {
     switch (screen.kind) {
-      case "question": {
-        const current = screen.play;
-        const question = questionState(current);
-        // The next question's pictures load while this one is answered.
-        const coming = current.round[current.index + 1];
-        return (
-          <>
-            {coming && <LoadAhead urls={[bodyPicture(coming.left.id), bodyPicture(coming.right.id)]} />}
-            <QuestionScreen
-              language={language}
-              {...presentQuestion(question, language, bodyPicture)}
-              onChoose={(id) => play((state) => choose(state, id))}
-              onNext={question.last ? () => seeResult(current) : () => goOn(current)}
-              onHome={home}
-            />
-          </>
-        );
-      }
-      case "result":
-        return (
-          <ResultScreen
-            language={language}
-            {...presentResult(screen.result)}
-            hero={bodyPicture(HERO)}
-            onPlayAgain={playNewRound}
-            onHome={home}
-          />
-        );
+      case "compare":
+        return quiz.content(language);
       case "catalogue":
         return (
           <CatalogueScreen
@@ -555,7 +472,7 @@ export function App({
             layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
-            best={progress.load()?.bestScore ?? undefined}
+            best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
@@ -563,7 +480,7 @@ export function App({
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: digTile, dugUp: dig.dugUp }}
             moreComing={bodyPicture(MORE_COMING)}
-            onCompareDinosaurs={playNewRound}
+            onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}
             onSort={openSorting}
@@ -576,9 +493,9 @@ export function App({
     }
   };
 
-  // One screen cross-fades into the next; a new question animates only its
-  // pair of cards, inside the question screen, and so does the next
-  // dinosaur inside its page. As a dinosaur's page opens or closes, the
+  // One screen cross-fades into the next; a new question of the quiz
+  // animates only its pair of cards, inside the question screen, and so
+  // does the next dinosaur inside its page. As a dinosaur's page opens or closes, the
   // rest of the screen fades while its picture moves.
   return (
     <PicturesProvider store={pictures} startTimer={startTimer}>
