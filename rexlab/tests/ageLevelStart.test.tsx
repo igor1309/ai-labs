@@ -8,7 +8,7 @@ import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
-import { largerOf, type Question } from "../src/quiz/round.ts";
+import { correctOf, type Question } from "../src/quiz/round.ts";
 import { badgeOf } from "./homePage.tsx";
 import {
   SHIPPED_CATALOGUE,
@@ -133,7 +133,9 @@ describe("today's games", () => {
 });
 
 function shownQuestion(): Question {
-  const attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
+  const heading = screen.getByRole("heading").textContent ?? "";
+  const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("HEAVIER") ? "heavier" : "taller";
+  const attribute = kind === "taller" ? "height" : "mass";
   const [left, right] = within(group())
     .getAllByRole("button")
     .map((card) => {
@@ -142,7 +144,7 @@ function shownQuestion(): Question {
       return found;
     });
   if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
+  return { kind, attribute, left, right };
 }
 
 // Plays a compare quiz round from the home page, every question answered
@@ -150,7 +152,7 @@ function shownQuestion(): Question {
 async function answerEveryQuestionRight(user: UserEvent) {
   await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= 10; number++) {
-    await user.click(within(group()).getByRole("button", { name: largerOf(shownQuestion()).name.en }));
+    await user.click(within(group()).getByRole("button", { name: correctOf(shownQuestion()).name.en }));
     if (number < 10) await user.click(button("NEXT"));
   }
   await user.click(button("SEE RESULT"));

@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   ATTRIBUTES,
   FAIR_RATIO,
+  correctOf,
   ROUND_LENGTH,
   fairPairs,
   generateRound,
   isFair,
   measureOf,
   pairKey,
+  questionKindsForLevel,
   type Dinosaur,
   type Round
 } from "../src/quiz/round.ts";
@@ -61,6 +63,26 @@ describe("generateRound", () => {
     expect([...asked].sort()).toEqual([...ATTRIBUTES].sort());
   });
 
+  it("lets Paleontologist rounds mix all three question kinds", () => {
+    const asked = new Set<string>();
+    for (const seed of SEEDS) {
+      for (const question of generateRound(SHIPPED_DINOSAURS, seededRandom(seed), [], "paleontologist")) {
+        asked.add(question.kind ?? "");
+      }
+      if (asked.size === 3) break;
+    }
+
+    expect([...asked].sort()).toEqual(["heavier", "lighter", "taller"]);
+    expect(questionKindsForLevel("paleontologist")).toEqual(["heavier", "taller", "lighter"]);
+  });
+
+  it.each(["hatchling", "explorer"] as const)("keeps %s rounds to today's two kinds", (level) => {
+    const kinds = new Set(generateRound(SHIPPED_DINOSAURS, seededRandom(1), [], level).map((question) => question.kind));
+
+    expect(kinds).not.toContain("lighter");
+    expect([...kinds].sort()).toEqual(["heavier", "taller"]);
+  });
+
   it("reuses a previous pair only when no other fair pair is left", () => {
     // Five dinosaurs each twice the one before: all ten pairs are fair, and
     // a round needs every one of them.
@@ -99,6 +121,18 @@ describe("fairPairs", () => {
     expect(isFair(tall, flier, "height")).toBe(false);
     expect(fairPairs([tall, flier], "height")).toEqual([]);
     expect(() => measureOf(flier, "height")).toThrow("flier has no height");
+  });
+});
+
+describe("lighter questions", () => {
+  it("use a fair mass pair and make the smaller mass the right answer", () => {
+    const small = dinosaur("small", 100, 2);
+    const large = dinosaur("large", 150, 3);
+    const question = { kind: "lighter" as const, attribute: "mass" as const, left: large, right: small };
+
+    expect(isFair(small, large, "mass")).toBe(true);
+    expect(correctOf(question)).toBe(small);
+    expect(measureOf(large, "mass")).toBeGreaterThanOrEqual(FAIR_RATIO * measureOf(small, "mass"));
   });
 });
 

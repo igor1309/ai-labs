@@ -32,7 +32,7 @@ export type Texts = {
   creatures: string;
   // Between the two dinosaur cards.
   versus: string;
-  prompts: { mass: string; height: string };
+  prompts: { mass: string; height: string; lighter: string };
   marks: { correct: string; wrong: string };
   next: string;
   seeResult: string;

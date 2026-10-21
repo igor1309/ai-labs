@@ -48,7 +48,7 @@ import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx
 // attribute, celebration, food type, need, item, basket, bone piece or
 // museum stand fails the typecheck here until it is given a presentation.
 
-const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
+const PROMPTS: Record<QuestionState["kind"], Prompt> = { heavier: "mass", taller: "height", lighter: "lighter" };
 
 const FORMATS: Record<Attribute, (value: number, language: Language) => string> = {
   mass: formatMass,
@@ -61,7 +61,7 @@ export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "tota
 
 export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string): QuestionView {
   // Once answered, the right answer is marked whichever card was tapped,
-  // so a wrong answer still shows the child which one is larger.
+  // so a wrong answer still shows the child which one wins.
   const card = ({ dinosaur, value, correct, chosen }: Option): DinosaurCardView => ({
     id: dinosaur.id,
     name: dinosaur.name[language],
@@ -71,7 +71,7 @@ export function presentQuestion(question: QuestionState, language: Language, bod
     chosen
   });
   return {
-    prompt: PROMPTS[question.attribute],
+    prompt: PROMPTS[question.kind],
     number: question.number,
     total: question.total,
     left: card(question.left),

@@ -6,7 +6,7 @@ import { App } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
-import { largerOf } from "../src/quiz/round.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import { chooseFrom } from "./menus.ts";
 import { storedRecord } from "./sorting.tsx";
 import {
@@ -79,22 +79,26 @@ const onQuestion = () => screen.queryByRole("group", { name: "ANIMALS" }) !== nu
 const byName = (name: string | null) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.name.en === name);
 
 // Plays the round on screen to its result, the first `right` answers
-// correct and the rest wrong, checking each asks one of today's questions.
+// correct and the rest wrong, checking each asks a question for its level.
 async function finishWith(user: UserEvent, right: number) {
+  const kinds = new Set<string>();
   for (let number = 1; number <= 10; number++) {
     const heading = screen.getByRole("heading").textContent ?? "";
-    expect(["WHO IS HEAVIER?", "WHO IS TALLER?"]).toContain(heading);
+    kinds.add(heading);
+    expect(["WHO IS HEAVIER?", "WHO IS TALLER?", "WHO IS LIGHTER?"]).toContain(heading);
     const [left, right_] = within(group()).getAllByRole("button").map((card) => byName(card.getAttribute("aria-label")));
     if (!left || !right_) throw new Error("Expected two shipped dinosaurs");
-    const larger = largerOf({ attribute: heading.includes("HEAVIER") ? "mass" : "height", left, right: right_ });
-    const tapped = number <= right ? larger : larger === left ? right_ : left;
+    const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("HEAVIER") ? "heavier" : "taller";
+    const correct = correctOf({ kind, attribute: kind === "taller" ? "height" : "mass", left, right: right_ });
+    const tapped = number <= right ? correct : correct === left ? right_ : left;
     await user.click(within(group()).getByRole("button", { name: tapped.name.en }));
     await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
   }
+  return kinds;
 }
 
 describe("the compare quiz's levels across the app", () => {
-  it.each(AGE_LEVELS)("plays a first round at the age level %s, asks today's questions, and saves its best there", async (level) => {
+  it.each(AGE_LEVELS)("plays a first round at the age level %s, asks its level's questions, and saves its best there", async (level) => {
     const storage = recordAt(level);
     const { user } = openApp(storage);
     await user.click(gameDoor("COMPARE"));
@@ -102,6 +106,23 @@ describe("the compare quiz's levels across the app", () => {
     expect(chosen()).toEqual([level]);
     const names = { hatchling: "bestScore", explorer: "explorerBest", paleontologist: "paleontologistBest" };
     expect(storedQuiz(storage)).toEqual({ ...EMPTY_ENTRY, [names[level]]: 3, roundsPlayed: 1 });
+  });
+
+  it("can ask lighter at Paleontologist and scores the lighter dinosaur right", async () => {
+    const { user } = openApp(recordAt("paleontologist"));
+    await user.click(gameDoor("COMPARE"));
+    const kinds = await finishWith(user, 10);
+
+    expect(kinds).toContain("WHO IS LIGHTER?");
+    expect(screen.getByLabelText("SCORE").textContent).toBe("10/10");
+  });
+
+  it.each(["hatchling", "explorer"] as const)("never asks lighter at %s", async (level) => {
+    const { user } = openApp(recordAt(level));
+    await user.click(gameDoor("COMPARE"));
+    const kinds = await finishWith(user, 10);
+
+    expect(kinds).not.toContain("WHO IS LIGHTER?");
   });
 
   it("shows the switch above PLAY AGAIN, youngest level first", async () => {

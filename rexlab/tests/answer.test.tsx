@@ -146,6 +146,28 @@ describe("answering a question", () => {
     }
   );
 
+  it("marks the lighter dinosaur right and reveals mass values with weight symbols", async () => {
+    const heavy = byName("Triceratops");
+    const light = byName("Velociraptor");
+    const question: Question = { kind: "lighter", attribute: "mass", left: heavy, right: light };
+    const handlers = { onChoose: () => {}, onNext: () => {}, onHome: () => {} };
+    const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />, withPictures);
+
+    expect(screen.getByRole("heading").textContent).toContain("WHO IS LIGHTER?");
+    expect(symbolOf(screen.getByRole("heading"))).toBe("feather");
+    rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
+    expect(screen.getByRole("heading").textContent).toContain("КТО ЛЕГЧЕ?");
+    rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
+    await userEvent.setup().click(cardOf(light));
+    rerender(<QuestionScreen language="en" {...questionView(question, "en", light.id)} {...handlers} />);
+
+    expect(marksOn(cardOf(light))).toEqual(["check RIGHT"]);
+    expect(within(cardOf(heavy)).getByText("7 T")).toBeDefined();
+    expect(within(cardOf(light)).getByText("15 KG")).toBeDefined();
+    expect(symbolOf(within(cardOf(heavy)).getByText("7 T").parentElement ?? cardOf(heavy))).toBe("weight");
+    expect(symbolOf(within(cardOf(light)).getByText("15 KG").parentElement ?? cardOf(light))).toBe("weight");
+  });
+
   it("marks the right answer and shows both values in every question of a round", async () => {
     const { user, start } = startRound(11);
     await start();
