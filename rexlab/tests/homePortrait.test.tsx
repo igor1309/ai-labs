@@ -114,11 +114,34 @@ function openUpright(
   return { viewport, user: userEvent.setup() };
 }
 
+// The properties a sum reads or assumes, as the rules that match in a
+// window of `size` set them, media queries' included: a rule that sets
+// one to anything the sum does not model fails here.
+function sized(element: Element, size: WindowSize, expected: Record<string, string>) {
+  const at = styleAt(element, size);
+  // jsdom writes a zero length as the stylesheet does, with or without
+  // its unit.
+  const set = (property: string) => (at.value(property) === "0" && expected[property]?.endsWith("px") ? "0px" : at.value(property));
+  expect(Object.fromEntries(Object.keys(expected).map((property) => [property, set(property)]))).toEqual(expected);
+}
+
+// Nothing in the block's way: no margin, padding or border above or
+// below.
+const FLUSH = Object.fromEntries(["margin", "padding", "border"].flatMap((box) => ["top", "bottom"].map((side) => [`${box}-${side}${box === "border" ? "-width" : ""}`, "0px"])));
+
+// Nothing beside it: no margin, padding or border to the left or right.
+const FLUSH_SIDES = Object.fromEntries(["margin", "padding", "border"].flatMap((box) => ["left", "right"].map((side) => [`${box}-${side}${box === "border" ? "-width" : ""}`, "0px"])));
+
+// Stretched across its column, as wide as the column's content: an
+// automatic least width is none across a column.
+const ACROSS = { width: "auto", "max-width": "none", "align-self": "auto", ...FLUSH_SIDES };
+
 // The upright page as the browser lays it out from the stylesheet: a
 // column of the greeting and the games, the games a column of the large
 // card over the row, the large card growing into the height the rest
-// leaves, from nothing to at least its least height. A size set any
-// other way fails here, since this sum would not see it.
+// leaves, from nothing to at least its least height, and as wide as the
+// page's content. A size set any other way fails here, since this sum
+// would not see it.
 function uprightLayout(size: WindowSize) {
   const [width, height] = size;
   const home = part(".home");
@@ -126,15 +149,47 @@ function uprightLayout(size: WindowSize) {
   const games = part(".games");
   const card = featuredCard();
   const row = tilesRow();
-  const [homeStyle, gamesStyle, cardStyle, rowStyle] = [home, games, card, row].map((element) => getComputedStyle(element));
-  if (!homeStyle || !gamesStyle || !cardStyle || !rowStyle) throw new Error("No style for the page");
+  const [homeStyle, cardStyle, rowStyle] = [home, card, row].map((element) => getComputedStyle(element));
+  if (!homeStyle || !cardStyle || !rowStyle) throw new Error("No style for the page");
   const inFlow = (child: Element) => getComputedStyle(child).position === "static" && getComputedStyle(child).display !== "contents";
   expect([...home.children].filter(inFlow)).toEqual([greeting, games]);
   expect([...home.querySelectorAll(".stratum")].map((band) => getComputedStyle(band).position)).toEqual(["absolute", "absolute", "absolute"]);
   expect([...games.children]).toEqual([card, row]);
-  expect([homeStyle.display, homeStyle.flexDirection, px(homeStyle.minHeight)]).toEqual(["flex", "column", height]);
-  expect([gamesStyle.display, gamesStyle.flexDirection, gamesStyle.flexGrow, gamesStyle.height]).toEqual(["flex", "column", "1", "auto"]);
-  expect([cardStyle.flexGrow, cardStyle.flexBasis, cardStyle.height, rowStyle.flexGrow, rowStyle.flexShrink]).toEqual(["1", "0px", "auto", "0", "0"]);
+  sized(home, size, {
+    display: "flex",
+    "flex-direction": "column",
+    "align-items": "normal",
+    "box-sizing": "border-box",
+    width: "auto",
+    "max-width": "none",
+    "margin-left": "0px",
+    "margin-right": "0px",
+    height: "auto",
+    "min-height": `${height}px`,
+    "max-height": "none",
+    "border-top-width": "0px",
+    "border-bottom-width": "0px",
+    "border-left-width": "0px",
+    "border-right-width": "0px"
+  });
+  sized(greeting, size, { "flex-grow": "0", height: "auto", "min-height": "auto", "max-height": "none", ...FLUSH });
+  sized(games, size, { display: "flex", "flex-direction": "column", "align-items": "normal", "flex-grow": "1", "flex-shrink": "0", "flex-basis": "auto", height: "auto", "min-height": "auto", "max-height": "none", "min-width": "auto", ...FLUSH, ...ACROSS });
+  // The large card's padding is inside its height.
+  sized(card, size, {
+    "flex-grow": "1",
+    "flex-shrink": "0",
+    "flex-basis": "0px",
+    "box-sizing": "border-box",
+    height: "auto",
+    "max-height": "none",
+    "min-width": "0px",
+    "margin-top": "0px",
+    "margin-bottom": "0px",
+    "border-top-width": "0px",
+    "border-bottom-width": "0px",
+    ...ACROSS
+  });
+  sized(row, size, { "flex-grow": "0", "flex-shrink": "0", "box-sizing": "content-box", "min-height": "auto", "max-height": "none", "border-top-width": "0px", "border-bottom-width": "0px" });
   // The row reaches past the games above and below by as much as its
   // own padding, which keeps the tiles' shadows.
   expect(px(rowStyle.marginTop) + px(rowStyle.paddingTop)).toBe(0);
@@ -397,6 +452,170 @@ describe("every word on the upright home page", () => {
       expect(Math.max(line.cornerEnd, line.wordmarkEnd)).toBeLessThanOrEqual(line.greetingTop);
     }
   );
+});
+
+// The outline's narrowest and tallest windows, where the large card is
+// tallest for its width or tallest of all.
+const NARROWEST = Math.min(...UPRIGHT.map(([width]) => width));
+const TALLEST = Math.max(...UPRIGHT.map(([, height]) => height));
+const PICTURED = UPRIGHT.filter(([width, height]) => width === NARROWEST || height === TALLEST).flatMap(([width, height]) => TILE_ORDER.map((game) => [game, width, height] as const));
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+const percent = (value: string) => {
+  const [, share] = /^(-?[\d.]+)%$/.exec(value) ?? [];
+  if (share === undefined) throw new Error(`${value} is no share`);
+  return Number(share) / 100;
+};
+
+// The footer's height in a card `cardWidth` wide: its padding, and the
+// taller of the symbol and the lines the name takes.
+function footerHeight(cardWidth: number, size: WindowSize) {
+  const footer = part(".featured-card-footer");
+  const title = part(".featured-card-title");
+  const symbol = part(".featured-card-symbol");
+  sized(footer, size, { display: "flex", "flex-direction": "row", "align-items": "center", "flex-grow": "0", height: "auto", "min-height": "auto", "max-height": "none", "margin-bottom": "0px", "border-top-width": "0px", "border-bottom-width": "0px" });
+  sized(symbol, size, { "margin-top": "0px", "margin-bottom": "0px" });
+  sized(title, size, { "margin-top": "0px", "margin-bottom": "0px", "padding-top": "0px", "padding-bottom": "0px" });
+  const style = getComputedStyle(footer);
+  const name = featuredName(cardWidth);
+  const lineHeight = getComputedStyle(title).lineHeight;
+  expect(lineHeight).toMatch(/^[\d.]+$/);
+  return px(style.paddingTop) + Math.max(px(getComputedStyle(symbol).height), name.lines.length * Number(lineHeight) * name.size) + px(style.paddingBottom);
+}
+
+// The large card's picture as app.css lays it out in a window of `size`,
+// on a card `card` big: the boxes it is drawn whole in, the room it
+// leaves above and below its box, and where the footer under it ends.
+// The card is a column of the picture and the footer inside its padding.
+// The picture grows into the height they leave, or into as much of it as
+// its shape keeps, and what it leaves goes to the margins set to auto, or
+// under the footer where none is. One that covers its box is drawn whole
+// only in a box of its shape. A size set any other way fails here, since
+// these sums would not see it.
+function featuredPicture(card: { width: number; height: number }, size: WindowSize) {
+  const featured = featuredCard();
+  const footer = part(".featured-card-footer");
+  const inFlow = [...featured.children].filter((child) => getComputedStyle(child).position !== "absolute");
+  const picture = inFlow[0];
+  if (!(picture instanceof HTMLElement)) throw new Error("No picture on the large card");
+  expect(inFlow).toEqual([picture, footer]);
+  sized(featured, size, { display: "flex", "flex-direction": "column", "justify-content": "normal", "align-items": "normal", "box-sizing": "border-box", "border-top-width": "0px", "border-bottom-width": "0px", ...FLUSH_SIDES });
+  const cardStyle = getComputedStyle(featured);
+  const style = getComputedStyle(picture);
+  // A margin above the picture, below it and above the footer: its
+  // length, or the share it takes of what the picture leaves.
+  const margins: [string, string, string] = [style.marginTop, style.marginBottom, getComputedStyle(footer).marginTop];
+  expect(margins.filter((margin) => margin !== "auto" && !/^[\d.]+(px)?$/.test(margin))).toEqual([]);
+  const footerTall = footerHeight(card.width, size);
+  const room = {
+    width: card.width,
+    height: card.height - px(cardStyle.paddingTop) - px(cardStyle.paddingBottom) - footerTall - margins.reduce((sum, margin) => sum + px(margin), 0)
+  };
+  const grows = { "flex-grow": "1", "flex-shrink": "1", "flex-basis": "0px", "min-height": "0px", height: "auto" };
+  const fit = style.objectFit;
+
+  // The boxes, from the top of the picture's own box, and its height.
+  const drawn = (): { boxes: Box[]; height: number } => {
+    // A picture inside its padding, its shape kept within its box.
+    if (picture instanceof HTMLImageElement && fit === "contain") {
+      sized(picture, size, { ...grows, "max-height": "none", "box-sizing": "border-box", width: "100%", "max-width": "none", "align-self": "auto", "margin-left": "0px", "margin-right": "0px" });
+      return { boxes: [{ left: px(style.paddingLeft), top: px(style.paddingTop), right: room.width - px(style.paddingRight), bottom: room.height - px(style.paddingBottom) }], height: room.height };
+    }
+
+    // A picture covering a box of its shape, centred across, no wider
+    // than the card short of its margins, and no taller than its share of
+    // that width, where it has one.
+    if (picture instanceof HTMLImageElement && fit === "cover") {
+      const shape = Number(picture.getAttribute("width")) / Number(picture.getAttribute("height"));
+      sized(picture, size, { ...grows, width: "auto", "align-self": "center", "box-sizing": "content-box", "padding-top": "0px", "padding-bottom": "0px", "padding-left": "0px", "padding-right": "0px" });
+      const [, across, down] = /^([\d.]+) \/ ([\d.]+)$/.exec(style.aspectRatio) ?? [];
+      expect(Number(across) / Number(down)).toBe(shape);
+      const sides = px(style.marginLeft);
+      expect([style.marginLeft, styleAt(picture, size).value("max-width")]).toEqual([style.marginRight, `calc(100% - ${2 * sides}px)`]);
+      const maxHeight = styleAt(picture, size).value("max-height");
+      const [, tallShare, tallSides] = /^calc\(([\d.]+) \* \(100cqw - ([\d.]+)px\)\)$/.exec(maxHeight) ?? [];
+      if (maxHeight !== "none" && (tallShare === undefined || tallSides === undefined)) throw new Error(`The large card's picture is at most ${maxHeight} tall`);
+      // The card is the box the picture's cqw reads.
+      if (tallShare !== undefined) sized(featured, size, { "container-type": "inline-size" });
+      const height = Math.min(room.height, tallShare === undefined ? Number.POSITIVE_INFINITY : Number(tallShare) * (room.width - Number(tallSides)));
+      const width = Math.min(height * shape, room.width - 2 * sides);
+      expect(Math.abs(width - height * shape)).toBeLessThanOrEqual(1);
+      return { boxes: [{ left: (room.width - width) / 2, top: 0, right: (room.width + width) / 2, bottom: height }], height };
+    }
+
+    // The face-off: two pictures at their shares of its room inside its
+    // padding, at either end of it on its floor, each drawn inside its
+    // share.
+    if (picture.classList.contains("face-off")) {
+      sized(picture, size, { ...grows, "max-height": "none", "box-sizing": "border-box", display: "flex", "align-items": "flex-end", "justify-content": "space-between" });
+      const inside = { left: px(style.paddingLeft), top: px(style.paddingTop), right: room.width - px(style.paddingRight), bottom: room.height - px(style.paddingBottom) };
+      const [first, second, ...more] = [...picture.children].map((fighter) => {
+        sized(fighter, size, { "object-fit": "contain", "max-width": "none", "max-height": "none", "margin-top": "0px", "margin-bottom": "0px", ...FLUSH_SIDES });
+        const fighterStyle = getComputedStyle(fighter);
+        return { width: percent(fighterStyle.width) * (inside.right - inside.left), height: percent(fighterStyle.height) * (inside.bottom - inside.top) };
+      });
+      if (!first || !second || more.length > 0) throw new Error("The face-off is not of two pictures");
+      expect(first.width + second.width).toBeLessThanOrEqual(inside.right - inside.left);
+      const boxes = [
+        { left: inside.left, top: inside.bottom - first.height, right: inside.left + first.width, bottom: inside.bottom },
+        { left: inside.right - second.width, top: inside.bottom - second.height, right: inside.right, bottom: inside.bottom }
+      ];
+      return { boxes, height: room.height };
+    }
+
+    // The pairs' cards, each of the card's shape and its share of the
+    // art's height, or of its height and width, whichever is less, placed
+    // from the art's middle by its own size and turned about its centre.
+    sized(picture, size, { ...grows, "max-height": "none", position: "relative", padding: "0px", ...FLUSH_SIDES });
+    const boxes = [...picture.children].map((element) => {
+      sized(element, size, { position: "absolute", top: "50%", left: "50%", width: "auto", "aspect-ratio": "3 / 4", "box-sizing": "border-box", "max-height": "none", "max-width": "none", transform: "none", scale: "none", margin: "0px" });
+      const turned = getComputedStyle(element);
+      const tall = styleAt(element, size).value("height");
+      const [, ofHeight, ofWidth] = /^min\(([\d.]+)cqh, ([\d.]+)cqw\)$/.exec(tall) ?? /^([\d.]+)%$/.exec(tall) ?? [];
+      if (ofHeight === undefined) throw new Error(`The pairs' cards are ${tall} tall`);
+      // The art is the box their cqh and cqw read, as their % reads it.
+      if (ofWidth !== undefined) sized(picture, size, { "container-type": "size" });
+      const height = Math.min((Number(ofHeight) / 100) * room.height, ofWidth === undefined ? Number.POSITIVE_INFINITY : (Number(ofWidth) / 100) * room.width);
+      const width = (height * 3) / 4;
+      const [x = "0%", y = "0%"] = turned.translate.split(" ");
+      expect(turned.rotate).toMatch(/^none$|^-?[\d.]+deg$/);
+      const turn = ((Number.parseFloat(turned.rotate) || 0) * Math.PI) / 180;
+      const centre = { x: room.width / 2 + width / 2 + percent(x) * width, y: room.height / 2 + height / 2 + percent(y) * height };
+      const across = (width * Math.abs(Math.cos(turn)) + height * Math.abs(Math.sin(turn))) / 2;
+      const down = (width * Math.abs(Math.sin(turn)) + height * Math.abs(Math.cos(turn))) / 2;
+      return { left: centre.x - across, top: centre.y - down, right: centre.x + across, bottom: centre.y + down };
+    });
+    return { boxes, height: room.height };
+  };
+
+  const { boxes, height } = drawn();
+  const spare = room.height - height;
+  const autos = margins.filter((margin) => margin === "auto").length;
+  const share = (margin: string) => (margin === "auto" ? spare / autos : 0);
+  const [above, below, overFooter] = margins.map((margin) => share(margin) + px(margin)) as [number, number, number];
+  const top = px(cardStyle.paddingTop) + above;
+  return {
+    boxes: boxes.map((box) => ({ ...box, top: top + box.top, bottom: top + box.bottom })),
+    // What the picture leaves, above its box and between it and the name.
+    spare: { above: share(margins[0]), below: share(margins[1]) + share(margins[2]) },
+    footerEnd: top + height + below + overFooter + footerTall
+  };
+}
+
+describe("the large card's picture upright", () => {
+  it.each(PICTURED)("shows %s's picture whole inside the large card in a %i by %i window, centred in the room it leaves, its name at the card's foot", (featured, width, height) => {
+    openUpright(width, height, { featured });
+    const layout = uprightLayout([width, height]);
+
+    const picture = featuredPicture(layout.card, [width, height]);
+
+    expect(picture.boxes.filter((box) => box.left < 0 || box.top < 0 || box.right > layout.card.width || box.bottom > layout.card.height)).toEqual([]);
+    expect(Math.abs(picture.spare.above - picture.spare.below)).toBeLessThanOrEqual(1);
+    expect(Math.abs(picture.footerEnd - layout.card.height)).toBeLessThanOrEqual(1);
+    // The pairs' cards on their tile keep their share of its art's height.
+    expect([...tilesRow().querySelectorAll(".pairs-tile-card")].map((card) => getComputedStyle(card).height)).toEqual(featured === "pairs" ? [] : ["84%", "84%", "84%"]);
+  });
 });
 
 // jsdom lays nothing out, so the width of each choice's name in the
