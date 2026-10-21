@@ -85,11 +85,11 @@ async function finishWith(user: UserEvent, right: number) {
   for (let number = 1; number <= 10; number++) {
     const heading = screen.getByRole("heading").textContent ?? "";
     kinds.add(heading);
-    expect(["WHO IS HEAVIER?", "WHO IS TALLER?", "WHO IS LIGHTER?"]).toContain(heading);
+    expect(["WHO IS HEAVIER?", "WHO IS TALLER?", "WHO IS LIGHTER?", "WHO IS SHORTER?"]).toContain(heading);
     const [left, right_] = within(group()).getAllByRole("button").map((card) => byName(card.getAttribute("aria-label")));
     if (!left || !right_) throw new Error("Expected two shipped dinosaurs");
-    const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("HEAVIER") ? "heavier" : "taller";
-    const correct = correctOf({ kind, attribute: kind === "taller" ? "height" : "mass", left, right: right_ });
+    const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("SHORTER") ? "shorter" : heading.includes("HEAVIER") ? "heavier" : "taller";
+    const correct = correctOf({ kind, attribute: kind === "taller" || kind === "shorter" ? "height" : "mass", left, right: right_ });
     const tapped = number <= right ? correct : correct === left ? right_ : left;
     await user.click(within(group()).getByRole("button", { name: tapped.name.en }));
     await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
@@ -117,12 +117,22 @@ describe("the compare quiz's levels across the app", () => {
     expect(screen.getByLabelText("SCORE").textContent).toBe("10/10");
   });
 
+  it("can ask shorter at Paleontologist and scores the shorter dinosaur right", async () => {
+    const { user } = openApp(recordAt("paleontologist"));
+    await user.click(gameDoor("COMPARE"));
+    const kinds = await finishWith(user, 10);
+
+    expect(kinds).toContain("WHO IS SHORTER?");
+    expect(screen.getByLabelText("SCORE").textContent).toBe("10/10");
+  });
+
   it.each(["hatchling", "explorer"] as const)("never asks lighter at %s", async (level) => {
     const { user } = openApp(recordAt(level));
     await user.click(gameDoor("COMPARE"));
     const kinds = await finishWith(user, 10);
 
     expect(kinds).not.toContain("WHO IS LIGHTER?");
+    expect(kinds).not.toContain("WHO IS SHORTER?");
   });
 
   it("shows the switch above PLAY AGAIN, youngest level first", async () => {

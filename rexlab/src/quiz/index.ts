@@ -45,7 +45,8 @@ export type RoundResult = {
 };
 
 // A new round at `level`, asking none of the previous round's questions
-// while other fair pairs are left. Paleontologist adds LIGHTER questions.
+// while other fair pairs are left. Paleontologist adds LIGHTER and SHORTER
+// questions.
 export function startRound(dinosaurs: readonly Dinosaur[], level: QuizLevel, random: Random, previous?: Play): Play {
   return startPlay(generateRound(dinosaurs, random, previous?.round, level), level);
 }

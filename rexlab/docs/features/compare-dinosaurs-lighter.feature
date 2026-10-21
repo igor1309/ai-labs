@@ -1,14 +1,16 @@
 Feature: Compare dinosaurs quiz: Paleontologist lighter questions
-  Paleontologist rounds add WHO IS LIGHTER? to WHO IS HEAVIER? and WHO IS
-  TALLER?; Hatchling and Explorer keep today's two questions.
+  Paleontologist rounds add WHO IS LIGHTER? and WHO IS SHORTER? to WHO IS
+  HEAVIER? and WHO IS TALLER?; the shorter question is specified in
+  compare-dinosaurs-shorter.feature. Hatchling and Explorer keep today's two
+  questions.
 
   Background:
     Given an iPad in landscape
 
-  Scenario: Paleontologist mixes the three question kinds
+  Scenario: Paleontologist mixes the four question kinds
     Given the age level is Paleontologist
     When I play a round of the compare quiz
-    Then its questions can be WHO IS HEAVIER?, WHO IS TALLER? and WHO IS LIGHTER?
+    Then its questions can be WHO IS HEAVIER?, WHO IS TALLER?, WHO IS LIGHTER? and WHO IS SHORTER?
     And no question repeats the previous round's two dinosaurs
 
   Scenario: The lighter dinosaur wins
@@ -26,7 +28,7 @@ Feature: Compare dinosaurs quiz: Paleontologist lighter questions
     Given the app is in <language>
     When a Paleontologist question asks WHO IS LIGHTER?
     Then I see "<prompt>" with a feather symbol
-    And its symbol is distinct from the symbols of WHO IS HEAVIER? and WHO IS TALLER?
+    And its symbol is distinct from the symbols of WHO IS HEAVIER?, WHO IS TALLER? and WHO IS SHORTER?
 
     Examples:
       | language | prompt          |

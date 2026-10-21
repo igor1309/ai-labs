@@ -168,6 +168,28 @@ describe("answering a question", () => {
     expect(symbolOf(within(cardOf(light)).getByText("15 KG").parentElement ?? cardOf(light))).toBe("weight");
   });
 
+  it("marks the shorter dinosaur right and reveals hip heights with ruler symbols in both languages", async () => {
+    const tall = byName("Brachiosaurus");
+    const short = byName("Stegosaurus");
+    const question: Question = { kind: "shorter", attribute: "height", left: tall, right: short };
+    const handlers = { onChoose: () => {}, onNext: () => {}, onHome: () => {} };
+    const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />, withPictures);
+
+    expect(screen.getByRole("heading").textContent).toContain("WHO IS SHORTER?");
+    expect(symbolOf(screen.getByRole("heading"))).toBe("arrow-down-to-line");
+    rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
+    expect(screen.getByRole("heading").textContent).toContain("КТО НИЖЕ?");
+    rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
+    await userEvent.setup().click(cardOf(short));
+    rerender(<QuestionScreen language="en" {...questionView(question, "en", short.id)} {...handlers} />);
+
+    expect(marksOn(cardOf(short))).toEqual(["check RIGHT"]);
+    expect(within(cardOf(tall)).getByText("3.4 M")).toBeDefined();
+    expect(within(cardOf(short)).getByText("1.5 M")).toBeDefined();
+    expect(symbolOf(within(cardOf(tall)).getByText("3.4 M").parentElement ?? cardOf(tall))).toBe("ruler");
+    expect(symbolOf(within(cardOf(short)).getByText("1.5 M").parentElement ?? cardOf(short))).toBe("ruler");
+  });
+
   it("marks the right answer and shows both values in every question of a round", async () => {
     const { user, start } = startRound(11);
     await start();
