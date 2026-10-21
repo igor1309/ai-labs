@@ -78,7 +78,8 @@ const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { nam
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 function shownQuestion(): Question {
-  const attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
+  const heading = screen.getByRole("heading").textContent ?? "";
+  const attribute = heading.includes("HEAVIER") || heading.includes("LIGHTER") ? "mass" : heading.includes("LONGER") ? "length" : "height";
   const [left, right] = within(group())
     .getAllByRole("button")
     .map((card) => byName(card.getAttribute("aria-label") ?? ""));

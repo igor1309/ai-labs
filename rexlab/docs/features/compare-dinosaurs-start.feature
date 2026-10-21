@@ -1,6 +1,8 @@
 Feature: Compare dinosaurs quiz: starting a round and asking
-  A child picks which of two dinosaurs is heavier, taller, lighter or shorter,
-  ten questions per round, and tries to beat their best score.
+  A child picks which of two creatures is heavier or taller, ten questions per
+  round, and tries to beat their best score. Explorer also asks WHO IS LONGER?
+  and Paleontologist adds WHO IS LIGHTER? and WHO IS SHORTER?; each level's
+  questions are specified in its own compare feature.
   home-tiles.feature tells how the games' tiles stand and scroll, and
   home-featured-card.feature how the large card features a game.
 
@@ -67,10 +69,11 @@ Feature: Compare dinosaurs quiz: starting a round and asking
       | attribute | symbol | prompt          |
       | mass      | ⚖️     | WHO IS HEAVIER? |
       | height    | 📏      | WHO IS TALLER?  |
+      | length    | ↔️     | WHO IS LONGER?  |
 
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated
-    Then Hatchling and Explorer questions compare mass or height
+    Then Hatchling questions compare mass or height, and Explorer questions can also compare length
     And a height only of two dinosaurs, as a flying or sea reptile is not measured standing
     And each question's two dinosaurs are different
     And in each question the larger value is at least 1.5 times the smaller

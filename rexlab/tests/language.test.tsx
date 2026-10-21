@@ -60,8 +60,8 @@ const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: st
   ru: { next: "ДАЛЬШЕ", seeResult: "РЕЗУЛЬТАТ", playAgain: "ЕЩЁ РАЗ", home: "ДОМОЙ" }
 };
 const PROMPTS: Record<Language, Record<Attribute, string>> = {
-  en: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?" },
-  ru: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?" }
+  en: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?", length: "WHO IS LONGER?" },
+  ru: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?", length: "КТО ДЛИННЕЕ?" }
 };
 
 const nothing = () => {};
@@ -594,7 +594,7 @@ function openPlay(language: Language, progressStorage = memoryStorage()): Play {
 
 function shownQuestion(language: Language): Question {
   const heading = screen.getByRole("heading").textContent ?? "";
-  const attribute: Attribute = heading.includes(PROMPTS[language].mass) ? "mass" : "height";
+  const attribute: Attribute = heading.includes(PROMPTS[language].mass) ? "mass" : heading.includes(PROMPTS[language].length) ? "length" : "height";
   const [left, right] = within(screen.getByRole("group"))
     .getAllByRole("button")
     .map((card) => byName(card.getAttribute("aria-label") ?? "", language));

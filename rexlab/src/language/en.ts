@@ -21,7 +21,7 @@ export const en: Texts = {
   progress: "PROGRESS",
   creatures: "ANIMALS",
   versus: "VS",
-  prompts: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?", lighter: "WHO IS LIGHTER?", shorter: "WHO IS SHORTER?" },
+  prompts: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?", lighter: "WHO IS LIGHTER?", shorter: "WHO IS SHORTER?", longer: "WHO IS LONGER?" },
   marks: { correct: "RIGHT", wrong: "WRONG" },
   next: "NEXT",
   seeResult: "SEE RESULT",
