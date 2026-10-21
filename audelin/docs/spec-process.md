@@ -1,7 +1,7 @@
 ---
 date: 2026-10-22
 model: claude-opus-5-5
-description: "How Audelin is specified: one SPEC.md and QA.md per observer, a tree that follows ADR-001's modules, tracked as Multica issues"
+description: "How Audelin is specified: one SPEC.md and QA.md per component, at most 100 lines each, tracked as Multica issues"
 ---
 
 # Spec process
@@ -13,29 +13,42 @@ and test lists.
 
 ## The tree
 
-One folder per observer, under `audelin/docs/spec/`. Each holds a `SPEC.md`
-and a `QA.md`, and nothing else.
+One folder per component, under `audelin/docs/spec/`. A component is one
+responsibility with one observer: the user for the top level and the UI
+components, the client that calls it for everything else. Each folder
+holds a `SPEC.md` and a `QA.md`, and nothing else.
 
 ```text
-spec/
-  SPEC.md, QA.md             the user: the owner, or an agent running the app
-  live-session-ui/           client: the user
-  calls-ui/                  client: the user
-  setup-ui/                  client: the user
-  live-session-core/         client: LiveSessionUI and the composition root
-  calls-core/                client: CallsUI
-  setup-core/                client: SetupUI
-  call-domain/               client: the Cores that name, find and read calls
-  activity-gate/             client: LiveSessionCore and CallsCore
-  transcript-core/           client: LiveSessionCore
-  audio-capture/  recorder/  fluid-audio-asr/  call-detector/
-  file-call-store/  settings-store/  model-store/
-                             client: the Core whose port each implements
+spec/                        the user: journeys across the app, and references
+  menu-bar/                  the user (Screen 7)
+  live-panel/                the user: the panel window, header and banners (Screens 3, 8)
+  transcript-view/           the user: reading the call in the panel
+  selection/                 the user: a selection while the text changes
+  calls-list/                the user (Screen 4)
+  call-screen/               the user (Screen 5, v1 part)
+  setup-screen/              the user: first launch and the launch check (Screens 1, 2)
+  settings-window/           the user (Screen 6)
+  recording-session/         live-panel, menu-bar: start, stop, keep the audio
+  live-recognition/          transcript-view, live-panel: text from the audio
+  call-watcher/              menu-bar: calls start and stop recordings
+  calls-catalogue/           calls-list, call-screen: find, rename, delete
+  folder-move/               settings-window: move the calls folder
+  setup/                     setup-screen, settings-window: settings, launch check
+  call-folder-names/         calls-catalogue, recording-session
+  activity-gate/             recording-session, live-recognition, calls-catalogue, folder-move
+  stabilizer/                live-recognition: words to committed segments
+  transcript/                live-recognition, call-screen: the record of the text
+  mic-capture/  system-audio-capture/  recorder/  fluid-audio-asr/
+  call-detector/  call-store/  segment-log/  settings-store/  model-store/
+                             the Core whose port each implements
 ```
 
-The folders follow [ADR-001](adr-001-v1-architecture.md)'s module layout. A
-module gets a folder only if it has an observer; the app target composes and
-has none of its own.
+The components live in [ADR-001](adr-001-v1-architecture.md)'s modules; a
+module may hold several. The app target composes and has no spec.
+
+**A spec over 100 lines is a design defect,** not a writing one: the
+component does too much. Stop, split it by responsibility, and update this
+tree before writing on (owner, 2026-10-22).
 
 ## SPEC.md
 
@@ -72,7 +85,7 @@ to run reports, never into `QA.md`.
 
 ## Order and review
 
-1. Top-down: the user spec first, then each UI, each Core and each adapter.
+1. Top-down: the user spec first, then each UI component, each Core and each adapter.
    A component's scenarios are exactly what its client needs to keep its own
    scenarios.
 2. Each spec is reviewed against its oracle and its client's spec only:
