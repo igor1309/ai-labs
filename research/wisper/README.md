@@ -16,7 +16,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
 | [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
-| `design/visual-language.pen` | Four visual languages for the panel, light and dark, plus Glass Ledger window sizes |
+| `design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark; earlier proposals and versions in an Archive area |
 | [design/README.md](design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |
 
 ## Visual language
@@ -33,33 +33,13 @@ call after it ends, settings, menu bar item and errors. Values neither spec
 nor owner set are marked as proposals in each frame. The gallery's "Screen
 references" section holds the sites surveyed for them (inventory-59).
 
-The v2 frames beside Screens 1–5 and 8 apply the design review and the
-owner's answers of 2026-10-21 (recorded in mvp.md on branch `wisper`). The originals
-are kept unchanged. Term chips moved to a separate "Later" frame.
-
 The design system is locked (2026-10-21): the file's variables hold Glass
 Ledger's colours with a light and a dark value (theme axis `mode`), two
-fonts, and consolidated type, radius and spacing scales. "Glass Ledger —
-design system" shows them; "Glass Ledger — components" holds the reusable
-components, with a dark mirror built from instances. The v2 frames are bound
-to the tokens. New screens are built from the components. [design/README.md](design/README.md) lists the tokens and components.
-
-The v3 column draws the owner's answers on calls as folders (2026-10-21),
-built from the components. Each call is a folder named `yyyy.MM.dd-HHmm
-<title>`, holding meta.json, audio.m4a, raw.md, final.md and summary.md.
-The title starts as the call app's name. Screen 1 v3 adds the optional
-Calendar permission, which from v3 names a call after the calendar event it
-overlaps. Screens 4 and 5 v3 rename a call inline and keep the timestamp
-prefix. Screen 6 v3 moves every call when the data folder changes, after a
-Move or Cancel confirm.
-
-The v4 column draws the owner's later answers on storage, bb output and edge
-cases (2026-10-21). Call folders live in the visible `~/Recordings/wisper`.
-Screen 5 v4 shows the summary that the app reads back from the bb thread.
-Screen 3 v4 drops the «sent, no read-back» card and adds a call that starts
-while the live model downloads. Screen 4 v4 shows a same-minute « 2» title.
-Screen 6 v4 adds a failed move with Retry, and a recording that blocks a
-move.
+fonts, and consolidated type, radius and spacing scales. Each screen has one
+current frame, built from the components, which draws the owner's answers of
+2026-10-21 recorded in mvp.md. The earlier versions (originals, v2, v3, v4)
+and the four proposals sit in the file's Archive area.
+[design/README.md](design/README.md) lists the tokens, components and screens.
 
 ## Conclusion so far
 
