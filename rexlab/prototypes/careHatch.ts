@@ -117,6 +117,8 @@ export const DANCE_MS = 2400;
 
 const HOME_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8M5 9.5V21h5v-6h4v6h5V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const HAND_ICON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0-.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-4.6-2.2L4 15.5a1.6 1.6 0 0 1 2.4-2.1L9 16" fill="#fffdf8" stroke="#1d2742" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const DROP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4 5 6 8.5 6 11.5a6 6 0 0 1-12 0C6 11.5 8 8 12 3z" fill="#4aa3df"/></svg>';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, attributes: Record<string, string> = {}): HTMLElementTagNameMap[K] {
@@ -183,8 +185,11 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
   stage.append(creature);
 
   // The egg, or the baby with what it wants shown on it: an empty bowl,
-  // a drop of water, mud, or sleepy Zzz.
+  // a drop of water, mud, or sleepy Zzz. The pictures face left, so the
+// baby is turned to face the items on the right.
   const drawCreature = (arrived: boolean) => {
+    // The items wait, greyed out, until there is a baby to give them to.
+    frame.dataset.phase = nursery.phase;
     if (arrived) {
       const next = element("div", "hatch-creature");
       creature.replaceWith(next);
@@ -192,8 +197,12 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
       if (nursery.phase === "egg") {
         const egg = element("button", "hatch-egg", { type: "button", "data-target": "egg", "aria-label": "egg" });
         egg.append(element("span", "hatch-egg-spots"));
-        creature.append(egg);
+        const hint = element("span", "hatch-hint");
+        hint.innerHTML = HAND_ICON;
+        creature.append(egg, hint);
       } else {
+        // The grown dinosaur's shadow, the size the baby grows to.
+        creature.append(picture("hatch-shadow", nursery.baby.picture));
         const baby = element("button", "hatch-baby", { type: "button", "data-target": "baby" });
         baby.append(picture("hatch-baby-picture", nursery.baby.picture));
         for (let spot = 0; spot < 4; spot += 1) baby.append(element("span", `hatch-mud hatch-mud-${spot}`));
@@ -210,11 +219,13 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     if (nursery.phase === "egg") {
       creature.dataset.phase = "egg";
       creature.dataset.taps = String(nursery.taps);
+      delete stage.dataset.grown;
       name.textContent = "";
       return;
     }
     creature.dataset.phase = nursery.phase;
     creature.dataset.grown = nursery.phase === "grown" ? String(WANTS.length) : String(nursery.grown);
+    stage.dataset.grown = creature.dataset.grown;
     creature.dataset.want = nursery.phase === "baby" ? (nursery.wants[0] ?? "") : "";
     creature.querySelector(".hatch-baby")?.setAttribute("aria-label", nursery.baby.name[language]);
     name.textContent = nursery.baby.name[language];
@@ -251,9 +262,18 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     const [next, reaction] = tap(nursery, target, random);
     if (reaction === undefined) return;
     const arrived = next.phase !== nursery.phase && next.phase !== "grown";
+    const changed = next !== nursery;
     nursery = next;
     busyUntil = now() + REACTION_MS;
     drawCreature(arrived);
+    // The next want shows once the baby has finished with this one.
+    if (changed && nursery.phase === "baby") {
+      const shown = nursery;
+      creature.dataset.want = "";
+      later(() => {
+        if (nursery === shown) drawCreature(false);
+      }, REACTION_MS);
+    }
     play(reaction, ITEMS.includes(target as Item) ? (target as Item) : undefined);
     if (reaction === "dance" && nursery.phase === "grown") {
       const friend = nursery.baby;

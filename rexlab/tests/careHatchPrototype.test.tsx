@@ -93,8 +93,16 @@ function start(options: Partial<Options> = {}) {
   });
 }
 
+// Lets the reactions finish: whatever waits for them runs.
+function settle() {
+  const waiting = pending;
+  pending = [];
+  waiting.forEach((run) => run());
+}
+
 // Taps `target`, a second after the last tap unless `soon`.
 function press(target: Item | "egg" | "baby", soon = false) {
+  if (!soon) settle();
   clock += soon ? 100 : 1000;
   const button = root.querySelector(`[data-target="${target}"]`);
   if (button === null) throw new Error(`No ${target} to tap`);
@@ -119,11 +127,30 @@ describe("the hatch and grow page", () => {
     expect(root.textContent).not.toMatch(/\d/);
   });
 
+  it("greys out the items until the egg hatches, and again while the grown dinosaur dances", () => {
+    start();
+    const frame = () => root.querySelector<HTMLElement>(".hatch-frame")?.dataset.phase;
+
+    expect(frame()).toBe("egg");
+    press("meat");
+    expect(heard).toEqual([]);
+
+    hatch();
+    expect(frame()).toBe("baby");
+    for (let step = 0; step < 4; step += 1) {
+      settle();
+      press(ITEM_FOR[creature().want as Want]);
+    }
+    expect(frame()).toBe("grown");
+  });
+
   it("hatches a baby that shows what it wants, and plays a sound for every tap", () => {
     start();
 
     hatch();
 
+    expect(creature().want).toBe("");
+    settle();
     expect([creature().phase, creature().grown, name()]).toEqual(["baby", "0", "TYRANNOSAURUS"]);
     expect(WANTS).toContain(creature().want);
     expect(heard).toEqual(["wobble", "wobble", "hatch"]);
@@ -154,6 +181,7 @@ describe("the hatch and grow page", () => {
     hatch();
     const grown: (string | undefined)[] = [];
     for (let step = 0; step < 4; step += 1) {
+      settle();
       press(ITEM_FOR[creature().want as Want]);
       grown.push(creature().grown);
     }
@@ -162,7 +190,7 @@ describe("the hatch and grow page", () => {
     expect(reaction()).toBe("dance");
     expect(friends()).toEqual([]);
 
-    pending.forEach((run) => run());
+    settle();
 
     expect(friends()).toEqual(["TYRANNOSAURUS"]);
     expect(creature().phase).toBe("egg");
@@ -173,6 +201,7 @@ describe("the hatch and grow page", () => {
     const draws = [0, 0.99, 0.99, 0.99];
     start({ random: () => draws.shift() ?? 0.01 });
     hatch();
+    settle();
     expect(creature().want).toBe("hungry");
 
     press("meat");
