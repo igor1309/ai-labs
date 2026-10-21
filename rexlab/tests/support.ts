@@ -1,5 +1,7 @@
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, within } from "@testing-library/react";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import records from "../src/data/dinosaurs.json";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
@@ -26,7 +28,11 @@ export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
 export const SHIPPED_VISITORS = readVisitors(records);
 export const SHIPPED_SORTABLES = readSortables(records);
-export const SHIPPED_PALS = readPals(records);
+// The dinosaurs with a whole skeleton drawn, as the app finds them.
+export const SHIPPED_WHOLE_SKELETONS: ReadonlySet<string> = new Set(
+  records.map(({ id }) => id).filter((id) => existsSync(join(import.meta.dirname, "../src/assets/skeletons", id, "skeleton.webp")))
+);
+export const SHIPPED_PALS = readPals(records, SHIPPED_WHOLE_SKELETONS);
 export const SHIPPED_SKELETONS = readSkeletons(records, skeletonPlaces);
 export const SHIPPED_DIG = readDig(
   SHIPPED_DINOSAURS.map(({ id }) => id),

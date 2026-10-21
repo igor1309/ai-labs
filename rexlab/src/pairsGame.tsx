@@ -25,7 +25,7 @@ import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { LoadAhead } from "./Picture.tsx";
-import { presentPairsBoard, presentPairsResult } from "./presentation.ts";
+import { presentPairsBoard, presentPairsResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
@@ -45,6 +45,7 @@ export type PairsGameProps = {
   pals: readonly Pal[];
   pairsProgress: PairsProgressStore;
   bodyPicture: (dinosaurId: string) => string;
+  skeletonPicture: SkeletonPicture;
   random: Random;
   startTimer: StartTimer;
   // Whether the device asks for reduced motion now.
@@ -90,7 +91,7 @@ export function transitionFor(from: PairsScreen, to: PairsScreen): string | unde
 // level on its switch. `onHome` takes the child back to the home page;
 // `onStart` is told as each board is dealt.
 export function usePairsGame(
-  { pals, pairsProgress, bodyPicture, random, startTimer, reducedMotion }: PairsGameProps,
+  { pals, pairsProgress, bodyPicture, skeletonPicture, random, startTimer, reducedMotion }: PairsGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
@@ -235,13 +236,14 @@ export function usePairsGame(
             onHome={home}
           />
         );
-      case "board":
+      case "board": {
+        const board = presentPairsBoard(screen.board, language, bodyPicture, skeletonPicture);
         return (
           <>
-            <LoadAhead urls={screen.board.pals.map(({ id }) => bodyPicture(id))} />
+            <LoadAhead urls={[...new Set(board.cards.map(({ picture }) => picture))]} />
             <PairsBoardScreen
               language={language}
-              {...presentPairsBoard(screen.board, language, bodyPicture)}
+              {...board}
               finished={screen.finished}
               onTurn={turnCard}
               onBack={back}
@@ -249,6 +251,7 @@ export function usePairsGame(
             />
           </>
         );
+      }
       case "result": {
         const nextLevel = screen.offer;
         return <PairsResultScreen language={language} {...presentPairsResult(screen.result, language, bodyPicture)}

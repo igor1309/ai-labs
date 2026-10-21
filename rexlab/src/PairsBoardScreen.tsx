@@ -12,8 +12,9 @@ export type PairCardView = {
   id: string;
   name: string;
   picture: string;
-  // Whether the card shows the dinosaur's picture or its silhouette.
-  face: "picture" | "silhouette";
+  // Whether the card shows the dinosaur's picture, its silhouette or its
+  // skeleton.
+  face: "picture" | "silhouette" | "skeleton";
   state: "down" | "open" | "found";
 };
 
@@ -106,7 +107,7 @@ type PairCardProps = {
 };
 
 // A face-down card shows the same footprints as every other. Turned over,
-// it shows its picture or silhouette; found, a green border and the name.
+// it shows its picture, silhouette or skeleton; found, a green border and the name.
 // A card whose picture cannot be loaded shows a dinosaur symbol and the
 // name instead.
 function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
@@ -128,7 +129,7 @@ function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
   );
 }
 
-// A card's face: its picture or silhouette, and its name once found or
+// A card's face: its picture, silhouette or skeleton, and its name once found or
 // while its picture is not shown, the name then telling the pair apart
 // and fading out as the picture fades in.
 function PairCardFace({ card, name }: { card: PairCardProps["card"]; name: string }) {

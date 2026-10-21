@@ -178,14 +178,15 @@ describe("readSortables", () => {
 });
 
 describe("readPals", () => {
-  it("reads each record's id, names and look-alike group", () => {
-    expect(readPals([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, lookAlike: "plated-back" }]);
+  it("reads each record's id, names and look-alike group, and whether a whole skeleton is drawn of it", () => {
+    expect(readPals([STEGOSAURUS], new Set(["stegosaurus"]))).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, lookAlike: "plated-back", skeleton: true }]);
+    expect(readPals([STEGOSAURUS], new Set(["triceratops"]))).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, lookAlike: "plated-back", skeleton: false }]);
   });
 
   it.each([undefined, "", " ", 3])("fails on a record whose look-alike group is %j", (lookAlike) => {
     const record = { ...STEGOSAURUS, lookAlike };
 
-    expect(() => readPals([record])).toThrow(`stegosaurus has no look-alike group: ${JSON.stringify(lookAlike)}`);
+    expect(() => readPals([record], new Set())).toThrow(`stegosaurus has no look-alike group: ${JSON.stringify(lookAlike)}`);
   });
 });
 

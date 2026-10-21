@@ -31,7 +31,7 @@ import {
   type StoredPairs
 } from "./pairsApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
-import { SHIPPED_PALS, countedStarts, fakeBodyPicture, manualViewport, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, manualViewport, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -112,7 +112,7 @@ describe("a board", () => {
 
     await playPairs(user);
 
-    const { pairs, rows, columns, silhouettes } = CLIMB_LEVELS[level];
+    const { pairs, rows, columns, match } = CLIMB_LEVELS[level];
     expect(pairCards()).toHaveLength(pairs * 2);
     expect(pairCards().map((card) => [card.getAttribute("data-state"), symbolsOf(card)])).toEqual(pairCards().map(() => ["down", ["footprints"]]));
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
@@ -125,8 +125,8 @@ describe("a board", () => {
 
     const faces = new Map<string, string[]>();
     pairCards().forEach((card) => faces.set(card.getAttribute("aria-label") ?? "", [...(faces.get(card.getAttribute("aria-label") ?? "") ?? []), card.getAttribute("data-face") ?? ""]));
-    expect([...faces.values()].map((pair) => pair.sort())).toEqual([...faces.values()].map(() => (silhouettes ? ["picture", "silhouette"] : ["picture", "picture"])));
-    expect(board().querySelectorAll("img.pair-silhouette")).toHaveLength(silhouettes ? pairs : 0);
+    expect([...faces.values()].map((pair) => pair.sort())).toEqual([...faces.values()].map(() => ["picture", match].sort()));
+    expect(board().querySelectorAll("img.pair-silhouette")).toHaveLength(match === "silhouette" ? pairs : 0);
   });
 
   it("deals other dinosaurs on the next board", async () => {
@@ -181,6 +181,13 @@ describe("a board", () => {
   });
 });
 
+// The picture a dealt card shows once turned over: a skeleton card the
+// dinosaur's whole skeleton, any other its body picture.
+const pictureOn = (dealtBoard: Board, place: number) => {
+  const card = dealtBoard.cards[place];
+  return card?.face === "skeleton" ? fakeSkeletonPicture(card.pal.id, "skeleton") : fakeBodyPicture(card?.pal.id ?? "");
+};
+
 describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
   const names = namesOf(dealtBoard);
   const [firstName = "", secondName = ""] = new Set(names);
@@ -204,7 +211,8 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     await user.pointer({ keys: "[/TouchA]", target: card });
 
     expect([stateAt(FIRST[0] ?? 0), labelAt(FIRST[0] ?? 0)]).toEqual(["open", firstName]);
-    expect(pairCards()[FIRST[0] ?? 0]?.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture(firstId));
+    expect(pairCards()[FIRST[0] ?? 0]?.querySelector("img")?.getAttribute("src")).toBe(pictureOn(dealtBoard, FIRST[0] ?? 0));
+    expect(dealtBoard.cards[FIRST[0] ?? 0]?.pal.id).toBe(firstId);
     expect(triesShown()).toBe("0");
   });
 
@@ -480,12 +488,11 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     await playPairs(user);
     const names = namesOf(dealtBoard);
     const at = dealtBoard.cards.findIndex(({ pal }) => pictures.loading().includes(fakeBodyPicture(pal.id)));
-    const url = fakeBodyPicture(dealtBoard.cards[at]?.pal.id ?? "");
     const [first = 0, second = 0] = placesOf(names, names[at] ?? "");
 
     for (const place of [first, second]) {
       await turnCard(user, place);
-      act(() => pictures.fail(url));
+      act(() => pictures.fail(pictureOn(dealtBoard, place)));
     }
 
     expect([face(first), face(second)]).toEqual([

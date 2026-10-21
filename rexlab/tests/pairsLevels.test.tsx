@@ -11,7 +11,7 @@ import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
 import { WINDOW_SIZES, openWindow, windowsAnd } from "./windowSizes.ts";
-import { SHIPPED_PALS, contrast, fakeBodyPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { SHIPPED_PALS, contrast, fakeBodyPicture, fakeSkeletonPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
@@ -300,9 +300,9 @@ describe("a board at each level", () => {
   };
 
   it.each([
-    ["explorer", 9, 3, 6],
-    ["paleontologist", 12, 4, 6]
-  ] as const)("deals %s's pairs face down in its rows of 6, each a picture to its silhouette, with no climb level", async (level, pairs, rows, columns) => {
+    ["explorer", 9, 3, 6, "silhouette"],
+    ["paleontologist", 12, 4, 6, "skeleton"]
+  ] as const)("deals %s's pairs face down in its rows of 6, each a picture to its %s, with no climb level", async (level, pairs, rows, columns, match) => {
     const { user, clock } = await openPairs({ ageLevel: picked(level) });
 
     await user.click(button("PLAY"));
@@ -312,8 +312,14 @@ describe("a board at each level", () => {
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
     expect([screen.queryByLabelText("LEVEL"), screen.getByLabelText("TRIES").textContent]).toEqual([null, "0"]);
     await playBoard(user, clock);
-    expect([...facesByName().values()]).toEqual(Array.from({ length: pairs }, () => ["picture", "silhouette"]));
-    expect(board().querySelectorAll("img.pair-silhouette")).toHaveLength(pairs);
+    expect([...facesByName().values()]).toEqual(Array.from({ length: pairs }, () => ["picture", match]));
+    expect(board().querySelectorAll("img.pair-silhouette")).toHaveLength(match === "silhouette" ? pairs : 0);
+    // A skeleton card shows its dinosaur's whole skeleton, in its own colours.
+    const skeletons = pairCards().filter((card) => card.getAttribute("data-face") === "skeleton");
+    expect(skeletons.map((card) => card.querySelector("img")?.getAttribute("src"))).toEqual(
+      skeletons.map((card) => fakeSkeletonPicture(SHIPPED_PALS.find(({ name }) => name.en.toLocaleUpperCase("en") === card.getAttribute("aria-label"))?.id ?? "", "skeleton"))
+    );
+    expect(skeletons).toHaveLength(match === "skeleton" ? pairs : 0);
   });
 
   it("plays Hatchling's climb at the climb level reached", async () => {
@@ -402,7 +408,9 @@ describe("a board at each level", () => {
       for (const tap of taps.slice(0, -1)) await user.click(button(tap));
       const from = asked.length;
       await user.click(button(taps.at(-1) ?? ""));
-      return [...new Set(asked.slice(from))].map((url) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url)?.id);
+      // A skeleton board asks for each dinosaur's skeleton too.
+      const shown = (url: string) => SHIPPED_PALS.find(({ id }) => fakeBodyPicture(id) === url || fakeSkeletonPicture(id, "skeleton") === url)?.id;
+      return [...new Set(asked.slice(from).map(shown))];
     };
 
     const first = await deal("PLAY");
@@ -412,7 +420,8 @@ describe("a board at each level", () => {
     expect(pairCards()).toHaveLength(next === "explorer" ? 18 : 24);
     expect(second).toHaveLength(pairCards().length / 2);
     const repeated = second.filter((id) => first.includes(id));
-    const availableGroups = new Set(SHIPPED_PALS.filter(({ id }) => !first.includes(id)).map(({ lookAlike }) => lookAlike));
+    const dealable = SHIPPED_PALS.filter(({ skeleton }) => next !== "paleontologist" || skeleton);
+    const availableGroups = new Set(dealable.filter(({ id }) => !first.includes(id)).map(({ lookAlike }) => lookAlike));
     // Every group with an unplayed dinosaur can supply a fresh pair;
     // only pairs beyond those groups must repeat a dinosaur.
     expect(repeated).toHaveLength(Math.max(0, second.length - availableGroups.size));

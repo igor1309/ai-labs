@@ -5,7 +5,7 @@ import skeletonPlaces from "./data/skeletons.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { readDig, type DigFile } from "./dig/index.ts";
 import { documentVisibility } from "./documentVisibility.ts";
-import { bodyPictures, skeletonPictures } from "./dinosaurPictures.ts";
+import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
@@ -101,6 +101,7 @@ export function appProps(browser: Browser): AppProps {
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);
   const skeletons = readSkeletons(records, skeletonPlaces);
+  const drawn = wholeSkeletons(SKELETON_PICTURES);
   const featured = localFeatured(storage, HOME_GAMES);
   return {
     dinosaurs,
@@ -121,11 +122,14 @@ export function appProps(browser: Browser): AppProps {
     careProgress: localCareProgress(storage),
     sortables: readSortables(records),
     sortingProgress: localSortingProgress(storage),
-    pals: readPals(records),
+    pals: readPals(records, drawn),
     pairsProgress: localPairsProgress(storage),
     itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),
     skeletons,
-    skeletonPicture: skeletonPictures(SKELETON_PICTURES, Object.fromEntries(skeletons.map(({ id, cuts }) => [id, ["skeleton", ...Object.values(cuts).flatMap((cut) => cut.map((piece) => piece.id))]]))),
+    skeletonPicture: skeletonPictures(SKELETON_PICTURES, {
+      ...Object.fromEntries([...drawn].map((id) => [id, ["skeleton"]])),
+      ...Object.fromEntries(skeletons.map(({ id, cuts }) => [id, ["skeleton", ...Object.values(cuts).flatMap((cut) => cut.map((piece) => piece.id))]]))
+    }),
     skeletonProgress: localSkeletonProgress(storage),
     digDinosaurs: readDig(
       dinosaurs.map(({ id }) => id),

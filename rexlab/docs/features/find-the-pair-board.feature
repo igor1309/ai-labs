@@ -11,7 +11,7 @@ Feature: Find the pair: turning cards
 
   Scenario: Tapping a face-down card turns it over
     When I tap a face-down card
-    Then it flips over to show its dinosaur's picture or silhouette
+    Then it flips over to show its dinosaur's picture, silhouette or skeleton
     And it shows a pressed state before it flips
 
   Scenario: An open card cannot be turned back by tapping
