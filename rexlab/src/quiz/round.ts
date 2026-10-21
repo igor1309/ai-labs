@@ -1,8 +1,27 @@
 import type { Language } from "../language/language.ts";
+import type { QuizLevel } from "./progress.ts";
 
 export type Attribute = "mass" | "height";
 
 export const ATTRIBUTES: readonly Attribute[] = ["mass", "height"];
+
+export type QuestionKind = "heavier" | "taller" | "lighter";
+
+export const QUESTION_KINDS: readonly QuestionKind[] = ["heavier", "taller", "lighter"];
+
+const KINDS_BY_LEVEL: Record<QuizLevel, readonly QuestionKind[]> = {
+  hatchling: ["heavier", "taller"],
+  explorer: ["heavier", "taller"],
+  paleontologist: QUESTION_KINDS
+};
+
+export function questionKindsForLevel(level: QuizLevel): readonly QuestionKind[] {
+  return KINDS_BY_LEVEL[level];
+}
+
+export function attributeOf(kind: QuestionKind): Attribute {
+  return kind === "taller" ? "height" : "mass";
+}
 
 export type Dinosaur = {
   id: string;
@@ -13,6 +32,10 @@ export type Dinosaur = {
 
 export type Question = {
   attribute: Attribute;
+  // The kind is optional for callers that construct today's questions by
+  // attribute; generated rounds always carry it so a mass question can ask
+  // either HEAVIER or LIGHTER.
+  kind?: QuestionKind;
   left: Dinosaur;
   right: Dinosaur;
 };
@@ -45,10 +68,20 @@ export function measureOf(dinosaur: Dinosaur, attribute: Attribute): number {
   return value;
 }
 
-// The question always asks which has more. A fair pair's values are never
-// equal, so one dinosaur is always the larger.
+// A fair pair's values are never equal, so one dinosaur is always the
+// larger; LIGHTER questions choose the other one as their answer.
 export function largerOf({ attribute, left, right }: Question): Dinosaur {
   return measureOf(left, attribute) > measureOf(right, attribute) ? left : right;
+}
+
+export function questionKind(question: Question): QuestionKind {
+  return question.kind ?? (question.attribute === "mass" ? "heavier" : "taller");
+}
+
+export function correctOf(question: Question): Dinosaur {
+  return questionKind(question) === "lighter"
+    ? (measureOf(question.left, question.attribute) < measureOf(question.right, question.attribute) ? question.left : question.right)
+    : largerOf(question);
 }
 
 // Two dinosaurs are the same pair whichever side each is on and whatever
@@ -69,26 +102,27 @@ export function fairPairs(dinosaurs: readonly Dinosaur[], attribute: Attribute):
   return pairs;
 }
 
-// Each question picks its attribute at random and a fair pair not yet in
-// this round. Pairs from the previous round are taken only when no other
-// pair is left, so two rounds in a row do not ask the same questions.
-export function generateRound(dinosaurs: readonly Dinosaur[], random: Random, previous: Round = []): Round {
-  const pairsByAttribute = new Map(ATTRIBUTES.map((attribute) => [attribute, fairPairs(dinosaurs, attribute)]));
+// Each question picks its kind at random and a fair pair not yet in this
+// round. Pairs from the previous round are taken only when no other pair is
+// left, so two rounds in a row do not ask the same questions.
+export function generateRound(dinosaurs: readonly Dinosaur[], random: Random, previous: Round = [], level: QuizLevel = "hatchling"): Round {
+  const kinds = questionKindsForLevel(level);
+  const pairsByKind = new Map(kinds.map((kind) => [kind, fairPairs(dinosaurs, attributeOf(kind))]));
   const previousPairs = new Set(previous.map((question) => pairKey(question.left, question.right)));
   const used = new Set<string>();
   const round: Question[] = [];
 
   while (round.length < ROUND_LENGTH) {
-    const first = pick(random, ATTRIBUTES);
-    const order = [first, ...ATTRIBUTES.filter((attribute) => attribute !== first)];
-    const unused = (attribute: Attribute) =>
-      (pairsByAttribute.get(attribute) ?? []).filter(([a, b]) => !used.has(pairKey(a, b)));
+    const first = pick(random, kinds);
+    const order = [first, ...kinds.filter((kind) => kind !== first)];
+    const unused = (kind: QuestionKind) =>
+      (pairsByKind.get(kind) ?? []).filter(([a, b]) => !used.has(pairKey(a, b)));
     const tiers = [
-      ...order.map((attribute) => ({
-        attribute,
-        pairs: unused(attribute).filter(([a, b]) => !previousPairs.has(pairKey(a, b)))
+      ...order.map((kind) => ({
+        kind,
+        pairs: unused(kind).filter(([a, b]) => !previousPairs.has(pairKey(a, b)))
       })),
-      ...order.map((attribute) => ({ attribute, pairs: unused(attribute) }))
+      ...order.map((kind) => ({ kind, pairs: unused(kind) }))
     ];
     const tier = tiers.find(({ pairs }) => pairs.length > 0);
     if (!tier) {
@@ -97,7 +131,7 @@ export function generateRound(dinosaurs: readonly Dinosaur[], random: Random, pr
     const [a, b] = pick(random, tier.pairs);
     used.add(pairKey(a, b));
     const [left, right] = random() < 0.5 ? [a, b] : [b, a];
-    round.push({ attribute: tier.attribute, left, right });
+    round.push({ kind: tier.kind, attribute: attributeOf(tier.kind), left, right });
   }
   return round;
 }

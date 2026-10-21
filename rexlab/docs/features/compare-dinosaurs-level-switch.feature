@@ -4,10 +4,11 @@ Feature: Compare dinosaurs quiz: the level switch and its progress
   shows the level switch above "PLAY AGAIN", as the sorting game's does
   (sort-dinosaurs-level-switch.feature): the child's own choice in this
   game (age-level-choice.feature), kept in the quiz's progress with each
-  level's own best. Every level still asks today's questions, WHO IS
+  level's own best. Hatchling and Explorer still ask today's questions, WHO IS
   HEAVIER? and WHO IS TALLER? at a gap of 1.5 times or more
-  (compare-dinosaurs-start.feature); the levels' own questions come in
-  their own issues (docs/age-levels.md). It has no level offer.
+  (compare-dinosaurs-start.feature); Paleontologist also asks WHO IS
+  LIGHTER? (compare-dinosaurs-lighter.feature). The levels' own questions
+  come in their own issues (docs/age-levels.md). It has no level offer.
 
   Background:
     Given an iPad in landscape
@@ -17,7 +18,7 @@ Feature: Compare dinosaurs quiz: the level switch and its progress
     And I have never used the level switch in the quiz
     When I tap the "COMPARE" tile
     Then the round plays <level>
-    And it asks today's questions, as compare-dinosaurs-start.feature says
+    And it asks its level's questions, as the compare-dinosaurs features say
     And its result screen shows the level switch with <level> chosen
 
     Examples:

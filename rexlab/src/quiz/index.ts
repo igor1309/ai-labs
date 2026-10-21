@@ -2,9 +2,9 @@
 // Everything else under quiz/ is reached only through this file.
 import { choose, currentChoice, currentQuestion, isLastQuestion, next, score, startPlay, type Play } from "./play.ts";
 import { bestForLevel, finishRound, type BeatBest, type Celebration, type QuizLevel, type QuizProgress } from "./progress.ts";
-import { generateRound, largerOf, measureOf, type Attribute, type Dinosaur, type Random } from "./round.ts";
+import { correctOf, generateRound, measureOf, questionKind, type Attribute, type Dinosaur, type QuestionKind, type Random } from "./round.ts";
 
-export type { Attribute, BeatBest, Celebration, Dinosaur, Play, QuizLevel, QuizProgress, Random };
+export type { Attribute, BeatBest, Celebration, Dinosaur, Play, QuizLevel, QuizProgress, QuestionKind, Random };
 export type { Beaten } from "./progress.ts";
 export { bestForLevel, mergeProgress, NO_PROGRESS } from "./progress.ts";
 export { choose, next };
@@ -21,6 +21,7 @@ export type Option = {
 
 export type QuestionState = {
   attribute: Attribute;
+  kind: QuestionKind;
   // The question's place in the round, from 1.
   number: number;
   total: number;
@@ -44,15 +45,15 @@ export type RoundResult = {
 };
 
 // A new round at `level`, asking none of the previous round's questions
-// while other fair pairs are left. Every level asks today's questions.
+// while other fair pairs are left. Paleontologist adds LIGHTER questions.
 export function startRound(dinosaurs: readonly Dinosaur[], level: QuizLevel, random: Random, previous?: Play): Play {
-  return startPlay(generateRound(dinosaurs, random, previous?.round), level);
+  return startPlay(generateRound(dinosaurs, random, previous?.round, level), level);
 }
 
 export function questionState(play: Play): QuestionState {
   const question = currentQuestion(play);
   const choice = currentChoice(play);
-  const answer = largerOf(question);
+  const answer = correctOf(question);
   const option = (dinosaur: Dinosaur): Option => ({
     dinosaur,
     value: measureOf(dinosaur, question.attribute),
@@ -61,6 +62,7 @@ export function questionState(play: Play): QuestionState {
   });
   return {
     attribute: question.attribute,
+    kind: questionKind(question),
     number: play.index + 1,
     total: play.round.length,
     last: isLastQuestion(play),
