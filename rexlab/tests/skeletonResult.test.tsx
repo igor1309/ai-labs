@@ -70,8 +70,8 @@ describe("the reveal of a finished skeleton", () => {
     expect(reveal()).not.toBeNull();
   });
 
-  it("holds the whole skeleton as long as the last piece's slide in and as long again, and only its fade with reduced motion", () => {
-    expect(REVEAL).toEqual({ motion: 480, reduced: 160 });
+  it("holds the whole skeleton while it stomps, snaps and roars, and only the last piece's fade with reduced motion", () => {
+    expect(REVEAL).toEqual({ motion: 1500, reduced: 160 });
   });
 
   it("fades the dinosaur's body in over its whole skeleton, in the frame they share", async () => {

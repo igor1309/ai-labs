@@ -41,6 +41,8 @@
   --motion-small: 160ms;
   --motion-standard: 240ms;
   --motion-screen: 320ms;
+  /* A skeleton's wobble, snap or swish, and each half of its stomp. */
+  --motion-alive: 360ms;
   --motion-count: 600ms;
   --motion-stagger: 40ms;
   --motion-picture: 200ms;
@@ -6307,22 +6309,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   opacity: 0;
 }
 
-/* Paleontologist's piece turns a quarter in its spot at a tap. */
-.skeleton-tray[data-turning] .skeleton-piece {
-  transition: rotate var(--motion-standard) var(--ease-out);
-}
-
-/* A turned piece's mark that it turns, in its spot's corner: dimmer than
-   any words, so it never outweighs the piece, yet clear as a symbol. */
-.skeleton-turn-mark {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  color: #737a8e;
-  pointer-events: none;
-}
-
 /* While a piece is held, its slot shows faintly where it goes. */
 .skeleton-slot[data-target] {
   border-radius: 20px;
@@ -6330,84 +6316,10 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   outline-offset: -1px;
 }
 
-/* Explorer colours each piece by its body area, as a cue to where it
-   goes: its spot in the tray is tinted with the area's pale tint and
-   ringed in its colour, and its empty slot shows the bone's shape in that
-   colour, the piece's own picture as the mask. A fitted piece shows as
-   itself, and its spot, empty, is plain again. */
-.skeleton-tray-spot[data-area] {
-  outline-width: 3px;
-  outline-offset: -1.5px;
-}
-
-.skeleton-slot-area {
-  position: absolute;
-  inset: 0;
-  opacity: 0.55;
-  mask: var(--piece-picture) center / 100% 100% no-repeat;
-  pointer-events: none;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
-}
-
-.skeleton-tray-spot[data-area="head"] {
-  outline-color: #c9583d;
-  background: #f6ddd4;
-}
-
-.skeleton-slot[data-area="head"] .skeleton-slot-area {
-  background: #c9583d;
-}
-
-.skeleton-tray-spot[data-area="neck"] {
-  outline-color: #a86a0c;
-  background: #f7e8c9;
-}
-
-.skeleton-slot[data-area="neck"] .skeleton-slot-area {
-  background: #a86a0c;
-}
-
-.skeleton-tray-spot[data-area="back"] {
-  outline-color: #4f78b0;
-  background: #dce6f3;
-}
-
-.skeleton-slot[data-area="back"] .skeleton-slot-area {
-  background: #4f78b0;
-}
-
-.skeleton-tray-spot[data-area="hips"] {
-  outline-color: #7e62b8;
-  background: #e5def3;
-}
-
-.skeleton-slot[data-area="hips"] .skeleton-slot-area {
-  background: #7e62b8;
-}
-
-.skeleton-tray-spot[data-area="legs"] {
-  outline-color: #2e7d4f;
-  background: #d9ede0;
-}
-
-.skeleton-slot[data-area="legs"] .skeleton-slot-area {
-  background: #2e7d4f;
-}
-
-.skeleton-tray-spot[data-area="tail"] {
-  outline-color: #b5487a;
-  background: #f4dce8;
-}
-
-.skeleton-slot[data-area="tail"] .skeleton-slot-area {
-  background: #b5487a;
-}
-
 /* A piece let go floats back to its spot in the tray, and one that fits
    slides into exact alignment with its slot, each from where it was let
    go. With reduced motion it does not travel: it fades in where it
    ends. */
-.skeleton-piece[data-returning],
 .skeleton-fitted[data-snapped] {
   animation: settle-in var(--motion-standard) var(--ease-out);
 }
@@ -6416,6 +6328,83 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   from {
     opacity: calc(1 - 0.6 * (1 - var(--motion-amount)));
     translate: calc(var(--from-x) * var(--motion-amount)) calc(var(--from-y) * var(--motion-amount));
+  }
+}
+
+/* The skeleton comes alive (skeleton-assembly-alive.feature): a piece
+   that misses wobbles as it floats back, a fitted skull snaps its jaw
+   twice and a fitted tail swishes, each once it has settled, and the
+   finished skeleton stomps twice, its skull snapping after. Each moves by
+   --motion-amount, so with reduced motion nothing moves. */
+.skeleton-piece[data-returning] {
+  animation: settle-in var(--motion-standard) var(--ease-out), wobble var(--motion-alive) var(--ease-out);
+}
+
+.skeleton-slot[data-area="head"] .skeleton-fitted[data-snapped] {
+  transform-origin: 70% 60%;
+  animation: settle-in var(--motion-standard) var(--ease-out), jaw-snap var(--motion-alive) var(--ease-out) var(--motion-standard);
+}
+
+.skeleton-slot[data-area="tail"] .skeleton-fitted[data-snapped] {
+  transform-origin: 0% 50%;
+  animation: settle-in var(--motion-standard) var(--ease-out), swish var(--motion-alive) var(--ease-out) var(--motion-standard);
+}
+
+.skeleton-board[data-complete] .skeleton-slot,
+.skeleton-board[data-complete] .skeleton-outline {
+  animation: stomp calc(var(--motion-alive) * 2) var(--ease-out);
+}
+
+.skeleton-board[data-complete] .skeleton-slot[data-area="head"] {
+  transform-origin: 70% 60%;
+  animation: stomp calc(var(--motion-alive) * 2) var(--ease-out), jaw-snap var(--motion-alive) var(--ease-out) calc(var(--motion-alive) * 2);
+}
+
+@keyframes wobble {
+  20% {
+    rotate: calc(-14deg * var(--motion-amount));
+  }
+  40% {
+    rotate: calc(10deg * var(--motion-amount));
+  }
+  60% {
+    rotate: calc(-6deg * var(--motion-amount));
+  }
+  80% {
+    rotate: calc(3deg * var(--motion-amount));
+  }
+}
+
+@keyframes jaw-snap {
+  25%,
+  75% {
+    scale: 1 calc(1 - 0.12 * var(--motion-amount));
+    rotate: calc(-4deg * var(--motion-amount));
+  }
+  50% {
+    scale: 1 calc(1 - 0.02 * var(--motion-amount));
+    rotate: calc(0deg * var(--motion-amount));
+  }
+}
+
+@keyframes swish {
+  30% {
+    rotate: calc(-10deg * var(--motion-amount));
+  }
+  65% {
+    rotate: calc(6deg * var(--motion-amount));
+  }
+}
+
+@keyframes stomp {
+  15%,
+  65% {
+    translate: 0 calc(-14px * var(--motion-amount));
+  }
+  30%,
+  80% {
+    translate: 0 calc(0px * var(--motion-amount));
+    scale: 1 calc(1 - 0.03 * var(--motion-amount));
   }
 }
 
@@ -6996,11 +6985,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   ::view-transition-group(.dinosaur-share) {
     animation: none;
   }
-
-  /* A piece shows turned at once. */
-  .skeleton-tray[data-turning] .skeleton-piece {
-    transition-property: none;
-  }
 }
 
 /* The dark theme: each fm-* colour takes its dark value, in the same
@@ -7566,10 +7550,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   background: #222a3d;
 }
 
-[data-theme="dark"] .skeleton-turn-mark {
-  color: #7a8193;
-}
-
 [data-theme="dark"] .skeleton-choice,
 [data-theme="dark"] .skeleton-board,
 [data-theme="dark"] .skeleton-tray-spot {
@@ -7583,60 +7563,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 
 [data-theme="dark"] .skeleton-lifted {
   filter: drop-shadow(0 18px 24px #00000066);
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="head"] {
-  outline-color: #e57a5d;
-  background: #3d2620;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="head"] .skeleton-slot-area {
-  background: #e57a5d;
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="neck"] {
-  outline-color: #f2b24b;
-  background: #3b3120;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="neck"] .skeleton-slot-area {
-  background: #f2b24b;
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="back"] {
-  outline-color: #7fa3d9;
-  background: #1f2e48;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="back"] .skeleton-slot-area {
-  background: #7fa3d9;
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="hips"] {
-  outline-color: #a68be0;
-  background: #2c2545;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="hips"] .skeleton-slot-area {
-  background: #a68be0;
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="legs"] {
-  outline-color: #63c98c;
-  background: #1e3429;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="legs"] .skeleton-slot-area {
-  background: #63c98c;
-}
-
-[data-theme="dark"] .skeleton-tray-spot[data-area="tail"] {
-  outline-color: #e07ba8;
-  background: #3d2232;
-}
-
-[data-theme="dark"] .skeleton-slot[data-area="tail"] .skeleton-slot-area {
-  background: #e07ba8;
 }
 
 [data-theme="dark"] .skeleton-slot[data-target] {

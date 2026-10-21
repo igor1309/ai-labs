@@ -310,7 +310,7 @@ describe("presenting the skeleton game", () => {
         piece,
         name: NAMED[piece].en,
         picture: fakeSkeletonPicture("triceratops", piece),
-        area: undefined,
+        area: AREAS[piece],
         left: placeOf(triceratops, piece).x / frame.width,
         top: placeOf(triceratops, piece).y / frame.height,
         width: placeOf(triceratops, piece).width / frame.width,
@@ -320,8 +320,6 @@ describe("presenting the skeleton game", () => {
       strays: [],
       tray: [...PIECES],
       told: undefined,
-      turning: false,
-      turns: {},
       hint: undefined,
       complete: false
     });
@@ -584,27 +582,6 @@ describe("every shipped skeleton", () => {
     }));
 
     expect(seen).toEqual(skeletons.map(({ id }) => ({ id, twoOrThree: true, others: true, named: true, pictures: true })));
-  });
-
-  // skeleton-assembly-explorer.feature: a bone shows on its tinted spot by
-  // its dark outline in light, the darkest twentieth of it, and by its
-  // pale bone in dark, its median.
-  it("shows each Explorer bone at least 3:1 on its body area's tint, by its outline in light and its bone in dark", async () => {
-    const seen = await Promise.all(
-      skeletons.flatMap(({ id, cuts }) =>
-        (cuts.explorer ?? []).map(async (piece) => {
-          const shades = await shadesOf(fileOf(skeletonPicture(id, piece.id)));
-          const at = (share: number) => shades[Math.floor(shades.length * share)] ?? "#000000";
-          return {
-            piece: `${id}/${piece.id}`,
-            light: contrast(at(0.05), PALETTE.light[`area-${piece.area}-tint`] ?? "") >= 3,
-            dark: contrast(at(0.5), PALETTE.dark[`area-${piece.area}-tint`] ?? "") >= 3
-          };
-        })
-      )
-    );
-
-    expect(seen).toEqual(seen.map(({ piece }) => ({ piece, light: true, dark: true })));
   });
 
   it("shares its frame with its dinosaur's body picture, so the body fades in exactly over its bones", () => {

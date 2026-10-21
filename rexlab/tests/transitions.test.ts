@@ -165,7 +165,7 @@ describe("the skeleton game's transition for each change", () => {
   const order = SHIPPED_SKELETONS.map(({ id }) => id);
   const screens: SkeletonScreen[] = [
     { kind: "choice" },
-    { kind: "puzzle", puzzle, scatter: false, look: { coloured: false, silhouette: false, homeShown: true } },
+    { kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } },
     { kind: "result", result: finishSkeleton(openCollection(undefined, order), { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) }, order, beatBest).result },
     { kind: "museum" }
   ];
@@ -175,7 +175,7 @@ describe("the skeleton game's transition for each change", () => {
   });
 
   it("changes a puzzle at once as time counts towards help", () => {
-    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { coloured: false, silhouette: false, homeShown: true } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { coloured: false, silhouette: false, homeShown: true } })).toBeUndefined();
+    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { silhouette: false, homeShown: true } })).toBeUndefined();
   });
 });
 

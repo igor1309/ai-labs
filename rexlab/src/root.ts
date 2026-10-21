@@ -17,6 +17,7 @@ import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
 import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
+import { skeletonSounds } from "./skeletonSounds.ts";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -131,6 +132,7 @@ export function appProps(browser: Browser): AppProps {
       ...Object.fromEntries(skeletons.map(({ id, cuts }) => [id, ["skeleton", ...Object.values(cuts).flatMap((cut) => cut.map((piece) => piece.id))]]))
     }),
     skeletonProgress: localSkeletonProgress(storage),
+    skeletonSounds: skeletonSounds(),
     digDinosaurs: readDig(
       dinosaurs.map(({ id }) => id),
       digFile as DigFile

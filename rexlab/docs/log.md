@@ -2,6 +2,7 @@
 
 ## 2026-10-21
 
+- The skeleton game comes alive: a bone picked up, fitted or missed is heard, a missed bone wobbles back, a fitted skull snaps its jaw and a tail swishes, and the finished skeleton stomps and roars before its body shows. Explorer's pieces are no longer coloured by body area and Paleontologist's no longer arrive turned, so bones are placed by their shape (LAB-389).
 - A hatch and grow care prototype for a playtest replaces the care mission one, at `/prototypes/care-hatch.html`, with all three age levels: a Hatchling raises one baby that shows its wants on itself, an Explorer raises plant- and meat-eating twins, and a Paleontologist raises a trio, reads each one's diet from its teeth and keeps them in a field notebook (LAB-387).
 - Three Russian descriptions read correctly: Allosaurus, Mamenchisaurus and Maiasaura (LAB-384).
 - Find the pair at Paleontologist deals from 26 skeletons, two of each look-alike group that has two dinosaurs or more, so a board after another repeats at most one of its dinosaurs, not nine (LAB-386).

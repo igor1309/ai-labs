@@ -33,6 +33,7 @@ import {
   loadShownPictures
 } from "./support.ts";
 import type { Place, Skeleton } from "../src/skeletons/index.ts";
+import { SILENT, type SkeletonSounds } from "../src/skeletonSounds.ts";
 import type { Theme } from "../src/theme.ts";
 
 export type SkeletonsAppOptions = {
@@ -56,8 +57,9 @@ export type SkeletonsAppOptions = {
   ageLevels?: MemoryStorage;
   // The skeletons to build, the shipped ones by default.
   skeletons?: readonly Skeleton[];
-  // The app's random source, always 0 by default: nothing drawn turns a
-  // piece.
+  // The skeleton game's sounds, silent by default.
+  skeletonSounds?: SkeletonSounds;
+  // The app's random source, always 0 by default.
   random?: () => number;
   // Whether the home page's pictures load as it opens; if not, they load
   // only when the test finishes them.
@@ -79,7 +81,8 @@ export function openHomeApp({
   ageLevels = memoryStorage(),
   skeletons = SHIPPED_SKELETONS,
   loadHome = true,
-  random = () => 0
+  random = () => 0,
+  skeletonSounds = SILENT
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
     portraitLayouts,
@@ -87,6 +90,7 @@ export function openHomeApp({
     catalogue: SHIPPED_CATALOGUE,
     bodyPicture: fakeBodyPicture,
     random,
+    skeletonSounds,
     viewport,
     pageVisibility: visibility,
     progress: localProgress(() => storage),

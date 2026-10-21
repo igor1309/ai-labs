@@ -33,6 +33,7 @@ import { ResultScreen } from "./ResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
+import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 
@@ -112,6 +113,8 @@ export type AppProps = CareGameProps &
     // The URL of the body picture of the dinosaur with this id.
     bodyPicture: (dinosaurId: string) => string;
     random: Random;
+    // The skeleton game's sounds, silent if none.
+    skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     pageVisibility: PageVisibility;
@@ -224,6 +227,7 @@ export function App({
   skeletons,
   skeletonPicture,
   skeletonProgress,
+  skeletonSounds = SILENT,
   digDinosaurs,
   digProgress,
   sandContext,
@@ -364,7 +368,7 @@ export function App({
   );
 
   const skeletonGame = useSkeletonGame(
-    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion, random },
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion, random, sounds: skeletonSounds },
     ageLevel,
     home,
     counting("skeletons")

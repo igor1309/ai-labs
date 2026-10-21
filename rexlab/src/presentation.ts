@@ -282,13 +282,13 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "homeShown" | "frame" | "slots" | "strays" | "tray" | "told" | "turning" | "turns" | "hint" | "complete">;
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "homeShown" | "frame" | "slots" | "strays" | "tray" | "told" | "hint" | "complete">;
 
 // The pictures of a skeleton: the whole of it, "skeleton", or one of its
 // pieces, by the piece's id.
 export type SkeletonPicture = (dinosaurId: string, part: string) => string;
 
-// Each body area, as the puzzle screen colours it.
+// Each body area, as the puzzle screen moves it.
 const SHOWN_AREAS: Record<BodyArea, ShownArea> = { head: "head", neck: "neck", back: "back", hips: "hips", legs: "legs", tail: "tail" };
 
 const SHOWN_STEPS: Record<HelpStep, ShownHelpStep> = { glow: "glow", region: "region", ghost: "ghost", move: "move" };
@@ -308,19 +308,19 @@ function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undef
 }
 
 // Each slot is placed as a fraction of the frame, so the outline and its
-// pieces scale together to any board. A puzzle `coloured` by body area
-// gives each slot its piece's area; one on a `silhouette` shows its
-// outline as the skeleton's shape alone; one with `homeShown` outlines a
-// held piece's home. Other skeletons' bones wait in
-// the tray among the pieces, each its own skeleton's picture, sized as
-// the pieces are. A puzzle that turns shows how each piece lies.
+// pieces scale together to any board. Each slot carries its piece's body
+// area, so a fitted skull or tail moves as itself. A puzzle on a
+// `silhouette` shows its outline as the skeleton's shape alone; one with
+// `homeShown` outlines a held piece's home. Other skeletons' bones wait in
+// the tray among the pieces, each its own skeleton's picture, sized as the
+// pieces are.
 export function presentPuzzle(
   puzzle: Puzzle,
   language: Language,
   skeletonPicture: SkeletonPicture,
-  { coloured = false, silhouette = false, homeShown = false }: { coloured?: boolean; silhouette?: boolean; homeShown?: boolean } = {}
+  { silhouette = false, homeShown = false }: { silhouette?: boolean; homeShown?: boolean } = {}
 ): SkeletonPuzzleView {
-  const { skeleton, cut, fitted, distractors, told, turning, turns } = puzzle;
+  const { skeleton, cut, fitted, distractors, told } = puzzle;
   const { id, name, frame } = skeleton;
   return {
     name: name[language],
@@ -337,15 +337,13 @@ export function presentPuzzle(
     })),
     tray: trayOf(puzzle),
     told: told?.name[language],
-    turning,
-    turns,
     slots: cut.map((piece) => {
       const { x, y, width, height } = piece.place;
       return {
         piece: piece.id,
         name: piece.name[language],
         picture: skeletonPicture(id, piece.id),
-        area: coloured ? SHOWN_AREAS[piece.area] : undefined,
+        area: SHOWN_AREAS[piece.area],
         left: x / frame.width,
         top: y / frame.height,
         width: width / frame.width,
