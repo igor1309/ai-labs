@@ -45,9 +45,9 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
 | Version | Scope | Done when |
 |---|---|---|
 | v0 spike | CLI over recordings; window sizes | Done ([tests.md](tests.md) run 3) |
-| v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; manual start/stop | Owner runs a real call and reads along |
+| v1 live transcript | Two-track capture to disk; Parakeet v3 live; floating panel that stays on top; text settles in place and stays selectable; manual start/stop; call folders named and renamed in the app | Owner runs a real call and reads along |
 | v2 explain | ⌃⌥⌘E on a selection → new bb thread with the prompt from [needs.md](needs.md) | Explanation for RACI/OKR/SLA arrives during a call |
-| v3 after the call | Stop when the call ends; final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb | Transcript file and summary without manual steps |
+| v3 after the call | Stop when the call ends; final pass over the full tracks (VAD, better model) into a Markdown transcript; summary through bb; call title from the calendar event | Transcript file and summary without manual steps |
 | Later | Auto-detected term chips under the live text; CLI/skill so agents read transcripts; names for remote speakers (Zoom Accessibility, as Gristmill does); redo a call with another model; quotes with times for action items | Each by request |
 
 Assumption for v1: calls are taken on headphones, so no echo cancellation.
@@ -87,6 +87,22 @@ Screen decisions (owner, 2026-10-21, after the design review):
   Amanu's quantized `ggml-large-v3-turbo-q5_0.bin`. Without an exact match the app downloads its
   own copy. A reused file that disappears is caught by the launch check.
 - Auto-detected term chips under the live text go to Later.
+
+Call folders (owner, 2026-10-21), following Amanu:
+
+- One folder per call, `yyyy.MM.dd-HHmm <title>`. The timestamp stays in
+  front so folders sort by time. The folder name is the title.
+- The title starts as the call app's name ("Zoom"); from v3 it is the
+  calendar event's name when one overlaps the call (Calendar is an optional
+  permission in setup).
+- The title is editable in the calls list and the call screen; editing it
+  renames the folder and keeps the timestamp. Renaming in Finder works too:
+  the app identifies a call by the id in `meta.json`, never by its path.
+- Files: `meta.json` (id, start, duration, app, audio status, pinned, bb
+  summary thread), `audio.m4a` (mic left, call right), `raw.md` (live, never
+  overwritten), `final.md` (final pass), `summary.md`.
+- Changing the data folder moves every call to the new place after a confirm
+  ("Move 52 calls (135 MB)?"). There is no option to leave calls behind.
 
 ## Open questions for the owner
 
