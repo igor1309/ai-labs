@@ -81,6 +81,7 @@ const SOUNDS: Record<Reaction | Extra, Sound> = {
   },
   "not-now": { tones: notes([330, 262], 0.16, "sine") },
   giggle: { tones: notes([900, 1100, 950, 1200, 1000], 0.07, "sine") },
+  look: { tones: notes([1200, 1600], 0.08, "sine") },
   dance: { tones: notes([523, 659, 784, 1047, 784, 1047], 0.14) },
   burp: {
     tones: [

@@ -884,3 +884,130 @@ button {
   opacity: 1;
   box-shadow: 0 0 0 4px #1d2742;
 }
+
+/* A Paleontologist's magnifier by each baby's head, and the teeth it
+   shows above it. */
+.hatch-look {
+  position: absolute;
+  left: calc(var(--head-x) - 36px);
+  top: calc(var(--head-y) - 96px);
+  display: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fffdf8;
+  font-size: 38px;
+  box-shadow: 0 2px 10px #00000040;
+}
+
+.hatch-frame[data-level="paleontologist"] .hatch-look {
+  display: block;
+}
+
+.hatch-teeth {
+  position: absolute;
+  left: min(calc(var(--head-x) - 120px), calc(100% - 250px));
+  top: calc(var(--head-y) - 250px);
+  display: none;
+  width: 240px;
+  height: 150px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 0 0 6px #ffd166;
+  animation: arrive 360ms var(--ease-overshoot) both;
+  pointer-events: none;
+}
+
+.hatch-teeth svg,
+.hatch-page-teeth svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hatch-creature[data-looking="true"] .hatch-teeth {
+  display: block;
+}
+
+/* The field notebook: its button shows how many pages it has, and it
+   opens over the whole frame; a tap anywhere closes it. */
+.hatch-notebook-button {
+  position: absolute;
+  right: 290px;
+  top: 40px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #fffdf8;
+  font-size: 32px;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-notebook-button[data-pages="0"] {
+  display: none;
+}
+
+.hatch-notebook-button::after {
+  content: attr(data-pages);
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: #ef476f;
+  color: #fffdf8;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.hatch-notebook {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 20px;
+  padding: 60px;
+  box-sizing: border-box;
+  overflow: auto;
+  border-radius: 28px;
+  background: #f6ecd6;
+}
+
+.hatch-frame[data-notebook="open"] .hatch-notebook {
+  display: flex;
+}
+
+.hatch-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 240px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-page-picture {
+  width: 200px;
+  height: 130px;
+  object-fit: contain;
+  scale: -1 1;
+}
+
+.hatch-page-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hatch-page-teeth {
+  width: 120px;
+  height: 60px;
+}

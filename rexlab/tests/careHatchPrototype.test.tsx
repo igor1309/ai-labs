@@ -4,13 +4,16 @@ import {
   BABIES,
   hatch as hatchAt,
   ITEMS,
+  BOTH_EATERS,
   MEAT_EATERS,
   PLANT_EATERS,
   startCareHatch,
   tap,
   WANTS,
   type Baby,
+  teethOf,
   type Item,
+  type Notebook,
   type Nursery,
   type Options,
   type Reaction,
@@ -386,5 +389,86 @@ describe("the hatch and grow page", () => {
     expect(root.querySelector('[data-target="nest"]')?.textContent).toBe(
       "ГНЕЗДО",
     );
+  });
+});
+
+describe("the Paleontologist's trio", () => {
+  it("is a plant-eater, a meat-eater and one that eats both, told apart by their teeth", () => {
+    const babies = hatchAt("paleontologist", always(0)).map(
+      (each) => each.baby,
+    );
+
+    expect(babies.map(teethOf).sort()).toEqual(["flat", "mixed", "sharp"]);
+    expect(BOTH_EATERS.map((baby) => baby.id)).toEqual([
+      "gallimimus",
+      "oviraptor",
+      "troodon",
+    ]);
+  });
+
+  it("chooses a baby by looking at its teeth", () => {
+    const nursery: Nursery = {
+      phase: "babies",
+      babies: hatchAt("paleontologist", always(0)),
+      chosen: 0,
+    };
+
+    expect(tap(nursery, "look-2", always(0), "paleontologist")).toEqual([
+      { ...nursery, chosen: 2 },
+      "look",
+    ]);
+  });
+});
+
+describe("the Paleontologist page", () => {
+  let pages: string[];
+  const notebook: Notebook = {
+    read: () => [...pages],
+    write: (ids) => {
+      pages = [...ids];
+    },
+  };
+
+  beforeEach(() => {
+    pages = ["gallimimus"];
+  });
+
+  it("shows a baby's teeth through the magnifier, one baby at a time", () => {
+    start({ level: "paleontologist", notebook });
+    hatch();
+    const looking = () => creatures().map((each) => each.dataset.looking);
+
+    press("look-1");
+    expect(looking()).toEqual(["false", "true", "false"]);
+    expect(creatures()[1]?.dataset.chosen).toBe("true");
+
+    press("look-0");
+    expect(looking()).toEqual(["true", "false", "false"]);
+  });
+
+  it("writes the grown trio into the field notebook once each", () => {
+    start({ level: "paleontologist", notebook });
+    hatch();
+    const FOOD = { sharp: "meat", flat: "plants", mixed: "plants" } as const;
+    for (const index of [0, 1, 2]) {
+      press(`look-${index}`);
+      for (let step = 0; step < 2; step += 1) {
+        settle();
+        const creature = creatures()[index];
+        const want = creature?.dataset.want as Want;
+        const teeth = creature?.querySelector<HTMLElement>(".hatch-teeth")
+          ?.dataset.teeth as keyof typeof FOOD;
+        press(want === "hungry" ? FOOD[teeth] : ITEM_FOR[want]);
+      }
+    }
+
+    expect(reaction()).toBe("dance");
+    expect([...pages].sort()).toEqual(
+      hatchAt("paleontologist", always(0))
+        .map((each) => each.baby.id)
+        .sort(),
+    );
+    expect(pages.filter((id) => id === "gallimimus")).toHaveLength(1);
+    expect(root.querySelectorAll(".hatch-page")).toHaveLength(3);
   });
 });

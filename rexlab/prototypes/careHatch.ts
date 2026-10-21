@@ -41,10 +41,15 @@ export type Reaction =
   | "bounce"
   | "not-now"
   | "giggle"
+  | "look"
   | "dance";
 
-export type Level = "hatchling" | "explorer";
-export const LEVELS: readonly Level[] = ["hatchling", "explorer"];
+export type Level = "hatchling" | "explorer" | "paleontologist";
+export const LEVELS: readonly Level[] = [
+  "hatchling",
+  "explorer",
+  "paleontologist",
+];
 
 // A baby being raised: what it still wants, and how far it has grown out
 // of the steps it takes to fill its shadow.
@@ -57,13 +62,15 @@ export type Raising = {
 
 // A Hatchling raises one baby through all four wants. An Explorer raises
 // twins, a plant-eater and a meat-eater, through hunger and one other
-// want each; the item goes to the baby the child last tapped.
+// want each; the item goes to the baby the child last tapped. A
+// Paleontologist raises three, one eating both, and works out what each
+// eats from its teeth.
 export type Nursery =
   | { phase: "egg"; taps: number }
   | { phase: "babies"; babies: readonly Raising[]; chosen: number }
   | { phase: "grown"; babies: readonly Baby[] };
 
-export type Target = Item | "egg" | `baby-${number}`;
+export type Target = Item | "egg" | `baby-${number}` | `look-${number}`;
 
 export const WANTS: readonly Want[] = ["hungry", "thirsty", "dirty", "sleepy"];
 export const ITEMS: readonly Item[] = [
@@ -96,6 +103,13 @@ const eatsOnly = (food: Food) =>
   BABIES.filter((baby) => baby.eats.length === 1 && baby.eats[0] === food);
 export const PLANT_EATERS = eatsOnly("plants");
 export const MEAT_EATERS = eatsOnly("meat");
+export const BOTH_EATERS = BABIES.filter((baby) => baby.eats.length === 2);
+
+// What a paleontologist sees in a baby's mouth: pointed teeth for meat,
+// flat ones for plants, both kinds for both.
+export type Teeth = "sharp" | "flat" | "mixed";
+export const teethOf = (baby: Baby): Teeth =>
+  baby.eats.length === 2 ? "mixed" : baby.eats[0] === "meat" ? "sharp" : "flat";
 
 export const anEgg = (): Nursery => ({ phase: "egg", taps: 0 });
 
@@ -127,10 +141,17 @@ export function hatch(
       { baby, wants: shuffled(WANTS, random), grown: 0, steps: WANTS.length },
     ];
   }
-  const twins =
+  const eaters =
+    level === "explorer"
+      ? [PLANT_EATERS, MEAT_EATERS]
+      : [PLANT_EATERS, MEAT_EATERS, BOTH_EATERS];
+  const babies =
     named ??
-    shuffled([pick(PLANT_EATERS, random), pick(MEAT_EATERS, random)], random);
-  return twins.map((baby) => {
+    shuffled(
+      eaters.map((each) => pick(each, random)),
+      random,
+    );
+  return babies.map((baby) => {
     const wants = shuffled<Want>(
       ["hungry", pick(WANTS.slice(1), random)],
       random,
@@ -161,6 +182,8 @@ const PLAYED: Partial<Record<Item, Reaction>> = {
 
 export const babyAt = (target: Target): number | undefined =>
   target.startsWith("baby-") ? Number(target.slice(5)) : undefined;
+export const lookAt = (target: Target): number | undefined =>
+  target.startsWith("look-") ? Number(target.slice(5)) : undefined;
 
 // Taps the egg, a baby or an item, and says what happens.
 export function tap(
@@ -181,11 +204,14 @@ export function tap(
   }
   if (nursery.phase === "grown" || target === "egg")
     return [nursery, undefined];
-  const tapped = babyAt(target);
+  const tapped = babyAt(target) ?? lookAt(target);
   if (tapped !== undefined)
     return nursery.babies[tapped] === undefined
       ? [nursery, undefined]
-      : [{ ...nursery, chosen: tapped }, "giggle"];
+      : [
+          { ...nursery, chosen: tapped },
+          babyAt(target) === undefined ? "look" : "giggle",
+        ];
 
   const item = target as Item;
   const raising = nursery.babies[nursery.chosen] as Raising;
@@ -249,6 +275,20 @@ const HOME_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8M5 9.5V21h5v-6h4v6h5V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const HAND_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0-.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-4.6-2.2L4 15.5a1.6 1.6 0 0 1 2.4-2.1L9 16" fill="#fffdf8" stroke="#1d2742" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// The teeth seen through the magnifier, on a pink gum.
+const tooth = (x: number) =>
+  `<path d="M${x} 16 L${x + 10} 52 L${x + 20} 16 Z" fill="#fffdf8" stroke="#1d2742" stroke-width="2" stroke-linejoin="round"/>`;
+const molar = (x: number) =>
+  `<rect x="${x}" y="14" width="18" height="24" rx="5" fill="#fffdf8" stroke="#1d2742" stroke-width="2"/>`;
+const gum = '<rect x="0" y="2" width="120" height="16" rx="8" fill="#d9707f"/>';
+const TEETH: Record<Teeth, string> = {
+  sharp: [5, 27, 49, 71, 93].map(tooth).join(""),
+  flat: [6, 28, 50, 72, 94].map(molar).join(""),
+  mixed: [tooth(5), tooth(27), molar(52), molar(74), molar(96)].join(""),
+};
+const teethPicture = (teeth: Teeth) =>
+  `<svg viewBox="0 0 120 60" aria-hidden="true">${gum}${TEETH[teeth]}</svg>`;
+
 const DROP_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4 5 6 8.5 6 11.5a6 6 0 0 1-12 0C6 11.5 8 8 12 3z" fill="#4aa3df"/></svg>';
 
@@ -283,8 +323,38 @@ export type Options = {
   sounds?: Sounds;
   language?: Language;
   level?: Level;
+  notebook?: Notebook;
   now?: () => number;
   later?: (run: () => void, ms: number) => void;
+};
+
+// The field notebook keeps the ids of the babies a Paleontologist has
+// raised, across visits, oldest first.
+export type Notebook = {
+  read(): string[];
+  write(ids: readonly string[]): void;
+};
+const NOTEBOOK_KEY = "rexlab-care-notebook";
+const storedNotebook: Notebook = {
+  read() {
+    try {
+      const ids: unknown = JSON.parse(
+        window.localStorage.getItem(NOTEBOOK_KEY) ?? "[]",
+      );
+      return Array.isArray(ids)
+        ? ids.filter((id): id is string => typeof id === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  write(ids) {
+    try {
+      window.localStorage.setItem(NOTEBOOK_KEY, JSON.stringify(ids));
+    } catch {
+      // A private window keeps no notebook.
+    }
+  },
 };
 
 // Where each baby stands on the stage, by how many there are.
@@ -294,6 +364,11 @@ const BOXES: Record<Level, readonly Box[]> = {
   explorer: [
     { left: 24, top: 190, width: 450, height: 380 },
     { left: 494, top: 190, width: 450, height: 380 },
+  ],
+  paleontologist: [
+    { left: 0, top: 170, width: 330, height: 400 },
+    { left: 319, top: 170, width: 330, height: 400 },
+    { left: 638, top: 170, width: 330, height: 400 },
   ],
 };
 
@@ -310,7 +385,11 @@ function sizeOf(raising: Raising | undefined, box: Box) {
   };
 }
 
-const LEVEL_ICONS: Record<Level, string> = { hatchling: "🥚", explorer: "🦖" };
+const LEVEL_ICONS: Record<Level, string> = {
+  hatchling: "🥚",
+  explorer: "🦖",
+  paleontologist: "🦕",
+};
 
 // Draws the nursery into `root` and plays it there, the frame scaled to
 // fit the window. Taps during a reaction are ignored, so a quick double
@@ -322,6 +401,9 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
   const now = options.now ?? (() => performance.now());
   const later = options.later ?? ((run, ms) => window.setTimeout(run, ms));
   let level = options.level ?? "hatchling";
+  const notebook = options.notebook ?? storedNotebook;
+  // The baby whose teeth the magnifier shows.
+  let looking: number | undefined;
   let nursery = anEgg();
   let busyUntil = Number.NEGATIVE_INFINITY;
   // Babies whose next want waits until they finish with the last one.
@@ -342,6 +424,12 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     button.textContent = LEVEL_ICONS[each];
     switcher.append(button);
   }
+  const notebookButton = element("button", "hatch-notebook-button", {
+    type: "button",
+    "aria-label": "notebook",
+  });
+  notebookButton.textContent = "📓";
+  const notebookPages = element("div", "hatch-notebook");
   const row = element("div", "hatch-friends");
   const stage = element("div", "hatch-stage");
   const name = element("h1", "hatch-name");
@@ -363,7 +451,7 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     element("div", "hatch-ground"),
     name,
   );
-  frame.append(home, row, switcher, stage, tray);
+  frame.append(home, row, notebookButton, switcher, stage, tray, notebookPages);
   root.replaceChildren(frame);
 
   const fit = () =>
@@ -424,7 +512,19 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
           sweat.innerHTML = DROP_ICON;
           creature.append(sweat);
         }
+        // A Paleontologist's magnifier, and the teeth it shows.
+        const look = element("button", "hatch-look", {
+          type: "button",
+          "data-target": `look-${index}`,
+          "aria-label": "look",
+        });
+        look.textContent = "🔍";
+        const teeth = element("div", "hatch-teeth");
+        teeth.dataset.teeth = teethOf(baby);
+        teeth.innerHTML = teethPicture(teethOf(baby));
         creature.append(
+          look,
+          teeth,
           picture("hatch-offered", ""),
           element("div", "hatch-say"),
         );
@@ -460,8 +560,11 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
           : (raising.wants[0] ?? "");
       creature.dataset.chosen = String(
         nursery.phase === "babies" &&
-          level === "explorer" &&
+          level !== "hatchling" &&
           nursery.chosen === index,
+      );
+      creature.dataset.looking = String(
+        nursery.phase === "babies" && looking === index,
       );
     });
     name.textContent =
@@ -514,8 +617,33 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     );
   };
 
+  // A page for each baby raised, with its picture, name and teeth.
+  const drawNotebook = () => {
+    const ids = notebook.read();
+    notebookButton.dataset.pages = String(ids.length);
+    notebookPages.replaceChildren(
+      ...ids
+        .map((id) => BABIES.find((baby) => baby.id === id))
+        .filter((baby): baby is Baby => baby !== undefined)
+        .map((baby) => {
+          const page = element("div", "hatch-page", { "data-id": baby.id });
+          const label = element("span", "hatch-page-name");
+          label.textContent = baby.name[language];
+          const teeth = element("span", "hatch-page-teeth");
+          teeth.innerHTML = teethPicture(teethOf(baby));
+          page.append(
+            picture("hatch-page-picture", baby.picture),
+            label,
+            teeth,
+          );
+          return page;
+        }),
+    );
+  };
+
   const restart = () => {
     nursery = anEgg();
+    looking = undefined;
     resting.clear();
     arrive();
     draw();
@@ -531,6 +659,14 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
       restart();
       return;
     }
+    if ((event.target as Element).closest(".hatch-notebook-button") !== null) {
+      frame.dataset.notebook = "open";
+      return;
+    }
+    if (frame.dataset.notebook === "open") {
+      delete frame.dataset.notebook;
+      return;
+    }
     const button = (event.target as Element).closest<HTMLElement>(
       "[data-target]",
     );
@@ -542,7 +678,10 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     nursery = next;
     busyUntil = now() + REACTION_MS;
     const actor =
-      babyAt(target) ?? (before.phase === "babies" ? before.chosen : 0);
+      babyAt(target) ??
+      lookAt(target) ??
+      (before.phase === "babies" ? before.chosen : 0);
+    if (reaction === "look") looking = actor;
     if (before.phase === "egg" && next.phase === "babies") arrive();
     const all = creatures.map((_, index) => index);
     // A want shows once the baby has hatched, or finished with the last.
@@ -572,6 +711,13 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
     if (reaction === "dance" && nursery.phase === "grown") {
       const grown = nursery.babies;
       busyUntil = now() + DANCE_MS;
+      if (level === "paleontologist") {
+        // A baby raised again keeps its one page.
+        notebook.write([
+          ...new Set([...notebook.read(), ...grown.map((baby) => baby.id)]),
+        ]);
+        drawNotebook();
+      }
       later(() => {
         friends.push(...grown);
         drawFriends();
@@ -582,4 +728,5 @@ export function startCareHatch(root: HTMLElement, options: Options = {}): void {
   frame.addEventListener("contextmenu", (event) => event.preventDefault());
   arrive();
   draw();
+  drawNotebook();
 }
