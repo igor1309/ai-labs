@@ -15,6 +15,8 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [naming-prompt-round-2.md](naming-prompt-round-2.md) | Second naming round, built on `prompts/` |
 | [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
+| [audelin-naming-brief.md](audelin-naming-brief.md) | The chosen name: Audelin, CLI `audelin`, data in `~/.audelin` |
+| [audelin-availability-check.md](audelin-availability-check.md) | Collision search and score for Audelin; GitHub and App Store not yet confirmed directly |
 | [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
