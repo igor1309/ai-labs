@@ -15,6 +15,22 @@ figures the sources disagree on.
 | anarlog ([fastrepl/anarlog](https://github.com/fastrepl/anarlog)) | MIT, free | Local Parakeet streaming (likely English) | Unclear | Not tested |
 | MacWhisper 15.4 | Closed; one-time Pro | WhisperKit large-v3 live captions | Yes | Installed; not tested live |
 
+## Named in the chat survey (not tested)
+
+From [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) § 2;
+statements are the chat members', not checked.
+
+| App | Kind | Note |
+|---|---|---|
+| Gristmill | Open source, Timur Khakhalev's OpenWhispr rework (2026-10-15) | Records Ogg/Opus tracks, processes after Stop; chat via bb; Zoom speaker names via Accessibility |
+| OpenWhispr | Open source | Gristmill's base |
+| Guesli ([ivkiwi/guesli](https://github.com/ivkiwi/guesli)) | Muesli fork | GigaAM; summaries through a ChatGPT subscription |
+| StenoAI ([stenolabs/stenoai](https://github.com/stenolabs/stenoai)) | Open source | "Promising", untried |
+| Vexa ([Vexa-ai/vexa](https://github.com/Vexa-ai/vexa)) | Open source | Joins the call as a bot |
+| Granola | Closed | UX reference: no bot, offers to record; lost the far side after a network switch |
+| Krisp, Fathom, tl;dv, Plaud, ChatGPT Record | Closed | Hosted or paid |
+| Loomind, Tironian, SummitNotes, Fluid, Ruslo | Closed | Free or paid; Ruslo is a Russian Granola analogue |
+
 ## Dictation apps (not meeting tools; listed for the gallery)
 
 | App | URL | Note |
