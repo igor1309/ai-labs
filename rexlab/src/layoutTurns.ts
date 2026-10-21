@@ -65,7 +65,7 @@ const REDRAWS = ["scroll", "animationstart", "animationend", "animationcancel", 
 // runs, the document is marked `data-turning`, where the stylesheet lets
 // no tap or swipe reach the page, and keys, presses, clicks and the wheel
 // are held back.
-export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size: string, layout: ScreenLayout) {
+export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size: string, layout: ScreenLayout, applyLayout?: () => void) {
   // Each change of the window counts, though it leaves the size class and
   // the width as they were: the page's parts may be sized by its height.
   const resizes = useMemo(() => {
@@ -119,9 +119,10 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
     const next: ScreenLayout = arrangement === undefined ? { screen, portrait, gated } : { screen, portrait, gated, arrangement };
     turns.apply(() => {
       root.dataset.size = size;
+      applyLayout?.();
     }, turnStyle(last.current, next));
     last.current = next;
-  }, [turns, size, screen, portrait, gated, arrangement, resized]);
+  }, [turns, size, screen, portrait, gated, arrangement, resized, applyLayout]);
 
   useLayoutEffect(
     () => () => {

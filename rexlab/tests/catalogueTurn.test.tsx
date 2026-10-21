@@ -31,6 +31,8 @@ import {
   type ManualPictures
 } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
+import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
+import { manualSharedPictures } from "./sharedPictures.tsx";
 
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -135,7 +137,11 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   openWindow(width, height);
   const viewport = manualViewport(initial);
   const animations: Recorded[] = [];
-  const fades: Array<{ update: () => void; finished: () => void }> = [];
+  const arrangement = () => ({
+    columns: document.querySelector<HTMLElement>(".catalogue-grid")?.style.getPropertyValue("--columns"),
+    chips: document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement
+  });
+  const fades: Array<{ update: () => void; finished: () => void; captured: ReturnType<typeof arrangement> }> = [];
   const paints: Array<{ fire: () => void; stopped: boolean }> = [];
   const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     const name = this.getAttribute("data-turn-part");
@@ -148,6 +154,20 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     const drawing = rising.get(nameOf(element));
     return drawing ? { ...box, top: box.top + drawing.y } : box;
   };
+  const shared = manualSharedPictures((element) => {
+    const target = element.closest<HTMLElement>(".catalogue-card");
+    if (!target) return { left: 80, top: 140, width: 620, height: 500 };
+    const box = measure(target);
+    let { left, top } = box;
+    for (const name of [nameOf(target), "catalogue-list"]) {
+      const animation = animations.filter((animation) => animation.name === name && !animation.cancelled).at(-1);
+      if (!animation) continue;
+      const [x = 0, y = 0] = String(animation.keyframes[0]?.translate).split(" ").map(px);
+      left += x * (1 - animation.progress);
+      top += y * (1 - animation.progress);
+    }
+    return { left: left + 16, top: top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
+  });
   render(
     <App
       {...featuring()}
@@ -170,6 +190,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
       {...emptyDig()}
       chipWidths={emChipWidths()}
       reducedMotion={() => reduced}
+      pictureTransition={shared.Transition}
       layoutMotion={{
         parts: document,
         measure,
@@ -190,7 +211,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
           paints.push(paint);
           return () => void (paint.stopped = true);
         },
-        startViewTransition: (update, finished) => void fades.push({ update, finished }),
+        startViewTransition: (update, finished) => void fades.push({ update, finished, captured: arrangement() }),
         timing: { glide: GLIDE, easing: EASE_OUT }
       }}
       {...pictures}
@@ -208,7 +229,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const updateFade = () => act(() => fades.at(-1)?.update());
   const endFade = () => act(() => fades.at(-1)?.finished());
   const parts = () => [...document.querySelectorAll<HTMLElement>("[data-turn-part]")];
-  return { user, pictures, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
+  return { user, pictures, shared, animations, fades, paints, resize, settle, updateFade, endFade, parts, paint, progress, rising, measure, grid: () => screen.getByRole("group", { name: TEXTS[language].catalogue }) };
 }
 
 const own = ({ name }: Recorded) => !name.startsWith("frame of ");
@@ -332,6 +353,32 @@ describe("catalogue's shared turn", () => {
   });
 
   it.each([
+    [[744, 1133, "tall"], [820, 1180, "tall"], { columns: "2", chips: "closed" }, { columns: "3", chips: "spaced" }],
+    [[700, 1000, "tall"], [744, 1000, "tall"], { columns: "2", chips: "stacked" }, { columns: "2", chips: "closed" }]
+  ] as const)("captures the old Russian arrangement from %j before fading to %j", async (from, to, before, after) => {
+    const app = openCatalogue(from[0], from[1], { reduced: true, language: "ru" });
+    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    app.resize(from);
+    app.updateFade();
+    app.endFade();
+    app.fades.length = 0;
+    const arrangement = () => ({ columns: app.grid().style.getPropertyValue("--columns"), chips: document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement });
+    expect(arrangement()).toEqual(before);
+
+    app.resize(to);
+
+    expect(app.fades).toHaveLength(1);
+    expect(app.fades[0]?.captured).toEqual(before);
+    expect(arrangement()).toEqual(before);
+    expect(document.documentElement.dataset.size).toBe("tall");
+    app.updateFade();
+    expect(arrangement()).toEqual(after);
+    expect(app.animations.filter(own)).toEqual([]);
+    app.endFade();
+    expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
+  });
+
+  it.each([
     ["row of Gallimimus at its top", 3, 0, "gallimimus", "gallimimus"],
     ["60 pixels of Gallimimus hidden", 3, 60, "gallimimus", "gallimimus"],
     ["200 pixels of row before Gallimimus hidden", 2, 200, "gallimimus", "gallimimus"],
@@ -420,21 +467,53 @@ describe("catalogue's shared turn", () => {
   it("lands the shared picture in Baryonyx's upright card when the turn starts during its shrink", async () => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const openingFrom = app.shared.capture("dinosaur-baryonyx");
     await app.user.click(card("baryonyx"));
+    const opening = app.shared.begin(openingFrom, OPEN_DINOSAUR);
+    expect(opening.at(0.5).width).toBeGreaterThan(opening.from.width);
+    expect(opening.at(1)).toEqual({ left: 80, top: 140, width: 620, height: 500 });
+    const closingFrom = app.shared.capture("dinosaur-baryonyx");
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const closing = app.shared.begin(closingFrom, CLOSE_DINOSAUR);
+    const shrinking = closing.at(0.5);
+    expect(shrinking.width).toBeLessThan(closing.from.width);
+    expect(shrinking.width).toBeGreaterThan(closing.at(1).width);
     const list = app.grid();
     listMetrics(list);
     app.resize([820, 1180, "tall"]);
-    // The browser shrinks the picture by a view transition whose group
-    // follows the card's live box every frame, so it lands where the card
-    // now stands, as long as the turn starts no view transition of its own,
-    // which would skip the shrink.
     expect(app.fades).toHaveLength(0);
     const baryonyx = cardIn(list, "baryonyx");
     expect(baryonyx.querySelector("img")).toBeTruthy();
     expect(baryonyx.getBoundingClientRect()).toEqual(new DOMRect(...Object.values(expectedCardBox("baryonyx", list, 820, 1180, "tall")) as [number, number, number, number]));
     expectWholeInList(list, "baryonyx");
     expect(app.animations.filter(({ name }) => name === "catalogue-card-baryonyx")).toHaveLength(1);
+    app.progress(0.5);
+    const drawnCard = app.measure(baryonyx);
+    const cardGlide = glideOf(app.animations, "catalogue-card-baryonyx");
+    const listAnimation = app.animations.find(({ name, cancelled }) => name === "catalogue-list" && !cancelled)!;
+    const [listX = 0, listY = 0] = String(listAnimation.keyframes[0]?.translate).split(" ").map(px);
+    const destination = {
+      left: drawnCard.left + (cardGlide.offset.x + listX) / 2 + 16,
+      top: drawnCard.top + (cardGlide.offset.y + listY) / 2 + 16,
+      width: drawnCard.width - 32,
+      height: drawnCard.width * 200 / 317 - 32
+    };
+    expect(closing.at(0.5)).toEqual({
+      left: (80 + destination.left) / 2,
+      top: (140 + destination.top) / 2,
+      width: (620 + destination.width) / 2,
+      height: (500 + destination.height) / 2
+    });
+    app.progress(1);
+    const landed = closing.at(1);
+    expect(landed).toEqual({
+      left: expect.closeTo(drawnCard.left + 16, 10),
+      top: expect.closeTo(drawnCard.top + 16, 10),
+      width: expect.closeTo(destination.width, 10),
+      height: expect.closeTo(destination.height, 10)
+    });
+    expect(landed.top).toBeGreaterThanOrEqual(list.getBoundingClientRect().top);
+    expect(landed.top + landed.height).toBeLessThanOrEqual(list.getBoundingClientRect().bottom);
     app.settle();
   });
 

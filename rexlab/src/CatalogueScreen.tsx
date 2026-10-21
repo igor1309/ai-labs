@@ -1,13 +1,13 @@
 import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useImperativeHandle, useRef, type CSSProperties, type Ref } from "react";
 import { Button } from "./Button.tsx";
-import type { ChipContent } from "./chipArrangement.ts";
+import type { ChipArrangement, ChipContent } from "./chipArrangement.ts";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import { FoodChips, type ChipWidths, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
-import { SharedPicture } from "./SharedPicture.tsx";
+import { SharedPicture, type PictureTransition } from "./SharedPicture.tsx";
 import { useKeptList, type LayoutKeeping } from "./useKeptList.ts";
 
 // How a creature's size is measured: a dinosaur's height, a flying
@@ -31,17 +31,21 @@ export type CatalogueCardView = {
   found: boolean;
 };
 
+export type CatalogueArrangement = { columns: number; chips: ChipArrangement | undefined };
+
+// The turn applies the arrangement only after measuring or capturing the
+// previous one. The keeper reads the applied columns during restoration.
+export type CatalogueLayout = { apply(arrangement: CatalogueArrangement): void };
+
 export type CatalogueScreenProps = {
+  ref?: Ref<CatalogueLayout>;
+  pictureTransition?: PictureTransition | undefined;
   language: Language;
   // The dinosaurs of the food chosen.
   dinosaurs: readonly CatalogueCardView[];
   foods: readonly FoodChoice[];
   food: Food;
-  // The cards in a row.
-  columns: number;
-  // The width of the chips' row where it stands on its own, in a tall
-  // window; undefined where the chips stand beside HOME.
-  chipRow: number | undefined;
+  initialArrangement: CatalogueArrangement;
   // How the chips' parts are measured, for how they stand on their row.
   chipWidths: ChipWidths;
   onChipContents: (contents: readonly ChipContent[]) => void;
@@ -54,15 +58,31 @@ export type CatalogueScreenProps = {
   onHome: () => void;
 };
 
-export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chipRow, chipWidths, onChipContents, layoutKeeping, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
+export function CatalogueScreen({ ref, pictureTransition, language, dinosaurs, foods, food, initialArrangement, chipWidths, onChipContents, layoutKeeping, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
+  const applied = useRef(initialArrangement);
+  const main = useRef<HTMLElement>(null);
+  useImperativeHandle(ref, () => ({
+    apply: (next) => {
+      applied.current = next;
+      const grid = main.current?.querySelector<HTMLElement>(".catalogue-grid");
+      grid?.style.setProperty("--columns", String(next.columns));
+      grid?.querySelectorAll<HTMLElement>(".catalogue-card:not([data-turn-frame])").forEach((card, index) => card.style.setProperty("--card", String(Math.min(index, next.columns - 1))));
+      const chips = main.current?.querySelector<HTMLElement>(".food-chips");
+      if (chips) {
+        if (next.chips === undefined) delete chips.dataset.arrangement;
+        else chips.dataset.arrangement = next.chips;
+      }
+    }
+  }), []);
   const returningIndex = returning === undefined ? undefined : dinosaurs.findIndex(({ id }) => id === returning);
   // Back from a page, its card is scrolled into view, so its picture has a
   // card to shrink back into wherever the list was scrolled to.
-  const list = useKeptList(layoutKeeping, columns, returningIndex === -1 ? undefined : returningIndex, food);
+  const list = useKeptList(layoutKeeping, () => applied.current.columns, returningIndex === -1 ? undefined : returningIndex, food);
+  const { columns, chips } = applied.current;
 
   return (
-    <main className="catalogue" aria-label={text.catalogue}>
+    <main ref={main} className="catalogue" aria-label={text.catalogue}>
       {/* HOME and the chips in one row, or in a tall window the chips
           on a row of their own under HOME, and the cards under them. */}
       <header className="catalogue-bar">
@@ -70,7 +90,7 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chi
           <House size={24} aria-hidden="true" />
           {text.home}
         </Button>
-        <FoodChips language={language} choices={foods} chosen={food} row={chipRow} widths={chipWidths} onContents={onChipContents} onChoose={onFood} />
+        <FoodChips language={language} choices={foods} chosen={food} arrangement={chips} widths={chipWidths} onContents={onChipContents} onChoose={onFood} />
       </header>
       {/* The cards rise in when the catalogue opens from home, and again
           for each food chosen, as a list of their own: back from a page,
@@ -87,7 +107,7 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chi
         style={{ "--columns": columns } as CSSProperties}
       >
         {dinosaurs.map((view, index) => (
-          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, columns - 1)} onOpen={onOpen} />
+          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, columns - 1)} onOpen={onOpen} pictureTransition={pictureTransition} />
         ))}
       </div>
     </main>
@@ -95,6 +115,7 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chi
 }
 
 type CatalogueCardProps = {
+  pictureTransition?: PictureTransition | undefined;
   view: CatalogueCardView;
   language: Language;
   // The card's place in the stagger of the cards rising in: only the
@@ -103,7 +124,7 @@ type CatalogueCardProps = {
   onOpen: (id: string) => void;
 };
 
-function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language, place, onOpen }: CatalogueCardProps) {
+function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language, place, onOpen, pictureTransition }: CatalogueCardProps) {
   const SizeIcon = MEASURE_ICONS[size.measure];
   return (
     <Button
@@ -115,7 +136,7 @@ function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language
       onClick={() => onOpen(id)}
     >
       <span className="catalogue-art">
-        <SharedPicture id={id}>
+        <SharedPicture id={id} transition={pictureTransition}>
           <Picture className="catalogue-picture" src={picture} alt="" width={800} height={600} />
         </SharedPicture>
       </span>

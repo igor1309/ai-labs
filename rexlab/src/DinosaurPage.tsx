@@ -6,7 +6,7 @@ import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
-import { SharedPicture } from "./SharedPicture.tsx";
+import { SharedPicture, type PictureTransition } from "./SharedPicture.tsx";
 
 // The view transition types of the next or previous dinosaur taking the
 // page: the picture and the words slide out and in the arrow's way, the
@@ -31,6 +31,7 @@ export type DinosaurPageView = {
 };
 
 export type DinosaurPageProps = {
+  pictureTransition?: PictureTransition | undefined;
   language: Language;
   dinosaur: DinosaurPageView;
   // The dinosaur's place in the catalogue, from 1.
@@ -57,7 +58,7 @@ function Sliding({ late, children }: { late: boolean; children: ReactNode }) {
   );
 }
 
-export function DinosaurPage({ language, dinosaur: { id, name, picture, group, diet, description, size, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
+export function DinosaurPage({ pictureTransition, language, dinosaur: { id, name, picture, group, diet, description, size, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
   const text = TEXTS[language];
   const SizeIcon = MEASURE_ICONS[size.measure];
   return (
@@ -76,7 +77,7 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, group, d
           <span className="dinosaur-glow" aria-hidden="true" />
           <Sliding key={id} late={false}>
             <div className="dinosaur-stage-art">
-              <SharedPicture id={id}>
+              <SharedPicture id={id} transition={pictureTransition}>
                 <Picture className="dinosaur-stage-picture" src={picture} alt={name} width={800} height={600} />
               </SharedPicture>
             </div>

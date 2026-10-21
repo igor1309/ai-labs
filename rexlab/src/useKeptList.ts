@@ -7,13 +7,14 @@ export type LayoutKeeping = {
 };
 
 // Keeps where the catalogue's vertical list stands through a change of its
-// columns or card height. Back from a page, the list scrolls the card come
+// columns (read when the list is put back, as the turn has applied them)
+// or card height. Back from a page, the list scrolls the card come
 // back to (`returning`, its index in the list) into view, and that card is
 // where the list stands until the child scrolls it, so the shared picture
 // has a whole card to shrink into even when a turn starts during the
 // closing transition; neither a scroll during a turn nor one that only puts
 // the list back counts as the child's.
-export function useKeptList(keeping: LayoutKeeping, columns: number, returning?: number, listKey?: string) {
+export function useKeptList(keeping: LayoutKeeping, columns: () => number, returning?: number, listKey?: string) {
   const list = useRef<HTMLDivElement>(null);
   const anchor = useRef<ListAnchor>(0);
   const columnsNow = useRef(columns);
@@ -42,7 +43,7 @@ export function useKeptList(keeping: LayoutKeeping, columns: number, returning?:
     const row = card instanceof HTMLElement ? card.getBoundingClientRect().height : 0;
     const style = getComputedStyle(element);
     const gap = Number.parseFloat(style.rowGap) || Number.parseFloat(style.gap) || 0;
-    return { columns: columnsNow.current, row, gap };
+    return { columns: columnsNow.current(), row, gap };
   };
 
   const standing = (element: HTMLElement) =>
