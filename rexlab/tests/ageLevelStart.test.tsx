@@ -30,7 +30,8 @@ import {
   pageAtRest,
   seededRandom,
   unreadVersion,
-  type MemoryStorage
+  type MemoryStorage,
+  shownQuestion
 } from "./support.ts";
 
 // age-level-start.feature
@@ -131,21 +132,6 @@ describe("today's games", () => {
     for (const level of AGE_LEVELS) expect([level, await start(iPadAt(level), tile, into)]).toEqual([level, today]);
   });
 });
-
-function shownQuestion(): Question {
-  const heading = screen.getByRole("heading").textContent ?? "";
-  const kind = heading.includes("LIGHTER") ? "lighter" : heading.includes("SHORTER") ? "shorter" : heading.includes("LONGER") ? "longer" : heading.includes("HEAVIER") ? "heavier" : "taller";
-  const attribute = kind === "taller" || kind === "shorter" ? "height" : kind === "longer" ? "length" : "mass";
-  const [left, right] = within(group())
-    .getAllByRole("button")
-    .map((card) => {
-      const found = SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.name.en === card.getAttribute("aria-label"));
-      if (!found) throw new Error(`No ${card.getAttribute("aria-label")} in the shipped list`);
-      return found;
-    });
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { kind, attribute, left, right };
-}
 
 // Plays a compare quiz round from the home page, every question answered
 // right, and sees its result.
