@@ -104,6 +104,18 @@ Call folders (owner, 2026-10-21), following Amanu:
 - Changing the data folder moves every call to the new place after a confirm
   ("Move 52 calls (135 MB)?"). There is no option to leave calls behind.
 
+Edge cases (owner, 2026-10-21, accepted as proposed):
+
+- No recording starts while calls are being moved, and a move does not start
+  during a recording.
+- Calls move one by one (copy, check, delete the source). A failed move
+  leaves the remaining calls where they were and offers Retry.
+- Two calls with the same title in the same minute: the second gets « 2».
+- A Finder rename that drops the timestamp is accepted; the date comes from
+  `meta.json`.
+- If the live model (Parakeet v3) is still downloading when a call starts,
+  audio is recorded anyway and live text starts once the model arrives.
+
 ## Open questions for the owner
 
 - **App name**, which also names the data folder.
