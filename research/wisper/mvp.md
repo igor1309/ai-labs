@@ -63,8 +63,15 @@ its audio until unpinned. Audio is removed only after the transcript is
 written and checked: Amanu's audit found it deleting the only copy after a
 failed recognition.
 
+Data folder (owner, 2026-10-21): `~/.<app name>` by default, changeable in
+settings. Works because the app is not sandboxed (no App Store build).
+
+Final-pass engine (owner, 2026-10-21): not fixed in code. It is a required
+setting with no built-in default; v3's final pass does not run until it is
+set. Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+(already on this Mac). An engine-comparison test over the same recordings
+backs the choice.
+
 ## Open questions for the owner
 
-- **Where audio and transcripts live** on disk.
-- **Final-pass engine for v3:** Parakeet v3 over the whole file, or Whisper
-  Large v3 Turbo already on this Mac. Needs a side-by-side on one call.
+- **App name**, which also names the data folder.
