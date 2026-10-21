@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { addTransitionType, startTransition, type ViewTransitionProps } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
@@ -32,7 +33,13 @@ import {
 } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
-import { manualSharedPictures } from "./sharedPictures.tsx";
+import { recordedSharedPictures } from "./sharedPictures.tsx";
+import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
+
+vi.mock("react", async (actual) => {
+  const react = await actual<typeof import("react")>();
+  return { ...react, addTransitionType: vi.fn(react.addTransitionType), startTransition: vi.fn(react.startTransition) };
+});
 
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -154,20 +161,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     const drawing = rising.get(nameOf(element));
     return drawing ? { ...box, top: box.top + drawing.y } : box;
   };
-  const shared = manualSharedPictures((element) => {
-    const target = element.closest<HTMLElement>(".catalogue-card");
-    if (!target) return { left: 80, top: 140, width: 620, height: 500 };
-    const box = measure(target);
-    let { left, top } = box;
-    for (const name of [nameOf(target), "catalogue-list"]) {
-      const animation = animations.filter((animation) => animation.name === name && !animation.cancelled).at(-1);
-      if (!animation) continue;
-      const [x = 0, y = 0] = String(animation.keyframes[0]?.translate).split(" ").map(px);
-      left += x * (1 - animation.progress);
-      top += y * (1 - animation.progress);
-    }
-    return { left: left + 16, top: top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
-  });
+  const shared = recordedSharedPictures();
   render(
     <App
       {...featuring()}
@@ -248,6 +242,32 @@ function glideOf(animations: readonly Recorded[], name: string) {
 }
 
 const card = (id: string) => document.querySelector<HTMLElement>(`[data-turn-part="catalogue-card-${id}"]`)!;
+
+function clearScreenTransitions() {
+  vi.mocked(addTransitionType).mockClear();
+  vi.mocked(startTransition).mockClear();
+}
+
+function screenTransitionTypes(expected: string) {
+  const types = vi.mocked(addTransitionType).mock.calls.map(([type]) => type);
+  expect(types).toEqual([expected]);
+  expect(vi.mocked(startTransition).mock.calls).toHaveLength(1);
+  return types;
+}
+
+function sharedClass(props: ViewTransitionProps, types: string[]) {
+  const { share, default: fallback } = props;
+  return typeof share === "object" ? types.map((type) => share[type]).find(Boolean) ?? share.default : share ?? fallback;
+}
+
+function expectSharedPair(from: { props: ViewTransitionProps }[], to: { props: ViewTransitionProps }[], types: string[]) {
+  const pairs = from.flatMap(({ props: old }) => to.filter(({ props }) => props.name === old.name).map(({ props }) => [old, props]));
+  expect(pairs.map((pair) => pair.map(({ name }) => name))).toEqual([["dinosaur-baryonyx", "dinosaur-baryonyx"]]);
+  for (const props of pairs.flat()) {
+    expect(props.default).toBe("none");
+    expect(sharedClass(props, types)).toBe("dinosaur-share");
+  }
+}
 
 describe("catalogue turn styles", () => {
   it.each([
@@ -464,57 +484,63 @@ describe("catalogue's shared turn", () => {
     app.settle();
   });
 
-  it("lands the shared picture in Baryonyx's upright card when the turn starts during its shrink", async () => {
+  it("pairs Baryonyx's card and page on open and Back, keeping the card whole when a turn starts during close", async () => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
-    const openingFrom = app.shared.capture("dinosaur-baryonyx");
+    const cataloguePictures = app.shared.pictures();
+    const openingFrom = app.shared.picture("dinosaur-baryonyx");
+    expect(openingFrom.element.closest(".catalogue-card")).toBe(card("baryonyx"));
+
+    clearScreenTransitions();
     await app.user.click(card("baryonyx"));
-    const opening = app.shared.begin(openingFrom, OPEN_DINOSAUR);
-    expect(opening.at(0.5).width).toBeGreaterThan(opening.from.width);
-    expect(opening.at(1)).toEqual({ left: 80, top: 140, width: 620, height: 500 });
-    const closingFrom = app.shared.capture("dinosaur-baryonyx");
+    const openingTypes = screenTransitionTypes(OPEN_DINOSAUR);
+    const pagePictures = app.shared.pictures();
+    const page = app.shared.picture("dinosaur-baryonyx");
+    expect(page.element.closest(".dinosaur-page")).toBeTruthy();
+    expectSharedPair(cataloguePictures, pagePictures, openingTypes);
+
+    clearScreenTransitions();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
-    const closing = app.shared.begin(closingFrom, CLOSE_DINOSAUR);
-    const shrinking = closing.at(0.5);
-    expect(shrinking.width).toBeLessThan(closing.from.width);
-    expect(shrinking.width).toBeGreaterThan(closing.at(1).width);
+    const closingTypes = screenTransitionTypes(CLOSE_DINOSAUR);
+    expectSharedPair(pagePictures, app.shared.pictures(), closingTypes);
     const list = app.grid();
     listMetrics(list);
+
+    clearScreenTransitions();
     app.resize([820, 1180, "tall"]);
     expect(app.fades).toHaveLength(0);
+    expect(vi.mocked(addTransitionType).mock.calls).toEqual([]);
+    expect(vi.mocked(startTransition).mock.calls).toEqual([]);
+    expect(app.animations.filter(({ name }) => name === "catalogue-card-baryonyx")).toHaveLength(1);
+    app.settle();
+
     const baryonyx = cardIn(list, "baryonyx");
+    expect(app.shared.picture("dinosaur-baryonyx").element.closest(".catalogue-card")).toBe(baryonyx);
     expect(baryonyx.querySelector("img")).toBeTruthy();
     expect(baryonyx.getBoundingClientRect()).toEqual(new DOMRect(...Object.values(expectedCardBox("baryonyx", list, 820, 1180, "tall")) as [number, number, number, number]));
     expectWholeInList(list, "baryonyx");
-    expect(app.animations.filter(({ name }) => name === "catalogue-card-baryonyx")).toHaveLength(1);
-    app.progress(0.5);
-    const drawnCard = app.measure(baryonyx);
-    const cardGlide = glideOf(app.animations, "catalogue-card-baryonyx");
-    const listAnimation = app.animations.find(({ name, cancelled }) => name === "catalogue-list" && !cancelled)!;
-    const [listX = 0, listY = 0] = String(listAnimation.keyframes[0]?.translate).split(" ").map(px);
-    const destination = {
-      left: drawnCard.left + (cardGlide.offset.x + listX) / 2 + 16,
-      top: drawnCard.top + (cardGlide.offset.y + listY) / 2 + 16,
-      width: drawnCard.width - 32,
-      height: drawnCard.width * 200 / 317 - 32
-    };
-    expect(closing.at(0.5)).toEqual({
-      left: (80 + destination.left) / 2,
-      top: (140 + destination.top) / 2,
-      width: (620 + destination.width) / 2,
-      height: (500 + destination.height) / 2
-    });
-    app.progress(1);
-    const landed = closing.at(1);
-    expect(landed).toEqual({
-      left: expect.closeTo(drawnCard.left + 16, 10),
-      top: expect.closeTo(drawnCard.top + 16, 10),
-      width: expect.closeTo(destination.width, 10),
-      height: expect.closeTo(destination.height, 10)
-    });
-    expect(landed.top).toBeGreaterThanOrEqual(list.getBoundingClientRect().top);
-    expect(landed.top + landed.height).toBeLessThanOrEqual(list.getBoundingClientRect().bottom);
-    app.settle();
+  });
+
+  it.each([
+    ["previous", PREVIOUS_DINOSAUR],
+    ["next", NEXT_DINOSAUR]
+  ] as const)("does not share pictures when the %s dinosaur takes the page", async (step, type) => {
+    const app = openCatalogue();
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(card("baryonyx"));
+    const before = app.shared.pictures();
+
+    clearScreenTransitions();
+    await app.user.click(screen.getByRole("button", { name: step === "previous" ? TEXTS.en.previousDinosaur : TEXTS.en.nextDinosaur }));
+    const types = screenTransitionTypes(type);
+    const after = app.shared.pictures();
+    expect(before.map(({ props }) => props.name)).not.toEqual(after.map(({ props }) => props.name));
+    expect(before).toHaveLength(1);
+    expect(after).toHaveLength(1);
+    for (const { props } of [...before, ...after]) {
+      expect(props.default).toBe("none");
+      expect(sharedClass(props, types)).toBe("none");
+    }
   });
 
   it.each([
