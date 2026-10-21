@@ -156,5 +156,6 @@ v4 screen details (decided by the agents, owner delegated, 2026-10-21):
 ## Name
 
 Audelin (owner, 2026-10-21): CLI `audelin`, data in `~/.audelin`, calls in
-`~/Recordings/Audelin`. The Russian UI uses Latin "Audelin" too. See
+`~/Recordings/Audelin`. In Russian it is Одели́н, stressed on the last
+syllable (owner, 2026-10-21). The Russian UI uses Latin "Audelin" too. See
 [audelin-naming-brief.md](../audelin-naming-brief.md).

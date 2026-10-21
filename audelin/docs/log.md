@@ -4,7 +4,7 @@
 
 - ADR-001: v1 is one modular app; it records first, runs one live stream per
   track, and logs only through decorators in the composition root.
-- Name: Audelin, CLI `audelin`, data in `~/.audelin`.
+- Name: Audelin, in Russian Одели́н; CLI `audelin`, data in `~/.audelin`.
 - Design: Glass Ledger visual language and Screens 1–8, light and dark.
 - Versions planned: v1 live transcript, v2 term explanation through bb, v3
   final pass and summary.

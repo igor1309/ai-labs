@@ -8,7 +8,7 @@ version: 0.0.1
 # Audelin — Naming Brief
 
 **Name:** Audelin  
-**Russian:** Ауделин  
+**Russian:** Одели́н, stressed on the last syllable (owner, 2026-10-21)  
 **CLI:** `audelin`  
 **Data directory:** `~/.audelin`
 
@@ -19,6 +19,10 @@ A native, fully local macOS companion for personal calls. Captures audio, displa
 **Audelin** is a coined name inspired by Latin *audire* (“to hear”).
 
 It suggests attentive listening without describing the software literally. Its soft, flowing sound gives the app a quiet, approachable identity.
+
+In Russian it is Одели́н, read the French way (*au* as «о»), not the literal
+Ауделин: it sounds softer in Russian. The cost is spelling: someone who hears
+«Оделин» may write Odelin.
 
 ### Brand character
 - **Tone:** Calm, discreet, intelligent, slightly literary.
