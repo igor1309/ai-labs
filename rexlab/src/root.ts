@@ -42,14 +42,20 @@ export type Browser = {
   removeEventListener(type: "resize", listener: () => void): void;
   screen: { orientation?: Pick<ScreenOrientation, "type" | "addEventListener" | "removeEventListener"> };
   navigator: { language: string };
-  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener"> & {
-    getElementById(id: string): Pick<Element, "setAttribute"> | null;
-  };
+  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener" | "querySelectorAll"> &
+    Partial<Pick<Document, "startViewTransition">> & {
+      getElementById(id: string): Pick<Element, "setAttribute"> | null;
+    };
   Image: new () => DecodingImage;
   setTimeout(fire: () => void, ms: number): number;
   clearTimeout(id: number): void;
   Date: { now(): number };
 };
+
+// A screen glides to its other layout over app.css's --motion-standard,
+// easing out, and under reduced motion fades over the 160 ms reduced
+// motion sets --motion-standard to.
+export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fade: 160 };
 
 // Each pointer event the double-tap filter reads, and the step of a touch
 // it is.
@@ -110,6 +116,18 @@ export function appProps(browser: Browser): AppProps {
     random: Math.random,
     viewport,
     portraitLayouts: { home: ["tall"] },
+    // A box as drawn includes the animation running on it. A browser with
+    // no view transitions changes the layout at once.
+    layoutMotion: {
+      parts: browser.document,
+      measure: (element) => element.getBoundingClientRect(),
+      animate: (element, keyframes, options) => element.animate(keyframes, options),
+      startViewTransition: (update) => {
+        if (browser.document.startViewTransition) browser.document.startViewTransition(update);
+        else update();
+      },
+      timing: TURN_TIMING
+    },
     pageVisibility: { isHidden: visibility.hidden, subscribe: visibility.watch },
     progress: localProgress(storage),
     deviceLanguage: browser.navigator.language,

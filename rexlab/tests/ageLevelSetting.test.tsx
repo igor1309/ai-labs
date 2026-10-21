@@ -28,6 +28,7 @@ import {
   manualTimers,
   manualVisibility,
   memoryStorage,
+  pageAtRest,
   seededRandom,
   tilesRow,
   unreadVersion,
@@ -81,6 +82,7 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
       {...emptyDig()}
+      {...pageAtRest()}
       skeletonProgress={localSkeletonProgress(local)}
       now={() => TODAY}
       featuredStore={featured}

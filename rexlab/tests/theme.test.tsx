@@ -46,6 +46,7 @@ import {
   manualViewport,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
   seenOn,
@@ -128,6 +129,7 @@ function openApp({
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       {...timers}
     />
   );

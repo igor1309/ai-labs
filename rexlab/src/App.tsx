@@ -11,6 +11,7 @@ import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { useLayoutTurns } from "./layoutTurns.ts";
 import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
@@ -35,6 +36,7 @@ import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
+import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
 
 export type ProgressStore = {
   // The progress kept so far, or undefined when it cannot be read at all.
@@ -114,6 +116,9 @@ export type AppProps = CareGameProps &
     random: Random;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
+    // How the page's parts are found, measured and animated, and the page
+    // cross-faded, as a screen goes to its other layout.
+    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer">;
     pageVisibility: PageVisibility;
     progress: ProgressStore;
     // The device's language tag, such as "ru-RU".
@@ -204,6 +209,7 @@ export function App({
   random,
   viewport,
   portraitLayouts,
+  layoutMotion,
   pageVisibility,
   progress,
   deviceLanguage,
@@ -241,12 +247,9 @@ export function App({
     subscribe: viewport.subscribe
   }), [viewport, portraitSizes]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
-
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    root.dataset.size = size;
-    return () => { delete root.dataset.size; };
-  }, [size]);
+  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, reducedMotion: careProps.reducedMotion, startTimer }));
+  const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
+  useLayoutTurns(turns, viewport, size, { screen: screen.kind, portrait, gated: gateShown });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -545,6 +548,7 @@ export function App({
             startTimer={startTimer}
             viewport={viewport}
             upright={size === "tall" || size === "tall-narrow"}
+            layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}

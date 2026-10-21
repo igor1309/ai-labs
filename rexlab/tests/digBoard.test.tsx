@@ -25,6 +25,7 @@ import {
   manualViewport,
   manualTimers,
   memoryStorage,
+  pageAtRest,
   symbolOf,
   unreadVersion
 } from "./support.ts";
@@ -64,6 +65,7 @@ function openApp({ reducedMotion = false, random = () => 0, language = "en", san
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       sandContext={sandContext}
       reducedMotion={() => reducedMotion}
       {...timers}

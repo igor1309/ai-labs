@@ -11,6 +11,7 @@ import { sortByTrying } from "./sorting.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 import {
   emptyDig,
+  pageAtRest,
   unreadVersion,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -84,6 +85,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
       {...emptyDig()}
+      {...pageAtRest()}
       skeletonProgress={localSkeletonProgress(() => storage)}
       reducedMotion={() => false}
       {...clock}

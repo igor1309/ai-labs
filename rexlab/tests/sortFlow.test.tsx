@@ -31,6 +31,7 @@ import {
   manualViewport,
   manualPictures,
   memoryStorage,
+  pageAtRest,
   seededRandom,
   symbolOf,
   words,
@@ -72,6 +73,7 @@ function openApp({
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={sortingProgress}
       {...pictures}

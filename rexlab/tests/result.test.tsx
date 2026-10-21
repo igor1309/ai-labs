@@ -20,6 +20,7 @@ import {
   loadedPictures,
   manualViewport,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
   symbolOf,
@@ -79,6 +80,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      {...pageAtRest()}
       {...loadedPictures()}
     />
   );

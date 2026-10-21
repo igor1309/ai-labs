@@ -1,5 +1,5 @@
 import type { AgeLevel } from "../src/ageLevel.ts";
-import { act, within } from "@testing-library/react";
+import { act, fireEvent, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import records from "../src/data/dinosaurs.json";
@@ -23,6 +23,8 @@ import { startPlay } from "../src/quiz/play.ts";
 import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
+import type { LayoutKeeping } from "../src/useKeptRow.ts";
+import { styleAt } from "./windowSizes.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 export const SHIPPED_CATALOGUE = readCatalogue(records);
@@ -314,7 +316,9 @@ export function browserDocument(initial: DocumentVisibilityState = "visible", { 
   const footer = { setAttribute: (name: string, value: string) => void (attributes[name] = value) };
   const document = Object.assign(target, {
     visibilityState: initial,
-    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null)
+    getElementById: (id: string) => (versionFooter && id === "version" ? footer : null),
+    // No part of the page is marked to move as the window turns.
+    querySelectorAll: (() => []) as unknown as ParentNode["querySelectorAll"]
   });
   return {
     document,
@@ -416,6 +420,25 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
   const storage = memoryStorage();
   return { digDinosaurs: SHIPPED_DIG, digProgress: localDigProgress(() => storage), sandContext: () => null };
 }
+
+// The page's motion between layouts for tests that are not about it:
+// every part is measured where it stands in any layout, so nothing
+// glides, and a fade changes the layout at once.
+export function pageAtRest(): Pick<AppProps, "layoutMotion"> {
+  return {
+    layoutMotion: {
+      parts: document,
+      measure: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+      animate: () => ({ cancel: () => {}, effect: null }),
+      startViewTransition: (update) => update(),
+      timing: { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fade: 160 }
+    }
+  };
+}
+
+// A page that keeps nothing through a change of layout, for a screen
+// rendered alone.
+export const keptNothing: LayoutKeeping = { keep: () => () => {}, isRunning: () => false };
 
 // The language for tests that are not about it: an English device, no
 // language chosen yet, and a version footer nobody reads.
@@ -695,6 +718,31 @@ export function tilesRow(): HTMLElement {
   const row = document.querySelector<HTMLElement>(".games-tiles");
   if (!row) throw new Error("No tiles on the page");
   return row;
+}
+
+// The home page's row of tiles laid out as a browser would, which jsdom
+// does not: upright it runs from the page's 56-pixel padding to the
+// window's right edge, and in landscape it takes four sevenths of what
+// the page's 56-pixel sides and the large card's 28-pixel gap leave. Its
+// columns, of two each, are as wide and as far apart as the stylesheet
+// sets them in the test's window.
+export function layOutTilesRow(): HTMLElement {
+  const row = tilesRow();
+  const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
+  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const scrollWidth = () => {
+    const columns = Math.ceil(row.children.length / 2);
+    return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
+  };
+  Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
+  return row;
+}
+
+// The child swipes the row of tiles to `scroll`, as the browser reports
+// it in a scroll event.
+export function swipeTiles(row: HTMLElement, scroll: number) {
+  row.scrollLeft = scroll;
+  fireEvent.scroll(row);
 }
 
 // A game's own tile on the home page, apart from the large card. The

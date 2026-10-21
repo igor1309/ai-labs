@@ -27,6 +27,7 @@ import {
   manualTimers,
   manualVisibility,
   memoryStorage,
+  pageAtRest,
   seededRandom,
   unreadVersion,
   type MemoryStorage
@@ -86,6 +87,7 @@ function openApp(storage: MemoryStorage) {
       skeletons={SHIPPED_SKELETONS}
       skeletonPicture={fakeSkeletonPicture}
       {...emptyDig()}
+      {...pageAtRest()}
       skeletonProgress={localSkeletonProgress(local)}
       now={() => TODAY}
       featuredStore={featured}

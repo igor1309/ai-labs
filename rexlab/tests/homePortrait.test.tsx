@@ -24,11 +24,14 @@ import {
   fakeBodyPicture,
   featuredCard,
   featuring,
+  layOutTilesRow,
   lightDevice,
   loadedPictures,
   manualViewport,
   memoryStorage,
+  pageAtRest,
   seededRandom,
+  swipeTiles,
   tilesRow,
   unsetAgeLevel,
   type ManualViewport,
@@ -107,6 +110,7 @@ function openUpright(
       {...emptySkeletons()}
       skeletonProgress={localSkeletonProgress(progress)}
       {...emptyDig()}
+      {...pageAtRest()}
       digProgress={localDigProgress(progress)}
       {...loadedPictures()}
     />
@@ -684,14 +688,16 @@ describe("the parents' menus upright", () => {
 });
 
 describe("turning the window", () => {
-  it("keeps the open menu and the large card, which does not rise in again, and stands the row of tiles at its start", async () => {
+  // turn-motion.feature's turns, there and back, are in homeTurn.test.tsx.
+  it("keeps the open menu, the large card, which does not rise in again, and the column the row of tiles stood at", async () => {
     const { viewport, user } = openUpright(1180, 820, { viewport: manualViewport("landscape") });
     const card = featuredCard();
-    const row = tilesRow();
+    const row = layOutTilesRow();
     const rise = getComputedStyle(card).animationName;
     const landscape = getComputedStyle(part(".games")).flexDirection;
-    // Swiped to MORE COMING, the last column.
-    row.scrollLeft = 1000;
+    // Swiped so SKELETONS, the second column, stands at the row's left
+    // edge.
+    swipeTiles(row, 334);
     await openMenu(user, "Theme");
 
     openWindow(820, 1180);
@@ -702,10 +708,9 @@ describe("turning the window", () => {
     expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
     // The same card, never drawn anew, rises in only as it is first drawn.
     expect([featuredCard(), card.dataset.game, getComputedStyle(card).animationName]).toEqual([card, "compare", rise]);
-    expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
-    expect(within(row).getAllByRole("button")[0]?.getAttribute("aria-label")).toBe("ANCIENT REPTILES");
+    expect([tilesRow(), row.scrollLeft]).toEqual([row, 334]);
+    expect(within(row).getAllByRole("button")[2]?.getAttribute("aria-label")).toBe("SKELETONS");
 
-    row.scrollLeft = 1000;
     openWindow(1180, 820);
     act(() => viewport.resize("wide", false));
 
@@ -713,6 +718,6 @@ describe("turning the window", () => {
     expect(getComputedStyle(part(".games")).flexDirection).toBe(landscape);
     expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
     expect([featuredCard(), getComputedStyle(card).animationName]).toEqual([card, rise]);
-    expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
+    expect([tilesRow(), row.scrollLeft]).toEqual([row, 334]);
   });
 });

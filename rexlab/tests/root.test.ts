@@ -164,6 +164,33 @@ describe("the app in a browser", () => {
     expect(reducedMotion()).toBe(false);
   });
 
+  it("moves the page to its other layout through the browser: parts found in the document, measured as drawn, animated by the browser, faded by its view transition", () => {
+    const fades: unknown[] = [];
+    const given = browser();
+    const document = Object.assign(given.document, { startViewTransition: ((update: unknown) => void fades.push(update)) as unknown as Document["startViewTransition"] });
+    const { layoutMotion } = appProps({ ...given, document });
+    const box = { left: 1, top: 2, width: 3, height: 4 };
+    const animation = { cancel: () => {}, effect: null };
+    const animated: unknown[] = [];
+    const part = { getBoundingClientRect: () => box, animate: (...args: unknown[]) => (animated.push(args), animation) } as unknown as Element;
+    const change = () => {};
+
+    layoutMotion.startViewTransition(change);
+
+    expect(layoutMotion.parts).toBe(document);
+    expect(layoutMotion.measure(part)).toBe(box);
+    expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
+    expect(fades).toEqual([change]);
+  });
+
+  it("changes the layout at once in a browser with no view transitions", () => {
+    let changed = 0;
+
+    appProps(browser()).layoutMotion.startViewTransition(() => changed++);
+
+    expect(changed).toBe(1);
+  });
+
   it.each(["ru-RU", "en-GB"])("takes the device language %s from the browser", (language) => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
