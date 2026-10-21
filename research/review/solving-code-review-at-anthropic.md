@@ -20,4 +20,11 @@ version: 0.0.1
 | **Turn incidents into evaluations** | Replay confirmed historical bugs whenever reviewer prompts, tools, or models change. | Measures improvement against actual failures. |
 | **Measure total human effort** | Track review waiting, approvals, reverts, and incidents together. | Shows whether automation saves effort across delivery and recovery. |
 
+## Making review converge
+
+- A round cap. After three rounds, the reviewer asks the author to step back and reconsider the approach.
+- Diff-only re-review after the first few passes.
+- Flag the class of bug, so the author fixes every instance, not one line.
+- No repeats of findings already posted.
+
 These practices come from the team’s reported workflow. [oai_citation:0‡claude.dev](https://claude.dev/blog/solving-code-review-at-anthropic/?utm_source=chatgpt.com)
