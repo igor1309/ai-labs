@@ -887,6 +887,12 @@ body:has(.result) #version {
   line-height: 48px;
 }
 
+/* In a window 600 pixels wide the corner would run into "RexLab", so the
+   museum's sides narrow, keeping its word and its tap's height. */
+[data-size="tall"] .home-museum {
+  padding: 0 16px 0 12px;
+}
+
 [data-size="tall"] .games {
   flex: 1 0 auto;
   height: auto;

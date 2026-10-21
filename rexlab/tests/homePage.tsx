@@ -35,6 +35,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onAgeLevel={nothing}
       startTimer={() => nothing}
       viewport={manualViewport("landscape")}
+      upright={false}
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={score(7)}

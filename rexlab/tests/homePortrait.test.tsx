@@ -18,7 +18,6 @@ import {
   emptyCare,
   emptyDig,
   emptyPairs,
-  emptyProgress,
   emptySkeletons,
   emptySorting,
   englishDevice,
@@ -359,7 +358,9 @@ describe("every word on the upright home page", () => {
       expect(column).toBeGreaterThan(0);
       const titles = tileTitles();
       const shown = TILE_ORDER.filter((game) => game !== featured);
-      expect(titles.map((title) => title.textContent)).toEqual([...shown.map((game) => TEXTS[language][game === "compare" ? "quizCard" : game === "catalogue" ? "catalogueTile" : game]), TEXTS[language].moreComing].filter((_, at) => shown[at] !== "pairs"));
+      const words = (game: HomeGame) => TEXTS[language][game === "compare" ? "quizCard" : game === "catalogue" ? "catalogueTile" : game];
+      // FIND THE PAIR's title may wrap, so it is read apart below.
+      expect(titles.map((title) => title.textContent)).toEqual([...shown.filter((game) => game !== "pairs").map(words), TEXTS[language].moreComing]);
       const overflowing = titles.flatMap((title) => {
         const style = getComputedStyle(title);
         const words = title.textContent ?? "";
@@ -483,7 +484,7 @@ describe("turning the window", () => {
     // The same card, never drawn anew, rises in only as it is first drawn.
     expect([featuredCard(), card.dataset.game, getComputedStyle(card).animationName]).toEqual([card, "compare", rise]);
     expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
-    expect(within(row).getAllByRole("button")[1]?.getAttribute("aria-label")).toBe("ALL DINOSAURS");
+    expect(within(row).getAllByRole("button")[0]?.getAttribute("aria-label")).toBe("ALL DINOSAURS");
 
     row.scrollLeft = 1000;
     openWindow(1180, 820);

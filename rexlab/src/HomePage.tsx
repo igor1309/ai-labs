@@ -1,5 +1,5 @@
 import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
-import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -42,6 +42,10 @@ export type HomePageProps = {
   startTimer: ParentMenuProps<string>["startTimer"];
   // The window, whose width the tiles' columns follow upright.
   viewport: WindowWidth;
+  // Whether the window stands upright. A turn puts the tiles' row back at
+  // its start: its columns change, so where it was swiped to points at
+  // other tiles.
+  upright: boolean;
   // The game the large card features today, beside its own tile.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
@@ -91,6 +95,7 @@ export function HomePage({
   onAgeLevel,
   startTimer,
   viewport,
+  upright,
   featured,
   faceOff,
   best,
@@ -113,6 +118,10 @@ export function HomePage({
   const text = TEXTS[language];
   const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
   const [openMenu, setOpenMenu] = useState<Menu>();
+  const tilesRow = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (tilesRow.current) tilesRow.current.scrollLeft = 0;
+  }, [upright]);
   const menu = (name: Menu) => ({
     open: openMenu === name,
     onOpen: () => setOpenMenu(name),
@@ -373,7 +382,7 @@ export function HomePage({
             games still to come stand under the last of them. Upright,
             the columns narrow by the window's width so the next one
             peeks in, which the stylesheet cannot work out. */}
-        <div className="games-tiles" style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}>
+        <div ref={tilesRow} className="games-tiles" style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}>
           {shown.map((game) => tiles[game])}
           {/* The games still to come are a picture, not a button: a tap on
               it does nothing, and nothing on it invites one. */}

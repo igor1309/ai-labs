@@ -94,6 +94,7 @@ function renderHomePage(taps: number[]) {
       onAgeLevel={nothing}
       startTimer={() => nothing}
       viewport={manualViewport("landscape")}
+      upright={false}
       featured="compare"
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={undefined}

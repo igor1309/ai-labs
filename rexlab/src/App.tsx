@@ -544,6 +544,7 @@ export function App({
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}
             viewport={viewport}
+            upright={size === "tall" || size === "tall-narrow"}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={progress.load()?.bestScore ?? undefined}
