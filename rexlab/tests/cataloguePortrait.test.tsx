@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type PortraitLayouts } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -140,8 +140,9 @@ function sized(element: Element, size: WindowSize, expected: Record<string, stri
 // The upright list as the browser lays it out from the stylesheet: the
 // screen a column of the bar and the list, the bar a column of "HOME"
 // and the chips' row, and the list a grid of `--columns` equal columns
-// inside its padding. A size set any other way fails here, since these
-// sums would not see it.
+// inside its padding and its scrollbar, where one takes room: as wide as
+// the list's box is wider than its client area. A size set any other way
+// fails here, since these sums would not see it.
 function uprightList(size: WindowSize, language: Language = "en") {
   const [width] = size;
   const main = part(".catalogue");
@@ -160,6 +161,7 @@ function uprightList(size: WindowSize, language: Language = "en") {
   const columns = Number(listStyle.getPropertyValue("--columns"));
   const gap = styleAt(list, size).columnGap();
   const inside = width - px(mainStyle.paddingLeft) - px(mainStyle.paddingRight);
+  const scrollbar = list.offsetWidth - list.clientWidth;
   return {
     home: { left: px(mainStyle.paddingLeft) + px(barStyle.paddingLeft), top: px(mainStyle.paddingTop) },
     // How far under HOME the chips stand, and the cards under the chips.
@@ -167,7 +169,7 @@ function uprightList(size: WindowSize, language: Language = "en") {
     cardsUnder: styleAt(main, size).rowGap(),
     chipRow: inside - px(barStyle.paddingLeft) - px(barStyle.paddingRight),
     columns,
-    card: (inside - px(listStyle.paddingLeft) - px(listStyle.paddingRight) - gap * (columns - 1)) / columns
+    card: (inside - scrollbar - px(listStyle.paddingLeft) - px(listStyle.paddingRight) - gap * (columns - 1)) / columns
   };
 }
 
@@ -251,6 +253,81 @@ function cardName(card: Element, cardWidth: number) {
 // row, each 213 wide.
 const LANDSCAPE_NAME = Math.min(20, 0.07 * 213);
 
+// jsdom lays nothing out, so the width of each character a card's height
+// and weight are written in is given here in ems of its semibold face,
+// rounded up: Lexend's for the digits and the Latin units, and for the
+// Cyrillic units, which Lexend has no letters for, the width of a system
+// face with a tenth added for the iPad's own. A value is as wide as its
+// characters together: kerning, left out, only narrows it. A character
+// missing here fails the test that reads it.
+const DETAIL_EMS: Record<string, number> = {
+  "0": 0.66,
+  "1": 0.55,
+  "2": 0.55,
+  "3": 0.58,
+  "4": 0.65,
+  "5": 0.59,
+  "6": 0.58,
+  "7": 0.55,
+  "8": 0.6,
+  "9": 0.57,
+  ".": 0.25,
+  ",": 0.29,
+  " ": 0.31,
+  M: 0.88,
+  K: 0.74,
+  G: 0.78,
+  T: 0.63,
+  М: 0.95,
+  К: 0.73,
+  Г: 0.6,
+  Т: 0.67
+};
+
+const detailWidth = (words: string, fontSize: number) =>
+  [...words].reduce((sum, character) => {
+    const ems = DETAIL_EMS[character];
+    if (ems === undefined) throw new Error(`No width in ems for ${character} in ${words}`);
+    return sum + ems * fontSize;
+  }, 0);
+
+// A gap in a card `cardWidth` wide: jsdom works out its longhand only
+// where the CSS sets it, and the shorthand gives it otherwise.
+function gapInCard(element: Element, cardWidth: number) {
+  const set = inCard(element, cardWidth, "column-gap");
+  return px(set && set !== "normal" ? set : (inCard(element, cardWidth, "gap").split(" ").at(-1) ?? ""));
+}
+
+// The symbols shown in `element`, side by side at their size and gap.
+function symbolsWidth(element: Element, cardWidth: number) {
+  const shown = [...element.querySelectorAll("svg")].filter((symbol) => inCard(symbol, cardWidth, "display") !== "none");
+  return { count: shown.length, width: shown.reduce((sum, symbol) => sum + px(symbol.getAttribute("width") ?? ""), 0) };
+}
+
+// A card's height, weight and food tag in a card `cardWidth` wide, its
+// container rules applied: how much wider their row is than the room the
+// footer's padding leaves, if at all. Each chip is its padding, its
+// symbol where it shows one, and its words, its parts apart by its gap;
+// the food tag is its symbols inside its face's padding.
+function cardDetails(card: Element, cardWidth: number) {
+  const footer = part(".catalogue-footer", card);
+  const row = part(".catalogue-chips", card);
+  const [start, end = start] = inCard(footer, cardWidth, "padding-inline").split(" ").map(px);
+  const padded = (element: Element) => px(inCard(element, cardWidth, "padding-left")) + px(inCard(element, cardWidth, "padding-right"));
+  const chips = [...row.querySelectorAll(".catalogue-chip")].map((chip) => {
+    const symbols = symbolsWidth(chip, cardWidth);
+    const words = detailWidth(chip.textContent ?? "", px(inCard(chip, cardWidth, "font-size")));
+    return padded(chip) + symbols.width + words + gapInCard(chip, cardWidth) * symbols.count;
+  });
+  const face = part(".diet-tag-face", row);
+  const tagSymbols = part(".diet-tag-symbols", face);
+  const symbols = symbolsWidth(tagSymbols, cardWidth);
+  const tag = padded(face) + symbols.width + gapInCard(tagSymbols, cardWidth) * (symbols.count - 1);
+  const parts = [...chips, tag];
+  const needed = parts.reduce((sum, width) => sum + width, 0) + gapInCard(row, cardWidth) * (parts.length - 1);
+  return { name: card.getAttribute("aria-label"), over: needed - (cardWidth - (start ?? 0) - (end ?? 0)) };
+}
+
 describe("the list of every dinosaur upright", () => {
   it.each(UPRIGHT)(
     "in a %i by %i window shows no picture asking to turn, HOME alone at the top left, the chips under it, and the 52 cards %i to a row, each %i wide, the chips in %s",
@@ -282,6 +359,27 @@ describe("the list of every dinosaur upright", () => {
     expect(layout.columns).toBe(3);
     expect(layout.card).toBeGreaterThanOrEqual(213);
     expect(layout.home.left).toBe(56 + 19);
+  });
+
+  it("narrows the cards, never their count, by a 15-pixel scrollbar in a 1024 wide window: four to a row", async () => {
+    // A scrollbar that takes room takes it from the list's client area.
+    const scrollbar = 15;
+    const list = (element: HTMLElement) => element.classList.contains("catalogue-grid");
+    const offset = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return list(this) ? 1024 : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return list(this) ? 1024 - scrollbar : 0;
+    });
+    onTestFinished(() => [offset, client].forEach((spy) => spy.mockRestore()));
+
+    const { viewport } = await openList(1024, 1366);
+    act(() => viewport.resize("tall", true));
+
+    const layout = uprightList([1024, 1366]);
+    expect(layout.columns).toBe(4);
+    expect(layout.card).toBe((1024 - 112 - scrollbar - 3 * 20) / 4);
+    expect(layout.card).toBeLessThan(213);
   });
 });
 
@@ -316,6 +414,17 @@ describe("every word upright", () => {
         return [row.display, row.flexDirection || "row", row.flexWrap || "nowrap", part(".catalogue-chips", card).children.length];
       })
     ).toEqual(cards(language).map(() => ["flex", "row", "nowrap", 3]));
+  });
+
+  it.each(["en", "ru"] as const)("fits every card's height, weight and food tag in its footer in %s, on the narrowest upright card, 213 wide", async (language) => {
+    await openList(1024, 1366, { language });
+    const layout = uprightList([1024, 1366], language);
+    expect(layout.card).toBe(213);
+
+    const details = cards(language).map((card) => cardDetails(card, layout.card));
+
+    expect(details).toHaveLength(SHIPPED_CATALOGUE.length);
+    expect(details.filter(({ over }) => over > 0).map(({ name }) => name)).toEqual([]);
   });
 
   it("closes the chips up as the window narrows and spaces them again as it widens", async () => {

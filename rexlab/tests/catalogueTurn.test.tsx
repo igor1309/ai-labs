@@ -212,6 +212,20 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
 }
 
 const own = ({ name }: Recorded) => !name.startsWith("frame of ");
+
+const px = (value: unknown) => Number.parseFloat(String(value));
+
+// The glide still running on part `name`: the offset it starts from, the
+// translation it ends at, and its frame's widths, from and to.
+function glideOf(animations: readonly Recorded[], name: string) {
+  const running = (named: string) => animations.filter((animation) => animation.name === named && !animation.cancelled).at(-1);
+  const part = running(name);
+  const frame = running(`frame of ${name}`);
+  if (!part || !frame) throw new Error(`No glide with a frame on ${name}`);
+  const [x = 0, y = 0] = String(part.keyframes[0]?.translate).split(" ").map(px);
+  return { offset: { x, y }, end: part.keyframes[1]?.translate, widths: [px(frame.keyframes[0]?.width), px(frame.keyframes[1]?.width)] as const };
+}
+
 const card = (id: string) => document.querySelector<HTMLElement>(`[data-turn-part="catalogue-card-${id}"]`)!;
 
 describe("catalogue turn styles", () => {
@@ -259,10 +273,11 @@ describe("catalogue's shared turn", () => {
   });
 
   it("takes a card's glide from where its entrance is drawn, without restarting the entrance", async () => {
-    const rising = new Map<string, Rising>([["catalogue-card-tyrannosaurus", { y: 0, opacity: 1, running: true }]]);
-    const app = openCatalogue(1180, 820, { rising });
+    const entrance: Rising = { y: 0, opacity: 1, running: true };
+    const app = openCatalogue(1180, 820, { rising: new Map([["catalogue-card-tyrannosaurus", entrance]]) });
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
-    Object.assign(rising.get("catalogue-card-tyrannosaurus"), { y: 18, opacity: 0.4 });
+    const [list, tyrannosaurus] = [app.grid(), card("tyrannosaurus")];
+    Object.assign(entrance, { y: 18, opacity: 0.4 });
     app.paint();
     app.animations.length = 0;
 
@@ -270,7 +285,10 @@ describe("catalogue's shared turn", () => {
 
     const glide = app.animations.find(({ name }) => name === "catalogue-card-tyrannosaurus");
     expect(glide?.keyframes[0]).toMatchObject({ translate: "0px 18px", opacity: 0.4 });
-    expect(rising.get("catalogue-card-tyrannosaurus")).toEqual({ y: 0, opacity: 1, running: false });
+    expect(entrance).toEqual({ y: 0, opacity: 1, running: false });
+    // The same list and card, the list still marked to rise in: nothing
+    // remounts or restarts the entrance.
+    expect([app.grid(), card("tyrannosaurus"), app.grid().dataset.rise]).toEqual([list, tyrannosaurus, "true"]);
     app.settle();
   });
 
@@ -344,13 +362,23 @@ describe("catalogue's shared turn", () => {
     app.settle();
   });
 
-  it("starts a newly chosen food at its own top when the next turn begins", async () => {
+  it.each([
+    ["scrolled to its end", "end"],
+    ["just back from Baryonyx", "baryonyx"]
+  ] as const)("starts a food chosen in a list %s at its own top when the next turn begins", async (_, from) => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
-    const all = app.grid();
-    listMetrics(all);
-    all.scrollTop = all.scrollHeight - all.clientHeight;
-    fireEvent.scroll(all);
+    if (from === "baryonyx") {
+      await app.user.click(card("baryonyx"));
+      await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+      listMetrics(app.grid());
+      app.settle();
+    } else {
+      const all = app.grid();
+      listMetrics(all);
+      all.scrollTop = all.scrollHeight - all.clientHeight;
+      fireEvent.scroll(all);
+    }
 
     await app.user.click(screen.getByRole("button", { name: "PLANTS" }));
     const plants = app.grid();
@@ -420,22 +448,35 @@ describe("catalogue's shared turn", () => {
     await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
     app.resize([744, 1133, "tall"]);
     app.settle();
+    app.animations.length = 0;
     const list = app.grid();
     listMetrics(list);
     list.scrollTop = rowScroll("gallimimus", 744, 1133, "tall");
     fireEvent.scroll(list);
 
     app.resize([820, 1180, "tall"]);
-    const first = app.animations.find(({ name }) => name === "catalogue-card-gallimimus");
-    const firstFrame = app.animations.find(({ name }) => name === "frame of catalogue-card-gallimimus");
-    const firstWidth = (at: number) => Number(String(firstFrame?.keyframes[at]?.width).replace("px", ""));
+    const first = new Map(IDS.map((id) => [id, { box: app.measure(card(id)), ...glideOf(app.animations, `catalogue-card-${id}`) }]));
     app.progress(0.5);
 
     app.resize([834, 1194, "tall"]);
-    const second = app.animations.filter(({ name, cancelled }) => name === "catalogue-card-gallimimus" && !cancelled).at(-1);
-    const secondFrame = app.animations.filter(({ name, cancelled }) => name === "frame of catalogue-card-gallimimus" && !cancelled).at(-1);
-    expect(second?.keyframes[0]?.translate).toBe("0px 0px");
-    expect(Number(String(secondFrame?.keyframes[0]?.width).replace("px", ""))).toBeCloseTo((firstWidth(0) + firstWidth(1)) / 2);
+    // Halfway through the first glide, each card is drawn half its offset
+    // off its place at 820 and half way between its widths; the second
+    // glide goes on from there to its place at 834.
+    const drawn = IDS.map((id) => {
+      const { box, offset, widths } = first.get(id)!;
+      const second = glideOf(app.animations, `catalogue-card-${id}`);
+      const now = app.measure(card(id));
+      return {
+        id,
+        from: [second.offset.x, second.offset.y, second.widths[0]].map((value) => Math.round(value * 100) / 100),
+        to: [second.end, second.widths[1]],
+        expected: {
+          from: [box.left + offset.x / 2 - now.left, box.top + offset.y / 2 - now.top, (widths[0] + widths[1]) / 2].map((value) => Math.round(value * 100) / 100),
+          to: ["0px 0px", now.width]
+        }
+      };
+    });
+    expect(drawn.map(({ id, from, to }) => ({ id, from, to }))).toEqual(drawn.map(({ id, expected }) => ({ id, ...expected })));
     expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", 834, 1194, "tall"));
     app.settle();
   });
