@@ -328,12 +328,31 @@ describe("the shipped dinosaur list", () => {
     ["kentrosaurus", 5],
     ["ankylosaurus", 8],
     ["pachycephalosaurus", 3],
-    ["spinosaurus", 14]
+    ["spinosaurus", 14],
+    ["velociraptor", 1.8],
+    ["deinonychus", 3.4],
+    ["utahraptor", 5.5],
+    ["troodon", 2.4],
+    ["compsognathus", 0.7],
+    ["coelophysis", 2],
+    ["heterodontosaurus", 1.2],
+    ["gallimimus", 6],
+    ["oviraptor", 2],
+    ["microraptor", 0.8],
+    ["archaeopteryx", 0.5],
+    ["therizinosaurus", 10]
   ] as const)("keeps the %s's positive nose-to-tail length at %s m", (id, length) => {
     const value = records.find((record) => record.id === id)?.attributes.lengthMeters;
 
     expect(value).toBe(length);
     expect(value).toBeGreaterThan(0);
+  });
+
+  it("gives every shipped dinosaur a positive nose-to-tail length", () => {
+    for (const { id, attributes } of dinosaurRecords) {
+      expect({ id, length: attributes.lengthMeters }).toEqual({ id, length: expect.any(Number) });
+      expect(attributes.lengthMeters).toBeGreaterThan(0);
+    }
   });
 
   // Each height is the hip height docs/sources.md works out from the leg
