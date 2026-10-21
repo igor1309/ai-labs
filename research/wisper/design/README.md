@@ -25,6 +25,8 @@ Rules for new frames:
   hand.
 - A value neither the spec nor the owner set goes in the frame's "Open" line
   as "Proposed, not decided".
+- Change a screen in place, in the current column. Git keeps the history;
+  the Archive holds only what predates this cleanup.
 
 ### Colour
 
@@ -81,24 +83,40 @@ from instances.
 | Path field | `e8UQV2` | `Path` |
 | Pin/Off, /On | `w24st`, `S5zLs` | — |
 | Title bar | `H1efZf` | `Title` |
-| Banner/Error, /Warn, /Info | `qAImO`, `XK4si`, `jjhu5` | text |
-| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Time`, `Confirmed` |
-| Footnote card | `bMU2S` | text |
-| Panel header/Idle, /Recording | `MaM9e`, `rVa43` | — |
+| Banner/Error, /Warn, /Info | `qAImO`, `XK4si`, `jjhu5` | `H`, `Sub` |
+| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Time`, `Who`, `Confirmed`; Pending adds `Pending` |
+| Footnote card | `bMU2S` | `Term`, `Hint`, `Text` |
+| Panel header/Idle, /Recording | `MaM9e`, `rVa43` | `Status` |
+| File chip | `U4MdJG` | `Name` |
+| Rename field | `MsvSg` | `Prefix` (the fixed `yyyy.MM.dd-HHmm `), `Title` |
+| Summary | `yCxLj` | `Line 1`–`Line 3`, `Show more`; hide a line with `enabled: false` |
+| Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
 | Calls row | `yFtkD` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin, actions; Delete is hidden until hover |
 
 ## Frames
 
-| Column | Frames |
+| Where | Frames |
 |---|---|
 | Top, y < 0 | Glass Ledger — design system, Glass Ledger — components |
-| x = 0 | Brief, Proposals 1–4, window sizes, no footnote, Screens 1–8 (originals, raw colours, kept unchanged) |
-| x = 2700 | v2: Screens 1–5 and 8 after the design review, plus "Later — term chips"; bound to the tokens |
-| x = 6900 | v3, built from the components: Screen 1 (optional Calendar permission), Screen 4 (inline rename in the calls list), Screen 5 (call folder, its files, rename in the header), Screen 6 (moving the data folder) |
+| x = 0, y ≥ 0 | The current screens, one frame each, Light and Dark: Screens 1–8, then "Later — term chips" |
+| x ≥ 20000 | Archive, labelled "Archive · …": the brief, Proposals 1–4, window sizes, no footnote, and Screens 1–8 as original, v2, v3 and v4 |
 
-| x = 9900 | v4, built from the components: Screen 1 (visible calls folder; no wait for the live model), Screen 3 (live model downloading; explanation read back from bb), Screen 4 (same-minute « 2» title), Screen 5 (summary from the bb thread, summary pending), Screen 6 (failed move with Retry; no move during a recording) |
+Current screens:
 
-The newest version of a screen is the one to build from: v4 where it exists,
-then v3, then v2, then the original. Screens 6 and 7 have no v2; Screen 7 is still
-only the original.
+| Screen | States |
+|---|---|
+| 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, live model downloading |
+| 2 — Launch blocker | Model missing; downloading |
+| 3 — Live panel states | Not recording; recording; live model downloading; text filled in after it arrives; settling; selection survives appends; sent to bb with each card step |
+| 4 — Calls list | Hover; confirm delete; renaming inline |
+| 5 — Call after it ends | Waiting for the final-pass model; final pass running; failed; summary pending; done; renaming the title |
+| 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |
+| 7 — Menu bar item | Idle; recording |
+| 8 — Errors | No call audio; no microphone; disk full |
+
+The archived frames are history; the design review and the owner's answers
+name them, and their names only gained the prefix. Build only from the
+current screens. Screens 1–3 and 8 kept some hand-drawn containers (panels,
+setup blocks, the blocker card); every button, field, banner, entry, card and
+header inside them is a component instance.
