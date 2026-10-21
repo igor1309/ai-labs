@@ -215,6 +215,9 @@ describe("friends", () => {
     expect(SHIPPED_VISITORS).toHaveLength(42);
     expect(friendCount()).toBe("42");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).overflowY).toBe("auto");
+    // Four to a row, the friends' own: the catalogue's cards in a row are
+    // the catalogue's alone.
+    expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
     expect(["NEW VISITOR", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["footprints", "arrow-left", "house"]);
     const last = friendCards().at(-1);
     await user.click(last ?? document.body);
