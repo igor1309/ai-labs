@@ -1,13 +1,11 @@
 Feature: Skeleton assembly: Explorer
   Explorer builds each skeleton from its own cut of six to eight pieces
   on the full outline (skeleton-assembly-levels.feature,
-  docs/skeleton-levels.md). Each piece belongs to one body area: head,
-  neck, back, hips, legs or tail. A piece in the tray and its empty slot
-  on the outline carry that area's colour, so a child can match a bone to
-  where it goes. The colours are a cue, not a key: there is no legend to
-  learn, and a piece fits by its place alone. Pieces stay the right way
-  up and fit as near their homes as Hatchling's do. Hatchling keeps its
-  four plain pieces, and Paleontologist's own cut is plain too.
+  docs/skeleton-levels.md). Every piece and slot is plain, as at the
+  other levels: the child places each bone by its shape, never by
+  matching a colour, which made it a find-the-same-picture task
+  (docs/game-design.md, LAB-389). Pieces stay the right way up and fit
+  as near their homes as Hatchling's do.
 
   Background:
     Given an iPad in landscape
@@ -26,53 +24,17 @@ Feature: Skeleton assembly: Explorer
       | Brachiosaurus | 6     |
       | Spinosaurus   | 7     |
 
-  Scenario: Each piece and its slot share its body area's colour
+  Scenario: Pieces and slots are plain
     When I tap Tyrannosaurus
-    Then each piece's spot in the tray is tinted with its body area's colour
-    And each empty slot on the outline shows its bone's shape in the same area's colour
-    And the left and right legs, both of the legs, share one colour
-    And pieces of different body areas never share a colour
-
-  Scenario: A fitted piece shows as itself
-    Given I am building Tyrannosaurus
-    When I fit its skull
-    Then the skull's slot shows the skull's own picture, its colour gone
-    And the skull's spot in the tray is empty and plain
-    And every other piece and slot keeps its colour
-
-  Scenario Outline: The colours hold in either theme
-    Given the app uses the <theme> theme
-    When I tap Stegosaurus
-    Then each body area's colour and tint are the <theme> theme's own
-    And each spot's ring in its area's colour has at least 3:1 contrast with the tray
-    And each bone shows on its tinted spot at least 3:1, by its dark outline in light and its pale bone in dark
-
-    Examples:
-      | theme |
-      | light |
-      | dark  |
+    Then no spot in the tray and no slot on the outline is tinted by body area
+    And an empty slot shows only the faint outline under it
 
   Scenario: A piece fits as near its home as at Hatchling
     Given I am building Triceratops
     When I drop its frill 40 CSS pixels from its home
     Then the frill fits there
     When I drop its tail beside the board
-    Then the tail floats back to its tinted spot, nothing lost
-
-  Scenario: Colour is only a cue
-    Given I am building Triceratops
-    When I drop its front legs on the hind legs' slot, the same colour
-    Then the front legs float back to the tray, and the hind legs' slot stays empty
-
-  Scenario Outline: Only Explorer is coloured
-    Given the level switch shows <level> chosen
-    When I tap Triceratops
-    Then its <count> pieces and their slots are plain
-
-    Examples:
-      | level          | count |
-      | Hatchling      | 4     |
-      | Paleontologist | 10    |
+    Then the tail floats back to its spot, nothing lost
 
   Scenario: Finishing Explorer's puzzle earns the star
     Given I am building Stegosaurus with six pieces fitted

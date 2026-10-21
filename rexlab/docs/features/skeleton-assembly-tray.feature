@@ -4,7 +4,7 @@ Feature: Skeleton assembly: the tray and a held bone
   lists its four bones head to tail and outlines a held bone's home, as
   the youngest need. Explorer and Paleontologist shuffle the tray for
   each puzzle and outline nothing, so the child finds each bone's place
-  by its shape and, at Explorer, its colour. A long press or quick taps
+  by its shape. A long press or quick taps
   never take the touch from the piece.
 
   Background:
@@ -45,4 +45,4 @@ Feature: Skeleton assembly: the tray and a held bone
     Given I am building Tyrannosaurus at any level
     When I hold a bone piece still, or tap it several times quickly
     Then no menu opens to share or save its picture, and nothing is selected
-    And the piece can still be dragged or turned
+    And the piece can still be dragged
