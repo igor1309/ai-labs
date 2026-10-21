@@ -31,6 +31,13 @@ The v2 frames beside Screens 1–5 and 8 apply the design review and the
 owner's answers of 2026-10-21 (recorded in mvp.md on branch `wisper`). The originals
 are kept unchanged. Term chips moved to a separate "Later" frame.
 
+The design system is locked (2026-10-21): the file's variables hold Glass
+Ledger's colours with a light and a dark value (theme axis `mode`), two
+fonts, and consolidated type, radius and spacing scales. "Glass Ledger —
+design system" shows them; "Glass Ledger — components" holds the reusable
+components, with a dark mirror built from instances. The v2 frames are bound
+to the tokens. New screens are built from the components.
+
 ## Conclusion so far
 
 No installed app fits without either paying a subscription or living with a
