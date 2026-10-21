@@ -11,6 +11,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
 | [mvp.md](mvp.md) | Draft MVP: our own native app |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
+| [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 
