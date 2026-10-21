@@ -25,10 +25,15 @@ spec/                        the user: journeys across the app, and references
   auto-record/               the user: when recordings start and stop on their own
   call-titles/               the user: what a call is titled, and renaming it
   debug-menu/                the user of a debug build: test triggers
-  live-panel/                the user: the panel window, header and banners (Screens 3, 8)
+  quit/                      the user: quitting without losing a call
+  live-panel/                the user: the panel window and its header (Screen 3)
+  live-text-states/          the user: live text waiting, off, switched mid-call
+  error-banners/             the user: what failed and what still records (Screen 8)
   transcript-view/           the user: reading the call in the panel
   selection/                 the user: a selection while the text changes
-  calls-list/                the user (Screen 4)
+  calls-list/                the user: finding and opening calls (Screen 4)
+  call-rename/               the user: renaming a call, in the app or Finder
+  call-delete/               the user: deleting a call
   call-screen/               the user (Screen 5, v1 part)
   setup-screen/              the user: first launch and the launch check (Screens 1, 2)
   settings-window/           the user (Screen 6)

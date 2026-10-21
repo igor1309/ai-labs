@@ -10,7 +10,7 @@ description: "Audelin v1 — QA of the user journeys: the built app on this Mac,
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `d1a6192dba439eec50cb1ffb7fdc626c2e5c7b29` |
+| oracle | `SPEC.md` — blob `c851a4c6cf93a21f5b6be7b1e0144ce7da205985` |
 | driven by | the user: the owner, or an agent through the app's windows and the call folders |
 | where | the release build on this Mac (the debug build for S-18); Zoom calls between this Mac and a second device, the owner speaking Russian with English terms |
 

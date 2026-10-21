@@ -37,11 +37,13 @@ folders in Finder.
 Each screen's behaviour is in its own spec and is not repeated here:
 [menu-bar](menu-bar/SPEC.md), [switches](switches/SPEC.md),
 [auto-record](auto-record/SPEC.md), [call-titles](call-titles/SPEC.md),
-[debug-menu](debug-menu/SPEC.md),
-[live-panel](live-panel/SPEC.md) (the window, live-text states, failures),
+[debug-menu](debug-menu/SPEC.md), [quit](quit/SPEC.md),
+[live-panel](live-panel/SPEC.md), [live-text-states](live-text-states/SPEC.md),
+[error-banners](error-banners/SPEC.md),
 [transcript-view](transcript-view/SPEC.md) (reading both sides, gaps,
 late text), [selection](selection/SPEC.md),
-[calls-list](calls-list/SPEC.md), [call-screen](call-screen/SPEC.md),
+[calls-list](calls-list/SPEC.md), [call-rename](call-rename/SPEC.md),
+[call-delete](call-delete/SPEC.md), [call-screen](call-screen/SPEC.md),
 [setup-screen](setup-screen/SPEC.md) and
 [settings-window](settings-window/SPEC.md). A stopped call's text
 completing, also when a new recording or a folder move interrupts it, is
