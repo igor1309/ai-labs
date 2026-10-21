@@ -23,11 +23,14 @@ export type SkeletonChoiceScreenProps = {
   level: AgeLevel;
   onLevel: (level: AgeLevel) => void;
   onChoose: (id: string) => void;
+  // The mystery skeleton's tile, after the dinosaurs, once a skeleton has
+  // its star; none before.
+  onMystery: (() => void) | undefined;
   onMuseum: () => void;
   onHome: () => void;
 };
 
-export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, onChoose, onMuseum, onHome }: SkeletonChoiceScreenProps) {
+export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, onChoose, onMystery, onMuseum, onHome }: SkeletonChoiceScreenProps) {
   const text = TEXTS[language];
   return (
     <main className="skeleton-screen">
@@ -47,6 +50,13 @@ export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, 
         {choices.map((choice, index) => (
           <ChoiceCard key={choice.id} language={language} choice={choice} index={index} onChoose={onChoose} />
         ))}
+        {onMystery && (
+          <Button className="card skeleton-choice skeleton-mystery" aria-label={text.mystery} style={{ "--choice": choices.length } as CSSProperties} onClick={onMystery}>
+            <span className="skeleton-choice-art skeleton-mystery-mark" aria-hidden="true">
+              ?
+            </span>
+          </Button>
+        )}
       </div>
     </main>
   );

@@ -371,7 +371,7 @@ export function App({
   );
 
   const skeletonGame = useSkeletonGame(
-    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion, random, sounds: skeletonSounds },
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion, random, sounds: skeletonSounds, kin: pals },
     ageLevel,
     home,
     counting("skeletons")

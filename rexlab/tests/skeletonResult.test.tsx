@@ -315,7 +315,8 @@ describe("building another", () => {
       ["TRICERATOPS", true],
       ["STEGOSAURUS", false],
       ["BRACHIOSAURUS", false],
-      ["SPINOSAURUS", false]
+      ["SPINOSAURUS", false],
+      ["MYSTERY SKELETON", false]
     ]);
     expect(screen.getByLabelText("BEST SCORE").textContent).toBe("1/5");
   });

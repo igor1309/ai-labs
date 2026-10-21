@@ -139,21 +139,22 @@ export function readPals(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "nam
 }
 
 // The skeletons' file, `skeletons.json`, in its own format: the frame the
-// outlines are drawn in, and each dinosaur's fact, cuts, each a list of
+// outlines are drawn in, and each dinosaur's fact, clue, cuts, each a list of
 // pieces with its id, name and place, and distractors, each a piece of
 // another skeleton with its name here, read as any values, as the JSON
 // gives them.
 export type SkeletonsFile = {
   frame: { width: number; height: number };
-  dinosaurs: Readonly<Record<string, Readonly<{ fact?: unknown; cuts?: unknown; distractors?: unknown }>>>;
+  dinosaurs: Readonly<Record<string, Readonly<{ fact?: unknown; clue?: unknown; cuts?: unknown; distractors?: unknown }>>>;
 };
 
 // The skeleton game needs each skeleton's dinosaur, named as in the
-// list, its fact and its cuts, in the file's order. A skeleton of no
-// dinosaur in the list, without its fact in every language, without
-// Hatchling's cut, or with a cut of no level or not whole, fails here,
-// when the app is put together, rather than as a puzzle no child can
-// finish or a reveal with nothing to say. The other levels' cuts are
+// list, its fact, the clue its mystery gives and its cuts, in the file's
+// order. A skeleton of no dinosaur in the list, without its fact or its
+// clue in every language, without Hatchling's cut, or with a cut of no
+// level or not whole, fails here, when the app is put together, rather
+// than as a puzzle no child can finish or a reveal with nothing to say.
+// The other levels' cuts are
 // optional: a level without one plays Hatchling's. So are the
 // distractors, which must each be a piece of another skeleton's
 // Paleontologist cut.
@@ -167,10 +168,11 @@ export function readSkeletons(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
 
 function readCuts(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, file: SkeletonsFile): Skeleton[] {
   const { width, height } = file.frame;
-  return Object.entries(file.dinosaurs).map(([id, { fact, cuts }]) => {
+  return Object.entries(file.dinosaurs).map(([id, { fact, clue, cuts }]) => {
     const record = records.find((each) => each.id === id);
     if (!record) throw new Error(`The skeleton ${id} is of no dinosaur in the list`);
     if (!isInEveryLanguage(fact)) throw new Error(`${id} has no fact in every language: ${JSON.stringify(fact)}`);
+    if (!isInEveryLanguage(clue)) throw new Error(`${id} has no clue in every language: ${JSON.stringify(clue)}`);
     const levels = typeof cuts === "object" && cuts !== null ? (cuts as Record<string, unknown>) : {};
     const stray = Object.keys(levels).find((level) => !isAgeLevel(level));
     if (stray !== undefined) throw new Error(`${id} has a cut of no level: ${stray}`);
@@ -179,6 +181,7 @@ function readCuts(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>, f
       id,
       name: { en: record.name.en, ru: record.name.ru },
       fact: { en: fact.en, ru: fact.ru },
+      clue: { en: clue.en, ru: clue.ru },
       frame: { width, height },
       cuts: { hatchling: cutOf("hatchling"), ...Object.fromEntries(AGE_LEVELS.filter((level) => level !== "hatchling" && level in levels).map((level) => [level, cutOf(level)])) }
     };

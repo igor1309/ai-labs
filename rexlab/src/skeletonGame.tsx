@@ -3,9 +3,10 @@ import type { AgeLevel, AgeLevelSetting, Random } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts";
-import { presentPuzzle, presentSkeletonChoices, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
+import { presentPuzzle, presentSkeletonChoices, presentSkeletonGuess, presentSkeletonMuseum, presentSkeletonResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { SkeletonChoiceScreen } from "./SkeletonChoiceScreen.tsx";
+import { SkeletonGuessScreen } from "./SkeletonGuessScreen.tsx";
 import { SkeletonMuseumScreen } from "./SkeletonMuseumScreen.tsx";
 import {
   awaitsHelp,
@@ -15,13 +16,16 @@ import {
   isComplete,
   knockDown,
   museumOf,
+  mysteryChoices,
   openCollection,
+  pickMystery,
   showLastStep,
   startPuzzle,
   touch,
   wait,
   type Badge,
   type KeptSkeletons,
+  type Kin,
   type Puzzle,
   type Skeleton,
   type SkeletonProgress,
@@ -65,6 +69,9 @@ export type SkeletonGameProps = {
   random: Random;
   // Answers each pick-up, fit and miss, and the finished skeleton.
   sounds: SkeletonSounds;
+  // Every dinosaur a mystery skeleton may be guessed as, with its
+  // look-alike group.
+  kin: readonly Kin[];
 };
 
 // The skeleton game has a mode for every age level; a level without a cut
@@ -79,12 +86,13 @@ type Look = { silhouette: boolean; homeShown: boolean };
 // How each level plays its puzzle: its look, whether help climbs the
 // ladder of steps rather than Hatchling's one glow, whether other
 // skeletons' bones wait in the tray, whether the tray shuffles them rather
-// than keep the cut's order, and the badge a skeleton built there without
-// help's last step earns.
-const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; shuffling: boolean; badge: Badge | undefined }> = {
-  hatchling: { look: { silhouette: false, homeShown: true }, ladder: false, distractors: false, shuffling: false, badge: undefined },
-  explorer: { look: { silhouette: false, homeShown: false }, ladder: true, distractors: false, shuffling: true, badge: "explorer" },
-  paleontologist: { look: { silhouette: true, homeShown: false }, ladder: true, distractors: true, shuffling: true, badge: "paleontologist" }
+// than keep the cut's order, the badge a skeleton built there without
+// help's last step earns, and whether a mystery skeleton is guessed from
+// among its look-alikes rather than dinosaurs unlike it alone.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; shuffling: boolean; badge: Badge | undefined; lookAlike: boolean }> = {
+  hatchling: { look: { silhouette: false, homeShown: true }, ladder: false, distractors: false, shuffling: false, badge: undefined, lookAlike: false },
+  explorer: { look: { silhouette: false, homeShown: false }, ladder: true, distractors: false, shuffling: true, badge: "explorer", lookAlike: true },
+  paleontologist: { look: { silhouette: true, homeShown: false }, ladder: true, distractors: true, shuffling: true, badge: "paleontologist", lookAlike: true }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -105,10 +113,13 @@ export const REVEAL: Record<"motion" | "reduced", number> = { motion: 1500, redu
 
 // A puzzle of a skeleton knocked down from its stand starts with its
 // bones scattering from the outline to the tray; each keeps its level's
-// look until it is left.
+// look until it is left. A mystery skeleton's puzzle holds the dinosaurs
+// it is guessed from once finished, and its guess the dinosaurs guessed
+// wrong so far.
 type SkeletonScreen =
   | { kind: "choice" }
-  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; look: Look }
+  | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; look: Look; mystery: readonly Kin[] | undefined }
+  | { kind: "guess"; puzzle: Puzzle; result: SkeletonResult; choices: readonly Kin[]; wrong: readonly string[] }
   | { kind: "result"; result: SkeletonResult }
   | { kind: "museum" };
 
@@ -124,7 +135,7 @@ export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string 
 // chooses another level on its switch. `onHome` takes the child back to
 // the home page; `onStart` is told as each puzzle begins, a rebuild's too.
 export function useSkeletonGame(
-  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion, random, sounds }: SkeletonGameProps,
+  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion, random, sounds, kin }: SkeletonGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
@@ -189,15 +200,17 @@ export function useSkeletonGame(
   // skeleton rebuilt is knocked down from its stand only as its puzzle
   // starts, its bones scattering from the outline, and its stand awaits
   // it from then on, however the rebuild is left. The puzzle is cut for the
-  // level the switch shows.
-  const start = (id: string, rebuild: boolean) => {
+  // level the switch shows, and a mystery's dinosaurs to guess from chosen
+  // for it as it starts.
+  const start = (id: string, rebuild: boolean, mystery = false) => {
     const skeleton = skeletons.find((each) => each.id === id);
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { look, ladder, distractors, shuffling, badge } = MODES[at];
+    const { look, ladder, distractors, shuffling, badge, lookAlike } = MODES[at];
     const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, shuffling: shuffling ? random : undefined, badge });
-    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
+    const choices = mystery ? mysteryChoices(id, skeletons, kin, lookAlike, random).flatMap((each) => kin.filter((one) => one.id === each)) : undefined;
+    go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look, mystery: choices } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
         live.current = started;
@@ -210,6 +223,13 @@ export function useSkeletonGame(
   const choose = (id: string) => start(id, false);
 
   const rebuild = (id: string) => start(id, true);
+
+  // The mystery is one of the skeletons with a star, built at the level
+  // the switch shows like any other.
+  const mystery = () => {
+    const picked = pickMystery(skeletons, keptNow.current.progress.earned, random);
+    if (picked !== undefined) start(picked.id, false, true);
+  };
 
   // A puzzle left is dropped with the screen it was on, so its wait for
   // help stops, and the game opens again on its choice of dinosaurs.
@@ -236,14 +256,30 @@ export function useSkeletonGame(
   };
 
   // The finished skeleton shows whole for a moment, then the dinosaur is
-  // revealed, its body picture fading in once loaded; only if the child
-  // is still here. The pause is the puzzle's timer, so leaving stops it.
+  // revealed, its body picture fading in once loaded, or a mystery asks
+  // whose skeleton it is; only if the child is still here. The pause is
+  // the puzzle's timer, so leaving stops it.
   const reveal = (finished: Puzzle, result: SkeletonResult, timers: OwnedTimers) => {
     timers.start(REVEAL[reducedMotion() ? "reduced" : "motion"], () => {
       if (live.current !== finished) return;
       live.current = null;
-      go({ kind: "result", result });
+      go((current) =>
+        current.kind === "puzzle" && current.mystery !== undefined ? { kind: "guess", puzzle: finished, result, choices: current.mystery, wrong: [] } : { kind: "result", result }
+      );
     });
+  };
+
+  // The right guess reveals the dinosaur as any finished skeleton does; a
+  // wrong one boings, rests aside and brings the clue.
+  const guess = (id: string) => {
+    if (screen.kind !== "guess" || screen.wrong.includes(id)) return;
+    const from = screen;
+    if (id === from.puzzle.skeleton.id) {
+      go((current) => (current === from ? { kind: "result", result: from.result } : current));
+      return;
+    }
+    sounds.play("boing");
+    go((current) => (current === from ? { ...from, wrong: [...from.wrong, id] } : current));
   };
 
   // The board listens for drags anew on each render, so it always drops
@@ -346,6 +382,7 @@ export function useSkeletonGame(
             level={level}
             onLevel={chooseLevel}
             onChoose={choose}
+            onMystery={skeletons.some(({ id }) => kept.progress.earned.includes(id)) ? mystery : undefined}
             onMuseum={museum}
             onHome={home}
           />
@@ -355,12 +392,24 @@ export function useSkeletonGame(
           <SkeletonPuzzleScreen
             language={language}
             {...presentPuzzle(screen.puzzle, language, skeletonPicture, screen.look)}
+            {...(screen.mystery && { name: "?" })}
             scatter={screen.scatter}
             onDrop={onDrop}
             onTouch={onTouch}
             onLastStep={onLastStep}
             onMuseum={museum}
             onBack={back}
+            onHome={home}
+          />
+        );
+      case "guess":
+        return (
+          <SkeletonGuessScreen
+            language={language}
+            {...presentSkeletonGuess(screen.puzzle.skeleton, screen.choices, screen.wrong, language, skeletonPicture, bodyPicture)}
+            onGuess={guess}
+            onBack={back}
+            onMuseum={museum}
             onHome={home}
           />
         );

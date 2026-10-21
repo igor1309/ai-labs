@@ -102,6 +102,8 @@ export const en: Texts = {
   star: "STAR",
   badges: { explorer: "EXPLORER BADGE", paleontologist: "PALEONTOLOGIST BADGE" },
   buildAnother: "BUILD ANOTHER",
+  mystery: "MYSTERY SKELETON",
+  whoseSkeleton: "WHOSE SKELETON IS IT?",
   stands: "STANDS",
   build: "BUILD",
   rebuild: "REBUILD",
