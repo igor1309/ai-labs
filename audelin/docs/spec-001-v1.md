@@ -9,9 +9,9 @@ description: "Spec: Audelin v1 — recording, live transcript, recovery, setup a
 ## Goal
 
 Make [ADR-001](adr-001-v1-architecture.md) implementable: the session
-lifecycle, the files in a call folder, recognition windows and the
-stabilizer, the watermark, the activity gate, setup and the calls list. The
-scope is v1 in [mvp.md](research/mvp.md) § Versions. This spec sets the
+lifecycle, call detection and the two controls, the files in a call folder,
+recognition windows and the stabilizer, the watermark, the activity gate,
+setup and the calls list. The scope is v1 in [mvp.md](mvp.md) § Versions. This spec sets the
 mechanics ADR-001 left to it (§ Non-goals).
 
 Audelin cuts its own recognition windows from the recorded audio and calls
@@ -64,18 +64,19 @@ enum Track: String, Codable, Hashable { case me, them }
 struct CallID: Hashable, Codable { let uuid: UUID }
 
 enum AudioStatus: String, Codable { case recording, complete, incomplete, failed }
-enum TranscriptStatus: String, Codable { case live, catchingUp = "catching_up", complete, incomplete }
+enum TranscriptStatus: String, Codable { case live, catchingUp = "catching_up", complete, incomplete, off }
 struct TimeRange: Codable, Equatable { let track: Track; let epoch: Int; let from: Double; let to: Double }
 struct CallMeta: Codable, Equatable {
     let version: Int                 // 1
     let id: CallID
     let start: Date                  // wall clock at the session origin
     var duration: Double             // the sealed duration; 0 while recording
-    var app: String?                 // "Zoom" or nil
+    var app: String?                 // the call app's name (1.3), or nil
     var title: String
     var audio: AudioStatus
     var transcript: TranscriptStatus
     var unrecognised: [TimeRange]    // a cache of outstanding audio (3.7)
+    var liveText: Bool               // the «Живой текст» switch at the end of recording (11.4)
     var pinned: Bool
 }
 enum FolderName {
@@ -123,7 +124,7 @@ enum Windowing {                           // pure: the next window to run (4.2)
 struct CommitContext: Equatable {
     let origin: Origin
     let now: Double?                       // session clock; nil in a reopened session
-    let liveSince: Double                  // when the live model became ready (4.8)
+    let liveSince: Double                  // when live text could start (4.8)
 }
 struct LogLine: Codable, Equatable {       // one line of live.jsonl (4.1)
     let track: Track; let epoch: Int
@@ -238,6 +239,14 @@ protocol ModelProvider {            // declared in SetupCore; adapter: ModelStor
     func findReusable() async -> URL?
     func download() async                         // progress and failure arrive on `status`
 }
+protocol CallDetector {             // adapter: CallDetector (ADR-001 decision 10)
+    var events: AsyncStream<CallEvent> { get }  // current users first, then changes
+}
+enum CallEvent: Equatable {
+    case micInUse(CallApp)          // a call app started using the microphone
+    case micReleased(CallApp)       // it stopped
+}
+struct CallApp: Hashable, Codable { let bundleID: String; let name: String }
 protocol SettingsStore { func load() throws -> Settings?; func save(_ s: Settings) throws }
 protocol Clock { var now: Double { get }; func sleep(for seconds: Double) async throws }
 protocol HostClock { var now: Double { get } }    // monotonic host time, seconds
@@ -253,9 +262,16 @@ multi-step write. Otherwise it throws `.revoked` (7.3).
 actor LiveSession {                    // the serialized owner (ADR-001 decision 1)
     var state: AsyncStream<SessionState> { get }    // current value first
     var panel: AsyncStream<PanelPatch> { get }
-    func start() async throws          // .busy, .alreadyStarted, .capture
+    func start(_ trigger: Trigger) async throws   // .busy, .alreadyStarted, .capture
     func stop() async                  // 3.1
+    func setLiveText(_ on: Bool) async // 11.4
     func rename(_ title: String) async throws
+}
+enum Trigger: Equatable { case manual, call(CallApp) }
+actor CallWatcher {                    // starts and stops sessions (11.2)
+    func run() async                   // consumes CallDetector.events and settings
+    func startManually() async throws
+    func stopManually() async
 }
 enum SessionState: Equatable {
     case idle, recording, saving, catchingUp, waitingForModel, paused, closed
@@ -277,8 +293,11 @@ the third ` 3`, and so on (mvp.md § Edge cases).
 removes leading dots and cuts the title to 100 characters. An empty result
 becomes `Call`.
 
-1.3. The first title is `Zoom` with `app = "Zoom"` when `zoom.us` is running
-at start. Otherwise it is `Call`, with `app = nil`. Calendar titles are v3.
+1.3. The first title is the call app's name, and `app` is that name. For a
+recording the call started, that app is the trigger's (11.2). For a
+manual start, it is the call app using the microphone at that moment, if
+there is one. Otherwise the title is `Call` and `app` is nil. Calendar
+titles are v3 (mvp.md § Call folders).
 
 1.4. Files in a call folder:
 
@@ -384,8 +403,9 @@ track is ended, the session runs the finalization path (3.1) with reason
 `captureFailed`. A suspended track is not ended. If both tracks are
 suspended, the session stays `recording` until wake or Stop.
 
-2.8. Only one session records at a time: `start()` acquires `.recording(id)`
-(7.2). `start()` on a session that is not `idle` throws `.alreadyStarted`.
+2.8. Only one session records at a time: `start(_:)` acquires
+`.recording(id)` (7.2). `start(_:)` on a session that is not `idle` throws
+`.alreadyStarted`.
 
 ### 3. Stop, saving and catch-up
 
@@ -405,10 +425,13 @@ the same run.
    - `incomplete` if any epoch ended other than by `stop` or `sleep`;
    - `complete` otherwise.
 
-   In the same write, `meta.unrecognised` and
-   `meta.transcript = catching_up` are set from outstanding audio (3.7).
-7. The lease is transferred from `.recording(id)` to `.catchUp(id)` (7.4),
-   and catch-up starts (3.3).
+   In the same write, `meta.liveText` is set from the switch, and
+   `meta.unrecognised` from outstanding audio (3.7). `meta.transcript`
+   becomes `catching_up`, or `off` when live text is off.
+7. With live text on, the lease is transferred from `.recording(id)` to
+   `.catchUp(id)` (7.4), and catch-up starts (3.3). With live text off, the
+   lease is released and the session is `closed`: the call's text comes
+   from the v3 final pass (mvp.md § Controls).
 
 `stop()` returns when step 7 is done or after the 5 s stop limit, whichever
 comes first. Past the limit, the list and panel show "Saving…" while steps
@@ -471,15 +494,18 @@ writes nothing twice. Records already written are kept (2.4 keys).
 `Transcript.outstanding` computes it from the index, the `.pcm` sizes and
 the log frontiers. `meta.unrecognised` and `meta.transcript` are a cache
 for the list, rewritten whenever outstanding audio is computed. On launch,
-after repair, every call with outstanding audio gets a reopened session.
+after repair, every call with outstanding audio and `meta.liveText` true
+gets a reopened session. A call recorded with live text off keeps its
+ranges in `meta.unrecognised` and is not caught up in v1.
 Reopened sessions run one at a time, newest call first, and each one
 acquires `.catchUp(id)`.
 
 3.8. **No model.** If no live model is ready, the session records without
 attempts. The panel says "Recording; live text starts when the model is
-ready", and the session watches `ModelProvider.status`. When the model is
-ready, `liveSince` is set to the session time, and each open epoch starts an
-attempt at its watermark (4.5). Catch-up with no model is in
+ready", and the session watches `ModelProvider.status`. `liveSince` is the
+session time from which both the model is ready and live text is on (11.4).
+When it is reached, each open epoch starts an attempt at its watermark
+(4.5). Catch-up with no model is in
 `waitingForModel` and starts on `.ready`.
 
 ### 4. Recognition, stabilizer and the segment log
@@ -634,7 +660,8 @@ session close, and written atomically:
 
 - its origin is `reopened`;
 - its `end` is before `liveSince`: audio recorded before the model arrived
-  (mvp.md § v4 screen details);
+  or before live text was switched on (mvp.md § v4 screen details,
+  § Controls);
 - `now − end > 60 s`, as when catch-up after a stall reaches text a minute
   old.
 
@@ -762,7 +789,8 @@ matches it by name, size and SHA-256. Otherwise the model is downloaded
 into `~/.audelin/models/` and checked against the manifest.
 
 8.3. Settings live in `~/.audelin/settings.json`, written atomically:
-`{"version":1,"callsFolder":"…","liveModel":{"path":"…","source":"reused|downloaded"}}`.
+`{"version":1,"callsFolder":"…","liveModel":{"path":"…","source":"reused|downloaded"},"autoRecord":true,"liveText":true}`.
+Both switches default to on (mvp.md § Controls).
 `Settings` is the matching `Codable` struct.
 
 8.4. The launch check verifies two things: the calls folder exists and is
@@ -823,6 +851,77 @@ with subsystem `audelin.Audelin` and the interface name as the category.
 over 1 s at `.info`. Transcript text and audio samples are never logged,
 only their counts and times.
 
+### 11. Calls, detection and controls
+
+11.1. **Call detection.** The CallDetector adapter watches Core Audio
+process objects (`kAudioHardwarePropertyProcessObjectList`, with
+`kAudioProcessPropertyIsRunningInput` and `kAudioProcessPropertyBundleID`
+on each; macOS 14.2). A *call app* is:
+
+- Zoom (`us.zoom.xos`);
+- Telemost;
+- a browser: Safari, Chrome, Arc, Firefox, Edge or Yandex Browser.
+
+The exact bundle ids are a list in the adapter. A helper process (such as
+`com.google.Chrome.helper`) counts as its app, by bundle-id prefix.
+Audelin's own process is never a call app. The adapter emits
+`micInUse(app)` when an app's input starts running and `micReleased(app)`
+when it stops. A browser counts whenever it uses the microphone, so web
+dictation counts too (mvp.md § Controls).
+
+11.2. **CallWatcher** starts and stops sessions while
+«Записывать звонки автоматически» (`autoRecord`) is on:
+
+- **Start.** On `micInUse(app)` with no session recording, it calls
+  `start(.call(app))`. If the gate refuses, as during a folder move or
+  while the previous call is saving, the menu shows "Call not recorded:
+  <reason>". The watcher tries again when `changes` frees the gate while a
+  call app still uses the microphone.
+- **End.** A call ends when no call app has used the microphone for 30 s.
+  The watcher then stops a session that it started. A call app taking the
+  microphone within those 30 s cancels the pending stop.
+- **Manual sessions.** A session started by hand is stopped by hand only,
+  and call ends do not stop it. `micInUse` during a manual recording does
+  nothing.
+- **Manual stop.** Stopping an automatic recording by hand stands: the
+  watcher does not restart it while the same call goes on. The next
+  `micInUse` after every call app has released the microphone starts a new
+  recording.
+- **Switch changes.** Turning `autoRecord` off does not stop a session it
+  started; that session still stops when the call ends. With `autoRecord`
+  off, the watcher starts nothing, and detection is used only for the title
+  (1.3).
+
+After a recording stops on its own, the panel keeps its text until the next
+recording starts (mvp.md § Controls).
+
+11.3. **Menu bar.** The menu holds:
+
+- Start or Stop recording;
+- «Записывать звонки автоматически» and «Живой текст», as checkmark items;
+- Open Calls Folder;
+- Settings…;
+- Quit.
+
+The icon shows three states, as in design Screen 7: waiting for a call,
+recording, and recording without live text. Settings has a row for each
+switch (Screen 6).
+
+11.4. **«Живой текст» (`liveText`)** is app-wide and applies to the current
+recording at once.
+
+- **Off at start:** the session records without attempts, and the panel
+  shows the live-text-off state (Screen 3).
+- **Switched off mid-call:** each attempt plans its next window with
+  `epochEnd` set to the written edge at that moment. That window is a
+  `final` (4.2) and commits all shown text, after which the attempt stops.
+  Committed text stays, and later audio is not recognised live.
+- **Switched on mid-call:** `liveSince` becomes the current session time
+  (3.8). Attempts start at their frontiers and fill in the minutes already
+  recorded, marked late (4.8).
+- **At Stop:** the switch's value goes to `meta.liveText`, and it decides
+  whether catch-up runs (3.1, 3.7).
+
 ## Values set by this spec
 
 These are proposals, not owner decisions, and are tuned while profiling
@@ -856,7 +955,12 @@ and using the app.
 | Model reuse | full manifest match, SHA-256 included | 8.2 |
 | Locations | calls in `~/Recordings/Audelin`; app data in `~/.audelin/` | 8.1, 8.3, 9.5 |
 | Minimum macOS | 14.2 (process taps) | 2.1 |
-| Title length / first title | 100 characters / `Zoom` if running, else `Call` | 1.2, 1.3 |
+| Title length / first title | 100 characters / the call app's name, else `Call` | 1.2, 1.3 |
+| Call apps | Zoom, Telemost; Safari, Chrome, Arc, Firefox, Edge, Yandex Browser (owner named "a browser") | 11.1 |
+| Call end | 30 s with no call app on the microphone (owner, mvp.md § Controls) | 11.2 |
+| A refused automatic start | retried while the call goes on | 11.2 |
+| `autoRecord` off mid-call | the automatic recording still stops at call end | 11.2 |
+| Switch-off flush | one `final` window up to the written edge | 11.4 |
 | Delete | to the macOS Trash | 9.3 |
 | Bundle id and log subsystem / slow call | `audelin.Audelin` / > 1 s logged at `.info` | 10 |
 | Word-time check against a full decode | 80 ms (one encoder frame) | test 36 |
@@ -933,7 +1037,7 @@ LiveSessionCore (fakes for every port, manual clocks):
 22. A recording start revokes catch-up: in-flight writes finish, the pending
     `raw.md` rebuild is cancelled, the session is `paused`, and it resumes
     afterwards (3.4, 7.3).
-23. A second `start()` throws `.alreadyStarted`, and concurrent `stop()`
+23. A second `start(_:)` throws `.alreadyStarted`, and concurrent `stop()`
     calls share one finalization (2.8, 3.1).
 24. Single-track start: with the mic started and the tap failed, recording
     runs with a notice. If both fail, `start()` throws and no folder exists
@@ -1000,11 +1104,33 @@ Logging:
 42. A decorator logs a call, its result, error and duration, and never
     transcript text (10).
 
+Calls, detection and controls (fake CallDetector, manual clock):
+
+43. `micInUse(zoom)` starts a recording titled `Zoom` with `app = "Zoom"`.
+    A manual start while a browser uses the microphone takes the
+    browser's name, and with no call app it is `Call` (1.3, 11.2).
+44. A start refused during a move shows "Call not recorded" and starts
+    once the move ends while the call goes on (11.2).
+45. Call end:
+    - the session stops 30 s after the last release;
+    - a re-take at 29 s cancels the stop;
+    - a manual session ignores call ends;
+    - a manual stop is not undone until a new call (11.2).
+46. With `autoRecord` off, the watcher starts nothing. Turning it off
+    mid-call still stops the automatic recording at call end (11.2).
+47. Live text off at start: no attempts run, `meta.transcript = off`, no
+    catch-up runs and no reopen at launch (11.4, 3.1, 3.7).
+48. Live text switched off mid-call commits up to the written edge and then
+    stops. Switched on again, it fills from the frontier with late marks
+    (11.4, 4.8).
+49. Adapter, on this Mac: the detector reports Zoom and a Chrome call
+    (through its helper) and excludes Audelin's own capture (11.1).
+
 **Rule → tests:**
 
 | Rule | Tests |
 |---|---|
-| 1 | 28, 32 |
+| 1 | 28, 32, 43 |
 | 2 | 12, 15–17, 24, 32, 37 |
 | 3 | 10, 12, 18, 21–23, 30, 31 |
 | 4 | 1–11, 19, 29, 34, 36 |
@@ -1014,6 +1140,7 @@ Logging:
 | 8 | 38 |
 | 9 | 32, 33 |
 | 10 | 42 |
+| 11 | 43–49 |
 
 **ADR-001 acceptance → tests:**
 
@@ -1034,7 +1161,7 @@ Logging:
 
 - The modules match ADR-001's layout and invariants 1–19, as amended.
 - The interfaces above exist as written, or this spec is amended first.
-- Tests 1–42 pass. The acceptance list is run on a real call and logged in
+- Tests 1–49 pass. The acceptance list is run on a real call and logged in
   `audelin/docs/log.md`.
 
 ## Out of scope
