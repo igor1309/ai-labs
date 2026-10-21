@@ -302,6 +302,11 @@ describe("catalogue's shared turn", () => {
     const list = app.grid();
     listMetrics(list);
     app.resize([820, 1180, "tall"]);
+    // The browser shrinks the picture by a view transition whose group
+    // follows the card's live box every frame, so it lands where the card
+    // now stands, as long as the turn starts no view transition of its own,
+    // which would skip the shrink.
+    expect(app.fades).toHaveLength(0);
     const baryonyx = cardIn(list, "baryonyx");
     expect(baryonyx.querySelector("img")).toBeTruthy();
     expect(baryonyx.getBoundingClientRect()).toEqual(new DOMRect(...Object.values(expectedCardBox("baryonyx", list, 820, 1180, "tall")) as [number, number, number, number]));

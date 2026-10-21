@@ -430,6 +430,12 @@ describe("the list upright, used", () => {
     // The list ends at the screen's padding over the home indicator, and
     // its last card 48 pixels above that, once scrolled to its end.
     expect(inset.list).toEqual(["1", "1", "0px", "auto", 48]);
+    // So scrolled to its end, the last card's bottom stands 48 pixels over
+    // the list's, which is the window's less the screen's bottom padding,
+    // the home indicator in it.
+    const listBottom = 1133 - inset.padding.bottom;
+    expect(listBottom - px(getComputedStyle(grid()).paddingBottom)).toBeLessThanOrEqual(1133 - IPAD_MINI_UPRIGHT.bottom);
+    expect(listBottom).toBeLessThanOrEqual(1133 - IPAD_MINI_UPRIGHT.bottom);
     expect([inset.layout.columns, inset.layout.card]).toEqual([without.layout.columns, without.layout.card]);
   });
 });
