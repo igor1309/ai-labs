@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
-import { extendPart, turnFrame } from "../src/root.ts";
+import { extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
+import type { TapInput } from "../src/tapFilter.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { openMenu } from "./menus.ts";
 import {
@@ -261,6 +262,9 @@ describe("the home page glides to its other layout", () => {
     expect([frame.className, frame.hasAttribute("data-turn-frame"), frame.hasAttribute("data-turn-part"), frame.childNodes.length, frame.getAttribute("aria-hidden"), frame.hasAttribute("inert")]).toEqual([card.className, true, false, 0, "true", true]);
     expect([frame.style.position, frame.style.zIndex, frame.style.width, frame.style.height, frame.style.animation, frame.style.pointerEvents]).toEqual(["absolute", "-1", "300px", "200px", "none", "none"]);
     expect([card.hasAttribute("data-turn-framed"), getComputedStyle(card).boxShadow, card.parentElement?.hasAttribute("data-turn-frames")]).toEqual([true, "none", true]);
+    // The row, positioned statically, holds its tiles' frames where they
+    // stand by containing its layout.
+    expect([row.querySelectorAll(":scope > [data-turn-frame]").length, getComputedStyle(row).position, getComputedStyle(row).contain]).toEqual([FRAMED.length - 1, "static", "layout"]);
     expect([row.style.paddingRight, row.style.marginRight, row.style.paddingBottom, row.style.marginBottom]).toEqual([`${right}px`, `${-right}px`, `${bottom}px`, `${-bottom}px`]);
 
     act(() => app.pictures.fire(GLIDE));
@@ -303,13 +307,16 @@ describe("the home page glides to its other layout", () => {
 
 describe("a part's frame in a browser", () => {
   // A part 120 by 80 laid out at 934, 116 on the window, in a parent
-  // whose box starts at 600, 100 and that is scrolled by `scroll`. The
-  // browser draws an element its parent holds at `left` and `top` that
-  // far from the parent's box, less its scroll.
+  // positioned statically, as the tiles' row is, whose box starts at
+  // `at` and that is scrolled by `scroll`. The browser draws an element
+  // positioned absolutely at `left` and `top` from its containing block:
+  // the parent's box, less its scroll, where the parent is positioned or
+  // contains its layout, and otherwise the window's origin, as nothing
+  // else on the page is.
   it.each([
     ["stands still", { left: 0, top: 0 }],
     ["is scrolled", { left: 334, top: 20 }]
-  ])("is drawn where the part is laid out, inside a parent that %s", (_, scroll) => {
+  ])("is drawn where the part is laid out, inside a parent that %s, and moves with the parent", (_, scroll) => {
     const parent = document.createElement("div");
     const part = document.createElement("div");
     part.style.backgroundColor = "rgb(246, 241, 230)";
@@ -317,19 +324,38 @@ describe("a part's frame in a browser", () => {
     document.body.append(parent);
     onTestFinished(() => parent.remove());
     Object.assign(parent, { scrollLeft: scroll.left, scrollTop: scroll.top });
+    const at = { left: 600, top: 100 };
+    const containing = () => getComputedStyle(parent).position !== "static" || /\b(layout|paint|content|strict)\b/.test(getComputedStyle(parent).contain);
     const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-      const at = (offset: string) => Number.parseFloat(offset) || 0;
-      if (this.parentElement !== parent) return new DOMRect();
-      return new DOMRect(600 - parent.scrollLeft + at(this.style.left), 100 - parent.scrollTop + at(this.style.top), at(this.style.width), at(this.style.height));
+      const px = (offset: string) => Number.parseFloat(offset) || 0;
+      if (!this.hasAttribute("data-turn-frame")) return new DOMRect();
+      const origin = containing() ? { left: at.left - parent.scrollLeft, top: at.top - parent.scrollTop } : { left: 0, top: 0 };
+      return new DOMRect(origin.left + px(this.style.left), origin.top + px(this.style.top), px(this.style.width), px(this.style.height));
     });
     onTestFinished(() => spy.mockRestore());
     const laidOut = { left: 934, top: 116, width: 120, height: 80 };
+    const drawnAt = (element: Element) => {
+      const { left, top, width, height } = element.getBoundingClientRect();
+      return { left, top, width, height };
+    };
 
-    const frame = turnFrame(part, laidOut)!.element as HTMLElement;
+    expect([getComputedStyle(parent).position, containing()]).toEqual(["static", false]);
 
+    const drawn = turnFrame(part, laidOut)!;
+    const frame = drawn.element as HTMLElement;
+
+    expect([getComputedStyle(parent).position, getComputedStyle(parent).contain]).toEqual(["static", "layout"]);
     expect([frame.style.left, frame.style.top]).toEqual([`${934 - 600 + scroll.left}px`, `${116 - 100 + scroll.top}px`]);
-    const { left, top, width, height } = frame.getBoundingClientRect();
-    expect({ left, top, width, height }).toEqual(laidOut);
+    expect(drawnAt(frame)).toEqual(laidOut);
+
+    // The parent glides on, the part in it.
+    Object.assign(at, { left: 640, top: 90 });
+
+    expect(drawnAt(frame)).toEqual({ ...laidOut, left: 974, top: 106 });
+
+    drawn.remove();
+
+    expect(containing()).toBe(false);
   });
 });
 
@@ -487,6 +513,33 @@ describe("taps and keys during the motion", () => {
     expect([turning(), themeMenuOpen(), focused()]).toEqual([false, true, "ticked choice"]);
     await app.user.keyboard(key);
     expect([themeMenuOpen(), focused()]).toEqual(settled);
+  });
+
+  // The click assistive technology sends to the focused control, which
+  // no tap made, after the double-tap filter has seen it.
+  it.each(["glide", "fade"] as const)("an activation of the focused large card reaches nothing during a %s, the filter counting it, and opens its game once it settles", (motion) => {
+    const counted: TapInput[] = [];
+    onTestFinished(filterDoubleTaps(window, (input) => (counted.push(input), true)));
+    const app = openTurning(1180, 820, "wide", { reduced: motion === "fade" });
+    const card = featuredCard();
+    act(() => card.focus());
+    const activate = () => act(() => void card.dispatchEvent(new MouseEvent("click", { detail: 0, bubbles: true, cancelable: true })));
+
+    app.resize([820, 1180, "tall"]);
+    activate();
+    if (motion === "fade") {
+      app.updateFade(0);
+      activate();
+    }
+
+    const activations = motion === "fade" ? 2 : 1;
+    expect([turning(), counted, screen.queryByLabelText("PROGRESS"), document.activeElement]).toEqual([true, Array(activations).fill({ kind: "tap", byKey: true }), null, card]);
+
+    if (motion === "fade") app.endFade(0);
+    else act(() => app.pictures.fire(GLIDE));
+    activate();
+
+    expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
   });
 
   it("leave the double-tap filter's rule as it was: a tap during it is the first of a double tap", () => {

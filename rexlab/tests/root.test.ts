@@ -4,7 +4,7 @@ import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { appProps, filterDoubleTaps } from "../src/root.ts";
+import { TURN_TIMING, appProps, extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -175,7 +175,7 @@ describe("the app in a browser", () => {
     expect(reducedMotion()).toBe(false);
   });
 
-  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, animated by the browser, faded by its view transition until it has finished", async () => {
+  it("moves the page to its other layout through the browser: parts found in the document, measured as laid out, framed and widened by the browser's own means, animated by the browser, timed by the motion tokens, faded by its view transition until it has finished", async () => {
     const fades: unknown[] = [];
     const ended = settling();
     const given = browser();
@@ -194,6 +194,10 @@ describe("the app in a browser", () => {
 
     expect(layoutMotion.parts).toBe(document);
     expect(layoutMotion.measure(part)).toBe(box);
+    // A part's frame and the row's window are drawn as homeTurn.test.tsx
+    // proves of them, timed by the stylesheet's tokens, which
+    // motion.test.ts holds TURN_TIMING to.
+    expect([layoutMotion.frame, layoutMotion.extend, layoutMotion.timing]).toEqual([turnFrame, extendPart, TURN_TIMING]);
     expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
     expect([fades, finished]).toEqual([[change], 0]);
 

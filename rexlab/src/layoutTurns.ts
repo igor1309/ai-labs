@@ -40,6 +40,12 @@ const KEYS = ["keydown", "keypress", "keyup"];
 // reaches the double-tap filter, which counts it.
 const PRESSES = ["pointerdown", "mousedown"];
 
+// The clicks a motion holds back, though no tap reaches the page: one
+// assistive technology sends to the focused control would still open what
+// it names. They are held on the document, after the double-tap filter on
+// the window, which still counts each of them.
+const CLICKS = ["click"];
+
 // What may draw the page otherwise than it last settled, between changes
 // of the window: a scroll, and an animation or transition of its own
 // ending.
@@ -51,7 +57,8 @@ const REDRAWS = ["scroll", "animationend", "transitionend"];
 // running goes on to where the latest window puts each part, and what a
 // screen keeps is put back even where nothing glides. While a motion
 // runs, the document is marked `data-turning`, where the stylesheet lets
-// no tap or swipe reach the page, and keys and presses are held back.
+// no tap or swipe reach the page, and keys, presses and clicks are held
+// back.
 export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size: string, layout: ScreenLayout) {
   // Each change of the window counts, though it leaves the size class and
   // the width as they were: the page's parts may be sized by its height.
@@ -83,6 +90,7 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
     const redrawn = () => turns.redrawn();
     KEYS.forEach((type) => window.addEventListener(type, hold, { capture: true }));
     PRESSES.forEach((type) => window.addEventListener(type, press, { capture: true }));
+    CLICKS.forEach((type) => document.addEventListener(type, hold, { capture: true }));
     REDRAWS.forEach((type) => window.addEventListener(type, redrawn, { capture: true }));
     const stop = turns.subscribe(() => root.toggleAttribute("data-turning", turns.isRunning()));
     return () => {
@@ -90,6 +98,7 @@ export function useLayoutTurns(turns: LayoutTurns, viewport: WindowChanges, size
       turns.halt();
       KEYS.forEach((type) => window.removeEventListener(type, hold, { capture: true }));
       PRESSES.forEach((type) => window.removeEventListener(type, press, { capture: true }));
+      CLICKS.forEach((type) => document.removeEventListener(type, hold, { capture: true }));
       REDRAWS.forEach((type) => window.removeEventListener(type, redrawn, { capture: true }));
       root.removeAttribute("data-turning");
     };
