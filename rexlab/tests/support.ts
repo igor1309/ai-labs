@@ -6,7 +6,6 @@ import records from "../src/data/dinosaurs.json";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport } from "../src/App.tsx";
-import type { SideInsets } from "../src/catalogueColumns.ts";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readDig, type DigFile } from "../src/dig/index.ts";
@@ -254,10 +253,12 @@ export type ManualViewport = Viewport & {
   resize(size: SizeClass, upright: boolean): void;
 };
 
+type ViewportInsets = { left: number; right: number };
+
 // Window and screen changes are independent and only happen on request.
 // The window's sides have the safe-area insets `sideInsets`, none unless
 // given.
-export function manualViewport(initial: "portrait" | "landscape", sideInsets: SideInsets = { left: 0, right: 0 }): ManualViewport {
+export function manualViewport(initial: "portrait" | "landscape", sideInsets: ViewportInsets = { left: 0, right: 0 }): ManualViewport {
   let size: SizeClass = initial === "portrait" ? "tall" : "wide";
   let upright = initial === "portrait";
   const listeners = new Set<() => void>();
@@ -299,7 +300,7 @@ export function manualWindow(width: number) {
 // A browser's computed style of `root`, its root, where app.css sets the
 // window's side safe-area insets, `insets`; any other element has no
 // style here.
-export function rootInsets(root: Element, insets: SideInsets = { left: 0, right: 0 }) {
+export function rootInsets(root: Element, insets: ViewportInsets = { left: 0, right: 0 }) {
   const values: Record<string, string> = { [SIDE_INSETS.left]: `${insets.left}px`, [SIDE_INSETS.right]: `${insets.right}px` };
   return {
     getComputedStyle: (element: Element) => {

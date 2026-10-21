@@ -59,7 +59,7 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chi
   const returningIndex = returning === undefined ? undefined : dinosaurs.findIndex(({ id }) => id === returning);
   // Back from a page, its card is scrolled into view, so its picture has a
   // card to shrink back into wherever the list was scrolled to.
-  const list = useKeptList(layoutKeeping, columns, returningIndex === -1 ? undefined : returningIndex);
+  const list = useKeptList(layoutKeeping, columns, returningIndex === -1 ? undefined : returningIndex, food);
 
   return (
     <main className="catalogue" aria-label={text.catalogue}>

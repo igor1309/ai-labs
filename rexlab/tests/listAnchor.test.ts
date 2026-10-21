@@ -21,7 +21,7 @@ type Layout = { height: number; scrollHeight: number; rows: ListRows };
 // with no safe areas, `bar` pixels of it above the list: 40 above "HOME",
 // then the bar, and the list 28 under it.
 function layoutOf(windowWidth: number, windowHeight: number, sizeClass: "wide" | "tall", bar: number, count = IDS.length): Layout {
-  const columns = catalogueColumns(windowWidth, sizeClass, { left: 0, right: 0 });
+  const columns = catalogueColumns(windowWidth, sizeClass, 0, 0);
   const row = cardHeight((windowWidth - 112 - (columns - 1) * GAP) / columns);
   const rowCount = Math.ceil(count / columns);
   return { height: windowHeight - 40 - bar - 28, scrollHeight: rowCount * row + (rowCount - 1) * GAP + BOTTOM, rows: { columns, row, gap: GAP } };

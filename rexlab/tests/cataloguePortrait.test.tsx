@@ -2,7 +2,6 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App, type PortraitLayouts } from "../src/App.tsx";
-import type { SideInsets } from "../src/catalogueColumns.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { emChipWidths, laidOutWidth } from "./chipWidths.ts";
@@ -271,8 +270,8 @@ describe("the list of every dinosaur upright", () => {
   it("counts the window's side insets out of its row, as a tall window with them holds one card fewer", async () => {
     // 1060 wide, an inset of 18 on each side leaves four cards of 213;
     // one more pixel leaves room for three.
-    const sheet = (insets: SideInsets) => Object.assign(document.createElement("style"), { textContent: appStylesheet({ top: 0, bottom: 0, ...insets }) });
-    const tight: SideInsets = { left: 19, right: 18 };
+    const sheet = (insets: { left: number; right: number }) => Object.assign(document.createElement("style"), { textContent: appStylesheet({ top: 0, bottom: 0, ...insets }) });
+    const tight = { left: 19, right: 18 };
     const inset = sheet(tight);
     document.head.append(inset);
     onTestFinished(() => inset.remove());

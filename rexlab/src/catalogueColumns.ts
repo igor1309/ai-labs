@@ -1,9 +1,6 @@
 // The size classes of the window, as the viewport tells them.
 export type CatalogueSizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
 
-// The safe-area insets at the window's left and right edges.
-export type SideInsets = { left: number; right: number };
-
 // A screen's content, its own padding included, is at most 1440 pixels
 // wide and centred, as app.css's --screen-left and --screen-right set it.
 const SCREEN_CAP = 1440;
@@ -20,9 +17,9 @@ const MOST_COLUMNS = 4;
 // the window's side insets, or the cap if it is wider, and the list's
 // padding leave. The upright chips' row, padded as the list is, is as
 // wide.
-export function catalogueRow(windowWidth: number, insets: SideInsets): number {
+export function catalogueRow(windowWidth: number, leftInset: number, rightInset: number): number {
   const beyondCap = windowWidth / 2 - SCREEN_CAP / 2;
-  return windowWidth - Math.max(insets.left, beyondCap) - Math.max(insets.right, beyondCap) - 2 * LIST_PADDING;
+  return windowWidth - Math.max(leftInset, beyondCap) - Math.max(rightInset, beyondCap) - 2 * LIST_PADDING;
 }
 
 // The cards in a row of the catalogue in a window `windowWidth` wide.
@@ -33,8 +30,8 @@ export function catalogueRow(windowWidth: number, insets: SideInsets): number {
 // row exactly wide enough, as 1024 is for four, holds them. The window's
 // width counts, not the list's, so a scrollbar that takes room narrows
 // the cards, never their count.
-export function catalogueColumns(windowWidth: number, sizeClass: CatalogueSizeClass, insets: SideInsets): number {
+export function catalogueColumns(windowWidth: number, sizeClass: CatalogueSizeClass, leftInset: number, rightInset: number): number {
   if (sizeClass !== "tall") return MOST_COLUMNS;
-  const whole = Math.floor((catalogueRow(windowWidth, insets) + CARD_GAP) / (LEAST_CARD + CARD_GAP));
+  const whole = Math.floor((catalogueRow(windowWidth, leftInset, rightInset) + CARD_GAP) / (LEAST_CARD + CARD_GAP));
   return Math.min(MOST_COLUMNS, Math.max(1, whole));
 }

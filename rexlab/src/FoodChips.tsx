@@ -73,7 +73,7 @@ export function FoodChips({ language, choices, chosen, row, widths, onContents, 
   const chip = ({ food, count }: FoodChoice) => {
     const word = food === "all" ? text.everyFood : text.diets[food];
     return (
-      <Button key={food} className="food-chip" data-food={food} aria-label={word} aria-pressed={food === chosen} onClick={() => onChoose(food)}>
+      <Button key={food} className="food-chip" data-food={food} data-turn-part={`catalogue-chip-${food}`} aria-label={word} aria-pressed={food === chosen} onClick={() => onChoose(food)}>
         <span className="food-chip-face">
           <span className="food-chip-symbols" aria-hidden="true">
             {SYMBOLS[food].map((Symbol, index) => (

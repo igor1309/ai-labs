@@ -49,7 +49,7 @@ function cardHeight(width: number) {
 }
 
 function listGeometry(width: number, height: number, size: SizeClass, count = IDS.length) {
-  const columns = catalogueColumns(width, size, { left: 0, right: 0 });
+  const columns = catalogueColumns(width, size, 0, 0);
   const card = (width - 112 - (columns - 1) * 20) / columns;
   const row = cardHeight(card);
   const listHeight = height - 40 - (size === "tall" ? 56 + 24 + 56 : 56) - 28;

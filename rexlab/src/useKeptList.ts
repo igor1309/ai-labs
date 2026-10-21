@@ -13,7 +13,7 @@ export type LayoutKeeping = {
 // has a whole card to shrink into even when a turn starts during the
 // closing transition; neither a scroll during a turn nor one that only puts
 // the list back counts as the child's.
-export function useKeptList(keeping: LayoutKeeping, columns: number, returning?: number) {
+export function useKeptList(keeping: LayoutKeeping, columns: number, returning?: number, listKey?: string) {
   const list = useRef<HTMLDivElement>(null);
   const anchor = useRef<ListAnchor>(0);
   const columnsNow = useRef(columns);
@@ -21,6 +21,12 @@ export function useKeptList(keeping: LayoutKeeping, columns: number, returning?:
   const returnedTo = useRef<number>(undefined);
 
   columnsNow.current = columns;
+
+  useLayoutEffect(() => {
+    anchor.current = 0;
+    restored.current = undefined;
+    returnedTo.current = undefined;
+  }, [listKey]);
 
   useLayoutEffect(() => {
     returnedTo.current = returning;
@@ -56,9 +62,6 @@ export function useKeptList(keeping: LayoutKeeping, columns: number, returning?:
           return () => {
             const element = list.current;
             if (!element) return;
-            // The DOM has the new layout after `change`, while the child
-            // layout effect that records it has not run yet. Read its rows
-            // here so the old anchor is converted with the new columns.
             element.scrollTop = anchoredListScroll(
               kept,
               { height: element.clientHeight, scrollHeight: element.scrollHeight },

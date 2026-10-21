@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, Vi
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
-import { catalogueColumns, catalogueRow, type SideInsets } from "./catalogueColumns.ts";
+import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import digTile from "./assets/dig/tile.webp";
@@ -80,7 +80,7 @@ export type Viewport = {
   // The window's width in CSS pixels.
   width(): number;
   // The window's safe-area insets at its left and right edges.
-  sideInsets(): SideInsets;
+  sideInsets(): { left: number; right: number };
   subscribe(onChange: () => void): () => void;
 };
 
@@ -379,8 +379,15 @@ export function App({
   const shown = ofFood(catalogue, food);
   // The catalogue's cards in a row, and in a tall window, where the chips
   // stand on a row of their own, that row's width, by the window.
-  const columns = useSyncExternalStore(viewport.subscribe, () => catalogueColumns(viewport.width(), viewport.sizeClass(), viewport.sideInsets()));
-  const chipRow = useSyncExternalStore(viewport.subscribe, () => (viewport.sizeClass() === "tall" ? catalogueRow(viewport.width(), viewport.sideInsets()) : undefined));
+  const columns = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return catalogueColumns(viewport.width(), viewport.sizeClass(), left, right);
+  });
+  const chipRow = useSyncExternalStore(viewport.subscribe, () => {
+    if (viewport.sizeClass() !== "tall") return undefined;
+    const { left, right } = viewport.sideInsets();
+    return catalogueRow(viewport.width(), left, right);
+  });
   const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chipRow === undefined ? "landscape" : chipArrangement(chipRow, chipContents)}`;
   useLayoutTurns(
     turns,
