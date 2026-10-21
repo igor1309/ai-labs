@@ -18,6 +18,9 @@ Rules for new frames:
 - Use a token for every colour, font, size, radius and gap. Use a raw value
   only for what has no token: window traffic lights and the grey annotation
   text around a mockup.
+- A value off the scale snaps to the nearest token; a tie goes to the larger
+  one (radius 4 → `radius-control` 6, gap 10 → `space-12`). Add a token only
+  when the owner decides the scale needs it.
 - Build from the components below and override their text. Do not redraw a
   button, row or banner by hand.
 - Draw Light first. The Dark version is a copy of the Light frame with
@@ -123,3 +126,4 @@ d5542163, the original Screens 1–8 at 32626465, v2 at dbd22607, v3 at
 a724a1c8 and v4 at fa2dc19f. Check out one of those commits to open them;
 build only from the current file. Screens 1 and 2 keep their one-off containers (setup blocks,
 the blocker card) hand-drawn; everything repeated is a component instance.
+"Later — term chips" is the Live panel with a terms footer drawn in tokens.
