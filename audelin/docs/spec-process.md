@@ -28,8 +28,10 @@ spec/                        the user: journeys across the app, and references
   quit/                      the user: quitting without losing a call
   live-panel/                the user: the panel window and its header (Screen 3)
   live-text-states/          the user: live text waiting, off, switched mid-call
-  error-banners/             the user: what failed and what still records (Screen 8)
+  error-banners/             the user: capture or disk failed, what still records (Screen 8)
+  text-banners/              the user: live text failed while the call records
   transcript-view/           the user: reading the call in the panel
+  transcript-gaps/           the user: time a side was not captured
   selection/                 the user: a selection while the text changes
   calls-list/                the user: finding and opening calls (Screen 4)
   call-rename/               the user: renaming a call, in the app or Finder
@@ -39,8 +41,10 @@ spec/                        the user: journeys across the app, and references
   launch-check/              the user: a missing model or folder at launch (Screen 2)
   settings-window/           the user: what Settings shows (Screen 6)
   calls-folder-change/       the user: moving the calls folder (Screen 6)
-  recording-session/         live-panel, menu-bar: start, stop, keep the audio
-  live-recognition/          transcript-view, live-panel: text from the audio
+  recording-session/         live-panel, menu-bar, quit: start, stop, keep the audio
+  recording-faults/          error-banners: capture or disk failing mid-call
+  live-recognition/          transcript-view, transcript-gaps, live-text-states, text-banners,
+                             call-screen: text from the audio
   call-watcher/              auto-record, call-titles: call apps on the microphone
   calls-catalogue/           calls-list, call-screen, call-titles: find, rename, delete
   folder-move/               calls-folder-change: move the calls folder
