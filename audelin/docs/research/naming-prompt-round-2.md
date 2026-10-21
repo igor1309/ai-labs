@@ -2,7 +2,7 @@
 
 Sent to the same agent after round 1 ([naming-prompt.md](naming-prompt.md)),
 which proposed tolmach first. Uses the reusable prompts in
-[`prompts/`](../../prompts/) instead of round 1's method.
+[`prompts/`](../../../prompts/) instead of round 1's method.
 
 ---
 
@@ -15,12 +15,12 @@ words).
 This round, don't use naming-prompt.md's method. Use these two reusable
 prompts:
 
-- [brainstorming-prompt.md](../../prompts/brainstorming-prompt.md), for
+- [brainstorming-prompt.md](../../../prompts/brainstorming-prompt.md), for
   generation, H/M/L rating per criterion, dropping any Low, and iterating.
   Override: the target is 15 ideas, not 5–7, and up to 5 rounds. Success
   criteria, in order: Product fit, Spoken / CLI usability (Russian and
   English), Tone fit, Memorability, Availability risk.
-- [naming-availability-standard.md](../../prompts/naming-availability-standard.md),
+- [naming-availability-standard.md](../../../prompts/naming-availability-standard.md),
   for collision screening, with this context:
   - Target field: macOS meeting recorders, live call transcribers and
     dictation apps (the list in naming-prompt.md § Target field).

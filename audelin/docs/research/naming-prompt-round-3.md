@@ -21,9 +21,9 @@ names for interpreters, scribes, secretaries, clerks and attendants. Exclude
 everything from rounds 1 and 2.
 
 Method: same as round 2, with
-[brainstorming-prompt.md](../../prompts/brainstorming-prompt.md) (15 ideas,
+[brainstorming-prompt.md](../../../prompts/brainstorming-prompt.md) (15 ideas,
 up to 5 rounds, the same five criteria) and
-[naming-availability-standard.md](../../prompts/naming-availability-standard.md)
+[naming-availability-standard.md](../../../prompts/naming-availability-standard.md)
 (same context). For each name, give the Cyrillic form, its historical meaning
 with a source (a dictionary such as Sreznevsky, Dal or Vasmer, or Wikipedia),
 and say when a meaning is your own knowledge and not sourced.

@@ -8,7 +8,7 @@ description: "wisper v1 is one modular macOS app: record first, live ASR per tra
 
 ## Executive summary
 
-wisper v1 (scope in [mvp.md](../../research/wisper/mvp.md) § Versions) is one native macOS app.
+wisper v1 (scope in [mvp.md](research/mvp.md) § Versions) is one native macOS app.
 It writes the mic and the call audio to disk as two tracks, and a live
 Parakeet v3 stream per track reads that written audio. The streams' updates
 become text that settles in place in a floating panel and is logged as
@@ -20,9 +20,9 @@ are recognised; that is an acceptance condition below.
 ## Context
 
 The owner needs a smooth, selectable live transcript of Russian calls with
-English terms ([needs.md](../../research/wisper/needs.md)). What shaped the decision:
+English terms ([needs.md](research/needs.md)). What shaped the decision:
 
-- The spike ([tests.md](../../research/wisper/tests.md) runs 3–3b): FluidAudio's sliding window
+- The spike ([tests.md](research/tests.md) runs 3–3b): FluidAudio's sliding window
   updates once per 4 s chunk, its unconfirmed updates cover only the newest
   chunk, some text appears only unconfirmed or in `finish()`, and words
   repeat at chunk edges. Smoothing has to be our own logic.
@@ -30,20 +30,20 @@ English terms ([needs.md](../../research/wisper/needs.md)). What shaped the deci
   ~70× real time on file input (tests.md run 4). Capture-to-display latency
   is not measured.
 - Granola lost the other side of a call after a Wi-Fi/VPN switch and kept no
-  audio to redo it ([mvp.md](../../research/wisper/mvp.md) § Technical rules, from the
-  [chat survey](../../research/wisper/chat-khakhalev-2026-10-21.md)).
+  audio to redo it ([mvp.md](research/mvp.md) § Technical rules, from the
+  [chat survey](research/chat-khakhalev-2026-10-21.md)).
 - MacParakeet's window fell behind other windows and offered no useful
   selection actions (tests.md run 2).
 - The owner asked for one app that is highly modular, following the layout
-  of their iFora `swift-vortex` package ([mvp.md](../../research/wisper/mvp.md) § Code structure).
+  of their iFora `swift-vortex` package ([mvp.md](research/mvp.md) § Code structure).
 
 | Alternative | Why not |
 |---|---|
 | Separate recorder process plus a UI app, as Verger's service | Would keep recording through a UI crash, but adds a second process to supervise and an IPC contract before either is needed (capture permissions may also have to be granted to it separately, depending on the capture backend); the CLI is a Later item. Revisit if app crashes during calls are seen. |
-| Fork Amanu | Its live engine is what we would replace ([mvp.md](../../research/wisper/mvp.md) § Shape). |
+| Fork Amanu | Its live engine is what we would replace ([mvp.md](research/mvp.md) § Shape). |
 | Live ASR straight from capture | Audio a stall or crash does not keep is lost. |
 | One mixed ASR stream | Loses «я»/«они»; two streams are cheap (run 4). |
-| `raw.md` as the append-only record | Live text is replaced in place, and the first minutes can be filled in late ([mvp.md](../../research/wisper/mvp.md) § v4 screen details); an append-only Markdown file would hold provisional text or put late text out of order. |
+| `raw.md` as the append-only record | Live text is replaced in place, and the first minutes can be filled in late ([mvp.md](research/mvp.md) § v4 screen details); an append-only Markdown file would hold provisional text or put late text out of order. |
 
 ## Decision
 
@@ -63,7 +63,7 @@ English terms ([needs.md](../../research/wisper/needs.md)). What shaped the deci
    A new recording, a folder move or deleting that call cancels catch-up; the
    unrecognised range stays marked and catch-up resumes later.
 3. **Record first.** Capture → Recorder → disk, two tracks, in short files
-   ([mvp.md](../../research/wisper/mvp.md) § Recording files). File rotation does not make audio
+   ([mvp.md](research/mvp.md) § Recording files). File rotation does not make audio
    readable: audio becomes readable for ASR as soon as it is written.
    Recording never waits for recognition. If audio cannot be written (disk
    full, folder gone), the session shows an explicit "recording failed"
@@ -118,13 +118,13 @@ English terms ([needs.md](../../research/wisper/needs.md)). What shaped the deci
    knows it is being logged.
 11. **One app-wide activity gate.** Anything that writes into call folders
     holds it: recording, catch-up, moving the calls folder and deleting a
-    call. Recording and a folder move exclude each other ([mvp.md](../../research/wisper/mvp.md) §
+    call. Recording and a folder move exclude each other ([mvp.md](research/mvp.md) §
     Edge cases); catch-up yields to all three, as in decision 2. One gate,
     defined in Domain and shared by LiveSessionCore and CallsCore; the app
     target creates the one instance.
 12. **Setup in v1** asks for the calls folder and the live model. Recording
    may start before the live model is ready. Choosing a final-pass engine
-   becomes mandatory with v3 ([mvp.md](../../research/wisper/mvp.md) § Final-pass engine).
+   becomes mandatory with v3 ([mvp.md](research/mvp.md) § Final-pass engine).
 
 Module layout (one local Swift package plus a thin app target):
 

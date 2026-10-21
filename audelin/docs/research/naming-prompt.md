@@ -1,6 +1,6 @@
 # Naming prompt
 
-Adapted from [foliotell-naming-brief.md](../../foliotell/docs/foliotell-naming-brief.md)
+Adapted from [foliotell-naming-brief.md](../../../foliotell/docs/foliotell-naming-brief.md)
 (scope, root families, blockers, scoring). "wisper" is a working name only.
 
 ---
