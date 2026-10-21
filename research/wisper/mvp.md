@@ -67,8 +67,10 @@ Data folder (owner, 2026-10-21): `~/.<app name>` by default, changeable in
 settings. Works because the app is not sandboxed (no App Store build).
 
 Final-pass engine (owner, 2026-10-21): not fixed in code. It is a required
-setting with no built-in default; v3's final pass does not run until it is
-set. Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+setting with no built-in default, and the app does not start without it: the
+first launch opens setup and nothing else works until an engine is chosen. If
+the chosen engine's model is missing later, the app says so at launch, not
+after a call. Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
 
