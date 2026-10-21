@@ -104,7 +104,7 @@ const LABELS: Record<Language, Record<Item | "home", string>> = {
   ru: { plants: "РАСТЕНИЯ", meat: "МЯСО", water: "ВОДА", bath: "ВАННА", nest: "ГНЕЗДО", home: "ДОМОЙ" }
 };
 const SAYS: Record<Language, Partial<Record<Reaction, string>>> = {
-  en: { spit: "BLEH!", "not-now": "MM-MM", eat: "YUM!" },
+  en: { spit: "BLEH!", "not-now": "NOPE!", eat: "YUM!" },
   ru: { spit: "ФУ!", "not-now": "НЕ-А", eat: "НЯМ!" }
 };
 const BURP: Record<Language, string> = { en: "BURP!", ru: "ИК!" };
