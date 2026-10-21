@@ -14,8 +14,9 @@ export type DinosaurRecord = {
   // "dinosaur", "flying-reptile" or "sea-reptile"; read as any string, as
   // the JSON gives it.
   group: string;
-  // A size by the group's measure alone: a dinosaur's hip height, a flying
-  // reptile's wingspan or a sea reptile's length.
+  // The catalogue size by the group's measure: a dinosaur's hip height, a
+  // flying reptile's wingspan or a sea reptile's length. Dinosaurs may also
+  // carry their nose-to-tail length.
   attributes: { massKg: number; heightMeters?: number | null; wingspanMeters?: number | null; lengthMeters?: number | null };
   // "meat", "plants" or "both"; read as any string, as the JSON gives it.
   diet: string;
@@ -39,14 +40,17 @@ function groupOf(id: string, group: unknown): Group {
   return group;
 }
 
-// A record's size by its group's measure. A record with no size by that
-// measure, or with one by another, fails here, when the app is put
-// together, rather than as a wingspan shown beside a dinosaur's height.
+// A record's size by its group's measure. A dinosaur may carry its
+// nose-to-tail length beside its hip height; every other extra measure
+// fails here, when the app is put together, rather than as a wingspan shown
+// beside a dinosaur's height.
 function sizeOf({ id, group, attributes }: Pick<DinosaurRecord, "id" | "group" | "attributes">): CatalogueEntry["size"] {
-  const measure = MEASURES[groupOf(id, group)];
+  const knownGroup = groupOf(id, group);
+  const measure = MEASURES[knownGroup];
   const metres = attributes[SIZE_FIELDS[measure]];
   if (typeof metres !== "number" || !(metres > 0)) throw new Error(`${id} has no ${measure}: ${JSON.stringify(metres)}`);
-  const other = MEASURE_ORDER.find((each) => each !== measure && attributes[SIZE_FIELDS[each]] != null);
+  const extra = knownGroup === "dinosaur" ? "length" : undefined;
+  const other = MEASURE_ORDER.find((each) => each !== measure && each !== extra && attributes[SIZE_FIELDS[each]] != null);
   if (other !== undefined) throw new Error(`${id} is measured by its ${measure}, not its ${other}`);
   return { measure, metres };
 }
