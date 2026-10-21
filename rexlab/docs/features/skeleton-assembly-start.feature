@@ -2,7 +2,8 @@ Feature: Skeleton assembly: choosing a dinosaur
   A child builds a dinosaur from large bone pieces, then keeps it in a
   museum. These scenarios are its Hatchling mode: a full outline and
   four pieces, already the right way up (skeleton-assembly-levels.feature).
-  Digging, mystery skeletons and odd bones belong to later issues.
+  The mystery skeleton is skeleton-assembly-mystery.feature, and other
+  dinosaurs' bones in the tray skeleton-assembly-paleontologist.feature.
 
   Background:
     Given an iPad in landscape

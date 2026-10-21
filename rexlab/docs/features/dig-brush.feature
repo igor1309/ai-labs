@@ -13,9 +13,7 @@ Feature: Dig: the brush, and Hatchling's free brushing
   comes when the dinosaur is named (dig-question.feature). Taps on the
   sand go through the double-tap filter (double-tap.feature); an accepted
   cost is that a stroke begun within 500 ms and 100 px of a tap's
-  release brushes nothing. The brush is a component
-  of its own, so the skeleton game's dig (LAB-283) can brush the same
-  sand.
+  release brushes nothing.
 
   Background:
     Given an iPad in landscape
