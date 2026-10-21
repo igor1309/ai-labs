@@ -146,7 +146,7 @@ export function finishLoading(pictures: ManualPictures) {
 }
 
 // The texts of the language the app is in, as it sets on the document.
-const shownTexts = () => {
+export const shownTexts = () => {
   const { lang } = document.documentElement;
   return TEXTS[isLanguage(lang) ? lang : "en"];
 };

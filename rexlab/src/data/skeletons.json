@@ -9,6 +9,10 @@
         "en": "T. REX HAD TINY ARMS BUT HUGE LEGS.",
         "ru": "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ И ОГРОМНЫЕ НОГИ."
       },
+      "clue": {
+        "en": "LOOK AT ITS TINY ARMS!",
+        "ru": "ПОСМОТРИ НА КРОШЕЧНЫЕ ЛАПЫ!"
+      },
       "cuts": {
         "hatchling": [
           {
@@ -313,6 +317,10 @@
         "en": "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
         "ru": "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА И КОСТЯНОЙ ВОРОТНИК."
       },
+      "clue": {
+        "en": "LOOK AT ITS THREE HORNS!",
+        "ru": "ПОСМОТРИ НА ТРИ РОГА!"
+      },
       "cuts": {
         "hatchling": [
           {
@@ -592,6 +600,10 @@
       "fact": {
         "en": "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.",
         "ru": "У СТЕГОЗАВРА ВДОЛЬ СПИНЫ БЫЛИ БОЛЬШИЕ ПЛАСТИНЫ."
+      },
+      "clue": {
+        "en": "LOOK AT THE PLATES ON ITS BACK!",
+        "ru": "ПОСМОТРИ НА ПЛАСТИНЫ НА СПИНЕ!"
       },
       "cuts": {
         "hatchling": [
@@ -885,6 +897,10 @@
         "en": "BRACHIOSAURUS HAD FRONT LEGS LONGER THAN ITS BACK LEGS.",
         "ru": "У БРАХИОЗАВРА ПЕРЕДНИЕ НОГИ БЫЛИ ДЛИННЕЕ ЗАДНИХ."
       },
+      "clue": {
+        "en": "LOOK HOW HIGH ITS NECK GOES!",
+        "ru": "ПОСМОТРИ, КАК ВЫСОКО ПОДНЯТА ШЕЯ!"
+      },
       "cuts": {
         "hatchling": [
           {
@@ -1164,6 +1180,10 @@
       "fact": {
         "en": "SPINOSAURUS HAD A TALL SAIL ON ITS BACK.",
         "ru": "У СПИНОЗАВРА НА СПИНЕ БЫЛ ВЫСОКИЙ ПАРУС."
+      },
+      "clue": {
+        "en": "LOOK AT THE SAIL ON ITS BACK!",
+        "ru": "ПОСМОТРИ НА ПАРУС НА СПИНЕ!"
       },
       "cuts": {
         "hatchling": [

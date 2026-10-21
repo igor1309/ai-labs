@@ -165,7 +165,7 @@ describe("keeping the collection", () => {
     const back = await leave(opened, storage);
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([true, false, false, false, false]);
+    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([true, false, false, false, false, false]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
     await visitMuseum(back);
     expect([starsChip(), bestScore()]).toEqual(["1/5", "1/5"]);

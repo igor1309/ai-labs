@@ -106,6 +106,8 @@ export const ru: Texts = {
   star: "ЗВЕЗДА",
   badges: { explorer: "ЗНАЧОК ИССЛЕДОВАТЕЛЯ", paleontologist: "ЗНАЧОК ПАЛЕОНТОЛОГА" },
   buildAnother: "СОБРАТЬ ДРУГОЙ",
+  mystery: "ЗАГАДОЧНЫЙ СКЕЛЕТ",
+  whoseSkeleton: "ЧЕЙ ЭТО СКЕЛЕТ?",
   stands: "СТЕНДЫ",
   build: "СОБРАТЬ",
   rebuild: "СОБРАТЬ ЗАНОВО",

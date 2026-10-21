@@ -41,7 +41,9 @@ const CUT = PIECES.map((id) => ({ id, name: NAMED[id], area: AREAS[id], place: P
 
 const FACT = { en: "TRICERATOPS HAD THREE HORNS.", ru: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА." };
 
-const ENTRY = { fact: FACT, cuts: { hatchling: FILED } };
+const CLUE = { en: "LOOK AT ITS THREE HORNS!", ru: "ПОСМОТРИ НА ТРИ РОГА!" };
+
+const ENTRY = { fact: FACT, clue: CLUE, cuts: { hatchling: FILED } };
 
 // The entry with its Hatchling piece at `at` replaced by `piece`.
 const withPiece = (at: number, piece: unknown) => ({ ...ENTRY, cuts: { hatchling: FILED.map((each, index) => (index === at ? piece : each)) } });
@@ -49,16 +51,18 @@ const withPiece = (at: number, piece: unknown) => ({ ...ENTRY, cuts: { hatchling
 const file = (dinosaurs: SkeletonsFile["dinosaurs"]): SkeletonsFile => ({ frame: { width: 400, height: 400 }, dinosaurs });
 
 describe("readSkeletons", () => {
-  it("names each skeleton as its dinosaur is named, in the file's order, with its fact, frame and Hatchling's cut", () => {
+  it("names each skeleton as its dinosaur is named, in the file's order, with its fact, clue, frame and Hatchling's cut", () => {
     const tyrannosaurus = { en: "T. REX HAD TINY ARMS.", ru: "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ." };
+    const armsClue = { en: "LOOK AT ITS TINY ARMS!", ru: "ПОСМОТРИ НА КРОШЕЧНЫЕ ЛАПЫ!" };
     const three = [FILED[0], FILED[1], { id: "tail", name: NAMED.tail, area: "tail", ...place(0, 300, 400, 100) }];
 
-    expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { fact: tyrannosaurus, cuts: { hatchling: three } } }))).toEqual([
-      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, frame: { width: 400, height: 400 }, cuts: { hatchling: CUT } },
+    expect(readSkeletons(NAMES, file({ triceratops: ENTRY, tyrannosaurus: { fact: tyrannosaurus, clue: armsClue, cuts: { hatchling: three } } }))).toEqual([
+      { id: "triceratops", name: { en: "Triceratops", ru: "Трицератопс" }, fact: FACT, clue: CLUE, frame: { width: 400, height: 400 }, cuts: { hatchling: CUT } },
       {
         id: "tyrannosaurus",
         name: { en: "Tyrannosaurus", ru: "Тираннозавр" },
         fact: tyrannosaurus,
+        clue: armsClue,
         frame: { width: 400, height: 400 },
         cuts: { hatchling: [CUT[0], CUT[1], { id: "tail", name: NAMED.tail, area: "tail", place: place(0, 300, 400, 100) }] }
       }
@@ -67,7 +71,7 @@ describe("readSkeletons", () => {
 
   it("reads a cut of Explorer's and Paleontologist's own beside Hatchling's, and none where the file has none", () => {
     const two = [FILED[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, area: "back", ...place(80, 10, 320, 390) }];
-    const [read] = readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts: { hatchling: FILED, paleontologist: two } } }));
+    const [read] = readSkeletons(NAMES, file({ triceratops: { fact: FACT, clue: CLUE, cuts: { hatchling: FILED, paleontologist: two } } }));
 
     expect(read?.cuts).toEqual({ hatchling: CUT, paleontologist: [CUT[0], { id: "body", name: { en: "BODY", ru: "ТЕЛО" }, area: "back", place: place(80, 10, 320, 390) }] });
   });
@@ -78,7 +82,7 @@ describe("readSkeletons", () => {
     const read = readSkeletons(
       NAMES,
       file({
-        triceratops: { fact: FACT, cuts: { hatchling: FILED, paleontologist: [...FILED, frill] } },
+        triceratops: { fact: FACT, clue: CLUE, cuts: { hatchling: FILED, paleontologist: [...FILED, frill] } },
         tyrannosaurus: { ...ENTRY, distractors: [{ skeleton: "triceratops", piece: "frill", name: named }] }
       })
     );
@@ -103,7 +107,7 @@ describe("readSkeletons", () => {
     ["not a piece", ["skull"], 'tyrannosaurus\'s distractor 1 is no piece of another skeleton\'s paleontologist cut: "skull"'],
     ["named in one language only", [{ skeleton: "triceratops", piece: "skull", name: { en: "SKULL" } }], 'tyrannosaurus\'s distractor triceratops/skull has no name in every language: {"en":"SKULL"}']
   ])("fails when it is made on distractors %s", (_, distractors, message) => {
-    const triceratops = { fact: FACT, cuts: { hatchling: FILED, paleontologist: [FILED[0]] } };
+    const triceratops = { fact: FACT, clue: CLUE, cuts: { hatchling: FILED, paleontologist: [FILED[0]] } };
 
     expect(() => readSkeletons(NAMES, file({ triceratops, tyrannosaurus: { ...ENTRY, distractors } }))).toThrow(message);
   });
@@ -112,7 +116,7 @@ describe("readSkeletons", () => {
     ["of no pieces", { hatchling: FILED, explorer: [] }, "triceratops has no explorer cut: []"],
     ["with a piece past the frame", { hatchling: FILED, paleontologist: [{ id: "skull", name: NAMED.skull, area: "head", ...place(350, 0, 100, 80) }] }, "triceratops has no skull in its 400×400 frame"]
   ])("fails when it is made on another level's cut %s", (_, cuts, message) => {
-    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts } }))).toThrow(message);
+    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, clue: CLUE, cuts } }))).toThrow(message);
   });
 
   it("fails when it is made on a skeleton of no dinosaur in the list", () => {
@@ -129,6 +133,14 @@ describe("readSkeletons", () => {
     expect(() => readSkeletons(NAMES, file({ triceratops: { ...ENTRY, fact } }))).toThrow(`triceratops has no fact in every language: ${JSON.stringify(fact)}`);
   });
 
+  it.each<[string, unknown]>([
+    ["missing", undefined],
+    ["in one language only", { en: CLUE.en }],
+    ["empty in a language", { ...CLUE, ru: " " }]
+  ])("fails when it is made on a mystery clue %s", (_, clue) => {
+    expect(() => readSkeletons(NAMES, file({ triceratops: { ...ENTRY, clue } }))).toThrow(`triceratops has no clue in every language: ${JSON.stringify(clue)}`);
+  });
+
   it.each<[string, unknown, string]>([
     ["with no cuts", undefined, "triceratops has no hatchling cut: undefined"],
     ["with no Hatchling cut", {}, "triceratops has no hatchling cut: undefined"],
@@ -136,7 +148,7 @@ describe("readSkeletons", () => {
     ["with a Hatchling cut that is not a list", { hatchling: "four bones" }, 'triceratops has no hatchling cut: "four bones"'],
     ["with a cut of no level", { hatchling: FILED, champion: FILED }, "triceratops has a cut of no level: champion"]
   ])("fails when it is made on a skeleton %s", (_, cuts, message) => {
-    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, cuts } }))).toThrow(message);
+    expect(() => readSkeletons(NAMES, file({ triceratops: { fact: FACT, clue: CLUE, cuts } }))).toThrow(message);
   });
 
   it.each<[string, unknown, string]>([
@@ -191,6 +203,20 @@ describe("readSkeletons", () => {
       "SPINOSAURUS HAD A TALL SAIL ON ITS BACK."
     ]);
     expect(shipped.flatMap(({ fact }) => [fact.en, fact.ru]).filter((each) => each !== each.toLocaleUpperCase() || !each.endsWith("."))).toEqual([]);
+  });
+
+  // skeleton-assembly-mystery.feature
+  it("gives each shipped skeleton the clue its mystery gives, in capitals in both languages", () => {
+    const shipped = readSkeletons(records, skeletonPlaces);
+
+    expect(shipped.map(({ clue }) => clue.en)).toEqual([
+      "LOOK AT ITS TINY ARMS!",
+      "LOOK AT ITS THREE HORNS!",
+      "LOOK AT THE PLATES ON ITS BACK!",
+      "LOOK HOW HIGH ITS NECK GOES!",
+      "LOOK AT THE SAIL ON ITS BACK!"
+    ]);
+    expect(shipped.flatMap(({ clue }) => [clue.en, clue.ru]).filter((each) => each !== each.toLocaleUpperCase() || !each.endsWith("!"))).toEqual([]);
   });
 });
 

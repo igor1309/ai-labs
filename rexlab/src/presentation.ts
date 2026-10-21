@@ -16,6 +16,7 @@ import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionSc
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { SkeletonGuessScreenProps } from "./SkeletonGuessScreen.tsx";
 import type { ShownBadge } from "./LevelBadge.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
 import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
@@ -30,6 +31,7 @@ import {
   type Museum,
   type BodyArea,
   type HelpStep,
+  type Kin,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
@@ -393,6 +395,26 @@ export function presentSkeletonResult(
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
     newStar,
     badge: badge && SHOWN_BADGES[badge]
+  };
+}
+
+export type SkeletonGuessView = Pick<SkeletonGuessScreenProps, "skeleton" | "frame" | "choices" | "clue">;
+
+// The finished mystery skeleton beside the dinosaurs it is guessed from,
+// each by its name and body picture, and its clue once a guess is wrong.
+export function presentSkeletonGuess(
+  skeleton: Skeleton,
+  choices: readonly Kin[],
+  wrong: readonly string[],
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  bodyPicture: (dinosaurId: string) => string
+): SkeletonGuessView {
+  return {
+    skeleton: skeletonPicture(skeleton.id, "skeleton"),
+    frame: skeleton.frame,
+    choices: choices.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), wrong: wrong.includes(id) })),
+    clue: wrong.length > 0 ? skeleton.clue[language] : undefined
   };
 }
 

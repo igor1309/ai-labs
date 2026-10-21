@@ -35,7 +35,8 @@ Today's game becomes Hatchling, as it is (demote, never delete):
 | One step of help | | help in steps | help in steps | LAB-315: the body region, then a faint ghost, then the piece moves towards its home and back |
 | Too easy for a 6-year-old | | | 10–12 pieces, a partial outline, 2–3 distractor bones | LAB-316 (art), LAB-317 |
 | No reward for playing without help | | badge | badge | LAB-319: a badge for a skeleton finished without the last help step |
-| Silent, still and the same every time (`game-design.md`) | ✓ | ✓ | ✓ | LAB-389: a sound and a movement for every pick-up, fit and miss; the finished skeleton stomps and roars. Next, the mystery skeleton (LAB-284) |
+| Silent, still and the same every time (`game-design.md`) | ✓ | ✓ | ✓ | LAB-389: a sound and a movement for every pick-up, fit and miss; the finished skeleton stomps and roars |
+| Nothing to find out once every skeleton has its star | ✓ | ✓ | ✓ | LAB-284: a mystery skeleton, one already built with its name hidden, guessed from three dinosaurs' bodies; a wrong guess gives a clue |
 
 Every level keeps the same museum: one star per skeleton, its stand, the
 rebuild and the collection score.
@@ -46,9 +47,15 @@ rebuild and the collection score.
   sub-issues land (LAB-312).
 - Every cut comes from the same `skeleton.webp`, so the body picture still
   lies over the finished skeleton and no new picture is generated.
-- Paleontologist is LAB-270's Builder mode. The 16–20-piece mode without
-  an outline, and naming the dinosaur from its skeleton, go with the
-  mystery skeleton (LAB-284).
+- Paleontologist is LAB-270's Builder mode. Naming the dinosaur from its
+  skeleton is the mystery skeleton (LAB-284); the 16–20-piece mode
+  without an outline is not built.
+- The mystery is one of the skeletons with a star, cut for the level the
+  switch shows, and earns no star of its own (LAB-284). Explorer and
+  Paleontologist guess it from itself, one of its look-alikes and one
+  dinosaur unlike it; Hatchling, and Spinosaurus, which has no
+  look-alike, from itself and two dinosaurs unlike it. Every choice is of
+  a skeleton's look-alike group, so never a flying or sea reptile.
 - The dig stays LAB-283; the odd bone's "not mine" box stays LAB-285.
 - Explorer's body-area colours (LAB-314) and Paleontologist's turned
   pieces (LAB-318) are gone (LAB-389). The colours made placing a bone

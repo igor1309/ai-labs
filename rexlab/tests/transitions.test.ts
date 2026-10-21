@@ -163,10 +163,14 @@ describe("the skeleton game's transition for each change", () => {
   if (!skeleton) throw new Error("Expected a skeleton");
   const puzzle = startPuzzle(skeleton, skeleton.cuts.hatchling);
   const order = SHIPPED_SKELETONS.map(({ id }) => id);
+  const finished = { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) };
+  const result = finishSkeleton(openCollection(undefined, order), finished, order, beatBest).result;
+  const choices = SHIPPED_PALS.slice(0, 3);
   const screens: SkeletonScreen[] = [
     { kind: "choice" },
-    { kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } },
-    { kind: "result", result: finishSkeleton(openCollection(undefined, order), { ...puzzle, fitted: skeleton.cuts.hatchling.map(({ id }) => id) }, order, beatBest).result },
+    { kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined },
+    { kind: "guess", puzzle: finished, result, choices, wrong: [] },
+    { kind: "result", result },
     { kind: "museum" }
   ];
 
@@ -175,7 +179,11 @@ describe("the skeleton game's transition for each change", () => {
   });
 
   it("changes a puzzle at once as time counts towards help", () => {
-    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true } }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { silhouette: false, homeShown: true } })).toBeUndefined();
+    expect(skeletonTransitionFor({ kind: "puzzle", puzzle, scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined }, { kind: "puzzle", puzzle: wait(puzzle, 1000), scatter: false, look: { silhouette: false, homeShown: true }, mystery: undefined })).toBeUndefined();
+  });
+
+  it("changes a mystery's guess at once as a guess is wrong", () => {
+    expect(skeletonTransitionFor({ kind: "guess", puzzle: finished, result, choices, wrong: [] }, { kind: "guess", puzzle: finished, result, choices, wrong: [choices[1]?.id ?? ""] })).toBeUndefined();
   });
 });
 

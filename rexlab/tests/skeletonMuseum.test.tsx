@@ -275,7 +275,7 @@ describe("rebuilding", () => {
     openSkeletonsApp({ storage });
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([false, true, false, false, false]);
+    expect(choices().map((choice) => within(choice).queryByRole("img", { name: "STAR" }) !== null)).toEqual([false, true, false, false, false, false]);
   });
 
   // The layout stands in for jsdom's, which lays nothing out, until the
