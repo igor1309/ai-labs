@@ -92,7 +92,11 @@ from instances.
 | Summary | `yCxLj` | `Line 1`–`Line 3`, `Show more`; hide a line with `enabled: false` |
 | Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
-| Calls row | `yFtkD` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin, actions; Delete is hidden until hover |
+| Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
+| Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
+| Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
+| Added late | `HIqfu` | `Late label`; the group of minutes filled in after the live model arrived |
+| Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 
 ## Frames
 
@@ -117,6 +121,5 @@ Current screens:
 
 The archived frames are history; the design review and the owner's answers
 name them, and their names only gained the prefix. Build only from the
-current screens. Screens 1–3 and 8 kept some hand-drawn containers (panels,
-setup blocks, the blocker card); every button, field, banner, entry, card and
-header inside them is a component instance.
+current screens. Screens 1 and 2 keep their one-off containers (setup blocks,
+the blocker card) hand-drawn; everything repeated is a component instance.
