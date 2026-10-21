@@ -35,8 +35,9 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
    language hint. Our own layer keeps unconfirmed text and replaces it in
    place when confirmed text arrives; FluidAudio does not do this. It also merges words repeated at chunk
    edges (tests.md run 3b).
-5. **Never overwrite raw text.** Later passes write new files next to it:
-   raw → fixed → summary.
+5. **Never overwrite recognised text.** Live text is kept in an append-only
+   log of settled segments; `raw.md` is rebuilt from it in time order. Later
+   passes write new files next to it: raw → fixed → summary.
 6. **LLM work goes to bb** (`bb thread spawn`), as Gristmill does. No API
    keys or subscriptions in the app.
 
@@ -56,6 +57,15 @@ Chunk size: 4 s by default (owner, 2026-10-21). It is a setting in debug
 builds so other sizes can be tried on real calls; release builds use the
 default.
 
+Recording files (owner, 2026-10-21): each track is written in files of 30 s,
+then a new file starts. The owner had no intuition for the value; it is the
+most audio a damaged file can lose, not a latency setting.
+
+Code structure (owner, 2026-10-21): one app for v1, but highly modular,
+following the owner's iFora `swift-vortex` package: small targets, each
+feature split into Core, adapters and UI, each with tests. See
+[ADR-001](adr-001-v1-architecture.md).
+
 Audio after a call (owner, 2026-10-21): kept as one compact stereo file (mic
 left, call right; Amanu's format, ~55 MB per hour) and deleted automatically
 after 7 days. The transcript is never deleted with it. A pinned call keeps
@@ -71,7 +81,9 @@ Final-pass engine (owner, 2026-10-21): not fixed in code. It is a required
 setting with no built-in default, and the app does not start without it: the
 first launch opens setup and nothing else works until an engine is chosen. If
 the chosen engine's model is missing later, the app says so at launch, not
-after a call. Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+after a call. This gate arrives with the final pass in v3; v1 setup asks only
+for the calls folder and the live model (2026-10-21,
+[ADR-001](adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
 
@@ -100,8 +112,9 @@ Call folders (owner, 2026-10-21), following Amanu:
   renames the folder and keeps the timestamp. Renaming in Finder works too:
   the app identifies a call by the id in `meta.json`, never by its path.
 - Files: `meta.json` (id, start, duration, app, audio status, pinned, bb
-  summary thread), `audio.m4a` (mic left, call right), `raw.md` (live, never
-  overwritten), `final.md` (final pass), `summary.md`.
+  summary thread), `audio.m4a` (mic left, call right), `live.jsonl` (append-only
+  log of settled live segments), `raw.md` (rebuilt from it in time order),
+  `final.md` (final pass), `summary.md`.
 - Changing the data folder moves every call to the new place after a confirm
   ("Move 52 calls (135 MB)?"). There is no option to leave calls behind.
 
