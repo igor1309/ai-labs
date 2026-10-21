@@ -13,6 +13,7 @@ explain it. Started 2026-10-21 from a Superwhisper + Raycast setup attempt.
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [naming-prompt-round-2.md](naming-prompt-round-2.md) | Second naming round, built on `prompts/` |
+| [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
 | [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 
