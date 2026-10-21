@@ -1,5 +1,13 @@
 # Log
 
+## 2026-10-21
+
+- Audelin: land the new product (local macOS companion for calls, design and
+  architecture stage). Added `audelin/README.md`, `audelin/docs/log.md` and
+  `audelin/index.html`; registered it in `scripts/loc-dashboard.sh`,
+  `docs/loc-dashboard.html`, the README Components table and the `index.html`
+  and `docs/products.html` landing pages. No release unit or CI yet.
+
 ## 2026-10-18
 
 - `scripts/watch-pr.sh` no longer waits forever: it stops on a check queued 15
