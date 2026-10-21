@@ -32,7 +32,7 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 The user: the owner, or an agent running the app, watching the menu bar.
 How the menu shows a recording is [menu-bar](../menu-bar/SPEC.md)'s, a
 recording's title [call-titles](../call-titles/SPEC.md)'s, a call met
-during a folder move [settings-window](../settings-window/SPEC.md)'s, and a
+during a folder move [calls-folder-change](../calls-folder-change/SPEC.md)'s, and a
 call before the live model is ready [live-panel](../live-panel/SPEC.md)'s.
 
 ## Behaviour

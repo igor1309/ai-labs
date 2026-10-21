@@ -35,14 +35,16 @@ spec/                        the user: journeys across the app, and references
   call-rename/               the user: renaming a call, in the app or Finder
   call-delete/               the user: deleting a call
   call-screen/               the user (Screen 5, v1 part)
-  setup-screen/              the user: first launch and the launch check (Screens 1, 2)
-  settings-window/           the user (Screen 6)
+  setup-screen/              the user: first launch (Screen 1)
+  launch-check/              the user: a missing model or folder at launch (Screen 2)
+  settings-window/           the user: what Settings shows (Screen 6)
+  calls-folder-change/       the user: moving the calls folder (Screen 6)
   recording-session/         live-panel, menu-bar: start, stop, keep the audio
   live-recognition/          transcript-view, live-panel: text from the audio
   call-watcher/              auto-record, call-titles: call apps on the microphone
   calls-catalogue/           calls-list, call-screen, call-titles: find, rename, delete
-  folder-move/               settings-window: move the calls folder
-  setup/                     setup-screen, settings-window: settings, launch check
+  folder-move/               calls-folder-change: move the calls folder
+  setup/                     setup-screen, launch-check, settings-window: settings, launch check
   call-folder-names/         calls-catalogue, recording-session
   activity-gate/             recording-session, live-recognition, calls-catalogue, folder-move
   stabilizer/                live-recognition: words to committed segments

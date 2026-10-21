@@ -20,7 +20,7 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
    call (S-2, S-3, S-4): a stray click must not end a call's recording.
 2. «Выйти» during a folder move asks to confirm; the move then stops after
    the call it is moving (S-5, S-6, S-9): calls move one by one, so the rest
-   stay whole. A move left unfinished is [settings-window](../settings-window/SPEC.md)'s
+   stay whole. A move left unfinished is [calls-folder-change](../calls-folder-change/SPEC.md)'s
    unfinished move, with its Retry.
 3. Quitting while a call's text catches up asks nothing (S-7): nothing is
    lost, as the audio is on disk. The text completing after the next launch

@@ -44,8 +44,9 @@ Each screen's behaviour is in its own spec and is not repeated here:
 late text), [selection](selection/SPEC.md),
 [calls-list](calls-list/SPEC.md), [call-rename](call-rename/SPEC.md),
 [call-delete](call-delete/SPEC.md), [call-screen](call-screen/SPEC.md),
-[setup-screen](setup-screen/SPEC.md) and
-[settings-window](settings-window/SPEC.md). A stopped call's text
+[setup-screen](setup-screen/SPEC.md), [launch-check](launch-check/SPEC.md),
+[settings-window](settings-window/SPEC.md) and
+[calls-folder-change](calls-folder-change/SPEC.md). A stopped call's text
 completing, also when a new recording or a folder move interrupts it, is
 [call-screen](call-screen/SPEC.md)'s. This spec holds only the journeys
 that cross them.

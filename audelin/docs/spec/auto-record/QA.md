@@ -10,7 +10,7 @@ description: "Auto-record — QA, driven as the user with real call apps"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `03762615ed58515f52e2a114713c5cd633039093` |
+| oracle | `SPEC.md` — blob `8d6a3dc49053fe6b92aad2b3005e818182319a48` |
 | driven by | the user, through the menu and real call apps |
 | where | the release build on this Mac; call-end time 30 s (mvp.md § Edge cases) |
 

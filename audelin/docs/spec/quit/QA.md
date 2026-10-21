@@ -10,7 +10,7 @@ description: "Quit — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `2e6cddd352b510799ed3da0944abce3f84f37ff4` |
+| oracle | `SPEC.md` — blob `6373eb9a348107b3f5c2d3d885f1908f180b06d0` |
 | driven by | the user, through the menu |
 | where | the release build on this Mac |
 
