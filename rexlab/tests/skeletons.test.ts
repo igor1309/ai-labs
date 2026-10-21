@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
@@ -414,6 +414,24 @@ function shippedApp() {
 
 // The file under rexlab/ a picture URL is served from while testing.
 const fileOf = (url: string) => join(ROOT, url.replace(/\?.*$/, ""));
+
+// FIND THE PAIR's Paleontologist board deals one dinosaur of each
+// look-alike group, so pairing pictures with skeletons (LAB-301) needs a
+// whole skeleton for a dinosaur of every group (LAB-385).
+describe("the whole skeletons", () => {
+  const whole = (id: string) => join(ROOT, "src/assets/skeletons", id, "skeleton.webp");
+  const drawn = records.filter(({ id }) => existsSync(whole(id)));
+
+  it("cover every look-alike group", () => {
+    const groups = new Set(records.map(({ lookAlike }) => lookAlike));
+
+    expect([...groups].filter((group) => !drawn.some(({ lookAlike }) => lookAlike === group))).toEqual([]);
+  });
+
+  it("are each a see-through picture in the body picture's 800 by 600 frame", () => {
+    expect(drawn.map(({ id }) => [id, readWebp(readFileSync(whole(id)))])).toEqual(drawn.map(({ id }) => [id, { width: 800, height: 600, alpha: true }]));
+  });
+});
 
 describe("every shipped skeleton", () => {
   const { skeletons, skeletonPicture } = shippedApp();
