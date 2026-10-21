@@ -129,6 +129,17 @@ Storage and bb output (owner, 2026-10-21):
   writes into the call folder. The ⌃⌥⌘E explanation comes back to the panel
   the same way.
 
+v4 screen details (decided by the agents, owner delegated, 2026-10-21):
+
+- Live text for the minutes before the live model arrived is filled in from
+  the recorded audio once it arrives, marked as added late.
+- The summary sits above the transcript, collapsed to a few lines with
+  "show more".
+- A failed move says how many calls moved, which one failed and why, and
+  offers Retry: "Moved 31 of 52. 'Zoom 2' failed: disk full."
+- After a failed move the folder setting still shows the old folder, with a
+  note that some calls are there. It changes only when every call has moved.
+
 ## Open questions for the owner
 
 - **App name**, which also names the data folder.
