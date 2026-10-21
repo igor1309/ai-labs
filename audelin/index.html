@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audelin</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #17191E; color: #E8EAED;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  }
+  main {
+    max-width: 560px; padding: 40px; border-radius: 16px;
+    background: #15171CEB; border: 1px solid #FFFFFF14;
+    box-shadow: 0 20px 60px #00000080;
+  }
+  h1 { margin: 0 0 4px; font-size: 32px; }
+  .tag { color: #A3A9B3; margin: 0 0 24px; }
+  .me { color: #4FD1C5; }
+  .them { color: #F5B454; }
+  ul { padding-left: 20px; }
+  a { color: #4FD1C5; }
+  footer { margin-top: 24px; color: #7C828D; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Audelin</h1>
+  <p class="tag">A quiet companion for your calls, entirely on your Mac.</p>
+  <p>A live, selectable transcript of Russian calls with English terms:
+    <span class="me">«я»</span> from the mic, <span class="them">«они»</span>
+    from the call. Select a term, press a hotkey, read a short Russian
+    explanation.</p>
+  <ul>
+    <li>v1: live transcript in a floating panel</li>
+    <li>v2: explain a selected term through bb</li>
+    <li>v3: final pass and summary after the call</li>
+  </ul>
+  <p><a href="README.md">README</a> · <a href="docs/log.md">Log</a></p>
+  <footer>Design and architecture stage · 2026-10-21</footer>
+</main>
+</body>
+</html>
