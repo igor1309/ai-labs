@@ -1,0 +1,1013 @@
+/* The hatch and grow prototype, drawn at 1440 by 900 and scaled to the
+   window. In landscape the stage is on the left and the items stand in a
+   column on the right, within reach of a thumb; the bottom edge is left
+   clear for resting wrists. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-amount: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-amount: 0;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #f2efe8;
+}
+
+/* A long press on a picture opens no menu and selects nothing. */
+body {
+  font-family: "Lexend Variable", system-ui, sans-serif;
+  color: #1d2742;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+#nursery {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Scaling keeps the frame's own size for layout, so it is centred by
+   hand. */
+.hatch-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1440px;
+  height: var(--hatch-height, 900px);
+  translate: -50% -50%;
+  scale: var(--hatch-scale, 1);
+}
+
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.hatch-home {
+  position: absolute;
+  left: 56px;
+  top: 40px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 64px;
+  padding: 0 22px 0 18px;
+  border-radius: 18px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-home svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* The friends hatched this time, newest last. */
+.hatch-friends {
+  position: absolute;
+  left: 260px;
+  top: 40px;
+  display: flex;
+  gap: 10px;
+  height: 64px;
+}
+
+.hatch-friend {
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #fffdf8;
+  object-fit: contain;
+  box-shadow: 0 2px 8px #1d274214;
+  animation: arrive 480ms var(--ease-overshoot) both;
+}
+
+@keyframes arrive {
+  from {
+    scale: calc(1 - var(--motion-amount));
+  }
+}
+
+.hatch-stage {
+  position: absolute;
+  left: 56px;
+  top: 124px;
+  width: 968px;
+  height: calc(100% - 180px);
+  overflow: hidden;
+  border-radius: 28px;
+  background: #1f2b4d;
+}
+
+.hatch-glow {
+  position: absolute;
+  left: 184px;
+  bottom: 60px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: #a9bcd6;
+  opacity: 0.16;
+}
+
+.hatch-ground {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 160px;
+  background: #00000026;
+}
+
+.hatch-name {
+  position: absolute;
+  left: 40px;
+  top: 30px;
+  margin: 0;
+  color: #f6f2e9;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Each creature is placed by the page: one in the middle for a
+   Hatchling, twins side by side for an Explorer. The page also sets its
+   size, from half to full, and where its head is, in the creature's own
+   pixels: food goes there and words come from there. */
+.hatch-creature {
+  position: absolute;
+  --size: 1;
+  --head-x: 50%;
+  --head-y: 30%;
+}
+
+/* The egg cracks a little more with each tap. */
+.hatch-egg {
+  position: absolute;
+  left: calc(50% - 110px);
+  top: calc(100% - 310px);
+  width: 220px;
+  height: 290px;
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #e9dcc0 70%);
+  box-shadow: inset -14px -18px 0 #d8c7a4;
+  transform-origin: 50% 100%;
+}
+
+.hatch-egg-spots {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 55%, #9cc48a 0 16px, transparent 17px),
+    radial-gradient(circle at 66% 38%, #9cc48a 0 12px, transparent 13px),
+    radial-gradient(circle at 60% 74%, #9cc48a 0 20px, transparent 21px);
+}
+
+.hatch-egg::after {
+  content: "";
+  position: absolute;
+  left: 30px;
+  top: 120px;
+  width: 160px;
+  height: 28px;
+  opacity: 0;
+  background: linear-gradient(
+      135deg,
+      transparent 45%,
+      #6b5a3a 46% 54%,
+      transparent 55%
+    )
+    0 0 / 40px 28px repeat-x;
+}
+
+.hatch-creature[data-taps="1"] .hatch-egg::after {
+  opacity: 0.5;
+  width: 80px;
+}
+
+.hatch-creature[data-taps="2"] .hatch-egg::after {
+  opacity: 1;
+}
+
+/* Untouched, the egg wobbles now and then on its own, asking for a tap. */
+.hatch-egg {
+  animation: nudge 2400ms var(--ease-out) 1200ms infinite;
+}
+
+@keyframes nudge {
+  5% {
+    rotate: calc(-8deg * var(--motion-amount));
+  }
+  12% {
+    rotate: calc(6deg * var(--motion-amount));
+  }
+  18% {
+    rotate: 0deg;
+  }
+}
+
+.hatch-creature:not([data-taps="0"]) .hatch-egg {
+  animation: none;
+}
+
+.hatch-creature[data-reaction="wobble"] .hatch-egg {
+  animation: wobble 420ms var(--ease-out);
+}
+
+@keyframes wobble {
+  25% {
+    rotate: calc(-9deg * var(--motion-amount));
+  }
+  60% {
+    rotate: calc(7deg * var(--motion-amount));
+  }
+}
+
+.hatch-baby {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  scale: var(--size);
+  transition: scale 700ms var(--ease-overshoot);
+}
+
+.hatch-baby-picture,
+.hatch-shadow {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  scale: -1 1;
+  transition: filter 400ms;
+}
+
+.hatch-shadow {
+  position: absolute;
+  inset: 0;
+  filter: brightness(0);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.hatch-creature[data-reaction="hatch"] .hatch-baby {
+  animation: hatch 600ms var(--ease-overshoot) both;
+}
+
+@keyframes hatch {
+  from {
+    opacity: 0;
+    translate: 0 calc(60px * var(--motion-amount));
+    transform: scale(calc(1 - 0.8 * var(--motion-amount)));
+  }
+}
+
+/* What it wants, shown on it. */
+.hatch-mud {
+  position: absolute;
+  display: none;
+  border-radius: 50%;
+  background: #6b4a2b;
+  opacity: 0.85;
+}
+
+.hatch-mud-0 {
+  left: 34%;
+  top: 46%;
+  width: 70px;
+  height: 46px;
+}
+
+.hatch-mud-1 {
+  left: 52%;
+  top: 56%;
+  width: 54px;
+  height: 38px;
+}
+
+.hatch-mud-2 {
+  left: 44%;
+  top: 66%;
+  width: 40px;
+  height: 30px;
+}
+
+.hatch-mud-3 {
+  left: 60%;
+  top: 44%;
+  width: 34px;
+  height: 26px;
+}
+
+.hatch-creature[data-want="dirty"] .hatch-mud {
+  display: block;
+}
+
+.hatch-zzz {
+  position: absolute;
+  right: 18%;
+  top: 8%;
+  display: none;
+  color: #f6f2e9;
+  font-size: 64px;
+  font-weight: 700;
+  animation: drift 1600ms ease-in-out infinite;
+}
+
+.hatch-zzz::before {
+  content: "Z z z";
+}
+
+.hatch-creature[data-want="sleepy"] .hatch-zzz {
+  display: block;
+}
+
+.hatch-creature[data-want="sleepy"] .hatch-baby-picture {
+  filter: brightness(0.8);
+}
+
+@keyframes drift {
+  50% {
+    translate: calc(10px * var(--motion-amount))
+      calc(-14px * var(--motion-amount));
+    opacity: 0.6;
+  }
+}
+
+/* Hungry: an empty bowl in front of its mouth, and its tummy rumbles.
+   Thirsty: sweat drips from its head and it pants. */
+.hatch-empty-bowl,
+.hatch-sweat {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
+.hatch-empty-bowl {
+  left: calc(var(--head-x) - 20px);
+  top: calc(100% - 80px);
+  width: 150px;
+  height: 90px;
+  object-fit: contain;
+  animation: rise-in 400ms var(--ease-out) both;
+}
+
+.hatch-creature[data-want="hungry"] .hatch-empty-bowl {
+  display: block;
+}
+
+.hatch-creature[data-want="hungry"] .hatch-baby {
+  animation: rumble 2400ms ease-in-out infinite;
+}
+
+@keyframes rumble {
+  0%,
+  80%,
+  100% {
+    translate: 0 0;
+  }
+  84%,
+  92% {
+    translate: calc(-5px * var(--motion-amount)) 0;
+  }
+  88%,
+  96% {
+    translate: calc(5px * var(--motion-amount)) 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(20px * var(--motion-amount));
+  }
+}
+
+.hatch-sweat {
+  left: calc(var(--head-x) - 30px);
+  top: calc(var(--head-y) - 80px);
+  width: 44px;
+  height: 44px;
+  animation: fly-off 1200ms ease-out infinite;
+}
+
+.hatch-sweat svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hatch-sweat-1 {
+  --fly-x: -70px;
+  animation-delay: 400ms;
+}
+
+.hatch-sweat-2 {
+  --fly-x: 70px;
+  animation-delay: 800ms;
+}
+
+.hatch-creature[data-want="thirsty"] .hatch-sweat {
+  display: block;
+}
+
+.hatch-creature[data-want="thirsty"] .hatch-baby {
+  animation: pant 500ms ease-in-out infinite;
+}
+
+@keyframes fly-off {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: calc(var(--fly-x, 0px) * var(--motion-amount))
+      calc(-70px * var(--motion-amount));
+  }
+}
+
+/* A hot sun in the corner and a warm sky while it is thirsty. */
+.hatch-sun {
+  position: absolute;
+  right: 50px;
+  top: 40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side, #ffe08a 75%, #ffb703 76%);
+  box-shadow: 0 0 80px 30px #ffb70366;
+  opacity: 0;
+  scale: 0.6;
+  transition:
+    opacity 500ms,
+    scale 500ms var(--ease-overshoot);
+  pointer-events: none;
+}
+
+.hatch-stage {
+  transition: background 600ms;
+}
+
+.hatch-stage:has(.hatch-creature[data-want="thirsty"]) {
+  background: #5a3a3a;
+}
+
+.hatch-stage:has(.hatch-creature[data-want="thirsty"]) .hatch-sun {
+  opacity: 1;
+  scale: 1;
+  animation: pulse 1600ms ease-in-out infinite;
+}
+
+@keyframes pant {
+  50% {
+    transform: scale(1, calc(1 - 0.025 * var(--motion-amount)));
+  }
+}
+
+/* Offered something it does not want now, it shows its want again. */
+.hatch-creature[data-reaction="not-now"] .hatch-empty-bowl,
+.hatch-creature[data-reaction="not-now"] .hatch-mud,
+.hatch-creature[data-reaction="not-now"] .hatch-zzz {
+  animation: pulse 450ms var(--ease-out) 2;
+}
+
+@keyframes pulse {
+  50% {
+    scale: calc(1 + 0.25 * var(--motion-amount));
+  }
+}
+
+/* The item given flies in from the tray. */
+.hatch-offered {
+  position: absolute;
+  left: calc(var(--head-x) - 75px);
+  top: calc(var(--head-y) - 75px);
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hatch-creature[data-reaction] .hatch-offered[data-item]:not([data-item=""]) {
+  animation: feed 900ms var(--ease-out) both;
+}
+
+@keyframes feed {
+  from {
+    opacity: 1;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+  45% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+
+.hatch-creature[data-reaction="spit"]
+  .hatch-offered[data-item]:not([data-item=""]) {
+  animation-name: refused;
+}
+
+/* Not wanted now: the item stops short of the mouth while the baby turns
+   its head away, then goes back. */
+.hatch-creature[data-reaction="not-now"]
+  .hatch-offered[data-item]:not([data-item=""]) {
+  animation-name: declined;
+}
+
+@keyframes declined {
+  from {
+    opacity: 1;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+  35%,
+  70% {
+    opacity: 1;
+    translate: calc(150px * var(--motion-amount)) 0;
+  }
+  to {
+    opacity: 0;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+}
+
+.hatch-creature[data-reaction="not-now"] .hatch-baby-picture {
+  animation: turn-away 900ms var(--ease-out);
+}
+
+@keyframes turn-away {
+  25%,
+  75% {
+    scale: 1 1;
+  }
+}
+
+@keyframes refused {
+  from {
+    opacity: 1;
+    translate: calc(560px * var(--motion-amount)) 0;
+  }
+  40% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: calc(600px * var(--motion-amount))
+      calc(-200px * var(--motion-amount));
+    rotate: calc(200deg * var(--motion-amount));
+  }
+}
+
+.hatch-creature[data-reaction="wash"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="splash"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="sleep"]
+  .hatch-offered[data-item]:not([data-item=""]),
+.hatch-creature[data-reaction="bounce"]
+  .hatch-offered[data-item]:not([data-item=""]) {
+  left: calc(50% - 180px);
+  top: calc(100% - 100px);
+  width: 360px;
+  height: 160px;
+  animation-name: under;
+}
+
+@keyframes under {
+  from,
+  to {
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+}
+
+/* The baby's reactions. */
+.hatch-creature[data-reaction="eat"] .hatch-baby,
+.hatch-creature[data-reaction="drink"] .hatch-baby {
+  animation: chomp 300ms ease-in-out 360ms 3;
+}
+
+@keyframes chomp {
+  50% {
+    transform: scale(1, calc(1 - 0.1 * var(--motion-amount)));
+  }
+}
+
+.hatch-creature[data-reaction="spit"] .hatch-baby {
+  animation: shake 420ms ease-in-out 300ms 2;
+}
+
+@keyframes shake {
+  25% {
+    translate: calc(-14px * var(--motion-amount)) 0;
+  }
+  75% {
+    translate: calc(14px * var(--motion-amount)) 0;
+  }
+}
+
+.hatch-creature[data-reaction="spit"] .hatch-baby-picture {
+  filter: hue-rotate(60deg) saturate(1.4);
+}
+
+.hatch-creature[data-reaction="giggle"] .hatch-baby,
+.hatch-creature[data-reaction="wash"] .hatch-baby,
+.hatch-creature[data-reaction="splash"] .hatch-baby {
+  animation: wiggle 160ms ease-in-out 4;
+}
+
+@keyframes wiggle {
+  50% {
+    rotate: calc(6deg * var(--motion-amount));
+  }
+}
+
+.hatch-creature[data-reaction="bounce"] .hatch-baby,
+.hatch-creature[data-reaction="dance"] .hatch-baby {
+  animation: hop 400ms var(--ease-out) 2;
+}
+
+.hatch-creature[data-reaction="dance"] .hatch-baby {
+  animation-iteration-count: 6;
+}
+
+@keyframes hop {
+  40% {
+    translate: 0 calc(-90px * var(--motion-amount));
+    rotate: calc(-5deg * var(--motion-amount));
+  }
+}
+
+.hatch-creature[data-reaction="sleep"] .hatch-baby {
+  animation: nap 900ms ease-in-out both;
+}
+
+@keyframes nap {
+  30%,
+  80% {
+    translate: 0 calc(20px * var(--motion-amount));
+    transform: scale(1.05, 0.88);
+    filter: brightness(0.7);
+  }
+}
+
+/* Bubbles in the bath, sparkles when it grows or dances. */
+.hatch-creature[data-reaction="wash"]::after,
+.hatch-creature[data-reaction="splash"]::after,
+.hatch-creature[data-reaction="dance"]::after,
+.hatch-creature[data-reaction="hatch"]::after {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 70%, #ffffffcc 0 18px, transparent 19px),
+    radial-gradient(circle at 70% 40%, #ffffffaa 0 26px, transparent 27px),
+    radial-gradient(circle at 45% 20%, #ffffffbb 0 14px, transparent 15px),
+    radial-gradient(circle at 85% 75%, #ffffff99 0 22px, transparent 23px),
+    radial-gradient(circle at 35% 45%, #ffffffaa 0 10px, transparent 11px);
+  animation: rise 900ms var(--ease-out) both;
+}
+
+.hatch-creature[data-reaction="dance"]::after,
+.hatch-creature[data-reaction="hatch"]::after {
+  background:
+    radial-gradient(circle at 20% 70%, #ffd166 0 14px, transparent 15px),
+    radial-gradient(circle at 70% 30%, #ef476f 0 12px, transparent 13px),
+    radial-gradient(circle at 45% 15%, #06d6a0 0 16px, transparent 17px),
+    radial-gradient(circle at 85% 65%, #ffd166 0 10px, transparent 11px),
+    radial-gradient(circle at 10% 30%, #118ab2 0 12px, transparent 13px);
+  animation-duration: 1600ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 calc(-120px * var(--motion-amount));
+  }
+}
+
+/* A word the baby says: BLEH, YUM, BURP. */
+.hatch-say {
+  position: absolute;
+  right: calc(100% - var(--head-x) + 10px);
+  top: calc(var(--head-y) - 200px);
+  white-space: nowrap;
+  color: #ffd166;
+  font-size: 72px;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hatch-creature[data-reaction] .hatch-say:not(:empty) {
+  animation: pop 1000ms var(--ease-overshoot) 300ms both;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  25%,
+  75% {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.hatch-tray {
+  position: absolute;
+  left: 1056px;
+  top: 124px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 328px;
+  height: calc(100% - 180px);
+}
+
+.hatch-item {
+  transition:
+    opacity 400ms,
+    filter 400ms,
+    scale 160ms var(--ease-out);
+  display: flex;
+  flex: 1 1 0;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 20px 10px 12px;
+  border-radius: 24px;
+  background: #fffdf8;
+  box-shadow: 0 2px 10px #1d274214;
+}
+
+.hatch-item:active {
+  scale: calc(1 - 0.05 * var(--motion-amount));
+}
+
+.hatch-item-picture {
+  width: 120px;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hatch-item-label {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.hatch-frame[data-phase="egg"] .hatch-item,
+.hatch-frame[data-phase="grown"] .hatch-item {
+  opacity: 0.35;
+  filter: grayscale(1);
+  pointer-events: none;
+}
+
+/* A hand under the egg until it is first tapped. */
+.hatch-hint {
+  position: absolute;
+  left: calc(50% + 30px);
+  top: calc(100% - 60px);
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+  animation: point 1200ms ease-in-out infinite;
+}
+
+.hatch-hint svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hatch-creature:not([data-taps="0"]) .hatch-hint {
+  display: none;
+}
+
+@keyframes point {
+  50% {
+    translate: calc(-10px * var(--motion-amount))
+      calc(-16px * var(--motion-amount));
+  }
+}
+
+/* An Explorer's twins: the one an item goes to stands on a light ring,
+   moved by tapping the other. */
+.hatch-ring {
+  position: absolute;
+  left: 15%;
+  bottom: -24px;
+  width: 70%;
+  height: 56px;
+  border-radius: 50%;
+  background: #ffd16633;
+  box-shadow: 0 0 0 6px #ffd166;
+  opacity: 0;
+  scale: 0.7;
+  transition:
+    opacity 300ms,
+    scale 300ms var(--ease-overshoot);
+}
+
+.hatch-creature[data-chosen="true"] .hatch-ring {
+  opacity: 1;
+  scale: 1;
+}
+
+/* The level to play, to compare them: 🥚 Hatchling, 🦖 Explorer. */
+.hatch-levels {
+  position: absolute;
+  right: 56px;
+  top: 40px;
+  display: flex;
+  gap: 10px;
+}
+
+.hatch-level {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #fffdf8;
+  font-size: 32px;
+  opacity: 0.45;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-level[data-on="true"] {
+  opacity: 1;
+  box-shadow: 0 0 0 4px #1d2742;
+}
+
+/* A Paleontologist's magnifier by each baby's head, and the teeth it
+   shows above it. */
+.hatch-look {
+  position: absolute;
+  left: calc(var(--head-x) - 36px);
+  top: calc(var(--head-y) - 96px);
+  display: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fffdf8;
+  font-size: 38px;
+  box-shadow: 0 2px 10px #00000040;
+}
+
+.hatch-frame[data-level="paleontologist"] .hatch-look {
+  display: block;
+}
+
+.hatch-teeth {
+  position: absolute;
+  left: min(calc(var(--head-x) - 120px), calc(100% - 250px));
+  top: calc(var(--head-y) - 250px);
+  display: none;
+  width: 240px;
+  height: 150px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 0 0 6px #ffd166;
+  animation: arrive 360ms var(--ease-overshoot) both;
+  pointer-events: none;
+}
+
+.hatch-teeth svg,
+.hatch-page-teeth svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hatch-creature[data-looking="true"] .hatch-teeth {
+  display: block;
+}
+
+/* The field notebook: its button shows how many pages it has, and it
+   opens over the whole frame; a tap anywhere closes it. */
+.hatch-notebook-button {
+  position: absolute;
+  right: 290px;
+  top: 40px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #fffdf8;
+  font-size: 32px;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-notebook-button[data-pages="0"] {
+  display: none;
+}
+
+.hatch-notebook-button::after {
+  content: attr(data-pages);
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: #ef476f;
+  color: #fffdf8;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.hatch-notebook {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 20px;
+  padding: 60px;
+  box-sizing: border-box;
+  overflow: auto;
+  border-radius: 28px;
+  background: #f6ecd6;
+}
+
+.hatch-frame[data-notebook="open"] .hatch-notebook {
+  display: flex;
+}
+
+.hatch-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 240px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 2px 8px #1d274214;
+}
+
+.hatch-page-picture {
+  width: 200px;
+  height: 130px;
+  object-fit: contain;
+  scale: -1 1;
+}
+
+.hatch-page-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hatch-page-teeth {
+  width: 120px;
+  height: 60px;
+}

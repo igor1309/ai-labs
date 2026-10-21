@@ -11,12 +11,12 @@ const VERSION = `v${JSON.parse(readFileSync(PACKAGE_JSON, "utf8")).version}`;
 export default defineConfig({
   build: {
     outDir: "dist",
-    // The care mission prototype (LAB-281) is a page of its own, linked
-    // from nowhere in the game.
+    // The hatch and grow care prototype (LAB-387) is a page of its own,
+    // linked from nowhere in the game.
     rolldownOptions: {
       input: {
         main: "index.html",
-        careMission: "prototypes/care-mission.html"
+        careHatch: "prototypes/care-hatch.html"
       }
     }
   },
