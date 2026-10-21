@@ -21,7 +21,7 @@ export const ru: Texts = {
   progress: "ПРОГРЕСС",
   creatures: "ЖИВОТНЫЕ",
   versus: "ИЛИ",
-  prompts: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?" },
+  prompts: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?", lighter: "КТО ЛЕГЧЕ?" },
   marks: { correct: "ВЕРНО", wrong: "НЕВЕРНО" },
   next: "ДАЛЬШЕ",
   seeResult: "РЕЗУЛЬТАТ",
