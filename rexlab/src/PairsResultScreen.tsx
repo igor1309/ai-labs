@@ -72,7 +72,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
       <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined}>
         {(celebration || levelUp) && <Festivity />}
         <div className="stratum result-stratum" aria-hidden="true" />
-        <ul className="pairs-found" aria-label={text.dinosaurs} data-count={pals.length} style={motion({ "--found-rows": Math.ceil(pals.length / 3) })}>
+        <ul className="pairs-found" aria-label={text.creatures} data-count={pals.length} style={motion({ "--found-rows": Math.ceil(pals.length / 3) })}>
           {pals.map(({ id, name, picture, newlyFound }, index) => (
             <li key={id} className="pairs-found-card" style={motion({ "--card": index })}>
               <span className="pairs-found-art">

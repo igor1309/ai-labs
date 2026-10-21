@@ -249,7 +249,7 @@ describe("the language menu", () => {
   });
 
   it.each([
-    ["ru-RU", "Версия", "Язык", "English", "ALL DINOSAURS", "Version", "HOME", "Language", "Русский"],
+    ["ru-RU", "Версия", "Язык", "English", "ANCIENT REPTILES", "Version", "HOME", "Language", "Русский"],
     ["en-GB", "Version", "Language", "Русский", "ВСЕ", "Версия", "ДОМОЙ", "Язык", "English"]
   ])(
     "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
@@ -386,7 +386,7 @@ describe("Russian text", () => {
       "name of Triceratops",
       () => {
         renderQuestion("ru");
-        return within(screen.getByRole("group", { name: "ДИНОЗАВРЫ" })).getByRole("button", { name: "Трицератопс" });
+        return within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByRole("button", { name: "Трицератопс" });
       },
       "ТРИЦЕРАТОПС"
     ]
@@ -422,7 +422,7 @@ describe("the sorting board", () => {
       feathers: ["С ПЕРЬЯМИ", "БЕЗ ПЕРЬЕВ"]
     }
   };
-  const PROMPT: Record<Language, string> = { en: "SORT THE DINOSAURS", ru: "РАЗЛОЖИ ДИНОЗАВРОВ" };
+  const PROMPT: Record<Language, string> = { en: "SORT THEM ALL", ru: "РАЗЛОЖИ ВСЕХ" };
   const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
 
   // Every text in the document and every name read out, as now shown.

@@ -14,7 +14,7 @@ Feature: Find the pair: starting a board
   Scenario: The home page offers the game
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
-    And on a day COMPARE is featured it stands under the "ALL DINOSAURS" card and as tall, before the "SKELETONS" tile
+    And on a day COMPARE is featured it stands under the "ANCIENT REPTILES" card and as tall, before the "SKELETONS" tile
     And its title sits beside its symbol, on two lines at most
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"

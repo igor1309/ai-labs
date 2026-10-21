@@ -2,7 +2,7 @@
 // Everything else under quiz/ is reached only through this file.
 import { choose, currentChoice, currentQuestion, isLastQuestion, next, score, startPlay, type Play } from "./play.ts";
 import { finishRound, type BeatBest, type Celebration, type GameProgress } from "./progress.ts";
-import { generateRound, largerOf, type Attribute, type Dinosaur, type Random } from "./round.ts";
+import { generateRound, largerOf, measureOf, type Attribute, type Dinosaur, type Random } from "./round.ts";
 
 export type { Attribute, BeatBest, Celebration, Dinosaur, GameProgress, Play, Random };
 export type { Beaten } from "./progress.ts";
@@ -54,7 +54,7 @@ export function questionState(play: Play): QuestionState {
   const answer = largerOf(question);
   const option = (dinosaur: Dinosaur): Option => ({
     dinosaur,
-    value: dinosaur.measures[question.attribute],
+    value: measureOf(dinosaur, question.attribute),
     correct: dinosaur.id === answer.id,
     chosen: dinosaur.id === choice
   });

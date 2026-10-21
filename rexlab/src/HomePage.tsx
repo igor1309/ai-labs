@@ -201,7 +201,7 @@ export function HomePage({
       <Button key="catalogue" className="card catalogue-tile" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
         {games.catalogue.picture}
         {/* The book sits in the picture's other corner: beside the
-            title it would leave ALL DINOSAURS too little of the row on
+            title it would leave ANCIENT REPTILES too little of the row on
             the smallest iPad. */}
         <span className="catalogue-tile-symbol" aria-hidden="true">
           <BookOpen size={20} />

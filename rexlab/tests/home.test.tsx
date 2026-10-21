@@ -164,7 +164,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
+  it("stands every other game in equal columns of two beside the large card: ANCIENT REPTILES over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -173,7 +173,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ALL DINOSAURS", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -268,7 +268,7 @@ describe("the home page", () => {
   // COMPARE, then CARE, so every tile is on the page once.
   const TILE_TITLES: Array<[HomeGame, string, string]> = [
     ["compare", "COMPARE", "7"],
-    ["catalogue", "ALL DINOSAURS", String(SHIPPED_CATALOGUE.length)],
+    ["catalogue", "ANCIENT REPTILES", String(SHIPPED_CATALOGUE.length)],
     ["pairs", "FIND THE PAIR", "120"],
     ["skeletons", "SKELETONS", "3"],
     ["dig", "DIG", "7"],
@@ -338,7 +338,7 @@ describe("the home page", () => {
     }
   );
 
-  it("offers find the pair as a tile under ALL DINOSAURS, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
+  it("offers find the pair as a tile under ANCIENT REPTILES, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
@@ -408,7 +408,7 @@ describe("the home page", () => {
     await user.click(skeletonsTile());
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-    expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
+    expect(within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button").map((choice) => choice.getAttribute("aria-label"))).toEqual([
       "TYRANNOSAURUS",
       "TRICERATOPS",
       "STEGOSAURUS",
@@ -623,7 +623,7 @@ describe("the home page", () => {
     await userEvent.setup().click(door());
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
-    expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")).toHaveLength(2);
+    expect(within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button")).toHaveLength(2);
   });
 });
 
@@ -730,7 +730,7 @@ describe("the large card", () => {
 
 describe("the first question of a round", () => {
   const progressShown = () => screen.queryByLabelText("PROGRESS")?.textContent;
-  const cardPictures = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("img");
+  const cardPictures = () => within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("img");
   const looks = () => cardPictures().map((picture) => [picture.dataset.picture, picture.getAttribute("src")]);
 
   // The home page's pictures are left loading too, as some of its

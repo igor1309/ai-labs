@@ -189,8 +189,8 @@ describe("the home page upright", () => {
       // Every tile is half of the row, less the gap between the two.
       expect([layout.row.rows, layout.row.rowGap]).toEqual(["minmax(0, 1fr) minmax(0, 1fr)", 28]);
       expect(
-        [...tilesRow().children].slice(0, 2).map((tile) => within(tile as HTMLElement).queryByText(/ALL DINOSAURS|FIND THE PAIR/)?.textContent)
-      ).toEqual(["ALL DINOSAURS", "FIND THE PAIR"]);
+        [...tilesRow().children].slice(0, 2).map((tile) => within(tile as HTMLElement).queryByText(/ANCIENT REPTILES|FIND THE PAIR/)?.textContent)
+      ).toEqual(["ANCIENT REPTILES", "FIND THE PAIR"]);
       expect(Math.abs(layout.column - column)).toBeLessThanOrEqual(1);
       expect(Math.abs(layout.peek - peek)).toBeLessThanOrEqual(1);
       expect(layout.page > height).toBe(scrolls);
@@ -484,7 +484,7 @@ describe("turning the window", () => {
     // The same card, never drawn anew, rises in only as it is first drawn.
     expect([featuredCard(), card.dataset.game, getComputedStyle(card).animationName]).toEqual([card, "compare", rise]);
     expect([tilesRow(), row.scrollLeft]).toEqual([row, 0]);
-    expect(within(row).getAllByRole("button")[0]?.getAttribute("aria-label")).toBe("ALL DINOSAURS");
+    expect(within(row).getAllByRole("button")[0]?.getAttribute("aria-label")).toBe("ANCIENT REPTILES");
 
     row.scrollLeft = 1000;
     openWindow(1180, 820);

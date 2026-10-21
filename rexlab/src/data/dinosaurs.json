@@ -5,6 +5,7 @@
       "en": "Tyrannosaurus",
       "ru": "Тираннозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.1,
       "massKg": 8000
@@ -28,6 +29,7 @@
       "en": "Triceratops",
       "ru": "Трицератопс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.7,
       "massKg": 7000
@@ -51,6 +53,7 @@
       "en": "Velociraptor",
       "ru": "Велоцираптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
       "massKg": 15
@@ -74,6 +77,7 @@
       "en": "Brachiosaurus",
       "ru": "Брахиозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.4,
       "massKg": 50000
@@ -97,6 +101,7 @@
       "en": "Stegosaurus",
       "ru": "Стегозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 2700
@@ -120,6 +125,7 @@
       "en": "Ankylosaurus",
       "ru": "Анкилозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 6000
@@ -143,6 +149,7 @@
       "en": "Spinosaurus",
       "ru": "Спинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.6,
       "massKg": 7400
@@ -166,6 +173,7 @@
       "en": "Diplodocus",
       "ru": "Диплодок"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.8,
       "massKg": 15000
@@ -189,6 +197,7 @@
       "en": "Parasaurolophus",
       "ru": "Паразауролоф"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 3500
@@ -212,6 +221,7 @@
       "en": "Pachycephalosaurus",
       "ru": "Пахицефалозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 450
@@ -235,6 +245,7 @@
       "en": "Iguanodon",
       "ru": "Игуанодон"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 4000
@@ -258,6 +269,7 @@
       "en": "Compsognathus",
       "ru": "Компсогнат"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.32,
       "massKg": 3
@@ -281,6 +293,7 @@
       "en": "Gallimimus",
       "ru": "Галлимим"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.9,
       "massKg": 490
@@ -304,6 +317,7 @@
       "en": "Allosaurus",
       "ru": "Аллозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 2300
@@ -327,6 +341,7 @@
       "en": "Argentinosaurus",
       "ru": "Аргентинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 4.3,
       "massKg": 70000
@@ -350,6 +365,7 @@
       "en": "Microraptor",
       "ru": "Микрораптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
       "massKg": 1
@@ -373,6 +389,7 @@
       "en": "Protoceratops",
       "ru": "Протоцератопс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
       "massKg": 180
@@ -396,6 +413,7 @@
       "en": "Dilophosaurus",
       "ru": "Дилофозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.5,
       "massKg": 400
@@ -419,6 +437,7 @@
       "en": "Carnotaurus",
       "ru": "Карнотавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.5,
       "massKg": 1500
@@ -442,6 +461,7 @@
       "en": "Giganotosaurus",
       "ru": "Гиганотозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.1,
       "massKg": 7000
@@ -465,6 +485,7 @@
       "en": "Therizinosaurus",
       "ru": "Теризинозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3,
       "massKg": 5000
@@ -488,6 +509,7 @@
       "en": "Edmontosaurus",
       "ru": "Эдмонтозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 3400
@@ -511,6 +533,7 @@
       "en": "Deinonychus",
       "ru": "Дейноних"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.87,
       "massKg": 75
@@ -534,6 +557,7 @@
       "en": "Oviraptor",
       "ru": "Овираптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.65,
       "massKg": 30
@@ -557,6 +581,7 @@
       "en": "Coelophysis",
       "ru": "Целофизис"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.59,
       "massKg": 20
@@ -580,6 +605,7 @@
       "en": "Psittacosaurus",
       "ru": "Пситтакозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.52,
       "massKg": 50
@@ -603,6 +629,7 @@
       "en": "Styracosaurus",
       "ru": "Стиракозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 2700
@@ -626,6 +653,7 @@
       "en": "Kentrosaurus",
       "ru": "Кентрозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.1,
       "massKg": 1000
@@ -649,6 +677,7 @@
       "en": "Baryonyx",
       "ru": "Барионикс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 1700
@@ -672,6 +701,7 @@
       "en": "Apatosaurus",
       "ru": "Апатозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 3.2,
       "massKg": 23000
@@ -695,6 +725,7 @@
       "en": "Ceratosaurus",
       "ru": "Цератозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 1000
@@ -718,6 +749,7 @@
       "en": "Utahraptor",
       "ru": "Ютараптор"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 350
@@ -741,6 +773,7 @@
       "en": "Yutyrannus",
       "ru": "Ютираннус"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.7,
       "massKg": 1400
@@ -764,6 +797,7 @@
       "en": "Archaeopteryx",
       "ru": "Археоптерикс"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.16,
       "massKg": 1
@@ -787,6 +821,7 @@
       "en": "Troodon",
       "ru": "Троодон"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.88,
       "massKg": 50
@@ -810,6 +845,7 @@
       "en": "Heterodontosaurus",
       "ru": "Гетеродонтозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 0.33,
       "massKg": 2
@@ -833,6 +869,7 @@
       "en": "Mamenchisaurus",
       "ru": "Маменчизавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.3,
       "massKg": 12000
@@ -856,6 +893,7 @@
       "en": "Amargasaurus",
       "ru": "Амаргазавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.8,
       "massKg": 9000
@@ -879,6 +917,7 @@
       "en": "Plateosaurus",
       "ru": "Платеозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 1.4,
       "massKg": 4000
@@ -902,6 +941,7 @@
       "en": "Maiasaura",
       "ru": "Майазавра"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.1,
       "massKg": 3000
@@ -925,6 +965,7 @@
       "en": "Corythosaurus",
       "ru": "Коритозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.4,
       "massKg": 4000
@@ -948,6 +989,7 @@
       "en": "Chasmosaurus",
       "ru": "Хасмозавр"
     },
+    "group": "dinosaur",
     "attributes": {
       "heightMeters": 2.2,
       "massKg": 2500
@@ -963,6 +1005,246 @@
     "description": {
       "en": "A COUSIN OF TRICERATOPS WITH A VERY LONG, WIDE FRILL. IT MAY HAVE SHOWN IT OFF IN BRIGHT COLOURS.",
       "ru": "РОДСТВЕННИК ТРИЦЕРАТОПСА С ОЧЕНЬ ДЛИННЫМ И ШИРОКИМ ВОРОТНИКОМ. ВОЗМОЖНО, ОН БЫЛ ЯРКО ОКРАШЕН."
+    }
+  },
+  {
+    "id": "quetzalcoatlus",
+    "name": {
+      "en": "Quetzalcoatlus",
+      "ru": "Кетцалькоатль"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 250,
+      "wingspanMeters": 10
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! ONE OF THE BIGGEST FLIERS EVER. ITS WINGS WERE AS WIDE AS A SMALL PLANE'S.",
+      "ru": "НЕ ДИНОЗАВР! ОДНО ИЗ САМЫХ БОЛЬШИХ ЛЕТАЮЩИХ ЖИВОТНЫХ. КРЫЛЬЯ КАК У МАЛЕНЬКОГО САМОЛЁТА."
+    }
+  },
+  {
+    "id": "pteranodon",
+    "name": {
+      "en": "Pteranodon",
+      "ru": "Птеранодон"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 25,
+      "wingspanMeters": 6
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS NAME MEANS WINGED AND TOOTHLESS. IT ATE FISH.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ИМЯ ЗНАЧИТ КРЫЛАТЫЙ И БЕЗЗУБЫЙ. ОН ЕЛ РЫБУ."
+    }
+  },
+  {
+    "id": "rhamphorhynchus",
+    "name": {
+      "en": "Rhamphorhynchus",
+      "ru": "Рамфоринх"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 2,
+      "wingspanMeters": 1.8
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! IT HAD SHARP TEETH FOR CATCHING FISH AND A LONG TAIL.",
+      "ru": "НЕ ДИНОЗАВР! У НЕГО БЫЛИ ОСТРЫЕ ЗУБЫ, ЧТОБЫ ЛОВИТЬ РЫБУ, И ДЛИННЫЙ ХВОСТ."
+    }
+  },
+  {
+    "id": "dimorphodon",
+    "name": {
+      "en": "Dimorphodon",
+      "ru": "Диморфодон"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 3,
+      "wingspanMeters": 1.4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! MARY ANNING FOUND IT IN ENGLAND. HOLES IN ITS BIG HEAD KEPT IT LIGHT.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО НАШЛА МЭРИ ЭННИНГ В АНГЛИИ. ДЫРЫ В БОЛЬШОЙ ГОЛОВЕ ДЕЛАЛИ ЕЁ ЛЁГКОЙ."
+    }
+  },
+  {
+    "id": "pterodactylus",
+    "name": {
+      "en": "Pterodactylus",
+      "ru": "Птеродактиль"
+    },
+    "group": "flying-reptile",
+    "attributes": {
+      "massKg": 0.5,
+      "wingspanMeters": 1
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! THE FIRST FLYING REPTILE EVER FOUND. ITS WINGS WERE AS WIDE AS YOUR ARMS.",
+      "ru": "НЕ ДИНОЗАВР! ПЕРВЫЙ НАЙДЕННЫЙ ЛЕТАЮЩИЙ ЯЩЕР. ЕГО КРЫЛЬЯ БЫЛИ ШИРИНОЙ С ТВОИ РУКИ."
+    }
+  },
+  {
+    "id": "mosasaurus",
+    "name": {
+      "en": "Mosasaurus",
+      "ru": "Мозазавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 10000,
+      "lengthMeters": 12
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR, BUT A GIANT SEA LIZARD. IT ATE FISH, SQUID AND EVEN SHARKS.",
+      "ru": "НЕ ДИНОЗАВР, А ОГРОМНАЯ МОРСКАЯ ЯЩЕРИЦА. ЕЛ РЫБУ, КАЛЬМАРОВ И ДАЖЕ АКУЛ."
+    }
+  },
+  {
+    "id": "elasmosaurus",
+    "name": {
+      "en": "Elasmosaurus",
+      "ru": "Эласмозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 2300,
+      "lengthMeters": 10.3
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": null
+    },
+    "lookAlike": "long-neck-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS NECK WAS LONGER THAN A CAR, WITH 72 BONES. YOURS HAS 7.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ШЕЯ БЫЛА ДЛИННЕЕ МАШИНЫ, В НЕЙ 72 КОСТИ. А В ТВОЕЙ — 7."
+    }
+  },
+  {
+    "id": "kronosaurus",
+    "name": {
+      "en": "Kronosaurus",
+      "ru": "Кронозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 11000,
+      "lengthMeters": 10.4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! A SEA HUNTER FROM AUSTRALIA WITH A HUGE HEAD AND FOUR BIG FLIPPERS.",
+      "ru": "НЕ ДИНОЗАВР! МОРСКОЙ ОХОТНИК ИЗ АВСТРАЛИИ С ОГРОМНОЙ ГОЛОВОЙ И ЧЕТЫРЬМЯ ЛАСТАМИ."
+    }
+  },
+  {
+    "id": "plesiosaurus",
+    "name": {
+      "en": "Plesiosaurus",
+      "ru": "Плезиозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 200,
+      "lengthMeters": 3.5
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
+    "lookAlike": "long-neck-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! MARY ANNING FOUND THE FIRST WHOLE ONE. IT SWAM WITH FOUR FLIPPERS.",
+      "ru": "НЕ ДИНОЗАВР! ПЕРВОГО ЦЕЛОГО НАШЛА МЭРИ ЭННИНГ. ОН ПЛАВАЛ С ПОМОЩЬЮ ЧЕТЫРЁХ ЛАСТ."
+    }
+  },
+  {
+    "id": "ophthalmosaurus",
+    "name": {
+      "en": "Ophthalmosaurus",
+      "ru": "Офтальмозавр"
+    },
+    "group": "sea-reptile",
+    "attributes": {
+      "massKg": 940,
+      "lengthMeters": 4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": null
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS EYES WERE AS BIG AS PLATES, AND ITS BABIES WERE BORN IN THE SEA.",
+      "ru": "НЕ ДИНОЗАВР! ЕГО ГЛАЗА БЫЛИ С ТАРЕЛКУ, А ДЕТЁНЫШИ РОЖДАЛИСЬ ПРЯМО В МОРЕ."
     }
   }
 ]

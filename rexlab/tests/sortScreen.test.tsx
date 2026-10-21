@@ -42,8 +42,8 @@ describe("a new board", () => {
     const sorting = sortingBy("diet");
     openBoard(sorting);
 
-    const heading = screen.getByRole("heading", { name: "SORT THE DINOSAURS" });
-    expect([symbolOf(heading), words(heading)]).toEqual(["shapes", "SORT THE DINOSAURS"]);
+    const heading = screen.getByRole("heading", { name: "SORT THEM ALL" });
+    expect([symbolOf(heading), words(heading)]).toEqual(["shapes", "SORT THEM ALL"]);
     expect(screen.getAllByRole("button", { name: /^(PLANTS|MEAT)$/ })).toHaveLength(2);
     const cards = within(tray()).getAllByRole("button");
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual(cardsOf(sorting).map(({ dinosaur }) => dinosaur.name.en));

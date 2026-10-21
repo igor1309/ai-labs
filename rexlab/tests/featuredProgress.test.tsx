@@ -110,7 +110,7 @@ function firstIn(name: string): HTMLElement {
 // result.
 async function finishRound(user: UserEvent) {
   for (let number = 1; number <= 10; number++) {
-    await user.click(firstIn("DINOSAURS"));
+    await user.click(firstIn("ANIMALS"));
     await user.click(button(number < 10 ? "NEXT" : "SEE RESULT"));
   }
 }
@@ -129,7 +129,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
       await user.click(button("PLAY AGAIN"));
     }
   ],
-  ["the dinosaur list opens from the home page", "catalogue", 1, ({ user }) => user.click(gameDoor("ALL DINOSAURS"))],
+  ["the dinosaur list opens from the home page", "catalogue", 1, ({ user }) => user.click(gameDoor("ANCIENT REPTILES"))],
   [
     "a care visit starts from NEW VISITOR",
     "care",
@@ -188,7 +188,7 @@ const STARTS: Array<[action: string, game: string, starts: number, act: (opened:
     1,
     async ({ user }) => {
       await user.click(gameDoor("SKELETONS"));
-      await user.click(firstIn("DINOSAURS"));
+      await user.click(firstIn("ANIMALS"));
     }
   ],
   [
@@ -240,11 +240,11 @@ describe("starting a game", () => {
 
   it("counts nothing on the care, find-the-pair and skeleton screens before a game, nor in the museum opened on the home page, nor on a dinosaur's page and back", async () => {
     const { user, storage, clock } = openApp();
-    await user.click(gameDoor("ALL DINOSAURS"));
+    await user.click(gameDoor("ANCIENT REPTILES"));
     const opened = storedFeatured(storage);
 
-    await user.click(firstIn("ALL DINOSAURS"));
-    await user.click(button("ALL DINOSAURS"));
+    await user.click(firstIn("ANCIENT REPTILES"));
+    await user.click(button("ANCIENT REPTILES"));
     await user.click(button("HOME"));
     for (const name of ["CARE", "FIND THE PAIR", "SKELETONS"]) {
       await user.click(gameDoor(name));
@@ -270,7 +270,7 @@ const AT_ONCE: Start[] = [
   ["a friend called back", "care", [() => gameDoor("CARE"), () => button("FRIENDS")], () => within(screen.getByRole("group", { name: "FRIENDS" })).getByRole("button")],
   ["a board", "pairs", [() => gameDoor("FIND THE PAIR")], () => button("PLAY")],
   ["a sorting round", "sort", [], () => gameDoor("SORT")],
-  ["a skeleton puzzle", "skeletons", [() => gameDoor("SKELETONS")], () => firstIn("DINOSAURS")],
+  ["a skeleton puzzle", "skeletons", [() => gameDoor("SKELETONS")], () => firstIn("ANIMALS")],
   ["a skeleton rebuilt", "skeletons", [() => gameDoor("SKELETONS"), () => button("MUSEUM")], () => button("REBUILD")],
   ["a sorting round over a board left unfinished", "sort", [() => gameDoor("SORT"), () => button("HOME")], () => gameDoor("SORT")]
 ];
@@ -329,20 +329,20 @@ describe("a sorting round started twice before React renders", () => {
       starting.click();
     });
 
-    const cards = within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+    const cards = within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button");
     expect([counted.slice(before), cards.map((card) => card.getAttribute("aria-pressed"))]).toEqual([["sort"], Array<string>(8).fill("false")]);
   });
 });
 
 describe("a browser that cannot keep progress", () => {
   // A draw of 0.1 falls to COMPARE only while every game has the same
-  // weight: with COMPARE's 9 starts read, it would fall to ALL DINOSAURS.
+  // weight: with COMPARE's 9 starts read, it would fall to ANCIENT REPTILES.
   it("offers a featured game when it cannot read progress, every count at 0, and every tile opens its game", async () => {
     const { user, featured } = openApp(memoryStorage({ [PROGRESS_KEY]: progressWith({ compare: 9 }) }, { read: false }), { random: () => 0.1 });
 
     expect(featuredCard().dataset.game).toBe("compare");
     expect(featured.history()).toEqual({ timesStarted: new Map(), lastFeatured: { game: "compare", on: "2026-10-18" } });
-    for (const name of ["COMPARE", "ALL DINOSAURS", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"]) {
+    for (const name of ["COMPARE", "ANCIENT REPTILES", "CARE", "SORT", "FIND THE PAIR", "SKELETONS", "DIG"]) {
       await user.click(gameDoor(name));
       expect(document.querySelector(".games-tiles")).toBeNull();
       await user.click(button("HOME"));
@@ -373,7 +373,7 @@ describe("the featured card", () => {
     ["care", (user: UserEvent) => user.click(button("NEW VISITOR"))],
     ["sort", async () => {}],
     ["pairs", (user: UserEvent) => user.click(button("PLAY"))],
-    ["skeletons", (user: UserEvent) => user.click(firstIn("DINOSAURS"))]
+    ["skeletons", (user: UserEvent) => user.click(firstIn("ANIMALS"))]
   ] as const)("counts one start of %s opened by a double tap", async (game, begin) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game } } } }) });
     const pictures = manualPictures();
@@ -405,7 +405,7 @@ describe("the featured card", () => {
         tapAt(featuredCard(), 250, { x: 150 });
       }
     ]
-  ])("counts one start of ALL DINOSAURS for %s landing before the list shows, and one more on the next visit", (_how, open) => {
+  ])("counts one start of ANCIENT REPTILES for %s landing before the list shows, and one more on the next visit", (_how, open) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "home-featured": { starts: {}, featured: { ...TODAY, game: "catalogue" } } } }) });
     openApp(storage);
     filterTaps();

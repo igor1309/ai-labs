@@ -21,6 +21,7 @@ Feature: Dinosaur care: welcoming a visitor
     Given I am on the care welcome screen
     When I tap "NEW VISITOR"
     Then a dinosaur from the shared dinosaur list visits
+    But never a flying or sea reptile, to whom water and a bath mean nothing
     And I see its picture and its name in large capital letters
     And it asks for food with a picture bubble
     And I see four need symbols with the hungry symbol highlighted

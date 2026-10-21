@@ -41,15 +41,16 @@ import {
 function openApp({
   pictures = loadedPictures(),
   language = "en",
-  theme = "light"
-}: { pictures?: PictureClock; language?: Language; theme?: Theme } = {}) {
+  theme = "light",
+  catalogue = SHIPPED_CATALOGUE
+}: { pictures?: PictureClock; language?: Language; theme?: Theme; catalogue?: readonly CatalogueEntry[] } = {}) {
   const languages = memoryStorage();
   const themes = memoryStorage();
   render(
     <App
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
-      catalogue={SHIPPED_CATALOGUE}
+      catalogue={catalogue}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
       portraitLayouts={{}}
@@ -104,15 +105,15 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the FIND THE PAIR tile", () => {
+  it("reads ANCIENT REPTILES beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the FIND THE PAIR tile", () => {
     openApp();
 
-    const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
-    expect(words(tile)).toBe("ALL DINOSAURS42");
+    const tile = screen.getByRole("button", { name: "ANCIENT REPTILES" });
+    expect(words(tile)).toBe("ANCIENT REPTILES52");
     expect(symbolsOf(tile)).toEqual(["book-open", "footprints"]);
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
-    expect(SHIPPED_CATALOGUE).toHaveLength(42);
+    expect(SHIPPED_CATALOGUE).toHaveLength(52);
     expect(tile.parentElement?.firstElementChild).toBe(tile);
     expect(tile.nextElementSibling).toBe(homeTile("FIND THE PAIR"));
   });
@@ -145,11 +146,11 @@ describe("the list of every dinosaur", () => {
 
     await user.click(home);
 
-    expect(homeTile("ALL DINOSAURS")).toBeDefined();
-    expect(screen.queryByRole("group", { name: "ALL DINOSAURS" })).toBeNull();
+    expect(homeTile("ANCIENT REPTILES")).toBeDefined();
+    expect(screen.queryByRole("group", { name: "ANCIENT REPTILES" })).toBeNull();
   });
 
-  it("shows on each card its dinosaur's picture, its name in capitals, its height, its weight and its food", async () => {
+  it("shows on each card its dinosaur's picture, its name in capitals, its size, its weight and its food", async () => {
     const user = openApp();
     await openCatalogue(user);
 
@@ -157,7 +158,7 @@ describe("the list of every dinosaur", () => {
       const dinosaur = SHIPPED_CATALOGUE[at] ?? LAST;
       expect(card.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture(dinosaur.id));
       expect(card.querySelector(".catalogue-name")?.textContent).toBe(dinosaur.name.en.toUpperCase());
-      expect(chipsOf(card).map(({ symbols }) => symbols[0])).toEqual(["ruler", "weight", dinosaur.diet === "plants" ? "leaf" : "beef"]);
+      expect(chipsOf(card).map(({ symbols }) => symbols[0])).toEqual([dinosaur.size.measure === "height" ? "ruler" : "move-horizontal", "weight", dinosaur.diet === "plants" ? "leaf" : "beef"]);
       expect(chipsOf(card)[2]?.words).toBe(`(${TEXTS.en.diets[dinosaur.diet]})`);
       expect(getComputedStyle(card.querySelector(".catalogue-chips") ?? card).flexWrap).not.toBe("wrap");
     }
@@ -208,9 +209,9 @@ describe("a dinosaur's page", () => {
       { symbol: "ruler", label: "TALL", value: "3.1 M" },
       { symbol: "weight", label: "HEAVY", value: "8 T" }
     ]);
-    const back = screen.getByRole("button", { name: "ALL DINOSAURS" });
-    expect([words(back), symbolOf(back)]).toEqual(["ALL DINOSAURS", "book-open"]);
-    expect(position()).toBe("1 / 42");
+    const back = screen.getByRole("button", { name: "ANCIENT REPTILES" });
+    expect([words(back), symbolOf(back)]).toEqual(["ANCIENT REPTILES", "book-open"]);
+    expect(position()).toBe("1 / 52");
   });
 
   // About ten dinosaurs to a test, each walked by the arrow from its first
@@ -220,7 +221,8 @@ describe("a dinosaur's page", () => {
     [1, 11],
     [12, 22],
     [23, 32],
-    [33, 42]
+    [33, 42],
+    [43, 52]
   ])("shows each dinosaur's own description and food, and its place in the list, from the %ith to the %ith", async (first, last) => {
     const user = openApp();
     await openPage(user, SHIPPED_CATALOGUE[first - 1]?.id ?? "");
@@ -229,10 +231,10 @@ describe("a dinosaur's page", () => {
       expect(pageName()).toBe(dinosaur.name.en.toUpperCase());
       expect(document.querySelector(".dinosaur-description")?.textContent).toBe(dinosaur.description.en);
       expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe(TEXTS.en.diets[dinosaur.diet]);
-      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 42`);
+      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 52`);
       await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
-    expect(position()).toBe(`${(last % 42) + 1} / 42`);
+    expect(position()).toBe(`${(last % 52) + 1} / 52`);
   });
 
   it("has arrows to the previous and next dinosaur, each a tap target of at least 44 by 44", async () => {
@@ -250,15 +252,15 @@ describe("a dinosaur's page", () => {
   it("goes round the whole list: next from the last is the first, and previous from the first the last", async () => {
     const user = openApp();
     await openPage(user, LAST.id);
-    expect(position()).toBe("42 / 42");
+    expect(position()).toBe("52 / 52");
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
 
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 42"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 52"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
 
-    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "42 / 42"]);
+    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "52 / 52"]);
   });
 
   // The picture on Velociraptor's page: its look and its source.
@@ -274,7 +276,7 @@ describe("a dinosaur's page", () => {
 
     await user.click(cardOf("velociraptor"));
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 52"]);
     expect(pagePicture()).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
     expect(pagePicture()).toEqual(["appearing", fakeBodyPicture("velociraptor")]);
@@ -315,7 +317,7 @@ describe("a dinosaur's page", () => {
       second.click();
     });
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 42"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 52"]);
   });
 
   it("goes back to the list with its card scrolled into view, the cards then standing still", async () => {
@@ -325,9 +327,9 @@ describe("a dinosaur's page", () => {
     expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     await user.click(cardOf(LAST.id));
 
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
 
-    expect(cards()).toHaveLength(42);
+    expect(cards()).toHaveLength(52);
     expect(grid().dataset.rise).toBeUndefined();
     const scrolled = vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts;
     expect(scrolled).toEqual([cardOf(LAST.id)]);
@@ -354,18 +356,77 @@ describe("a dinosaur's page", () => {
   });
 });
 
+describe("creatures that are not dinosaurs", () => {
+  // A flying and a sea reptile before the first dinosaur.
+  const CREATURES: CatalogueEntry[] = [
+    {
+      id: "pteranodon",
+      name: { en: "Pteranodon", ru: "Птеранодон" },
+      group: "flying-reptile",
+      diet: "meat",
+      description: { en: "NOT A DINOSAUR.", ru: "НЕ ДИНОЗАВР." },
+      size: { measure: "wingspan", metres: 6 },
+      mass: 0.5
+    },
+    {
+      id: "mosasaurus",
+      name: { en: "Mosasaurus", ru: "Мозазавр" },
+      group: "sea-reptile",
+      diet: "meat",
+      description: { en: "NOT A DINOSAUR.", ru: "НЕ ДИНОЗАВР." },
+      size: { measure: "length", metres: 12 },
+      mass: 10000
+    },
+    entry("tyrannosaurus")
+  ];
+
+  const facts = () =>
+    [...document.querySelectorAll<HTMLElement>(".dinosaur-fact")].map((fact) => `${symbolOf(fact)} ${words(fact.querySelector(".dinosaur-fact-label") as HTMLElement)} ${fact.querySelector(".dinosaur-fact-value")?.textContent}`);
+  const group = () => document.querySelector(".dinosaur-group");
+
+  it("lays a wingspan or a length along an arrow on its card, never up the ruler of a dinosaur's height", async () => {
+    const user = openApp({ catalogue: CREATURES });
+
+    await openCatalogue(user);
+
+    expect(cards().map((card) => chipsOf(card).slice(0, 2))).toEqual([
+      [{ symbols: ["move-horizontal"], words: "6 M" }, { symbols: ["weight"], words: "500 G" }],
+      [{ symbols: ["move-horizontal"], words: "12 M" }, { symbols: ["weight"], words: "10 T" }],
+      [{ symbols: ["ruler"], words: "3.1 M" }, { symbols: ["weight"], words: "8 T" }]
+    ]);
+  });
+
+  it.each<[Language, string[][]]>([
+    ["en", [["FLYING REPTILE", "move-horizontal WINGS 6 M"], ["SEA REPTILE", "move-horizontal LONG 12 M"], ["", "ruler TALL 3.1 M"]]],
+    ["ru", [["ЛЕТАЮЩИЙ ЯЩЕР", "move-horizontal КРЫЛЬЯ 6 М"], ["МОРСКОЙ ЯЩЕР", "move-horizontal ДЛИНА 12 М"], ["", "ruler РОСТ 3,1 М"]]]
+  ])("names its group just over its name, and its size by its group's own measure, in %s; a dinosaur names none", async (language, pages) => {
+    const user = openApp({ catalogue: CREATURES, language });
+    await openCatalogue(user, language);
+    await user.click(within(grid(language)).getAllByRole("button")[0] as HTMLElement);
+
+    const shown: string[][] = [];
+    for (const _ of pages) {
+      shown.push([group()?.textContent ?? "", facts()[0] ?? ""]);
+      if (group()) expect(group()?.nextElementSibling).toBe(screen.getByRole("heading", { level: 1 }));
+      await user.click(screen.getByRole("button", { name: TEXTS[language].nextDinosaur }));
+    }
+
+    expect(shown).toEqual(pages);
+  });
+});
+
 describe("the catalogue in Russian", () => {
   it("reads its tile, its food tags and its descriptions in Russian, the tile's title short", async () => {
     const user = openApp({ language: "ru" });
-    expect(words(screen.getByRole("button", { name: "ВСЕ" }))).toBe("ВСЕ42");
+    expect(words(screen.getByRole("button", { name: "ВСЕ" }))).toBe("ВСЕ52");
 
     await openPage(user, "gallimimus", "ru");
 
     expect(pageName()).toBe(entry("gallimimus").name.ru.toLocaleUpperCase("ru"));
     expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe("ВСЁ");
     expect(document.querySelector(".dinosaur-description")?.textContent).toBe(entry("gallimimus").description.ru);
-    expect(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" })).toBeDefined();
-    await user.click(screen.getByRole("button", { name: "ВСЕ ДИНОЗАВРЫ" }));
+    expect(screen.getByRole("button", { name: "ДРЕВНИЕ ЯЩЕРЫ" })).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "ДРЕВНИЕ ЯЩЕРЫ" }));
     expect(chipsOf(cardOf("tyrannosaurus", "ru")).map(({ words }) => words)).toEqual(["3,1 М", "8 Т", "(МЯСО)"]);
     expect(chipsOf(cardOf("triceratops", "ru"))[2]?.words).toBe("(РАСТЕНИЯ)");
     expect(grid("ru")).toBeDefined();

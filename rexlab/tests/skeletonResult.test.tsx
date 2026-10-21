@@ -309,7 +309,7 @@ describe("building another", () => {
     await user.dblClick(button("BUILD ANOTHER"));
 
     expect(reveal()).toBeNull();
-    expect(screen.getAllByRole("group", { name: "DINOSAURS" })).toHaveLength(1);
+    expect(screen.getAllByRole("group", { name: "ANIMALS" })).toHaveLength(1);
     expect(choices().map((choice) => [choice.getAttribute("aria-label"), within(choice).queryByRole("img", { name: "STAR" }) !== null])).toEqual([
       ["TYRANNOSAURUS", false],
       ["TRICERATOPS", true],

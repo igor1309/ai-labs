@@ -1,11 +1,11 @@
 // The details a child finds on a dinosaur's body picture, by kind.
-export const SPOT_KINDS = ["eye", "foot", "tail", "claw", "horn", "plate", "crest", "sail", "frill", "beak"] as const;
+export const SPOT_KINDS = ["eye", "foot", "tail", "claw", "horn", "plate", "crest", "sail", "frill", "beak", "wing", "flipper"] as const;
 
 export type SpotKind = (typeof SPOT_KINDS)[number];
 
 // The kinds only some dinosaurs show, so one tells a dinosaur from its
 // look-alikes; every dinosaur shows an eye, feet, a tail and claws.
-export const TELLING_KINDS: readonly SpotKind[] = ["horn", "plate", "crest", "sail", "frill", "beak"];
+export const TELLING_KINDS: readonly SpotKind[] = ["horn", "plate", "crest", "sail", "frill", "beak", "wing", "flipper"];
 
 // The frame a body picture is drawn in, in its pixels, and the grid of
 // cells the sand over it counts in.

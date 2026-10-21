@@ -18,5 +18,5 @@ Feature: The version footer's name
 
     Examples:
       | from    | first   | to      | tile          | then    |
-      | Russian | Версия  | English | ALL DINOSAURS | Version |
+      | Russian | Версия  | English | ANCIENT REPTILES | Version |
       | English | Version | Russian | ВСЕ           | Версия  |

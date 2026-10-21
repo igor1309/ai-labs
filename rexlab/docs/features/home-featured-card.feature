@@ -7,15 +7,15 @@ Feature: Home page: the featured card and the tiles
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
 
   Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
     When I open the home page
     Then the large card on the left shows CARE with its picture and its name in large capitals
-    And the tiles show COMPARE, ALL DINOSAURS, SORT, FIND THE PAIR, SKELETONS and DIG in that order, then "MORE COMING"
+    And the tiles show COMPARE, ANCIENT REPTILES, SORT, FIND THE PAIR, SKELETONS and DIG in that order, then "MORE COMING"
     When SKELETONS is featured on another day
-    Then the tiles show COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR and DIG in that order, then "MORE COMING"
+    Then the tiles show COMPARE, ANCIENT REPTILES, CARE, SORT, FIND THE PAIR and DIG in that order, then "MORE COMING"
 
 
   Scenario Outline: The featured card shows what its tile would show
@@ -29,7 +29,7 @@ Feature: Home page: the featured card and the tiles
       | game          | badge                                       |
       | COMPARE       | no best score, as I have not played it yet  |
       | COMPARE       | a best score of 0 with a trophy symbol      |
-      | ALL DINOSAURS | the dinosaur count                          |
+      | ANCIENT REPTILES | the dinosaur count                          |
       | CARE          | a best score of 7 with a trophy symbol      |
       | SORT          | a best score of 6 with a trophy symbol      |
       | FIND THE PAIR | 120 stars with a star symbol                |
@@ -47,7 +47,7 @@ Feature: Home page: the featured card and the tiles
     Examples:
       | game          | destination                                               |
       | COMPARE       | question "1/10"                                           |
-      | ALL DINOSAURS | the dinosaur list                                         |
+      | ANCIENT REPTILES | the dinosaur list                                         |
       | SORT          | a sorting round, at once, whatever its pictures are doing |
       | DIG           | a dig round, at once                                      |
 

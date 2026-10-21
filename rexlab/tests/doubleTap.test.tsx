@@ -24,7 +24,7 @@ async function onFirstPage() {
   act(() => finishLoading(pictures));
   await user.click(within(screen.getByRole("group", { name: TEXTS.en.catalogue })).getByRole("button", { name: "Tyrannosaurus" }));
   act(() => finishLoading(pictures));
-  expect(position()).toBe("1 / 42");
+  expect(position()).toBe("1 / 52");
   filterTaps();
   // Each step's next pictures ready, so a tap let through would go on.
   return () => act(() => finishLoading(pictures));
@@ -39,7 +39,7 @@ describe("a double tap on a control that stays on screen", () => {
     tapAt(next(), 250);
     ready();
 
-    expect(position()).toBe("2 / 42");
+    expect(position()).toBe("2 / 52");
   });
 
   it("goes on once for a burst of three taps, each 250 ms after the release before it", async () => {
@@ -50,7 +50,7 @@ describe("a double tap on a control that stays on screen", () => {
       ready();
     }
 
-    expect(position()).toBe("2 / 42");
+    expect(position()).toBe("2 / 52");
   });
 
   it("does not filter keys: Enter twice on the → button goes on twice", async () => {
@@ -63,7 +63,7 @@ describe("a double tap on a control that stays on screen", () => {
     fireEvent.click(next(), { detail: 0 });
     ready();
 
-    expect(position()).toBe("3 / 42");
+    expect(position()).toBe("3 / 52");
   });
 });
 

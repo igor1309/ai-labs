@@ -82,7 +82,7 @@ function openApp({
 
 const button = (name: string) => screen.getByRole("button", { name });
 const onHomePage = () => screen.queryByRole("button", { name: "SORT" }) !== null;
-const onBoard = () => screen.queryByRole("heading", { name: "SORT THE DINOSAURS" }) !== null;
+const onBoard = () => screen.queryByRole("heading", { name: "SORT THEM ALL" }) !== null;
 const onResult = () => screen.queryByRole("button", { name: "PLAY AGAIN" }) !== null;
 const picturesShown = () =>
   within(tray())
@@ -102,7 +102,7 @@ describe("the sorting game from the home page", () => {
     await user.click(button("SORT"));
 
     expect(onHomePage()).toBe(false);
-    expect(words(screen.getByRole("heading"))).toBe("SORT THE DINOSAURS");
+    expect(words(screen.getByRole("heading"))).toBe("SORT THEM ALL");
     expect(basketsShown()).toHaveLength(2);
     const cards = within(tray()).getAllByRole("button");
     expect(cards).toHaveLength(6);

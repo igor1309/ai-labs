@@ -159,7 +159,7 @@ describe("the screens kept by useScreens", () => {
   });
 });
 
-const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+const cards = () => within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button");
 
 describe("the screen changes of the app", () => {
   // In a browser a question's view transition commits after it starts,
@@ -245,7 +245,7 @@ describe("the screen changes of the games and pages", () => {
     const shown = catalogue[at];
     if (!shown) throw new Error("Expected a dinosaur");
     const user = openApp(catalogue);
-    await user.click(gameDoor("ALL DINOSAURS"));
+    await user.click(gameDoor("ANCIENT REPTILES"));
     await user.click(screen.getByRole("button", { name: shown.name.en }));
     typesAdded();
 

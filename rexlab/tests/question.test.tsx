@@ -35,7 +35,7 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+const cards = () => within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button");
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 const shownQuestion = () => ({
   prompt: screen.getByRole("heading").textContent,
@@ -91,7 +91,7 @@ describe("a question", () => {
 
     const home = screen.getByRole("button", { name: "HOME" });
     expect([symbolOf(home), home.textContent]).toEqual(["house", "HOME"]);
-    expect(screen.getByRole("group", { name: "DINOSAURS" }).contains(home)).toBe(false);
+    expect(screen.getByRole("group", { name: "ANIMALS" }).contains(home)).toBe(false);
   });
 });
 

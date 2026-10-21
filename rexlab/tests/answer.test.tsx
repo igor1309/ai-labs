@@ -2,10 +2,10 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { formatHeight, formatMass } from "../src/formatValue.ts";
+import { formatLength, formatMass } from "../src/formatValue.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
-import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { largerOf, measureOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
@@ -37,7 +37,7 @@ import { withPictures } from "./pictures.tsx";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
   mass: (value) => formatMass(value, "en"),
-  height: (value) => formatHeight(value, "en")
+  height: (value) => formatLength(value, "en")
 };
 
 const byName = (name: string): Dinosaur => {
@@ -46,7 +46,7 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const group = () => screen.getByRole("group", { name: "DINOSAURS" });
+const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cards = () => within(group()).getAllByRole("button");
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
 // Each mark on a card, as its symbol and its word.
@@ -158,7 +158,7 @@ describe("answering a question", () => {
       expect(marksOn(cardOf(right))).toEqual(["check RIGHT"]);
       expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["x WRONG"] : []);
       for (const dinosaur of [right, wrong]) {
-        expect(within(cardOf(dinosaur)).getByText(ENGLISH_VALUES[question.attribute](dinosaur.measures[question.attribute]))).toBeDefined();
+        expect(within(cardOf(dinosaur)).getByText(ENGLISH_VALUES[question.attribute](measureOf(dinosaur, question.attribute)))).toBeDefined();
       }
       if (number < 10) await user.click(screen.getByRole("button", { name: "NEXT" }));
     }

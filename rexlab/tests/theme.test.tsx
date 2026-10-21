@@ -72,7 +72,7 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const group = () => screen.getByRole("group", { name: "DINOSAURS" });
+const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
@@ -225,7 +225,7 @@ async function quizResult({ theme, user }: Walk) {
 }
 
 async function catalogueList({ theme, user }: Walk) {
-  await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
   expectScreenIn(theme);
   for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
     await user.click(within(screen.getByRole("group", { name: "FOOD" })).getByRole("button", { name: food }));
@@ -235,8 +235,8 @@ async function catalogueList({ theme, user }: Walk) {
 
 async function cataloguePages({ theme, user }: Walk) {
   for (const name of ["Tyrannosaurus", "Triceratops", "Gallimimus"]) {
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
-    await user.click(within(screen.getByRole("group", { name: "ALL DINOSAURS" })).getByRole("button", { name }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await user.click(within(screen.getByRole("group", { name: "ANCIENT REPTILES" })).getByRole("button", { name }));
     expectScreenIn(theme);
   }
 }
@@ -332,10 +332,10 @@ async function pairsFound({ theme, user, timers }: Walk) {
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expectScreenIn(theme);
-  await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+  await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
   expectScreenIn(theme);
-  const grid = screen.getByRole("group", { name: "ALL DINOSAURS" });
+  const grid = screen.getByRole("group", { name: "ANCIENT REPTILES" });
   await user.click(within(grid).getAllByRole("button")[0] as HTMLElement);
   expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
   expectScreenIn(theme);

@@ -422,7 +422,7 @@ export function App({
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
-  // second ALL DINOSAURS, on its tile or the large card, before the
+  // second ANCIENT REPTILES, on its tile or the large card, before the
   // catalogue shows finds it already asked for and counts nothing.
   const openCatalogue = () => {
     go((current) => (current.kind === "home" ? { kind: "catalogue", returning: undefined } : current), {

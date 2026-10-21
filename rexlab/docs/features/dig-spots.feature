@@ -7,9 +7,9 @@ Feature: Dig: the spots of each dinosaur
   its picture shows in more than a tenth of it. A spot's cells are the
   dinosaur's cells whose middle lies in its circle, and a spot is found
   once more than half of them are clear (dig-brush.feature). EYE, FOOT,
-  TAIL and CLAW are details every dinosaur shows; HORN, PLATE, CREST,
-  SAIL, FRILL and BEAK are telling kinds, which some show and others do
-  not. Each dinosaur's telling traits are the telling kinds its picture
+  TAIL and CLAW are details nearly every creature shows; HORN, PLATE,
+  CREST, SAIL, FRILL, BEAK, WING and FLIPPER are telling kinds, which some
+  show and others do not. Each dinosaur's telling traits are the telling kinds its picture
   shows, whether or not one is among its spots. The spots, cells and
   traits are data, in src/data/dig.json, made with the dig game's first
   slice (LAB-341, LAB-342).
@@ -25,7 +25,7 @@ Feature: Dig: the spots of each dinosaur
     And two spots of one dinosaur share less than half of the smaller's cells
 
   Scenario: A spot's kind is one a child can name
-    Then every spot's kind is one of EYE, FOOT, TAIL, CLAW, HORN, PLATE, CREST, SAIL, FRILL or BEAK
+    Then every spot's kind is one of EYE, FOOT, TAIL, CLAW, HORN, PLATE, CREST, SAIL, FRILL, BEAK, WING or FLIPPER
     And one dinosaur has at most one spot of each kind
     And every telling kind among a dinosaur's spots is among its telling traits
 

@@ -6,10 +6,10 @@ Feature: Home page: choosing the featured game
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ALL DINOSAURS, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
 
   Scenario: The games started least have twice the chance
-    Given I have started COMPARE 9 times, ALL DINOSAURS 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
+    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
     When a featured game is chosen
     Then each game whose start count is the lowest has a weight of 2
     And every other game has a weight of 1
@@ -17,7 +17,7 @@ Feature: Home page: choosing the featured game
 
 
   Scenario Outline: The random draw maps to a game in tile order
-    Given I have started COMPARE 9 times, ALL DINOSAURS 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
+    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
     And the random source gives <draw>, a number from 0 up to but not including 1
     When a featured game is chosen
     Then the featured game is <game>
@@ -26,8 +26,8 @@ Feature: Home page: choosing the featured game
       | draw  | game          |
       | 0     | COMPARE       |
       | 0.099 | COMPARE       |
-      | 0.1   | ALL DINOSAURS |
-      | 0.199 | ALL DINOSAURS |
+      | 0.1   | ANCIENT REPTILES |
+      | 0.199 | ANCIENT REPTILES |
       | 0.2   | CARE          |
       | 0.399 | CARE          |
       | 0.4   | SORT          |

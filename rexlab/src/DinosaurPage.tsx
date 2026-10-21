@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowRight, BookOpen, Ruler, Weight } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Weight } from "lucide-react";
 import { ViewTransition, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
+import { MEASURE_ICONS, type Measure } from "./CatalogueScreen.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -18,10 +19,12 @@ export type DinosaurPageView = {
   name: string;
   // The URL of the dinosaur's picture.
   picture: string;
+  // A creature that is no dinosaur names its group.
+  group?: "flying-reptile" | "sea-reptile";
   diet: Diet;
   description: string;
-  // The height and the mass, written out.
-  height: string;
+  // The size, by its measure, and the mass, written out.
+  size: { measure: Measure; value: string };
   mass: string;
   // Found in find the pair.
   found: boolean;
@@ -54,8 +57,9 @@ function Sliding({ late, children }: { late: boolean; children: ReactNode }) {
   );
 }
 
-export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, description, height, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
+export function DinosaurPage({ language, dinosaur: { id, name, picture, group, diet, description, size, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
   const text = TEXTS[language];
+  const SizeIcon = MEASURE_ICONS[size.measure];
   return (
     <main className="dinosaur-page">
       <header className="dinosaur-bar">
@@ -89,16 +93,17 @@ export function DinosaurPage({ language, dinosaur: { id, name, picture, diet, de
         <div className="dinosaur-info">
           <Sliding key={id} late={true}>
             <div className="dinosaur-about">
+              {group && <p className="dinosaur-group">{text.groups[group]}</p>}
               <h1 className="dinosaur-page-name">{name.toLocaleUpperCase(language)}</h1>
               <DietTag diet={diet} language={language} size="medium" />
               <p className="dinosaur-description">{description}</p>
               <div className="dinosaur-facts">
                 <p className="dinosaur-fact">
                   <span className="dinosaur-fact-label">
-                    <Ruler size={22} aria-hidden="true" />
-                    {text.tall}
+                    <SizeIcon size={22} aria-hidden="true" />
+                    {text.measures[size.measure]}
                   </span>
-                  <span className="dinosaur-fact-value">{height}</span>
+                  <span className="dinosaur-fact-value">{size.value}</span>
                 </p>
                 <p className="dinosaur-fact">
                   <span className="dinosaur-fact-label">

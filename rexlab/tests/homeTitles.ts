@@ -8,10 +8,10 @@ import { expect } from "vitest";
 export const TITLE_EMS: Record<string, number> = {
   COMPARE: 5.1,
   СРАВНИ: 4.1,
-  "ALL DINOSAURS": 8.6,
-  // ALL DINOSAURS may wrap on the large card, so each of its words is here.
-  ALL: 2.0,
-  DINOSAURS: 6.4,
+  "ANCIENT REPTILES": 10.3,
+  // ANCIENT REPTILES may wrap on the large card, so each of its words is here.
+  ANCIENT: 4.9,
+  REPTILES: 5.2,
   ВСЕ: 2.1,
   CARE: 2.8,
   ЗАБОТА: 4.0,

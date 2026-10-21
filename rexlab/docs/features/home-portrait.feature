@@ -26,7 +26,7 @@ Feature: The home page in a tall window
     Then I see no picture asking to turn sideways or to make the window wider
     And "RexLab", the museum button and the parents' menus stand on one line at the top, the greeting under them
     And the large card spans the width under the greeting, <card> CSS pixels tall with its name strip, its whole picture shown
-    And under the large card the row of tiles is <row> CSS pixels tall, showing "ALL DINOSAURS" over "FIND THE PAIR" first
+    And under the large card the row of tiles is <row> CSS pixels tall, showing "ANCIENT REPTILES" over "FIND THE PAIR" first
     And every column of tiles is <column> CSS pixels wide, every tile half of the row less the 28-pixel gap between them
     And the column after the last whole one shows <peek> CSS pixels at the right edge
     And the page <scrolls> up and down, and the version footer overlaps no tile
@@ -59,13 +59,13 @@ Feature: The home page in a tall window
     And the museum button keeps its word on one line, and nothing in the corner overlaps "RexLab", the greeting or the large card
 
     Examples:
-      | language | width | featured      |
-      | English  | 600   | COMPARE       |
-      | Russian  | 600   | ALL DINOSAURS |
-      | Russian  | 600   | FIND THE PAIR |
-      | Russian  | 677   | COMPARE       |
-      | Russian  | 700   | COMPARE       |
-      | Russian  | 677   | SKELETONS     |
+      | language | width | featured         |
+      | English  | 600   | COMPARE          |
+      | Russian  | 600   | ANCIENT REPTILES |
+      | Russian  | 600   | FIND THE PAIR    |
+      | Russian  | 677   | COMPARE          |
+      | Russian  | 700   | COMPARE          |
+      | Russian  | 677   | SKELETONS        |
 
   Scenario Outline: The parents' menus open inside the window
     Given the app is in Russian
@@ -87,7 +87,7 @@ Feature: The home page in a tall window
     When the window becomes 820 by 1180 CSS pixels
     Then the home page shows its upright layout with the theme menu still open
     And the large card features the same game, and does not rise in again
-    And the row of tiles stands at its start, "ALL DINOSAURS" at its left edge
+    And the row of tiles stands at its start, "ANCIENT REPTILES" at its left edge
     When the window becomes 1180 by 820 CSS pixels
     Then the home page shows its landscape layout with the theme menu still open
     And the large card does not rise in again, and the row of tiles stands at its start

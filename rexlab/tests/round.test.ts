@@ -5,11 +5,14 @@ import {
   ROUND_LENGTH,
   fairPairs,
   generateRound,
+  isFair,
+  measureOf,
   pairKey,
   type Dinosaur,
   type Round
 } from "../src/quiz/round.ts";
 import { SHIPPED_DINOSAURS, seededRandom } from "./support.ts";
+import records from "../src/data/dinosaurs.json";
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 
@@ -27,8 +30,8 @@ describe("generateRound", () => {
     for (const { attribute, left, right } of round) {
       expect(ATTRIBUTES).toContain(attribute);
       expect(left.id).not.toBe(right.id);
-      const small = Math.min(left.measures[attribute], right.measures[attribute]);
-      const large = Math.max(left.measures[attribute], right.measures[attribute]);
+      const small = Math.min(measureOf(left, attribute), measureOf(right, attribute));
+      const large = Math.max(measureOf(left, attribute), measureOf(right, attribute));
       expect(large).toBeGreaterThanOrEqual(FAIR_RATIO * small);
     }
     const pairs = round.map((q) => pairKey(q.left, q.right));
@@ -87,6 +90,16 @@ describe("fairPairs", () => {
     ]);
     expect(fairPairs([small, atRatio, below], "height")).toEqual([]);
   });
+
+  it("pairs a creature with no height on its mass alone", () => {
+    const tall = dinosaur("tall", 100, 2);
+    const flier: Dinosaur = { id: "flier", name: { en: "flier", ru: "flier" }, measures: { mass: 1000 } };
+
+    expect(isFair(tall, flier, "mass")).toBe(true);
+    expect(isFair(tall, flier, "height")).toBe(false);
+    expect(fairPairs([tall, flier], "height")).toEqual([]);
+    expect(() => measureOf(flier, "height")).toThrow("flier has no height");
+  });
 });
 
 describe("the shipped dinosaur list", () => {
@@ -96,11 +109,12 @@ describe("the shipped dinosaur list", () => {
     expect(new Set(pairs).size).toBeGreaterThanOrEqual(ROUND_LENGTH);
   });
 
-  it("names each dinosaur once, with positive mass and height", () => {
+  it("names each creature once, with positive mass, and a positive height for the dinosaurs alone", () => {
+    const tall = SHIPPED_DINOSAURS.filter(({ measures }) => measures.height !== undefined);
+
     expect(new Set(SHIPPED_DINOSAURS.map((d) => d.id)).size).toBe(SHIPPED_DINOSAURS.length);
-    for (const { measures } of SHIPPED_DINOSAURS) {
-      expect(measures.mass).toBeGreaterThan(0);
-      expect(measures.height).toBeGreaterThan(0);
-    }
+    expect(SHIPPED_DINOSAURS.filter(({ measures }) => !(measures.mass > 0))).toEqual([]);
+    expect(tall.map(({ id }) => id)).toEqual(records.filter(({ group }) => group === "dinosaur").map(({ id }) => id));
+    expect(tall.filter(({ measures }) => !((measures.height ?? 0) > 0))).toEqual([]);
   });
 });
