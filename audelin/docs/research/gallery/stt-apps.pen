@@ -37,7 +37,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Gallery of each app's website as research artifacts for research/wisper. App list and notes: research/wisper/apps.md (prices there are from vendor pages and 2026 articles; ~ = sources disagree). Each card: live browser node + screenshot captured 21 Oct 2026.",
+              "content": "Gallery of each app's website as research artifacts for Audelin (audelin/docs/research). App list and notes: audelin/docs/research/apps.md (prices there are from vendor pages and 2026 articles; ~ = sources disagree). Each card: live browser node + screenshot captured 21 Oct 2026.",
               "lineHeight": 1.4,
               "fontFamily": "Inter",
               "fontSize": 16,
