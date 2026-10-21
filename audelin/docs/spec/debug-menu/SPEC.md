@@ -23,9 +23,10 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
    it needs no file dialog.
 3. The hold-recogniser trigger shows a checkmark while it holds (S-3, S-4),
    so the user knows which state the build is in.
-4. A third trigger makes recognition of «они» fail on every window (S-6,
-   S-7), so error-banners' paused-side banner can be shown on demand.
-5. A fourth makes the call's text fail to save (S-8), for error-banners'
+4. Two more triggers make recognition of «они» (S-6, S-7) or of «я» (S-9)
+   fail on every window, so text-banners' paused-side banner can be shown
+   on demand.
+5. Another makes the call's text fail to save (S-8), for text-banners'
    incomplete-text banner: a file's permissions cannot fail an open file.
 
 ## Observer
@@ -81,4 +82,9 @@ Feature: A debug build lets its user provoke faults from the menu
     Given a debug build recording with «Живой текст» ticked
     When the user chooses the fail-text-saves trigger
     Then the user can see the trigger checked while the recording goes on
+
+  Scenario: S-9 Failing the owner's recognition
+    Given a debug build recording with «Живой текст» ticked
+    When the user chooses the fail-«я» trigger
+    Then the user can see the trigger checked and no new «я» text arriving
 ```

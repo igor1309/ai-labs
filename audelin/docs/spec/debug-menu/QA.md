@@ -10,7 +10,7 @@ description: "Debug menu — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `d91f544a426fbd8f294eaa1ba1aae93223ea562d` |
+| oracle | `SPEC.md` — blob `805c73f7da4a44036c31002d3fa4c3eb5cee0ce6` |
 | driven by | the user of a debug build, through the menu |
 | where | a debug build and the release build on this Mac |
 
@@ -64,4 +64,10 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 - Drive: debug build, a recording with live text; choose fail-text-saves; then read a marked passage aloud; stop after a minute; open the call's folder.
 - Expect: the trigger shows a checkmark; the recording's time keeps advancing; the folder's text ends where the trigger was chosen and lacks the marked passage.
+- Evidence: Missing.
+
+### S-9 Failing the owner's recognition
+
+- Drive: debug build, a recording with live text, both sides talking; choose fail-«я».
+- Expect: the trigger shows a checkmark; «я» lines stop appearing while «они» lines go on.
 - Evidence: Missing.
