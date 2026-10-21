@@ -1,5 +1,7 @@
 Feature: Compare dinosaurs quiz: the result and the best score
   A finished round shows its score and celebrates a new best score.
+  "Best score" here is the best of the level the round played; each
+  level keeps its own (compare-dinosaurs-level-switch.feature).
   Gamification is essential: a missing celebration is a defect.
 
   Background:

@@ -7,9 +7,10 @@ Feature: The level a game starts at
   levels is its Hatchling best, shown on its tile or, when it is
   featured, on the large card in its place.
 
-  Find the pair, the sorting game, the skeleton game and the dig game
-  have levels (find-the-pair-levels.feature, sort-dinosaurs-levels.feature,
-  skeleton-assembly-levels.feature, dig-level-switch.feature). Each other
+  Find the pair, the sorting game, the skeleton game, the dig game and
+  the compare quiz have levels (find-the-pair-levels.feature,
+  sort-dinosaurs-levels.feature, skeleton-assembly-levels.feature,
+  dig-level-switch.feature, compare-dinosaurs-level-switch.feature). Each other
   game adopts them in its own issue, which removes its row from the
   first scenario and keeps the child's choice in its own progress; the
   catalogue has no levels and keeps its row. The rules below are checked
@@ -26,13 +27,12 @@ Feature: The level a game starts at
 
     Examples:
       | game              |
-      | the compare quiz  |
       | the catalogue     |
       | the care game     |
 
   Scenario Outline: The same play earns the same reward at every level
-    Given my best compare quiz score is 6
-    And the age level is <level>
+    Given the age level is <level>
+    And my best compare quiz score at <level> is 6
     When I answer every question of a compare quiz round right
     Then I score 10 and see the new best score celebration
     And the COMPARE tile shows my best score 10, the best of the level the quiz plays
