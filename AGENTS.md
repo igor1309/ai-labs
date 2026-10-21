@@ -53,6 +53,15 @@
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
 
+## Implementing with Codex
+
+- The implementer is `codex-sol-61`. Use `codex-luna` only when sol is
+  severely limited, and only for a very simple task: it is slow on
+  production code and writes poor tests.
+- Review every Codex implement run with agister's review processes before
+  it merges. When sol is limited, run the reviewers one at a time, falling
+  back to `claude-opus`.
+
 ## Verifying fixes
 
 - Prove a fix with a regular, committed test: set up a temp directory
