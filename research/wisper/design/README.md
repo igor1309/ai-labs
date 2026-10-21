@@ -97,6 +97,8 @@ from instances.
 | x = 2700 | v2: Screens 1–5 and 8 after the design review, plus "Later — term chips"; bound to the tokens |
 | x = 6900 | v3, built from the components: Screen 1 (optional Calendar permission), Screen 4 (inline rename in the calls list), Screen 5 (call folder, its files, rename in the header), Screen 6 (moving the data folder) |
 
-The newest version of a screen is the one to build from: v3 where it exists,
-then v2, then the original. Screens 6 and 7 have no v2; Screen 7 is still
+| x = 9900 | v4, built from the components: Screen 1 (visible calls folder; no wait for the live model), Screen 3 (live model downloading; explanation read back from bb), Screen 4 (same-minute « 2» title), Screen 5 (summary from the bb thread, summary pending), Screen 6 (failed move with Retry; no move during a recording) |
+
+The newest version of a screen is the one to build from: v4 where it exists,
+then v3, then v2, then the original. Screens 6 and 7 have no v2; Screen 7 is still
 only the original.

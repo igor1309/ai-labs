@@ -48,6 +48,14 @@ overlaps. Screens 4 and 5 v3 rename a call inline and keep the timestamp
 prefix. Screen 6 v3 moves every call when the data folder changes, after a
 Move or Cancel confirm.
 
+The v4 column draws the owner's later answers on storage, bb output and edge
+cases (2026-10-21). Call folders live in the visible `~/Recordings/wisper`.
+Screen 5 v4 shows the summary that the app reads back from the bb thread.
+Screen 3 v4 drops the «sent, no read-back» card and adds a call that starts
+while the live model downloads. Screen 4 v4 shows a same-minute « 2» title.
+Screen 6 v4 adds a failed move with Retry, and a recording that blocks a
+move.
+
 ## Conclusion so far
 
 No installed app fits without either paying a subscription or living with a
