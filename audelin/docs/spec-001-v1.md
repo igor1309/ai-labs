@@ -9,11 +9,18 @@ description: "Spec: Audelin v1 — recording, live transcript, recovery, setup a
 ## Goal
 
 Make [ADR-001](adr-001-v1-architecture.md) implementable: the session
-lifecycle, the files in a call folder, the recognition port and the
-stabilizer, the watermark and replay, the activity gate, setup and the
-calls list. The scope is v1 in [mvp.md](research/mvp.md) § Versions. This
-spec sets the mechanics ADR-001 left to it (§ Non-goals) and does not change
-its decisions.
+lifecycle, the files in a call folder, recognition windows and the
+stabilizer, the watermark, the activity gate, setup and the calls list. The
+scope is v1 in [mvp.md](research/mvp.md) § Versions. This spec sets the
+mechanics ADR-001 left to it (§ Non-goals).
+
+Audelin cuts its own recognition windows from the recorded audio and calls
+FluidAudio's public `AsrManager.transcribe` on each one. It does not use
+`SlidingWindowAsrManager`. That manager's public updates do not report the
+words it retracts (`droppedPreviousTokens`) or the windows that failed, and
+its `finish()` returns plain text. With our own windows, every window has a
+known audio range and a failure throws (owner, 2026-10-21; ADR-001
+amendment of the same date).
 
 Every value this spec sets that neither the owner nor ADR-001 set is listed
 in § Values set by this spec. They are starting points, tuned while
@@ -22,557 +29,1016 @@ profiling and using the app (owner, 2026-10-21).
 ## Terms
 
 - **Track:** `me` (microphone, «я») or `them` (system audio, «они»).
-- **Session clock:** seconds since the session started, as `Double`. Every
-  time in this spec is session time unless it says otherwise.
-- **Epoch:** an unbroken run of capture on one track. Epochs are numbered
-  from 1 per track. A gap lies between two epochs.
-- **Written edge:** per track and epoch, the session time up to which audio
-  is written to disk and readable.
-- **Attempt:** one recognition run over one track and epoch, identified by
-  `AttemptID(session, track, epoch, n)`; `n` counts from 1 per track and
-  epoch in this process.
-- **Live tail:** recognised text not yet committed.
+- **Session clock:** seconds as `Double` from the session origin. The origin
+  is the host time when `start()` began capture (2.3). Every time in this
+  spec, and every time stored in a call folder, is session time. A reopened
+  session reads its times from the folder, never from the wall clock.
+- **Epoch:** an unbroken run of capture on one track, numbered from 1 per
+  track. A gap lies between two epochs. An epoch has a start, set by its
+  first sample, and an end once it is closed.
+- **Written edge:** per track and epoch, `start + frames written / 16000`.
 - **Watermark:** per track and epoch, the time up to which all audio is
-  accounted for as committed text or silence (ADR-001 decision 4).
+  accounted for, as committed text or as silence that a successful window
+  decoded (ADR-001 decision 4). Only a durable log line moves it.
+- **Outstanding audio:** per track and epoch, the range from the watermark
+  to the written edge.
+- **Window:** one call to the recogniser over a contiguous range of one
+  track and epoch.
+- **Attempt:** a run of windows over one track and epoch by one recogniser
+  instance. It is identified by `AttemptID(session, track, epoch, n)`, where
+  `n` counts from 1 per track and epoch within the process.
+- **Live tail:** recognised words not yet committed, plus committed words
+  whose log append failed (shown as unsaved).
 
 ## Public interface
 
-Swift signatures are the contract; names of private helpers are free.
-All Core types are `Sendable`. Ports are protocols declared by the Core that
-needs them (ADR-001 decision 10).
+Swift signatures are the contract; names of private helpers are free. All
+Core types are `Sendable`, and value types are `Equatable`. Ports are
+protocols declared by the Core that needs them (ADR-001 decision 10).
 
 ### Domain
 
 ```swift
 // CallDomain
-enum Track: String, Codable { case me, them }
+enum Track: String, Codable, Hashable { case me, them }
 struct CallID: Hashable, Codable { let uuid: UUID }
-struct CallMeta: Codable { /* § meta.json */ }
+
+enum AudioStatus: String, Codable { case recording, complete, incomplete, failed }
+enum TranscriptStatus: String, Codable { case live, catchingUp = "catching_up", complete, incomplete }
+struct TimeRange: Codable, Equatable { let track: Track; let epoch: Int; let from: Double; let to: Double }
+struct CallMeta: Codable, Equatable {
+    let version: Int                 // 1
+    let id: CallID
+    let start: Date                  // wall clock at the session origin
+    var duration: Double             // the sealed duration; 0 while recording
+    var app: String?                 // "Zoom" or nil
+    var title: String
+    var audio: AudioStatus
+    var transcript: TranscriptStatus
+    var unrecognised: [TimeRange]    // a cache of outstanding audio (3.7)
+    var pinned: Bool
+}
 enum FolderName {
     static func make(start: Date, title: String, timeZone: TimeZone) -> String
-    static func parseTimestamp(_ folderName: String) -> Date?   // nil if dropped
+    static func parse(_ folderName: String) -> (date: Date?, title: String)
     static func sanitize(title: String) -> String
+}
+
+enum AudelinError: Error, Equatable {
+    case busy(Activity)              // refused; names the held activity
+    case alreadyStarted, notFound(CallID), revoked
+    case storage(String), capture(String), recognition(String), model(String)
 }
 
 // TranscriptCore
 struct Word: Codable, Equatable { let text: String; let start: Double; let end: Double }
-struct RecognitionUpdate: Equatable {
-    let words: [Word]          // session time, in order
-    let coveredUntil: Double   // new audio this update accounts for ends here
-    let confirmsEarlier: Bool  // every word sent before this update is confirmed
-    let isFinal: Bool          // the stream finished; nothing more will come
-}
+enum Cut: String, Codable { case sentence, pause, forced, epochEnd }
+enum Origin: String, Codable { case live, catchUp, reopened }
+struct SegmentID: Hashable, Codable { let track: Track; let epoch: Int; let seq: Int }
 struct Segment: Codable, Equatable {
-    let track: Track; let epoch: Int; let seq: Int
-    let start: Double; let end: Double
-    let text: String; let words: [Word]
-    let late: Bool
+    let id: SegmentID
+    let start: Double; let end: Double     // first word's start, last word's end
+    let text: String                       // words joined by single spaces
+    let words: [Word]
+    let cut: Cut                           // why the segment ends here
+    let origin: Origin
+    let late: Bool                         // 4.8
 }
-struct Stabilizer {             // pure value type, one per track and epoch
-    init(track: Track, epoch: Int, watermark: Double, lastCommitted: Word?)
-    mutating func apply(_ update: RecognitionUpdate, committedAt now: Double) -> StabilizerOutput
+struct Frontier: Codable, Equatable {      // durable state of one track and epoch
+    let track: Track; let epoch: Int
+    let epochStart: Double
+    let watermark: Double
+    let anchor: [Word]                     // the last ≤ 3 committed words
+    let nextSeq: Int
 }
-struct StabilizerOutput: Equatable {
-    let commits: [Segment]     // in time order
-    let watermark: Double      // after these commits
-    let tail: [Word]           // the live tail after this update
+struct WindowPlan: Equatable {
+    enum Kind: Equatable { case commit, final, preview }
+    let track: Track; let epoch: Int
+    let from: Double; let to: Double; let kind: Kind
+}
+enum Windowing {                           // pure: the next window to run (4.2)
+    static func next(_ f: Frontier, writtenEdge: Double, epochEnd: Double?,
+                     live: Bool, lastPreviewTo: Double?) -> WindowPlan?
+}
+struct CommitContext: Equatable {
+    let origin: Origin
+    let now: Double?                       // session clock; nil in a reopened session
+    let liveSince: Double                  // when the live model became ready (4.8)
+}
+struct LogLine: Codable, Equatable {       // one line of live.jsonl (4.1)
+    let track: Track; let epoch: Int
+    let watermark: Double
+    let segments: [Segment]
+}
+struct StepOutput: Equatable {
+    let line: LogLine?                     // nil for a preview window
+    let next: Frontier?                    // the frontier once `line` is durable
+    let tail: [Word]
+}
+enum Stabilizer {                          // pure (ADR-001 decision 7; 4.4)
+    static func step(_ f: Frontier, plan: WindowPlan, words: [Word],
+                     context: CommitContext) -> StepOutput
+}
+struct TranscriptState: Equatable {
+    let segments: [Segment]                // time order per track and epoch
+    let frontiers: [Frontier]              // one per track and epoch
+}
+enum Transcript {
+    static func fold(_ lines: [LogLine], epochs: [EpochRecord]) -> TranscriptState
+    static func outstanding(_ s: TranscriptState, epochs: [EpochRecord],
+                            edges: [TrackEpoch: Double]) -> [TimeRange]
+}
+struct TrackEpoch: Hashable { let track: Track; let epoch: Int }
+
+// Audio timeline, from audio/index.jsonl and the .pcm sizes (2.4)
+struct EpochRecord: Codable, Equatable {
+    let track: Track; let epoch: Int
+    let start: Double
+    var end: Double?                       // nil while open
+    var reason: GapReason?                 // why it ended
+}
+enum GapReason: String, Codable {
+    case stop, sleep, deviceChanged, permissionLost, captureFailed, dropout, writeFailed, crash
 }
 
-struct Watermark: Codable, Equatable { let track: Track; let epoch: Int; let at: Double }
-struct AttemptID: Hashable { let session: CallID; let track: Track; let epoch: Int; let n: Int }
-struct TranscriptState { let segments: [Segment]; let watermarks: [Watermark] }
-
-// Domain, shared by LiveSessionCore and CallsCore (ADR-001 decision 11)
-actor ActivityGate {
-    func acquire(_ activity: Activity) -> Lease?          // nil = refused
-    func release(_ lease: Lease)
-    var changes: AsyncStream<GateState> { get }
+// Activity gate, shared by LiveSessionCore and CallsCore (ADR-001 decision 11)
+enum Activity: Hashable, Codable {
+    case recording(CallID), catchUp(CallID), edit(CallID), delete(CallID), move
 }
-enum Activity: Equatable { case recording(CallID), catchUp(CallID), move, delete(CallID) }
 struct Lease: Hashable { let id: UUID; let activity: Activity }
-struct GateState { let held: [Activity] }
+actor ActivityGate {
+    func acquire(_ a: Activity) async -> Result<Lease, AudelinError>  // 7.2
+    func transfer(_ l: Lease, to a: Activity) -> Lease?               // 7.4
+    func release(_ l: Lease)
+    func isValid(_ l: Lease) -> Bool
+    var revocations: AsyncStream<Lease> { get }    // leases to give up (7.3)
+    var changes: AsyncStream<[Activity]> { get }   // held activities, current first
+}
 ```
 
-Other shapes named below: `WrittenEdge(track, epoch, at)`;
-`PanelPatch` (6.3); `ModelStatus` = `ready(URL)`, `missing`,
-`downloading(Double)`; `Settings` (8.3); `MoveProgress(moved, total,
-current)`; `MoveResult` = `done` or `failed(moved, total, title, reason)`.
+`FolderName.parse` returns `date == nil` when the timestamp was dropped,
+and the whole name as the title (1.5). `MoveProgress(moved: Int, total: Int,
+current: String)`. `MoveResult` is `.done` or `.failed(moved: Int, total:
+Int, title: String, reason: String)`. `MoveJournal` is the `Codable` shape of
+9.5. `ModelStatus` is `.ready(URL)`, `.missing`, `.downloading(Double)` or
+`.failed(String)`. `Settings` is in 8.3.
 
 ### Ports (declared in LiveSessionCore unless noted)
 
 ```swift
-protocol AudioCapture {            // adapter: AudioCapture
-    func start() async throws -> AsyncStream<CaptureEvent>
-    func stop() async
+protocol AudioCapture {             // adapter: AudioCapture
+    // Starts every track it can; throws only when no track started.
+    func start() async throws -> (started: Set<Track>, failed: [Track: String],
+                                  events: AsyncStream<CaptureEvent>)
+    func stop() async               // returns when no more events will come
 }
 enum CaptureEvent {
-    case buffer(Track, samples: [Int16], hostTime: Double)  // mono 16 kHz
-    case interrupted(Track, reason: InterruptReason)        // ends the epoch
-    case resumed(Track)                                     // starts a new epoch
+    case buffer(Track, samples: [Int16], hostTime: Double)  // mono 16 kHz; host time of the first sample
+    case interrupted(Track, InterruptReason)
+    case resumed(Track)
 }
-enum InterruptReason { case sleep, deviceChanged, permissionLost, failed(String) }
+enum InterruptReason: Equatable { case sleep, deviceChanged, permissionLost, failed(String) }
 
-protocol RecordingWriter {         // adapter: FileCallStore (via Recorder)
-    func append(_ samples: [Int16], track: Track, epoch: Int) async throws -> Double // new written edge
-    func endEpoch(track: Track, epoch: Int) async throws
-    func seal() async throws
+protocol RecordingWriter {          // adapter: FileCallStore
+    func beginEpoch(_ e: EpochRecord, call: CallID, lease: Lease) async throws
+    func append(_ samples: [Int16], call: CallID, track: Track, epoch: Int,
+                lease: Lease) async throws -> Double        // the new written edge
+    func endEpoch(call: CallID, track: Track, epoch: Int, at: Double,
+                  reason: GapReason, lease: Lease) async throws
+    func seal(call: CallID, duration: Double, lease: Lease) async throws
 }
-protocol RecordedAudioReader {     // adapter: FileCallStore
-    func read(track: Track, epoch: Int, from: Double, to: Double) async throws -> [Int16]
-    func writtenEdge(track: Track, epoch: Int) async -> Double
-    var written: AsyncStream<WrittenEdge> { get }   // live sessions only
+protocol RecordedAudioReader {      // adapter: FileCallStore
+    func epochs(_ call: CallID) async throws -> [EpochRecord]
+    func writtenEdge(_ call: CallID, track: Track, epoch: Int) async throws -> Double
+    func read(_ call: CallID, track: Track, epoch: Int,
+              from: Double, to: Double) async throws -> [Int16]
 }
-protocol LiveRecognizer {          // adapter: FluidAudioASR
-    func start(_ id: AttemptID, epochStart: Double, from: Double) async throws
-        -> AsyncThrowingStream<RecognitionUpdate, Error>
-    func feed(_ id: AttemptID, _ samples: [Int16]) async
-    func finish(_ id: AttemptID) async
-    func cancel(_ id: AttemptID) async          // must not wait for the attempt
+protocol Recognizer {               // adapter: FluidAudioASR; one per attempt
+    func recognize(_ samples: [Int16], from: Double) async throws -> [Word]  // session time
 }
-protocol SegmentLog {              // adapter: FileCallStore
-    func append(_ commits: [Segment], watermark: Watermark) async throws  // one atomic append
-    func load(_ call: CallID) async throws -> TranscriptState
+protocol RecognizerFactory { func make() async throws -> Recognizer }
+protocol SegmentLog {               // adapter: FileCallStore
+    func append(_ line: LogLine, call: CallID, lease: Lease) async throws
+    func load(_ call: CallID) async throws -> [LogLine]     // clears a dirty log (4.1)
 }
-protocol CallStore {               // declared in CallsCore; adapter: FileCallStore
-    func create(start: Date, title: String) async throws -> CallID
+protocol CallStore {                // declared in CallsCore; adapter: FileCallStore
+    func create(start: Date, title: String, app: String?, lease: Lease) async throws -> CallID
     func meta(_ id: CallID) async throws -> CallMeta
-    func update(_ id: CallID, _ change: (inout CallMeta) -> Void) async throws
+    func update(_ id: CallID, lease: Lease, _ change: (inout CallMeta) -> Void) async throws
     func list() async throws -> [CallMeta]
-    func rename(_ id: CallID, title: String) async throws
-    func trash(_ id: CallID) async throws
-    func move(to folder: URL, progress: (MoveProgress) -> Void) async throws -> MoveResult
+    func rename(_ id: CallID, title: String, lease: Lease) async throws
+    func repair(_ id: CallID, lease: Lease) async throws    // 3.6
+    func trash(_ id: CallID, lease: Lease) async throws
+    func move(to folder: URL, lease: Lease,
+              progress: @Sendable (MoveProgress) -> Void) async -> MoveResult
+    func pendingMove() async -> MoveJournal?                // 9.5
 }
-protocol ModelProvider {           // declared in SetupCore; adapter: ModelStore
-    func status() async -> ModelStatus     // ready(path) / missing / downloading(fraction)
+protocol ModelProvider {            // declared in SetupCore; adapter: ModelStore
+    var status: AsyncStream<ModelStatus> { get }  // current value first, then changes
     func findReusable() async -> URL?
-    func download() -> AsyncThrowingStream<Double, Error>
+    func download() async                         // progress and failure arrive on `status`
 }
-protocol SettingsStore { func load() throws -> Settings; func save(_: Settings) throws }
-protocol Clock { var now: Double { get }; func sleep(for: Double) async throws }
+protocol SettingsStore { func load() throws -> Settings?; func save(_ s: Settings) throws }
+protocol Clock { var now: Double { get }; func sleep(for seconds: Double) async throws }
+protocol HostClock { var now: Double { get } }    // monotonic host time, seconds
 ```
+
+FileCallStore checks `gate.isValid(lease)`, and that the lease names this
+call (or is `.move`), before every write and before each step of a
+multi-step write. Otherwise it throws `.revoked` (7.3).
 
 ### Session
 
 ```swift
-actor LiveSession {                 // the serialized owner (ADR-001 decision 1)
-    var state: SessionState { get }
+actor LiveSession {                    // the serialized owner (ADR-001 decision 1)
+    var state: AsyncStream<SessionState> { get }    // current value first
     var panel: AsyncStream<PanelPatch> { get }
-    func start() async throws        // throws .busy if the gate refuses
-    func stop() async                // returns when audio is sealed and the call listed
+    func start() async throws          // .busy, .alreadyStarted, .capture
+    func stop() async                  // 3.1
     func rename(_ title: String) async throws
 }
-enum SessionState { case recording, recordingFailed(String), catchingUp, closed }
+enum SessionState: Equatable {
+    case idle, recording, saving, catchingUp, waitingForModel, paused, closed
+}
 ```
+
+A reopened session (3.7) is a `LiveSession` that starts in `catchingUp`,
+with no capture.
 
 ## Behavior rules
 
 ### 1. Call folder and files
 
-1.1. A call folder is named `yyyy.MM.dd-HHmm <title>` in the local time zone
-at start. If that name exists, the second gets ` 2`, the third ` 3`, and so
-on (mvp.md § Edge cases).
+1.1. A call folder is named `yyyy.MM.dd-HHmm <title>`, using the local time
+zone at the session origin. If that name exists, the second call gets ` 2`,
+the third ` 3`, and so on (mvp.md § Edge cases).
 
 1.2. `FolderName.sanitize` trims whitespace, replaces `/` and `:` with `-`,
 removes leading dots and cuts the title to 100 characters. An empty result
 becomes `Call`.
 
-1.3. The first title is `Zoom` when `zoom.us` is running at start, else
-`Call`. Calendar titles are v3.
+1.3. The first title is `Zoom` with `app = "Zoom"` when `zoom.us` is running
+at start. Otherwise it is `Call`, with `app = nil`. Calendar titles are v3.
 
 1.4. Files in a call folder:
 
 ```text
-meta.json            the call's identity and status (1.5)
-audio/index.jsonl    append-only: epochs, files and gaps (2.4)
+meta.json            identity and cached status (1.5)
+audio/index.jsonl    epoch records and the seal (2.4)
 audio/me-<epoch>-<seq>.pcm
 audio/them-<epoch>-<seq>.pcm
-live.jsonl           append-only segment log (4.1)
-raw.md               rebuilt from live.jsonl (4.6)
+live.jsonl           the segment log (4.1)
+raw.md               rebuilt from live.jsonl (4.7)
 ```
 
-1.5. `meta.json`, written atomically (temporary file, then rename):
+1.5. `meta.json` is `CallMeta` as JSON, with ISO 8601 dates and the enums'
+raw values. It is written atomically: a temporary file in the same folder,
+`fsync`, then `rename`. `title` mirrors the folder name without its
+timestamp. A Finder rename wins. When a list or load sees a folder title
+that differs from `meta.title`, `meta.title` is updated under `.edit(id)`.
+If that lease is refused, the update waits for the next list and the folder
+title is shown. If the folder name has no parsable timestamp, the date
+comes from `start` (mvp.md § Edge cases).
 
-```json
-{
-  "version": 1,
-  "id": "UUID",
-  "start": "2026-10-21T14:05:00+03:00",
-  "duration": 1834.2,
-  "app": "Zoom",
-  "title": "Zoom",
-  "audio": "recording | complete | incomplete | failed",
-  "transcript": "live | catching_up | complete | incomplete",
-  "unrecognised": [{"track": "them", "epoch": 1, "from": 120.0, "to": 1834.2}],
-  "pinned": false
-}
-```
-
-`title` mirrors the folder name without its timestamp. A Finder rename wins:
-on load, the title is re-read from the folder name and `meta.json` is
-updated. If the folder name has no parsable timestamp, the date comes from
-`start` (mvp.md § Edge cases).
-
-1.6. A call is found by `id` only. The store keeps an in-memory map from id
-to folder, rebuilt by scanning the calls folder on launch, on every list,
-and whenever an id is not found at its cached path.
+1.6. A call is found by `id` only (ADR-001 invariant 10). The store keeps an
+in-memory map from id to folder. It rebuilds the map on launch, on every
+list, and whenever an id is not found at its cached path, by scanning the
+calls folder (both folders during a move, 9.5). A folder without a readable
+`meta.json` is listed as "Unreadable call" and never written to.
 
 ### 2. Recording
 
-2.1. Minimum macOS 14.2, for Core Audio process taps. Capture: the microphone through `AVAudioEngine`'s input node; system
-audio through a Core Audio process tap (`CATapDescription`, stereo global
-tap excluding Audelin's own process). Both are converted to mono 16 kHz
-`Int16` with no gain, compression or noise reduction (mvp.md § Technical
-rules 3), then sent as `CaptureEvent.buffer`.
+2.1. Minimum macOS 14.2, for Core Audio process taps.
 
-2.2. Files: raw little-endian `Int16`, mono, 16 kHz, no header. A file holds
-at most 30 s (mvp.md § Recording files); then the next `seq` starts. A file
-never spans epochs.
+- The microphone is captured through `AVAudioEngine`'s input node.
+- System audio is captured through a Core Audio process tap: a global
+  stereo `CATapDescription` that excludes Audelin's own process. The adapter
+  creates the tap (`AudioHardwareCreateProcessTap`), then a private aggregate
+  device whose tap list holds it, then an IO proc on that device, and starts
+  the device. It tears these down in reverse order on stop or failure.
+- Both tracks are converted to mono 16 kHz `Int16` with no gain,
+  compression or noise reduction (mvp.md § Technical rules 3).
+- Info.plist carries `NSMicrophoneUsageDescription` and
+  `NSAudioCaptureUsageDescription`.
 
-2.3. The Recorder appends what capture delivered at least every 0.5 s. An
-`append` returns after `write(2)` succeeded; the returned edge is then
-readable and published on `RecordedAudioReader.written`. Each file is
-`fsync`ed when it is closed (rotation, epoch end, seal).
+2.2. `AudioCapture.start()` starts each track independently. Recording
+starts if at least one track started. A track that failed gets no epoch,
+and the panel shows "«они» not recorded: <reason>". If both fail,
+`start()` throws `.capture`: no call folder is created and the gate lease
+is released.
 
-2.4. `audio/index.jsonl` gets one line per event, appended with `fsync`:
-`{"e":"epoch","track":"me","epoch":1,"start":0.0}`,
-`{"e":"file","track":"me","epoch":1,"seq":3,"start":60.0,"frames":480000}`
-when a file closes, `{"e":"gap","track":"them","epoch":1,"end":312.4,"reason":"deviceChanged"}`,
-and `{"e":"sealed","duration":1834.2}`.
+2.3. Time mapping:
 
-2.5. A write error (disk full, folder gone, permission) on either track
-moves the session to `recordingFailed`: capture stops for both tracks, the
-panel shows "Recording failed: <reason>", `meta.audio` becomes `failed`, and
-the session proceeds as in Stop from 3.2. Samples that were not written are
+- The session origin is `HostClock.now` when `start()` calls
+  `AudioCapture.start()`.
+- An epoch starts at its first buffer's `hostTime − origin`.
+- Within an epoch, a sample's time is `epoch start + frame index / 16000`.
+  It comes from the sample count, never from buffer times.
+- For each buffer the owner computes
+  `drift = (hostTime − origin) − (epoch start + frames received / 16000)`.
+  A `drift` over 0.2 s means audio went missing. The epoch then ends at its
+  edge with `dropout`, and a new epoch starts at the buffer's time.
+- A negative drift (the device clock runs fast) is ignored.
+
+2.4. Files and index:
+
+- `.pcm` files are raw little-endian `Int16`, mono, 16 kHz, with no header.
+  A file holds exactly 480 000 frames (30 s, mvp.md § Recording files),
+  except the last file of an epoch. `seq` counts from 1 per track and
+  epoch, and a file never spans epochs.
+- `audio/index.jsonl` holds one JSON object per line:
+  `{"e":"epoch","track":"me","epoch":1,"start":0.42}`,
+  `{"e":"end","track":"me","epoch":1,"at":312.4,"reason":"sleep"}`, and
+  `{"e":"sealed","duration":1834.2}`. Each line is appended with one `write`
+  (repeated on a short write), then `fsync`.
+- An epoch's frames are the sum of its files' sizes / 2, in `seq` order.
+  A read across files maps time to `(seq, byte offset)` through that sum.
+  A read outside `[start, written edge]` throws.
+- Loading skips a torn last line. Records are keyed: `epoch` and `end` by
+  track and epoch, and `sealed` once. A duplicate key keeps the first record.
+
+2.5. The Recorder (in LiveSessionCore) appends what capture delivered at
+least every 0.5 s. `append` returns after `write` succeeded, and the
+returned edge is then readable. A file is `fsync`ed when it closes: on
+rotation, at epoch end and at seal. Recognition reads only up to the
+written edge (ADR-001 invariant 8).
+
+2.6. A write error on either track starts the finalization path (3.1) with
+reason `writeFailed`. Write errors include a full disk, a missing folder,
+permissions and a revoked lease. `meta.audio` becomes `failed`, and the
+panel shows "Recording failed: <reason>". Samples that were not written are
 never passed to recognition (ADR-001 invariant 18).
 
-2.6. `interrupted(track, reason)` ends that track's epoch: the Recorder
-closes its file and writes a `gap` line. The session owner then:
-`sleep` → waits for `resumed`; `deviceChanged` → reacquires the new default
-device at once; `permissionLost` → keeps the other track and shows
-"«я»/«они» stopped: permission lost"; `failed` → retries reacquiring 3 times
-1 s apart, then continues with the other track. If no track is left, the
-session stops as in 3.2. `resumed` starts epoch `n+1` at the current session
-time.
+2.7. Interruptions. `interrupted(track, reason)` ends that track's epoch at
+its written edge with the matching `GapReason`. Then:
 
-2.7. Only one session records at a time. `start()` acquires
-`.recording(id)` on the gate; refusal throws `.busy` with the holder.
+| Reason | The owner |
+|---|---|
+| `sleep` | waits for `resumed`, with no limit; the track is *suspended* |
+| `deviceChanged` | reacquires the new default device at once |
+| `failed` | retries reacquiring 3 times, 1 s apart; then the track is *ended* |
+| `permissionLost` | ends the track; panel: "«я» stopped: permission lost" |
 
-### 3. Stop and catch-up
+`resumed` starts epoch `n + 1` at its first buffer's time (2.3). When every
+track is ended, the session runs the finalization path (3.1) with reason
+`captureFailed`. A suspended track is not ended. If both tracks are
+suspended, the session stays `recording` until wake or Stop.
 
-3.1. `stop()` does, in order: stop capture; write what is buffered; close and
-`fsync` the current files; append `sealed`; set `meta.audio` to `complete`
-(or `incomplete` if any epoch ended by failure); release `.recording`. It
-returns when this is done or after the 5 s seal limit, whichever is first; on
-the limit, `meta.audio` becomes `incomplete`. The call is listed from here.
+2.8. Only one session records at a time: `start()` acquires `.recording(id)`
+(7.2). `start()` on a session that is not `idle` throws `.alreadyStarted`.
 
-3.2. After `stop()` returns, each track's current attempt gets `finish()` and
-up to 10 s (the stop wait) to deliver its final update. A final update
-commits the whole tail (4.3). On the limit the attempt is revoked, its tail
-is dropped, and the range after the watermark stays unrecognised.
+### 3. Stop, saving and catch-up
 
-3.3. Every range after a watermark up to the written edge, per track and
-epoch, is recorded in `meta.unrecognised` and `meta.transcript` is
-`catching_up`. The session then runs catch-up under `.catchUp(id)`:
-attempts over the unrecognised ranges, reading as fast as the recogniser
-accepts. When all ranges are recognised, `meta.transcript` becomes
-`complete` and the session closes.
+3.1. **Finalization path.** Stop, a write failure and the end of every track
+all run this one procedure, once per session; a concurrent `stop()` awaits
+the same run.
 
-3.4. Catch-up is cancelled when the gate is acquired for a recording, a move,
-or deleting this call (ADR-001 decision 2). The current attempt is revoked;
-committed segments stay; the remaining ranges stay in `meta.unrecognised`.
-Catch-up resumes when the gate is free.
+1. State becomes `saving`; every live attempt is revoked (4.5).
+2. `AudioCapture.stop()`.
+3. Unless the reason is `writeFailed`, buffered samples are written.
+4. Each open epoch is ended at its written edge (`stop`, or the reason), and
+   its file is closed with `fsync`.
+5. `seal(duration)` writes `sealed`, where `duration` is the largest
+   written edge.
+6. `meta.audio` is set:
+   - `failed` for `writeFailed`;
+   - `incomplete` if any epoch ended other than by `stop` or `sleep`;
+   - `complete` otherwise.
 
-3.5. On launch, every call whose `meta.unrecognised` is not empty, or whose
-`meta.audio` is `recording` (a crash, 3.6), gets a reopened session that
-starts in catch-up. Reopened sessions run one at a time, newest call first.
+   In the same write, `meta.unrecognised` and
+   `meta.transcript = catching_up` are set from outstanding audio (3.7).
+7. The lease is transferred from `.recording(id)` to `.catchUp(id)` (7.4),
+   and catch-up starts (3.3).
 
-3.6. Crash repair, on launch, for `meta.audio == recording`: truncate each
-track's last `.pcm` file to an even byte count; append its `file` line if
-missing; append `gap` lines with reason `crash` for open epochs and a
-`sealed` line with the last written time; truncate `live.jsonl` after its
-last complete line (4.1); set `meta.audio` to `incomplete`.
+`stop()` returns when step 7 is done or after the 5 s stop limit, whichever
+comes first. Past the limit, the list and panel show "Saving…" while steps
+2–7 carry on. The recording lease is held until step 7, so a new recording
+is refused with `.busy(.recording(id))`: "The previous call is still
+saving". If step 5 or 6 throws, `meta.audio` is set to `incomplete` if that
+write succeeds, and the session still transfers to catch-up. A crash at
+any step is repaired on launch (3.6, 3.7).
 
-3.7. If no live model is ready at start, recording runs without attempts and
-the panel says "Recording; live text starts when the model is ready". When
-the model becomes ready during the recording, each track starts an attempt
-from its watermark (0 on a new call), as in 4.5.
+3.2. A session in `recording` is listed with "Recording". From `saving` on,
+it is listed as a normal call.
+
+3.3. **Catch-up** runs under `.catchUp(id)`. One attempt per track and epoch
+runs windows (4.2) over outstanding audio as fast as the recogniser
+returns, epochs in time order. When no outstanding audio is left (or only
+ranges given up on, 3.5), the session finishes:
+
+- `meta.transcript` becomes `complete`, or `incomplete` if a range was
+  given up on (3.5);
+- `raw.md` is rebuilt;
+- the lease is released, and the session is `closed`.
+
+3.4. **Preemption.** Acquiring `.recording`, `.move` or `.delete(id)` revokes
+a conflicting `.catchUp` (7.3). The session then:
+
+1. revokes its attempts;
+2. waits for its in-flight log append and its `meta.json` and `raw.md`
+   writes;
+3. cancels its pending `raw.md` rebuild;
+4. releases the lease and becomes `paused`.
+
+Committed lines stay, and outstanding audio stays outstanding. A paused
+session re-acquires `.catchUp(id)` when `changes` shows no conflicting
+activity, unless the call was deleted.
+
+3.5. **Window failures.**
+
+- A window that throws is retried once, at once.
+- A second failure, or a read error, ends the attempt. Live, this counts as
+  a stall (5.3).
+- In catch-up, the attempt restarts after 5 s. After 3 ended attempts on the
+  same track and epoch, the session gives that range up: it stays
+  outstanding, `meta.transcript` becomes `incomplete`, and the next launch
+  tries again.
+
+3.6. **Launch repair** runs on launch for every call, under `.edit(id)`:
+
+1. Truncate `audio/index.jsonl` and `live.jsonl` after their last newline,
+   removing a torn line.
+2. Truncate each `.pcm` file to an even byte count.
+3. For each epoch with no `end` record, append `end` with reason `crash` at
+   its written edge.
+4. If there is no `sealed` record, append one with the largest written edge
+   and set `meta.audio` to `incomplete`.
+
+Each step checks before it writes, so a repair interrupted and run again
+writes nothing twice. Records already written are kept (2.4 keys).
+
+3.7. **Outstanding audio is derived, never trusted from `meta.json`.**
+`Transcript.outstanding` computes it from the index, the `.pcm` sizes and
+the log frontiers. `meta.unrecognised` and `meta.transcript` are a cache
+for the list, rewritten whenever outstanding audio is computed. On launch,
+after repair, every call with outstanding audio gets a reopened session.
+Reopened sessions run one at a time, newest call first, and each one
+acquires `.catchUp(id)`.
+
+3.8. **No model.** If no live model is ready, the session records without
+attempts. The panel says "Recording; live text starts when the model is
+ready", and the session watches `ModelProvider.status`. When the model is
+ready, `liveSince` is set to the session time, and each open epoch starts an
+attempt at its watermark (4.5). Catch-up with no model is in
+`waitingForModel` and starts on `.ready`.
 
 ### 4. Recognition, stabilizer and the segment log
 
-4.1. `live.jsonl` lines, each one JSON object:
+4.1. **Segment log.** `live.jsonl` holds one `LogLine` per line, as JSON:
 
 ```json
-{"t":"seg","track":"me","epoch":1,"seq":12,"start":61.04,"end":64.88,"text":"Согласуем OKR на следующий квартал.","words":[{"w":"Согласуем","s":61.04,"e":61.6}],"late":false,"attempt":2}
-{"t":"wm","track":"me","epoch":1,"at":64.88}
+{"track":"me","epoch":1,"watermark":64.88,"segments":[{"id":{"track":"me","epoch":1,"seq":12},"start":61.04,"end":64.88,"text":"Согласуем OKR на следующий квартал.","words":[{"text":"Согласуем","start":61.04,"end":61.6}],"cut":"sentence","origin":"live","late":false}]}
 ```
 
-One `SegmentLog.append` writes its segment lines and the closing `wm` line
-with a single `write(2)` and then `fsync`. On load, a trailing incomplete
-line, and any `seg` lines after the last `wm` line of their track and epoch,
-are ignored: a commit counts only with its watermark.
+- A line is the unit of commit: its segments and watermark become durable
+  together or not at all.
+- `append` encodes the line and its newline in memory and writes them at
+  the end of the file. It repeats `write` on a short write and then calls
+  `fsync`.
+- If any of those steps throws, the store truncates the file back to its
+  length before the append, marks the log *dirty* and throws. A dirty log
+  accepts no appends until `load` runs.
+- `load` truncates after the last newline, clears *dirty* and returns the
+  lines. A complete line that fails to decode is a store error and is never
+  skipped.
+- After a failed append, the session reloads the log. If the line is there
+  (an `fsync` failure after a successful write), the session takes the
+  frontier from it. If not, the commit did not happen.
 
-4.2. The FluidAudioASR adapter runs one `SlidingWindowAsrManager` per
-attempt: 4 s chunks, 2 s left and right context, no language hint, sharing
-one loaded `AsrModels` (tests.md runs 3–4). It maps FluidAudio updates to
-`RecognitionUpdate`:
+`Transcript.fold` applies lines in file order. Each line appends its
+segments to its track and epoch and sets the frontier:
 
-- `words`: tokens joined into words at SentencePiece word starts (`▁`); a
-  word's `start` is its first token's `startTime`, its `end` the last
-  token's `endTime`, both plus the attempt's `from`.
-- `coveredUntil`: `from + k × chunk` after the k-th update, capped at the
-  audio fed so far. A window FluidAudio fails internally sends no update, so
-  this undercounts and never overcounts.
-- `confirmsEarlier`: FluidAudio's `isConfirmed`. In 0.17.7 a confirmed
-  update promotes all earlier unconfirmed text to confirmed and its own text
-  stays unconfirmed (`updateTranscriptionState`), so the flag is about the
-  words before it.
-- `isFinal`: true for the update after `finish()` completes, which carries
-  the words not yet sent and `coveredUntil` = all audio fed.
+- `watermark` = the line's watermark;
+- `anchor` = the last ≤ 3 words of that track and epoch;
+- `nextSeq` = the last `seq` + 1.
 
-The chunk length is a setting in debug builds only (mvp.md § Chunk size).
+A track and epoch with no line has `watermark` = the epoch start,
+`anchor = []` and `nextSeq = 1`.
 
-4.3. The stabilizer, per update:
+4.2. **Windows.** `Windowing.next` is pure. It uses these terms:
 
-1. Drops words that start before the watermark (replay, 4.5).
-2. Edge merge: if the update's first words repeat the tail's last words
-   (same text, case-insensitive, after stripping punctuation) and start
-   before the tail's last word ends + 0.5 s, the tail's copies are replaced
-   by the update's. Two-word and one-word overlaps are checked, longest
-   first.
-3. Appends the remaining words to the tail.
-4. Commits: a word becomes final when it is confirmed (a later update has
-   `confirmsEarlier`) and the next update's edge has been merged after it, or
-   when `isFinal` (ADR-001 decision 7). Final words from the start of the tail form one
-   segment, cut at sentence ends (`.`, `?`, `!`) and at pauses over 1.5 s. A
-   segment is committed only when every word before it is committed
-   (ADR-001 decision 7).
-5. Watermark: if the tail is empty, `max(watermark, coveredUntil)`; else
-   `max(watermark, min(coveredUntil, tail.first.start))`. It never decreases
-   and is at or past every committed word's end.
+- `F`: the frontier's watermark;
+- `es`: the epoch start;
+- `E`: the epoch end, if the epoch has ended;
+- `edge`: the written edge;
+- L = 4 s left context, C = 4 s commit span, R = 4 s right context.
 
-4.4. The session appends each non-empty `commits` with its watermark
-(4.1). A watermark that moved with no commits is appended alone, at most
-once every 5 s per track. If `append` throws, recognition of that track
-pauses: the attempt is revoked, its tail stays shown (marked as unsaved),
-the range after the watermark goes to `meta.unrecognised` and
-`meta.transcript` becomes `incomplete`. Recording is not affected.
+| Kind | When | Range |
+|---|---|---|
+| none | `F == E` | — |
+| commit | `edge ≥ F + C + R` | `[max(es, F − L), F + C + R]` |
+| final | the epoch has ended and `E − F ≤ C + R` | `[max(es, F − L), E]` |
+| preview | live only; `edge − F ≥ 1 s` and `edge ≥ lastPreviewTo + 2 s` | `[max(es, F − L), edge]` |
 
-4.5. A new attempt (stall restart, model arrival, catch-up) starts reading
-at `max(epochStart, watermark − 4 s)` and its stabilizer starts at the
-logged watermark and last committed word. Only the current attempt's updates
-reach the stabilizer; updates of a revoked `AttemptID` are dropped
-(ADR-001 decision 1). If FluidAudio's word times turn out too coarse for 4.3
-step 1 (acceptance item A9), this spec is amended before build, as ADR-001
-says.
+The rows are checked in order. A window is at most L + C + R = 12 s long,
+under FluidAudio's 15 s single-pass limit (`ASRConstants.maxModelSamples`).
+A window shorter than FluidAudio's 0.3 s minimum is padded with zero
+samples at the end.
 
-4.6. `raw.md` is rebuilt from `live.jsonl` after each append, debounced to
-once per 5 s and at session close, written atomically. Format: one paragraph
-per segment in time order, `[mm:ss] «я» text` or `[mm:ss] «они» text`, a
-line `— gap —` where an epoch ends, and segments with `late` marked `(late)`.
+4.3. **FluidAudioASR.** Each attempt gets its own `AsrManager`; all
+attempts share one loaded `AsrModels`. Each window calls
+`transcribe(samples, decoderState: &fresh)` with a new decoder state and no
+language hint, because a Russian hint filters out Latin-script terms. Words
+come from `ASRResult.tokenTimings`:
 
-4.7. A segment is `late` when it was committed more than 60 s after its
-`end` (mvp.md § v4 screen details).
+- A token whose text begins with a space starts a new word (FluidAudio has
+  already replaced `▁` with a space), and so does the first token.
+- Every other token, punctuation included, joins the previous word.
+- A word's text is its tokens joined, with the leading space trimmed.
+- `start` = first token's `startTime + from`; `end` = last token's
+  `endTime + from`.
+
+Empty `tokenTimings` means no words. `recognize` throws what `transcribe`
+throws.
+
+4.4. **Stabilizer.step** turns one window's words into at most one log
+line. Normalized text means lowercase, with leading and trailing
+punctuation stripped. A *boundary* after word `i` is valid when word
+`i + 1` is absent or starts at or after word `i`'s end. A *sentence end* is
+a word ending in `.`, `?`, `!` or `…`. A *pause* is more than 1.5 s between
+a word's end and the next word's start.
+
+1. **Align with the last commit.** For `m` from `min(3, anchor.count)` down
+   to 1, look for runs in `words` that meet two conditions:
+   - their normalized texts equal the last `m` anchor words';
+   - their last word's `end` is within 0.4 s of `anchor.last.end`. That is
+     FluidAudio's re-decode jitter allowance of five 80 ms frames.
+
+   Take the first `m` that has runs. Among its runs, take the one whose end
+   is closest to `anchor.last.end`, the earlier one on a tie. The *new
+   words* are those after it. If no `m` has a run, the new words are those
+   whose midpoint `(start + end) / 2` is at or after `F`.
+2. **Preview:** the output is `tail` = new words, with no line.
+3. **Committable words:** for `final`, all new words. For `commit`, the
+   longest prefix of new words that all end at or before `F + C`.
+4. **Cut.** For `final`, every committable word commits, and the last
+   segment's cut is `epochEnd`. For `commit`, the cut is the first of these
+   that exists:
+   1. the last valid boundary in the committable words, at or after
+      `F + C/2`, that follows a sentence end or precedes a pause (`sentence`
+      or `pause`);
+   2. the last valid boundary in the committable words (`forced`);
+   3. the first valid boundary among the new words (`forced`). The window's
+      last word always has one, so every window with new words commits at
+      least one word.
+5. **Segments.** Committed words split into segments after each sentence
+   end and before each pause. Each segment gets a `seq` from `nextSeq`
+   upward, plus `origin` and `late` (4.8). It also gets the `cut` that ends
+   it: the reason it split, or step 4's cut for the last one.
+6. **Watermark.** With `limit` = `F + C` for `commit` or `E` for `final`,
+   `c` = the last committed word's end (or `F`) and `t` = the first
+   uncommitted new word's start (or `limit`):
+   `W = max(F, c, min(limit, t))`. The valid boundary makes `c ≤ t`, so
+   `W` passes no tail word. Everything in `[F, W]` is committed text or
+   decoded silence. If a `commit` window has no new words, `W = F + C`.
+7. **Output.** `line(watermark: W, segments)`, `next` (the frontier once
+   that line is durable) and `tail` (the uncommitted new words).
+
+`step` changes no state. The session keeps its frontier and replaces it
+with `next` only after `SegmentLog.append` returns (ADR-001 decision 4).
+
+4.5. **Attempts.** While recording, the session runs one attempt per track
+and open epoch. During catch-up, it runs one per track and epoch with
+outstanding audio. An attempt loops: plan with `Windowing.next`, read,
+`recognize`, `step`, append. At most one window per attempt is in flight. A
+revoked attempt's results are dropped by `AttemptID`, and its recogniser is
+released without waiting (ADR-001 decision 1). A new attempt starts at the
+durable frontier, so all of these follow one path:
+
+- a restart;
+- model arrival;
+- catch-up after Stop or after relaunch;
+- resuming after a pause.
+
+The old attempt's tail stays in the panel until the new attempt's first
+window returns.
+
+4.6. **Append failure.** If `append` throws and the reloaded log (4.1) does
+not hold the line, recognition of that track and epoch pauses. Its
+committed words stay in the tail, marked unsaved, and `meta.transcript`
+becomes `incomplete`; recording continues. The track retries once a minute
+from the durable frontier, and the unsaved words are cleared when the new
+attempt's first window returns.
+
+4.7. `raw.md` is rebuilt from the log, debounced to once per 5 s and at
+session close, and written atomically:
+
+- One paragraph per run of segments of one track and epoch, in time order,
+  joined across a segment that ends with `cut = forced`.
+- Each paragraph begins `[mm:ss] «я» ` or `[mm:ss] «они» `, or
+  `[hh:mm:ss]` from one hour on.
+- A `— gap —` line where an epoch ends other than by `stop`.
+- `(late)` after a late segment's text.
+
+4.8. A segment is `late` when any of these holds:
+
+- its origin is `reopened`;
+- its `end` is before `liveSince`: audio recorded before the model arrived
+  (mvp.md § v4 screen details);
+- `now − end > 60 s`, as when catch-up after a stall reaches text a minute
+  old.
+
+The last seconds committed by catch-up just after Stop are not late.
 
 ### 5. Stalls
 
-5.1. An attempt is stalled when the written edge has been at least
-`coveredUntil + chunk + right context` (6 s) for 12 s without an update.
+5.1. A live attempt is stalled when a `recognize` call has been in flight
+for 12 s. It is also stalled when the written edge has stayed at or past
+`F + C + R + 4 s` for 12 s without a window returning.
 
-5.2. A stalled attempt is revoked without waiting (`cancel`), and a new one
-starts as in 4.5.
+5.2. A stalled attempt is revoked without waiting (4.5). A new attempt, with
+a new recogniser, starts at the frontier.
 
-5.3. After 3 stalls on the same track and epoch within 5 minutes, live
-recognition of that track stops for the rest of the recording. The panel
-says "Live text paused for «они»"; the range goes to catch-up after Stop.
+5.3. After 3 stalls or ended attempts (3.5) on one track and epoch within
+5 minutes, live recognition of that track pauses for the rest of the epoch.
+The panel says "Live text paused for «они»", and catch-up recognises the
+range after Stop.
 
 ### 6. Panel
 
 6.1. The panel is an `NSPanel` that floats over full-screen apps on all
-spaces and never takes focus from the call app, except while the owner
+spaces. It never takes focus from the call app, except while the owner
 selects text in it.
 
-6.2. Content order: committed segments of both tracks by `start`, `me`
-first on a tie; then each track's tail, ordered by its first word's start.
-Each block is prefixed by its time and speaker as in the design
-(audelin/docs/design/README.md).
+6.2. **Blocks.** Each committed segment, each track's live tail and each gap
+is a block. Blocks are ordered by `(start, track, kind)`:
 
-6.3. The session sends `PanelPatch`es: `insertSegment(id, after: id?)`,
-`setTail(track, words)`, `gap(track, at)`, `status(text)`. The panel applies
-them to its `NSTextStorage` and keeps a map from segment id and tail to
-character range. A patch outside the selected range shifts the selection
-with the text. A tail replacement that overlaps the selection keeps it when
-the selected words are unchanged and drops it otherwise. Scrolling follows the end only when the view was at the end.
+- `start` is a segment's start, a tail's first word's start, or a gap's
+  epoch end;
+- `me` sorts before `them`;
+- a segment sorts before a tail, and a tail before a gap.
+
+Adjacent segments of one track and epoch render as one paragraph while the
+earlier one ends with `cut = forced`. A paragraph starts with its time and
+speaker label, as in the design (audelin/docs/design/README.md).
+
+6.3. **Patches.**
+
+```swift
+enum PanelPatch: Equatable {
+    case commit(Track, epoch: Int, segments: [Segment], tail: [Word])  // atomic promotion
+    case setTail(Track, epoch: Int, words: [Word], unsaved: [Word])
+    case gap(Track, epoch: Int, at: Double)
+    case status(String?)
+    case reset(TranscriptState)       // when the panel opens
+}
+```
+
+The panel applies each patch to its `NSTextStorage` as one edit. It keeps a
+map from block to character range, and within a block from word index to
+UTF-16 range.
+
+6.4. **Selection.** An endpoint is stored as (block, word index, UTF-16
+offset in the word).
+
+- An edit outside the selected range shifts the range with the text.
+- Content inserted inside the selected range, such as a late segment or a
+  gap, joins the selection.
+- `commit` and `setTail` map the old tail's words to the new words (the
+  committed segments, then the new tail) by the longest common subsequence
+  of normalized texts.
+  - An endpoint whose word maps moves with it and keeps its offset, clamped
+    to the word's length if the text changed.
+  - If an endpoint's word does not map, the selection is dropped.
+
+6.5. Scrolling follows the end only while the view is at the end. A
+selection stops it from following until the selection is cleared.
 
 ### 7. Activity gate
 
-7.1. `acquire` refuses: `.recording` when `.recording` or `.move` is held;
-`.move` when `.recording`, `.move` or any `.delete` is held; `.delete(id)`
-when `.recording(id)` or `.move` is held; `.catchUp` when `.recording`,
-`.move` or `.delete` of the same call is held. Acquiring `.recording`,
-`.move` or `.delete(id)` cancels a conflicting `.catchUp` first (3.4).
+7.1. One mutating owner per call; `move` is exclusive.
 
-7.2. Two acquires at the same moment are ordered by the actor: exactly one
-of a recording and a move succeeds.
+| Requested ↓ / held → | recording(x) | catchUp(x) | edit(x) | delete(x) | move |
+|---|---|---|---|---|---|
+| recording(y), new call | refuse | revoke all catch-ups | — | — | refuse |
+| catchUp(id) | refuse | refuse if x = id | refuse if x = id | refuse if x = id | refuse |
+| edit(id) | refuse if x = id | refuse if x = id | refuse if x = id | refuse if x = id | refuse |
+| delete(id) | refuse if x = id | revoke if x = id | refuse if x = id | refuse if x = id | refuse |
+| move | refuse | revoke | refuse | refuse | refuse |
 
-7.3. Only holders write into the calls folder (ADR-001 invariant 16).
+"—" means compatible. A refusal returns `.busy(heldActivity)`.
+
+7.2. `acquire` is atomic on the actor. It checks the table, records the
+grant and returns. A request that needs revocations first marks the victims
+revoked and blocks new grants that conflict with the request. It waits for
+every victim's `release` and only then grants. A recording and a move
+requested at the same moment are ordered by the actor, so exactly one is
+granted.
+
+7.3. Revocation is fenced. Once a lease is revoked, `isValid` returns false,
+so FileCallStore refuses that lease's new writes with `.revoked`. The holder
+receives the lease on `revocations`. It finishes its in-flight write (one
+log line, one `meta.json` rename or one `.pcm` write), cancels pending jobs
+and calls `release` within 2 s. If it has not by then, the gate releases the
+lease itself, and the fence refuses any later write.
+
+7.4. `transfer(lease, to:)` swaps the activity in one actor step, so there
+is no unheld moment. It is allowed only from `.recording(id)` to
+`.catchUp(id)`.
+
+7.5. Every writer and its activity:
+
+| Writer | Activity |
+|---|---|
+| audio, index, seal and `meta.json` while recording or saving | `recording(id)` |
+| catch-up commits, `meta.json`, `raw.md` | `catchUp(id)` |
+| rename of a call that has a session | routed to the session, under its lease |
+| rename of a closed call, Finder-title update, launch repair | `edit(id)` |
+| delete | `delete(id)` |
+| folder move and its journal | `move` |
+| settings and models in `~/.audelin/` | outside the calls folder; no lease |
 
 ### 8. Setup and models
 
-8.1. Setup runs on first launch and when the launch check fails. It asks for
-the calls folder (default `~/Recordings/Audelin`, created if missing) and
-the live model. Nothing else is configured in v1.
+8.1. Setup runs on first launch (no settings) and when the launch check
+fails. It asks for the calls folder (default `~/Recordings/Audelin`,
+created if missing) and the live model. Nothing else is configured in v1.
 
 8.2. The live model is Parakeet TDT v3 (CoreML) at the revision FluidAudio
-0.17.7 loads. The app ships a manifest of its files with size and SHA-256.
-`findReusable` checks FluidAudio's default cache and other apps' known
-model folders; a folder is reused only if every manifest file matches by
-name, size and SHA-256. Otherwise the model is downloaded into
-`~/.audelin/models/`.
+0.17.7 loads. The app ships a manifest of the model's files with size and
+SHA-256. `findReusable` checks FluidAudio's default cache folder and other
+apps' known model folders. A folder is reused only if every manifest file
+matches it by name, size and SHA-256. Otherwise the model is downloaded
+into `~/.audelin/models/` and checked against the manifest.
 
-8.3. Settings live in `~/.audelin/settings.json`:
+8.3. Settings live in `~/.audelin/settings.json`, written atomically:
 `{"version":1,"callsFolder":"…","liveModel":{"path":"…","source":"reused|downloaded"}}`.
+`Settings` is the matching `Codable` struct.
 
-8.4. Launch check: the calls folder exists and is writable; the model path
-matches the manifest by name and size (not SHA-256, too slow at launch). A
-failure opens setup with the reason ("The live model at … is gone").
+8.4. The launch check verifies two things: the calls folder exists and is
+writable, and the model path holds every manifest file at its manifest
+size. A failure opens setup with the reason ("The live model at … is
+gone"). It skips SHA-256 to keep launch fast; a corrupt model then shows
+up as failed windows (3.5).
 
-8.5. Recording may start while the model downloads (3.7).
+8.5. A failed download sets `status` to `.failed(reason)`, and setup offers
+Retry. Recording may start while the model downloads or after a failure
+(3.8).
 
 ### 9. Calls list
 
 9.1. The list shows every call by `start`, newest first, with title,
-duration, and `audio`/`transcript` status.
+duration and the audio and transcript status. "Recording", "Saving…",
+"Catching up" and "Paused" come from live sessions.
 
-9.2. Rename: the new title is sanitized (1.2); the folder is renamed to keep
-its timestamp; a name clash gets ` 2` (1.1); `meta.title` is updated. A
-rename during recording or catch-up goes through the session owner.
+9.2. Rename sanitizes the title (1.2) and renames the folder, keeping its
+timestamp. A name clash gets ` 2` (1.1). `meta.title` is updated after the
+folder. A call with a session is renamed through the session; any other
+call is renamed under `.edit(id)`. A refused lease shows "Busy:
+<activity>".
 
-9.3. Delete asks for confirmation, acquires `.delete(id)`, and moves the
-whole folder to the macOS Trash.
+9.3. Delete asks for confirmation, acquires `.delete(id)` (which revokes
+that call's catch-up) and moves the whole folder to the macOS Trash.
 
 9.4. Changing the calls folder asks "Move N calls (size)?" and acquires
-`.move`. Calls move one by one: copy, verify every file's size and SHA-256,
-then delete the source. A name clash in the target gets ` 2`. On a failure
-the move stops, reports "Moved 31 of 52. '<title>' failed: <reason>." and
-offers Retry, which continues with the calls not yet moved. The setting
-changes only when every call has moved; until then it shows the old folder
-with a note that some calls are in the new one (mvp.md § v4 screen details).
+`.move`. Calls move one at a time: copy into the new folder, verify every
+file's size and SHA-256, then delete the source. A name clash in the target
+gets ` 2`.
+
+9.5. **Move journal.** `~/.audelin/move.json` is written atomically before
+the first copy and after every step:
+`{"from":"…","to":"…","calls":[{"id":"…","state":"pending|copied|verified|deleted"}]}`.
+
+- While a journal exists, the store scans both folders.
+- An id found in both folders resolves by its state. The copy in `to` wins
+  for `verified` or `deleted`; otherwise the copy in `from` wins.
+- On a failure, the move stops and reports "Moved 31 of 52. '<title>'
+  failed: <reason>." It offers Retry, which continues from the journal.
+- On launch, a journal shows the same report with Retry.
+- A resumed move deletes a `verified` call's source. For a `copied` or
+  `pending` call, it removes the partial target and copies again.
+- When every call is `deleted`, the setting switches to `to`, and then the
+  journal is removed.
+- Until then, Settings shows the old folder with "Some calls are in <to>"
+  (mvp.md § v4 screen details).
 
 ### 10. Logging
 
 10.1. The composition root wraps every port adapter and every Core's public
-API in a logging decorator (ADR-001 decision 10). Each logs the call name,
-argument shapes, result shape, error, and duration to `os.Logger` with
-subsystem `audelin.Audelin` and the interface name as category.
+API in a logging decorator (ADR-001 decision 10). Each decorator logs the
+call name, argument shapes, result shape, error and duration to `os.Logger`,
+with subsystem `audelin.Audelin` and the interface name as the category.
 
-10.2. Levels: calls and results `.debug`; errors `.error`; calls over 1 s
-`.info`. Transcript text and audio samples are never logged, only their
-counts and times.
+10.2. Levels: calls and results at `.debug`, errors at `.error`, and calls
+over 1 s at `.info`. Transcript text and audio samples are never logged,
+only their counts and times.
 
 ## Values set by this spec
 
-Proposed, not decided by the owner; tuned while profiling and using the app.
+These are proposals, not owner decisions, and are tuned while profiling
+and using the app.
 
 | Value | Set to | Rule |
 |---|---|---|
-| Stop seal limit | 5 s | 3.1 |
-| Stop wait for the final update | 10 s | 3.2 |
-| Stall: no update while audio waits | 12 s | 5.1 |
-| Stalls before live text pauses | 3 in 5 min | 5.3 |
-| Replay context before the watermark | 4 s | 4.5 |
-| Edge-merge window | 0.5 s | 4.3 |
-| Segment cut at a pause | 1.5 s | 4.3 |
-| Late segment | committed > 60 s after its end | 4.7 |
-| Recorder write interval | 0.5 s | 2.3 |
-| `raw.md` rebuild and idle watermark | every 5 s | 4.4, 4.6 |
-| Capture reacquire retries | 3, 1 s apart | 2.6 |
-| Title length | 100 characters | 1.2 |
-| First title | `Zoom` if running, else `Call` | 1.3 |
+| Recogniser | our own windows on `AsrManager.transcribe` (owner, 2026-10-21) | 4.2, 4.3 |
+| Window: left context / commit span / right context | 4 s / 4 s / 4 s | 4.2 |
+| Preview windows | when ≥ 1 s is outstanding, at most every 2 s of new audio | 4.2 |
+| Preferred cut | at or after `F + C/2` | 4.4 |
+| Alignment run / tolerance | up to 3 words / 0.4 s (FluidAudio's 5-frame jitter) | 4.4 |
+| Segment cut at a pause | 1.5 s | 4.4 |
+| Language hint | none | 4.3 |
+| Late segment | reopened, before `liveSince`, or committed > 60 s after its end | 4.8 |
+| Stop limit before "Saving…" | 5 s | 3.1 |
+| Stall | 12 s in flight, or 12 s with no window while audio waits | 5.1 |
+| Live text pauses after | 3 stalls or ended attempts in 5 min | 5.3 |
+| Window retry / catch-up restart / give-up | once / after 5 s / after 3 attempts | 3.5 |
+| Append-failure retry | once a minute | 4.6 |
+| Dropout that starts a new epoch | drift > 0.2 s | 2.3 |
+| Recorder write interval | 0.5 s | 2.5 |
+| `.pcm` file | 480 000 frames; raw `Int16` LE mono 16 kHz | 2.4 |
+| Durability | `fsync` per index line, log line and closed `.pcm`; atomic rename for JSON files | 2.4, 2.5, 4.1 |
+| `raw.md` rebuild | debounced 5 s, and at close | 4.7 |
+| Capture reacquire after a failure | 3 tries, 1 s apart | 2.7 |
+| Single-track start | allowed, with a panel notice | 2.2 |
+| Revoked holder's release limit | 2 s | 7.3 |
+| Reopened sessions | one at a time, newest first | 3.7 |
+| Launch check | names and sizes, no SHA-256 | 8.4 |
+| Model reuse | full manifest match, SHA-256 included | 8.2 |
+| Locations | calls in `~/Recordings/Audelin`; app data in `~/.audelin/` | 8.1, 8.3, 9.5 |
+| Minimum macOS | 14.2 (process taps) | 2.1 |
+| Title length / first title | 100 characters / `Zoom` if running, else `Call` | 1.2, 1.3 |
 | Delete | to the macOS Trash | 9.3 |
-| Bundle id and log subsystem | `audelin.Audelin` | 10.1 |
+| Bundle id and log subsystem / slow call | `audelin.Audelin` / > 1 s logged at `.info` | 10 |
+| Word-time check against a full decode | 80 ms (one encoder frame) | test 36 |
 
 ## Tests (required)
 
-Pure tests run without audio or a model (ADR-001 invariant 14). Stabilizer
-fixtures are update logs recorded once from FluidAudio over a recording the
-owner makes for the purpose, saved as JSON lines of `RecognitionUpdate`;
-the audio is not committed.
+Pure tests run without audio or a model (ADR-001 invariant 14, as amended).
 
-TranscriptCore (stabilizer):
+**Window fixtures** are recorded once from FluidAudioASR, over a recording
+the owner makes for the purpose. It holds Russian speech, English terms,
+repeated words («да, да»), pauses and a long unbroken sentence. The
+recording runs the real windowing and saves each `(plan, words)` as a JSON
+line. A second and a third set decode the same audio with every window
+shifted by +0.24 s and −0.24 s. A full-file decode of the same audio is the
+reference. A fake `Recognizer` returns the recorded words for a plan. The
+audio is not committed.
 
-1. Fixture replay commits every word once, in time order (4.3).
-2. A repeated word at a chunk edge is logged once; the later copy wins (4.3.2).
-3. Text that arrives only in the final update is committed (4.3.4; A4).
-4. A later segment waits while earlier words are in the tail (4.3.4).
-5. Silence advances the watermark to `coveredUntil` (4.3.5).
-6. The watermark never passes a tail word and never decreases (4.3.5).
-7. Replay from `watermark − 4 s` commits nothing before the watermark and
-   keeps the new words of a crossing segment (4.5; A5).
-8. A segment is cut at a sentence end and at a 1.5 s pause (4.3.4).
+TranscriptCore:
 
-LiveSessionCore (fakes for every port, manual clock):
+1. Fixture replay logs every reference word once, in time order. Any
+   mismatch is at an alignment point and is counted by test 7 (4.4).
+2. Alignment drops re-decoded committed words, with the anchor in the
+   window's left context (4.4.1).
+3. Genuine repeats: «да да» across a commit boundary is logged twice. A word
+   that changed at the boundary («показывает» → «показывается») is logged
+   once (4.4.1).
+4. With no anchor run, the stabilizer falls back to midpoints (4.4.1).
+5. Cuts: a sentence end after `F + C/2`, then a pause, then forced. No cut
+   splits overlapping words, and the progress rule commits at least one
+   word (4.4.4).
+6. Watermark: silence gives `W = F + C`, and `W` never passes a tail word
+   or decreases and is at or past every committed end. This holds with
+   equal timestamps and overlapping word intervals too (4.4.6).
+7. On the shifted fixtures, restarting at every frontier logs no word twice
+   and loses none. The mismatch count is reported (4.4, 4.5; A5, A9).
+8. `final` commits every remaining word, and the last segment's cut is
+   `epochEnd` (4.2, 4.4; A4).
+9. `Windowing.next`: commit, final and preview plans, the epoch-start
+   clamp, `F == E`, and padding under 0.3 s (4.2).
+10. `Transcript.fold` and `outstanding`: frontiers, anchors, `nextSeq`, and
+    a track and epoch with no line (4.1, 3.7).
+11. `late`: a reopened origin, an end before `liveSince`, a live commit at
+    59 s and at 61 s after its end, and catch-up right after Stop (4.8).
 
-9. A blocked recogniser does not delay `append`; Stop returns within the
-   seal limit (2.3, 3.1; A3).
-10. A stalled attempt is revoked and replaced; its late updates are dropped
-    (5.2, 4.5; A5).
-11. Three stalls pause live text for that track only (5.3).
-12. A write error stops capture on both tracks, shows "Recording failed" and
-    sends no unwritten audio to recognition (2.5; A6).
-13. `interrupted` writes a gap; no segment spans it; the stabilizer restarts
-    (2.6; A7).
-14. Final update within the stop wait commits the tail; past it, the range
-    goes to `meta.unrecognised` (3.2).
-15. A failed `SegmentLog.append` pauses that track and marks the call
-    incomplete; recording continues (4.4).
-16. Model arrival mid-call starts attempts from the watermark; their
-    segments over 60 s old are `late` (3.7, 4.7).
-17. Catch-up is cancelled by a recording start and resumes after (3.4).
+LiveSessionCore (fakes for every port, manual clocks):
+
+12. A blocked recogniser does not delay `append`. `stop()` returns within
+    5 s. With a blocked seal, the session shows "Saving…" and holds the
+    recording lease until the seal returns (2.5, 3.1; A3).
+13. A stalled attempt is revoked and replaced, and its late results are
+    dropped (5.1, 5.2, 4.5; A5).
+14. Three stalls pause live text for that track only (5.3).
+15. A write error stops capture on both tracks, shows "Recording failed",
+    sets `audio = failed` and passes no unwritten audio to recognition
+    (2.6, 3.1; A6).
+16. Each `interrupted` reason follows 2.7's table. With both tracks
+    suspended, the session stays `recording`. Once every track has ended,
+    it finalizes. A gap patch is sent, and no segment spans the gap (2.7,
+    6.3; A7).
+17. A drift of +0.3 s starts a new epoch, and −0.3 s does not. Tracks that
+    start at different times keep their own epoch starts (2.3).
+18. A window failure retries once, and a second failure or a read error
+    ends the attempt. In catch-up, three ended attempts leave the range
+    outstanding and the transcript `incomplete` (3.5).
+19. Append failure, two cases (4.1, 4.6):
+    - The write fails and the line is not durable: the track pauses, shows
+      its words as unsaved and retries from the old frontier.
+    - `fsync` fails after a durable write: the frontier comes from the
+      reloaded line.
+20. Model arrival mid-call starts attempts at the watermark and sets
+    `liveSince`. Catch-up with no model waits in `waitingForModel` (3.8).
+21. Stop transfers the lease to catch-up with no unheld moment, and a move
+    requested during `saving` is refused (3.1, 7.4).
+22. A recording start revokes catch-up: in-flight writes finish, the pending
+    `raw.md` rebuild is cancelled, the session is `paused`, and it resumes
+    afterwards (3.4, 7.3).
+23. A second `start()` throws `.alreadyStarted`, and concurrent `stop()`
+    calls share one finalization (2.8, 3.1).
+24. Single-track start: with the mic started and the tap failed, recording
+    runs with a notice. If both fail, `start()` throws and no folder exists
+    (2.2).
 
 Domain and gate:
 
-18. Recording and a move started at once: exactly one succeeds (7.2; A8).
-19. Every refusal and cancellation row of 7.1.
-20. Folder names, clashes, sanitizing and timestamp parsing (1.1, 1.2, 1.5).
+25. Every cell of the 7.1 table, in both acquisition orders.
+26. A recording and a move requested together: exactly one is granted (7.2;
+    A8).
+27. A revoked holder that has not released within 2 s loses its lease, and
+    its late write is refused (7.3).
+28. Folder names: clashes, sanitizing and parsing (1.1, 1.2, 1.5).
 
-FileCallStore (temp directories):
+FileCallStore (temporary folders):
 
-21. `live.jsonl` with a torn last line or segments after the last watermark
-    loads to the previous watermark (4.1).
-22. Crash repair truncates an odd-length `.pcm` and writes `gap`/`sealed`
-    (3.6).
-23. A Finder rename is picked up by id; a dropped timestamp falls back to
-    `start` (1.5, 1.6).
-24. Move: copy-verify-delete per call; a failure mid-way leaves the rest and
-    Retry finishes (9.4).
-25. `raw.md` matches `live.jsonl`, with gaps and late marks (4.6).
+29. A torn last line in `live.jsonl` loads as the lines before it. A failed
+    append truncates back and marks the log dirty, and no append goes
+    through until a load (4.1).
+30. Launch repair covers a torn index line, an odd-length `.pcm`, an open
+    epoch and a missing `sealed`. Running it twice writes nothing twice, and
+    neither does a crash injected after each of its writes (3.6).
+31. Outstanding audio is derived after a crash at each step of 3.1,
+    including `audio = complete` with an empty `unrecognised` and a short
+    log, and `audio = failed`. The call reopens, and catch-up after relaunch
+    logs the rest exactly once (3.7; A5).
+32. Reads across file rotations, with 480 000 frames per file and the range
+    check. A Finder rename is picked up by id, and a dropped timestamp falls
+    back to `start` (2.4, 1.5, 1.6).
+33. Move journal: a relaunch after each of copy, verify, delete and the
+    settings switch finds every call once, and Retry finishes (9.5).
+34. `raw.md` matches the log, with forced-cut joins, gaps and late marks
+    (4.7).
+35. Every write with a revoked lease, or another call's lease, throws
+    `.revoked` (7.3).
 
 Adapters (on this Mac, not in CI):
 
-26. FluidAudioASR maps a fixture recording to updates whose word times are
-    within 80 ms of the audio and whose `coveredUntil` never exceeds the
-    audio fed (4.2; A9).
-27. ModelStore reuses a folder only on a full manifest match (8.2).
+36. FluidAudioASR groups real 0.17.7 `tokenTimings` into words, including
+    punctuation and a word cut at the window start. Word times are within
+    80 ms of the full-file decode's times for the same words, and padding
+    works under 0.3 s (4.3).
+37. AudioCapture: the tap captures a test tone played as system audio.
+    Startup failures injected at the tap, the aggregate device and the IO
+    proc leave no device behind (2.1, 2.2).
+38. ModelStore reuses a folder only on a full manifest match, and a failed
+    download reports `.failed` (8.2, 8.5).
 
 Panel (UI tests):
 
-28. Selection survives appends, tail replacement and a late segment
-    inserted above it (6.3; A2).
+39. A selection survives these (6.4; A2):
+    - appends;
+    - selected tail words promoted into a segment;
+    - a late segment inserted above it, and one inserted inside it.
 
-Acceptance on a real call (LAB-408), from ADR-001:
+    A tail replacement that removes a selected word drops the selection.
+40. Block order: an earlier «они» tail sits above a later «я» segment. Gaps
+    and forced-cut joins render in place (6.2).
+41. The call app keeps focus, and scrolling follows only at the end (6.1,
+    6.5).
 
-- A1 capture-to-display delay through the record-first path, measured;
-- A2–A9 as mapped above, A2 also by hand;
-- A10 Parakeet v3 on clean Russian speech with RACI, OKR and SLA.
+Logging:
+
+42. A decorator logs a call, its result, error and duration, and never
+    transcript text (10).
+
+**Rule → tests:**
+
+| Rule | Tests |
+|---|---|
+| 1 | 28, 32 |
+| 2 | 12, 15–17, 24, 32, 37 |
+| 3 | 10, 12, 18, 21–23, 30, 31 |
+| 4 | 1–11, 19, 29, 34, 36 |
+| 5 | 13, 14 |
+| 6 | 39–41 |
+| 7 | 21, 22, 25–27, 35 |
+| 8 | 38 |
+| 9 | 32, 33 |
+| 10 | 42 |
+
+**ADR-001 acceptance → tests:**
+
+| Item | Tests |
+|---|---|
+| A1 capture-to-display delay | measured on a real call (LAB-408) |
+| A2 | 39, and by hand |
+| A3 | 12 |
+| A4 | 8 |
+| A5 | 7, 13, 31 |
+| A6 | 15 |
+| A7 | 16, 40 |
+| A8 | 26 |
+| A9 | 7 |
+| A10 Parakeet v3 on clean Russian speech with RACI, OKR and SLA | on a real call (LAB-408) |
 
 ## Done criteria
 
-- The modules match ADR-001's layout and invariants 1–19.
+- The modules match ADR-001's layout and invariants 1–19, as amended.
 - The interfaces above exist as written, or this spec is amended first.
-- Tests 1–28 pass; the acceptance list is run on a real call and logged in
+- Tests 1–42 pass. The acceptance list is run on a real call and logged in
   `audelin/docs/log.md`.
 
 ## Out of scope
 
-v2 explanations, v3 final pass, summary, calendar titles, audio compaction
-and retention, call detection, echo cancellation (ADR-001 § Non-goals).
+v2 explanations, the v3 final pass, summaries, calendar titles, audio
+compaction and retention, call detection and echo cancellation (ADR-001 §
+Non-goals).

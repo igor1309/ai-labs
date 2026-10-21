@@ -72,11 +72,11 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    watermark: the audio time up to which everything is accounted for, as
    committed text or as silence. It is not the last segment's time. It
    advances only together with the commits it covers, and never past audio
-   whose text is still in the live tail (such as text FluidAudio returns only
-   from `finish()`). A new attempt (restart or catch-up) may read earlier
-   audio for context, but commits only words after the watermark; a segment
-   that crosses it is cut at the watermark by word times, so nothing is
-   logged twice or lost. If a segment cannot be written to the log,
+   whose text is still in the live tail (such as the last words before Stop).
+   A new attempt (restart or catch-up) may read earlier audio for context,
+   but commits only words after the watermark: the words it re-decodes
+   before the watermark are matched against the last committed words and
+   dropped, so nothing is logged twice or lost. If a segment cannot be written to the log,
    recognition of that track pauses, its text stays in the live tail and the
    call is marked incomplete; the audio is intact.
 5. **One timeline, with epochs.** Both tracks share one session clock. A
@@ -87,11 +87,14 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    stream for the old epoch is finished and a new one starts.
 6. **One live stream per track (per epoch):** mic is «я», call audio is «они». Each has
    its own stabilizer.
-7. **The stabilizer is pure logic.** It keeps unconfirmed text, replaces it
-   when confirmed text arrives and merges words repeated at chunk edges. It
-   commits a segment (track, epoch, start and end time, text) only when the
-   segment can no longer change: its text is confirmed and the next chunk's
-   overlap has been merged, or the stream has finished. Segments commit in
+7. **The stabilizer is pure logic.** Audelin cuts its own recognition
+   windows from the written audio, each with left and right context, and
+   the stabilizer turns each window's words into commits (amended
+   2026-10-21, owner: FluidAudio's sliding-window updates hide retracted
+   words and failed windows; [spec-001](spec-001-v1.md) § Goal). It commits
+   a segment (track, epoch, start and end time, text) only when the segment
+   can no longer change: a window decoded it with full right context, or
+   the epoch has ended and the final window decoded it. Segments commit in
    time order per track and epoch: a later segment waits while any earlier
    text is still in the live tail. Until committed, text is a live tail,
    shown in the panel.
@@ -173,8 +176,9 @@ Behaviour:
     stabilizer MUST NOT join audio or text across it.
 13. Session state MUST change only through the session's owner; the panel's
     copy MUST be derived from it.
-14. TranscriptCore MUST be tested against the spike's recorded updates,
-    without audio or a model.
+14. TranscriptCore MUST be tested against recognizer output recorded once
+    from Parakeet v3, without audio or a model (amended 2026-10-21; was the
+    spike's sliding-window updates).
 15. Stop MUST end recording in bounded time even if recognition stalls or
     never had a model; unrecognised audio MUST stay marked until catch-up
     recognises it.
@@ -216,7 +220,7 @@ Acceptance before v1 is done:
 - Selection survives appends, in-place replacement and late insertion.
 - A blocked recogniser does not stop recording, and Stop still finalizes
   the call.
-- Text that appears only in `finish()` reaches the log.
+- The last words before Stop or a gap reach the log.
 - A restarted attempt and catch-up after relaunch log no text twice and lose
   none; a revoked attempt's late results are ignored.
 - A full disk during recording shows "recording failed" and stops capture.
@@ -224,9 +228,10 @@ Acceptance before v1 is done:
   it.
 - Starting a recording and starting a folder move at once: exactly one
   succeeds.
-- FluidAudio gives word times precise enough to cut a segment at the
-  watermark. If it does not, the watermark moves only at segment boundaries
-  and replay starts from the last one; this ADR is amended before build.
+- A restart at the watermark, with windows shifted by a few frames, logs
+  no word twice and loses none on the recorded fixtures. If it does not,
+  the watermark moves only at segment boundaries and replay starts from the
+  last one; this ADR is amended before build.
 - Parakeet v3 on clean Russian speech with RACI, OKR and SLA (tests.md § Not
   yet measured). If the terms come out in Cyrillic or wrong, as in run 3,
   live terms are not usable for v2 explanations, and the live engine is
