@@ -51,10 +51,12 @@ Taken from the spike ([tests.md](tests.md) run 3) and from the chat survey
 
 Assumption for v1: calls are taken on headphones, so no echo cancellation.
 
+Chunk size: 4 s by default (owner, 2026-10-21). It is a setting in debug
+builds so other sizes can be tried on real calls; release builds use the
+default.
+
 ## Open questions for the owner
 
-- **Chunk size for v1.** 4 s was the best in the spike (text ~6 s behind
-  speech); 2 s is faster but breaks words. Needs the owner's pick.
 - **How long audio is kept**, and where.
 - **Final-pass engine for v3:** Parakeet v3 over the whole file, or Whisper
   Large v3 Turbo already on this Mac. Needs a side-by-side on one call.
