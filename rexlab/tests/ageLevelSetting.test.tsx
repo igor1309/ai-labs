@@ -240,10 +240,12 @@ describe("a chosen level", () => {
     for (const level of ["hatchling", "paleontologist", "explorer", "hatchling"] as const) await chooseLevel(user, NAMES[level]);
 
     expect(pictureOn(levelButton())).toBe("🥚");
-    // The pre-level sorting best belongs to Hatchling: changing the
-    // setting changes the badge to that level's best (docs/age-levels.md).
-    expect(badges).toEqual(["7", String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, "6"]);
+    // The pre-level quiz and sorting bests belong to Hatchling: changing
+    // the setting changes their badges to that level's best
+    // (docs/age-levels.md).
+    expect(badges).toEqual([null, String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, "6"]);
     const hatchlingBadges = [...badges];
+    hatchlingBadges[0] = "7";
     hatchlingBadges[5] = "5";
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([hatchlingBadges, featured]);
     expect(featured).toBe("care");

@@ -79,7 +79,7 @@ function plainChanges<Screen>(screens: readonly Screen[], kind: (screen: Screen)
 
 describe("the compare quiz's transition for each change", () => {
   type QuizScreen = Parameters<typeof quizTransitionFor>[0];
-  const first = startRound(SHIPPED_DINOSAURS, seededRandom(1));
+  const first = startRound(SHIPPED_DINOSAURS, "hatchling", seededRandom(1));
   const firstQuestion = first.round[0];
   if (!firstQuestion) throw new Error("Expected a first question");
   const answered = choose(first, firstQuestion.left.id);
@@ -98,7 +98,7 @@ describe("the compare quiz's transition for each change", () => {
   });
 
   it("shows a round started over the round kept from before as the plain screen change", () => {
-    const again = startRound(SHIPPED_DINOSAURS, seededRandom(2), answered);
+    const again = startRound(SHIPPED_DINOSAURS, "hatchling", seededRandom(2), answered);
 
     expect(quizTransitionFor({ kind: "question", play: answered }, { kind: "question", play: again }, "start")).toBe(SCREEN_CHANGE);
     expect(quizTransitionFor(undefined, { kind: "question", play: again }, "start")).toBe(SCREEN_CHANGE);

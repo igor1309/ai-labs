@@ -37,11 +37,11 @@ import {
 
 const TODAY = new Date(2026, 9, 18, 9, 30);
 
-// Progress kept before the age level, a quiz best of 6 among it.
+// Progress kept, a quiz best of 6 at every level among it.
 const KEPT = JSON.stringify({
   schemaVersion: 1,
   games: {
-    "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 },
+    "compare-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: 6, roundsPlayed: 3 },
     "dinosaur-care": { bestScore: 4, visitsFinished: 2, friends: ["triceratops"] },
     "sort-dinosaurs": { bestScore: 5, roundsPlayed: 2 },
     "find-the-pair": { stars: 40, level: 2, boardsOnLevel: 1, best: {}, found: ["stegosaurus"] },
@@ -102,12 +102,10 @@ const button = (name: string) => screen.getByRole("button", { name });
 const group = () => screen.getByRole("group", { name: "ANIMALS" });
 
 // Games with only Hatchling retain their play at every age level
-// (age-level-start.feature). Sorting and the skeleton game have their own
-// levels and flow tests. Each game, by its tile, and the taps that take
-// it from its
-// first screen into play.
+// (age-level-start.feature). Sorting, the skeleton game and the compare
+// quiz have their own levels and flow tests. Each game, by its tile, and
+// the taps that take it from its first screen into play.
 const GAMES: Array<[game: string, tile: string, into: Array<() => HTMLElement>]> = [
-  ["the compare quiz", "COMPARE", []],
   ["the catalogue", "ANCIENT REPTILES", []],
   ["the care game", "CARE", [() => button("NEW VISITOR")]]
 ];
@@ -169,6 +167,7 @@ describe("the same play", () => {
     expect(screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"))).toEqual(["NEW BEST SCORE"]);
     await user.click(button("HOME"));
     expect(badgeOf(gameDoor("COMPARE"))?.textContent).toBe("10");
-    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: 10, roundsPlayed: 4 });
+    const best = (at: AgeLevel) => (at === level ? 10 : 6);
+    expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: best("hatchling"), explorerBest: best("explorer"), paleontologistBest: best("paleontologist"), roundsPlayed: 4 });
   });
 });

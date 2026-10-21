@@ -5,7 +5,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
-import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser } from "./support.ts";
+import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const NARROW = "(max-width: 599.98px)";
@@ -69,7 +69,7 @@ describe("the app in a browser", () => {
       })
     );
 
-    expect(props.progress.load()).toEqual({ bestScore: 6, roundsPlayed: 3 });
+    expect(props.progress.load()).toEqual(quizSaved(6, 3));
     expect(props.languageStore.load()).toBe("ru");
     expect(props.themeStore.load()).toBe("dark");
     expect(props.ageLevelStore.load()).toEqual({ level: "hatchling", revision: "r1" });
@@ -79,12 +79,12 @@ describe("the app in a browser", () => {
     const given = browser();
     const props = appProps(given);
 
-    props.progress.save({ bestScore: 4, roundsPlayed: 1 });
+    props.progress.save(quizSaved(4, 1));
     props.languageStore.save("ru");
     props.themeStore.save("light");
     props.ageLevelStore.save({ level: "paleontologist", revision: "r2" });
 
-    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual(JSON.parse(record(4, 1)));
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 4, explorerBest: null, paleontologistBest: null, roundsPlayed: 1 } } });
     expect(given.localStorage.items.get(LANGUAGE_KEY)).toBe("ru");
     expect(given.localStorage.items.get(THEME_KEY)).toBe("light");
     expect(JSON.parse(given.localStorage.items.get(AGE_LEVEL_KEY) ?? "")).toEqual({ level: "paleontologist", revision: "r2" });
@@ -137,7 +137,7 @@ describe("the app in a browser", () => {
     const reopened = appProps(given);
     expect([reopened.skeletonProgress.load(), reopened.progress.load(), reopened.careProgress.load()]).toEqual([
       { progress: { bestScore: 2, earned: ["tyrannosaurus", "stegosaurus"], rebuilding: ["stegosaurus"], badges: {} }, levelChoice: undefined },
-      { bestScore: 6, roundsPlayed: 3 },
+      quizSaved(6, 3),
       care
     ]);
   });

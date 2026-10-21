@@ -283,7 +283,7 @@ export function App({
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
-  const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, home, counting("compare"));
+  const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, ageLevel, home, counting("compare"));
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {

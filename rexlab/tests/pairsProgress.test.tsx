@@ -7,7 +7,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, playDealt, playPairs, storedPairs, type StoredPairs } from "./pairsApp.tsx";
-import { SHIPPED_PALS, gameDoor, manualTimers, memoryStorage, symbolOf } from "./support.ts";
+import { SHIPPED_PALS, gameDoor, manualTimers, memoryStorage, quizSaved, symbolOf } from "./support.ts";
 
 // find-the-pair-progress.feature at every age level, and the full flow
 // of find-the-pair-level-progress.feature.
@@ -88,9 +88,9 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     await reopened.user.click(button("FIND THE PAIR"));
 
     expect([storage.items.get(LANGUAGE_KEY), storage.items.get(THEME_KEY), storage.items.get(AGE_LEVEL_KEY)]).toEqual(["en", "dark", setting]);
-    expect(localProgress(() => storage).load()).toEqual(quiz);
+    expect(localProgress(() => storage).load()).toEqual(quizSaved(7, 3));
     expect(localCareProgress(() => storage).load()).toEqual(care);
-    localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
+    localProgress(() => storage).save(quizSaved(10, 5));
     localCareProgress(() => storage).save({ ...care, visitsFinished: 3 });
     expect(storedPairs(storage)).toEqual(saved);
     expect(saved).toMatchObject({ stars: 1, best: { [played]: ids.length }, found: ordered(ids) });
@@ -115,7 +115,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(localPairsProgress(() => storage).load()).toEqual({ progress: { stars: 1, climbLevel: 1, boardsOnClimbLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length + 1 }, found: ordered(ids) }, levelChoice: undefined, offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } });
-    expect(localProgress(() => storage).load()).toEqual(state === "unknown schema" ? { bestScore: null, roundsPlayed: 0 } : quiz);
+    expect(localProgress(() => storage).load()).toEqual(state === "unknown schema" ? quizSaved(null, 0) : quizSaved(7, 3));
   });
 
   it("keeps the earned dinosaurs and star in memory when storage cannot be read, without a best", async () => {

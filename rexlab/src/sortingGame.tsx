@@ -4,7 +4,7 @@ import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { startLevel, type LevelChoice } from "./startLevel.ts";
-import { SortResultScreen } from "./SortResultScreen.tsx";
+import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { bestForLevel, boardState, drop, finishBoard, mergeProgress, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
@@ -131,7 +131,7 @@ export function useSortingGame(
       }
       case "result":
         return (
-          <SortResultScreen
+          <LevelResultScreen
             language={language}
             {...presentSortingResult(screen.result)}
             hero={bodyPicture(HERO)}

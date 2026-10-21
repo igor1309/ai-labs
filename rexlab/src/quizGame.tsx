@@ -1,17 +1,22 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
+import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { LoadAhead } from "./Picture.tsx";
 import { presentQuestion, presentResult } from "./presentation.ts";
 import { NEXT_QUESTION, QuestionScreen } from "./QuestionScreen.tsx";
-import { choose, finishPlay, next, questionState, startRound, type Dinosaur, type GameProgress, type Play, type Random, type RoundResult } from "./quiz/index.ts";
-import { ResultScreen } from "./ResultScreen.tsx";
+import { bestForLevel, choose, finishPlay, mergeProgress, next, questionState, startRound, type Dinosaur, type Play, type QuizProgress, type Random, type RoundResult } from "./quiz/index.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
+import { startLevel, type LevelChoice } from "./startLevel.ts";
+
+export type QuizSaved = { progress: QuizProgress; levelChoice: LevelChoice | undefined };
 
 export type ProgressStore = {
-  // The progress kept so far, or undefined when it cannot be read at all.
-  load(): GameProgress | undefined;
-  save(progress: GameProgress): void;
+  // The quiz's progress kept so far, or undefined when it cannot be read
+  // at all.
+  load(): QuizSaved | undefined;
+  save(saved: QuizSaved): void;
 };
 
 export type QuizGameProps = {
@@ -23,6 +28,9 @@ export type QuizGameProps = {
 
 // The dinosaur cheering the child on at the end of a round.
 const HERO = "tyrannosaurus";
+const OFFERED = ["hatchling", "explorer", "paleontologist"] as const;
+
+type Kept = { progress: QuizProgress | undefined; levelChoice: LevelChoice | undefined };
 
 type QuizScreen = { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
 
@@ -38,8 +46,31 @@ export function transitionFor(from: QuizScreen | undefined, to: QuizScreen | und
 // The compare quiz, kept by its owner above the orientation gate. It
 // shows nothing until a round is started. `onHome` takes the child back
 // to the home page; `onStart` is told as each round begins.
-export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGameProps, onHome: () => void, onStart: () => void) {
+export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGameProps, ageLevel: AgeLevelSetting, onHome: () => void, onStart: () => void) {
   const { screen, go } = useScreens<QuizScreen | undefined, "start">(undefined, transitionFor);
+  // Keep this visit's choice and scores even when a save fails.
+  const [kept, setKept] = useState<Kept>(() => {
+    const stored = progress.load();
+    return { progress: stored?.progress, levelChoice: stored?.levelChoice };
+  });
+  const keptNow = useRef(kept);
+  const level = startLevel(ageLevel, OFFERED, kept.levelChoice);
+  const refreshedProgress = (held: QuizProgress | undefined) => {
+    const stored = progress.load()?.progress;
+    return stored === undefined ? undefined : held === undefined ? stored : mergeProgress(held, stored);
+  };
+  const keep = (next: Kept) => {
+    const refreshed = refreshedProgress(next.progress);
+    const merged = { ...next, progress: refreshed ?? next.progress };
+    keptNow.current = merged;
+    setKept(merged);
+    if (refreshed !== undefined) progress.save({ progress: refreshed, levelChoice: next.levelChoice });
+  };
+  const chooseLevel = (chosen: AgeLevel) => {
+    if (chosen === startLevel(ageLevel, OFFERED, keptNow.current.levelChoice)) return;
+    const levelChoice = { level: chosen, revision: ageLevel.revision };
+    keep({ ...keptNow.current, levelChoice });
+  };
   // The round last played, so the next one asks other questions. It is
   // kept only while the app is open.
   const last = useRef<Play | undefined>(undefined);
@@ -50,7 +81,7 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
   // same screen change, so the owner can bring the quiz on screen with it.
   const start = (shown?: () => void) => {
     const from = screen;
-    const play = startRound(dinosaurs, random, last.current);
+    const play = startRound(dinosaurs, startLevel(ageLevel, OFFERED, keptNow.current.levelChoice), random, last.current);
     go((current) => (current === from ? { kind: "question", play } : current), {
       intent: "start",
       also: () => {
@@ -74,12 +105,10 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
   };
 
   // A round is recorded only here, when its result is shown, so a round
-  // left early changes nothing.
+  // left early changes nothing. Unreadable progress is not saved over.
   const seeResult = (finished: Play) => {
-    const result = finishPlay(finished, progress.load(), beatBest);
-    if (result.progress) {
-      progress.save(result.progress);
-    }
+    const result = finishPlay(finished, refreshedProgress(keptNow.current.progress), beatBest);
+    if (result.progress) keep({ ...keptNow.current, progress: result.progress });
     go({ kind: "result", result });
   };
 
@@ -107,10 +136,12 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
       }
       case "result":
         return (
-          <ResultScreen
+          <LevelResultScreen
             language={language}
             {...presentResult(screen.result)}
             hero={bodyPicture(HERO)}
+            level={level}
+            onLevel={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
           />
@@ -118,5 +149,5 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
     }
   };
 
-  return { start, content, best: progress.load()?.bestScore ?? undefined };
+  return { start, content, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
 }
