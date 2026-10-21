@@ -3,11 +3,13 @@ import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } 
 import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
+import { catalogueColumns, catalogueRow, type SideInsets } from "./catalogueColumns.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
+import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -96,6 +98,8 @@ export type Viewport = {
   isScreenUpright(): boolean;
   // The window's width in CSS pixels.
   width(): number;
+  // The window's safe-area insets at its left and right edges.
+  sideInsets(): SideInsets;
   subscribe(onChange: () => void): () => void;
 };
 
@@ -119,6 +123,8 @@ export type AppProps = CareGameProps &
     skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
+    // How the catalogue's food chips' parts are measured as laid out.
+    chipWidths: ChipWidths;
     // How the page's parts are found, measured and animated, and the page
     // cross-faded, as a screen goes to its other layout.
     layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer">;
@@ -212,6 +218,7 @@ export function App({
   random,
   viewport,
   portraitLayouts,
+  chipWidths,
   layoutMotion,
   pageVisibility,
   progress,
@@ -426,6 +433,10 @@ export function App({
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
   const shown = ofFood(catalogue, food);
+  // The catalogue's cards in a row, and in a tall window, where the chips
+  // stand on a row of their own, that row's width, by the window.
+  const columns = useSyncExternalStore(viewport.subscribe, () => catalogueColumns(viewport.width(), viewport.sizeClass(), viewport.sideInsets()));
+  const chipRow = useSyncExternalStore(viewport.subscribe, () => (viewport.sizeClass() === "tall" ? catalogueRow(viewport.width(), viewport.sideInsets()) : undefined));
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
@@ -505,6 +516,9 @@ export function App({
             dinosaurs={shown.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
             foods={FOODS.map((choice) => ({ food: choice, count: ofFood(catalogue, choice).length }))}
             food={food}
+            columns={columns}
+            chipRow={chipRow}
+            chipWidths={chipWidths}
             returning={screen.returning}
             onFood={chooseFood}
             onOpen={openDinosaur}

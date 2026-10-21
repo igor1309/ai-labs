@@ -28,6 +28,7 @@ import {
   lightDevice,
   manualPictures,
   manualViewport,
+  pageAtRest,
   seededRandom,
   swipeTiles,
   tilesRow,
@@ -155,6 +156,7 @@ function openTurning(
       {...emptyPairs()}
       {...emptySkeletons()}
       {...emptyDig()}
+      chipWidths={pageAtRest().chipWidths}
       layoutMotion={{
         parts: document,
         measure: (element) => {

@@ -2,7 +2,7 @@ import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
-import { FoodChips, type Food, type FoodChoice } from "./FoodChips.tsx";
+import { FoodChips, type ChipWidths, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -15,9 +15,6 @@ export type Measure = "height" | "wingspan" | "length";
 // A height stands up the card's ruler; a wingspan or a length lies along
 // its arrow, so neither reads as a height beside a dinosaur's.
 export const MEASURE_ICONS = { height: Ruler, wingspan: MoveHorizontal, length: MoveHorizontal } as const;
-
-// The cards in a row of the catalogue.
-const COLUMNS = 4;
 
 export type CatalogueCardView = {
   id: string;
@@ -38,6 +35,13 @@ export type CatalogueScreenProps = {
   dinosaurs: readonly CatalogueCardView[];
   foods: readonly FoodChoice[];
   food: Food;
+  // The cards in a row.
+  columns: number;
+  // The width of the chips' row where it stands on its own, in a tall
+  // window; undefined where the chips stand beside HOME.
+  chipRow: number | undefined;
+  // How the chips' parts are measured, for how they stand on their row.
+  chipWidths: ChipWidths;
   // The dinosaur whose page the child came back from, undefined when the
   // catalogue opens from the home page.
   returning: string | undefined;
@@ -46,7 +50,7 @@ export type CatalogueScreenProps = {
   onHome: () => void;
 };
 
-export function CatalogueScreen({ language, dinosaurs, foods, food, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
+export function CatalogueScreen({ language, dinosaurs, foods, food, columns, chipRow, chipWidths, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
   const grid = useRef<HTMLDivElement>(null);
 
@@ -60,20 +64,29 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, returning, o
 
   return (
     <main className="catalogue" aria-label={text.catalogue}>
-      {/* HOME and the chips in one row, the cards under it. */}
+      {/* HOME and the chips in one row, or in a tall window the chips
+          on a row of their own under HOME, and the cards under them. */}
       <header className="catalogue-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
         </Button>
-        <FoodChips language={language} choices={foods} chosen={food} onChoose={onFood} />
+        <FoodChips language={language} choices={foods} chosen={food} row={chipRow} widths={chipWidths} onChoose={onFood} />
       </header>
       {/* The cards rise in when the catalogue opens from home, and again
           for each food chosen, as a list of their own: back from a page,
           the picture shrinking into its card is the motion. */}
-      <div key={food} ref={grid} className="catalogue-grid" role="group" aria-label={text.catalogue} data-rise={returning === undefined || undefined}>
+      <div
+        key={food}
+        ref={grid}
+        className="catalogue-grid"
+        role="group"
+        aria-label={text.catalogue}
+        data-rise={returning === undefined || undefined}
+        style={{ "--columns": columns } as CSSProperties}
+      >
         {dinosaurs.map((view, index) => (
-          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, COLUMNS - 1)} onOpen={onOpen} />
+          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, columns - 1)} onOpen={onOpen} />
         ))}
       </div>
     </main>

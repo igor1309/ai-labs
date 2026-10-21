@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalogueColumns, type SideInsets } from "../src/catalogueColumns.ts";
+import { catalogueColumns, catalogueRow, type SideInsets } from "../src/catalogueColumns.ts";
 
 const NO_INSETS: SideInsets = { left: 0, right: 0 };
 
@@ -61,5 +61,16 @@ describe("the catalogue's cards in a row", () => {
     });
 
     expect(broken).toEqual([]);
+  });
+});
+
+describe("the upright chips' row", () => {
+  it.each([
+    [744, NO_INSETS, 632],
+    [1060, { left: 19, right: 18 }, 911],
+    [2000, { left: 30, right: 300 }, 1308]
+  ])("in a window %i wide with insets %o is %i wide, as the list's", (windowWidth, insets, row) => {
+    expect(catalogueRow(windowWidth, insets)).toBe(row);
+    expect(catalogueRow(windowWidth, insets)).toBe(rowIn(windowWidth, insets));
   });
 });

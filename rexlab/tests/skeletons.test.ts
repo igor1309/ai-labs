@@ -11,7 +11,7 @@ import { appProps } from "../src/root.ts";
 import { drop, HELP_AFTER, startPuzzle, type Cuts, type Skeleton, type SkeletonResult } from "../src/skeletons/index.ts";
 import { bonesOf, SEAMS } from "../scripts/skeletonBones.ts";
 import { PIECES, placeOf } from "./skeletonsApp.tsx";
-import { PALETTE, SHIPPED_SKELETONS, browserDocument, contrast, browserQueries, fakeBodyPicture, fakeSkeletonPicture, manualWindow, memoryStorage, pictureBrowser, readWebp } from "./support.ts";
+import { PALETTE, SHIPPED_SKELETONS, browserDocument, contrast, browserQueries, fakeBodyPicture, fakeSkeletonPicture, manualWindow, memoryStorage, pictureBrowser, readWebp, rootInsets } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -422,7 +422,8 @@ describe("presenting the skeleton game", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedApp() {
-  return appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...manualWindow(1024), ...pictureBrowser() });
+  const { document } = browserDocument();
+  return appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document, ...rootInsets(document.documentElement), ...manualWindow(1024), ...pictureBrowser() });
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

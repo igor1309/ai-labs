@@ -6,6 +6,7 @@ import records from "../src/data/dinosaurs.json";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport } from "../src/App.tsx";
+import type { SideInsets } from "../src/catalogueColumns.ts";
 import { calendarDay, type FeaturedHistory, type FeaturedStore } from "../src/featured.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import { readDig, type DigFile } from "../src/dig/index.ts";
@@ -14,6 +15,7 @@ import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
+import { SIDE_INSETS } from "../src/mediaViewport.ts";
 import type { StartTimer } from "../src/ownedTimers.ts";
 import { pictureStore, type LoadPicture, type PictureStore } from "../src/Picture.tsx";
 import type { Language } from "../src/language/language.ts";
@@ -247,7 +249,9 @@ export type ManualViewport = Viewport & {
 };
 
 // Window and screen changes are independent and only happen on request.
-export function manualViewport(initial: "portrait" | "landscape"): ManualViewport {
+// The window's sides have the safe-area insets `sideInsets`, none unless
+// given.
+export function manualViewport(initial: "portrait" | "landscape", sideInsets: SideInsets = { left: 0, right: 0 }): ManualViewport {
   let size: SizeClass = initial === "portrait" ? "tall" : "wide";
   let upright = initial === "portrait";
   const listeners = new Set<() => void>();
@@ -261,6 +265,7 @@ export function manualViewport(initial: "portrait" | "landscape"): ManualViewpor
     isScreenUpright: () => upright,
     // The test's window, which openWindow sizes for the stylesheet too.
     width: () => window.innerWidth,
+    sideInsets: () => sideInsets,
     subscribe: (onChange) => {
       listeners.add(onChange);
       return () => listeners.delete(onChange);
@@ -281,6 +286,19 @@ export function manualWindow(width: number) {
     resize(this: { innerWidth: number }, to: number) {
       this.innerWidth = to;
       listeners.forEach((onResize) => onResize());
+    }
+  };
+}
+
+// A browser's computed style of `root`, its root, where app.css sets the
+// window's side safe-area insets, `insets`; any other element has no
+// style here.
+export function rootInsets(root: Element, insets: SideInsets = { left: 0, right: 0 }) {
+  const values: Record<string, string> = { [SIDE_INSETS.left]: `${insets.left}px`, [SIDE_INSETS.right]: `${insets.right}px` };
+  return {
+    getComputedStyle: (element: Element) => {
+      if (element !== root) throw new Error("Only the root's style is read");
+      return { getPropertyValue: (property: string) => values[property] ?? "" };
     }
   };
 }
@@ -326,6 +344,8 @@ export function browserDocument(initial: DocumentVisibilityState = "visible", { 
   const document = Object.assign(target, {
     visibilityState: initial,
     getElementById: (id: string) => (versionFooter && id === "version" ? footer : null),
+    // The root, which only the browser's computed style reads.
+    documentElement: {} as HTMLElement,
     // No part of the page is marked to move as the window turns.
     querySelectorAll: (() => []) as unknown as ParentNode["querySelectorAll"]
   });
@@ -430,11 +450,13 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
   return { digDinosaurs: SHIPPED_DIG, digProgress: localDigProgress(() => storage), sandContext: () => null };
 }
 
-// The page's motion between layouts for tests that are not about it:
-// every part is measured where it stands in any layout, so nothing
-// glides, and a fade changes the layout and ends at once.
-export function pageAtRest(): Pick<AppProps, "layoutMotion"> {
+// The page's motion between layouts and its chips' widths for tests that
+// are not about them: every part is measured where it stands in any
+// layout, so nothing glides, and a fade changes the layout and ends at
+// once; every chip's parts take no width, so the chips stand on one row.
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths"> {
   return {
+    chipWidths: { width: () => 0, subscribe: () => () => {} },
     layoutMotion: {
       parts: document,
       measure: () => ({ left: 0, top: 0, width: 0, height: 0 }),
