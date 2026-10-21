@@ -110,6 +110,12 @@ English terms ([needs.md](needs.md)). What shaped the decision:
    settings, model provider, clock. Live recognition and the v3 final pass are
    different ports that share audio references and transcript types. Only the
    app target creates adapters.
+   **Logging is a decorator in the composition root** (owner, 2026-10-21).
+   Only public interfaces are logged: the ports and each module's public
+   API. The composition root wraps them in logging decorators that implement
+   the same interface and log calls, results, errors and durations before
+   passing them on. The decorators live in the app target; no module logs or
+   knows it is being logged.
 11. **One app-wide activity gate.** Anything that writes into call folders
     holds it: recording, catch-up, moving the calls folder and deleting a
     call. Recording and a folder move exclude each other ([mvp.md](mvp.md) §
@@ -123,7 +129,7 @@ English terms ([needs.md](needs.md)). What shaped the decision:
 Module layout (one local Swift package plus a thin app target):
 
 ```text
-App target    entry point + composition root
+App target    entry point + composition root (with logging decorators)
 Domain        CallDomain (call, meta.json, folder and title rules)
               TranscriptCore (stabilizer, edge merge, segments, track merge)
 Features      LiveSessionCore / LiveSessionUI (NSPanel + NSTextView)
@@ -179,6 +185,8 @@ Behaviour:
     watermark is at or past the committed text. The watermark MUST NOT pass audio that is
     not yet committed or known silent.
 18. Audio that failed to be written MUST NOT reach recognition.
+19. Logging MUST happen only in logging decorators in the composition root,
+    and only on public interfaces; no module MAY log.
 
 ## Consequences
 
@@ -191,6 +199,10 @@ Behaviour:
   include.
 - More targets and protocols than a single-target app; accepted for the
   owner's modularity requirement.
+- Every call across a public interface can be traced without touching
+  module code. What happens inside a module is not logged; it shows only
+  through the calls it makes. The cost is one decorator to keep in step with
+  each interface.
 - Text still in the live tail when the app crashes is lost from the log, but
   its audio is kept and can be recognised again.
 - The v3 final pass, audio compaction and 7-day retention are post-recording
@@ -224,8 +236,9 @@ Acceptance before v1 is done:
 
 - A background service, CLI or agent access in v1.
 - The final pass, summaries, bb explanations and calendar titles (v2–v3).
-- Mechanics left to the spec: the stop and stall time limits (to be set by
-  the owner), the system-audio capture backend (Core Audio
+- Mechanics left to the spec: the stop and stall time limits (set in the
+  spec, tuned while profiling and using the app; owner, 2026-10-21), the log
+  destination and levels, the system-audio capture backend (Core Audio
   tap or ScreenCaptureKit), file formats, how written audio is signalled to
   readers, durability and flush policy, the segment log's format, crash
   repair of a half-written file, the concurrency primitives, and text range
