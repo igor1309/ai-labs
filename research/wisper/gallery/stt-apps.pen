@@ -7634,6 +7634,4691 @@
                       "height": 505
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vr3eM",
+                  "name": "Granola (screen refs) — full page",
+                  "width": 760,
+                  "height": 12450,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "M5oCV",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "FCdUE",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Eo7Yx",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "fZy06",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Zn8Oa",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "FAatI",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "hQfvz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "b6tPX",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cwlf8",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "FSnUl",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ArT05",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "MzApK",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "l2VcWP",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "HBiZj",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "gZQbd",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cja6Y",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Z7EcYa",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "KR92b",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ywfyG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "gUl9M",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "BzlYU",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Q82LZ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-22.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cBBVk",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-23.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 130
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UTj6R",
+                  "name": "Gristmill (screen refs) — full page",
+                  "width": 760,
+                  "height": 7549,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "QtERV",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "EQMss",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "GRu9E",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "StZPy",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "l6NPO",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZnPdt",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZA8i8",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "wumuH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "i9IQv",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZK0OL",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "WD7bM",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "q5qja2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ALSc7",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "OhdAj",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 269
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qBtJI",
+                  "name": "OpenWhispr (screen refs) — full page",
+                  "width": 760,
+                  "height": 8347,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "VkPmA",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "qM3kj",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "kQvfo",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "bv6Sw",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "fVOSQ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZMAu8",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "C8lquF",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "p7XkxT",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "pSZ7Z",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "XbTYe",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "csZSW",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "UfFCR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "GoFjA",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "B9kJO",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Rdb7q",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 507
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "p360q",
+                  "name": "Guesli (screen refs) — full page",
+                  "width": 760,
+                  "height": 3581,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "d3Fwv",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-1-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "RRx2t",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-2-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "qdTUK",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-3-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "s620v",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-4-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "DsKwt",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-5-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "giBPp",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-6-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "HxcZL",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-7-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 221
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "sgQtj",
+                  "name": "StenoAI (screen refs) — full page",
+                  "width": 760,
+                  "height": 12640,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "KMUQQ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "wa4Ct",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "qLplF",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "e1Jmi",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "l3XIVA",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "IY4ox",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "JPstR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "iaCF3",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "F2quvr",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "VvSsH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "k2PoUB",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "W7ph9",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "f9tyh",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "SyIkx",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "V0xJYc",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "bDqCF",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "MVidG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "xG1Qi",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "TaY5j",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "PtW8t",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "lRKyG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "OTkV5",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-22.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "uomQJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-23.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 320
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IQtEG",
+                  "name": "Krisp (screen refs) — full page",
+                  "width": 774,
+                  "height": 18482,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "htFGc",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "AGUXW",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "NxnCR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "egIop",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "rYmsx",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "hCrXo",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "QxkxG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "j7W2S",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "WXIau",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "fHPAE",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "L8NveJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Tp5we",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Q3fnW",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "qCJl4",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "a6Irkz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "AY5DA",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "YmUZE",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "GJMMV",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "gBHpH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "x3DFzj",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Gxpgw",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "McWNV",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-22.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "niGsu",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-23.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "QvpDz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-24.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "JAiIz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-25.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "WVLFs",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-26.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "B1AHi",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-27.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "EvKZO",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-28.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "RvDce",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-29.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "rA1RZ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-30.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "N5Xlc",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-31.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "miP9X",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-32.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "knzQa",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-33.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "VjWZG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-34.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 774,
+                      "height": 2
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "arLa4",
+                  "name": "Fathom (screen refs) — full page",
+                  "width": 760,
+                  "height": 13454,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "UmXd1",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "BQ4cU",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "I7pSE",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "GtOkC",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "JkgxQ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "OpZRZ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cCQX2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "NIBJJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "FFZrf",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "WkAj2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "cBUBz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "BiwG2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "yM46C",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "lmdYK",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "n5Fm79",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "S35lCl",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "MSIwH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "dw220",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "u97gpG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "X5MRCu",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ifDTk",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "fPMSG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-22.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "x5S4Fq",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-23.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "vnoA6",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-24.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "mjC14",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-25.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 14
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "k5AGhH",
+                  "name": "tl;dv (screen refs) — full page",
+                  "width": 760,
+                  "height": 13169,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "vxP8c",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "EdOS2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "MxgqF",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Q4khm9",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "D4U1A",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Hw8kw",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "t4h4ag",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "djhqQ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Ck7rR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "r1RZk4",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "MtErW",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ahGm6",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "P8WIt",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "plTtw",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "B0M2YO",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "amrM8",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "CRrzc",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "aMG2D",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Z68XDn",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "B4EaMU",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "kd1x2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Radg3",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-22.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "SHyIu",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-23.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ES82V",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-24.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 289
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wbk1G",
+                  "name": "SummitNotes (screen refs) — full page",
+                  "width": 760,
+                  "height": 11307,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "pMn1c",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "HBiok",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "vv5vJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "idfRN",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "x2iXK8",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "C9Ar9",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "xDTzy",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "DvjPk",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "UMs4l",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "upPHa",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "hFxxd",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "gOKuJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "oeLxH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "THun2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Su6fr",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "oT2An",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "C0hCS",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "dPOYO",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "hsrT2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "epeEB",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "p3Fn4c",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-21.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 107
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "B9Layb",
+                  "name": "Tironian (screen refs) — full page",
+                  "width": 760,
+                  "height": 5317,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "EID7U",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "RPkcS",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "oX7mG",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "sNjrI",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "aJ1Ss",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Up4gw",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "O1jxp",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Vyw2n",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "nY4gU",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "sE7I7",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 277
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "C2927",
+                  "name": "Ruslo (screen refs) — full page",
+                  "width": 760,
+                  "height": 4768,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "i1Plf",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "YosLm",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "II7zC",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "u0sVS",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "p82bB",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "zDfmz",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "wEZBt",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "ZGKBP",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "wQFbS",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 288
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yJU7I",
+                  "name": "Fluid (screen refs) — full page",
+                  "width": 760,
+                  "height": 10961,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "Bcq23",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "CZiF2",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "kiH8x",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "jHPmR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Hu7eR",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "FR2ce",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "pQpJQ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "fsqTE",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-8.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "npf0D",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-9.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "VmvNk",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-10.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "j1PQOJ",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-11.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "KHkLH",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-12.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "iMjJ9",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-13.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "F5xk3",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-14.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "U8WSW",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-15.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "k37Z3",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-16.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "tuxJB",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-17.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "jedGU",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-18.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Wuv0S",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-19.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "LT2IK",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-20.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 321
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "AEddB",
+                  "name": "macOS Live Captions (screen refs) — full page",
+                  "width": 760,
+                  "height": 3879,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "K1xk2T",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "u2V4a",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-2.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "dOHOy",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-3.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "gJQIV",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-4.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "E5Od00",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-5.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "h53Nj",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-6.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "bqlPX",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-7.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 519
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "WSoPN",
+                  "name": "Zoom transcript (screen refs) — full page",
+                  "fill": [
+                    "#ffffff",
+                    {
+                      "type": "image",
+                      "enabled": true,
+                      "url": "screenshots/refs-screenshot-support.zoom.com.webp",
+                      "mode": "cover"
+                    }
+                  ],
+                  "width": 760,
+                  "height": 473
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "i3Bo0n",
+          "name": "Screen references",
+          "layout": "vertical",
+          "gap": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "wESt7",
+              "name": "Heading",
+              "fill": "#111111",
+              "content": "Screen references: setup, calls list, menu bar, settings (inventory-59 survey)",
+              "fontFamily": "Inter",
+              "fontSize": 24,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "frame",
+              "id": "lAYyb",
+              "name": "Row 1",
+              "gap": 32,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "p9g0l",
+                  "name": "Granola",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "l6rE6",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Granola",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "oRAeP",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "www.granola.ai",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R7352",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Main UX reference: no bot, offers to record when a call starts",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "YCWWx",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-granola.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "y62WFZ",
+                      "name": "Granola site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "www.granola.ai"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "DeBJz",
+                  "name": "Gristmill",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bB0PQ",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Gristmill",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "UQwc8",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "github.com/timurkhakhalev/gristmill",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "x2nWu",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Timur Khakhalev's OpenWhispr rework: record then process, bb chat",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "Er4CD",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "fBMLR",
+                      "name": "Gristmill site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "github.com/timurkhakhalev/gristmill"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XEeat",
+                  "name": "OpenWhispr",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VnASn",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "OpenWhispr",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Tsn1o",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "openwhispr.com",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "NzAY3",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Open-source dictation and notes; Gristmill's base",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "govej",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-openwhispr.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "u5Ycl",
+                      "name": "OpenWhispr site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "openwhispr.com"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MQu8r",
+                  "name": "Guesli",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "nWPZa",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Guesli",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cGuQC",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "github.com/ivkiwi/gooselee (guesli redirects here; GooseLee / Гусли)",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zEhli",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Muesli fork with GigaAM and ChatGPT-subscription summaries",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "moD0N",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-github.com-1-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "xLsB7",
+                      "name": "Guesli site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "github.com/ivkiwi/gooselee"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SZxQQ",
+              "name": "Row 2",
+              "gap": 32,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cLmbY",
+                  "name": "StenoAI",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wtuzs",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "StenoAI",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZH20E",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "stenoai.co",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "G6zc8m",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Local meeting recorder and notes",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "YwHd7",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-stenoai.co-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "KLEKo",
+                      "name": "StenoAI site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "stenoai.co"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UjG0z",
+                  "name": "Krisp",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "EjVcj",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Krisp",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "m2eI3",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "krisp.ai",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gDbPF",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Meeting assistant with noise cancellation and notes",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "gwU9K",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-krisp.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "NKIu9",
+                      "name": "Krisp site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "krisp.ai"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v5LkYB",
+                  "name": "Fathom",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xOqVt",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Fathom",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Cehx1",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "fathom.video",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "JTMjS",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Meeting recorder and notes",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "u5jQd",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fathom.ai-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "njp26",
+                      "name": "Fathom site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "www.fathom.ai"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ovOk5",
+                  "name": "tl;dv",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hwib5",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "tl;dv",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ucidc",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "tldv.io",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "WAu14",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Meeting recorder and notes",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "VJWGv",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tldv.io-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "qa5N7",
+                      "name": "tl;dv site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "tldv.io"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "id2Nr",
+              "name": "Row 3",
+              "gap": 32,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dMxcm",
+                  "name": "SummitNotes",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TGztM",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "SummitNotes",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aSwjK",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "summitnotes.app",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "GgJnT",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Meeting notes app, praised for its GUI",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "wlw6W",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-summitnotes.app-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "u5hura",
+                      "name": "SummitNotes site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "summitnotes.app"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZzAZd",
+                  "name": "Tironian",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rYK2U",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Tironian",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zEO2X",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "tironian.sheremetov.com",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "loh9A",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Free, not open source",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "pEF79",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-tironian.sheremetov.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "D9Pueu",
+                      "name": "Tironian site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "tironian.sheremetov.com"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E8Jy0",
+                  "name": "Ruslo",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A6ukJy",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Ruslo",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u8L1j8",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "ruslo.app",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hKyIo",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Granola-like app for Russian speakers",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "s3oIS",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-ruslo.app-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "KgQS8",
+                      "name": "Ruslo site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "ruslo.app"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mHXow",
+                  "name": "Fluid",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lDnS7",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Fluid",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "z1pI8",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "fluidvoice.com (altic.dev/fluid redirects here)",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "z8LsP",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Dictation; call transcription announced",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "r3Iy3p",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-fluidvoice.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "jSX0x",
+                      "name": "Fluid site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "fluidvoice.com"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VQtqf",
+              "name": "Row 4",
+              "gap": 32,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ui23L",
+                  "name": "macOS Live Captions",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "w84z7i",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "macOS Live Captions",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "px2Tz",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "support.apple.com/en-us/guide/mac-help/mchldd11f4fd/mac",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XdE9c",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "System live-caption panel",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "Dy2IA",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.apple.com-1.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "cgc5W",
+                      "name": "macOS Live Captions site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "support.apple.com/guide/mac-help/get-captions-of-spoken-and-computer-audio-mchldd11f4fd/mac"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "L8FoN",
+                  "name": "Zoom transcript",
+                  "width": 800,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E4E2DC",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QI9YS",
+                      "name": "Name",
+                      "fill": "#111111",
+                      "content": "Zoom transcript",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "K7iX8c",
+                      "name": "URL",
+                      "fill": "#2457C5",
+                      "content": "support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0064927",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "t1g542",
+                      "name": "Note",
+                      "fill": "#444444",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Zoom support article on audio transcription (cloud recordings); the in-meeting panel itself is not on a public page",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 4,
+                      "id": "E7Dg57",
+                      "name": "Hero capture",
+                      "fill": [
+                        "#ffffff",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "screenshots/refs-screenshot-support.zoom.com.webp",
+                          "mode": "cover"
+                        }
+                      ],
+                      "width": 760,
+                      "height": 560
+                    },
+                    {
+                      "type": "browser",
+                      "id": "k8a8q",
+                      "name": "Zoom transcript site",
+                      "width": "fill_container",
+                      "height": 560,
+                      "url": "support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0064927"
+                    }
+                  ]
                 }
               ]
             }

@@ -21,6 +21,12 @@ The panel is resizable; the window-sizes frame proposes how it adapts. The
 explanation card stays in the panel (owner, 2026-10-21); the no-footnote
 frame shows the panel before any term is selected.
 
+Screens 1–8 in the same file draw the rest of the app from [mvp.md](mvp.md)
+in Glass Ledger: setup, launch blocker, live panel states, calls list, the
+call after it ends, settings, menu bar item and errors. Values neither spec
+nor owner set are marked as proposals in each frame. The gallery's "Screen
+references" section holds the sites surveyed for them (inventory-59).
+
 ## Conclusion so far
 
 No installed app fits without either paying a subscription or living with a
