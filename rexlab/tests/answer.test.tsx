@@ -38,7 +38,8 @@ import { withPictures } from "./pictures.tsx";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
   mass: (value) => formatMass(value, "en"),
-  height: (value) => formatLength(value, "en")
+  height: (value) => formatLength(value, "en"),
+  length: (value) => formatLength(value, "en")
 };
 
 const byName = (name: string): Dinosaur => {
@@ -68,7 +69,8 @@ const progress = () => screen.getByLabelText("PROGRESS").textContent;
 // The question on screen, read back from the shipped list by its prompt
 // and the names on its cards.
 function shownQuestion(): Question {
-  const attribute: Attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
+  const heading = screen.getByRole("heading").textContent ?? "";
+  const attribute: Attribute = heading.includes("HEAVIER") || heading.includes("LIGHTER") ? "mass" : heading.includes("LONGER") ? "length" : "height";
   const [left, right] = cards().map((card) => byName(card.getAttribute("aria-label") ?? ""));
   if (!left || !right) throw new Error("Expected two dinosaur cards");
   return { attribute, left, right };
@@ -188,6 +190,32 @@ describe("answering a question", () => {
     expect(within(cardOf(short)).getByText("1.5 M")).toBeDefined();
     expect(symbolOf(within(cardOf(tall)).getByText("3.4 M").parentElement ?? cardOf(tall))).toBe("ruler");
     expect(symbolOf(within(cardOf(short)).getByText("1.5 M").parentElement ?? cardOf(short))).toBe("ruler");
+  });
+
+  it("marks the longer creature right and reveals lengths with ruler symbols in both languages", async () => {
+    const long = byName("Brachiosaurus");
+    const short = byName("Mosasaurus");
+    const question: Question = { kind: "longer", attribute: "length", left: short, right: long };
+    const handlers = { onChoose: () => {}, onNext: () => {}, onHome: () => {} };
+    const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />, withPictures);
+
+    expect(screen.getByRole("heading").textContent).toContain("WHO IS LONGER?");
+    expect(symbolOf(screen.getByRole("heading"))).toBe("move-horizontal");
+    rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
+    expect(screen.getByRole("heading").textContent).toContain("КТО ДЛИННЕЕ?");
+    await userEvent.setup().click(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByRole("button", { name: long.name.ru }));
+    rerender(<QuestionScreen language="ru" {...questionView(question, "ru", long.id)} {...handlers} />);
+    expect(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByText("22 М")).toBeDefined();
+    expect(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByText("12 М")).toBeDefined();
+    rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
+    await userEvent.setup().click(cardOf(long));
+    rerender(<QuestionScreen language="en" {...questionView(question, "en", long.id)} {...handlers} />);
+
+    expect(marksOn(cardOf(long))).toEqual(["check RIGHT"]);
+    expect(within(cardOf(long)).getByText("22 M")).toBeDefined();
+    expect(within(cardOf(short)).getByText("12 M")).toBeDefined();
+    expect(symbolOf(within(cardOf(long)).getByText("22 M").parentElement ?? cardOf(long))).toBe("ruler");
+    expect(symbolOf(within(cardOf(short)).getByText("12 M").parentElement ?? cardOf(short))).toBe("ruler");
   });
 
   it("marks the right answer and shows both values in every question of a round", async () => {

@@ -55,15 +55,21 @@ function sizeOf({ id, group, attributes }: Pick<DinosaurRecord, "id" | "group" |
   return { measure, metres };
 }
 
-// The quiz needs only what it compares: the mass of every creature, and
-// the height of a dinosaur alone, as no other is measured standing.
+// The quiz needs only what it compares: the mass of every creature, a
+// dinosaur's standing height, and a length where the sources give one.
 export function readDinosaurs(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "group" | "attributes">>): Dinosaur[] {
   return records.map((record) => {
     const { measure, metres } = sizeOf(record);
+    const group = groupOf(record.id, record.group);
+    const length = group === "sea-reptile" ? metres : record.attributes.lengthMeters;
     return {
       id: record.id,
       name: { en: record.name.en, ru: record.name.ru },
-      measures: { mass: record.attributes.massKg, ...(measure === "height" ? { height: metres } : {}) }
+      measures: {
+        mass: record.attributes.massKg,
+        ...(measure === "height" ? { height: metres } : {}),
+        ...(typeof length === "number" && length > 0 ? { length } : {})
+      }
     };
   });
 }
