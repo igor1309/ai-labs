@@ -53,10 +53,9 @@ describe("the tray's order", () => {
     expect(hints()).toEqual(["spot tail-bones"]);
   });
 
-  it("is shuffled at Paleontologist after each piece's turn is drawn, other dinosaurs' bones still spread among the pieces", async () => {
-    // Ten draws turn the beak a quarter and nothing else; the next swaps
-    // the beak with the tail.
-    await openDrawn("TRICERATOPS", "paleontologist", [0.7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.99]);
+  it("is shuffled at Paleontologist, other dinosaurs' bones spread among the pieces", async () => {
+    // The first draw swaps the beak with the tail.
+    await openDrawn("TRICERATOPS", "paleontologist", [0.99]);
 
     expect(spotPieces()).toEqual([
       "tail-bones",
@@ -73,7 +72,6 @@ describe("the tray's order", () => {
       "right-hind-leg",
       "beak"
     ]);
-    expect(spotOf("beak").querySelector<HTMLElement>(".skeleton-piece")?.style.rotate).toBe("90deg");
   });
 
   it("keeps Hatchling's cut order, whatever the draw", async () => {

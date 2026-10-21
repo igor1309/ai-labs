@@ -82,25 +82,11 @@ export type Puzzle = {
   // told whose bone it is.
   distractors: readonly Distractor[];
   told: Distractor | undefined;
-  // Whether a tap turns a piece, and how many quarter turns, clockwise,
-  // each piece of the cut lies turned in the tray; none for a piece the
-  // right way up.
-  turning: boolean;
-  turns: Readonly<Record<string, number>>;
   // The badge finishing the puzzle earns, if any, and whether help's last
   // step has shown, which leaves it none.
   badge: Badge | undefined;
   lastStepShown: boolean;
 };
-
-// A piece turns a quarter at a time, so four turns bring it back.
-const QUARTERS = 4;
-
-// A draw falls in one of nine equal parts: the first UPRIGHT leave a
-// piece the right way up, so about one piece in three arrives turned, and
-// each of the last three turns it one quarter more.
-const PARTS = 9;
-const UPRIGHT = 6;
 
 // How long the child works at the puzzle without fitting a piece before
 // help is offered, in milliseconds, and before each further step of the
@@ -120,9 +106,7 @@ export type Help = { piece: string; step: HelpStep };
 
 // A puzzle starts with every piece of its cut in the tray, the right way
 // up, its help the ladder's when `ladder` says so, and the skeleton's
-// distractors among them when `distractors` says so. With `turning`, a
-// draw for each piece in the cut's order turns it a quarter, half or
-// three quarters, or leaves it the right way up. With `shuffling`, the
+// distractors among them when `distractors` says so. With `shuffling`, the
 // tray shows the pieces in an order drawn from it, so their order gives
 // nothing away; without, in the cut's order. Finished without help's last
 // step, it earns `badge`, if any.
@@ -132,12 +116,10 @@ export function startPuzzle(
   {
     ladder = false,
     distractors = false,
-    turning,
     shuffling,
     badge
-  }: { ladder?: boolean; distractors?: boolean; turning?: (() => number) | undefined; shuffling?: (() => number) | undefined; badge?: Badge | undefined } = {}
+  }: { ladder?: boolean; distractors?: boolean; shuffling?: (() => number) | undefined; badge?: Badge | undefined } = {}
 ): Puzzle {
-  const turns = turning === undefined ? [] : cut.map(({ id }) => [id, Math.min(QUARTERS - 1, Math.floor(turning() * PARTS) - UPRIGHT + 1)] as const);
   const ids = cut.map(({ id }) => id);
   return {
     skeleton,
@@ -150,21 +132,9 @@ export function startPuzzle(
     touches: 0,
     distractors: distractors ? (skeleton.distractors ?? []) : [],
     told: undefined,
-    turning: turning !== undefined,
-    turns: Object.fromEntries(turns.filter(([, quarters]) => quarters > 0)),
     badge,
     lastStepShown: false
   };
-}
-
-// A tap turns a piece in the tray a quarter clockwise, back the right way
-// up after four. A fitted piece, one not of the cut, or any piece of a
-// puzzle that does not turn, stays as it is.
-export function turn(puzzle: Puzzle, piece: string): Puzzle {
-  if (!puzzle.turning || !puzzle.cut.some(({ id }) => id === piece) || puzzle.fitted.includes(piece)) return puzzle;
-  const { [piece]: quarters = 0, ...others } = puzzle.turns;
-  const next = (quarters + 1) % QUARTERS;
-  return { ...puzzle, turns: next === 0 ? others : { ...others, [piece]: next } };
 }
 
 // The tray's order: the pieces in the puzzle's order, with the
@@ -185,8 +155,7 @@ const lastHelpAt = (puzzle: Puzzle) => (puzzle.ladder ? LADDER.length : 1) * HEL
 // A piece dropped with its centre at `centre` fits its own home, and no
 // other, when its centre is within `reach` of its home's centre. Any
 // other drop leaves the puzzle as it is: the piece goes back to the tray
-// with nothing lost, and a fitted piece stays fitted, as does a piece
-// dropped turned, which fits only the right way up. A distractor fits
+// with nothing lost, and a fitted piece stays fitted. A distractor fits
 // nowhere: dropped anywhere it goes back, and the puzzle tells whose bone
 // it is until the next drop. Neither puts help off.
 export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number): Puzzle {
@@ -194,7 +163,7 @@ export function drop(puzzle: Puzzle, piece: string, centre: Point, reach: number
   if (stray !== undefined) return puzzle.told === stray ? puzzle : { ...puzzle, told: stray };
   const missed = puzzle.told === undefined ? puzzle : { ...puzzle, told: undefined };
   const home = puzzle.cut.find(({ id }) => id === piece);
-  if (home === undefined || puzzle.fitted.includes(piece) || (puzzle.turns[piece] ?? 0) > 0) return missed;
+  if (home === undefined || puzzle.fitted.includes(piece)) return missed;
   const { x, y, width, height } = home.place;
   if (Math.hypot(centre.x - (x + width / 2), centre.y - (y + height / 2)) > reach) return missed;
   return { ...puzzle, fitted: [...puzzle.fitted, piece], waited: 0, told: undefined };

@@ -2,9 +2,8 @@ import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
-import type { Theme } from "../src/theme.ts";
-import { board, finishLoading, openSkeletonsApp, skeletonOf, spotOf, spots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, contrast, memoryStorage, seenOn, surfaceOf } from "./support.ts";
+import { board, finishLoading, openSkeletonsApp, skeletonOf, spots, tray } from "./skeletonsApp.tsx";
+import { SHIPPED_SKELETONS, memoryStorage } from "./support.ts";
 import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // skeleton-assembly-tray.feature: the board in its frame's shape beside a
@@ -24,10 +23,8 @@ const gapOf = (style: CSSStyleDeclaration) => px(style.gap.split(" ").at(-1) ?? 
 
 const styleOf = (selector: string) => getComputedStyle(document.querySelector(selector) ?? document.body);
 
-async function openPuzzle(id: string, level: AgeLevel, { appearance = "light", draws = [] }: { appearance?: Theme; draws?: readonly number[] } = {}) {
-  const left: number[] = [];
-  const opened = openSkeletonsApp({ ageLevels: levelOf(level), appearance, random: () => left.shift() ?? 0 });
-  left.push(...draws);
+async function openPuzzle(id: string, level: AgeLevel) {
+  const opened = openSkeletonsApp({ ageLevels: levelOf(level) });
   await opened.user.click(screen.getByRole("button", { name: skeletonOf(id).name.en.toUpperCase() }));
   act(() => finishLoading(opened.pictures));
   return opened;
@@ -138,18 +135,3 @@ it("has a tray of as many spots as the most any puzzle gives, Paleontologist's p
   expect([spots().length, most]).toEqual([14, 14]);
 });
 
-// Tyrannosaurus's Paleontologist cut, drawn with its skull turned a
-// quarter: the skull is first in the cut.
-const SKULL_TURNED = [0.7];
-
-describe.each<Theme>(["light", "dark"])("a turned piece's mark in the %s theme", (appearance) => {
-  it("is dimmer than any words a child reads, and as clear as a symbol needs", async () => {
-    await openPuzzle("tyrannosaurus", "paleontologist", { appearance, draws: SKULL_TURNED });
-
-    const mark = spotOf("head").querySelector(".skeleton-turn-mark");
-    if (!mark) throw new Error("The turned skull has no mark");
-    const surface = surfaceOf(mark);
-    const seen = contrast(seenOn(getComputedStyle(mark).color, surface), surface);
-    expect([seen >= 3, seen < 4.5]).toEqual([true, true]);
-  });
-});

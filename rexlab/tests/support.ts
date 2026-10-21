@@ -646,8 +646,7 @@ export function contrast(a: string, b: string): number {
 }
 
 // The design's colours, its fm-* variables in each theme, as
-// design/rexlab.pen gives them, Explorer's body-area colours and their
-// tints among them.
+// design/rexlab.pen gives them.
 export const PALETTE: Record<Theme, Record<string, string>> = {
   light: {
     bg: "#F2EFE8",
@@ -666,19 +665,7 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
     "strata-3": "#D0C5B2",
     good: "#2E7D4F",
     bad: "#B83B2B",
-    shadow: "#1D274224",
-    "area-head": "#C9583D",
-    "area-head-tint": "#F6DDD4",
-    "area-neck": "#A86A0C",
-    "area-neck-tint": "#F7E8C9",
-    "area-back": "#4F78B0",
-    "area-back-tint": "#DCE6F3",
-    "area-hips": "#7E62B8",
-    "area-hips-tint": "#E5DEF3",
-    "area-legs": "#2E7D4F",
-    "area-legs-tint": "#D9EDE0",
-    "area-tail": "#B5487A",
-    "area-tail-tint": "#F4DCE8"
+    shadow: "#1D274224"
   },
   dark: {
     bg: "#0F1320",
@@ -697,19 +684,7 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
     "strata-3": "#1F273C",
     good: "#63C98C",
     bad: "#F08A78",
-    shadow: "#00000066",
-    "area-head": "#E57A5D",
-    "area-head-tint": "#3D2620",
-    "area-neck": "#F2B24B",
-    "area-neck-tint": "#3B3120",
-    "area-back": "#7FA3D9",
-    "area-back-tint": "#1F2E48",
-    "area-hips": "#A68BE0",
-    "area-hips-tint": "#2C2545",
-    "area-legs": "#63C98C",
-    "area-legs-tint": "#1E3429",
-    "area-tail": "#E07BA8",
-    "area-tail-tint": "#3D2232"
+    shadow: "#00000066"
   }
 };
 

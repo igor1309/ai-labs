@@ -32,11 +32,10 @@ Today's game becomes Hatchling, as it is (demote, never delete):
 | A puzzle is built from fixed four pieces | ✓ | ✓ | ✓ | LAB-311: a puzzle is built from a cut of any number of pieces |
 | The game has no levels | ✓ | ✓ | ✓ | LAB-312: the game starts at the age level, with a level switch on the selection screen, the child's choice kept |
 | Too few pieces for a 5-year-old | | 6–8 pieces | | LAB-313 (art), LAB-314 |
-| No cue for where a bone belongs | | each piece and its slot coloured by body area | | LAB-314 |
 | One step of help | | help in steps | help in steps | LAB-315: the body region, then a faint ghost, then the piece moves towards its home and back |
 | Too easy for a 6-year-old | | | 10–12 pieces, a partial outline, 2–3 distractor bones | LAB-316 (art), LAB-317 |
-| No orientation decision | | | some pieces arrive turned; a tap turns one | LAB-318 |
 | No reward for playing without help | | badge | badge | LAB-319: a badge for a skeleton finished without the last help step |
+| Silent, still and the same every time (`game-design.md`) | ✓ | ✓ | ✓ | LAB-389: a sound and a movement for every pick-up, fit and miss; the finished skeleton stomps and roars. Next, the mystery skeleton (LAB-284) |
 
 Every level keeps the same museum: one star per skeleton, its stand, the
 rebuild and the collection score.
@@ -51,8 +50,12 @@ rebuild and the collection score.
   an outline, and naming the dinosaur from its skeleton, go with the
   mystery skeleton (LAB-284).
 - The dig stays LAB-283; the odd bone's "not mine" box stays LAB-285.
-- Explorer's colours carry the body-area cue, with no phase of sorting
-  bones on its own.
+- Explorer's body-area colours (LAB-314) and Paleontologist's turned
+  pieces (LAB-318) are gone (LAB-389). The colours made placing a bone
+  matching a colour; turning was finger work, not a decision. Explorer
+  places by shape on the full outline; Paleontologist's one new thing is
+  the bare silhouette with other dinosaurs' bones, a single judgement of
+  whether a bone belongs.
 - Only Hatchling outlines a held bone's home; Explorer and Paleontologist
   shuffle the tray for each puzzle, so neither the outline nor the order
   gives a bone's place away (LAB-323).

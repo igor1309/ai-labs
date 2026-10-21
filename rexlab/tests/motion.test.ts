@@ -81,6 +81,7 @@ describe("the motion", () => {
       "--motion-stagger": "40ms",
       "--motion-picture": "200ms",
       "--motion-shimmer": "1500ms",
+      "--motion-alive": "360ms",
       "--motion-amount": "1"
     });
   });
@@ -526,11 +527,30 @@ describe("the skeleton puzzle's motion", () => {
     expect(animations.get(".skeleton-badge-earned")).toBe("rise-in");
   });
 
-  // skeleton-assembly-turning.feature: a tapped piece turns in its spot,
-  // and shows turned at once with reduced motion.
-  it("turns a tapped piece a quarter, and only at once with reduced motion", () => {
-    expect(declared(PLAIN, ".skeleton-tray[data-turning] .skeleton-piece").transition).toBe("rotate var(--motion-standard) var(--ease-out)");
-    expect(declared(REDUCED, ".skeleton-tray[data-turning] .skeleton-piece")).toEqual({ "transition-property": "none" });
+  // skeleton-assembly-alive.feature: a miss wobbles back, a fitted skull
+  // snaps its jaw and a fitted tail swishes once settled, and the finished
+  // skeleton stomps, its skull snapping after. Every keyframe moves by
+  // --motion-amount, so with reduced motion nothing moves.
+  it("wobbles a miss back, snaps a fitted skull, swishes a fitted tail and stomps the finished skeleton", () => {
+    const settle = "settle-in var(--motion-standard) var(--ease-out)";
+    const after = "var(--motion-alive) var(--ease-out) var(--motion-standard)";
+    const stomp = "stomp calc(var(--motion-alive) * 2) var(--ease-out)";
+    expect(
+      [
+        ".skeleton-piece[data-returning]",
+        '.skeleton-slot[data-area="head"] .skeleton-fitted[data-snapped]',
+        '.skeleton-slot[data-area="tail"] .skeleton-fitted[data-snapped]',
+        ".skeleton-board[data-complete] .skeleton-slot,\n.skeleton-board[data-complete] .skeleton-outline",
+        '.skeleton-board[data-complete] .skeleton-slot[data-area="head"]'
+      ].map((selector) => declared(PLAIN, selector).animation)
+    ).toEqual([
+      `${settle}, wobble var(--motion-alive) var(--ease-out)`,
+      `${settle}, jaw-snap ${after}`,
+      `${settle}, swish ${after}`,
+      stomp,
+      `${stomp}, jaw-snap var(--motion-alive) var(--ease-out) calc(var(--motion-alive) * 2)`
+    ]);
+    expect(["wobble", "jaw-snap", "swish", "stomp"].filter((name) => !KEYFRAMES.some(({ prelude }) => prelude === `@keyframes ${name}`))).toEqual([]);
   });
 
   // skeleton-assembly-paleontologist.feature: the line saying whose

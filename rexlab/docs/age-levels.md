@@ -48,7 +48,7 @@ this table in step as they land.
 
 | Game | 🥚 Hatchling | 🦖 Explorer | 🦴 Paleontologist |
 | --- | --- | --- | --- |
-| Skeleton (LAB-270, `skeleton-levels.md`) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, coloured by body area, help in steps | 10–12 pieces, a partial outline, distractor bones, pieces to turn; later, mystery skeleton (LAB-284) and odd bone out (LAB-285) |
+| Skeleton (LAB-270, `skeleton-levels.md`) | today's game: four pieces, the right way up, on a full outline | 6–8 pieces, help in steps | 10–12 pieces, a partial outline, distractor bones; later, mystery skeleton (LAB-284) and odd bone out (LAB-285) |
 | Find the pair (LAB-296) | today's game: 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to skeleton (LAB-301) |
 | Care (LAB-294) | today's game: need bubbles and the matching item | one-step missions | the reasoning puzzle of LAB-281 |
 | Sorting (LAB-295) | today's game: 2 baskets, 6 cards, every property | 8 cards; diet adds BOTH | 10 cards, legs or feathers, with TWO OR FOUR or NOT KNOWN YET |

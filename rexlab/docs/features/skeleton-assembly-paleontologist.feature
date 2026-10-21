@@ -67,12 +67,6 @@ Feature: Skeleton assembly: Paleontologist
     When 9 more seconds pass
     Then help's first step shows for the head, as Explorer's does
 
-  Scenario: Help waits while I turn a piece, then comes for it
-    When I tap the arms again and again for 10 seconds
-    Then no help shows
-    When 10 seconds pass without a touch
-    Then help's first step shows for the arms
-
   Scenario: The skeleton is complete once its own bones fit
     Given I am building Triceratops with nine of its pieces fitted
     When I fit its last piece

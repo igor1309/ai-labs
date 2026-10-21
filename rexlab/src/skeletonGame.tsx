@@ -19,7 +19,6 @@ import {
   showLastStep,
   startPuzzle,
   touch,
-  turn,
   wait,
   type Badge,
   type KeptSkeletons,
@@ -30,6 +29,7 @@ import {
 } from "./skeletons/index.ts";
 import { SkeletonPuzzleScreen, type FramePoint, type ShownPiece } from "./SkeletonPuzzleScreen.tsx";
 import { SkeletonResultScreen } from "./SkeletonResultScreen.tsx";
+import type { SkeletonSounds } from "./skeletonSounds.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
 export type { SkeletonPicture } from "./presentation.ts";
@@ -61,29 +61,30 @@ export type SkeletonGameProps = {
   presence: Presence;
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
-  // Draws which pieces arrive turned.
+  // Shuffles the tray.
   random: Random;
+  // Answers each pick-up, fit and miss, and the finished skeleton.
+  sounds: SkeletonSounds;
 };
 
 // The skeleton game has a mode for every age level; a level without a cut
 // of its own plays Hatchling's.
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
 
-// How a puzzle looks: whether each piece and its slot are coloured by
-// body area, Explorer's cue to where a bone goes, and whether its outline
-// is the skeleton's silhouette alone, Paleontologist's partial outline,
-// and whether a held piece's home is outlined, Hatchling's alone.
-type Look = { coloured: boolean; silhouette: boolean; homeShown: boolean };
+// How a puzzle looks: whether its outline is the skeleton's silhouette
+// alone, Paleontologist's partial outline, and whether a held piece's home
+// is outlined, Hatchling's alone.
+type Look = { silhouette: boolean; homeShown: boolean };
 
 // How each level plays its puzzle: its look, whether help climbs the
 // ladder of steps rather than Hatchling's one glow, whether other
-// skeletons' bones wait in the tray, whether pieces arrive turned,
-// whether the tray shuffles them rather than keep the cut's order, and the
-// badge a skeleton built there without help's last step earns.
-const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; turning: boolean; shuffling: boolean; badge: Badge | undefined }> = {
-  hatchling: { look: { coloured: false, silhouette: false, homeShown: true }, ladder: false, distractors: false, turning: false, shuffling: false, badge: undefined },
-  explorer: { look: { coloured: true, silhouette: false, homeShown: false }, ladder: true, distractors: false, turning: false, shuffling: true, badge: "explorer" },
-  paleontologist: { look: { coloured: false, silhouette: true, homeShown: false }, ladder: true, distractors: true, turning: true, shuffling: true, badge: "paleontologist" }
+// skeletons' bones wait in the tray, whether the tray shuffles them rather
+// than keep the cut's order, and the badge a skeleton built there without
+// help's last step earns.
+const MODES: Record<AgeLevel, { look: Look; ladder: boolean; distractors: boolean; shuffling: boolean; badge: Badge | undefined }> = {
+  hatchling: { look: { silhouette: false, homeShown: true }, ladder: false, distractors: false, shuffling: false, badge: undefined },
+  explorer: { look: { silhouette: false, homeShown: false }, ladder: true, distractors: false, shuffling: true, badge: "explorer" },
+  paleontologist: { look: { silhouette: true, homeShown: false }, ladder: true, distractors: true, shuffling: true, badge: "paleontologist" }
 };
 
 // The progress the game goes by while the app is open, with the child's
@@ -96,10 +97,11 @@ type Kept = KeptSkeletons & { levelChoice: LevelChoice | undefined };
 const HELP_TICK = 1000;
 
 // How long the finished skeleton shows on its board before the reveal, in
-// milliseconds, as app.css times it: the last piece slides into its slot
-// (--motion-standard), then the whole skeleton holds as long again; with
-// reduced motion only the piece's fade.
-export const REVEAL: Record<"motion" | "reduced", number> = { motion: 480, reduced: 160 };
+// milliseconds, as app.css times it: the skeleton stomps twice as the last
+// piece slides into its slot, its skull snaps (--motion-alive each), and
+// it holds a moment as the roar ends; with reduced motion only the
+// piece's fade.
+export const REVEAL: Record<"motion" | "reduced", number> = { motion: 1500, reduced: 160 };
 
 // A puzzle of a skeleton knocked down from its stand starts with its
 // bones scattering from the outline to the tray; each keeps its level's
@@ -122,7 +124,7 @@ export function transitionFor(from: SkeletonScreen, to: SkeletonScreen): string 
 // chooses another level on its switch. `onHome` takes the child back to
 // the home page; `onStart` is told as each puzzle begins, a rebuild's too.
 export function useSkeletonGame(
-  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion, random }: SkeletonGameProps,
+  { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion, random, sounds }: SkeletonGameProps,
   ageLevel: AgeLevelSetting,
   onHome: () => void,
   onStart: () => void
@@ -193,8 +195,8 @@ export function useSkeletonGame(
     if (skeleton === undefined) return;
     const from = screen;
     const at = startLevel(ageLevel, OFFERED, keptNow.current.levelChoice);
-    const { look, ladder, distractors, turning, shuffling, badge } = MODES[at];
-    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, turning: turning ? random : undefined, shuffling: shuffling ? random : undefined, badge });
+    const { look, ladder, distractors, shuffling, badge } = MODES[at];
+    const started = startPuzzle(skeleton, cutAt(skeleton, at), { ladder, distractors, shuffling: shuffling ? random : undefined, badge });
     go((current) => (current === from ? { kind: "puzzle", puzzle: started, scatter: rebuild, look } : current), {
       also: () => {
         if (rebuild) keep(knockDown(keptNow.current, id));
@@ -245,30 +247,30 @@ export function useSkeletonGame(
   };
 
   // The board listens for drags anew on each render, so it always drops
-  // through this one.
+  // through this one. Every drop is heard: a piece that fits clicks home,
+  // a skull snapping its jaw, the last one with a stomp and a roar; any
+  // other drop boings back to the tray.
   const onDrop = (piece: ShownPiece, centre: FramePoint, reach: number) => {
     const from = live.current;
     const timers = puzzleTimers.current;
     if (from === null || timers === null) return;
     const to = drop(from, piece, centre, reach);
+    if (to.fitted.length === from.fitted.length) sounds.play("boing");
+    else sounds.play(from.cut.find(({ id }) => id === piece)?.area === "head" ? "jaw" : "click");
     if (to === from) return;
     showPuzzle(from, to);
-    if (isComplete(to)) reveal(to, record(to), timers);
+    if (isComplete(to)) {
+      sounds.play("roar");
+      reveal(to, record(to), timers);
+    }
   };
 
-  // A piece touched in the tray.
+  // A piece touched in the tray, picked up with a sound.
   const onTouch = (piece: ShownPiece) => {
     const from = live.current;
     if (from === null) return;
+    sounds.play("lift");
     const to = touch(from, piece);
-    if (to !== from) showPuzzle(from, to);
-  };
-
-  // A tap on a piece in the tray turns it.
-  const onTurn = (piece: ShownPiece) => {
-    const from = live.current;
-    if (from === null) return;
-    const to = turn(from, piece);
     if (to !== from) showPuzzle(from, to);
   };
 
@@ -282,8 +284,8 @@ export function useSkeletonGame(
 
   // Only time at the puzzle counts towards help: the count pauses while
   // the child is away, and starts again from nothing as a piece fits, or
-  // on the ladder as a piece is touched. Nothing else restarts it: a turn
-  // or another dinosaur's bone dropped changes the puzzle, and the tick
+  // on the ladder as a piece is touched. Nothing else restarts it: another
+  // dinosaur's bone dropped changes the puzzle, and the tick
   // counts on the puzzle as it is then. Its timer is the puzzle's, so
   // leaving stops it at once, not once the screen it left has rendered.
   const counting = puzzle !== undefined && awaitsHelp(puzzle);
@@ -356,7 +358,6 @@ export function useSkeletonGame(
             scatter={screen.scatter}
             onDrop={onDrop}
             onTouch={onTouch}
-            onTurn={onTurn}
             onLastStep={onLastStep}
             onMuseum={museum}
             onBack={back}
