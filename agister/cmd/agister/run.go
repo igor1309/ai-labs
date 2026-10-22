@@ -1157,12 +1157,13 @@ type sessionCalls struct {
 	latest map[string]sessionCall
 }
 
-// sessionCall is a session's latest call: its id, and the worktree it
-// left, together with its session cost, nil where unknown.
+// sessionCall is a session's latest call: its id, agent and the worktree
+// it left, together with its session cost, nil where unknown.
 type sessionCall struct {
-	id   string
-	left admit.Facts
-	cost *float64
+	id    string
+	agent string
+	left  admit.Facts
+	cost  *float64
 }
 
 // of is the latest call of session, false for none.
@@ -1282,6 +1283,9 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		if !ok {
 			return s.refused(fmt.Sprintf("no call of the run went on in the session %q", session), planned.step.Warnings)
 		}
+		if latest.agent != planned.agent {
+			return s.refused(fmt.Sprintf("the session %q ran on %q, not %q", session, latest.agent, planned.agent), planned.step.Warnings)
+		}
 		step.Session = session
 		step.SessionCostBefore = latest.cost
 		ended.continues = latest.id
@@ -1321,9 +1325,10 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		ended.agent, ended.permissions = planned.fallback.agent, planned.fallback.permissions
 		called.Warnings = append(slices.Clone(called.Warnings),
 			fmt.Sprintf("the step %q was made again on the agent %q, the fallback of %q: %s", name, planned.fallback.agent, planned.agent, primary.Reason))
-		sessions = append(sessions, primary.Session)
+		s.sessions.went(sessionCall{id: callID(s.run, name), agent: planned.agent, left: ended.facts, cost: primary.SessionCost}, step.Session, primary.Session)
+		sessions = []string{called.Session}
 	}
-	s.sessions.went(sessionCall{id: callID(s.run, name), left: ended.facts, cost: called.SessionCost}, sessions...)
+	s.sessions.went(sessionCall{id: callID(s.run, name), agent: ended.agent, left: ended.facts, cost: called.SessionCost}, sessions...)
 	return workflowResult(called)
 }
 

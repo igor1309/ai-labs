@@ -15,7 +15,7 @@ Feature: The composition checks and inspects settings
     Given "/r/.agister/agents/claude-opus.toml" names the runtime "gone"
     When "agister check" runs in "/r"
     Then it prints the runtime "gone", which no layer holds, refusing the
-      agent "claude-opus" and the workflows "adr_review" and
+      agents "claude-opus" and "codex-sol-61", and the workflows "adr_review" and
       "code_review"
     And it exits 1
 
@@ -38,7 +38,8 @@ Feature: The composition checks and inspects settings
   Scenario: A step's plan comes through the source and the facts
     When "agister inspect workflow code_review" runs in "/r"
     Then it shows the plans of the five reviews, each taking codex's
-      option "read-only", and of the judge, taking none
+      option "read-only", their fallback on claude-opus, taking Glob and
+      Bash, and of the judge, taking none
     And no fault: codex and claude-code take the agents' effort "high"
 
   Scenario: The command runs over every runtime wrapper and the user's home

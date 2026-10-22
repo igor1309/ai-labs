@@ -30,8 +30,14 @@ type Fallback struct {
 // and its primary, the first call's result. No fallback is made where
 // ctx has ended or no time is left.
 func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallback, report func(Report)) Result {
-	first := primary.Call(ctx, step, report)
-	if first.Class != Capacity || ctx.Err() != nil {
+	turns := 0
+	first := primary.Call(ctx, step, func(r Report) {
+		if r.Capacity != nil {
+			turns++
+		}
+		report(r)
+	})
+	if first.Class != Capacity || turns < capacityTurns || ctx.Err() != nil {
 		return first
 	}
 	again := fallback.Step

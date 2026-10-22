@@ -13,11 +13,11 @@ steps:
     parallel:
       max: 1
       steps:
-          - {name: architecture, process: architecture_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
-          - {name: tests, process: tests_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
-          - {name: adversarial, process: adversarial_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
-          - {name: clarity, process: clarity_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
-          - {name: intent, process: intent_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: architecture, process: architecture_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: tests, process: tests_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: adversarial, process: adversarial_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: clarity, process: clarity_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: intent, process: intent_review, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
   - name: judge
     process: review_judge
     agent: claude-opus

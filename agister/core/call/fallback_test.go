@@ -13,13 +13,10 @@ import (
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
-// capacityWaits are the waits between a call's four turns at capacity.
-var capacityWaits = []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute}
-
 // passWaits lets each wait between a call's turns at capacity pass, once
 // its timer has started.
 func passWaits(clock *clocktest.Clock) {
-	for _, wait := range capacityWaits {
+	for _, wait := range []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute} {
 		clock.Started(wait)
 		clock.Advance(wait)
 	}
@@ -169,6 +166,24 @@ func TestTheFallbackIsGivenWhatTheCallLeftOfItsLimits(t *testing.T) {
 			}
 			if got.Status != call.Completed || !reflect.DeepEqual(got.Cost, dollars(3)) || got.CostSource != "s" || got.Usage == nil || !reflect.DeepEqual(got.Usage.Input, tokens(140)) {
 				t.Errorf("ended %q, cost %v, source %q, usage %+v; want completed, 3, s, 140 input tokens", got.Status, got.Cost, got.CostSource, got.Usage)
+			}
+		})
+	}
+}
+
+// A time limit that cuts a capacity wait does not spend the remaining
+// capacity turns, and never starts work on a different agent.
+func TestACutCapacityWaitDoesNotStartFallback(t *testing.T) {
+	t.Parallel()
+	for _, limit := range []time.Duration{15 * time.Second, 30 * time.Second} {
+		t.Run(limit.String(), func(t *testing.T) {
+			t.Parallel()
+			clock := clocktest.NewClock(start)
+			fallback := &runtimeSpy{turn: replies(call.Reply{Text: "fallback"})}
+			got := call.WithFallback(context.Background(), recoveringCaller(t, &runtimeSpy{turn: atCapacity("s1")}, &stalenessSpy{}, clock),
+				call.Step{TimeLimit: limit}, call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, discard)
+			if got.Class != call.Capacity || got.Primary != nil || len(fallback.given) != 0 {
+				t.Errorf("result %+v, fallback turns %+v; want capacity with no fallback", got, fallback.given)
 			}
 		})
 	}

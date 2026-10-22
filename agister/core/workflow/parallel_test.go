@@ -417,8 +417,12 @@ func TestWithMax2TwoStepsRunAtOnceNeverThree(t *testing.T) {
 func TestWithMax1AStepThatDoesNotCompleteDoesNotStopTheNext(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
-		"a": func() workflow.Result { return workflow.Result{Status: workflow.Failed, Class: "capacity", Reason: "r"} },
-		"b": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Output: map[string]any{"v": 2}} },
+		"a": func() workflow.Result {
+			return workflow.Result{Status: workflow.Failed, Class: "capacity", Reason: "r"}
+		},
+		"b": func() workflow.Result {
+			return workflow.Result{Status: workflow.Completed, Output: map[string]any{"v": 2}}
+		},
 		"c": func() workflow.Result { return workflow.Result{Status: workflow.Interrupted, Class: "timeout"} },
 		"j": completes(0),
 	})

@@ -22,7 +22,7 @@ func askDefinitions(settings map[string]string, agent string) []runstore.Definit
 	if agent == "codex-sol-61" {
 		runtime = "codex"
 	}
-	return []runstore.Definition{
+	definitions := []runstore.Definition{
 		definitionAt(settings, "agent", agent, "home", "/u/.agister/agents/"+agent+".toml"),
 		definitionAt(settings, "process", "ask", "repository", "/r/.agister/processes/ask.yaml"),
 		definitionAt(settings, "prompt", "ask", "repository", "/r/.agister/prompts/ask.md"),
@@ -30,6 +30,14 @@ func askDefinitions(settings map[string]string, agent string) []runstore.Definit
 		definitionAt(settings, "runtime", runtime, "home", "/u/.agister/runtimes/"+runtime+".yaml"),
 		definitionAt(settings, "schema", "answer", "repository", "/r/.agister/schemas/answer.json"),
 	}
+	// A codex call resolves and records both profiles, including when the
+	// primary succeeds and the fallback is unused.
+	if agent == "codex-sol-61" {
+		definitions = append(definitions,
+			definitionAt(settings, "agent", "claude-opus", "home", "/u/.agister/agents/claude-opus.toml"),
+			definitionAt(settings, "runtime", "claude-code", "home", "/u/.agister/runtimes/claude-code.yaml"))
+	}
+	return orderedDefinitions(definitions)
 }
 
 // definitions.feature, "A call names each document its plan read" and

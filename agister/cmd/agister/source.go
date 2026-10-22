@@ -93,7 +93,7 @@ func (s *source) Agent(name string) (resolve.Agent, []resolve.Problem) {
 		model = nameOf(agent.ModelFamily)
 	}
 	return resolve.Agent{
-		Name:    agent.Name,
+		Name:     agent.Name,
 		Runtime:  nameOf(agent.Runtime),
 		Model:    model,
 		Effort:   nameOf(agent.Effort),

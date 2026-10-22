@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-458: capacity retries wait 30 seconds, one minute and three minutes,
+  then use the agent's fallback; review nodes run one at a time.
+
 - LAB-357: a codex turn's cost is priced through ccusage, so a cost
   limit and the daily budget spend it; a resumed turn's usage is its
   own, and each call records its cost's source.

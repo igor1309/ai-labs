@@ -24,8 +24,8 @@ type Status string
 const (
 	// Completed is a call or a run that produced its output.
 	Completed Status = "completed"
-	// Failed is a run refused; a run that ended otherwise ends in its last
-	// call's status.
+	// Failed is a run refused, a parallel with no completed child, or a
+	// run whose last call failed.
 	Failed Status = "failed"
 	// Interrupted is a call or a run ended before it finished, a run
 	// cancelled among them.
@@ -270,7 +270,8 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 // is refused, the step not called. A parallel calls its steps at once, or
 // in declaration order no more than its Max at a time, and ends once all
 // have ended: completed, its outputs each step's end, in declaration
-// order, whatever each ended as; a run cancelled meanwhile ends with it,
+// order, if at least one completed; otherwise the run fails before the
+// next item. A run cancelled meanwhile ends with it,
 // interrupted, cancelled, and calls no step not yet called. The run's status, class and reason are its last
 // item's, its output its output mapping once every item has completed, its
 // timing the whole run's, its cost unknown where a call's is, its usage the
@@ -322,12 +323,19 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 				return refuse()
 			}
 			ends := make([]any, len(item.Parallel))
+			completed := false
 			for i, step := range item.Parallel {
 				count(step.Name, calls[i])
 				ends[i] = endOf(calls[i])
+				completed = completed || calls[i].Status == Completed
 			}
 			if ctx.Err() != nil {
 				return cancelled()
+			}
+			if !completed && len(calls) > 0 {
+				result.Status, result.Class = Failed, calls[0].Class
+				result.Reason = fmt.Sprintf("no step of parallel %q completed: %s", item.Name, calls[0].Reason)
+				return finish()
 			}
 			result.Status, result.Class, result.Reason = Completed, "", ""
 			read.outputs[item.Name] = ends
@@ -377,7 +385,7 @@ func (r *Runner) parallel(ctx context.Context, together Step, read reader) ([]Re
 	}
 	running := len(steps)
 	if together.Max > 0 {
-		running = together.Max
+		running = min(together.Max, running)
 	}
 	slots := make(chan struct{}, running)
 	calls := make([]Result, len(steps))

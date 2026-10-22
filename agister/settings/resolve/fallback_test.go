@@ -99,11 +99,17 @@ func TestAFallbacksRuntimeRunsTheStepsProcess(t *testing.T) {
 		lack    func(*resolve.Facts)
 		can     string
 	}{
-		{"a schema", func(s *source, p *resolve.Process) { p.Schema = resolve.Name{Value: "sc"}; s.other(resolve.KindSchema, "sc") },
+		{"a schema", func(s *source, p *resolve.Process) {
+			p.Schema = resolve.Name{Value: "sc"}
+			s.other(resolve.KindSchema, "sc")
+		},
 			func(f *resolve.Facts) { f.Schema = false }, "checks output against a schema"},
 		{"recovery", func(_ *source, p *resolve.Process) { p.Recovery = true },
 			func(f *resolve.Facts) { f.Session = false }, "resumes a session"},
-		{"a skill", func(s *source, p *resolve.Process) { p.Skills = []resolve.Name{{Value: "sk"}}; s.other(resolve.KindSkill, "sk") },
+		{"a skill", func(s *source, p *resolve.Process) {
+			p.Skills = []resolve.Name{{Value: "sk"}}
+			s.other(resolve.KindSkill, "sk")
+		},
 			func(f *resolve.Facts) { f.Skills = false }, "takes skills"},
 	} {
 		t.Run(c.need, func(t *testing.T) {

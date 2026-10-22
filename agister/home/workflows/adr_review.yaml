@@ -13,7 +13,7 @@ steps:
     parallel:
       max: 1
       steps:
-          - {name: adr, process: adr_review_codex, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+        - {name: adr, process: adr_review_codex, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
   - name: judge
     process: review_judge
     agent: claude-opus
