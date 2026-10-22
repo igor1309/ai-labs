@@ -55,14 +55,24 @@ private extension PanelView {
         .custom(fonts.ui, fixedSize: size).weight(weight)
     }
 
-    /// Extra space between lines that makes the line height the design's
-    /// ratio of the font size.
-    func spacing(_ size: CGFloat, _ lineHeight: CGFloat? = nil) -> CGFloat {
+    /// Extra space that makes each line of the font as tall as the design's
+    /// line height, a ratio of the font size.
+    func leading(_ family: String, _ size: CGFloat, _ lineHeight: CGFloat) -> CGFloat {
 
-        let natural = NSFont(name: fonts.data, size: size)
+        let natural = NSFont(name: family, size: size)
             .map { $0.ascender - $0.descender + $0.leading } ?? size
 
-        return max(0, size * (lineHeight ?? fonts.lineHeight) - natural)
+        return max(0, size * lineHeight - natural)
+    }
+}
+
+private extension View {
+
+    /// Spreads the extra space as the design does: between lines, and half of
+    /// it above the first line and below the last.
+    func lineHeight(_ leading: CGFloat) -> some View {
+
+        lineSpacing(leading).padding(.vertical, leading / 2)
     }
 }
 
@@ -88,6 +98,7 @@ private extension PanelView {
         }
         .padding(.vertical, metrics.space12)
         .padding(.horizontal, metrics.space16)
+        .background(palette.glass, in: .rect(cornerRadius: metrics.radiusPanel))
     }
 
     var idleStatus: some View {
@@ -100,6 +111,7 @@ private extension PanelView {
 
             Text("не записывается")
                 .font(data(fonts.caption))
+                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
                 .foregroundStyle(palette.gutter)
         }
     }
@@ -120,6 +132,7 @@ private extension PanelView {
 
             Text("REC \(elapsed)")
                 .font(data(fonts.caption))
+                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
                 .foregroundStyle(palette.rec)
         }
     }
@@ -136,6 +149,7 @@ private extension PanelView {
 
                 Text("Начать")
                     .font(ui(fonts.small, .semibold))
+                    .lineHeight(leading(fonts.ui, fonts.small, fonts.lineHeight))
                     .foregroundStyle(palette.selText)
             }
             .padding(.vertical, metrics.space4)
@@ -157,6 +171,7 @@ private extension PanelView {
 
                 Text("Стоп")
                     .font(ui(fonts.small, .semibold))
+                    .lineHeight(leading(fonts.ui, fonts.small, fonts.lineHeight))
                     .foregroundStyle(palette.rec)
             }
             .padding(.vertical, metrics.space4)
@@ -179,18 +194,19 @@ private extension PanelView {
             case .empty:
                 Text("Запись не идёт. Начать — и текст появится здесь, для обеих сторон.")
                     .font(data(fonts.body))
-                    .lineSpacing(spacing(fonts.body, fonts.looseLineHeight))
+                    .lineHeight(leading(fonts.data, fonts.body, fonts.looseLineHeight))
                     .foregroundStyle(palette.gutter)
 
             case .liveTextOff:
                 Text("Живой текст выключен — звонок только записывается.")
                     .font(ui(fonts.body))
-                    .lineSpacing(spacing(fonts.body))
+                    .lineHeight(leading(fonts.ui, fonts.body, fonts.lineHeight))
                     .foregroundStyle(palette.sub)
 
                 Button("Включить живой текст") { event(.switchLiveTextOn) }
                     .buttonStyle(.plain)
                     .font(ui(fonts.body, .semibold))
+                    .lineHeight(leading(fonts.ui, fonts.body, fonts.lineHeight))
                     .foregroundStyle(palette.me)
 
             case let .lines(lines):
@@ -236,6 +252,7 @@ private extension PanelView {
 
             Text("дописано позже · \(late.span)")
                 .font(data(fonts.caption))
+                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
                 .foregroundStyle(palette.gutter)
 
             ForEach(late.entries) { entryView($0, held: nil) }
@@ -260,13 +277,18 @@ private extension PanelView {
                     .foregroundStyle(entry.speaker == .me ? palette.me : palette.them)
             }
             .font(data(fonts.body))
+            .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
             .frame(width: metrics.gutterWidth, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: spacing(fonts.body)) {
+            let isHeld = held.map { $0.entryID == entry.id && entry.settled.contains($0.text) } ?? false
+
+            VStack(alignment: .leading, spacing: 0) {
 
                 if !entry.settled.isEmpty {
 
-                    settledText(entry, held: held)
+                    Text(entry.settled)
+                        .foregroundStyle(isHeld ? palette.selText : palette.text)
+                        .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
                 }
 
                 if !entry.pending.isEmpty {
@@ -275,40 +297,12 @@ private extension PanelView {
                 }
             }
             .font(data(fonts.body))
-            .lineSpacing(spacing(fonts.body))
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                isHeld ? palette.selBg : .clear,
+                in: .rect(cornerRadius: metrics.radiusControl)
+            )
         }
-    }
-
-    @ViewBuilder
-    func settledText(
-        _ entry: PanelState.Entry,
-        held: PanelState.Held?
-    ) -> some View {
-
-        if let held, held.entryID == entry.id, entry.settled.contains(held.text) {
-
-            Text(highlighted(entry.settled, held.text))
-        } else {
-
-            Text(entry.settled)
-                .foregroundStyle(palette.text)
-        }
-    }
-
-    /// The held text in selection colours; the rest of the line stays plain.
-    func highlighted(_ text: String, _ held: String) -> AttributedString {
-
-        var string = AttributedString(text)
-        string.foregroundColor = palette.text
-
-        if let range = string.range(of: held) {
-
-            string[range].foregroundColor = palette.selText
-            string[range].backgroundColor = palette.selBg
-        }
-
-        return string
     }
 
     func pendingLine(_ pending: String) -> some View {
@@ -317,6 +311,7 @@ private extension PanelView {
 
             Text(pending)
                 .foregroundStyle(palette.gutter)
+                .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
 
             Rectangle()
                 .fill(palette.me)
@@ -329,7 +324,7 @@ private extension PanelView {
         HStack(spacing: metrics.space6) {
 
             Image(systemName: "pin.fill")
-                .font(.system(size: 11))
+                .font(.system(size: 14))
                 .foregroundStyle(palette.me)
 
             Text("«\(held.text)»")
@@ -353,6 +348,7 @@ private extension PanelView {
 
             Text("\(count) новые ↓")
                 .font(data(fonts.caption, .semibold))
+                .lineHeight(leading(fonts.data, fonts.caption, fonts.looseLineHeight))
                 .foregroundStyle(palette.me)
                 .padding(.vertical, metrics.space2)
                 .padding(.horizontal, metrics.space8)
