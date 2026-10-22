@@ -1,6 +1,7 @@
 import { House, RotateCcw } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button.tsx";
+import type { ResultType } from "./compareResultLayout.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -28,30 +29,39 @@ export type ResultScreenProps = {
   levelSwitch?: ReactNode;
   onPlayAgain: () => void;
   onHome: () => void;
+  // The stars', the level names' and the dinosaur's sizes upright, one
+  // for the window; landscape sizes them itself.
+  type?: ResultType;
 };
 
-export function ResultScreen({ language, score, total, best, beaten, celebration, hero, levelSwitch, onPlayAgain, onHome }: ResultScreenProps) {
+// The upright sizes, as the custom properties the stylesheet reads.
+const typeStyle = (type: ResultType | undefined) =>
+  (type ? { "--star-size": `${type.star}px`, "--level-name-size": `${type.levelName}px`, "--hero-maximum": `${type.heroMaximum}px` } : {}) as CSSProperties;
+
+export function ResultScreen({ language, score, total, best, beaten, celebration, hero, levelSwitch, onPlayAgain, onHome, type }: ResultScreenProps) {
   const text = TEXTS[language];
+  // The dinosaur, each reward, the level switch and the actions are the
+  // parts a turn glides.
   return (
-    <main className={levelSwitch ? "result result-with-levels" : "result"}>
+    <main className={levelSwitch ? "result result-with-levels" : "result"} style={typeStyle(type)}>
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
-      <Picture className="result-hero" src={hero} alt="" width={800} height={600} />
+      <Picture className="result-hero" part="result-hero" src={hero} alt="" width={800} height={600} />
       <div className="result-content">
-        {celebration && <CelebrationChip language={language} celebration={celebration} />}
-        <ScoreCount language={language} score={score} total={total} />
+        {celebration && <CelebrationChip language={language} celebration={celebration} part="result-celebration" />}
+        <ScoreCount language={language} score={score} total={total} part="result-score" />
         {/* A child who cannot read the numbers yet counts the stars. */}
-        <p className="result-stars" role="img" aria-label={text.stars(score, total)}>
+        <p className="result-stars" data-turn-part="result-stars" role="img" aria-label={text.stars(score, total)}>
           {Array.from({ length: total }, (_, index) => (
             <span key={index} className={index < score ? "star star-won" : "star"} style={motion({ "--star": index })} aria-hidden="true">
               ★
             </span>
           ))}
         </p>
-        <h1 className="result-title">{text.wellDone}</h1>
-        {best !== undefined && <BestScore language={language} best={best} beaten={beaten} />}
+        <h1 className="result-title" data-turn-part="result-title">{text.wellDone}</h1>
+        {best !== undefined && <BestScore language={language} best={best} beaten={beaten} part="result-best" />}
         {levelSwitch}
-        <nav className="result-actions">
+        <nav className="result-actions" data-turn-part="result-actions">
           <Button className="play-again-button" onClick={onPlayAgain}>
             <RotateCcw size={28} aria-hidden="true" />
             {text.playAgain}

@@ -2,6 +2,7 @@
 
 ## 2026-10-22
 
+- The compare quiz's result stands upright in a tall window instead of asking to turn: the cheering dinosaur on top, then the rewards, the level switch and PLAY AGAIN and HOME in one column, every word fitting in English and Russian, and the offer of another level fits a tall window. Turning the iPad glides the result to its new layout without counting the score up again (LAB-480).
 - A question of the compare quiz stands upright in a tall window instead of asking to turn: the two cards one above the other, VS on their seam, the values inside the pictures, every prompt and name fitting in English and Russian. Turning the iPad glides it to its new layout; the quiz's result still asks to turn (LAB-479).
 - DIG's choice cards ease in with the digging: they start to show at 10% dug, faint at first and fuller as the question nears, so they no longer pop in (LAB-483).
 - DIG’s Explorer and Paleontologist choices now emerge with the digging: invisible through 25%, fading linearly to full visibility at 75% as the “?” cards fade away. Picking still unlocks at 75%, with the same fade under reduced motion (LAB-468).

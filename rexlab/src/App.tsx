@@ -7,6 +7,7 @@ import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import { compareQuestionType, compareQuestionWidth } from "./compareQuestionLayout.ts";
+import { compareResultType, compareResultWidth } from "./compareResultLayout.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
@@ -328,6 +329,11 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
   });
+  // And one size for the result's stars, level names and dinosaur.
+  const resultWidth = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {
@@ -518,7 +524,7 @@ export function App({
   const content = () => {
     switch (screen.kind) {
       case "compare":
-        return quiz.content(language, compareQuestionType(questionWidth));
+        return quiz.content(language, compareQuestionType(questionWidth), compareResultType(resultWidth));
       case "catalogue":
         return (
           <CatalogueScreen
