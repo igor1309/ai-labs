@@ -1,0 +1,36 @@
+Building for debugging...
+[0/4] Write swift-version--3CB7CFEC50E0D141.txt
+Build complete! (0.08s)
+Test Suite 'Selected tests' started at 2026-10-22 09:21:19.257.
+Test Suite 'AudelinPackageTests.xctest' started at 2026-10-22 09:21:19.263.
+Test Suite 'AudelinPackageTests.xctest' passed at 2026-10-22 09:21:19.264.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-22 09:21:19.264.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+􀟈  Test run started.
+􀄵  Testing Library Version: 1501
+􀄵  Target Platform: arm64e-apple-macos14.0
+􀟈  Suite RecorderTests started.
+􀟈  Test s1AudioIsReadableAsWritten() started.
+􀟈  Test s5TheDiskFills() started.
+􀟈  Test s8TheFolderVanishes() started.
+􀟈  Test s9Stop() started.
+􀟈  Test s3ARangeOfALongRecording() started.
+􀟈  Test s4ACrashLosesOnlyTheLastMoments() started.
+􀟈  Test s2TwoTracks() started.
+􀟈  Test s7TheFolderIsRenamed() started.
+􀟈  Test s5TheDiskFillsAsAFileStarts() started.
+􀟈  Test s6ANewEpoch() started.
+􁁛  Test s1AudioIsReadableAsWritten() passed after 0.008 seconds.
+􁁛  Test s8TheFolderVanishes() passed after 0.021 seconds.
+􁁛  Test s6ANewEpoch() passed after 0.044 seconds.
+􁁛  Test s2TwoTracks() passed after 0.046 seconds.
+􁁛  Test s5TheDiskFillsAsAFileStarts() passed after 0.064 seconds.
+􁁛  Test s7TheFolderIsRenamed() passed after 0.073 seconds.
+􁁛  Test s3ARangeOfALongRecording() passed after 0.209 seconds.
+􁁛  Test s4ACrashLosesOnlyTheLastMoments() passed after 0.240 seconds.
+􁁛  Test s9Stop() passed after 0.263 seconds.
+􁁛  Test s5TheDiskFills() passed after 1.687 seconds.
+􁁛  Suite RecorderTests passed after 1.687 seconds.
+􁁛  Test run with 10 tests in 1 suite passed after 1.687 seconds.
+exit 0

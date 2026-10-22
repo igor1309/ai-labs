@@ -2,6 +2,12 @@
 
 ## 2026-10-22
 
+- Recording to disk is built in [macos/](../macos/) without the app: the
+  activity gate and call folder names (CallDomain), the Recorder and
+  FileCallStore, each test-first with every test shown red on its own
+  assertion (spec-process § Building). The Recorder writes Float32 WAV
+  files read by their size and writes only through FileCallStore's
+  call-files port (ADR-001 invariant 10 amended, recorder Decided 4–5).
 - The stabilizer is built in [macos/](../macos/) (TranscriptCore). A
   restart at the watermark with windows shifted by 0.24 s logs no word
   twice and loses none on the recorded fixtures, so the watermark stays as

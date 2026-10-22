@@ -1,0 +1,28 @@
+Building for debugging...
+[0/4] Write swift-version--3CB7CFEC50E0D141.txt
+Build complete! (0.09s)
+Test Suite 'Selected tests' started at 2026-10-22 09:21:21.500.
+Test Suite 'AudelinPackageTests.xctest' started at 2026-10-22 09:21:21.507.
+Test Suite 'AudelinPackageTests.xctest' passed at 2026-10-22 09:21:21.507.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-22 09:21:21.507.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+􀟈  Test run started.
+􀄵  Testing Library Version: 1501
+􀄵  Target Platform: arm64e-apple-macos14.0
+􀟈  Suite CallFolderNameTests started.
+􀟈  Test s5TwoTitlesAlreadyTaken() started.
+􀟈  Test s4ATitleTakenInTheSameMinute() started.
+􀟈  Test s2ReadingANameBack() started.
+􀟈  Test s6ATitleWithCharactersAFolderCannotHold() started.
+􀟈  Test s1ANewCallsFolderName() started.
+􀟈  Test s3ANameWithoutAStartTime() started.
+􁁛  Test s3ANameWithoutAStartTime() passed after 0.001 seconds.
+􁁛  Test s4ATitleTakenInTheSameMinute() passed after 0.001 seconds.
+􁁛  Test s1ANewCallsFolderName() passed after 0.001 seconds.
+􁁛  Test s5TwoTitlesAlreadyTaken() passed after 0.001 seconds.
+􁁛  Test s6ATitleWithCharactersAFolderCannotHold() passed after 0.002 seconds.
+􁁛  Test s2ReadingANameBack() passed after 0.002 seconds.
+􁁛  Suite CallFolderNameTests passed after 0.002 seconds.
+􁁛  Test run with 6 tests in 1 suite passed after 0.002 seconds.
+exit 0
