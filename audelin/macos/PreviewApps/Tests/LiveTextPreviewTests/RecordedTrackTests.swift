@@ -28,17 +28,29 @@ struct RecordedTrackTests {
         let started = ContinuousClock.now
         let clock = SleepRecorder()
 
-        var chunks: [AudioChunk] = []
-        for await chunk in RecordedTrack(
+        let track = RecordedTrack(
             url: url,
             channel: 0,
             started: started,
-            sleep: { instant in await clock.record(instant - started) }
-        ).audio() {
-            chunks.append(chunk)
+            sleep: { instant in try await clock.record(instant - started) }
+        )
+        let collecting = Task {
+            for await chunk in track.audio() { await clock.collect(chunk) }
+            await clock.finish()
         }
+        defer { collecting.cancel() }
 
-        #expect(chunks.count == 3)
+        var events = clock.events.makeAsyncIterator()
+        for (index, delay) in [Int64(100), 200, 300].enumerated() {
+            try #require(await events.next() == .sleeping(delay))
+            #expect(await clock.chunks.count == index)
+            await clock.release()
+            try #require(await events.next() == .emitted(index + 1))
+        }
+        #expect(await events.next() == .finished)
+        await collecting.value
+
+        #expect(await clock.chunks.count == 3)
         #expect(await clock.delays == [100, 200, 300])
     }
 
@@ -61,12 +73,54 @@ struct RecordedTrackTests {
 
 private actor SleepRecorder {
 
-    private(set) var delays: [Int64] = []
+    enum Event: Equatable {
 
-    func record(_ delay: Duration) {
+        case sleeping(Int64)
+        case emitted(Int)
+        case finished
+    }
+
+    nonisolated let events: AsyncStream<Event>
+    private let event: AsyncStream<Event>.Continuation
+    private var gate: AsyncStream<Void>.Continuation?
+    private(set) var delays: [Int64] = []
+    private(set) var chunks: [AudioChunk] = []
+
+    init() {
+
+        (events, event) = AsyncStream.makeStream()
+    }
+
+    func record(_ delay: Duration) async throws {
 
         let components = delay.components
-        delays.append(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+        let milliseconds = components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000
+        delays.append(milliseconds)
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        gate = continuation
+        event.yield(.sleeping(milliseconds))
+        var iterator = stream.makeAsyncIterator()
+        _ = await iterator.next()
+        try Task.checkCancellation()
+    }
+
+    func release() {
+
+        gate?.yield(())
+        gate?.finish()
+        gate = nil
+    }
+
+    func collect(_ chunk: AudioChunk) {
+
+        chunks.append(chunk)
+        event.yield(.emitted(chunks.count))
+    }
+
+    func finish() {
+
+        event.yield(.finished)
+        event.finish()
     }
 }
 
@@ -77,13 +131,18 @@ struct MicrophoneTests {
         let source = FakeMicrophoneSource()
         let microphone = Microphone(source: source)
         let stream = microphone.audio()
-        var iterator = stream.makeAsyncIterator()
         source.emit([[0.1, 0.2], [0.9, 0.8]])
         source.emit([[0.3, 0.4], [0.7, 0.6]])
+        let (received, report) = AsyncStream<AudioChunk>.makeStream()
+        let consuming = Task {
+            for await chunk in stream { report.yield(chunk) }
+        }
+        var iterator = received.makeAsyncIterator()
 
         let first = await iterator.next()
         let second = await iterator.next()
-        microphone.end()
+        consuming.cancel()
+        await consuming.value
 
         #expect(first?.samples == [0.1, 0.2])
         #expect(second?.samples == [0.3, 0.4])

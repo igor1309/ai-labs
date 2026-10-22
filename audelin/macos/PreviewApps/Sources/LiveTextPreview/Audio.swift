@@ -9,7 +9,7 @@ final class Microphone: AudioSource, @unchecked Sendable {
     private let endLock = NSLock()
     private var isEnded = false
 
-    init(source: any MicrophoneSource = EngineMicrophoneSource()) {
+    init(source: any MicrophoneSource) {
 
         self.source = source
     }
@@ -76,7 +76,7 @@ protocol MicrophoneSource {
     func stop()
 }
 
-private final class EngineMicrophoneSource: MicrophoneSource {
+final class EngineMicrophoneSource: MicrophoneSource {
 
     private let engine = AVAudioEngine()
 

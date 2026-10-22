@@ -32,9 +32,9 @@ struct TwoPassRecognizerTests {
     }
 
     @Test(arguments: [
-        DuplicateCase(finalText: "запуску", draftText: "ЗАПУСКУ", start: 0.8, isDuplicate: true),
-        DuplicateCase(finalText: "запуску", draftText: "запуску!", start: 0.8, isDuplicate: true),
-        DuplicateCase(finalText: "ёлка", draftText: "елка", start: 0.8, isDuplicate: true),
+        DuplicateCase(finalText: "запуску", draftText: "ЗАПУСКУ", start: 1.1, isDuplicate: true),
+        DuplicateCase(finalText: "запуску", draftText: "запуску!", start: 1.1, isDuplicate: true),
+        DuplicateCase(finalText: "ёлка", draftText: "елка", start: 1.1, isDuplicate: true),
         DuplicateCase(finalText: "запуску", draftText: "запуску", start: 1.499, isDuplicate: true),
         DuplicateCase(finalText: "запуску", draftText: "запуску", start: 1.501, isDuplicate: false),
     ])

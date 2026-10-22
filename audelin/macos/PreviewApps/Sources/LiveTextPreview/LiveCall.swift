@@ -264,7 +264,7 @@ final class LiveCall {
             guard await Microphone.requestAccess() else {
                 throw Failure("No microphone access: allow the terminal in System Settings › Privacy & Security › Microphone")
             }
-            let microphone = Microphone()
+            let microphone = Microphone(source: EngineMicrophoneSource())
             let stream = microphone.audio()
             return Audio(tracks: [(.me, Started(stream))], stop: { microphone.end() })
         case let .file(url):
