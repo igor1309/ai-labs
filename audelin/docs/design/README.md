@@ -73,6 +73,11 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
 | Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-24`, `-40` |
 
+The app reads the tokens from [tokens.json](tokens.json), the pencil MCP's
+`GetVariables()` output for this file. After changing a token, replace that
+snapshot and run `audelin/macos/scripts/generate-tokens.py`; `--check` reports
+a stale Swift file.
+
 ## Components
 
 The frame "Glass Ledger — components" holds them, with a dark mirror built

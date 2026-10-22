@@ -81,8 +81,8 @@ struct PanelPreview: View {
     var body: some View {
 
         PanelView(state: state, event: { _ in }, config: config)
-            .padding(config.metrics.space16 * 2)
-            .background(config.palette(for: scheme).back)
+            .padding(config.tokens(for: scheme).space24)
+            .background(config.tokens(for: scheme).back)
             .environment(\.colorScheme, scheme)
     }
 }

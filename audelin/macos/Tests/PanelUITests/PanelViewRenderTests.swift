@@ -21,7 +21,7 @@ struct PanelViewRenderTests {
         for (name, state) in PanelState.previews {
 
             let image = try #require(render(state, scheme), "\(name) did not render")
-            #expect(image.size.width > PanelConfig.glassLedger.metrics.panelWidth, "\(name)")
+            #expect(image.size.width > PanelConfig.glassLedger.panelWidth, "\(name)")
             #expect(image.size.height > 0, "\(name)")
 
             try save(image, "\(name)-\(scheme == .dark ? "dark" : "light")")

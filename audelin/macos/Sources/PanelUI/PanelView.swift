@@ -1,4 +1,5 @@
 import AppKit
+import GlassLedger
 import SwiftUI
 
 /// The floating live panel: a header with the recording control, and the log.
@@ -30,29 +31,27 @@ public struct PanelView: View {
             header
             log
         }
-        .frame(width: metrics.panelWidth)
+        .frame(width: config.panelWidth)
         .background {
-            RoundedRectangle(cornerRadius: metrics.radiusPanel)
-                .fill(palette.glass)
-                .shadow(color: palette.shadow, radius: 16, y: 12)
+            RoundedRectangle(cornerRadius: tokens.radiusPanel)
+                .fill(tokens.glass)
+                .shadow(color: tokens.shadow, radius: 16, y: 12)
         }
     }
 }
 
 private extension PanelView {
 
-    var palette: PanelConfig.Palette { config.palette(for: scheme) }
-    var fonts: PanelConfig.Fonts { config.fonts }
-    var metrics: PanelConfig.Metrics { config.metrics }
+    var tokens: GlassLedger { config.tokens(for: scheme) }
 
     func data(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
 
-        .custom(fonts.data, fixedSize: size).weight(weight)
+        .custom(tokens.fontData, fixedSize: size).weight(weight)
     }
 
     func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
 
-        .custom(fonts.ui, fixedSize: size).weight(weight)
+        .custom(tokens.fontUi, fixedSize: size).weight(weight)
     }
 
     /// Extra space that makes each line of the font as tall as the design's
@@ -96,44 +95,44 @@ private extension PanelView {
                 stopButton
             }
         }
-        .padding(.vertical, metrics.space12)
-        .padding(.horizontal, metrics.space16)
-        .background(palette.glass, in: .rect(cornerRadius: metrics.radiusPanel))
+        .padding(.vertical, tokens.space12)
+        .padding(.horizontal, tokens.space16)
+        .background(tokens.glass, in: .rect(cornerRadius: tokens.radiusPanel))
     }
 
     var idleStatus: some View {
 
-        HStack(spacing: metrics.space8) {
+        HStack(spacing: tokens.space8) {
 
             Circle()
-                .fill(palette.gutter)
+                .fill(tokens.gutter)
                 .frame(width: 8, height: 8)
 
             Text("не записывается")
-                .font(data(fonts.caption))
-                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
-                .foregroundStyle(palette.gutter)
+                .font(data(tokens.typeCaption))
+                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .foregroundStyle(tokens.gutter)
         }
     }
 
     func recordingStatus(_ elapsed: String) -> some View {
 
-        HStack(spacing: metrics.space8) {
+        HStack(spacing: tokens.space8) {
 
-            HStack(spacing: metrics.space2) {
+            HStack(spacing: tokens.space2) {
 
                 ForEach(Array([6, 12, 8, 14, 5, 10, 7].enumerated()), id: \.offset) { _, height in
 
-                    RoundedRectangle(cornerRadius: metrics.radiusBar)
-                        .fill(palette.rec)
+                    RoundedRectangle(cornerRadius: tokens.radiusBar)
+                        .fill(tokens.rec)
                         .frame(width: 2, height: CGFloat(height))
                 }
             }
 
             Text("REC \(elapsed)")
-                .font(data(fonts.caption))
-                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
-                .foregroundStyle(palette.rec)
+                .font(data(tokens.typeCaption))
+                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .foregroundStyle(tokens.rec)
         }
     }
 
@@ -141,20 +140,20 @@ private extension PanelView {
 
         Button { event(.start) } label: {
 
-            HStack(spacing: metrics.space6) {
+            HStack(spacing: tokens.space6) {
 
                 Circle()
-                    .fill(palette.selText)
+                    .fill(tokens.selText)
                     .frame(width: 7, height: 7)
 
                 Text("Начать")
-                    .font(ui(fonts.small, .semibold))
-                    .lineHeight(leading(fonts.ui, fonts.small, fonts.lineHeight))
-                    .foregroundStyle(palette.selText)
+                    .font(ui(tokens.typeSmall, .semibold))
+                    .lineHeight(leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+                    .foregroundStyle(tokens.selText)
             }
-            .padding(.vertical, metrics.space4)
-            .padding(.horizontal, metrics.space12)
-            .background(palette.selBg, in: .rect(cornerRadius: metrics.radiusControl))
+            .padding(.vertical, tokens.space4)
+            .padding(.horizontal, tokens.space12)
+            .background(tokens.selBg, in: .rect(cornerRadius: tokens.radiusControl))
         }
         .buttonStyle(.plain)
     }
@@ -163,20 +162,20 @@ private extension PanelView {
 
         Button { event(.stop) } label: {
 
-            HStack(spacing: metrics.space6) {
+            HStack(spacing: tokens.space6) {
 
-                RoundedRectangle(cornerRadius: metrics.radiusBar)
-                    .fill(palette.rec)
+                RoundedRectangle(cornerRadius: tokens.radiusBar)
+                    .fill(tokens.rec)
                     .frame(width: 8, height: 8)
 
                 Text("Стоп")
-                    .font(ui(fonts.small, .semibold))
-                    .lineHeight(leading(fonts.ui, fonts.small, fonts.lineHeight))
-                    .foregroundStyle(palette.rec)
+                    .font(ui(tokens.typeSmall, .semibold))
+                    .lineHeight(leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+                    .foregroundStyle(tokens.rec)
             }
-            .padding(.vertical, metrics.space4)
-            .padding(.horizontal, metrics.space12)
-            .background(palette.errBg, in: .rect(cornerRadius: metrics.radiusControl))
+            .padding(.vertical, tokens.space4)
+            .padding(.horizontal, tokens.space12)
+            .background(tokens.errBg, in: .rect(cornerRadius: tokens.radiusControl))
         }
         .buttonStyle(.plain)
     }
@@ -188,34 +187,34 @@ private extension PanelView {
 
     var log: some View {
 
-        VStack(alignment: .leading, spacing: metrics.space12) {
+        VStack(alignment: .leading, spacing: tokens.space12) {
 
             switch state.log {
             case .empty:
                 Text("Запись не идёт. Начать — и текст появится здесь, для обеих сторон.")
-                    .font(data(fonts.body))
-                    .lineHeight(leading(fonts.data, fonts.body, fonts.looseLineHeight))
-                    .foregroundStyle(palette.gutter)
+                    .font(data(tokens.typeBody))
+                    .lineHeight(leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
+                    .foregroundStyle(tokens.gutter)
 
             case .liveTextOff:
                 Text("Живой текст выключен — звонок только записывается.")
-                    .font(ui(fonts.body))
-                    .lineHeight(leading(fonts.ui, fonts.body, fonts.lineHeight))
-                    .foregroundStyle(palette.sub)
+                    .font(ui(tokens.typeBody))
+                    .lineHeight(leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
+                    .foregroundStyle(tokens.sub)
 
                 Button("Включить живой текст") { event(.switchLiveTextOn) }
                     .buttonStyle(.plain)
-                    .font(ui(fonts.body, .semibold))
-                    .lineHeight(leading(fonts.ui, fonts.body, fonts.lineHeight))
-                    .foregroundStyle(palette.me)
+                    .font(ui(tokens.typeBody, .semibold))
+                    .lineHeight(leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
+                    .foregroundStyle(tokens.me)
 
             case let .lines(lines):
                 linesView(lines)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, metrics.space12)
-        .padding(.horizontal, metrics.space16)
+        .padding(.vertical, tokens.space12)
+        .padding(.horizontal, tokens.space16)
     }
 
     @ViewBuilder
@@ -226,7 +225,7 @@ private extension PanelView {
             lateView(late)
 
             Rectangle()
-                .fill(palette.rule)
+                .fill(tokens.rule)
                 .frame(height: 1)
         }
 
@@ -248,12 +247,12 @@ private extension PanelView {
 
     func lateView(_ late: PanelState.Late) -> some View {
 
-        VStack(alignment: .leading, spacing: metrics.space8) {
+        VStack(alignment: .leading, spacing: tokens.space8) {
 
             Text("дописано позже · \(late.span)")
-                .font(data(fonts.caption))
-                .lineHeight(leading(fonts.data, fonts.caption, fonts.lineHeight))
-                .foregroundStyle(palette.gutter)
+                .font(data(tokens.typeCaption))
+                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .foregroundStyle(tokens.gutter)
 
             ForEach(late.entries) { entryView($0, held: nil) }
         }
@@ -265,20 +264,20 @@ private extension PanelView {
         held: PanelState.Held?
     ) -> some View {
 
-        HStack(alignment: .firstTextBaseline, spacing: metrics.space12) {
+        HStack(alignment: .firstTextBaseline, spacing: tokens.space12) {
 
-            HStack(spacing: metrics.space8) {
+            HStack(spacing: tokens.space8) {
 
                 Text(entry.time)
-                    .foregroundStyle(palette.gutter)
+                    .foregroundStyle(tokens.gutter)
 
                 Text(entry.speaker == .me ? "я" : "они")
                     .fontWeight(.semibold)
-                    .foregroundStyle(entry.speaker == .me ? palette.me : palette.them)
+                    .foregroundStyle(entry.speaker == .me ? tokens.me : tokens.them)
             }
-            .font(data(fonts.body))
-            .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
-            .frame(width: metrics.gutterWidth, alignment: .leading)
+            .font(data(tokens.typeBody))
+            .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
+            .frame(width: config.gutterWidth, alignment: .leading)
 
             let isHeld = held.map { $0.entryID == entry.id && entry.settled.contains($0.text) } ?? false
 
@@ -287,8 +286,8 @@ private extension PanelView {
                 if !entry.settled.isEmpty {
 
                     Text(entry.settled)
-                        .foregroundStyle(isHeld ? palette.selText : palette.text)
-                        .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
+                        .foregroundStyle(isHeld ? tokens.selText : tokens.text)
+                        .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
                 }
 
                 if !entry.pending.isEmpty {
@@ -296,49 +295,49 @@ private extension PanelView {
                     pendingLine(entry.pending)
                 }
             }
-            .font(data(fonts.body))
+            .font(data(tokens.typeBody))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                isHeld ? palette.selBg : .clear,
-                in: .rect(cornerRadius: metrics.radiusControl)
+                isHeld ? tokens.selBg : .clear,
+                in: .rect(cornerRadius: tokens.radiusControl)
             )
         }
     }
 
     func pendingLine(_ pending: String) -> some View {
 
-        HStack(spacing: metrics.space2) {
+        HStack(spacing: tokens.space2) {
 
             Text(pending)
-                .foregroundStyle(palette.gutter)
-                .lineHeight(leading(fonts.data, fonts.body, fonts.lineHeight))
+                .foregroundStyle(tokens.gutter)
+                .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
 
             Rectangle()
-                .fill(palette.me)
+                .fill(tokens.me)
                 .frame(width: 2, height: 15)
         }
     }
 
     func heldView(_ held: PanelState.Held) -> some View {
 
-        HStack(spacing: metrics.space6) {
+        HStack(spacing: tokens.space6) {
 
             Image(systemName: "pin.fill")
                 .font(.system(size: 14))
-                .foregroundStyle(palette.me)
+                .foregroundStyle(tokens.me)
 
             Text("«\(held.text)»")
-                .font(data(fonts.small))
-                .foregroundStyle(palette.text)
+                .font(data(tokens.typeSmall))
+                .foregroundStyle(tokens.text)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .padding(.vertical, metrics.space2)
-        .padding(.horizontal, metrics.space8)
+        .padding(.vertical, tokens.space2)
+        .padding(.horizontal, tokens.space8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
-            RoundedRectangle(cornerRadius: metrics.radiusCard)
-                .stroke(palette.selBg, lineWidth: 1)
+            RoundedRectangle(cornerRadius: tokens.radiusCard)
+                .stroke(tokens.selBg, lineWidth: 1)
         )
     }
 
@@ -347,15 +346,15 @@ private extension PanelView {
         Button { event(.jumpToLive) } label: {
 
             Text("\(count) новые ↓")
-                .font(data(fonts.caption, .semibold))
-                .lineHeight(leading(fonts.data, fonts.caption, fonts.looseLineHeight))
-                .foregroundStyle(palette.me)
-                .padding(.vertical, metrics.space2)
-                .padding(.horizontal, metrics.space8)
-                .background(palette.card, in: .rect(cornerRadius: metrics.radiusCard))
+                .font(data(tokens.typeCaption, .semibold))
+                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.looseLineHeight))
+                .foregroundStyle(tokens.me)
+                .padding(.vertical, tokens.space2)
+                .padding(.horizontal, tokens.space8)
+                .background(tokens.card, in: .rect(cornerRadius: tokens.radiusCard))
                 .overlay(
-                    RoundedRectangle(cornerRadius: metrics.radiusCard)
-                        .stroke(palette.selBg, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: tokens.radiusCard)
+                        .stroke(tokens.selBg, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
