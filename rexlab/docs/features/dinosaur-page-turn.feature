@@ -1,18 +1,18 @@
 Feature: A dinosaur's page moves to its other layout as the window turns
-  When a dinosaur's page changes layout with the window (an iPad turned
-  between landscape and upright, dinosaur-page-portrait.feature, or a
-  tall window resized across a change in the lines kept for the
-  description), the bar, the stage with its picture and its ← and →
-  buttons, and the words glide and resize from where they stand to their
-  new places together, over the shared standard motion (240 ms, easing
-  out), as turn-motion.feature tells. Words and pictures keep their
-  shape. Under reduced motion the old layout only fades into the new,
-  over 160 ms. Nothing jumps, goes blank, shimmers again or slides in
-  again: the page shows the same creature before and after. Until the
-  motion settles, taps, swipes and keys do nothing, and focus stays
-  where it was. Any other resize in a tall window glides nothing: the
-  page follows the window. A page that scrolls shows from its top after
-  a turn.
+  When a dinosaur's page changes layout with the window (the window
+  turning between wide and tall, an iPad turned or a window resized,
+  dinosaur-page-portrait.feature, or a tall window resized across a
+  change in the lines kept for the description or the note), the bar,
+  the stage with its picture and its ← and → buttons, and the words
+  glide and resize from where they stand to their new places together,
+  over the shared standard motion (240 ms, easing out), as
+  turn-motion.feature tells. Words and pictures keep their shape. Under
+  reduced motion the old layout only fades into the new, over 160 ms.
+  Nothing jumps, goes blank, shimmers again or slides in again: the page
+  shows the same creature before and after. Until the motion settles,
+  taps, swipes and keys do nothing, and focus stays where it was. Any
+  other resize in a tall window glides nothing: the page follows the
+  window. A page that scrolls shows from its top after a turn.
 
   A turn while the picture grows from its card, or while the next or
   previous creature slides in, lets that motion end in the new layout:
