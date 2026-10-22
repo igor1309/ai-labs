@@ -11,64 +11,18 @@ single v1 spec (`spec-001-v1.md`, deleted 2026-10-22), which grew past
 1,100 lines because it was written for no observer and mixed contracts,
 mechanics, invented values and test lists.
 
-## The tree
+## Spec folders
 
-One folder per component, under `audelin/docs/spec/`. A component is one
-responsibility with one observer: the user for the top level and the UI
-components, the client that calls it for everything else. Each folder
-holds a `SPEC.md` and a `QA.md`, and nothing else.
-
-```text
-spec/                        the user: journeys across the app, and references
-  menu-bar/                  the user: the menu's status and commands (Screen 7)
-  switches/                  the user: the two checkmarks, in the menu and Settings
-  auto-record/               the user: when recordings start and stop on their own
-  call-titles/               the user: what a call is titled, and renaming it
-  debug-menu/                the user of a debug build: test triggers
-  quit/                      the user: quitting without losing a call
-  live-panel/                the user: the panel window and its header (Screen 3)
-  live-text-states/          the user: live text waiting, off, switched mid-call
-  error-banners/             the user: capture or disk failed, what still records (Screen 8)
-  text-banners/              the user: live text failed while the call records
-  transcript-view/           the user: reading the call in the panel
-  transcript-gaps/           the user: time a side was not captured
-  selection/                 the user: a selection while the text changes
-  calls-list/                the user: finding and opening calls (Screen 4)
-  call-rename/               the user: renaming a call, in the app or Finder
-  call-delete/               the user: deleting a call
-  call-screen/               the user (Screen 5, v1 part)
-  setup-screen/              the user: first launch (Screen 1)
-  launch-check/              the user: a missing model or folder at launch (Screen 2)
-  settings-window/           the user: what Settings shows (Screen 6)
-  calls-folder-change/       the user: moving the calls folder (Screen 6)
-  recording-session/         live-panel, menu-bar, quit: start, stop, keep the audio
-  recording-faults/          error-banners: capture or disk failing mid-call
-  live-recognition/          transcript-view, transcript-gaps, live-text-states, text-banners:
-                             text from the audio as the call goes on
-  catch-up/                  call-screen, calls-list, call-delete, quit: completing text later
-  late-text/                 live-text-states, transcript-view, call-screen: minutes added later
-  call-watcher/              auto-recorder, recording-session: call apps on the microphone
-  auto-recorder/             auto-record, calls-folder-change: recordings for calls
-  calls-catalogue/           calls-list, call-screen, call-rename: the calls and their state
-  call-changes/              call-rename, call-delete: rename, delete
-  folder-move/               calls-folder-change: move the calls folder
-  setup/                     setup-screen, launch-check: first run, launch check
-  live-model/                setup-screen, launch-check, settings-window, live-text-states: the model
-  preferences/               switches, settings-window: switches, chunk size
-  call-folder-names/         calls-catalogue, call-changes, recording-session
-  activity-gate/             recording-session, auto-recorder, catch-up, call-changes, folder-move
-  stabilizer/                live-recognition, catch-up: words to committed segments
-  transcript/                live-recognition, calls-catalogue: text from segments
-  mic-capture/  system-audio-capture/  recorder/  fluid-audio-asr/
-  call-detector/  call-store/  segment-log/  settings-store/  model-store/
-                             the Core whose port each implements
-```
-
-A module may hold several components. The app target composes and has no spec.
+One folder per component, under `audelin/docs/spec/`, named after the
+component. The architecture decides what the components are and what they
+are called; this process only specifies them. A component has one
+responsibility and one observer: the user for the top level and the UI
+components, the client that calls it for everything else. Each folder holds
+a `SPEC.md` and a `QA.md`, and nothing else.
 
 **A spec over 100 lines is a design defect,** not a writing one: the
-component does too much. Stop, split it by responsibility, and update this
-tree before writing on (owner, 2026-10-22).
+component does too much. Stop, and split the component in the architecture
+before writing on (owner, 2026-10-22).
 
 ## SPEC.md
 
