@@ -2,23 +2,22 @@
 
 ## 2026-10-22
 
+- Started over: the architecture decision, every spec and the Swift
+  package are removed. The architecture decision is written again from
+  scratch, then the specs, then the code.
 - CallDomain is gone, with every module built on it (LiveSessionCore,
   CallsCore, Recorder, FileCallStore and their test support) and the app
   target. CallDomain had no job of its own: a call's file format, its
   folder-name rule and an activity gate no feature asked for, in one
-  module. ADR-001 now states rules and keeps four implementation notes;
-  decision 11 leaves it to the composition root what answers each
-  feature's port. Only TranscriptCore remains. The removed modules' QA rows
-  read Missing again; their runs and proofs stay as history.
+  module. Only TranscriptCore remained.
 - The capture specs no longer test Core Audio. Mic and system audio
   capture QA drove the hardware (a loopback device, a USB headset, a click
   within 20 ms, levels within 0.5 dB), which proves Apple's framework and
   needs gear the owner does not have. Each adapter is now a thin binding
   plus the translation it owns (host times to the session clock, callbacks
   to faults, Stop), tested through a fake of the binding; the binding is
-  proven by user spec S-1 on a real call (spec-process § Building). The
-  headset rows in transcript-gaps and error-banners use a new debug-menu
-  switch-microphone trigger (debug-menu S-10).
+  proven on a real call. A debug-menu trigger that switches the microphone
+  replaced the USB headset.
 - The recording session is built in LiveSessionCore, test-first on fakes
   of its ports: capture per track, new calls, recording files, live
   recognition and the session clock. Captured audio is written on the
@@ -32,26 +31,24 @@
   stored path rather than the call's id; the module check missed
   `public import` and `import struct` forms; a stale comment. Tests no
   longer sleep to show that something did not happen, and the Trash tests
-  use a disk image's Trash instead of the user's (spec-process § Building).
+  use a disk image's Trash instead of the user's.
 - The app exists: `Audelin.app`, a menu bar item with «Выйти», built from
   the package by `macos/scripts/bundle.sh` rather than an Xcode project, so
-  CI and the agent build it with `swift build` alone. A check of ADR-001's
-  module rules runs in CI; it found LiveSessionCore and CallsCore without
+  CI and the agent build it with `swift build` alone. A module-rule check
+  runs in CI; it found LiveSessionCore and CallsCore without
   tests, which they now have.
-- Recording to disk is built in [macos/](../macos/) without the app: the
+- Recording to disk is built without the app: the
   activity gate and call folder names (CallDomain), the Recorder and
   FileCallStore, each test-first with every test shown red on its own
-  assertion (spec-process § Building). The Recorder writes Float32 WAV
-  files read by their size and writes only through FileCallStore's
-  call-files port (ADR-001 invariant 10 amended, recorder Decided 4–5).
-- The stabilizer is built in [macos/](../macos/) (TranscriptCore). A
+  assertion. The Recorder writes Float32 WAV files read by their size and
+  writes only through FileCallStore's call-files port.
+- The stabilizer is built (TranscriptCore). A
   restart at the watermark with windows shifted by 0.24 s logs no word
-  twice and loses none on the recorded fixtures, so the watermark stays as
-  ADR-001 decision 4 has it. The fixtures showed Parakeet stretching a
+  twice and loses none on the recorded fixtures, so the watermark stays. The fixtures showed Parakeet stretching a
   window's last word past the next window's start; such a word now commits
-  once no window can read it again (decision 7 amended, stabilizer S-14).
+  once no window can read it again.
 - The v1 behaviour is specified as 48 SPEC.md and QA.md pairs, one per
-  observer, under [spec/](spec/); the single v1 spec is gone.
+  observer; the single v1 spec is gone.
 - Terms on clean speech: Parakeet v3 through Audelin's own windows gives
   RACI and OKR only in Cyrillic and SLA in Latin letters half the time, so
   live terms are out of v1 and the live engine is revisited before v2

@@ -64,8 +64,7 @@ spec/                        the user: journeys across the app, and references
                              the Core whose port each implements
 ```
 
-The components live in [ADR-001](adr-001-v1-architecture.md)'s modules; a
-module may hold several. The app target composes and has no spec.
+A module may hold several components. The app target composes and has no spec.
 
 **A spec over 100 lines is a design defect,** not a writing one: the
 component does too much. Stop, split it by responsibility, and update this
@@ -81,11 +80,11 @@ tree before writing on (owner, 2026-10-22).
   do. Never a state, an event or an effect.
 - **One scenario, one case.** A step that reads "A or B" is two scenarios.
 - **No types, fields, file layouts or values** in a scenario. Interfaces
-  live in code; how modules compose lives in ADR-001.
+  live in code.
 - **No duplication across levels.** A spec references the spec that owns a
   behaviour instead of restating it. The top level states what the user can
   do across the app and refers to the UI specs for what each screen offers.
-- **Oracle:** [mvp.md](mvp.md), [the design](design/README.md), ADR-001 and
+- **Oracle:** [mvp.md](mvp.md), [the design](design/README.md) and
   the owner's rulings, plus the client's spec for a component. Every
   scenario traces to it.
 - **Gaps are the agent's to close, not the owner's.** Where the oracle is
