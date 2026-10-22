@@ -5229,6 +5229,17 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   white-space: nowrap;
 }
 
+/* On the board the title's words shrink to the room the brush picker,
+   the FIELD GUIDE and DUG UP leave beside the brush, as the FIELD GUIDE's
+   do: their letters are at most 0.75 of their size wide. */
+.dig-board-screen .dig-title {
+  container-type: inline-size;
+}
+
+.dig-board-screen .dig-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.75));
+}
+
 /* The brush picker before the FIELD GUIDE: a pill as tall as its
    button, two buttons in it, each a dot, the wide brush's twice the
    brush's; the picked one is filled in DIG's amber, its dot dark. */
@@ -5247,7 +5258,7 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
 }
 
 .dig-brush-option {
-  width: 60px;
+  width: 48px;
   height: 48px;
   padding: 0;
   display: grid;
