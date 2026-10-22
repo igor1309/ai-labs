@@ -16,6 +16,11 @@
   at launch, recording never waits, the panel says live text is getting
   ready, and live text catches up. The preview app's first load compiled
   them for about 30 s with nothing on screen (research run 9).
+- Prior art for the call's audio (research/system-audio.md): Amanu,
+  Muesli, anarlog and AudioCap use a Core Audio process tap; MacParakeet uses
+  ScreenCaptureKit because echo cancellation on the mic kills a tap in the
+  same process. Audelin's mic is raw, so it takes the tap; the tap's scope
+  and start are still open.
 - Nemotron 3.5 hears Russian speech as it streams, settling each word when
   the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own

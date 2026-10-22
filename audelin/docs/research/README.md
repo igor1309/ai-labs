@@ -12,6 +12,7 @@ under the working name wisper.
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
 | [../mvp.md](../mvp.md) | The MVP spec: versions and owner decisions |
 | [adr-001-v1-architecture.md](../adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
+| [system-audio.md](system-audio.md) | How open-source Mac recorders capture the call's audio (process tap vs ScreenCaptureKit), and what Audelin takes |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [naming-prompt-round-2.md](naming-prompt-round-2.md) | Second naming round, built on `prompts/` |
