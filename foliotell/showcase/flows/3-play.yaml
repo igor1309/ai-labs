@@ -1,0 +1,8 @@
+appId: foliotell.FolioTell
+---
+- tapOn: "Not now"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: "Play"
+- waitForAnimationToEnd:
+    timeout: 3000

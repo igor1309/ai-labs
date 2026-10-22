@@ -173,6 +173,38 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   }
 });
 
+test("ciReleaseValidation_shouldRunReleaseAndShowcaseTests_onShowcaseChanges", () => {
+  const job = workflow.match(/\n  release-validation:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
+  assert.ok(job, "missing release-validation job");
+  const command = job[1].match(/node --test (.+)$/m);
+  assert.ok(command, "release-validation does not run Node tests");
+  const globs = command[1].split(" ");
+
+  for (const directory of ["scripts/release/tests", "scripts/showcase/tests"]) {
+    const tests = readdirSync(new URL(`${directory}/`, repoRoot)).filter((name) => name.endsWith(".test.js"));
+    assert.ok(tests.length > 0);
+    for (const name of tests) {
+      const file = `${directory}/${name}`;
+      assert.ok(globs.some((glob) => matchesGlob(file, glob)), `${file} is not run by release-validation`);
+      assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
+    }
+  }
+  for (const file of ["scripts/showcase/export.js", "scripts/showcase/secret-scanner.js", "scripts/showcase/markers.txt"]) {
+    assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
+  }
+});
+
+for (const file of [
+  "rexlab/showcase/showcase.toml",
+  "rexlab/showcase/public/LICENSE",
+  "rexlab/tests/catalogueSources.test.ts",
+]) {
+  test(`ciReleaseValidation_shouldRunShowcaseTests_onInputChange: ${file}`, () => {
+    assert.equal(matchingFilters([file]).has("release"), true);
+    assert.equal(jobRuns("release-validation", [file]), true);
+  });
+}
+
 // Each Go module, the command that tests it, and the job a change to its
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
