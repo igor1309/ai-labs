@@ -60,15 +60,17 @@ import Testing
         #expect(store.folder(of: inFinder.details.id)?.path == moved.path)
     }
 
+    /// On a disk image, the Trash is the image's own, never the user's.
     @Test func s5TrashingACall() throws {
-        let setup = try Setup()
+        let image = try DiskImage(megabytes: 5)
+        defer { image.detach() }
+        let setup = try Setup(in: image.mountPoint)
         let call = try setup.call("Zoom", at: at(14, 30))
         let store = FileCallStore(root: setup.root)
 
         let trashed = try store.trash(call.details.id)
-        defer { setup.removeFromTrash(trashed) }
 
-        #expect(trashed.path.hasPrefix(Setup.trash.path + "/"))
+        #expect(trashed.resolvingSymlinksInPath().path.hasPrefix(image.trash.path + "/"))
         #expect(FileManager.default.fileExists(atPath: trashed.appendingPathComponent("meta.json").path))
         #expect(try store.list().compactMap(\.call).map(\.details.id).contains(call.details.id) == false)
         #expect(FileManager.default.fileExists(atPath: call.folder.path) == false)
@@ -150,15 +152,15 @@ import Testing
     }
 
     @Test func s9ACallRemovedInFinder() async throws {
-        let setup = try Setup()
+        let image = try DiskImage(megabytes: 5)
+        defer { image.detach() }
+        let setup = try Setup(in: image.mountPoint)
         let call = try setup.call("Zoom", at: at(14, 30))
         let events = Events()
         let watch = FileCallStore(root: setup.root).watch { events.add($0) }
         defer { watch.cancel() }
 
-        var trashed: NSURL?
-        try FileManager.default.trashItem(at: call.folder, resultingItemURL: &trashed)
-        defer { trashed.map { setup.removeFromTrash($0 as URL) } }
+        try FileManager.default.trashItem(at: call.folder, resultingItemURL: nil)
 
         #expect(await eventually(within: 2) { events.all.contains(.removed(call.details.id)) })
     }
@@ -189,13 +191,11 @@ import Testing
 // MARK: - Fixtures
 
 private struct Setup {
-    static let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash")
-
     let base: URL
     let root: URL
 
-    init() throws {
-        base = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-store-\(UUID().uuidString)")
+    init(in volume: URL = FileManager.default.temporaryDirectory) throws {
+        base = volume.appendingPathComponent("audelin-store-\(UUID().uuidString)")
         root = base.appendingPathComponent("calls")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
@@ -267,12 +267,6 @@ private struct Setup {
     func bytesOfFiles() throws -> Int {
         try contents(of: root).values.reduce(0) { $0 + $1.count }
     }
-
-    /// Removes what a test put in the Trash, and nothing else.
-    func removeFromTrash(_ item: URL) {
-        guard item.path.hasPrefix(Self.trash.path + "/") else { return }
-        try? FileManager.default.removeItem(at: item)
-    }
 }
 
 private func at(_ hour: Int, _ minute: Int) -> Date {
@@ -327,6 +321,11 @@ private struct DiskImage {
         try run("/usr/bin/hdiutil", "create", "-size", "\(megabytes)m", "-fs", "HFS+", "-volname", "audelin-full", image.path)
         try FileManager.default.createDirectory(at: mountPoint, withIntermediateDirectories: true)
         try run("/usr/bin/hdiutil", "attach", "-nobrowse", "-mountpoint", mountPoint.path, image.path)
+    }
+
+    /// Where macOS puts what is trashed on this image.
+    var trash: URL {
+        mountPoint.resolvingSymlinksInPath().appendingPathComponent(".Trashes/\(getuid())")
     }
 
     func detach() {
