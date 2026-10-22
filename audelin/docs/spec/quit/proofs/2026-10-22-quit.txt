@@ -1,0 +1,5 @@
+2026-10-22 10:19 local, this Mac
+Audelin.app: built by macos/scripts/bundle.sh (swift build -c release) from the LAB-401 branch, merged as 3671d490; launched, nothing running.
+The owner chose «Выйти» in its menu bar item and reported: done.
+$ pgrep -l Audelin
+exit 1
