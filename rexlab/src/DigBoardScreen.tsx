@@ -78,10 +78,15 @@ export type DigBoardScreenProps = {
   // The round asks who it is once enough of the dinosaur shows, so the
   // board stands beside the choices' column from the start.
   asks: boolean;
-  // How many dinosaurs the question offers: the column holds an empty
-  // card for each until the question comes.
+  // Whether enough of the dinosaur shows for the question, kept through
+  // the gust and lift after the right pick.
+  questionShown: boolean;
+  // How visible the choices are, from 0 to 1, as the digging shows them;
+  // their empty cards take the rest.
+  choicesShown: number;
+  // How many slots the question's column holds from the round's start.
   choiceCount: number;
-  // The dinosaurs to pick from while the round asks, else none.
+  // The round's dinosaurs, present even before the question unlocks.
   choices: readonly { id: string; name: string; picture: string; rejected: boolean; correct: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
@@ -243,6 +248,8 @@ export function DigBoardScreen({
   treasure,
   treasureFlight,
   asks,
+  questionShown,
+  choicesShown,
   choiceCount,
   choices,
   level,
@@ -261,7 +268,6 @@ export function DigBoardScreen({
 }: DigBoardScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
-  const choice = choices.length > 0;
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
@@ -459,7 +465,7 @@ export function DigBoardScreen({
     <main className="dig-screen dig-board-screen" data-motion={grains || undefined}
       style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms`, "--dig-treasure": `${flightWait}ms` } as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
-      <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
+      <DigBar language={language} title={questionShown ? text.whoIsIt : text.dig} onHome={onHome}>
         <BrushPicker language={language} wide={wide} disabled={blown} onWide={onWide} />
         <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
           landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
@@ -539,17 +545,18 @@ export function DigBoardScreen({
             {Array.from({ length: 12 }, (_, grain) => <span key={grain} className="dig-grain" style={{ left: `${grain * 100 / 11}%`, "--grain-x": (grain - 5.5) / 3, "--grain-y": -1 - grain % 3 } as CSSProperties} />)}
           </span>}
         </div>
-        {/* Each slot keeps its place from the round's start: its empty
-            card turns away as the choice card turns in over it. */}
-        {asks && <div className="dig-choice-cards" data-motion={grains || undefined} role={choice ? "group" : undefined}
-          aria-label={choice ? text.whoIsIt : undefined} aria-hidden={choice ? undefined : true}>
+        {/* Both cards occupy the same slot so digging changes only their
+            opacity, never the board's position or the choice's identity. */}
+        {asks && <div className="dig-choice-cards" role={questionShown ? "group" : undefined}
+          aria-label={questionShown ? text.whoIsIt : undefined} aria-hidden={questionShown ? undefined : true}>
           {Array.from({ length: choiceCount }, (_, at) => {
             const card = choices[at];
             return (
-              <div key={at} className="dig-choice-slot" style={{ "--choice": at } as CSSProperties}>
-                <span className="dig-empty-card" aria-hidden="true" data-turned={card ? true : undefined}>?</span>
+              <div key={at} className="dig-choice-slot">
+                <span className="dig-empty-card" aria-hidden="true" style={{ opacity: 1 - choicesShown }}>?</span>
                 {card && <Button className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
-                  disabled={blown || card.rejected} aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
+                  style={{ opacity: choicesShown }} disabled={!questionShown || blown || card.rejected} tabIndex={questionShown ? undefined : -1}
+                  aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
                   <span className="dig-choice-name" style={{ "--letters": card.name.length } as CSSProperties}>{card.name.toLocaleUpperCase(language)}</span>
                   {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}

@@ -40,6 +40,7 @@ Feature: Dig: the FIELD GUIDE
     Given I am brushing a round with half of the dinosaur clear
     When I tap the FIELD GUIDE and then "BACK"
     Then I see the same round, with the same sand clear, as turning the iPad gives it back
+    And at Explorer and Paleontologist the choice order, crossfade and availability are the same
     And the round goes on from where it was, with no new drop
 
   Scenario: BACK from the reveal gives the reveal back

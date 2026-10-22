@@ -92,7 +92,8 @@ describe("a treasure in the sand", () => {
     expect(app.timers.timers()).toContain(TREASURE_FLIGHT.motion);
     for (const timing of ["motion", "reduced"] as const) expect(TREASURE_FLIGHT[timing]).toBeLessThan(GUST[timing] + LIFT[timing]);
     expect([fieldGuide().textContent, fresh(), saved(app.storage)?.treasures]).toEqual(["0", null, undefined]);
-    expect([cleared() < 0.75, board().hasAttribute("data-blown"), document.querySelectorAll(".dig-choice-card").length]).toEqual([true, false, 0]);
+    // Treasure sand cannot unlock the choices already in their slots.
+    expect([cleared() < 0.75, board().hasAttribute("data-blown"), document.querySelectorAll(".dig-choice-card:enabled").length]).toEqual([true, false, 0]);
 
     const before = clearCells().length;
     drag([[100, 300], [700, 300]], 10_000);
@@ -172,7 +173,7 @@ describe("a treasure in the sand", () => {
   it("tumbles away with the gust when not found, and is not kept", () => {
     const app = openRound();
     const { row } = place();
-    for (let y = (row + 6) * 20; y < 600 && document.querySelectorAll(".dig-choice-card").length === 0; y += 20) drag([[0, y], [800, y]], y * 100);
+    for (let y = (row + 6) * 20; y < 600 && cleared() < 0.75; y += 20) drag([[0, y], [800, y]], y * 100);
     fireEvent.click(choiceCard());
     expect(board().hasAttribute("data-blown")).toBe(true);
     expect([buried()?.dataset.kind, found()]).toEqual(["shell", null]);
@@ -223,7 +224,7 @@ describe("a treasure in the sand", () => {
   it("is kept as the reveal comes while its flight, started again by a turn to portrait and back, is still on", () => {
     const app = openRound();
     brushTreasure();
-    for (let y = 20; y < 600 && document.querySelectorAll(".dig-choice-card").length === 0; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
+    for (let y = 20; y < 600 && cleared() < 0.75; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
     fireEvent.click(choiceCard());
     act(() => app.viewport.turn("portrait"));
     act(() => app.viewport.turn("landscape"));
@@ -323,7 +324,7 @@ describe("the FIELD GUIDE button", () => {
       if (where === "round") {
         brushTreasure();
         landTreasure(app.timers);
-        for (let y = 20; y < 600 && board().getAttribute("data-blown") === null && document.querySelectorAll(".dig-choice-card").length === 0; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
+        for (let y = 20; y < 600 && board().getAttribute("data-blown") === null && cleared() < 0.75; y += 40) drag([[0, y], [800, y]], 20_000 + y * 100);
         fireEvent.click(choiceCard());
         finishBoard(app.timers);
       }

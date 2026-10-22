@@ -1,8 +1,10 @@
 Feature: Dig: who is it?
   At Explorer and Paleontologist a round is a mystery: the dinosaur lies
-  under all of the sand with no name, card or close-up to give it away,
+  under all of the sand with no name or close-up to give it away,
   and once three quarters of its cells are clear (dig-brush.feature) the
-  game asks who it is. By then enough of it shows to tell it, so the pick
+  game asks who it is. The choices fade in with the digging before that
+  and become pickable at 75% (dig-choices-fade.feature). By then enough
+  of it shows to tell it, so the pick
   is a judgement rather than a guess. The choices are its closest
   look-alikes, by the telling traits and spot kinds (dig-spots.feature)
   two dinosaurs share of those either shows, equals drawn at random. The
@@ -21,9 +23,10 @@ Feature: Dig: who is it?
     When a round starts
     Then the board is all sand and the title reads "DIG"
     And no name, picture or close-up tells the dinosaur under it
-    And the board stands in its place beside the question's column, which holds <count> empty cards
+    And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity sharing their slots with empty cards
     And each empty card is the second surface, with a 2 px line border, rounded 24, and a large "?" in the line colour, centred
-    And an empty card is not a button: tapping it does nothing, and screen readers skip it
+    And an empty card never intercepts taps and screen readers always skip it
+    And the dinosaur cards are disabled, unfocusable and hidden from screen readers
 
     Examples:
       | level          | count |
@@ -34,11 +37,13 @@ Feature: Dig: who is it?
     Given a <level> round
     When I brush 75% of the dinosaur's cells clear
     Then the title reads "WHO IS IT?"
-    And the <count> empty cards turn over in place, one after another, 60 ms apart, each into a card with a body picture and its dinosaur's name in capitals
+    And the <count> dinosaur cards are fully visible, each with a body picture and its dinosaur's name in capitals
+    And the empty cards are invisible and the choices become pressable and available to screen readers
     And one is the dinosaur under the sand, the others its closest look-alikes, in a random order
     And every choice picture is desaturated until the child picks an answer
     And the board does not move, and nothing in the column shifts
-    And with reduced motion the cards come with a short fade and no turn
+    And no card turns or starts a timed arrival animation
+    And the same dinosaur cards keep their slots and order across the threshold
 
     Examples:
       | level          | count |
@@ -53,7 +58,8 @@ Feature: Dig: who is it?
   Scenario: A wrong pick fades and stays out
     Given the question shows
     When I tap a dinosaur that is not the one under the sand
-    Then its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
+    Then its picture fades to opacity 0.45 inside the fully visible card
+    And its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
     And I can brush on and pick again from the other, still-colourless cards
 
   Scenario: The right pick blows the sand away
@@ -70,11 +76,6 @@ Feature: Dig: who is it?
     Then the reveal shows the 🦴 badge on the "DUG UP" card
     And the next reveal of that dinosaur, at any level, shows the badge too
     But a dinosaur named after a wrong pick earns no badge, and keeps one it earned before
-
-  Scenario: The pictures may load late
-    Given the question shows before its pictures have loaded
-    Then each card shows the shared loading look, then its picture or the failed look
-    And every card can still be picked
 
   Scenario Outline: The board and the question fit on the iPads
     Given the screen is <width> by <height> CSS pixels
