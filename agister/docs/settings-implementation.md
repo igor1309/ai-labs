@@ -310,7 +310,9 @@ a layer that cannot be read is reported though no name is held. It
 reports each fault once, in the order first met: the problems of no
 document first, which refuse every request; then each document at
 fault, with its problems, or the block that refuses it, and every name
-it refuses, by kind and name. Each warning is given once, with every
+it refuses, by kind and name. A document met again adds each problem it
+did not have, after those it had: what is not run of a process can
+depend on the runtime of the step that reaches it (LAB-465). Each warning is given once, with every
 name it came with; a refusal gives none. Then every name, by kind,
 resolving or refused. Names are asked for kind by kind, in the order
 workflow, process, agent, runtime, brief, prompt, schema, skill, and by
