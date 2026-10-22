@@ -1,6 +1,6 @@
 // Package workflow runs a workflow (ADR-001, "Core"; ADR-011): its
 // inputs resolved once at its boundary, then its items in order, a step or
-// a parallel of steps called at once, each step called through the one
+// a parallel of steps called at once, or a few at a time, each step called through the one
 // port it declares (ADR-012, rule 1) with its process's params bound from
 // the workflow's params and inputs and the outputs of the items before it,
 // and the session of the step it continues, what each is doing told to its
@@ -24,8 +24,8 @@ type Status string
 const (
 	// Completed is a call or a run that produced its output.
 	Completed Status = "completed"
-	// Failed is a run refused; a run that ended otherwise ends in its last
-	// call's status.
+	// Failed is a run refused, a parallel with no completed child, or a
+	// run whose last call failed.
 	Failed Status = "failed"
 	// Interrupted is a call or a run ended before it finished, a run
 	// cancelled among them.
@@ -55,13 +55,15 @@ type Workflow struct {
 // step, the agent it runs on, its bindings, which give its process's
 // params, and the name of the step whose session it continues, "" for none
 // (ADR-011, rule 3); or, where Parallel is not nil, a parallel of the steps
-// it holds, called at once (ADR-011, rule 2).
+// it holds, called at once (ADR-011, rule 2), at most Max of them at a
+// time, every one where Max is 0 (ADR-012, rule 8).
 type Step struct {
 	Name     string
 	Agent    string
 	Bindings []Binding
 	Session  string
 	Parallel []Step
+	Max      int
 }
 
 // Binding is a value given by name.
@@ -112,7 +114,8 @@ type Resolver interface {
 // Caller calls the step named step, its process's params given by name,
 // continuing session, "" for none, and gives report that the call starts,
 // or the id of a call it took in place of making one; then each tool call
-// its turns report, each turn that went stale and each turn at capacity.
+// its turns report, each turn that went stale, each turn at capacity and
+// the agent it is made again on.
 // It is called from many goroutines at once, one for each step of a
 // parallel.
 type Caller interface {
@@ -122,13 +125,15 @@ type Caller interface {
 // Report is what a step's call reports: that it starts, where Started;
 // the id of the call it took in place of making one, where Reused is not
 // ""; a tool call, where Tool is not nil; a stale turn, where Stale is not
-// nil; else a turn at capacity, where Capacity is not nil.
+// nil; a turn at capacity, where Capacity is not nil; else the agent the
+// call is made again on, its fallback, where Fallback is not "".
 type Report struct {
 	Started  bool
 	Reused   string
 	Tool     *Tool
 	Stale    *Stale
 	Capacity *Capacity
+	Fallback string
 }
 
 // Tool is a tool call a step's turn reports: the tool's name and what it
@@ -154,15 +159,16 @@ type Capacity struct {
 // Events is told what each step of a run is doing, by the step's name: that
 // it started, on its agent, or that it took the call of the id call in
 // place of making one; each tool call its turns report, each turn that
-// went stale and each turn at capacity; and how a step that started ended.
-// It is told from many goroutines at once, one for each step of a
-// parallel.
+// went stale and each turn at capacity; the agent its call is made again
+// on; and how a step that started ended. It is told from many goroutines
+// at once, one for each step of a parallel.
 type Events interface {
 	Started(step, agent string)
 	Reused(step, call string)
 	Tool(step string, tool Tool)
 	Stale(step string, stale Stale)
 	Capacity(step string, capacity Capacity)
+	Fallback(step, agent string)
 	Ended(step string, ended Ended)
 }
 
@@ -261,10 +267,12 @@ func New(resolver Resolver, caller Caller, events Events, clock Clock) (*Runner,
 // calls, stale turns, turns at capacity and end told to the events as its
 // caller reports them. A step continuing a session is given the session
 // the call of the step it names reported; where it reported none, the run
-// is refused, the step not called. A parallel calls its steps at once and ends once
-// all have ended: completed, its outputs each step's end, in declaration
-// order, whatever each ended as; a run cancelled meanwhile ends with it,
-// interrupted, cancelled. The run's status, class and reason are its last
+// is refused, the step not called. A parallel calls its steps at once, or
+// in declaration order no more than its Max at a time, and ends once all
+// have ended: completed, its outputs each step's end, in declaration
+// order, if at least one completed; otherwise the run fails before the
+// next item. A run cancelled meanwhile ends with it,
+// interrupted, cancelled, and calls no step not yet called. The run's status, class and reason are its last
 // item's, its output its output mapping once every item has completed, its
 // timing the whole run's, its cost unknown where a call's is, its usage the
 // sum of what its calls reported, its sessions each step's whose call
@@ -309,18 +317,25 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 			return cancelled()
 		}
 		if item.Parallel != nil {
-			calls, reason, ok := r.parallel(ctx, item.Parallel, read)
+			calls, reason, ok := r.parallel(ctx, item, read)
 			if !ok {
 				result.Reason = reason
 				return refuse()
 			}
 			ends := make([]any, len(item.Parallel))
+			completed := false
 			for i, step := range item.Parallel {
 				count(step.Name, calls[i])
 				ends[i] = endOf(calls[i])
+				completed = completed || calls[i].Status == Completed
 			}
 			if ctx.Err() != nil {
 				return cancelled()
+			}
+			if !completed && len(calls) > 0 {
+				result.Status, result.Class = Failed, calls[0].Class
+				result.Reason = fmt.Sprintf("no step of parallel %q completed: %s", item.Name, calls[0].Reason)
+				return finish()
 			}
 			result.Status, result.Class, result.Reason = Completed, "", ""
 			read.outputs[item.Name] = ends
@@ -350,11 +365,15 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 	return finish()
 }
 
-// parallel calls each of steps at once, its params and its session read
-// by read, and gives each call's result, in declaration order, once all
-// have ended. It is false, nothing called, when a step cannot be called,
+// parallel calls each step of together at once, or, where it sets Max,
+// each in declaration order once fewer than Max are running; its params
+// and its session read by read; and gives each call's result, in
+// declaration order, once all have ended. A step not yet called once ctx
+// has ended is not called: it ends interrupted, cancelled, having spent
+// nothing. It is false, nothing called, when a step cannot be called,
 // reason saying why where it is a session.
-func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Result, string, bool) {
+func (r *Runner) parallel(ctx context.Context, together Step, read reader) ([]Result, string, bool) {
+	steps := together.Parallel
 	params := make([]map[string]string, len(steps))
 	sessions := make([]string, len(steps))
 	for i, step := range steps {
@@ -364,12 +383,26 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 		}
 		params[i], sessions[i] = bound, session
 	}
+	running := len(steps)
+	if together.Max > 0 {
+		running = min(together.Max, running)
+	}
+	slots := make(chan struct{}, running)
 	calls := make([]Result, len(steps))
 	var all sync.WaitGroup
 	for i, step := range steps {
+		select {
+		case slots <- struct{}{}:
+		case <-ctx.Done():
+		}
+		if ctx.Err() != nil {
+			calls[i] = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
+			continue
+		}
 		all.Add(1)
 		go func() {
 			defer all.Done()
+			defer func() { <-slots }()
 			calls[i] = r.call(ctx, step, params[i], sessions[i])
 		}()
 	}
@@ -378,7 +411,7 @@ func (r *Runner) parallel(ctx context.Context, steps []Step, read reader) ([]Res
 }
 
 // call calls step with params, continuing session, its start or the call it reused, its tool
-// calls, stale turns and turns at capacity told to the events by its name
+// calls, stale turns, turns at capacity and fallback told to the events by its name
 // as the caller reports them, and its end once it has ended, where it started.
 func (r *Runner) call(ctx context.Context, step Step, params map[string]string, session string) Result {
 	// A caller may report from a goroutine of its own, as a turn's tool
@@ -397,6 +430,8 @@ func (r *Runner) call(ctx context.Context, step Step, params map[string]string, 
 			r.events.Stale(step.Name, *report.Stale)
 		case report.Capacity != nil:
 			r.events.Capacity(step.Name, *report.Capacity)
+		case report.Fallback != "":
+			r.events.Fallback(step.Name, report.Fallback)
 		}
 	})
 	if started.Load() {

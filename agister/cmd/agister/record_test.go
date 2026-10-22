@@ -241,6 +241,7 @@ func TestARefusalByAdmissionIsRecorded(t *testing.T) {
 func TestCallsSideBySideThatEndTogetherAreBothKept(t *testing.T) {
 	t.Parallel()
 	f := newReviewFixture(t)
+	unboundReviews(f)
 	f.clock = clocktest.NewClock(recordStart)
 	var together sync.WaitGroup
 	together.Add(2)

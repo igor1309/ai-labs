@@ -40,6 +40,10 @@ func (s *eventsSpy) Capacity(step string, capacity workflow.Capacity) {
 	s.told = append(s.told, fmt.Sprintf("%s at capacity %s retrying in %v", step, capacity.Reason, capacity.Retry))
 }
 
+func (s *eventsSpy) Fallback(step, agent string) {
+	s.told = append(s.told, step+" falls back to "+agent)
+}
+
 func (s *eventsSpy) Reused(step, call string) {
 	s.told = append(s.told, step+" reused "+call)
 }
@@ -130,7 +134,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 // tells; a status with its class where it has one; a tool call's name, then
 // its input where it has one; what went stale of a turn, then whether a
 // recovery turn follows; a turn at capacity, then its wait where it is made
-// again; a duration to the second from a second on,
+// again; the agent a call falls back to; a duration to the second from a second on,
 // to the millisecond below; and a text that would break the line quoted.
 func TestEachEventIsPrintedAsALine(t *testing.T) {
 	t.Parallel()
@@ -150,6 +154,7 @@ func TestEachEventIsPrintedAsALine(t *testing.T) {
 		{"at capacity, retrying", func(p *progress) { p.Capacity("a", workflow.Capacity{Reason: "Overloaded", Retry: 30 * time.Second}) },
 			"· a: at capacity; retrying in 30s\n"},
 		{"at capacity", func(p *progress) { p.Capacity("a", workflow.Capacity{Reason: "Overloaded"}) }, "· a: at capacity\n"},
+		{"falling back", func(p *progress) { p.Fallback("a", "claude-opus") }, "· a: falling back to claude-opus\n"},
 		{"completed", func(p *progress) {
 			p.Ended("a", workflow.Ended{Status: workflow.Completed, Duration: 3*time.Minute + 2*time.Second + 400*time.Millisecond})
 		}, "· a: ended completed in 3m2s\n"},

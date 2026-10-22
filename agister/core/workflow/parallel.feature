@@ -64,3 +64,33 @@ Feature: A parallel's steps run side by side
     Then the events hold "a" started on "codex-sol-61", "a" "Bash" with
       "ls", "a" ended, "b" started on "claude-opus" and "b" ended, each
       step's own in order
+
+  Scenario: With max 1, a parallel's steps run one at a time, in order
+    Given the parallel "p" of "a", "b" and "c", max 1, each step running
+      until the test ends it
+    When the workflow runs
+    Then "a" is called, then "b" once "a" has ended, then "c" once "b"
+      has ended, and no two run at once
+
+  Scenario: With max 2, two steps run at once, never three
+    Given the parallel "p" of "a", "b" and "c", max 2, where "a" and "b"
+      each end only once both have been called
+    When the workflow runs
+    Then "a" and "b" run at once, "c" after one of them, and no three at
+      once
+
+  Scenario: With max 1, a step that does not complete does not stop the next
+    Given the parallel "p" of "a", "b" and "c", max 1, where "a" fails,
+      class "capacity", "b" completes with {"v": 2}, and "c" ends
+      interrupted, class "timeout"; then the step "j" binding "all" from
+      steps.p.outputs
+    When the workflow runs
+    Then "a", "b", "c" and "j" are called, in that order, and "j" is
+      given each step's end, in declaration order
+
+  Scenario: With max 1, a cancelled run calls no further step
+    Given the parallel "p" of "a" and "b", max 1, then the step "j"
+    When the run is cancelled while "a" runs, and "a" ends interrupted,
+      class "cancelled"
+    Then neither "b" nor "j" is called, and the run ends interrupted,
+      class "cancelled"

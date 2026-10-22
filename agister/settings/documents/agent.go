@@ -3,8 +3,9 @@ package documents
 import "github.com/igor1309/ai-labs/gokit/tree"
 
 // AgentDefinition is an agent: its name, the runtime it runs on, by name,
-// which it must give, and the model, the model's family, the effort and the command
-// it may.
+// which it must give, and the model, the model's family, the effort, the
+// command and the agent its call falls back to at capacity, by name, it
+// may.
 type AgentDefinition struct {
 	Name        string
 	Runtime     Field[string]
@@ -12,6 +13,7 @@ type AgentDefinition struct {
 	ModelFamily Field[string]
 	Effort      Field[string]
 	Command     Field[string]
+	Fallback    Field[string]
 }
 
 // Agent is the agent name, typed from its composed tree, extends applied,
@@ -30,6 +32,7 @@ func typeAgent(name string, root tree.Node) (AgentDefinition, []Problem) {
 		ModelFamily: t.text("model_family", optional),
 		Effort:      t.text("effort", optional),
 		Command:     t.text("command", optional),
+		Fallback:    t.reference("fallback", optional, Agent),
 	}
 	if problems := t.end(); len(problems) > 0 {
 		return AgentDefinition{}, problems

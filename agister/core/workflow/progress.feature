@@ -33,6 +33,13 @@ Feature: A workflow reports what each step is doing
     When the workflow runs
     Then the events hold "a" at capacity, "at capacity", retrying in 30s
 
+  Scenario: A step's fallback is an event
+    Given the step "a" on "codex-sol-61", whose call reports a turn at
+      capacity, then that it is made again on "claude-opus"
+    When the workflow runs
+    Then the events hold "a" started, at capacity, falling back to
+      "claude-opus", and ended, in that order
+
   Scenario: A step's start is told when its call reports it
     Given the step "a" on "bash"
     When the workflow runs

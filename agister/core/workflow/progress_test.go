@@ -121,6 +121,25 @@ func TestAStepsTurnAtCapacityIsAnEvent(t *testing.T) {
 	}
 }
 
+// progress.feature, "A step's fallback is an event": by the step's name,
+// after its turns at capacity, before its end.
+func TestAStepsFallbackIsAnEvent(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": ends(workflow.Completed, "", time.Second)})
+	f.caller.capacity = map[string][]workflow.Capacity{"a": {{Reason: "at capacity"}}}
+	f.caller.fallback = map[string]string{"a": "claude-opus"}
+	f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a", Agent: "codex-sol-61"}}}, nil)
+	want := []string{
+		"a started on codex-sol-61",
+		`a at capacity "at capacity" retrying in 0s`,
+		"a falls back to claude-opus",
+		`a ended completed "" in 1s`,
+	}
+	if !reflect.DeepEqual(f.events.told, want) {
+		t.Errorf("told\n%q\nwant\n%q", f.events.told, want)
+	}
+}
+
 // startingCaller is a caller that keeps the events told by the time it is
 // asked, then reports its call's start and completes it.
 type startingCaller struct {

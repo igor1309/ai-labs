@@ -16,6 +16,7 @@ Feature: Documents gives an agent
       model_family = "anthropic"
       effort = "high"
       command = "/usr/local/bin/claude"
+      fallback = "claude-opus"
       """
     When documents is asked for the agent "a"
     Then it gives the agent "a" with:
@@ -25,6 +26,7 @@ Feature: Documents gives an agent
       | model family | anthropic             |
       | effort       | high                  |
       | command      | /usr/local/bin/claude |
+      | fallback     | claude-opus           |
     And each field's origin is "/home/.agister/agents/a.toml"
     And it has no problem
 
@@ -33,7 +35,7 @@ Feature: Documents gives an agent
       "runtime = 'codex'"
     When documents is asked for the agent "a"
     Then it gives the agent "a" with the runtime "codex" and no model,
-      model family, effort or command
+      model family, effort, command or fallback
     And it has no problem
 
   Scenario: An agent with no runtime is a problem
@@ -55,3 +57,17 @@ Feature: Documents gives an agent
       | codex         | it gives the agent "a" with the runtime "codex"       |
       | runtime:codex | it gives the agent "a" with the runtime "codex"       |
       | prompt:codex  | it has a problem at "runtime": it names a runtime     |
+
+  # An agent's fallback is another agent (ADR-004, rule 8): a reference,
+  # whose name is given bare or with its kind before it.
+  Scenario Outline: An agent names its fallback, with its kind or without
+    Given the agent "a" has a home source of its schema, "runtime =
+      'codex'" and "fallback = '<fallback>'"
+    When documents is asked for the agent "a"
+    Then <outcome>
+
+    Examples:
+      | fallback          | outcome                                                    |
+      | claude-opus       | it gives the agent "a" with the fallback "claude-opus"     |
+      | agent:claude-opus | it gives the agent "a" with the fallback "claude-opus"     |
+      | runtime:codex     | it has a problem at "fallback": it names an agent          |

@@ -238,3 +238,40 @@ func TestAStepGivenASessionNoCallWentOnInIsRefused(t *testing.T) {
 			got.Class, got.Reason, admits.asked())
 	}
 }
+
+// A fallback session belongs to its answering agent. It cannot be sent
+// to the primary's runtime by a later session binding.
+func TestAStepCannotResumeItsPrimarysFallbackSession(t *testing.T) {
+	t.Parallel()
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	primary := &turnSpy{result: call.Result{Status: call.Failed, Class: call.Capacity, Session: "primary"}}
+	for range 4 {
+		primary.reports = append(primary.reports, call.Report{Capacity: &call.CapacityTurn{}})
+	}
+	fallback := &turnSpy{result: call.Result{Status: call.Completed, Session: "fallback", SessionCost: usd(2)}}
+	first := sayCall("work")
+	first.agent = "primary-agent"
+	second := first
+	second.contract, second.agent = "fallback/1", "fallback-agent"
+	first.fallback = &second
+	admits := &admissionSpy{}
+	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": primary, "fallback/1": fallback},
+		clocktest.NewClock(runStart), map[string]plannedCall{"a": first, "b": first}, &callsSpy{}, noDailyBudget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := steps.Call(context.Background(), "a", map[string]string{"what": "x"}, "", func(workflow.Report) {})
+	if got.Status != workflow.Completed || got.Session != "fallback" {
+		t.Fatalf("first call %+v", got)
+	}
+	got = steps.Call(context.Background(), "b", map[string]string{"what": "x"}, got.Session, func(workflow.Report) {})
+	if got.Class != workflow.Refused || got.Reason != `the session "fallback" ran on "fallback-agent", not "primary-agent"` || len(primary.steps) != 1 || len(admits.asked()) != 1 {
+		t.Errorf("second call %+v, primary turns %d, admissions %d; want refused before runtime", got, len(primary.steps), len(admits.asked()))
+	}
+	if latest, ok := steps.sessions.of("primary"); !ok || latest.agent != "primary-agent" || latest.cost != nil {
+		t.Errorf("primary session %+v, %v; want primary agent and its unknown cost", latest, ok)
+	}
+}

@@ -122,9 +122,11 @@ func continuationPrompt(docs runDocuments) (string, []runstore.Definition, map[s
 
 // latestCall is the latest call made of session, first the call of the
 // run named run that has it: of the runs kept, read newest first, the first
-// holding a call of that session not reused, its last such. The runs before
-// run's are read only where its call was reused, since none of them is
-// later than a call it made; first where no call made is kept.
+// holding a call of that session not reused, its last such. A call whose
+// primary went on in session before it fell back is one, on its primary's
+// agent and with its primary's result: its turns resumed the session. The
+// runs before run's are read only where its call was reused, since none of
+// them is later than a call it made; first where no call made is kept.
 func latestCall(kept keptRuns, run string, first runstore.Call, session string) (runstore.Call, error) {
 	ids, err := kept.Runs()
 	if err != nil {
@@ -139,7 +141,14 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 			return runstore.Call{}, err
 		}
 		for _, made := range slices.Backward(record.Calls) {
-			if s := made.Result.Session; s != nil && *s == session && made.Reuses == nil {
+			if made.Reuses != nil {
+				continue
+			}
+			if s := made.Result.Session; s != nil && *s == session {
+				return made, nil
+			}
+			if primary := made.Primary; primary != nil && primary.Result.Session != nil && *primary.Result.Session == session {
+				made.Agent, made.Permissions, made.Result = primary.Agent, primary.Permissions, primary.Result
 				return made, nil
 			}
 		}

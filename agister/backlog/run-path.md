@@ -47,6 +47,3 @@ leaves out, roughly in the order it is needed:
 - **Sources, the rest**: `git.merge_base`, `git.diff`; artifacts; the
   record keeping each call's bytes (ADR-010, rule 4).
 - **Budgets**: an enclosing time and cost budget.
-- **A fallback agent**: a call failed at capacity, its retries spent,
-  made on another agent the settings declare, the record showing it
-  (ADR-004, rule 8).

@@ -499,20 +499,20 @@ Decisions, each with its reason:
 
 A workflow whose items include a parallel of steps runs: home's
 `code_review`, as `agister run code_review --param goal=<path>`, its
-five reviews on codex side by side, then its judge. What the archive
-also did, keeping a record of the run and its calls, waits
-(`backlog/run-path.md`).
+five reviews on codex one at a time (`max: 1`), then its judge.
+Every call and its end are kept in the run's record ("Records").
 
-**`core/workflow`** runs a parallel (ADR-011, rule 2): it calls each
-of its steps at once, each with its own bindings, each step's start,
-tool calls and end told to the events by its own name. Once all have
+**`core/workflow`** runs a parallel (ADR-011, rule 2; ADR-012, rule 8):
+it calls its steps at once, or at most `max` at a time, each with its own
+bindings, each step's start, tool calls and end told to the events by its own name. Once all have
 ended, the parallel completes, its outputs a list in declaration
 order of each step's `{"status", "class", "output"}`: the class null
 where none, the output null where the step did not complete. A step
-that did not complete does not end the run: the join after it reads
-what there is, and a run whose last item is a parallel completes, its
-reason none. When the run is
-cancelled, the parallel ends it once all its steps have ended,
+that did not complete does not stop the next. If at least one completed,
+the join reads every outcome; a run whose last item is that parallel
+completes, its reason none. If none completed, no join starts: the run
+fails with the first node's class and a reason naming the parallel.
+When the run is cancelled, the parallel ends it once all its steps have ended,
 interrupted, `cancelled`. Each step's cost, usage, warnings and
 session count as a step's in sequence; warnings in declaration order.
 The caller port is called from many goroutines at once, and the events
@@ -993,10 +993,10 @@ other classes; codex a `turn.failed` whose message says "at capacity",
 before its other classes.
 
 **`core/call`** retries a turn that ends by a reply of the class
-`capacity`, while the call has made fewer than three turns of that end:
-it waits on its timer, 30 seconds after the first such turn, 60 after
-the second, then makes that turn again as it was given, its message and
-all, in the session it reported, else in the session it was given. A
+`capacity`, while the call has made fewer than four turns of that end:
+it waits on its timer, 30 seconds after the first such turn, one minute
+after the second and three minutes after the third, then makes that
+turn again as it was given, its message and all, in the session it reported, else in the session it was given. A
 capacity turn that reported a session other than the one it resumed is
 not retried: it fails the call, `runtime_error`, as any turn that
 strayed does. No wait starts where the call's context has ended, or
@@ -1006,7 +1006,7 @@ A retry spends none of the step's recovery, and what follows it follows
 it as it would any turn, a recovery turn included. The call's cost,
 usage and session are its turns', as a recovered call's are. A call
 whose last turn is at capacity, not retried, fails, `capacity`, its
-reason the turn's, after "<n> of 3 turns at capacity: ". Its report grows a
+reason the turn's, after "<n> of 4 turns at capacity: ". Its report grows a
 turn at capacity: its reason, and the wait before its retry, none where
 none follows.
 
@@ -1023,6 +1023,36 @@ and records an event:
 ```json
 {"at": "", "step": "a", "kind": "capacity", "reason": "", "retrying": true}
 ```
+
+An agent may set `fallback = "claude-opus"`. Resolve refuses a fallback
+that is missing, names itself, or cannot run the step's process, naming
+the agent file. Once the primary's four capacity turns are spent,
+`core/call` makes the same process and inputs fresh on the fallback,
+within the remaining time and cost limits and daily budget. Every other
+failure class ends the call. The fallback retries capacity by the same
+schedule, then ends the call; its own fallback is never used.
+
+The composition reports `· <step>: falling back to <agent>` and records
+an event of kind `fallback` naming that agent. The call's record names
+the answering agent and its plan, and keeps `primary`, the primary's
+agent, plan and failed result. The result warns which agent answered and
+why it fell back. Timing, cost, usage and warnings cover both attempts;
+the session and output belong to the fallback. Capacity events keep all
+the failed turns in order.
+
+A call made again on the fallback is read by its step's agent, its
+primary's. A reuse takes it for a step on that agent and records it as
+it was made: on the fallback, its primary kept, each plan this run's.
+A continuation (Continuation, check 3) counts it as a call of its
+primary's session too, on the primary's agent and with its session
+cost: the primary's turns went on in that session.
+
+A parallel may use `parallel: {max: 1, steps: [...]}` to run its nodes
+one at a time; a positive `max` bounds concurrency, and omitting it runs
+all nodes at once. The list form `parallel: [...]` still works. A failed
+node does not stop the next. The join waits for all nodes and receives
+every outcome in declaration order if at least one completed. Home's
+`code_review` and `adr_review` workflows set `max: 1`.
 
 Decisions, each with its reason:
 
@@ -1045,8 +1075,8 @@ Decisions, each with its reason:
   the turn's place, and the next event's time shows it.
 - A codex turn that failed reports no usage, so a retried codex call's
   usage is unknown: unknown, never zero (ADR-001, invariant 3).
-- No cost limit bounds the retries: none is run yet (`run-path.md`).
-  ("A call's cost" stops a retry at it.)
+- Reported cost and the daily budget bound retries and fallback. An
+  unknown cost spends nothing, as for any call.
 
 ## A binding continuing a session
 

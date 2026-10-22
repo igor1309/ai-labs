@@ -76,3 +76,12 @@ Feature: runstore keeps runs
     When the bytes "b1" of the digest "d1" of the run "x" are written,
       then again
     Then "runs/x/definitions" holds "d1" alone, "b1" whole
+
+  Scenario: A call made again on its fallback keeps its primary
+    Given runstore over the folder "runs"
+    When the record of the run "x" is written, its call "a" on
+      "claude-opus", made again on it after "codex-sol-61" ended at
+      capacity
+    Then "runs/x/record.json"'s call holds the agent "claude-opus" and
+      "primary": the agent "codex-sol-61" and its result, given back by
+      "x"; a call with no primary holds "primary": null

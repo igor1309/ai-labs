@@ -15,6 +15,7 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-014
   (2026-10-20)
+- **Revised:** 2026-10-22, capacity retries and agent fallback (LAB-458)
 
 ## Context
 
@@ -93,13 +94,21 @@ may tighten the limits, never loosen them.
 
 A runtime's model at capacity is transient: the wrapper, which alone
 knows the provider's words, classes it `capacity`, and core retries it,
-one policy for every runtime, on by default: up to three turns at
-capacity, a wait between them, within the call's limits
-(`docs/run-implementation.md`, "Capacity"). A turn that reported its
-session resumes it, keeping the work done; else the turn runs again. Each failed turn is recorded. In a workflow, the call
-that failed is retried alone. No other agent takes over: a fallback the
-settings declare waits (`backlog/run-path.md`; the owner's decisions on
-LAB-249, 2026-10-13).
+one policy for every runtime, on by default: up to four turns at
+capacity, waits of 30 seconds, one minute and three minutes between them,
+within the call's limits (`docs/run-implementation.md`, "Capacity").
+A turn that reported its session resumes it, keeping the work done; else
+the turn runs again. Each failed turn is recorded. In a workflow, the
+call that failed is retried alone.
+
+An agent may declare another agent as its fallback. Once its capacity
+turns are spent, the call is made again on that agent, fresh, with the
+same process and inputs, inside the same hold and the remaining limits.
+Only capacity takes the fallback, and a fallback never follows its own.
+Resolve checks that the fallback is another agent that resolves and
+whose runtime can run the process. The result names the agent that
+answered; the record keeps both agents and the primary's failed turns
+(the owner's decision on LAB-458, 2026-10-22).
 
 ## Consequences
 

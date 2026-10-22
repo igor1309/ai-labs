@@ -161,7 +161,7 @@ func claudeCodeFacts(wrapper interface{ Facts() claudecode.Facts }) wrapperFacts
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == claudecode.InMessage}
 	}
 }
 
@@ -169,7 +169,7 @@ func codexFacts(wrapper interface{ Facts() codex.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == codex.InMessage}
 	}
 }
 
@@ -177,7 +177,7 @@ func piFacts(wrapper interface{ Facts() pi.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == pi.InMessage}
 	}
 }
 
@@ -185,7 +185,7 @@ func bashFacts(wrapper interface{ Facts() bash.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == bash.InMessage}
 	}
 }
 

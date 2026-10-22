@@ -94,28 +94,35 @@ func TestATurnAtCapacityWithNoSessionRunsAgainInItsOwn(t *testing.T) {
 	}
 }
 
-// capacity.feature, "Three turns at capacity end the call".
-func TestThreeTurnsAtCapacityEndTheCall(t *testing.T) {
+// capacity.feature, "Four turns at capacity end the call": each retry
+// resumes the session the first turn reported, after 30s, then 1m, then
+// 3m.
+func TestFourTurnsAtCapacityEndTheCall(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(start)
-	spy := &runtimeSpy{turn: atCapacity("")}
+	spy := &runtimeSpy{turn: atCapacity("s1")}
 	var reported capacityTurns
 	done := calling(context.Background(), recoveringCaller(t, spy, &stalenessSpy{}, clock), call.Step{}, reported.report)
-	for _, wait := range []time.Duration{30 * time.Second, 60 * time.Second} {
+	waits := []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute}
+	for _, wait := range waits {
 		clock.Started(wait)
 		clock.Advance(wait)
 	}
 	got := <-done
-	if len(spy.given) != 3 {
-		t.Errorf("%d turns, want 3", len(spy.given))
+	var sessions []string
+	for _, turn := range spy.given {
+		sessions = append(sessions, turn.Session)
 	}
-	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{30 * time.Second, 60 * time.Second}) {
-		t.Errorf("timers %v, want 30s, then 60s", waits)
+	if want := []string{"", "s1", "s1", "s1"}; !reflect.DeepEqual(sessions, want) {
+		t.Errorf("turns given the sessions %q, want %q", sessions, want)
 	}
-	if want := "3 of 3 turns at capacity: " + busy; got.Status != call.Failed || got.Class != call.Capacity || got.Reason != want {
+	if got := clock.Waits(); !reflect.DeepEqual(got, waits) {
+		t.Errorf("timers %v, want %v", got, waits)
+	}
+	if want := "4 of 4 turns at capacity: " + busy; got.Status != call.Failed || got.Class != call.Capacity || got.Reason != want {
 		t.Errorf("ended %q, class %q, reason %q; want failed, class capacity, reason %q", got.Status, got.Class, got.Reason, want)
 	}
-	want := capacityTurns{{Reason: busy, Retry: 30 * time.Second}, {Reason: busy, Retry: 60 * time.Second}, {Reason: busy}}
+	want := capacityTurns{{Reason: busy, Retry: 30 * time.Second}, {Reason: busy, Retry: time.Minute}, {Reason: busy, Retry: 3 * time.Minute}, {Reason: busy}}
 	if !reflect.DeepEqual(reported, want) {
 		t.Errorf("turns at capacity reported %+v, want %+v", reported, want)
 	}
@@ -151,7 +158,7 @@ func waitNotStarted(t *testing.T, failed time.Duration) {
 	if waits := clock.Waits(); !reflect.DeepEqual(waits, []time.Duration{10 * time.Minute}) {
 		t.Errorf("timers %v, want the time limit's alone", waits)
 	}
-	if want := "1 of 3 turns at capacity: " + busy; got.Status != call.Failed || got.Class != call.Capacity || got.Reason != want {
+	if want := "1 of 4 turns at capacity: " + busy; got.Status != call.Failed || got.Class != call.Capacity || got.Reason != want {
 		t.Errorf("ended %q, class %q, reason %q; want failed, class capacity, reason %q", got.Status, got.Class, got.Reason, want)
 	}
 	if want := (capacityTurns{{Reason: busy}}); !reflect.DeepEqual(reported, want) {

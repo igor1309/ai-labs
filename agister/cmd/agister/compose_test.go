@@ -117,7 +117,22 @@ func heldNames(t *testing.T) int {
 func TestShippedSettingsCheckClean(t *testing.T) {
 	t.Parallel()
 	got := compose(t, nil, "check")
-	if want := (ran{stdout: fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
+	// The fallback plans include Bash, whose grants exceed read-only reviews.
+	var warnings strings.Builder
+	for _, w := range []struct {
+		name      string
+		processes []string
+	}{
+		{"adr_review", []string{"adr_review_codex"}},
+		{"code_review", []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}},
+	} {
+		for i, process := range w.processes {
+			for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
+				fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/%s.yaml:%d steps[0].parallel.steps[%d]: its plan on its fallback \"claude-opus\" grants %q beyond what its process %q allows\n  with workflow %s\n", w.name, 16+i, i, extra, process, w.name)
+			}
+		}
+	}
+	if want := (ran{stdout: warnings.String() + fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
 	}
 }
@@ -130,12 +145,12 @@ func TestAMissingRuntimeIsReportedWithWhatItRefuses(t *testing.T) {
 	got := compose(t, map[string]string{"/r/.agister/agents/claude-opus.toml": "runtime = \"gone\"\n"}, "check")
 	want := `runtime gone
   no layer holds the runtime "gone"
-  refuses workflow adr_review, workflow code_review, agent claude-opus
+  refuses workflow adr_review, workflow code_review, agent claude-opus, agent codex-sol-61
 `
 	if !strings.HasPrefix(got.stdout, want) {
 		t.Errorf("stdout\n%s\nwant it to start\n%s", got.stdout, want)
 	}
-	counted(t, got.stdout, heldNames(t)-3, 3)
+	counted(t, got.stdout, heldNames(t)-4, 4)
 	if got.stderr != "" || got.code != 1 {
 		t.Errorf("stderr %q, exit %d; want none, 1", got.stderr, got.code)
 	}
@@ -208,8 +223,8 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 		}
 		if rest, ok := strings.CutPrefix(line, "plan of code_review "); ok {
 			step, what, _ := strings.Cut(rest, ": ")
-			_, runtime, _ := strings.Cut(what, ", runtime ")
-			place = step
+			agent, runtime, _ := strings.Cut(what, ", runtime ")
+			place = step + ": " + agent
 			plans[place] = plan{runtime: runtime}
 			continue
 		}
@@ -219,9 +234,11 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 			plans[place] = p
 		}
 	}
-	want := map[string]plan{"steps[1]": {runtime: "claude-code"}}
+	want := map[string]plan{"steps[1]: process review_judge, agent claude-opus": {runtime: "claude-code"}}
 	for i := range 5 {
-		want[fmt.Sprintf("steps[0].parallel[%d]", i)] = plan{runtime: "codex", options: "read-only"}
+		prefix := fmt.Sprintf("steps[0].parallel.steps[%d]: process %s, agent ", i, reviews[i].process)
+		want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
 	}
 	if !maps.Equal(plans, want) {
 		t.Errorf("plans %+v, want %+v", plans, want)
