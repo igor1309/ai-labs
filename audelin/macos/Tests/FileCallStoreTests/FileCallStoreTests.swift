@@ -15,7 +15,7 @@ import Testing
         #expect(folder.lastPathComponent == "2026.10.21-1430 Zoom")
         let meta = setup.meta(in: folder)
         #expect(meta?["id"] as? String == details.id.description)
-        #expect(meta?["start"] as? String == "2026-10-21T11:30:00Z")
+        #expect(meta?["start"] as? String == ISO8601DateFormatter().string(from: at(14, 30)))
     }
 
     @Test func s2ListingCalls() throws {
