@@ -33,3 +33,9 @@ Feature: Dig: pictures that load
     Given the question shows, one card's picture failed to load
     Then that card shows the failure look and can be tapped as any card
     And it fades if it is not the dinosaur under the sand, and blows the sand away if it is
+
+  Scenario: Choice pictures load during the crossfade
+    Given an Explorer or Paleontologist round before 75% clear
+    When a choice picture loads, fails or reaches its loading limit
+    Then its loading, loaded or failed look stays inside the card at its current dig-driven opacity
+    And the card stays unavailable until the question unlocks

@@ -5663,16 +5663,14 @@ html[data-size="tall"] .source-note {
   gap: 16px;
 }
 
-/* Each slot holds its empty card from the round's start, and the choice
-   card over it once the question comes, both filling the slot, so nothing
-   in the column moves as one replaces the other. */
+/* Both cards fill the same slot throughout the round so their
+   complementary opacity never changes the column or board geometry. */
 .dig-choice-slot {
   flex: 1 1 0;
   min-height: 0;
   max-height: 170px;
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-  perspective: 800px;
 }
 
 .dig-empty-card,
@@ -5685,6 +5683,7 @@ html[data-size="tall"] .source-note {
 }
 
 .dig-empty-card {
+  pointer-events: none;
   display: grid;
   place-items: center;
   border: 2px solid #1d27421f;
@@ -5708,39 +5707,7 @@ html[data-size="tall"] .source-note {
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-empty-card[data-turned] {
-  animation: fade-out var(--motion-small) var(--ease-out) both;
-}
-
-/* Card by card, 60 ms apart, the empty card turns edge on and the choice
-   card turns on from there. */
-.dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
-  animation: dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
-}
-
-.dig-choice-cards[data-motion] .dig-choice-card {
-  animation: dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both;
-}
-
-@keyframes dig-turn-away {
-  99% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: rotateY(calc(90deg * var(--motion-amount)));
-  }
-}
-
-@keyframes dig-turn-in {
-  from {
-    opacity: 0;
-    transform: rotateY(calc(-90deg * var(--motion-amount)));
-  }
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
 }
 
 .dig-choice-card[data-rejected] {
@@ -7269,14 +7236,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   .dig-reveal-screen[data-motion] .dig-reveal-level,
   .dig-reveal-screen[data-motion] .result-actions > button {
     animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-choice-cards[data-motion] .dig-choice-card {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
   .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {

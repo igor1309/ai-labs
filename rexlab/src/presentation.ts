@@ -442,7 +442,7 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
   };
 }
 
-type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "choices">;
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "questionShown" | "choices">;
 
 // A dig round's board: its dinosaur's picture under the sand, every mark
 // brushed, and which cells are clear, as rows of 0 and 1, as dig.json
@@ -465,14 +465,15 @@ export function presentDigBoard(
       size: TREASURE_CELLS * width
     },
     spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
-    choices: asking(round) || round.blown ? round.choices.map((id) => ({
+    choices: round.choices.map((id) => ({
       id,
       name: dinosaurName(id),
       picture: bodyPicture(id),
       rejected: round.rejected.includes(id),
       correct: round.blown && id === round.dinosaur.id
-    })) : [],
+    })),
     asks: round.choices.length > 0,
+    questionShown: round.choices.length > 0 && (asking(round) || round.blown),
     picture: bodyPicture(round.dinosaur.id),
     frame: FRAME,
     marks: round.sand.marks,

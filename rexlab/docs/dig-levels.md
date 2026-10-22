@@ -21,7 +21,7 @@ The one interaction at every level.
   a bed of darker, damp sand, never the page (LAB-360).
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
-  level. A wrong pick at the question only fades that card.
+  level. A wrong pick at the question only fades that picture.
 - **The sand counts in cells.** The picture is split into a grid of cells
   (40 by 30 over the 800×600 frame). A cell is clear once the brush has
   passed over most of it. Only cells over the dinosaur, where its
@@ -42,7 +42,7 @@ The one interaction at every level.
 ## The levels
 
 DIG v2 (LAB-358): each round above Hatchling is a mystery. The board is
-all sand, with nothing beside it to give the dinosaur away; the picture
+all sand, with choices initially invisible beside it; the picture
 itself shows how far the dig has come. The frames are the "Dig ·
 Storyboard" row of `../design/rexlab.pen`.
 
@@ -53,7 +53,7 @@ Storyboard" row of `../design/rexlab.pen`.
 | The question | none | at 75% of the dinosaur clear, "WHO IS IT?" and 3 cards beside the board | the same with 4 cards |
 | The end | the gust at 95% of the dinosaur | the gust at the right pick | the same |
 | A found spot | a ring and a star shine where it lies | the same | the same |
-| Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that card and the child picks again | the same |
+| Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that picture and the child picks again | the same |
 
 - **Why these steps.** Hatchling is free brushing with nothing to get
   wrong. Explorer and Paleontologist add deduction: the dinosaur is
@@ -69,12 +69,24 @@ Storyboard" row of `../design/rexlab.pen`.
   puffing grains from its bottom edge. In a round that asks, it drops
   into its place beside the choice column and never moves sideways
   again: not at the question, a pick, the gust or the lift. The column
-  holds an empty "?" card for each choice from the start (3 at
-  Explorer, 4 at Paleontologist), each the size and place of the card
-  that replaces it; at 75% each turns over into its dinosaur's card,
-  60 ms apart. Hatchling's board is centred, with no column. Reduced
-  motion fades the board in without a puff and fades the cards in with
-  no turn.
+  holds each dinosaur card and an overlaid empty "?" card in the same
+  slot from the start (3 at Explorer, 4 at Paleontologist). Dinosaur-card opacity is
+  clamp((dugPercent - 25) / 50, 0, 1), where dugPercent is 100 times clear dinosaur
+  cells divided by all dinosaur cells, unrounded; the empty card has the complementary opacity and never
+  intercepts taps. Every brush move updates the fade directly, including
+  during a stroke, with no timed animation or flip. Before 75% choices
+  are disabled, unfocusable and hidden from screen readers; at 75% they
+  become the question. Pictures stay grey until an answer is picked.
+  A wrong pick fades its picture to opacity 0.45, while the container
+  stays at 1 and its name and retry mark stay readable.
+  The choices keep their identity and order as the question unlocks.
+  Rotation and a return from the FIELD GUIDE preserve the round's
+  current crossfade and rejected picks. A new round from HOME or DIG
+  AGAIN starts at zero choice opacity, full empty-card opacity and no
+  rejected picks. Loading and failed pictures share their card's current
+  opacity and do not affect when the card becomes pickable.
+  Hatchling's board is centred, with no column. Reduced motion fades the
+  board in without a puff and uses the same dig-driven card opacity.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
   a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
   a beak. A spot's cells are the dinosaur's cells whose middle lies in
@@ -177,9 +189,12 @@ Storyboard" row of `../design/rexlab.pen`.
 - The game's name: "DIG", "РАСКОПКИ".
 - Hatchling's gust at 95% of the dinosaur, so a 4-year-old digs it
   whole but never hunts the last grains (LAB-359).
-- A mystery round at Explorer and Paleontologist: no cards, the
+- A mystery round at Explorer and Paleontologist: initially invisible cards, the
   question at 75%, 3 choices at Explorer and 4 at Paleontologist, a
   wrong pick fading and staying out (LAB-358).
+- On 2026-10-22 the owner chose choices fading linearly from 25% to 75%
+  dug, accepting that candidates become visible before the question;
+  interaction still begins at 75% (LAB-468).
 - The dinosaur is named from body pictures, not its skeleton: every
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
