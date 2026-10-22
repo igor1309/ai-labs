@@ -21,7 +21,7 @@ The one interaction at every level.
   a bed of darker, damp sand, never the page (LAB-360).
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
-  level. A wrong pick at the question only fades that card.
+  level. A wrong pick at the question only fades that picture.
 - **The sand counts in cells.** The picture is split into a grid of cells
   (40 by 30 over the 800×600 frame). A cell is clear once the brush has
   passed over most of it. Only cells over the dinosaur, where its
@@ -42,7 +42,7 @@ The one interaction at every level.
 ## The levels
 
 DIG v2 (LAB-358): each round above Hatchling is a mystery. The board is
-all sand, with nothing beside it to give the dinosaur away; the picture
+all sand, with choices initially invisible beside it; the picture
 itself shows how far the dig has come. The frames are the "Dig ·
 Storyboard" row of `../design/rexlab.pen`.
 
@@ -53,7 +53,7 @@ Storyboard" row of `../design/rexlab.pen`.
 | The question | none | at 75% of the dinosaur clear, "WHO IS IT?" and 3 cards beside the board | the same with 4 cards |
 | The end | the gust at 95% of the dinosaur | the gust at the right pick | the same |
 | A found spot | a ring and a star shine where it lies | the same | the same |
-| Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that card and the child picks again | the same |
+| Help | every 10 s with nothing more of the dinosaur cleared, the next spot thins and shows through the sand | the same; a wrong pick fades that picture and the child picks again | the same |
 
 - **Why these steps.** Hatchling is free brushing with nothing to get
   wrong. Explorer and Paleontologist add deduction: the dinosaur is
