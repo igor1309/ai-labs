@@ -22,9 +22,16 @@ struct FakeCall: Equatable {
 
     let script: [Phrase]
     let chunkSeconds: Int
+    /// Starts the script over when it ends, for a call as long as needed.
+    let loops: Bool
 
     private(set) var isRecording = false
     private(set) var liveText = true
+    /// The log scrolls to each new line; off while the reader is scrolled up
+    /// or holds a selection.
+    private(set) var followsLive = true
+    private var held: PanelState.Held?
+    private var newBelow = 0
     private var seconds = 0
     private var phrase = 0
     private var stage = 0
@@ -36,19 +43,20 @@ struct FakeCall: Equatable {
     private var phraseTime = ""
     private var phraseMode = PhraseMode.live
 
-    init(script: [Phrase] = .meeting, chunkSeconds: Int = 4) {
+    init(script: [Phrase] = .meeting, chunkSeconds: Int = 4, loops: Bool = false) {
 
         self.script = script
         self.chunkSeconds = chunkSeconds
+        self.loops = loops
     }
 
-    var isFinished: Bool { phrase >= script.count }
+    var isFinished: Bool { !loops && phrase >= script.count }
 
     var state: PanelState {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(late: late, entries: entries)
+        let lines = PanelState.Lines(late: late, entries: entries, held: held, newBelow: newBelow)
         let kept = entries.isEmpty && late == nil ? nil : lines
 
         return .init(
@@ -61,7 +69,7 @@ struct FakeCall: Equatable {
 
         switch event {
         case .start:
-            self = .init(script: script, chunkSeconds: chunkSeconds)
+            self = .init(script: script, chunkSeconds: chunkSeconds, loops: loops)
             isRecording = true
 
         case .stop:
@@ -71,7 +79,25 @@ struct FakeCall: Equatable {
             setLiveText(true)
 
         case .jumpToLive:
-            break
+            held = nil
+            followLive()
+        }
+    }
+
+    /// The reader selected text, or cleared the selection.
+    mutating func select(_ selection: PanelState.Held?) {
+
+        held = selection
+        if selection != nil { followsLive = false }
+    }
+
+    /// The reader scrolled to, or away from, the newest line.
+    mutating func scrolled(atBottom: Bool) {
+
+        if atBottom, held == nil {
+            followLive()
+        } else if !atBottom {
+            followsLive = false
         }
     }
 
@@ -93,7 +119,7 @@ struct FakeCall: Equatable {
 
         guard isRecording, !isFinished else { return }
 
-        let current = script[phrase]
+        let current = script[phrase % script.count]
         let shown = current.stages[stage]
         let isLast = stage == current.stages.count - 1
 
@@ -177,7 +203,14 @@ private extension FakeCall {
             entries[index].pending = stage.pending
         } else {
             entries.append(entry(speaker, stage))
+            if !followsLive { newBelow += 1 }
         }
+    }
+
+    mutating func followLive() {
+
+        followsLive = true
+        newBelow = 0
     }
 
     /// Live text went off: the phrase being spoken keeps what had settled.
