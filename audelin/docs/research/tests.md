@@ -163,8 +163,6 @@ negligible for both.
   without a settling layer. On the Zoom recording Parakeet reads better by
   eye: «UI штучек», «то ли там окошко» against Nemotron's «UAC
   зарисовок», «туалетам окошка». No reference text exists for it.
-- Both engines in FluidAudio accept a custom vocabulary; it has not been
-  tried on the terms.
 
 ## Not yet measured
 
