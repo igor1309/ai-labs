@@ -67,3 +67,12 @@ jobs:
           GITHUB_REF_TYPE: ${{ github.ref_type }}
           REXLAB_URL: https://rexlab.enoa.ai/
         run: npm run smoke
+
+      - name: Notify deploy success
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+        run: |
+          VERSION=$(node -p "require('./rexlab/package.json').version")
+          TEXT=$(printf "✅ rexlab v%s deployed\nhttps://rexlab.enoa.ai/ serves it" "$VERSION")
+          bash vendor/ci-shared/scripts/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$TEXT"
