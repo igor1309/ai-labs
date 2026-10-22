@@ -8,7 +8,8 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SharedPicture, type PictureTransition } from "./SharedPicture.tsx";
-import { useKeptList, type LayoutKeeping } from "./useKeptList.ts";
+import { useKeptList } from "./useKeptList.ts";
+import type { LayoutKeeping } from "./useKeptRow.ts";
 
 // How a creature's size is measured: a dinosaur's height, a flying
 // reptile's wingspan or a sea reptile's length.

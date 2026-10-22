@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { anchoredListScroll, listAnchor, type ListAnchor, type ListRows } from "./listAnchor.ts";
-
-export type LayoutKeeping = {
-  keep(keeper: { hold(): () => void; rest(): void }): () => void;
-  isRunning(): boolean;
-};
+import type { LayoutKeeping } from "./useKeptRow.ts";
 
 // Keeps where the catalogue's vertical list stands through a change of its
 // columns (read when the list is put back, as the turn has applied them)

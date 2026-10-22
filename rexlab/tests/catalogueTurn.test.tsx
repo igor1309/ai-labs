@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType, startTransition, ViewTransition, type ViewTransitionProps } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import { App, type SizeClass } from "../src/App.tsx";
+import { App, type PortraitLayouts, type SizeClass } from "../src/App.tsx";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -33,6 +33,7 @@ import {
 } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
+import { chooseFrom } from "./menus.ts";
 import { recordedSharedPictures } from "./sharedPictures.tsx";
 import { NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "../src/DinosaurPage.tsx";
 
@@ -149,7 +150,7 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
 
 type Rising = { y: number; opacity: number; running: boolean };
 
-function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait", rising = new Map<string, Rising>(), productionPictures = false }: { productionPictures?: boolean; reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait"; rising?: Map<string, Rising> } = {}) {
+function openCatalogue(width = 1180, height = 820, { reduced = false, language = "en", pictures = manualPictures(), initial = "landscape" as "landscape" | "portrait", rising = new Map<string, Rising>(), productionPictures = false, portraitLayouts = { catalogue: ["tall"] } as PortraitLayouts }: { portraitLayouts?: PortraitLayouts; productionPictures?: boolean; reduced?: boolean; language?: "en" | "ru"; pictures?: ManualPictures; initial?: "landscape" | "portrait"; rising?: Map<string, Rising> } = {}) {
   openWindow(width, height);
   const viewport = manualViewport(initial);
   const animations: Recorded[] = [];
@@ -192,7 +193,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      portraitLayouts={{ catalogue: ["tall"] }}
+      portraitLayouts={portraitLayouts}
       viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -561,6 +562,25 @@ describe("catalogue's shared turn", () => {
     expect(screen.getByRole("button", { name: "MEAT" }).getAttribute("aria-pressed")).toBe("true");
     app.settle();
     expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
+  });
+
+  it("opens the catalogue after a language switch with the new language's chips, rising in with no glide", async () => {
+    // Home stands upright too, as in the app.
+    const app = openCatalogue(1180, 820, { portraitLayouts: { home: ["tall"], catalogue: ["tall"] } });
+    app.resize([768, 1024, "tall"]);
+    app.settle();
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("spaced");
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.home }));
+    await chooseFrom(app.user, "Language", "Русский");
+    app.animations.length = 0;
+
+    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+
+    expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("closed");
+    expect(app.animations.filter(own)).toEqual([]);
+    expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
+    expect(screen.getByRole("group", { name: TEXTS.ru.catalogue }).dataset.rise).toBe("true");
   });
 
   it("takes a card's glide from where its entrance is drawn, without restarting the entrance", async () => {

@@ -385,7 +385,12 @@ export function App({
   // The food chosen is kept going to a page and back, but the catalogue
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
-  const [chipContents, setChipContents] = useState<readonly ChipContent[]>([]);
+  // The chips' parts as last measured, in the language they were measured
+  // in: another language's are not yet known, so the catalogue's first
+  // open after a switch takes its arrangement as a first visit does.
+  const [chipMeasure, setChipMeasure] = useState<{ language: Language; contents: readonly ChipContent[] }>({ language, contents: [] });
+  const chipContents = chipMeasure.language === language ? chipMeasure.contents : [];
+  const measuredChips = useCallback((contents: readonly ChipContent[]) => setChipMeasure({ language, contents }), [language]);
   const shown = ofFood(catalogue, food);
   // The catalogue's cards in a row, and in a tall window, where the chips
   // stand on a row of their own, that row's width, by the window.
@@ -473,7 +478,7 @@ export function App({
             food={food}
             initialArrangement={{ columns, chips }}
             chipWidths={chipWidths}
-            onChipContents={setChipContents}
+            onChipContents={measuredChips}
             layoutKeeping={turns}
             returning={screen.returning}
             onFood={chooseFood}
