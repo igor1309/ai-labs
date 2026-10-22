@@ -1,5 +1,7 @@
 # Changes
 
+- LAB-465: `agister check` now refuses the workflow and process inputs a run cannot take yet, and rejects file text where a process expects a path.
+
 - LAB-458: a call at capacity retries after 30 s, 1 min and 3 min, then
   runs on its agent's `fallback` (codex-sol-61 falls back to claude-opus);
   a parallel block's `max` runs the review's nodes one at a time.
