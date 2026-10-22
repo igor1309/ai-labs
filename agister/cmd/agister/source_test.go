@@ -71,18 +71,20 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 		want any
 	}{
 		{
-			name: "an agent's model, effort and runtime, each with its origin",
+			name: "an agent's model, effort, runtime and fallback, each with its origin",
 			documents: func(d *documentsSpy) {
 				d.agents["a"] = typed[documents.AgentDefinition]{value: documents.AgentDefinition{
 					Name: "a", Runtime: given("r", agentFile, 1, "runtime"), Model: given("opus", agentFile, 2, "model"), Effort: given("high", agentFile, 3, "effort"),
+					Fallback: given("b", agentFile, 4, "fallback"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Agent("a")) },
 			want: answerOf(resolve.Agent{
-				Name:    "a",
-				Runtime: resolve.Name{Value: "r", Origin: at(agentFile, 1, "runtime")},
-				Model:   resolve.Name{Value: "opus", Origin: at(agentFile, 2, "model")},
-				Effort:  resolve.Name{Value: "high", Origin: at(agentFile, 3, "effort")},
+				Name:     "a",
+				Runtime:  resolve.Name{Value: "r", Origin: at(agentFile, 1, "runtime")},
+				Model:    resolve.Name{Value: "opus", Origin: at(agentFile, 2, "model")},
+				Effort:   resolve.Name{Value: "high", Origin: at(agentFile, 3, "effort")},
+				Fallback: resolve.Name{Value: "b", Origin: at(agentFile, 4, "fallback")},
 			}, nil),
 		},
 		{
@@ -353,6 +355,28 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 						resolvedStep("y", workflowFile, 11, "steps[2].branch[1]"),
 					}},
 				},
+			}, nil),
+		},
+		{
+			name: "a workflow's parallel p of max 1, its items and its max",
+			documents: func(d *documentsSpy) {
+				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
+					Name: "w",
+					Steps: given([]documents.Field[documents.Item]{
+						given(documents.Item{Name: "p",
+							Parallel: given([]documents.Field[documents.Item]{
+								step("a", workflowFile, 7, "steps[0].parallel.steps[0]"),
+							}, workflowFile, 6, "steps[0].parallel.steps"),
+							Max: given(1, workflowFile, 5, "steps[0].parallel.max"),
+						}, workflowFile, 3, "steps[0]"),
+					}, workflowFile, 2, "steps"),
+				}}
+			},
+			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
+			want: answerOf(resolve.Workflow{
+				Name: "w",
+				Steps: []resolve.Item{{Name: "p", Origin: at(workflowFile, 3, "steps[0]"), Max: 1,
+					Parallel: []resolve.Item{resolvedStep("a", workflowFile, 7, "steps[0].parallel.steps[0]")}}},
 			}, nil),
 		},
 		{

@@ -316,3 +316,161 @@ func TestAParallelThatCannotBeBoundIsRefused(t *testing.T) {
 		})
 	}
 }
+
+// bounded is the parallel name of steps, at most max of them at once.
+func bounded(name string, max int, steps ...workflow.Step) workflow.Step {
+	return workflow.Step{Name: name, Parallel: steps, Max: max}
+}
+
+// overlap counts the steps running at once, and keeps the most that ever
+// did. It is safe for concurrent use.
+type overlap struct {
+	mu            sync.Mutex
+	running, most int
+}
+
+func (o *overlap) enter() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.running++
+	o.most = max(o.most, o.running)
+}
+
+func (o *overlap) leave() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.running--
+}
+
+// parallel.feature, "With max 1, a parallel's steps run one at a time, in
+// order": each step says it entered, then runs until the test ends it,
+// and the test ends each as it enters, in declaration order.
+func TestWithMax1AParallelsStepsRunOneAtATimeInOrder(t *testing.T) {
+	t.Parallel()
+	var o overlap
+	entered := make(chan string)
+	release := map[string]chan struct{}{"a": make(chan struct{}), "b": make(chan struct{}), "c": make(chan struct{})}
+	runs := func(name string) func() workflow.Result {
+		return func() workflow.Result {
+			o.enter()
+			defer o.leave()
+			entered <- name
+			<-release[name]
+			return completes(0)()
+		}
+	}
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": runs("a"), "b": runs("b"), "c": runs("c")})
+	done := make(chan workflow.Result)
+	go func() {
+		done <- f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+			bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
+		}}, nil)
+	}()
+	var order []string
+	for range 3 {
+		name := <-entered
+		order = append(order, name)
+		close(release[name])
+	}
+	got := <-done
+	if !slices.Equal(order, []string{"a", "b", "c"}) || o.most != 1 {
+		t.Errorf("entered %q, at most %d at once; want a, b, c, one at a time", order, o.most)
+	}
+	if got.Status != workflow.Completed {
+		t.Errorf("ended %q, class %q; want completed", got.Status, got.Class)
+	}
+}
+
+// parallel.feature, "With max 2, two steps run at once, never three":
+// "a" and "b" meet, which only steps called at once get past.
+func TestWithMax2TwoStepsRunAtOnceNeverThree(t *testing.T) {
+	t.Parallel()
+	var o overlap
+	var both sync.WaitGroup
+	both.Add(2)
+	meets := func() workflow.Result {
+		o.enter()
+		defer o.leave()
+		both.Done()
+		both.Wait()
+		return completes(0)()
+	}
+	runs := func() workflow.Result {
+		o.enter()
+		defer o.leave()
+		return completes(0)()
+	}
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": meets, "b": meets, "c": runs})
+	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+		bounded("p", 2, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
+	}}, nil)
+	if got.Status != workflow.Completed || o.most != 2 {
+		t.Errorf("ended %q, at most %d at once; want completed, two", got.Status, o.most)
+	}
+	if f.trail[len(f.trail)-1] != "c" {
+		t.Errorf("asked %q, want c last", f.trail)
+	}
+}
+
+// parallel.feature, "With max 1, a step that does not complete does not
+// stop the next".
+func TestWithMax1AStepThatDoesNotCompleteDoesNotStopTheNext(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result { return workflow.Result{Status: workflow.Failed, Class: "capacity", Reason: "r"} },
+		"b": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Output: map[string]any{"v": 2}} },
+		"c": func() workflow.Result { return workflow.Result{Status: workflow.Interrupted, Class: "timeout"} },
+		"j": completes(0),
+	})
+	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+		bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
+		{Name: "j", Bindings: []workflow.Binding{bind("all", outputs("p", ""))}},
+	}}, nil)
+	if want := (trail{"resolve", "a", "b", "c", "j"}); !slices.Equal(f.trail, want) || got.Status != workflow.Completed {
+		t.Errorf("asked %q, ended %q; want %q, completed", f.trail, got.Status, want)
+	}
+	var all any
+	if err := json.Unmarshal([]byte(f.caller.bound["j"]["all"]), &all); err != nil {
+		t.Fatalf("all %q: %v", f.caller.bound["j"]["all"], err)
+	}
+	want := []any{
+		map[string]any{"status": "failed", "class": "capacity", "output": nil},
+		map[string]any{"status": "completed", "class": nil, "output": map[string]any{"v": float64(2)}},
+		map[string]any{"status": "interrupted", "class": "timeout", "output": nil},
+	}
+	if !reflect.DeepEqual(all, want) {
+		t.Errorf("all\n got %v\nwant %v", all, want)
+	}
+}
+
+// parallel.feature, "With max 1, a cancelled run calls no further step":
+// "b", not called, spends nothing, so the run's cost stays known.
+func TestWithMax1ACancelledRunCallsNoFurtherStep(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result {
+			close(started)
+			<-ctx.Done()
+			return workflow.Result{Status: workflow.Interrupted, Class: workflow.Cancelled, Cost: new(float64)}
+		},
+	})
+	done := make(chan workflow.Result)
+	go func() {
+		done <- f.runner.Run(ctx, workflow.Workflow{Steps: []workflow.Step{
+			bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}),
+			{Name: "j"},
+		}}, nil)
+	}()
+	<-started
+	cancel()
+	got := <-done
+	if want := (trail{"resolve", "a"}); !slices.Equal(f.trail, want) {
+		t.Errorf("asked %q, want %q", f.trail, want)
+	}
+	if got.Status != workflow.Interrupted || got.Class != workflow.Cancelled || got.Cost == nil {
+		t.Errorf("ended %q, class %q, cost %v; want interrupted, cancelled, a known cost", got.Status, got.Class, got.Cost)
+	}
+}

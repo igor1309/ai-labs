@@ -59,7 +59,9 @@ func callID(run, step string) string {
 // none where its inputs were refused; its permission plan; its worktree's
 // facts, none for a call refused; the earlier call
 // it took, nil for one made; its result and session cost, nil where
-// unknown; and its cost's source, "" where its cost is unknown.
+// unknown; its cost's source, "" where its cost is unknown; and its
+// primary, where it was made again on its agent's fallback, nil where it
+// was not, the agent then the fallback's.
 type endedCall struct {
 	definitions          []runstore.Definition
 	definitionBytes      map[string][]byte
@@ -73,6 +75,19 @@ type endedCall struct {
 	result               workflow.Result
 	sessionCost          *float64
 	costSource           string
+	primary              *endedPrimary
+}
+
+// endedPrimary is how a call ended on its step's agent before it was made
+// again on the agent's fallback: the agent, its permission plan, its
+// result and session cost, nil where unknown, and its cost's source, ""
+// where its cost is unknown.
+type endedPrimary struct {
+	agent       string
+	permissions runstore.Permissions
+	result      workflow.Result
+	sessionCost *float64
+	costSource  string
 }
 
 // runRecord keeps a run's record as the run goes (docs/run-implementation.md,
@@ -170,6 +185,9 @@ func (r *runRecord) Called(ended endedCall) {
 	}
 	call.Permissions = ended.permissions
 	call.Environment = slices.Clone(ended.environment)
+	if primary := ended.primary; primary != nil {
+		call.Primary = primaryOf(*primary)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.keepDefinitions(call.Definitions, ended.definitionBytes)
@@ -239,7 +257,7 @@ func (r *runRecord) warn(warning string) {
 	}
 }
 
-// Started, Tool, Stale, Capacity, Reused and Ended answer core/workflow's
+// Started, Tool, Stale, Capacity, Fallback, Reused and Ended answer core/workflow's
 // events: each is appended to the run's events at the clock's time.
 func (r *runRecord) Started(step, agent string) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Started, Agent: agent})
@@ -260,6 +278,10 @@ func (r *runRecord) Capacity(step string, capacity workflow.Capacity) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Capacity, Reason: capacity.Reason, Retrying: capacity.Retry > 0})
 }
 
+func (r *runRecord) Fallback(step, agent string) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Fallback, Agent: agent})
+}
+
 func (r *runRecord) Reused(step, call string) {
 	r.append(runstore.Event{Step: step, Kind: runstore.Reused, Call: call})
 }
@@ -276,6 +298,19 @@ func (r *runRecord) append(event runstore.Event) {
 		defer r.mu.Unlock()
 		r.warn("an event of the run could not be recorded: " + err.Error())
 	}
+}
+
+// primaryOf is primary as the record keeps it, its result as a call's.
+func primaryOf(primary endedPrimary) *runstore.Primary {
+	kept := runstore.Primary{Agent: primary.agent, Permissions: primary.permissions,
+		Result: runstore.CallResult{Outcome: outcomeOf(primary.result), SessionCost: primary.sessionCost}}
+	if session := primary.result.Session; session != "" {
+		kept.Result.Session = &session
+	}
+	if source := primary.costSource; source != "" {
+		kept.Result.CostSource = &source
+	}
+	return &kept
 }
 
 // recordInputs is each of given as the record keeps it.
@@ -331,6 +366,12 @@ func (b bothEvents) Stale(step string, stale workflow.Stale) {
 func (b bothEvents) Capacity(step string, capacity workflow.Capacity) {
 	for _, events := range b {
 		events.Capacity(step, capacity)
+	}
+}
+
+func (b bothEvents) Fallback(step, agent string) {
+	for _, events := range b {
+		events.Fallback(step, agent)
 	}
 }
 

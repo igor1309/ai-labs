@@ -94,9 +94,10 @@ func (s *source) Agent(name string) (resolve.Agent, []resolve.Problem) {
 	}
 	return resolve.Agent{
 		Name:    agent.Name,
-		Runtime: nameOf(agent.Runtime),
-		Model:   model,
-		Effort:  nameOf(agent.Effort),
+		Runtime:  nameOf(agent.Runtime),
+		Model:    model,
+		Effort:   nameOf(agent.Effort),
+		Fallback: nameOf(agent.Fallback),
 	}, nil
 }
 
@@ -284,7 +285,7 @@ func itemsOf(items []documents.Field[documents.Item]) []resolve.Item {
 			m.Session = readOf(item.Session.Value, item.Session.Origin)
 		}
 		if item.Parallel.Given {
-			m.Parallel = itemsOf(item.Parallel.Value)
+			m.Parallel, m.Max = itemsOf(item.Parallel.Value), item.Max.Value
 		}
 		if item.Branch.Given {
 			m.Branch = itemsOf(item.Branch.Value)

@@ -52,11 +52,12 @@ type Request struct {
 }
 
 // Call is a call of a run, as it ended: its id, its step, process and
-// agent; its worktree's root, HEAD when admitted and at its end, and its
+// agent, the one that answered; its worktree's root, HEAD when admitted and at its end, and its
 // final content, empty where refused; its patch's path, nil for none; the id of the call
 // whose session it continues, nil for none; the id of the call it reuses,
 // nil for none; its permission plan and resolved process environment;
-// the inputs it was given, as resolved; and its result.
+// the inputs it was given, as resolved; its result; and its primary,
+// where it was made again on its agent's fallback, nil where it was not.
 // EndHead is nil only for a record from before end_head was kept.
 type Call struct {
 	Definitions []Definition `json:"definitions"`
@@ -75,6 +76,16 @@ type Call struct {
 	Reuses      *string      `json:"reuses"`
 	Inputs      []Input      `json:"inputs"`
 	Result      CallResult   `json:"result"`
+	Primary     *Primary     `json:"primary"`
+}
+
+// Primary is how a call ended on its step's agent before it was made
+// again on the agent's fallback (ADR-004, rule 8): the agent, its
+// permission plan, and its result, its turns at capacity spent.
+type Primary struct {
+	Agent       string      `json:"agent"`
+	Permissions Permissions `json:"permissions"`
+	Result      CallResult  `json:"result"`
 }
 
 // Permissions is the permission plan of a step, in resolve's meanings:
@@ -178,6 +189,7 @@ const (
 	Tool     Kind = "tool"     // the step called a tool
 	Stale    Kind = "stale"    // the step's turn went stale
 	Capacity Kind = "capacity" // the step's turn failed at capacity
+	Fallback Kind = "fallback" // the step's call is made again on its agent's fallback
 	Ended    Kind = "ended"    // the step ended
 )
 
@@ -185,7 +197,8 @@ const (
 // own: a step started its agent; a step reused the id of the call it
 // took; a tool call the tool's name and its input; a stale turn what went
 // stale and whether a recovery turn follows; a turn at capacity its reason
-// and whether the turn is made again; a step ended its status, its class,
+// and whether the turn is made again; a fallback the agent the call is
+// made again on; a step ended its status, its class,
 // "" for none, and how long it took.
 type Event struct {
 	At         time.Time
@@ -246,6 +259,13 @@ func (e Event) MarshalJSON() ([]byte, error) {
 			Reason   string    `json:"reason"`
 			Retrying bool      `json:"retrying"`
 		}{e.At, e.Step, e.Kind, e.Reason, e.Retrying})
+	case Fallback:
+		return json.Marshal(struct {
+			At    time.Time `json:"at"`
+			Step  string    `json:"step"`
+			Kind  Kind      `json:"kind"`
+			Agent string    `json:"agent"`
+		}{e.At, e.Step, e.Kind, e.Agent})
 	case Ended:
 		var class *string
 		if e.Class != "" {
@@ -283,7 +303,8 @@ func New(folder string) (*Store, error) {
 // any written before: whole, to a temporary file in the run's folder,
 // then renamed, so that a reader meets the one or the other, and no
 // temporary file is left behind. Calls, params and inputs that are none
-// are written as empty, as are a call's permission lists and environment.
+// are written as empty, as are a call's permission lists, its primary's
+// too, and its environment.
 func (s *Store) Write(record Record) error {
 	folder, err := s.run(record.ID)
 	if err != nil {
@@ -297,11 +318,11 @@ func (s *Store) Write(record Record) error {
 		if call.Environment == nil {
 			record.Calls[i].Environment = []Variable{}
 		}
-		p := &record.Calls[i].Permissions
-		for _, list := range []*[]string{&p.Options, &p.Required, &p.Allowed, &p.Granted, &p.Extra, &p.Withheld} {
-			if *list == nil {
-				*list = []string{}
-			}
+		emptyPermissions(&record.Calls[i].Permissions)
+		if primary := call.Primary; primary != nil {
+			written := *primary
+			emptyPermissions(&written.Permissions)
+			record.Calls[i].Primary = &written
 		}
 	}
 	if record.Inputs == nil {
@@ -321,6 +342,15 @@ func (s *Store) Write(record Record) error {
 		return fmt.Errorf("runstore: the record of %q: %w", record.ID, err)
 	}
 	return nil
+}
+
+// emptyPermissions makes each list of p that is none empty.
+func emptyPermissions(p *Permissions) {
+	for _, list := range []*[]string{&p.Options, &p.Required, &p.Allowed, &p.Granted, &p.Extra, &p.Withheld} {
+		if *list == nil {
+			*list = []string{}
+		}
+	}
 }
 
 // writeWhole replaces path atomically, leaving no temporary file behind.

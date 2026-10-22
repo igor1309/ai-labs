@@ -37,7 +37,7 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 // has given the call's report its start, or, where its test gives one,
 // the call it reused for that name, or nothing where its test names the
 // step in silent; then its test's tools for that name, in order, then its
-// stale turns, then its turns at capacity; and keeps each call's params, in the order called and by
+// stale turns, then its turns at capacity, then its fallback; and keeps each call's params, in the order called and by
 // its step, and the session each step is given, by its step. A step it has no answer for fails its test, and is answered
 // with nothing. It is safe for concurrent use; the trail is read once the
 // run has ended.
@@ -50,6 +50,7 @@ type callerSpy struct {
 	tools    map[string][]workflow.Tool
 	stale    map[string][]workflow.Stale
 	capacity map[string][]workflow.Capacity
+	fallback map[string]string
 	mu       sync.Mutex
 	params   []map[string]string
 	bound    map[string]map[string]string
@@ -79,6 +80,9 @@ func (s *callerSpy) Call(_ context.Context, step string, params map[string]strin
 	}
 	for _, capacity := range s.capacity[step] {
 		report(workflow.Report{Capacity: &capacity})
+	}
+	if agent := s.fallback[step]; agent != "" {
+		report(workflow.Report{Fallback: agent})
 	}
 	answer, ok := s.answers[step]
 	if !ok {
@@ -129,6 +133,10 @@ func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
 
 func (s *eventsSpy) Capacity(step string, capacity workflow.Capacity) {
 	s.tell("%s at capacity %q retrying in %v", step, capacity.Reason, capacity.Retry)
+}
+
+func (s *eventsSpy) Fallback(step, agent string) {
+	s.tell("%s falls back to %s", step, agent)
 }
 
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
