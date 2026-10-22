@@ -7,13 +7,16 @@ process list.
 ## Decided
 
 - The answer is every process Core Audio knows, playing or not: a call
-  app's helper is often silent when asked and plays a moment later.
-- Each process comes with its bundle id and its name, and with whether it
-  is playing and whether it is recording now. A process with no bundle id
-  is named by its executable.
-- Audelin's own process is in the answer and is marked as Audelin's, so a
-  client can leave it out.
-- Each ask reads the list afresh; the adapter keeps nothing between asks.
+  app's helper is often silent when asked and plays a moment later (Amanu
+  `AudioProcesses.swift:58`).
+- Each process comes with its bundle id, its name, and Core Audio's own
+  flags for whether it is playing and recording now (Amanu
+  `AudioProcesses.swift:46-47`). Without a bundle id, the name is its
+  executable's: a command-line tool has no other.
+- Audelin's own process is marked, not dropped: dropping it would be a
+  choice, and choosing belongs to a Core (ARCHITECTURE.md rule 2).
+- Each ask reads the list afresh and the adapter keeps nothing: when to ask
+  is the client's.
 
 ```gherkin
 Feature: Processes with audio open
@@ -52,6 +55,11 @@ Feature: Processes with audio open
     Given the system will not give the process list
     When I ask which processes have audio open
     Then I can tell the ask failed
+
+  Scenario: S-8 A silent process is listed
+    Given a process has audio open and plays nothing
+    When I ask which processes have audio open
+    Then I can find it, shown as not playing
 ```
 
 Not audio processes': choosing which to hear (call app processes), and

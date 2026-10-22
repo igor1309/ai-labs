@@ -34,3 +34,8 @@ Real: after `afplay` exits, a new ask does not list it. Evidence: Missing.
 ## S-7 A list the system refuses fails
 
 Fake: the binding refuses the list; the ask fails. Evidence: Missing.
+
+## S-8 A silent process is listed
+
+Fake: an object whose output-running flag is clear is in the answer, shown
+as not playing. Evidence: Missing.
