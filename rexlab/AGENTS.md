@@ -157,4 +157,5 @@ Releases go out only by tag; merging to trunk deploys nothing.
 The tag runs `release-unit.yml`, which calls `rexlab-deploy.yml`: core checks,
 `wrangler pages deploy`, then a smoke check that https://rexlab.enoa.ai serves
 the tag's version in its `rexlab-version` meta tag. The release passes only when
-that check does; then the GitHub release is created.
+that check does; then a success message goes to the CI Telegram chat and the
+GitHub release is created.
