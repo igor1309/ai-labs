@@ -1,12 +1,16 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
-import { CatalogueScreen } from "./CatalogueScreen.tsx";
+import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
+import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
+import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
+import { closingPicture, type PictureMotion } from "./closingPicture.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
+import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -18,7 +22,7 @@ import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps } from "./quizGame.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
-import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "./SharedPicture.tsx";
+import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
 import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
@@ -63,6 +67,10 @@ export type PageVisibility = {
 
 export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
 
+// The viewport boundary's safe-area values, kept independent of any screen's
+// geometry types.
+export type ViewportInsets = { left: number; right: number };
+
 // The size classes in which a screen with no portrait layout for them
 // shows the picture asking to turn or widen.
 export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
@@ -76,6 +84,8 @@ export type Viewport = {
   isScreenUpright(): boolean;
   // The window's width in CSS pixels.
   width(): number;
+  // The window's safe-area insets at its left and right edges.
+  sideInsets(): ViewportInsets;
   subscribe(onChange: () => void): () => void;
 };
 
@@ -97,9 +107,13 @@ export type AppProps = CareGameProps &
     skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
+    // How the catalogue's food chips' parts are measured as laid out.
+    chipWidths: ChipWidths;
     // How the page's parts are found, measured and animated, and the page
     // cross-faded, as a screen goes to its other layout.
-    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer">;
+    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation">;
+    pictureTransition?: PictureTransition;
+    pictureMotion: PictureMotion;
     pageVisibility: PageVisibility;
     // The device's language tag, such as "ru-RU".
     deviceLanguage: string;
@@ -184,7 +198,10 @@ export function App({
   random,
   viewport,
   portraitLayouts,
+  chipWidths,
   layoutMotion,
+  pictureTransition,
+  pictureMotion,
   pageVisibility,
   progress,
   deviceLanguage,
@@ -223,9 +240,9 @@ export function App({
     subscribe: viewport.subscribe
   }), [viewport, portraitSizes]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
-  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, reducedMotion: careProps.reducedMotion, startTimer }));
+  const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
+  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, continuation: closing.take, reducedMotion: careProps.reducedMotion, startTimer }));
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
-  useLayoutTurns(turns, viewport, size, { screen: screen.kind, portrait, gated: gateShown });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -368,7 +385,40 @@ export function App({
   // The food chosen is kept going to a page and back, but the catalogue
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
+  // The chips' parts as last measured, in the language they were measured
+  // in: another language's are not yet known, so the catalogue's first
+  // open after a switch takes its arrangement as a first visit does.
+  const [chipMeasure, setChipMeasure] = useState<{ language: Language; contents: readonly ChipContent[] }>({ language, contents: [] });
+  const chipContents = chipMeasure.language === language ? chipMeasure.contents : [];
+  const measuredChips = useCallback((contents: readonly ChipContent[]) => setChipMeasure({ language, contents }), [language]);
   const shown = ofFood(catalogue, food);
+  // The catalogue's cards in a row, and in a tall window, where the chips
+  // stand on a row of their own, that row's width, by the window.
+  const columns = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return catalogueColumns(viewport.width(), viewport.sizeClass(), left, right);
+  });
+  const chipRow = useSyncExternalStore(viewport.subscribe, () => {
+    if (viewport.sizeClass() !== "tall") return undefined;
+    const { left, right } = viewport.sideInsets();
+    return catalogueRow(viewport.width(), left, right);
+  });
+  const chips = chipRow === undefined ? undefined : chipArrangement(chipRow, chipContents);
+  const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chips ?? "landscape"}`;
+  const catalogueLayout = useRef<CatalogueLayout>(null);
+  const applyCatalogueLayout = useCallback(() => catalogueLayout.current?.apply({ columns, chips }), [columns, chips]);
+  useLayoutTurns(
+    turns,
+    viewport,
+    size,
+    screen.kind === "catalogue" && catalogueArrangement !== undefined
+      ? { screen: screen.kind, portrait, gated: gateShown, arrangement: catalogueArrangement }
+      : { screen: screen.kind, portrait, gated: gateShown },
+    applyCatalogueLayout
+  );
+  // The keeper puts the returned card's row back before its picture's
+  // closing target is read, so the native close and continuation agree.
+  useLayoutEffect(() => closing.arrive(screen.kind === "catalogue" ? screen.returning : undefined), [closing, screen]);
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
@@ -409,7 +459,9 @@ export function App({
   const step = (from: number, way: Step) =>
     showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, way);
 
-  const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id });
+  const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id }, {
+    also: () => { if (!careProps.reducedMotion()) closing.start(shown[index]!.id); }
+  });
 
   const content = () => {
     switch (screen.kind) {
@@ -418,10 +470,16 @@ export function App({
       case "catalogue":
         return (
           <CatalogueScreen
+            ref={catalogueLayout}
+            pictureTransition={pictureTransition}
             language={language}
             dinosaurs={shown.map((entry) => presentCatalogueCard(entry, language, bodyPicture, pairs.found))}
             foods={FOODS.map((choice) => ({ food: choice, count: ofFood(catalogue, choice).length }))}
             food={food}
+            initialArrangement={{ columns, chips }}
+            chipWidths={chipWidths}
+            onChipContents={measuredChips}
+            layoutKeeping={turns}
             returning={screen.returning}
             onFood={chooseFood}
             onOpen={openDinosaur}
@@ -436,6 +494,7 @@ export function App({
           <>
             <LoadAhead urls={neighboursOf(index)} />
             <DinosaurPage
+              pictureTransition={pictureTransition}
               language={language}
               dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
               number={index + 1}

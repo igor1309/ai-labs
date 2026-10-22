@@ -19,9 +19,10 @@ Feature: The window's shape
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the picture a tall one shows for
   a screen with no portrait layout. A portrait layout is built for one
-  size class at a time: the home page has one for a tall window only
-  (home-portrait.feature), so a tall-narrow window still shows the
-  picture over it. The scenarios below use the care welcome screen,
+  size class at a time: the home page and the catalogue's list have one
+  for a tall window only (home-portrait.feature,
+  catalogue-portrait.feature), so a tall-narrow window still shows the
+  picture over them. The scenarios below use the care welcome screen,
   which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window

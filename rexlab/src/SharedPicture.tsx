@@ -1,4 +1,6 @@
-import { ViewTransition, type ReactNode } from "react";
+import { ViewTransition, type ComponentType, type ReactNode, type ViewTransitionProps } from "react";
+
+export type PictureTransition = ComponentType<ViewTransitionProps>;
 
 // The view transition types of a dinosaur's page opening from its card in
 // the catalogue, and closing back to it.
@@ -10,14 +12,14 @@ export const CLOSE_DINOSAUR = "close-dinosaur";
 // shrinks back as it closes. The name is the dinosaur's own, so only the
 // tapped card's picture is paired; at any other change the picture is
 // part of its screen.
-export function SharedPicture({ id, children }: { id: string; children: ReactNode }) {
+export function SharedPicture({ id, children, transition: Transition = ViewTransition }: { id: string; children: ReactNode; transition?: PictureTransition | undefined }) {
   return (
-    <ViewTransition
+    <Transition
       name={`dinosaur-${id}`}
       default="none"
       share={{ [OPEN_DINOSAUR]: "dinosaur-share", [CLOSE_DINOSAUR]: "dinosaur-share", default: "none" }}
     >
       {children}
-    </ViewTransition>
+    </Transition>
   );
 }

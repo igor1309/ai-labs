@@ -23,6 +23,10 @@ export type TurnAnimation = {
 // the part, its content laid out, cannot be without scaling it.
 export type TurnFrame = { element: Element; remove(): void };
 
+// A picture drawn outside its laid-out box by a screen transition. Its
+// copy travels above the page, clear of its card's and list's clips.
+export type PictureContinuation = { element: Element; box: Box; draw(destination: Box): TurnFrame };
+
 // What a screen keeps through a change of layout, such as where a row is
 // scrolled. `hold`, before each change, returns how to put it back after
 // it; `rest`, once the page has settled at rest, takes what it keeps
@@ -42,6 +46,8 @@ export type PageAnimation = { finish(): void };
 export type TurnStyle = "glide" | "follow" | "still";
 
 export type TurnMotionSeams = {
+  // Takes over a screen transition's picture, once, when a glide starts.
+  continuation?(): PictureContinuation | undefined;
   // The page holding the marked parts.
   parts: Pick<ParentNode, "querySelectorAll">;
   // An element's box as the page lays it out now, asked only while no
@@ -119,14 +125,15 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // from frame to frame, on the part or on an element around it, the parts
 // are measured again before every frame. Each part glides from its old
 // place to its new one by translation, its change of size shown by a
-// clip of what it holds and a frame drawn under it, so no word or
-// picture is scaled; what the page marks to fade fades in meanwhile. A
+// clip of what it holds and a frame drawn under it, without scaling its
+// content. A closing picture travels above those clips in a changing
+// box, fitted whole; what the page marks to fade fades in meanwhile. A
 // glide takes over the page's own animations on a part, such as its
 // entrance, from where and how faded they draw it: left running, they
 // would draw it off its new place, their translation giving way to the
 // glide's. Each change outdates every one before it, and nothing a
 // change left waiting acts once it is outdated.
-export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing }: TurnMotionSeams): TurnMotion {
+export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing, continuation }: TurnMotionSeams): TurnMotion {
   const keepers = new Set<Keeper>();
   const listeners = new Set<() => void>();
   let drawn = new Map<string, Box>();
@@ -134,6 +141,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   let running: (() => void) | undefined;
   let watching: (() => void) | undefined;
   let changes = 0;
+  let picture: PictureContinuation | undefined;
 
   const setRunning = (next: typeof running) => {
     const changed = (running === undefined) !== (next === undefined);
@@ -157,6 +165,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       const name = element.getAttribute(TURN_PART) ?? "";
       if (!found.has(name)) found.set(name, element);
     }
+    if (picture) found.set("closing-picture", picture.element);
     return found;
   };
 
@@ -207,6 +216,11 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   // off where it is laid out, as far as each has gone. A part that moves
   // only with a part around it has no motion of its own.
   const moved = (element: Element) => {
+    if (element === picture?.element) {
+      const drawing = drawings.get(element);
+      const left = drawing ? 1 - progressOf(drawing) : 0;
+      return { x: (drawing?.offset.x ?? 0) * left, y: (drawing?.offset.y ?? 0) * left };
+    }
     let [x, y] = [0, 0];
     for (let part = element.closest(`[${TURN_PART}]`); part; part = part.parentElement?.closest(`[${TURN_PART}]`) ?? null) {
       const drawing = drawings.get(part);
@@ -235,6 +249,10 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   const places = (): Map<string, Place> => {
     const found = new Map<string, Place>();
     for (const [name, element] of marked()) {
+      if (element === picture?.element && !drawings.has(element)) {
+        found.set(name, { element, box: picture.box, opacity: 1 });
+        continue;
+      }
       const laidOut = drawn.get(name);
       if (!laidOut) {
         found.set(name, { element, box: measure(element), opacity: partOpacity(element) });
@@ -261,6 +279,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   // given, and takes the page afresh as it then stands.
   const rest = (change?: () => void) => {
     cancelAll();
+    picture = undefined;
     setRunning(undefined);
     if (change) kept(change);
     remeasure();
@@ -274,6 +293,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
 
   const glide = (change: () => void, current: number) => {
     unwatch();
+    picture ??= continuation?.();
     const before = places();
     // What fades goes on from the opacity it is drawn at, or from none.
     const fadedFrom = new Map([...parts.querySelectorAll(`[${TURN_FADE}]`)].map((element) => [element, opacityOf(element, 0)]));
@@ -289,6 +309,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
     // The nearest part around `element` that glides, whose motion it
     // shares and so does not repeat.
     const around = (element: Element) => {
+      if (element === picture?.element) return undefined;
       for (let outer = element.parentElement?.closest(`[${TURN_PART}]`); outer; outer = outer.parentElement?.closest(`[${TURN_PART}]`)) {
         const name = outer.getAttribute(TURN_PART) ?? "";
         if (shared(name, outer)) return name;
@@ -308,6 +329,18 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       const old = before.get(name);
       if (!old) {
         fadeIn(element, 0);
+        continue;
+      }
+      if (element === picture?.element) {
+        const copy = picture.draw(box);
+        const offset = { x: old.box.left - box.left, y: old.box.top - box.top };
+        // Only the fixed copy is laid out as its box changes, so contain
+        // fits the picture whole without unequal scales stretching it.
+        const bounds = (box: Box): Keyframe => ({ left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+        starts.push(() => drawings.set(element, {
+          animations: [animate(copy.element, [bounds(old.box), bounds(box)], options)],
+          offset, size: { width: old.box.width, height: old.box.height }, opacity: 1, frame: copy, release: undefined
+        }));
         continue;
       }
       const outer = around(element);
@@ -370,6 +403,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       () => {
         if (current !== changes) return;
         cancelAll();
+        picture = undefined;
         kept(change);
         remeasure();
       },
@@ -399,6 +433,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       changes++;
       unwatch();
       cancelAll();
+      picture = undefined;
       setRunning(undefined);
     },
     isRunning: () => running !== undefined,

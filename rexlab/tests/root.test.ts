@@ -5,7 +5,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
-import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved } from "./support.ts";
+import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const NARROW = "(max-width: 599.98px)";
@@ -24,10 +24,12 @@ function browser({
   dark = false,
   reduced = false,
   visibility = "visible" as DocumentVisibilityState,
-  versionFooter = true
+  versionFooter = true,
+  sideInsets = { left: 0, right: 0 }
 } = {}) {
   const media = mediaQueries({ [PORTRAIT]: portrait, [NARROW]: narrow, [SHORT]: short, [DARK]: dark, [REDUCED_MOTION]: reduced });
   const page = browserDocument(visibility, { versionFooter });
+  const root = rootInsets(page.document.documentElement, sideInsets);
   return {
     screen: screenOrientation ? { orientation: screenOrientation } : {},
     localStorage: local,
@@ -35,6 +37,7 @@ function browser({
     matchMedia: media.matchMedia,
     navigator: { language },
     document: page.document,
+    ...root,
     media,
     page,
     ...manualWindow(1024),
@@ -263,8 +266,8 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("gives the home page alone a portrait layout, for a tall window only", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"] });
+  it("gives the home page and the catalogue a portrait layout, for a tall window only", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
@@ -304,6 +307,26 @@ describe("the app in a browser", () => {
 
     expect(seen).toEqual([820]);
     expect(viewport.width()).toBe(1180);
+  });
+
+  it("reads the window's side safe-area insets from the root's style into the viewport", () => {
+    expect(appProps(browser({ sideInsets: { left: 19, right: 13 } })).viewport.sideInsets()).toEqual({ left: 19, right: 13 });
+    expect(appProps(browser()).viewport.sideInsets()).toEqual({ left: 0, right: 0 });
+  });
+
+  it("measures a chip's parts as laid out, and tells of each font that comes in until unsubscribed", () => {
+    const given = browser();
+    const fonts = new EventTarget();
+    const { chipWidths } = appProps({ ...given, document: Object.assign(given.document, { fonts: fonts as FontFaceSet }) });
+    const part = { getBoundingClientRect: () => ({ width: 58.5 }) } as Element;
+    let told = 0;
+
+    const unsubscribe = chipWidths.subscribe(() => told++);
+    fonts.dispatchEvent(new Event("loadingdone"));
+    unsubscribe();
+    fonts.dispatchEvent(new Event("loadingdone"));
+
+    expect([chipWidths.width(part), told]).toEqual([58.5, 1]);
   });
 
   it("uses the window's portrait query for upright on a browser without screen.orientation", () => {
@@ -376,6 +399,19 @@ describe("the app in a browser", () => {
     const now = new Date(2026, 9, 18, 23, 59);
 
     expect(appProps({ ...browser(), ...pictureBrowser(now) }).now()).toEqual(now);
+  });
+
+  it("takes the picture close's timing from the stylesheet and its elapsed time from the monotonic clock", () => {
+    let time = 42;
+    const values: Record<string, string> = { "--motion-screen": "480ms", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
+    const { pictureMotion } = appProps({
+      ...browser(),
+      performance: { now: () => time },
+      getComputedStyle: () => ({ getPropertyValue: (name) => values[name] ?? "0px" })
+    });
+    expect([pictureMotion.duration, pictureMotion.easing, pictureMotion.now()]).toEqual([480, "cubic-bezier(0.1, 1, 0.5, 1)", 42]);
+    time = 130;
+    expect(pictureMotion.now()).toBe(130);
   });
 
   it("keeps start counts and the day's featured game beside the other progress in local storage, for the next visit", () => {

@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-22
+
+- The catalogue stands upright in a tall window: fewer cards to a row rather than smaller names (two on an iPad mini, three on an iPad Air, four on a 13-inch iPad), the food chips on a row of their own under HOME, fitting in Russian, and the cards rising in row by row. Turning the iPad glides HOME, the chips and every card to their new places, keeping the row the child was looking at; a picture shrinking back into its card as the iPad turns lands in the card's new place (LAB-376).
+
 ## 2026-10-21
 
 - Explorer and Paleontologist compare rounds now mix WHO IS LONGER? with their other questions, using the creatures' lengths (LAB-394).

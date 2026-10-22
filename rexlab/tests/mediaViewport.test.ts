@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { mediaViewport } from "../src/mediaViewport.ts";
-import { manualScreenOrientation, manualWindow, mediaQueries } from "./support.ts";
+import { manualScreenOrientation, manualWindow, mediaQueries, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
 const NARROW = "(max-width: 599.98px)";
 const SHORT = "(max-height: 599.98px)";
+
+// The page's root, whose style alone the viewport reads, and that style
+// in a window with no side safe-area insets. The tests run without a DOM.
+const ROOT = {} as Element;
+const rootStyle = () => rootInsets(ROOT).getComputedStyle(ROOT);
 
 describe("the browser viewport", () => {
   it.each([
@@ -17,7 +22,7 @@ describe("the browser viewport", () => {
     [599, 599, "tall-narrow"], [600, 600, "tall"]
   ])("classifies a %i by %i window as %s", (width, height, size) => {
     const media = mediaQueries({ [PORTRAIT]: height >= width, [NARROW]: width < 600, [SHORT]: height < 600 });
-    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(width));
+    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(width), rootStyle);
     expect(viewport.sizeClass()).toBe(size);
     expect(media.queries).toEqual([PORTRAIT, NARROW, SHORT]);
   });
@@ -26,7 +31,7 @@ describe("the browser viewport", () => {
     "reads %s independently of a portrait window", (type) => {
       const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
       const screen = manualScreenOrientation(type);
-      const viewport = mediaViewport(media.matchMedia, screen.orientation, manualWindow(820));
+      const viewport = mediaViewport(media.matchMedia, screen.orientation, manualWindow(820), rootStyle);
       expect(viewport.sizeClass()).toBe("tall");
       expect(viewport.isScreenUpright()).toBe(type.startsWith("portrait"));
     }
@@ -35,7 +40,7 @@ describe("the browser viewport", () => {
   it("reads the window's width, and tells of each resize until unsubscribed", () => {
     const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
     const window = manualWindow(744);
-    const viewport = mediaViewport(media.matchMedia, undefined, window);
+    const viewport = mediaViewport(media.matchMedia, undefined, window, rootStyle);
     const seen: number[] = [];
     expect(viewport.width()).toBe(744);
 
@@ -47,5 +52,23 @@ describe("the browser viewport", () => {
 
     expect(seen).toEqual([712, 600]);
     expect(viewport.width()).toBe(1032);
+  });
+
+  it("reads the window's side safe-area insets from the root's style each time, as app.css sets them there", () => {
+    const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
+    let root = rootInsets(ROOT, { left: 44, right: 0 });
+    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(820), () => root.getComputedStyle(ROOT));
+    expect(viewport.sideInsets()).toEqual({ left: 44, right: 0 });
+
+    root = rootInsets(ROOT, { left: 0, right: 47 });
+
+    expect(viewport.sideInsets()).toEqual({ left: 0, right: 47 });
+  });
+
+  it("reads no inset where the root's style sets none", () => {
+    const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
+    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(820), () => ({ getPropertyValue: () => "" }));
+
+    expect(viewport.sideInsets()).toEqual({ left: 0, right: 0 });
   });
 });
