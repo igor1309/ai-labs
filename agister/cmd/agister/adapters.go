@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -310,6 +311,8 @@ type checkResolve struct {
 	resolver resolver
 	source   declared
 	layers   layout.Folders
+	docs     runDocuments
+	takes    map[string]call.Inputs
 }
 
 func newCheckResolve(resolver resolver, source declared, layers layout.Folders) (*checkResolve, error) {
@@ -349,6 +352,47 @@ func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []chec
 		}
 		return check.Resolved{}, mapped
 	}
+	if c.docs != nil && c.takes != nil {
+		var lines []notRunLine
+		var err error
+		switch {
+		case kind == resolve.KindWorkflow && resolved.Workflow != nil:
+			lines, err = notRunOf(document.Name, *resolved.Workflow, resolved, c.docs, c.takes)
+		case kind == resolve.KindProcess:
+			lines, err = notRunProcessOf(document.Name, c.docs)
+		}
+		if err != nil {
+			return check.Resolved{}, []check.Fault{{Problems: []check.Problem{{Message: err.Error()}}}}
+		}
+		if len(lines) > 0 {
+			type synthetic struct {
+				document check.Reference
+				file     string
+				problems []check.Problem
+			}
+			var grouped []synthetic
+			indices := map[check.Reference]int{}
+			for _, line := range lines {
+				owner := check.Reference{Kind: kindOf(line.document.Kind).check, Name: line.document.Name}
+				i, ok := indices[owner]
+				if !ok {
+					i = len(grouped)
+					indices[owner] = i
+					grouped = append(grouped, synthetic{document: owner, file: c.documentFile(line.document)})
+				}
+				grouped[i].problems = append(grouped[i].problems, check.Problem{Source: check.Source{File: grouped[i].file}, Message: line.text})
+			}
+			mapped := make([]check.Fault, 0, len(grouped))
+			for _, fault := range grouped {
+				chain := []check.Link{{Kind: document.Kind, Name: document.Name}}
+				if fault.document != (check.Reference{Kind: document.Kind, Name: document.Name}) {
+					chain = append(chain, check.Link{Kind: fault.document.Kind, Name: fault.document.Name})
+				}
+				mapped = append(mapped, check.Fault{Chain: chain, Problems: fault.problems})
+			}
+			return check.Resolved{}, mapped
+		}
+	}
 	var mapped check.Resolved
 	for _, reached := range resolved.Reached {
 		mapped.Reached = append(mapped.Reached, check.Reference{Kind: kindOf(reached.Kind).check, Name: reached.Name})
@@ -377,6 +421,17 @@ func (c *checkResolve) problems(problems []resolve.Problem) []check.Problem {
 
 func (c *checkResolve) sourceOf(origin resolve.Origin) check.Source {
 	return check.Source{File: origin.Path, Line: origin.Line, Layer: layerOf(c.layers, origin.Path)}
+}
+
+type documentFiles interface {
+	File(kind resolve.Kind, name string) string
+}
+
+func (c *checkResolve) documentFile(document resolve.Reference) string {
+	if files, ok := c.source.(documentFiles); ok {
+		return files.File(document.Kind, document.Name)
+	}
+	return ""
 }
 
 // trees is what check's fields asks of documents: a document's tree, as

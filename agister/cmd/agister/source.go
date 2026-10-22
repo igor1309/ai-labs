@@ -54,6 +54,22 @@ func (s *source) Workflow(name string) (resolve.Workflow, []resolve.Problem) {
 	}, nil
 }
 
+// File is the nearest layer file of a document, for a composition-generated
+// problem that has no field origin of its own.
+func (s *source) File(kind resolve.Kind, name string) string {
+	k := kindOf(kind).layout
+	document, ok := s.snapshot.Documents[k][name]
+	if !ok {
+		return ""
+	}
+	for _, file := range []*layout.Source{document.Sources.Project, document.Sources.Repository, document.Sources.Home} {
+		if file != nil {
+			return file.Path
+		}
+	}
+	return ""
+}
+
 func (s *source) Process(name string) (resolve.Process, []resolve.Problem) {
 	process, problems := s.documents.Process(name)
 	if len(problems) > 0 {
@@ -213,11 +229,20 @@ func paramsOf(params []documents.Field[documents.Param]) []resolve.Param {
 func inputsOf(inputs []documents.Field[documents.Input]) []resolve.Input {
 	var mapped []resolve.Input
 	for _, input := range inputs {
-		mapped = append(mapped, resolve.Input{
-			Name:      input.Value.Name,
-			Forms:     namesOf(input.Value.Form),
-			Arguments: bindingsOf(input.Value.Arguments),
-		})
+		value := input.Value
+		mappedInput := resolve.Input{Name: value.Name, Forms: namesOf(value.Form), Arguments: bindingsOf(value.Arguments)}
+		// The composition owns source definitions. Resolve only needs to know
+		// whether this source reads a file and what its path argument reads.
+		if value.Source.Value == "file" {
+			mappedInput.File = true
+			for _, argument := range value.Arguments {
+				if argument.Value.Name == "path" && argument.Value.Value.From.Root != "" {
+					mappedInput.Path = readOf(argument.Value.Value.From, argument.Origin)
+					break
+				}
+			}
+		}
+		mapped = append(mapped, mappedInput)
 	}
 	return mapped
 }

@@ -222,7 +222,8 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				Name:   "p",
 				Params: []resolve.Param{{Name: "base"}, {Name: "goal", Default: true}},
 				Inputs: []resolve.Input{{
-					Name:  "brief",
+					Name: "brief", File: true,
+					Path:  read(resolve.RootParam, "goal", "", at(processFile, 8, "inputs.brief.path")),
 					Forms: []resolve.Name{{Value: "step", Origin: at(processFile, 7, "inputs.brief.form[0]")}},
 					Arguments: []resolve.Binding{{
 						Name:   "path",

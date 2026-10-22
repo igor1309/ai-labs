@@ -137,6 +137,128 @@ func TestShippedSettingsCheckClean(t *testing.T) {
 	}
 }
 
+// check.feature, "A workflow a run refuses before it starts, check refuses".
+// The same line must come from the check composition and the run planner.
+func TestCheckAndRunShareTheWorkflowNotRunLine(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+params: {what: {default: hi}}
+steps:
+  - name: b
+    branch:
+      - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+`,
+	}
+	checked := compose(t, settings, "check")
+	want := `the workflow "w": the item "b", a branch, is not run yet`
+	if !strings.Contains(checked.stdout, "/u/.agister/workflows/w.yaml: "+want) || checked.code != 1 || checked.stderr != "" {
+		t.Fatalf("check ran %+v, want refusal containing %q", checked, want)
+	}
+	allSettings := shippedHome(t)
+	maps.Copy(allSettings, settings)
+	run := asBuilt(t, allSettings, "run", "w")
+	wantRun := "agister: the run is refused, and nothing runs:\n  " + want + "\n"
+	if run.stderr != wantRun || run.code != 1 || run.stdout != "" {
+		t.Fatalf("run ran %+v, want stderr %q", run, wantRun)
+	}
+}
+
+// check.feature, the runtime turn row of "A workflow a run refuses before it
+// starts, check refuses".
+func TestCheckAndRunShareTheRuntimeNotRunLine(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: say, agent: pi-m3, inputs: {what: hi}}
+`,
+	}
+	checked := compose(t, settings, "check")
+	want := `the step "s": the runtime "pi"'s turn is not run yet`
+	if checked.code != 1 || !strings.Contains(checked.stdout, want) {
+		t.Fatalf("check ran %+v, want refusal containing %q", checked, want)
+	}
+	allSettings := shippedHome(t)
+	maps.Copy(allSettings, settings)
+	run := asBuilt(t, allSettings, "run", "w")
+	wantRun := "agister: the run is refused, and nothing runs:\n  " + want + "\n"
+	if run.stderr != wantRun || run.code != 1 || run.stdout != "" {
+		t.Fatalf("run ran %+v, want stderr %q", run, wantRun)
+	}
+}
+
+// check.feature, "A workflow a run runs is not refused for it".
+func TestCheckDoesNotRefuseAWorkflowItsRunCanRun(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: a, process: say, agent: bash, inputs: {what: hi}}
+  - {name: b, process: say, agent: bash, inputs: {what: hi}}
+`,
+	}
+	got := compose(t, settings, "check")
+	if got.code != 0 || strings.Contains(got.stdout, "\n  refuses ") {
+		t.Fatalf("check ran %+v, want no refusal", got)
+	}
+}
+
+// check.feature, "A process's line is the process's, reported once" and
+// "A process asked for alone is refused for a source a run does not take".
+func TestCheckReportsAnUnpluggedProcessSourceOnce(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": `schema: agister.process/v1alpha1
+prompt: say
+inputs:
+  d: {source: git.diff}
+`,
+		"/u/.agister/prompts/say.md": `echo hi`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: say, agent: bash}
+`,
+	}
+	got := compose(t, settings, "check")
+	want := `the process "say": the input "d" from the source "git.diff" is not run yet`
+	if got.code != 1 || !strings.Contains(got.stdout, "/u/.agister/processes/say.yaml: "+want) || !strings.Contains(got.stdout, "refuses workflow w, process say") {
+		t.Fatalf("check ran %+v, want one process finding containing %q", got, want)
+	}
+	if strings.Count(got.stdout, want) != 1 {
+		t.Errorf("process refusal appeared %d times, want once; stdout %q", strings.Count(got.stdout, want), got.stdout)
+	}
+}
+
+// check.feature, "Inspect shows a workflow a run does not run yet as
+// refused", with no plan beside the refusal.
+func TestInspectShowsTheWorkflowNotRunRefusalWithoutAPlan(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+params: {what: {default: hi}}
+steps:
+  - name: b
+    branch:
+      - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+`,
+	}
+	got := compose(t, settings, "inspect", "workflow", "w")
+	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "b", a branch, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
+		t.Fatalf("inspect ran %+v, want refusal and no plan", got)
+	}
+}
+
 // compose.feature, "A missing runtime is reported with what it refuses".
 //
 // Contract test: the files home holds, as Agister ships them.
