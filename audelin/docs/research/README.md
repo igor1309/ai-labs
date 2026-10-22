@@ -10,7 +10,7 @@ under the working name wisper.
 | [needs.md](needs.md) | What the owner needs, and the constraints |
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
-| [mvp.md](mvp.md) | Draft MVP: our own native app |
+| [../mvp.md](../mvp.md) | The MVP spec: versions and owner decisions |
 | [adr-001-v1-architecture.md](../adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
@@ -31,7 +31,7 @@ The panel is resizable; the window-sizes frame proposes how it adapts. The
 explanation card stays in the panel (owner, 2026-10-21); the no-footnote
 frame shows the panel before any term is selected.
 
-Screens 1–8 in the same file draw the rest of the app from [mvp.md](mvp.md)
+Screens 1–8 in the same file draw the rest of the app from [mvp.md](../mvp.md)
 in Glass Ledger: setup, launch blocker, live panel states, calls list, the
 call after it ends, settings, menu bar item and errors. Values neither spec
 nor owner set are marked as proposals in each frame. The gallery's "Screen
