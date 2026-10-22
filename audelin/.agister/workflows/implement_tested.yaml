@@ -1,6 +1,7 @@
-# Implement, then gate on Audelin's tests run outside the implementer's
-# sandbox: while they fail, the implementer's session repairs and they run
-# again, at most three times.
+# Implement, then run Audelin's tests outside the implementer's sandbox: the
+# test step's exit code, not the implementer's report, says whether they
+# pass. Agister runs no branch or repeat yet, so a failure is repaired by a
+# further run, not by this one.
 schema: agister.workflow/v1alpha1
 params:
   brief: {}
@@ -10,33 +11,8 @@ inputs:
 steps:
   - {name: build, process: implement, agent: codex-sol-61, inputs: {brief: {from: inputs.brief}}}
   - {name: test, process: audelin_tests, agent: bash}
-  - name: gate
-    branch:
-      - name: repair
-        if: {not: {equals: [{from: steps.test.outputs.exit_code}, 0]}}
-        repeat:
-          state:
-            exit_code: {from: steps.test.outputs.exit_code}
-            output: {from: steps.test.outputs.stdout.tail}
-          steps:
-            - name: fix
-              process: repair_tests
-              agent: codex-sol-61
-              session: {from: steps.build.session}
-              inputs: {test_output: {from: state.output}}
-            - {name: retest, process: audelin_tests, agent: bash}
-          next:
-            exit_code: {from: steps.retest.outputs.exit_code}
-            output: {from: steps.retest.outputs.stdout.tail}
-          until: {equals: [{from: state.exit_code}, 0]}
-          max: 3
-        outputs: {exit_code: {from: steps.repair.outputs.exit_code}, output: {from: steps.repair.outputs.output}}
-      - name: passed
-        process: audelin_tests
-        agent: bash
-        outputs: {exit_code: {from: steps.passed.outputs.exit_code}, output: {from: steps.passed.outputs.stdout.tail}}
 
 outputs:
   implementation: {from: steps.build.outputs}
-  exit_code: {from: steps.gate.outputs.exit_code}
-  test_output: {from: steps.gate.outputs.output}
+  exit_code: {from: steps.test.outputs.exit_code}
+  test_output: {from: steps.test.outputs.stdout.tail}
