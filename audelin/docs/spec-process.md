@@ -6,10 +6,10 @@ description: "How Audelin is specified: one SPEC.md and QA.md per component, at 
 
 # Spec process
 
-How Audelin's behaviour is specified before it is built. It replaces the
-single v1 spec (`spec-001-v1.md`), which grew past 1,100 lines because it
-was written for no observer and mixed contracts, mechanics, invented values
-and test lists.
+How Audelin's behaviour is specified before it is built. It replaced the
+single v1 spec (`spec-001-v1.md`, deleted 2026-10-22), which grew past
+1,100 lines because it was written for no observer and mixed contracts,
+mechanics, invented values and test lists.
 
 ## The tree
 
@@ -43,16 +43,22 @@ spec/                        the user: journeys across the app, and references
   calls-folder-change/       the user: moving the calls folder (Screen 6)
   recording-session/         live-panel, menu-bar, quit: start, stop, keep the audio
   recording-faults/          error-banners: capture or disk failing mid-call
-  live-recognition/          transcript-view, transcript-gaps, live-text-states, text-banners,
-                             call-screen: text from the audio
-  call-watcher/              auto-record, call-titles: call apps on the microphone
-  calls-catalogue/           calls-list, call-screen, call-titles: find, rename, delete
+  live-recognition/          transcript-view, transcript-gaps, live-text-states, text-banners:
+                             text from the audio as the call goes on
+  catch-up/                  call-screen, calls-list, call-delete, quit: completing text later
+  late-text/                 live-text-states, transcript-view, call-screen: minutes added later
+  call-watcher/              auto-recorder, recording-session: call apps on the microphone
+  auto-recorder/             auto-record, calls-folder-change: recordings for calls
+  calls-catalogue/           calls-list, call-screen, call-rename: the calls and their state
+  call-changes/              call-rename, call-delete: rename, delete
   folder-move/               calls-folder-change: move the calls folder
-  setup/                     setup-screen, launch-check, settings-window: settings, launch check
-  call-folder-names/         calls-catalogue, recording-session
-  activity-gate/             recording-session, live-recognition, calls-catalogue, folder-move
-  stabilizer/                live-recognition: words to committed segments
-  transcript/                live-recognition, call-screen: the record of the text
+  setup/                     setup-screen, launch-check: first run, launch check
+  live-model/                setup-screen, launch-check, settings-window, live-text-states: the model
+  preferences/               switches, settings-window: switches, chunk size
+  call-folder-names/         calls-catalogue, call-changes, recording-session
+  activity-gate/             recording-session, auto-recorder, catch-up, call-changes, folder-move
+  stabilizer/                live-recognition, catch-up: words to committed segments
+  transcript/                live-recognition, calls-catalogue: text from segments
   mic-capture/  system-audio-capture/  recorder/  fluid-audio-asr/
   call-detector/  call-store/  segment-log/  settings-store/  model-store/
                              the Core whose port each implements
@@ -124,6 +130,3 @@ In Multica, project Audelin:
 - **Build issues** (LAB-401 to LAB-407) stay as feature slices. Each names
   the specs whose scenarios it implements, and is done when those scenarios
   pass their `QA.md` rows. LAB-408 runs the user spec on a real call.
-
-`spec-001-v1.md` is kept only as a checklist of behaviours to cover, and is
-deleted when the last spec child closes.
