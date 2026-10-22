@@ -56,11 +56,12 @@ One exporter serves every project, `scripts/showcase/export.js`:
 1. Export the committed files at `HEAD` that the allowlist matches.
 2. Lay `public/` over them.
 3. Stop on a secret (`gitleaks`) or on a private marker from the shared
-   `scripts/showcase/markers.txt` (`LAB-`, `agister`, `multica`, home paths).
+   `scripts/showcase/markers.txt` (`agister`, `multica`, home paths). Issue
+   ids such as `LAB-461` are opaque and stay public.
 4. Run the project's `check` inside the export, so the public repo builds
    and passes its tests on its own.
 5. A plain run stops there, a dry run in a temp directory. `--push` commits
-   to the public repo, pushes, and applies the description, homepage and
+   to the public repo, pushes, and on every push applies the description, homepage and
    topics with `gh repo edit`.
 
 What no script can do lives in the project's `showcase/AGENTS.md`: retaking
