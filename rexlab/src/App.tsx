@@ -9,6 +9,7 @@ import { closingPicture, type PictureMotion } from "./closingPicture.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
+import { dinosaurWordsWidth, keptLines } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -243,6 +244,10 @@ export function App({
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, continuation: closing.take, reducedMotion: careProps.reducedMotion, startTimer }));
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
+  const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return dinosaurWordsWidth(viewport.width(), left, right);
+  });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -405,6 +410,9 @@ export function App({
   });
   const chips = chipRow === undefined ? undefined : chipArrangement(chipRow, chipContents);
   const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chips ?? "landscape"}`;
+  const dinosaur = screen.kind === "dinosaur" ? shown[screen.index] : undefined;
+  const dinosaurLines = dinosaur === undefined ? undefined : keptLines(dinosaurWords, dinosaur.description[language], TEXTS[language].sourceNote);
+  const dinosaurArrangement = dinosaurLines === undefined ? undefined : `${dinosaurLines.description}:${dinosaurLines.note}`;
   const catalogueLayout = useRef<CatalogueLayout>(null);
   const applyCatalogueLayout = useCallback(() => catalogueLayout.current?.apply({ columns, chips }), [columns, chips]);
   useLayoutTurns(
@@ -413,6 +421,8 @@ export function App({
     size,
     screen.kind === "catalogue" && catalogueArrangement !== undefined
       ? { screen: screen.kind, portrait, gated: gateShown, arrangement: catalogueArrangement }
+      : screen.kind === "dinosaur" && dinosaurArrangement !== undefined
+        ? { screen: screen.kind, portrait, gated: gateShown, arrangement: dinosaurArrangement }
       : { screen: screen.kind, portrait, gated: gateShown },
     applyCatalogueLayout
   );
@@ -497,6 +507,7 @@ export function App({
               pictureTransition={pictureTransition}
               language={language}
               dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
+              keptLines={dinosaurLines ?? keptLines(dinosaurWords, entry.description[language], TEXTS[language].sourceNote)}
               number={index + 1}
               total={shown.length}
               onPrevious={() => step(index, "previous")}

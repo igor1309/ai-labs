@@ -2359,6 +2359,90 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   color: #5c647a;
 }
 
+/* Upright dinosaur pages put the full-width stage above words whose bands
+   are sized by the width-derived data attributes. */
+html[data-size="tall"] .dinosaur-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: auto;
+}
+
+html[data-size="tall"] .dinosaur-body {
+  flex: 1 0 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 32px;
+}
+
+html[data-size="tall"] .dinosaur-stage {
+  flex: 1 0 248px;
+  min-height: 248px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: 16px;
+  align-items: center;
+}
+
+html[data-size="tall"] .dinosaur-stage-art {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 100%;
+  min-height: 0;
+  justify-self: center;
+}
+
+html[data-size="tall"] .dinosaur-steps {
+  display: contents;
+}
+
+html[data-size="tall"] .dinosaur-step:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-step:last-child {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-stage-art {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-info {
+  flex: none;
+  gap: 24px;
+  container-type: inline-size;
+}
+
+html[data-size="tall"] .dinosaur-about {
+  gap: 24px;
+}
+
+html[data-size="tall"] .dinosaur-page-name {
+  font-size: min(64px, 7.8cqi);
+}
+
+html[data-size="tall"] .dinosaur-group {
+  min-height: 22px;
+  line-height: 22px;
+}
+
+html[data-size="tall"] .dinosaur-description {
+  height: calc(var(--description-lines, 3) * 41px);
+  height: calc(attr(data-lines type(<number>), 3) * 41px);
+  overflow: hidden;
+}
+
+html[data-size="tall"] .source-note {
+  height: calc(var(--note-lines, 3) * 16.5px);
+  height: calc(attr(data-lines type(<number>), 3) * 16.5px);
+  line-height: 16.5px;
+  overflow: hidden;
+}
+
 .gated-screen {
   display: contents;
 }

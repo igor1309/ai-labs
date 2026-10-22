@@ -7,6 +7,7 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { SharedPicture, type PictureTransition } from "./SharedPicture.tsx";
+import type { KeptLines } from "./dinosaurPageLayout.ts";
 
 // The view transition types of the next or previous dinosaur taking the
 // page: the picture and the words slide out and in the arrow's way, the
@@ -40,6 +41,7 @@ export type DinosaurPageProps = {
   onPrevious: () => void;
   onNext: () => void;
   onBack: () => void;
+  keptLines: KeptLines;
 };
 
 // What slides as one dinosaur gives way to the next. It is keyed by the
@@ -58,11 +60,11 @@ function Sliding({ late, children }: { late: boolean; children: ReactNode }) {
   );
 }
 
-export function DinosaurPage({ pictureTransition, language, dinosaur: { id, name, picture, group, diet, description, size, mass }, number, total, onPrevious, onNext, onBack }: DinosaurPageProps) {
+export function DinosaurPage({ pictureTransition, language, dinosaur: { id, name, picture, group, diet, description, size, mass }, number, total, onPrevious, onNext, onBack, keptLines }: DinosaurPageProps) {
   const text = TEXTS[language];
   const SizeIcon = MEASURE_ICONS[size.measure];
   return (
-    <main className="dinosaur-page">
+    <main className="dinosaur-page" data-description-lines={keptLines.description} data-note-lines={keptLines.note}>
       <header className="dinosaur-bar">
         <Button className="home-button" onClick={onBack}>
           <BookOpen size={24} aria-hidden="true" />
@@ -94,10 +96,10 @@ export function DinosaurPage({ pictureTransition, language, dinosaur: { id, name
         <div className="dinosaur-info">
           <Sliding key={id} late={true}>
             <div className="dinosaur-about">
-              {group && <p className="dinosaur-group">{text.groups[group]}</p>}
+              <p className="dinosaur-group">{group ? text.groups[group] : ""}</p>
               <h1 className="dinosaur-page-name">{name.toLocaleUpperCase(language)}</h1>
               <DietTag diet={diet} language={language} size="medium" />
-              <p className="dinosaur-description">{description}</p>
+              <p className="dinosaur-description" data-lines={keptLines.description}>{description}</p>
               <div className="dinosaur-facts">
                 <p className="dinosaur-fact">
                   <span className="dinosaur-fact-label">
@@ -116,7 +118,7 @@ export function DinosaurPage({ pictureTransition, language, dinosaur: { id, name
               </div>
             </div>
           </Sliding>
-          <p className="source-note">{text.sourceNote}</p>
+          <p className="source-note" data-lines={keptLines.note}>{text.sourceNote}</p>
         </div>
       </div>
     </main>
