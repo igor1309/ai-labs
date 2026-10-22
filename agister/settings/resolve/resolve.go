@@ -195,7 +195,12 @@ type Process struct {
 // Input is an input of a workflow or a process, by name: the brief forms
 // its text may take, and its source's arguments.
 type Input struct {
-	Name      string
+	Name string
+	// File says the input's source reads a file. Path is the reference its
+	// source reads for that file's path, nil where the path is literal or the
+	// source is not a file.
+	File      bool
+	Path      *Read
 	Forms     []Name
 	Arguments []Binding
 }
