@@ -3,6 +3,7 @@ package call
 import (
 	"context"
 	"slices"
+	"time"
 )
 
 // Maker makes a call of a step, each line its turns report given to
@@ -29,8 +30,10 @@ type Fallback struct {
 // further. The call's result is then the fallback's, but its timing,
 // from the first call's start; its cost, usage and warnings, both calls';
 // and its primary, the first call's result. No fallback is made where
-// ctx has ended or no time is left.
-func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallback, report func(Report)) Result {
+// ctx has ended or no time is left. Now reads the same clock as both
+// makers, keeping the primary's deadline across reporting.
+func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallback, now func() time.Time, report func(Report)) Result {
+	deadline := now().Add(step.TimeLimit)
 	turns := 0
 	first := primary.Call(ctx, step, func(r Report) {
 		if r.Capacity != nil {
@@ -43,12 +46,8 @@ func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallba
 	}
 	again := fallback.Step
 	again.Session, again.SessionCostBefore = "", nil
-	if step.TimeLimit > 0 {
-		left := step.TimeLimit - first.Timing.Duration
-		if left <= 0 {
-			return first
-		}
-		again.TimeLimit = left
+	if step.TimeLimit > 0 && !now().Before(deadline) {
+		return first
 	}
 	if limit := again.CostLimit; limit != nil {
 		left := *limit - first.knownCost
@@ -59,6 +58,12 @@ func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallba
 		again.DailyBudget = &after
 	}
 	report(Report{Fallback: true})
+	if step.TimeLimit > 0 {
+		again.TimeLimit = deadline.Sub(now())
+		if again.TimeLimit <= 0 {
+			return first
+		}
+	}
 	second := fallback.Maker.Call(ctx, again, report)
 	return fellBack(first, second)
 }

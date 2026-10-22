@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-458: fallback reporting uses the call's remaining time; no fallback
+  starts once the call's deadline has passed.
+
 - LAB-458: `--reuse` takes a call that fell back, and `--continue` goes on
   from one, by the agent and session its step asked for.
 

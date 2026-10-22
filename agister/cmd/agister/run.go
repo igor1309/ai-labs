@@ -1306,7 +1306,7 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 		}
 		again := planned.fallback.step
 		again.Environment, again.Inputs, again.DailyBudget = step.Environment, step.Inputs, step.DailyBudget
-		called = call.WithFallback(ctx, caller, step, call.Fallback{Maker: s.callers[planned.fallback.contract], Step: again}, relay)
+		called = call.WithFallback(ctx, caller, step, call.Fallback{Maker: s.callers[planned.fallback.contract], Step: again}, s.clock.Now, relay)
 	}, func(told admit.Facts) { ended.facts = told })
 	if err != nil {
 		return s.refused(err.Error(), step.Warnings)

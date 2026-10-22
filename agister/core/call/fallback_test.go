@@ -38,9 +38,9 @@ func (s *fallbackReports) report(r call.Report) {
 // withFallback makes the call of step on primary within ctx, its fallback
 // fallback, each line it reports given to report, and gives its result
 // once it has ended.
-func withFallback(ctx context.Context, primary call.Maker, step call.Step, fallback call.Fallback, report func(call.Report)) <-chan call.Result {
+func withFallback(ctx context.Context, primary call.Maker, step call.Step, fallback call.Fallback, now func() time.Time, report func(call.Report)) <-chan call.Result {
 	done := make(chan call.Result, 1)
-	go func() { done <- call.WithFallback(ctx, primary, step, fallback, report) }()
+	go func() { done <- call.WithFallback(ctx, primary, step, fallback, now, report) }()
 	return done
 }
 
@@ -56,7 +56,7 @@ func TestACallWhoseTurnsAtCapacityAreSpentIsMadeOnItsFallback(t *testing.T) {
 	done := withFallback(context.Background(), recoveringCaller(t, primary, &stalenessSpy{}, clock),
 		call.Step{Inputs: goal, Model: "gpt", Session: "s0"},
 		call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: call.Step{Inputs: goal, Model: "opus", Session: "s0"}},
-		reported.report)
+		clock.Now, reported.report)
 	passWaits(clock)
 	got := <-done
 	want := []call.Turn{{Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin"}, Model: "opus", SessionCostBefore: dollars(0)}}
@@ -100,7 +100,7 @@ func TestOnlyACallAtCapacityFallsBack(t *testing.T) {
 			fallback := &runtimeSpy{turn: replies(call.Reply{Text: "fallback"})}
 			var reported fallbackReports
 			got := call.WithFallback(context.Background(), recoveringCaller(t, &runtimeSpy{turn: c.turn}, &stalenessSpy{}, clock), c.step,
-				call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, reported.report)
+				call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, clock.Now, reported.report)
 			if len(fallback.given) != 0 || slices.Contains(reported, "fallback") {
 				t.Errorf("fallback given %d turns, reported %q; want none", len(fallback.given), reported)
 			}
@@ -118,7 +118,7 @@ func TestAFallbackAtCapacityEndsTheCall(t *testing.T) {
 	fallback := &runtimeSpy{turn: atCapacity("f1")}
 	var reported fallbackReports
 	done := withFallback(context.Background(), recoveringCaller(t, &runtimeSpy{turn: atCapacity("s1")}, &stalenessSpy{}, clock), call.Step{},
-		call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, reported.report)
+		call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, clock.Now, reported.report)
 	passWaits(clock)
 	passWaits(clock)
 	got := <-done
@@ -155,7 +155,7 @@ func TestTheFallbackIsGivenWhatTheCallLeftOfItsLimits(t *testing.T) {
 			fallback := &runtimeSpy{turn: replies(call.Reply{Text: "done", Cost: dollars(1), CostSource: "s", Usage: call.Usage{Input: tokens(100)}})}
 			step := call.Step{TimeLimit: 10 * time.Minute, CostLimit: dollars(c.limit), DailyBudget: c.day}
 			done := withFallback(context.Background(), recoveringCaller(t, primary, &stalenessSpy{}, clock), step,
-				call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, discard)
+				call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, clock.Now, discard)
 			passWaits(clock)
 			got := <-done
 			if want := []time.Duration{10 * time.Minute, 30 * time.Second, time.Minute, 3 * time.Minute, 5*time.Minute + 30*time.Second}; !reflect.DeepEqual(clock.Waits(), want) {
@@ -166,6 +166,48 @@ func TestTheFallbackIsGivenWhatTheCallLeftOfItsLimits(t *testing.T) {
 			}
 			if got.Status != call.Completed || !reflect.DeepEqual(got.Cost, dollars(3)) || got.CostSource != "s" || got.Usage == nil || !reflect.DeepEqual(got.Usage.Input, tokens(140)) {
 				t.Errorf("ended %q, cost %v, source %q, usage %+v; want completed, 3, s, 140 input tokens", got.Status, got.Cost, got.CostSource, got.Usage)
+			}
+		})
+	}
+}
+
+// fallback.feature, "Fallback reporting keeps the call's deadline".
+func TestFallbackReportingKeepsTheCallsDeadline(t *testing.T) {
+	t.Parallel()
+	for _, delay := range []time.Duration{10 * time.Second, 30 * time.Second, 31 * time.Second} {
+		t.Run(delay.String(), func(t *testing.T) {
+			t.Parallel()
+			clock := clocktest.NewClock(start)
+			fallback := &runtimeSpy{turn: replies(call.Reply{Text: "done"})}
+			step := call.Step{TimeLimit: 5 * time.Minute}
+			var reported fallbackReports
+			done := withFallback(context.Background(),
+				recoveringCaller(t, &runtimeSpy{turn: atCapacity("s1")}, &stalenessSpy{}, clock), step,
+				call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, clock.Now,
+				func(r call.Report) {
+					reported.report(r)
+					if r.Fallback {
+						clock.Advance(delay)
+					}
+				})
+			passWaits(clock)
+			got := <-done
+			if want := (fallbackReports{"capacity", "capacity", "capacity", "capacity", "fallback"}); !slices.Equal(reported, want) {
+				t.Errorf("reported %q, want %q", reported, want)
+			}
+			waits := []time.Duration{5 * time.Minute, 30 * time.Second, time.Minute, 3 * time.Minute}
+			if delay < 30*time.Second {
+				waits = append(waits, 30*time.Second-delay)
+				if len(fallback.given) != 1 || got.Status != call.Completed || got.Primary == nil ||
+					!reflect.DeepEqual(got.Output, map[string]any{"text": "done"}) {
+					t.Errorf("fallback turns %+v, result %+v; want one completed fallback with text done and the primary", fallback.given, got)
+				}
+			} else if len(fallback.given) != 0 || got.Status != call.Failed || got.Class != call.Capacity || got.Primary != nil ||
+				got.Reason != "4 of 4 turns at capacity: "+busy {
+				t.Errorf("fallback turns %+v, result %+v; want no fallback and the primary's capacity failure", fallback.given, got)
+			}
+			if got := clock.Waits(); !slices.Equal(got, waits) {
+				t.Errorf("timers %v, want %v", got, waits)
 			}
 		})
 	}
@@ -199,7 +241,7 @@ func TestUnknownPrimaryCostKeepsKnownSpendInFallbackBudgets(t *testing.T) {
 						step.DailyBudget = &call.DailyBudget{Cost: 3, Spent: 1}
 					}
 					done := withFallback(context.Background(), recoveringCaller(t, primary, &stalenessSpy{}, clock), step,
-						call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, discard)
+						call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, clock.Now, discard)
 					passWaits(clock)
 					got := <-done
 					if len(fallback.given) != 1 || !reflect.DeepEqual(fallback.given[0].Budget, dollars(0.5)) {
@@ -229,7 +271,7 @@ func TestACutCapacityWaitDoesNotStartFallback(t *testing.T) {
 			clock := clocktest.NewClock(start)
 			fallback := &runtimeSpy{turn: replies(call.Reply{Text: "fallback"})}
 			got := call.WithFallback(context.Background(), recoveringCaller(t, &runtimeSpy{turn: atCapacity("s1")}, &stalenessSpy{}, clock),
-				call.Step{TimeLimit: limit}, call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, discard)
+				call.Step{TimeLimit: limit}, call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock)}, clock.Now, discard)
 			if got.Class != call.Capacity || got.Primary != nil || len(fallback.given) != 0 {
 				t.Errorf("result %+v, fallback turns %+v; want capacity with no fallback", got, fallback.given)
 			}
