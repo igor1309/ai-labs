@@ -10,7 +10,7 @@ description: "Call screen — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `06a9ad047782ce94a701b004eb1967b2fdec9e9d` |
+| oracle | `SPEC.md` — blob `b9f334806d58346e0e348d80e9a45859654f0744` |
 | driven by | the user, through the calls list and a call's screen |
 | where | the release build on this Mac (the debug build where a row says so), seeded and freshly recorded calls |
 

@@ -26,7 +26,7 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 ## Observer
 
 The user: the owner, or an agent running the app, on a call's screen.
-Renaming is [call-titles](../call-titles/SPEC.md)'s.
+Renaming is [call-rename](../call-rename/SPEC.md)'s.
 
 ## Behaviour
 
