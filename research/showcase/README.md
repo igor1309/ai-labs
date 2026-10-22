@@ -12,7 +12,8 @@ ai-labs holds my AI-SDLC work, and some of its projects are worth showing on my 
 
 So each project worth showing gets a small public repo: its code, its tests
 and a README written for strangers, with pictures. Nothing else crosses over.
-The first is rexlab; audelin follows once it has something to show (LAB-461).
+The first is rexlab (LAB-461), then foliotell (LAB-462); audelin follows
+once it has something to show (LAB-463).
 
 ## Decisions
 
@@ -37,6 +38,7 @@ Each public project has a `showcase/` folder:
 ```
 <project>/showcase/
   showcase.toml    # private: public repo, metadata, allowlist, check
+  screenshots.mjs  # private, optional: retakes the screenshots
   AGENTS.md        # private: the steps no script can do
   public/          # copied as-is to the public repo's root
     README.md
