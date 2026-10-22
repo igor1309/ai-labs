@@ -8,7 +8,7 @@ description: "Audelin v1 is one modular macOS app: record first, live ASR per tr
 
 ## Executive summary
 
-Audelin v1 (scope in [mvp.md](research/mvp.md) § Versions) is one native macOS app.
+Audelin v1 (scope in [mvp.md](mvp.md) § Versions) is one native macOS app.
 It writes the mic and the call audio to disk as two tracks, and a live
 Parakeet v3 stream per track reads that written audio. The streams' updates
 become text that settles in place in a floating panel and is logged as
@@ -30,20 +30,20 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
   ~70× real time on file input (tests.md run 4). Capture-to-display latency
   is not measured.
 - Granola lost the other side of a call after a Wi-Fi/VPN switch and kept no
-  audio to redo it ([mvp.md](research/mvp.md) § Technical rules, from the
+  audio to redo it ([mvp.md](mvp.md) § Technical rules, from the
   [chat survey](research/chat-khakhalev-2026-10-21.md)).
 - MacParakeet's window fell behind other windows and offered no useful
   selection actions (tests.md run 2).
 - The owner asked for one app that is highly modular, following the layout
-  of their iFora `swift-vortex` package ([mvp.md](research/mvp.md) § Code structure).
+  of their iFora `swift-vortex` package ([mvp.md](mvp.md) § Code structure).
 
 | Alternative | Why not |
 |---|---|
 | Separate recorder process plus a UI app, as Verger's service | Would keep recording through a UI crash, but adds a second process to supervise and an IPC contract before either is needed (capture permissions may also have to be granted to it separately, depending on the capture backend); the CLI is a Later item. Revisit if app crashes during calls are seen. |
-| Fork Amanu | Its live engine is what we would replace ([mvp.md](research/mvp.md) § Shape). |
+| Fork Amanu | Its live engine is what we would replace ([mvp.md](mvp.md) § Shape). |
 | Live ASR straight from capture | Audio a stall or crash does not keep is lost. |
 | One mixed ASR stream | Loses «я»/«они»; two streams are cheap (run 4). |
-| `raw.md` as the append-only record | Live text is replaced in place, and the first minutes can be filled in late ([mvp.md](research/mvp.md) § v4 screen details); an append-only Markdown file would hold provisional text or put late text out of order. |
+| `raw.md` as the append-only record | Live text is replaced in place, and the first minutes can be filled in late ([mvp.md](mvp.md) § v4 screen details); an append-only Markdown file would hold provisional text or put late text out of order. |
 
 ## Decision
 
@@ -63,7 +63,7 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    A new recording, a folder move or deleting that call cancels catch-up; the
    unrecognised range stays marked and catch-up resumes later.
 3. **Record first.** Capture → Recorder → disk, two tracks, in short files
-   ([mvp.md](research/mvp.md) § Recording files). File rotation does not make audio
+   ([mvp.md](mvp.md) § Recording files). File rotation does not make audio
    readable: audio becomes readable for ASR as soon as it is written.
    Recording never waits for recognition. If audio cannot be written (disk
    full, folder gone), the session shows an explicit "recording failed"
@@ -72,11 +72,11 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    watermark: the audio time up to which everything is accounted for, as
    committed text or as silence. It is not the last segment's time. It
    advances only together with the commits it covers, and never past audio
-   whose text is still in the live tail (such as text FluidAudio returns only
-   from `finish()`). A new attempt (restart or catch-up) may read earlier
-   audio for context, but commits only words after the watermark; a segment
-   that crosses it is cut at the watermark by word times, so nothing is
-   logged twice or lost. If a segment cannot be written to the log,
+   whose text is still in the live tail (such as the last words before Stop).
+   A new attempt (restart or catch-up) may read earlier audio for context,
+   but commits only words after the watermark: the words it re-decodes
+   before the watermark are matched against the last committed words and
+   dropped, so nothing is logged twice or lost. If a segment cannot be written to the log,
    recognition of that track pauses, its text stays in the live tail and the
    call is marked incomplete; the audio is intact.
 5. **One timeline, with epochs.** Both tracks share one session clock. A
@@ -87,11 +87,14 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    stream for the old epoch is finished and a new one starts.
 6. **One live stream per track (per epoch):** mic is «я», call audio is «они». Each has
    its own stabilizer.
-7. **The stabilizer is pure logic.** It keeps unconfirmed text, replaces it
-   when confirmed text arrives and merges words repeated at chunk edges. It
-   commits a segment (track, epoch, start and end time, text) only when the
-   segment can no longer change: its text is confirmed and the next chunk's
-   overlap has been merged, or the stream has finished. Segments commit in
+7. **The stabilizer is pure logic.** Audelin cuts its own recognition
+   windows from the written audio, each with left and right context, and
+   the stabilizer turns each window's words into commits (amended
+   2026-10-21, owner: FluidAudio's sliding-window updates hide retracted
+   words and failed windows, and its `finish()` returns plain text). It
+   commits a segment (track, epoch, start and end time, text) only when the segment
+   can no longer change: a window decoded it with full right context, or
+   the epoch has ended and the final window decoded it. Segments commit in
    time order per track and epoch: a later segment waits while any earlier
    text is still in the live tail. Until committed, text is a live tail,
    shown in the panel.
@@ -107,7 +110,8 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    context.
 10. **Ports and adapters.** Cores declare the ports they need: audio capture,
    recording writer and recorded-audio reader, live recognition, call store,
-   settings, model provider, clock. Live recognition and the v3 final pass are
+   settings, model provider, call detection (a call app taking and releasing
+   the microphone starts and stops a recording), clock. Live recognition and the v3 final pass are
    different ports that share audio references and transcript types. Only the
    app target creates adapters.
    **Logging is a decorator in the composition root** (owner, 2026-10-21).
@@ -118,13 +122,13 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    knows it is being logged.
 11. **One app-wide activity gate.** Anything that writes into call folders
     holds it: recording, catch-up, moving the calls folder and deleting a
-    call. Recording and a folder move exclude each other ([mvp.md](research/mvp.md) §
+    call. Recording and a folder move exclude each other ([mvp.md](mvp.md) §
     Edge cases); catch-up yields to all three, as in decision 2. One gate,
     defined in Domain and shared by LiveSessionCore and CallsCore; the app
     target creates the one instance.
 12. **Setup in v1** asks for the calls folder and the live model. Recording
    may start before the live model is ready. Choosing a final-pass engine
-   becomes mandatory with v3 ([mvp.md](research/mvp.md) § Final-pass engine).
+   becomes mandatory with v3 ([mvp.md](mvp.md) § Final-pass engine).
 
 Module layout (one local Swift package plus a thin app target):
 
@@ -135,7 +139,7 @@ Domain        CallDomain (call, meta.json, folder and title rules)
 Features      LiveSessionCore / LiveSessionUI (NSPanel + NSTextView)
               CallsCore / CallsUI
               SetupCore / SetupUI
-Adapters      AudioCapture · Recorder · FluidAudioASR
+Adapters      AudioCapture · Recorder · FluidAudioASR · CallDetector
               FileCallStore · SettingsStore · ModelStore
 ```
 
@@ -173,8 +177,9 @@ Behaviour:
     stabilizer MUST NOT join audio or text across it.
 13. Session state MUST change only through the session's owner; the panel's
     copy MUST be derived from it.
-14. TranscriptCore MUST be tested against the spike's recorded updates,
-    without audio or a model.
+14. TranscriptCore MUST be tested against recognizer output recorded once
+    from Parakeet v3, without audio or a model (amended 2026-10-21; was the
+    spike's sliding-window updates).
 15. Stop MUST end recording in bounded time even if recognition stalls or
     never had a model; unrecognised audio MUST stay marked until catch-up
     recognises it.
@@ -216,7 +221,7 @@ Acceptance before v1 is done:
 - Selection survives appends, in-place replacement and late insertion.
 - A blocked recogniser does not stop recording, and Stop still finalizes
   the call.
-- Text that appears only in `finish()` reaches the log.
+- The last words before Stop or a gap reach the log.
 - A restarted attempt and catch-up after relaunch log no text twice and lose
   none; a revoked attempt's late results are ignored.
 - A full disk during recording shows "recording failed" and stops capture.
@@ -224,9 +229,10 @@ Acceptance before v1 is done:
   it.
 - Starting a recording and starting a folder move at once: exactly one
   succeeds.
-- FluidAudio gives word times precise enough to cut a segment at the
-  watermark. If it does not, the watermark moves only at segment boundaries
-  and replay starts from the last one; this ADR is amended before build.
+- A restart at the watermark, with windows shifted by a few frames, logs
+  no word twice and loses none on the recorded fixtures. If it does not,
+  the watermark moves only at segment boundaries and replay starts from the
+  last one; this ADR is amended before build.
 - Parakeet v3 on clean Russian speech with RACI, OKR and SLA (tests.md § Not
   yet measured). If the terms come out in Cyrillic or wrong, as in run 3,
   live terms are not usable for v2 explanations, and the live engine is

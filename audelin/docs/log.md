@@ -2,6 +2,9 @@
 
 ## 2026-10-21
 
+- v1 records calls on its own: recording starts when a call starts and
+  stops when it ends; live text can be switched off, so Audelin replaces
+  Amanu.
 - ADR-001: v1 is one modular app; it records first, runs one live stream per
   track, and logs only through decorators in the composition root.
 - Name: Audelin, in Russian Одели́н; CLI `audelin`, data in `~/.audelin`.
