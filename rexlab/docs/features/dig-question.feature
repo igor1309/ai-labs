@@ -2,7 +2,9 @@ Feature: Dig: who is it?
   At Explorer and Paleontologist a round is a mystery: the dinosaur lies
   under all of the sand with no name or close-up to give it away,
   and once three quarters of its cells are clear (dig-brush.feature) the
-  game asks who it is. By then enough of it shows to tell it, so the pick
+  game asks who it is. Choices fade in with digging from 25% and become
+  pickable at 75%. Their opacity is clamp((dugPercent - 25) / 50, 0, 1),
+  using the unrounded share of clear dinosaur cells. By then enough of it shows to tell it, so the pick
   is a judgement rather than a guess. The choices are its closest
   look-alikes, by the telling traits and spot kinds (dig-spots.feature)
   two dinosaurs share of those either shows, equals drawn at random. The
@@ -23,7 +25,8 @@ Feature: Dig: who is it?
     And no name, picture or close-up tells the dinosaur under it
     And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity beneath empty cards
     And each empty card is the second surface, with a 2 px line border, rounded 24, and a large "?" in the line colour, centred
-    And an empty card is not a button: tapping it does nothing, and screen readers skip it
+    And an empty card never intercepts taps and screen readers always skip it
+    And the dinosaur cards are disabled, unfocusable and hidden from screen readers
 
     Examples:
       | level          | count |
@@ -47,12 +50,12 @@ Feature: Dig: who is it?
       | Paleontologist | 4     |
 
   Scenario Outline: Choices appear with the digging
-    Given an Explorer or Paleontologist round, with either motion preference
+    Given a round at each of Explorer and Paleontologist with each motion preference
     When I have brushed <dug>% of the dinosaur's cells clear
     Then each dinosaur card has opacity <opacity>
     And each empty card has opacity 1 minus <opacity>
     And before 75% the dinosaur cards cannot be pressed or focused and screen readers skip them
-    And each stroke updates opacity directly, without steps or a timed animation
+    And opacity follows the clear-cell fraction on every brush move during a stroke, without rounding to percent steps or a timed animation
     And opacity never decreases as digging continues
     And the dinosaur pictures stay desaturated until an answer is picked
 
@@ -93,9 +96,9 @@ Feature: Dig: who is it?
     But a dinosaur named after a wrong pick earns no badge, and keeps one it earned before
 
   Scenario: The pictures may load late
-    Given the question shows before its pictures have loaded
-    Then each card shows the shared loading look, then its picture or the failed look
-    And every card can still be picked
+    Given dinosaur cards are fading in before their pictures have loaded
+    Then each card shows the shared loading look, then its picture or the failed look, all at the card's current opacity
+    And every unrejected card can be picked once the question shows
 
   Scenario Outline: The board and the question fit on the iPads
     Given the screen is <width> by <height> CSS pixels

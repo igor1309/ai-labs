@@ -71,10 +71,15 @@ Storyboard" row of `../design/rexlab.pen`.
   again: not at the question, a pick, the gust or the lift. The column
   holds an empty "?" card for each choice from the start (3 at
   Explorer, 4 at Paleontologist), each the size and place of the card
-  that replaces it; at 75% each turns over into its dinosaur's card,
-  60 ms apart. Hatchling's board is centred, with no column. Reduced
-  motion fades the board in without a puff and fades the cards in with
-  no turn.
+  overlaid in its slot from the start. Dinosaur-card opacity is
+  clamp((dugPercent - 25) / 50, 0, 1), using the unrounded share of clear
+  dinosaur cells; the empty card has the complementary opacity and never
+  intercepts taps. Every brush move updates the fade directly, including
+  during a stroke, with no timed animation or flip. Before 75% choices
+  are disabled, unfocusable and hidden from screen readers; at 75% they
+  become the question. Pictures stay grey until an answer is picked.
+  Hatchling's board is centred, with no column. Reduced motion fades the
+  board in without a puff and uses the same dig-driven card opacity.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
   a foot, the tail, a horn, a plate, a claw, a crest, a sail, a frill or
   a beak. A spot's cells are the dinosaur's cells whose middle lies in
