@@ -211,6 +211,14 @@ nothing of, a brief, a prompt, a schema or a skill, is given as its problems
 alone. The source also gives the problems of no document, which refuse every
 request. The composition answers the source from documents.
 
+An input whose source reads a file is given with the argument its path is
+read from, which the composition knows of each source; resolve spells no
+source's name nor argument. A step that gives a param of its process the
+value of an input of its workflow whose source reads a file, where an input
+of the process reads its file's path from that param, is refused: a file's
+text given where a path is read. The problem is the workflow's, at the
+step's binding, naming the process and its input.
+
 Its facts port gives, by a runtime mapping's contract, what the runtime
 wrapper can do: check output against a schema, resume a session, take
 skills, take a model, the efforts it accepts, report tool calls and tool
@@ -272,7 +280,12 @@ reached, its plans and its warnings, or to a refusal; and the problems
 of no document, which refuse every request, asked once. The composition
 answers it from resolve and resolve's source, asking for a workflow as a
 caller giving every param it declares, so a param with no default
-refuses no document. Its fields: a document's fields, each its place,
+refuses no document. A workflow that resolves but that a run of it does
+not run yet is refused all the same: the composition asks the run's own
+list of what it does not run, the one `agister run` refuses with, and
+gives each line, as the run words it, as a problem of the workflow at its
+file. Check then refuses what a run refuses before it starts, and the
+two cannot drift. Its fields: a document's fields, each its place,
 its value as text and its source, from the document's tree as layered
 and extended, so a document that does not type has its fields too, and
 one that does not decode has none; the composition answers it from
@@ -318,6 +331,12 @@ Decisions of its reviews, each with its reason:
   is; a workflow's steps are planned.
 - A warning of a refused name is not reported: resolve gives none with
   a refusal, and check reports every problem; a warning is no problem.
+- What a run does not run yet is the run's, not resolve's: resolve
+  checks settings against the ADRs, and a branch is valid settings
+  (ADR-011) that this slice does not run. So the composition, not
+  resolve, adds it to check's refusals, from the run's own list
+  (LAB-465). A process asked for alone is paired with no agent, so what
+  its run would refuse on a runtime is checked only in a workflow.
 
 ## The composition
 
@@ -421,6 +440,8 @@ Decisions of its reviews, each with its reason:
 | a runtime mapping of a contract no wrapper takes | 6, resolve |
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |
 | a required permission its mapping cannot give; a grant beyond the allowed, a warning | 6, resolve |
+| a file's text given to a param a process reads a file's path from | 6, resolve |
+| a workflow a run does not run yet | check, from the run's list |
 
 ## Problems
 

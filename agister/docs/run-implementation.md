@@ -103,7 +103,9 @@ anything runs, naming it: a step on a runtime with no turn yet; an item
 that is not a step; an input from a source other than `param`, or with a
 brief form; a workspace's revision, clean, or read-write access; a
 staleness limit; a process's instruction or guidance on bash. Each is
-named, in the order the request's documents give them. A recovery on
+named, in the order the request's documents give them; `agister check`
+refuses a workflow for the same lines (settings-implementation, "Check";
+LAB-465). A recovery on
 bash is resolve's refusal (ADR-012, rule 3). The program's environment
 is Agister's own, then the process's, then the inputs. SIGINT or SIGTERM
 to Agister cancels the run: the call's program and its group are ended,
