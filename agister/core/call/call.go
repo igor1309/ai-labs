@@ -345,6 +345,9 @@ type Result struct {
 	Reason      string
 	Warnings    []string
 	Primary     *Result
+	// knownCost keeps budget accounting even when an unpriced turn makes
+	// the reported total unknown.
+	knownCost float64
 }
 
 // Timing is when a call started and ended, and how long it took.
@@ -525,6 +528,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	<-watched
 
 	result := timed()
+	result.knownCost = knownCost
 	counted(&result, turns)
 	switch {
 	case spent != "":

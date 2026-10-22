@@ -99,6 +99,14 @@ func TestAFallbacksRuntimeRunsTheStepsProcess(t *testing.T) {
 		lack    func(*resolve.Facts)
 		can     string
 	}{
+		{"an instruction", func(_ *source, p *resolve.Process) { p.Instruction = true },
+			func(f *resolve.Facts) { f.Message = false }, "takes an instruction"},
+		{"guidance", func(s *source, p *resolve.Process) {
+			p.Guidance = []resolve.Name{{Value: "g"}}
+			s.other(resolve.KindPrompt, "g")
+		}, func(f *resolve.Facts) { f.Message = false }, "takes guidance"},
+		{"staleness limits", func(_ *source, p *resolve.Process) { p.Staleness = true },
+			func(f *resolve.Facts) { f.Message = false }, "reports lines for staleness limits"},
 		{"a schema", func(s *source, p *resolve.Process) {
 			p.Schema = resolve.Name{Value: "sc"}
 			s.other(resolve.KindSchema, "sc")

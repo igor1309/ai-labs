@@ -311,7 +311,7 @@ func TestOneCommandReadsTheSettingsOnce(t *testing.T) {
 		"/r/.agister/blocks.yaml":      "- {agent: gone, reason: old}\n",
 	}
 	filesystem := newFilesystemSpy(settings)
-	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {}})
+	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {Message: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,8 +400,34 @@ func TestCapabilitiesAreEveryOneOfResolvesFacts(t *testing.T) {
 			fields = append(fields, field.Name)
 		}
 	}
-	if !slices.Equal(fields, capabilities()) {
-		t.Errorf("resolve's capabilities %q, want %q", fields, capabilities())
+	want := append(capabilities(), "Message")
+	if !slices.Equal(fields, want) {
+		t.Errorf("resolve's capabilities %q, want %q", fields, want)
+	}
+}
+
+// Message support is derived from each wrapper's input delivery, rather
+// than from its name or its other capabilities.
+func TestMessageCapabilityFollowsTheWrappersInputDelivery(t *testing.T) {
+	t.Parallel()
+	for _, message := range []bool{false, true} {
+		t.Run(fmt.Sprint(message), func(t *testing.T) {
+			t.Parallel()
+			claude, codexInput, piInput, bashInput := claudecode.InEnvironment, codex.InEnvironment, pi.InEnvironment, bash.InEnvironment
+			if message {
+				claude, codexInput, piInput, bashInput = claudecode.InMessage, codex.InMessage, pi.InMessage, bash.InMessage
+			}
+			for _, wrapper := range []wrapperFacts{
+				claudeCodeFacts(claudeCodeSpy{claudecode.Facts{Inputs: claude}}),
+				codexFacts(codexSpy{codex.Facts{Inputs: codexInput}}),
+				piFacts(piSpy{pi.Facts{Inputs: piInput}}),
+				bashFacts(bashSpy{bash.Facts{Inputs: bashInput}}),
+			} {
+				if _, got := wrapper(); !reflect.DeepEqual(got, resolve.Facts{Message: message}) {
+					t.Errorf("facts %+v, want only Message %t", got, message)
+				}
+			}
+		})
 	}
 }
 

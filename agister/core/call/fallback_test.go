@@ -171,6 +171,54 @@ func TestTheFallbackIsGivenWhatTheCallLeftOfItsLimits(t *testing.T) {
 	}
 }
 
+// Known spend still reduces both budgets when any primary turn is unpriced;
+// the reported total stays unknown, and a fallback that spends the remainder
+// at capacity gets no retry.
+func TestUnknownPrimaryCostKeepsKnownSpendInFallbackBudgets(t *testing.T) {
+	t.Parallel()
+	for _, budget := range []string{"call", "daily"} {
+		for unknown := range 4 {
+			for _, failure := range []call.Class{"", call.Capacity} {
+				t.Run(fmt.Sprintf("%s/unknown turn %d/fallback %s", budget, unknown+1, failure), func(t *testing.T) {
+					t.Parallel()
+					clock := clocktest.NewClock(start)
+					var turns []func(context.Context) (call.Ended, error)
+					for i := range 4 {
+						cost := dollars(0.5)
+						if i == unknown {
+							cost = nil
+						}
+						turns = append(turns, replies(call.Reply{Failure: call.Capacity, Reason: busy, Cost: cost, CostSource: "s"}))
+					}
+					primary := &runtimeSpy{turn: inOrder(turns...)}
+					fallback := &runtimeSpy{turn: replies(call.Reply{Text: "done", Failure: failure, Reason: busy, Cost: dollars(0.5), CostSource: "s"})}
+					step := call.Step{}
+					if budget == "call" {
+						step.CostLimit = dollars(2)
+					} else {
+						step.DailyBudget = &call.DailyBudget{Cost: 3, Spent: 1}
+					}
+					done := withFallback(context.Background(), recoveringCaller(t, primary, &stalenessSpy{}, clock), step,
+						call.Fallback{Maker: recoveringCaller(t, fallback, &stalenessSpy{}, clock), Step: step}, discard)
+					passWaits(clock)
+					got := <-done
+					if len(fallback.given) != 1 || !reflect.DeepEqual(fallback.given[0].Budget, dollars(0.5)) {
+						t.Errorf("fallback turns %+v, want one with budget 0.5", fallback.given)
+					}
+					status, class := call.Completed, call.Class("")
+					if failure != "" {
+						status, class = call.Failed, call.BudgetExhausted
+					}
+					if got.Status != status || got.Class != class || got.Cost != nil || got.CostSource != "" ||
+						got.Primary == nil || got.Primary.Cost != nil || got.Primary.Class != call.Capacity {
+						t.Errorf("result %+v, want %s, %s, unknown cost and a primary at capacity", got, status, class)
+					}
+				})
+			}
+		}
+	}
+}
+
 // A time limit that cuts a capacity wait does not spend the remaining
 // capacity turns, and never starts work on a different agent.
 func TestACutCapacityWaitDoesNotStartFallback(t *testing.T) {

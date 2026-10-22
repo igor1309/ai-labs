@@ -170,7 +170,8 @@ const (
 // skills; its params and its inputs; its environment; the input whose
 // revision its worktree must be at, nil for none; the schema of its
 // output; the permissions it requires and those it allows (ADR-003, rule
-// 2); whether it recovers a stale turn; and whether a turn is stale by the
+// 2); whether it gives an instruction or staleness limits, whether it
+// recovers a stale turn; and whether a turn is stale by the
 // same tool call made in a row, or by a tool command running too long.
 type Process struct {
 	Name              string
@@ -185,6 +186,8 @@ type Process struct {
 	Require           []string
 	Allow             []string
 	Recovery          bool
+	Instruction       bool
+	Staleness         bool
 	StaleToolCalls    bool
 	StaleToolCommands bool
 }
@@ -234,7 +237,8 @@ type Wrappers interface {
 
 // Facts are what a runtime wrapper can do (ADR-003, rule 7): check output
 // against a schema, resume a session, take skills, take a model, the
-// efforts it accepts, and report tool calls and tool commands.
+// efforts it accepts, report tool calls and tool commands, and take inputs
+// in a message, with instructions, guidance and streamed staleness checks.
 type Facts struct {
 	Schema       bool
 	Session      bool
@@ -243,6 +247,7 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Message      bool
 }
 
 // Request is what resolve is asked for: a document, by kind and name, or a

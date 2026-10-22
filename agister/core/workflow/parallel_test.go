@@ -3,11 +3,13 @@ package workflow_test
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 )
@@ -322,94 +324,74 @@ func bounded(name string, max int, steps ...workflow.Step) workflow.Step {
 	return workflow.Step{Name: name, Parallel: steps, Max: max}
 }
 
-// overlap counts the steps running at once, and keeps the most that ever
-// did. It is safe for concurrent use.
-type overlap struct {
-	mu            sync.Mutex
-	running, most int
-}
-
-func (o *overlap) enter() {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	o.running++
-	o.most = max(o.most, o.running)
-}
-
-func (o *overlap) leave() {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	o.running--
+// assertParallelBound holds every admitted call until the scheduler is
+// quiescent on channels, checks the active set, then releases one slot.
+// Buffered entry reports let an extra call reach its own release barrier.
+func assertParallelBound(t *testing.T, limit int) {
+	t.Helper()
+	synctest.Test(t, func(t *testing.T) {
+		names := []string{"a", "b", "c", "d", "e"}
+		entered := make(chan string, len(names))
+		releases := map[string]chan struct{}{}
+		answers := map[string]func() workflow.Result{}
+		var steps []workflow.Step
+		for _, name := range names {
+			release := make(chan struct{})
+			releases[name] = release
+			answers[name] = func() workflow.Result {
+				entered <- name
+				<-release
+				return completes(0)()
+			}
+			steps = append(steps, workflow.Step{Name: name})
+		}
+		t.Cleanup(func() {
+			for _, release := range releases {
+				close(release)
+			}
+		})
+		f := newFixture(t, workflow.Boundary{}, answers)
+		done := make(chan workflow.Result, 1)
+		go func() {
+			done <- f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+				bounded("p", limit, steps...),
+			}}, nil)
+		}()
+		active := map[string]bool{}
+		for i, name := range names {
+			synctest.Wait()
+			for len(entered) > 0 {
+				active[<-entered] = true
+			}
+			got := slices.Sorted(maps.Keys(active))
+			want := names[i:min(i+limit, len(names))]
+			if !slices.Equal(got, want) {
+				t.Fatalf("after %d releases, active %q, want %q with max %d", i, got, want, limit)
+			}
+			close(releases[name])
+			delete(releases, name)
+			delete(active, name)
+		}
+		if got := <-done; got.Status != workflow.Completed {
+			t.Errorf("ended %q, class %q; want completed", got.Status, got.Class)
+		}
+		if limit == 1 && !slices.Equal(f.trail, trail{"resolve", "a", "b", "c", "d", "e"}) {
+			t.Errorf("called %q, want declaration order", f.trail)
+		}
+	})
 }
 
 // parallel.feature, "With max 1, a parallel's steps run one at a time, in
-// order": each step says it entered, then runs until the test ends it,
-// and the test ends each as it enters, in declaration order.
+// order".
 func TestWithMax1AParallelsStepsRunOneAtATimeInOrder(t *testing.T) {
 	t.Parallel()
-	var o overlap
-	entered := make(chan string)
-	release := map[string]chan struct{}{"a": make(chan struct{}), "b": make(chan struct{}), "c": make(chan struct{})}
-	runs := func(name string) func() workflow.Result {
-		return func() workflow.Result {
-			o.enter()
-			defer o.leave()
-			entered <- name
-			<-release[name]
-			return completes(0)()
-		}
-	}
-	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": runs("a"), "b": runs("b"), "c": runs("c")})
-	done := make(chan workflow.Result)
-	go func() {
-		done <- f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
-			bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
-		}}, nil)
-	}()
-	var order []string
-	for range 3 {
-		name := <-entered
-		order = append(order, name)
-		close(release[name])
-	}
-	got := <-done
-	if !slices.Equal(order, []string{"a", "b", "c"}) || o.most != 1 {
-		t.Errorf("entered %q, at most %d at once; want a, b, c, one at a time", order, o.most)
-	}
-	if got.Status != workflow.Completed {
-		t.Errorf("ended %q, class %q; want completed", got.Status, got.Class)
-	}
+	assertParallelBound(t, 1)
 }
 
-// parallel.feature, "With max 2, two steps run at once, never three":
-// "a" and "b" meet, which only steps called at once get past.
+// parallel.feature, "With max 2, two steps run at once, never three".
 func TestWithMax2TwoStepsRunAtOnceNeverThree(t *testing.T) {
 	t.Parallel()
-	var o overlap
-	var both sync.WaitGroup
-	both.Add(2)
-	meets := func() workflow.Result {
-		o.enter()
-		defer o.leave()
-		both.Done()
-		both.Wait()
-		return completes(0)()
-	}
-	runs := func() workflow.Result {
-		o.enter()
-		defer o.leave()
-		return completes(0)()
-	}
-	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{"a": meets, "b": meets, "c": runs})
-	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
-		bounded("p", 2, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
-	}}, nil)
-	if got.Status != workflow.Completed || o.most != 2 {
-		t.Errorf("ended %q, at most %d at once; want completed, two", got.Status, o.most)
-	}
-	if f.trail[len(f.trail)-1] != "c" {
-		t.Errorf("asked %q, want c last", f.trail)
-	}
+	assertParallelBound(t, 2)
 }
 
 // parallel.feature, "With max 1, a step that does not complete does not

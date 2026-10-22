@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-458: fallback budgets retain known spend when the total cost is unknown;
+  settings checks refuse fallbacks incompatible with the process.
+
 - LAB-458: capacity retries wait 30 seconds, one minute and three minutes,
   then use the agent's fallback; review nodes run one at a time.
 

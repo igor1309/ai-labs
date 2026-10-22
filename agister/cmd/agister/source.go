@@ -77,6 +77,8 @@ func (s *source) Process(name string) (resolve.Process, []resolve.Problem) {
 		Require:           process.Permissions.Value.Require.Value,
 		Allow:             process.Permissions.Value.Allow.Value,
 		Recovery:          process.Recovery.Given,
+		Instruction:       process.Instruction.Given,
+		Staleness:         process.Limits.Value.Stale.Given,
 		StaleToolCalls:    stale.RepeatedToolCalls.Given,
 		StaleToolCommands: stale.ToolCommand.Given,
 	}, nil

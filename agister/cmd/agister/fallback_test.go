@@ -39,8 +39,9 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			f := newRecordFixture(t, modelSettings(t, map[string]string{
-				"/r/.agister/agents/claude-opus.toml": "fallback = \"third\"\n",
-				"/r/.agister/agents/third.toml":       "schema = \"agister.agent/v1alpha1\"\nruntime = \"codex\"\nmodel = \"third-model\"\n",
+				"/r/.agister/agents/codex-sol-61.toml": "effort = \"low\"\n",
+				"/r/.agister/agents/claude-opus.toml":  "effort = \"medium\"\nfallback = \"third\"\n",
+				"/r/.agister/agents/third.toml":        "schema = \"agister.agent/v1alpha1\"\nruntime = \"codex\"\nmodel = \"third-model\"\n",
 			}), nil)
 			f.runtimes.codex.answer = answers[codex.Turn](codex.Result{Session: "primary-session", Reply: &codex.Reply{
 				Failure: c.primary, Reason: "Selected model is at capacity", Session: "primary-session"}})
@@ -65,6 +66,14 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			}
 			got := <-done
 			p := printedOf(t, got)
+			var output, printedOutput map[string]any
+			if c.status == "completed" {
+				output = map[string]any{"ok": true}
+				printedOutput = map[string]any{"output": output}
+			}
+			if !reflect.DeepEqual(p.Output, printedOutput) {
+				t.Errorf("printed output %v, want %v", p.Output, printedOutput)
+			}
 			if p.Status != c.status || (p.Class == nil) != (c.class == "") || p.Class != nil && *p.Class != c.class || got.stderr != "" {
 				t.Fatalf("result %+v, stderr %q; want %s, %s", p, got.stderr, c.status, c.class)
 			}
@@ -76,7 +85,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			var sessions []string
 			for _, turn := range turns {
 				sessions = append(sessions, turn.Session)
-				if turn.Model != "gpt-6.1-sol" || turn.Message != askMessage {
+				if turn.Model != "gpt-6.1-sol" || turn.Effort != "low" || turn.Message != askMessage {
 					t.Errorf("primary turn %+v, want original work on primary model", turn)
 				}
 			}
@@ -88,8 +97,8 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 				t.Fatalf("calls %+v, want one", record.Calls)
 			}
 			kept := record.Calls[0]
-			if kept.Agent != c.answering || kept.Result.Status != c.status {
-				t.Errorf("call %+v, want agent %s, status %s", kept, c.answering, c.status)
+			if kept.Agent != c.answering || kept.Result.Status != c.status || !reflect.DeepEqual(kept.Result.Output, output) {
+				t.Errorf("call %+v, want agent %s, status %s, output %v", kept, c.answering, c.status, output)
 			}
 			fallbackTurns := f.runtimes.claude.ran()
 			if c.waits == 0 {
@@ -102,9 +111,17 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			if c.fallback != "" {
 				wantFallbacks = 4
 			}
-			if len(fallbackTurns) != wantFallbacks || fallbackTurns[0].Session != "" || fallbackTurns[0].Message != askMessage ||
-				fallbackTurns[0].Instruction != "i" || !slices.Equal(fallbackTurns[0].Env, append(slices.Clone(environ), "A=1")) {
-				t.Errorf("fallback turns %+v, want fresh original work and inputs, %d turns", fallbackTurns, wantFallbacks)
+			wantTurns := make([]claudecode.Turn, wantFallbacks)
+			for i := range wantTurns {
+				wantTurns[i] = claudecode.Turn{Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"),
+					Instruction: "i", Model: "opus", Effort: "medium", Options: []string{"Glob"}, Schema: []byte(answerSchema),
+					Session: "fallback-session"}
+				if i == 0 {
+					wantTurns[i].Session, wantTurns[i].SessionCostBefore = "", usd(0)
+				}
+			}
+			if !reflect.DeepEqual(fallbackTurns, wantTurns) {
+				t.Errorf("fallback turns\n%+v\nwant\n%+v", fallbackTurns, wantTurns)
 			}
 			for _, h := range held {
 				if h != [2]int{0, 1} {
@@ -115,7 +132,8 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 				t.Errorf("holds %+v, %d alone, %d shared; want one acquired, released", asked, alone, shared)
 			}
 			primary := kept.Primary
-			if primary == nil || primary.Agent != "codex-sol-61" || primary.Result.Class == nil || *primary.Result.Class != "capacity" ||
+			if primary == nil || primary.Agent != "codex-sol-61" || primary.Result.Status != "failed" || primary.Result.Output != nil ||
+				primary.Result.Class == nil || *primary.Result.Class != "capacity" ||
 				primary.Result.Reason == nil || *primary.Result.Reason != "4 of 4 turns at capacity: Selected model is at capacity" ||
 				primary.Result.Session == nil || *primary.Result.Session != "primary-session" || !slices.Equal(primary.Permissions.Options, []string{"read-only"}) ||
 				!slices.Equal(kept.Permissions.Options, []string{"Glob"}) {
@@ -160,10 +178,13 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 // filesystem adapter to check, which names the offending agent file.
 func TestCheckRefusesBadFallbackFiles(t *testing.T) {
 	t.Parallel()
-	for _, c := range []struct{ name, fallback, why string }{
-		{"missing", "gone", "it names an agent that resolves"},
-		{"itself", "a", "it names another agent"},
-		{"incompatible runtime", "b", `its runtime "bash" checks output against a schema`},
+	for _, c := range []struct{ name, fallback, process, why string }{
+		{"missing", "gone", "output: {schema: answer}\n", "it names an agent that resolves"},
+		{"itself", "a", "output: {schema: answer}\n", "it names another agent"},
+		{"incompatible runtime", "b", "output: {schema: answer}\n", `its runtime "bash" checks output against a schema`},
+		{"instruction on bash", "b", "instruction: think\n", `its runtime "bash" takes an instruction`},
+		{"guidance on bash", "b", "guidance: [g]\n", `its runtime "bash" takes guidance`},
+		{"staleness on bash", "b", "limits: {stale: {no_event: 1m}}\n", `its runtime "bash" reports lines for staleness limits`},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -174,7 +195,8 @@ func TestCheckRefusesBadFallbackFiles(t *testing.T) {
 				"agents/b.toml":        "schema = \"agister.agent/v1alpha1\"\nruntime = \"bash\"\n",
 				"runtimes/claude.yaml": "schema: agister.runtime/v1alpha1\nadapter: claude-code\ncontract: claude-code/3\n",
 				"runtimes/bash.yaml":   "schema: agister.runtime/v1alpha1\nadapter: bash\ncontract: bash/1\n",
-				"processes/p.yaml":     "schema: agister.process/v1alpha1\noutput: {schema: answer}\n",
+				"processes/p.yaml":     "schema: agister.process/v1alpha1\n" + c.process,
+				"prompts/g.md":         "guidance",
 				"schemas/answer.json":  answerSchema,
 				"workflows/w.yaml":     "schema: agister.workflow/v1alpha1\nsteps: [{name: s, process: p, agent: a}]\n",
 			}

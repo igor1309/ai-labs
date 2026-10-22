@@ -23,8 +23,8 @@ Feature: Resolve checks and plans an agent's fallback
     Then it refuses: <refusals>
 
     Examples:
-      | fallback                     | refusals                                                                                                  |
-      | "a", itself                  | the agent "a", and the problem at its fallback: it names another agent                                    |
+      | fallback                     | refusals                                                                                                 |
+      | "a", itself                  | the agent "a", and the problem at its fallback: it names another agent                                   |
       | "gone", which no layer holds | the agent "a", at its fallback: it names an agent that resolves; and the agent "gone": no layer holds it |
       | "b", which a block refuses   | the agent "a", at its fallback: it names an agent that resolves; and the block of the agent "b"          |
 
@@ -38,10 +38,13 @@ Feature: Resolve checks and plans an agent's fallback
       needs
 
     Examples:
-      | need                             | can                            | who             |
-      | the process "p" has a schema     | checks output against a schema | its process "p" |
-      | the process "p" recovers         | resumes a session              | its process "p" |
-      | the process "p" names a skill    | takes skills                   | its process "p" |
+      | need                                 | can                                | who             |
+      | the process "p" has a schema         | checks output against a schema     | its process "p" |
+      | the process "p" has an instruction   | takes an instruction               | its process "p" |
+      | the process "p" has guidance         | takes guidance                     | its process "p" |
+      | the process "p" has staleness limits | reports lines for staleness limits | its process "p" |
+      | the process "p" recovers             | resumes a session                  | its process "p" |
+      | the process "p" names a skill        | takes skills                       | its process "p" |
 
   Scenario: A fallback resumes no session
     Given the step "s" of "w" continues an earlier step's session, on the

@@ -22,9 +22,10 @@ type Fallback struct {
 // WithFallback makes step on primary, and, where that call ends of the
 // class capacity, its turns at capacity spent, reports so and makes the
 // call again on fallback: fresh, in no session, within what the first
-// call left of the time limit and, where its cost is known, of the cost
-// limit and the day's budget. Any other end is the call's. The fallback's
-// own end is the call's, at capacity too: a fallback is never followed
+// call left of the time limit, cost limit and the day's budget, deducting
+// all known spend even when its total cost is unknown. Any other end is
+// the call's. The fallback's own end is the call's, at capacity too: a
+// fallback is never followed
 // further. The call's result is then the fallback's, but its timing,
 // from the first call's start; its cost, usage and warnings, both calls';
 // and its primary, the first call's result. No fallback is made where
@@ -49,15 +50,13 @@ func WithFallback(ctx context.Context, primary Maker, step Step, fallback Fallba
 		}
 		again.TimeLimit = left
 	}
-	if spent := first.Cost; spent != nil {
-		if limit := again.CostLimit; limit != nil {
-			left := *limit - *spent
-			again.CostLimit = &left
-		}
-		if day := again.DailyBudget; day != nil {
-			after := DailyBudget{Cost: day.Cost, Spent: day.Spent + *spent}
-			again.DailyBudget = &after
-		}
+	if limit := again.CostLimit; limit != nil {
+		left := *limit - first.knownCost
+		again.CostLimit = &left
+	}
+	if day := again.DailyBudget; day != nil {
+		after := DailyBudget{Cost: day.Cost, Spent: day.Spent + first.knownCost}
+		again.DailyBudget = &after
 	}
 	report(Report{Fallback: true})
 	second := fallback.Maker.Call(ctx, again, report)
@@ -71,6 +70,7 @@ func fellBack(first, second Result) Result {
 	result.Timing = Timing{Started: first.Timing.Started, Ended: second.Timing.Ended,
 		Duration: second.Timing.Ended.Sub(first.Timing.Started)}
 	result.Cost = total([]*float64{first.Cost, second.Cost})
+	result.knownCost = first.knownCost + second.knownCost
 	result.CostSource = ""
 	if result.Cost != nil {
 		result.CostSource = first.CostSource

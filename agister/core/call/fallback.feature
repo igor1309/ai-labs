@@ -56,3 +56,12 @@ Feature: A call at capacity falls back to another agent
       | limit | day                 | budget |
       | 2.5   | none                | 0.5    |
       | 5     | 4, of which 1 spent | 1      |
+
+  Scenario: Unknown primary cost keeps known spend in fallback budgets
+    Given four primary turns at capacity, one unpriced and three costing
+      0.5 each, with 2 left of either the call limit or the daily budget
+    When the primary's three waits pass and the fallback is called
+    Then its turn has a budget of 0.5, whichever primary turn was unpriced
+    And the reported total cost stays unknown
+    And a fallback spending 0.5 at capacity ends budget_exhausted, without
+      a retry

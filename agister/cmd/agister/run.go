@@ -586,10 +586,8 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 // read within a parallel's outputs, which are a list; then, for each step,
 // a parallel's included, on its agent and on the agent's fallback, a
 // runtime with no turn, and what its process declares that is not run,
-// among them its instruction, its guidance and its staleness limits on a
-// runtime that takes no message and reports no line, as bash does, and an
-// input named as a document of its message, which two sections of one
-// name would leave ambiguous.
+// among them an input named as a document of its message, which two
+// sections of one name would leave ambiguous.
 func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]string, error) {
 	var unrun notRun
 	if name != "" {
@@ -642,22 +640,12 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				unrun.add(step, fmt.Sprintf("the runtime %q's turn", runtime))
 			}
 			owner := fmt.Sprintf("the process %q", item.Process.Value)
-			inEnvironment := turned && inputsTaken == call.InEnvironment
-			if inEnvironment && definition.Instruction.Given {
-				unrun.add(owner, fmt.Sprintf("the instruction on %s", runtime))
-			}
-			if inEnvironment && len(definition.Guidance.Value) > 0 {
-				unrun.add(owner, fmt.Sprintf("the guidance on %s", runtime))
-			}
 			documentNames := documentNamesOf(definition)
 			for _, input := range definition.Inputs.Value {
 				unrun.input(owner, input.Value)
 				if turned && inputsTaken == call.InMessage && slices.Contains(documentNames, input.Value.Name) {
 					unrun.add(owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
 				}
-			}
-			if inEnvironment && definition.Limits.Value.Stale.Given {
-				unrun.add(owner, fmt.Sprintf("the staleness limit on %s", runtime))
 			}
 		}
 	}

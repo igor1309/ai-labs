@@ -84,6 +84,9 @@ func (w *walk) planOn(process Process, agent Agent, resumes bool, problem func(s
 		needs, can bool
 		what, who  string
 	}{
+		{process.Instruction, w.facts[runtime.Name].Message, "takes an instruction", who},
+		{len(process.Guidance) > 0, w.facts[runtime.Name].Message, "takes guidance", who},
+		{process.Staleness, w.facts[runtime.Name].Message, "reports lines for staleness limits", who},
 		{process.Schema.Value != "", w.facts[runtime.Name].Schema, "checks output against a schema", who},
 		{process.Recovery, w.facts[runtime.Name].Session, "resumes a session", who},
 		{resumes, w.facts[runtime.Name].Session, "resumes a session", "it"},

@@ -123,10 +123,11 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			}, nil),
 		},
 		{
-			name: "a process's require, allow, recovery and stale tool calls",
+			name: "a process's require, allow, instruction, recovery and stale tool calls",
 			documents: func(d *documentsSpy) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
-					Name: "p",
+					Name:        "p",
+					Instruction: given("i", processFile, 10, "instruction"),
 					Permissions: given(documents.Permissions{
 						Require: given([]string{"read"}, processFile, 3, "permissions.require"),
 						Allow:   given([]string{"write"}, processFile, 4, "permissions.allow"),
@@ -139,7 +140,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
 			want: answerOf(resolve.Process{
-				Name: "p", Require: []string{"read"}, Allow: []string{"write"}, Recovery: true, StaleToolCalls: true,
+				Name: "p", Require: []string{"read"}, Allow: []string{"write"}, Instruction: true, Recovery: true, Staleness: true, StaleToolCalls: true,
 			}, nil),
 		},
 		{
@@ -153,7 +154,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				}}
 			},
 			ask:  func(s *source) any { return answerOf(s.Process("p")) },
-			want: answerOf(resolve.Process{Name: "p", StaleToolCommands: true}, nil),
+			want: answerOf(resolve.Process{Name: "p", Staleness: true, StaleToolCommands: true}, nil),
 		},
 		{
 			name: "a process's revision, reading the input base",
