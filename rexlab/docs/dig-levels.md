@@ -69,15 +69,16 @@ Storyboard" row of `../design/rexlab.pen`.
   puffing grains from its bottom edge. In a round that asks, it drops
   into its place beside the choice column and never moves sideways
   again: not at the question, a pick, the gust or the lift. The column
-  holds an empty "?" card for each choice from the start (3 at
-  Explorer, 4 at Paleontologist), each the size and place of the card
-  overlaid in its slot from the start. Dinosaur-card opacity is
-  clamp((dugPercent - 25) / 50, 0, 1), using the unrounded share of clear
-  dinosaur cells; the empty card has the complementary opacity and never
+  holds each dinosaur card and an overlaid empty "?" card in the same
+  slot from the start (3 at Explorer, 4 at Paleontologist). Dinosaur-card opacity is
+  clamp((dugPercent - 25) / 50, 0, 1), where dugPercent is 100 times clear dinosaur
+  cells divided by all dinosaur cells, unrounded; the empty card has the complementary opacity and never
   intercepts taps. Every brush move updates the fade directly, including
   during a stroke, with no timed animation or flip. Before 75% choices
   are disabled, unfocusable and hidden from screen readers; at 75% they
   become the question. Pictures stay grey until an answer is picked.
+  A wrong pick fades its picture to opacity 0.45, while the container
+  stays at 1 and its name and retry mark stay readable.
   Hatchling's board is centred, with no column. Reduced motion fades the
   board in without a puff and uses the same dig-driven card opacity.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
@@ -182,9 +183,12 @@ Storyboard" row of `../design/rexlab.pen`.
 - The game's name: "DIG", "РАСКОПКИ".
 - Hatchling's gust at 95% of the dinosaur, so a 4-year-old digs it
   whole but never hunts the last grains (LAB-359).
-- A mystery round at Explorer and Paleontologist: no cards, the
+- A mystery round at Explorer and Paleontologist: initially invisible cards, the
   question at 75%, 3 choices at Explorer and 4 at Paleontologist, a
   wrong pick fading and staying out (LAB-358).
+- On 2026-10-22 the owner chose choices fading linearly from 25% to 75%
+  dug, accepting that candidates become visible before the question;
+  interaction still begins at 75% (LAB-468).
 - The dinosaur is named from body pictures, not its skeleton: every
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection

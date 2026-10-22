@@ -4,7 +4,8 @@ Feature: Dig: who is it?
   and once three quarters of its cells are clear (dig-brush.feature) the
   game asks who it is. Choices fade in with digging from 25% and become
   pickable at 75%. Their opacity is clamp((dugPercent - 25) / 50, 0, 1),
-  using the unrounded share of clear dinosaur cells. By then enough of it shows to tell it, so the pick
+  where dugPercent is 100 times clear dinosaur cells divided by all
+  dinosaur cells, unrounded. By then enough of it shows to tell it, so the pick
   is a judgement rather than a guess. The choices are its closest
   look-alikes, by the telling traits and spot kinds (dig-spots.feature)
   two dinosaurs share of those either shows, equals drawn at random. The
@@ -23,7 +24,7 @@ Feature: Dig: who is it?
     When a round starts
     Then the board is all sand and the title reads "DIG"
     And no name, picture or close-up tells the dinosaur under it
-    And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity beneath empty cards
+    And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity overlaid with empty cards
     And each empty card is the second surface, with a 2 px line border, rounded 24, and a large "?" in the line colour, centred
     And an empty card never intercepts taps and screen readers always skip it
     And the dinosaur cards are disabled, unfocusable and hidden from screen readers
@@ -56,7 +57,8 @@ Feature: Dig: who is it?
     And each empty card has opacity 1 minus <opacity>
     And before 75% the dinosaur cards cannot be pressed or focused and screen readers skip them
     And opacity follows the clear-cell fraction on every brush move during a stroke, without rounding to percent steps or a timed animation
-    And opacity never decreases as digging continues
+    And the card container opacity never decreases as digging continues
+    And a later wrong pick fades only its picture to 0.45, keeping the card container at 1
     And the dinosaur pictures stay desaturated until an answer is picked
 
     Examples:
@@ -77,7 +79,8 @@ Feature: Dig: who is it?
   Scenario: A wrong pick fades and stays out
     Given the question shows
     When I tap a dinosaur that is not the one under the sand
-    Then its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
+    Then its picture fades to opacity 0.45 inside the fully visible card
+    And its card shows a gentle "TRY ANOTHER" mark and can no longer be tapped, even after the screen turns
     And I can brush on and pick again from the other, still-colourless cards
 
   Scenario: The right pick blows the sand away
