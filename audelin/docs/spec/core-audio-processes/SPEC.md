@@ -9,12 +9,13 @@ wraps Core Audio's process objects and speaks only in those two answers.
 - One wrapper, not a list adapter and a call watcher apart: both read the
   same Core Audio objects, and the second only translated the first into
   our words (owner, 2026-10-22).
-- Calls come as a stream of events, never from re-reading the list: Core
-  Audio tells when a process appears, leaves or starts or stops running
-  (measured on this Mac, [system-audio.md](../../research/system-audio.md#measured-on-this-mac):
-  the list's change
-  and each process's `IsRunning` fire). The recording flag is re-read when
-  they fire; its own change was never told on its own.
+- Calls come as a stream of events, never from re-reading the list. Core
+  Audio tells when a process appears or leaves, and a process's
+  `IsRunning` and device list fire as Voice Memos, a browser tab and Amanu
+  start and stop using the microphone; the recording flag is re-read when
+  either fires, as its own change is never told ([measured on this
+  Mac](../../research/system-audio.md#measured-on-this-mac)). The one
+  untold stop was Siri's listener, which is no call app.
 - A call is a listed call app using the microphone: Zoom (`us.zoom.xos`),
   Telemost (`ru.yandex.desktop.telemost`), and the browser families where
   Meet and calls in a tab run. Any app on the microphone would make

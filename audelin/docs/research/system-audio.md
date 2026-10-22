@@ -104,4 +104,12 @@ each on a muted `afplay` child it starts itself:
   On a process, `IsRunning` (`pir?`) and its device list fire when it
   starts playing; `IsRunningOutput` changed (0 to 1) but was never told on
   its own, so it is re-read when `IsRunning` fires. A frozen process stays
-  running. The recording flag was not measured: it needs the microphone.
+  running.
+- **Microphone use is told** (`mic-notifications.swift`, the owner driving
+  the apps). Voice Memos, a Safari tab (`com.apple.WebKit.GPU`) and Amanu
+  each starting and stopping were all told, the recording flag
+  (`IsRunningInput`) re-read on the notification: a start came on
+  `IsRunning` (`pir?`) or the device list (`pdv#`), a stop on the device
+  list. Voice Memos' flag flickered on, off and on within 70 ms of its
+  start. One change went untold: Siri's always-on listener
+  (`com.apple.CoreSpeech`) stopping, seen only by sampling every 0.5 s.
