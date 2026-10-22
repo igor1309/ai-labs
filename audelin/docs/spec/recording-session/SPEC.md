@@ -21,6 +21,8 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 1. The stop limit is 5 s, as live-panel's Decided 3 sets for the user.
 2. A crash loses at most the recording file being written (S-9): mvp.md
    writes each track in short files so that a damaged file bounds the loss.
+3. The client that starts a recording gives its title and call app; choosing
+   them is [call-titles](../call-titles/SPEC.md)' (S-1).
 
 ## Observer
 
