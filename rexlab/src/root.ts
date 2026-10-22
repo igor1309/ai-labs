@@ -211,7 +211,17 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
-  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation, browser, () => browser.getComputedStyle(browser.document.documentElement));
+  const scrollbarWidth = () => {
+    const clientWidth = Number((browser.document.documentElement as HTMLElement).clientWidth);
+    return clientWidth > 0 ? Math.max(0, browser.innerWidth - clientWidth) : 0;
+  };
+  const viewport = mediaViewport(
+    (query) => browser.matchMedia(query),
+    browser.screen.orientation,
+    browser,
+    () => browser.getComputedStyle(browser.document.documentElement),
+    scrollbarWidth
+  );
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);

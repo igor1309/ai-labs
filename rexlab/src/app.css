@@ -2366,6 +2366,7 @@ html[data-size="tall"] .dinosaur-page {
   min-height: 100dvh;
   height: auto;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 html[data-size="tall"] .dinosaur-body {

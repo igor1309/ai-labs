@@ -54,6 +54,13 @@ describe("the browser viewport", () => {
     expect(viewport.width()).toBe(1032);
   });
 
+  it("exposes room reserved by a vertical scrollbar separately from the window width", () => {
+    const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
+    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(600), rootStyle, () => 16);
+
+    expect([viewport.width(), viewport.scrollbarWidth?.()]).toEqual([600, 16]);
+  });
+
   it("reads the window's side safe-area insets from the root's style each time, as app.css sets them there", () => {
     const media = mediaQueries({ [PORTRAIT]: true, [NARROW]: false, [SHORT]: false });
     let root = rootInsets(ROOT, { left: 44, right: 0 });

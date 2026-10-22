@@ -85,6 +85,8 @@ export type Viewport = {
   isScreenUpright(): boolean;
   // The window's width in CSS pixels.
   width(): number;
+  // The vertical scrollbar's room, when it is reserved by the browser.
+  scrollbarWidth?: () => number;
   // The window's safe-area insets at its left and right edges.
   sideInsets(): ViewportInsets;
   subscribe(onChange: () => void): () => void;
@@ -246,7 +248,7 @@ export function App({
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return dinosaurWordsWidth(viewport.width(), left, right);
+    return dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
   });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
@@ -411,7 +413,7 @@ export function App({
   const chips = chipRow === undefined ? undefined : chipArrangement(chipRow, chipContents);
   const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chips ?? "landscape"}`;
   const dinosaur = screen.kind === "dinosaur" ? shown[screen.index] : undefined;
-  const dinosaurLines = dinosaur === undefined ? undefined : keptLines(dinosaurWords, dinosaur.description[language], TEXTS[language].sourceNote);
+  const dinosaurLines = dinosaur === undefined ? undefined : keptLines(dinosaurWords);
   const dinosaurArrangement = dinosaurLines === undefined ? undefined : `${dinosaurLines.description}:${dinosaurLines.note}`;
   const catalogueLayout = useRef<CatalogueLayout>(null);
   const applyCatalogueLayout = useCallback(() => catalogueLayout.current?.apply({ columns, chips }), [columns, chips]);
@@ -507,7 +509,7 @@ export function App({
               pictureTransition={pictureTransition}
               language={language}
               dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
-              keptLines={dinosaurLines ?? keptLines(dinosaurWords, entry.description[language], TEXTS[language].sourceNote)}
+              keptLines={dinosaurLines ?? keptLines(dinosaurWords)}
               number={index + 1}
               total={shown.length}
               onPrevious={() => step(index, "previous")}
