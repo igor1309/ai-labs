@@ -19,7 +19,7 @@ Workflows are organized into four categories:
 
 This ensures the `report` job (a required status check for branch protection) always runs — even on doc-only or non-code changes — while expensive test/build jobs are skipped when their project files are unchanged.
 
-The `report` job is named `report` only on `pull_request` runs (`report (push)` and `report (workflow_dispatch)` otherwise), so the required check is satisfied only by the PR's own run, never by the push run of the same commit.
+`ci.yml` runs on `push` to `trunk` only, so a PR commit has one run, its PR's, and auto-merge waits for that run's verdict; a branch with no PR gets no CI. The `report` job is named `report` only on `pull_request` runs (`report (push)` and `report (workflow_dispatch)` otherwise), so a trunk push run or a dispatched run never satisfies a PR's required check.
 
 Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
