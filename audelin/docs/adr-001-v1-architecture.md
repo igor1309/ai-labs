@@ -94,7 +94,10 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    words and failed windows, and its `finish()` returns plain text). It
    commits a segment (track, epoch, start and end time, text) only when the segment
    can no longer change: a window decoded it with full right context, or
-   the epoch has ended and the final window decoded it. Segments commit in
+   the epoch has ended and the final window decoded it, or no later window
+   can read it again because a window starts after it (amended 2026-10-22,
+   agent: Parakeet stretches a window's last word into the silence after
+   it, past the next window's start; [stabilizer](spec/stabilizer/SPEC.md) S-14). Segments commit in
    time order per track and epoch: a later segment waits while any earlier
    text is still in the live tail. Until committed, text is a live tail,
    shown in the panel.
@@ -167,8 +170,10 @@ Behaviour:
 8. Recognition MUST read only audio the Recorder has written; it MUST NOT
    read from capture.
 9. Recording MUST NOT wait on recognition.
-10. Only FileCallStore MAY write into a call folder; the Recorder writes
-    through the recording-writer port that FileCallStore implements. A call is
+10. Only FileCallStore MAY write into a call folder; the Recorder, which
+    implements the recording-writer port, writes through the call-files port
+    that FileCallStore implements (amended 2026-10-22, agent: the two were
+    one name). A call is
     found by the id in `meta.json`, never by its path.
 11. The segment log MUST be append-only and committed segments MUST NOT be
     revised; `raw.md` and the panel MUST be built from the same committed

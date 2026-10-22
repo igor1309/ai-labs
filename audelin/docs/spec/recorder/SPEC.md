@@ -24,6 +24,12 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
    sides of a gap.
 3. Audio whose write failed is never readable (S-5, S-8), as ADR-001
    invariant 18 sets.
+4. A track is written as it is captured: one channel of 32-bit float
+   samples at the capture's rate, in WAV files read by their size, so a
+   file is readable while written and a crash leaves no torn sample (S-1,
+   S-4). mvp.md converts to 16 kHz only before ASR.
+5. The recorder writes its files through the call-files port FileCallStore
+   implements, so only the store touches call folders (ADR-001 invariant 10).
 
 ## Observer
 
