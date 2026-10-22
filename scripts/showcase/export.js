@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, matchesGlob, posix, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from '../release/lib/toml.js';
+import { createMetadataSync } from './repo-metadata.js';
 import { createSecretScanner } from './secret-scanner.js';
 
 export function runCommand(command, args, { cwd }) {
@@ -91,7 +92,7 @@ export function scanMarkers(files, text) {
   if (violations.length) throw new Error(violations.join('\n'));
 }
 
-export function exportProject({ root, project, push = false, tempRoot = tmpdir() }, { run, scanDirectory, log }) {
+export function exportProject({ root, project, push = false, tempRoot = tmpdir() }, { run, scanDirectory, syncMetadata, log }) {
   if (!/^[\w.-]+(?:\/[\w.-]+)*$/.test(project) || project.split('/').some((part) => part === '.' || part === '..' || part === '.git')) {
     throw new Error('Project must be a repository-relative directory');
   }
@@ -157,10 +158,7 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
         unchanged();
         run('git', ['push', 'origin', 'HEAD'], { cwd: clone });
       }
-      const { repositoryTopics } = JSON.parse(run('gh', ['repo', 'view', settings.repo, '--json', 'repositoryTopics'], { cwd: clone }).toString());
-      const remove = (repositoryTopics ?? []).map(({ name }) => name).filter((topic) => !settings.topics.includes(topic));
-      run('gh', ['repo', 'edit', settings.repo, '--description', settings.description, '--homepage', settings.homepage,
-        ...settings.topics.flatMap((topic) => ['--add-topic', topic]), ...remove.flatMap((topic) => ['--remove-topic', topic])], { cwd: clone });
+      syncMetadata(settings, { cwd: clone });
       if (hasChanges) log(`Pushed ${settings.repo}.`);
     }
     return directory;
@@ -172,14 +170,14 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
   }
 }
 
-export function handleCLI(args, { cwd, run, scanDirectory, exportProject: exportSnapshot, stdout, stderr }) {
+export function handleCLI(args, { cwd, run, scanDirectory, syncMetadata, exportProject: exportSnapshot, stdout, stderr }) {
   try {
     const project = args.find((arg) => arg !== '--push');
     if (!project || args.filter((arg) => arg !== '--push').length !== 1 || args.filter((arg) => arg === '--push').length > 1) {
       throw new Error('Usage: node scripts/showcase/export.js <project> [--push]');
     }
     const root = run('git', ['rev-parse', '--show-toplevel'], { cwd }).toString().trim();
-    stdout(exportSnapshot({ root, project, push: args.includes('--push') }, { run, scanDirectory, log: stderr }));
+    stdout(exportSnapshot({ root, project, push: args.includes('--push') }, { run, scanDirectory, syncMetadata, log: stderr }));
     return 0;
   } catch (error) {
     stderr(error.message);
@@ -189,7 +187,8 @@ export function handleCLI(args, { cwd, run, scanDirectory, exportProject: export
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   process.exitCode = handleCLI(process.argv.slice(2), {
-    cwd: process.cwd(), run: runCommand, scanDirectory: createSecretScanner({ run: runCommand }), exportProject,
+    cwd: process.cwd(), run: runCommand, scanDirectory: createSecretScanner({ run: runCommand }),
+    syncMetadata: createMetadataSync({ run: runCommand }), exportProject,
     stdout: (message) => console.log(message), stderr: (message) => console.error(message)
   });
 }

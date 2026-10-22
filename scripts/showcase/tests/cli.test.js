@@ -27,17 +27,18 @@ for (const { args, project, push } of [
     const stdout = (message) => output.push(message);
     const stderr = (message) => errors.push(message);
     const scanDirectory = () => assert.fail('CLI must forward the scanner without calling it');
+    const syncMetadata = () => assert.fail('CLI must forward the metadata sync without calling it');
     const calls = [];
     const run = (command, argv, options) => {
       calls.push({ command, args: argv, ...options });
       return Buffer.from('/source/root\n');
     };
     const exitCode = handleCLI(args, {
-      cwd: '/source/root/nested', run, scanDirectory, stdout, stderr,
+      cwd: '/source/root/nested', run, scanDirectory, syncMetadata, stdout, stderr,
       exportProject: (options, collaborators) => {
         calls.push({ options });
         assert.deepEqual(options, { root: '/source/root', project, push });
-        assert.deepEqual(collaborators, { run, scanDirectory, log: stderr });
+        assert.deepEqual(collaborators, { run, scanDirectory, syncMetadata, log: stderr });
         collaborators.log('check output');
         return '/temporary/exported-project';
       }

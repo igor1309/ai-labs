@@ -36,10 +36,6 @@ function fixture(t, settings = {}) {
   const run = (command, args, options) => {
     calls.push({ command, args, cwd: options.cwd });
     if (command === 'sh') return Buffer.alloc(0);
-    if (command === 'gh') {
-      if (args[1] === 'view') return Buffer.from(JSON.stringify({ repositoryTopics: [{ name: 'obsolete' }, { name: 'react' }] }));
-      return Buffer.alloc(0);
-    }
     if (command === 'git' && args[0] === 'clone') {
       assert.deepEqual(args, ['clone', '--', `https://github.com/${config.repo}.git`, args[3]]);
       assert.equal(options.cwd, root);
@@ -51,15 +47,17 @@ function fixture(t, settings = {}) {
     return git(options.cwd, ...args);
   };
   const scanDirectory = (directory) => calls.push({ command: 'scanDirectory', args: [directory], cwd: directory });
-  const invoke = (options = {}, execute = run, scan = scanDirectory) => exportProject({ root, project: 'game', tempRoot: base, ...options }, {
-    run: execute, scanDirectory: scan, log: (value) => messages.push(value)
+  const syncMetadata = ({ repo, description, homepage, topics }, { cwd }) =>
+    calls.push({ command: 'syncMetadata', args: [{ repo, description, homepage, topics }], cwd });
+  const invoke = (options = {}, execute = run, scan = scanDirectory, sync = syncMetadata) => exportProject({ root, project: 'game', tempRoot: base, ...options }, {
+    run: execute, scanDirectory: scan, syncMetadata: sync, log: (value) => messages.push(value)
   });
   const remote = () => {
     const path = join(base, 'remote.git');
     git(base, 'init', '--bare', '-b', 'trunk', path);
     return path;
   };
-  return { base, root, config, calls, messages, run, scanDirectory, invoke, commit, remote };
+  return { base, root, config, calls, messages, run, scanDirectory, syncMetadata, invoke, commit, remote };
 }
 
 test('exports exactly the HEAD allowlist, with the committed public overlay and executable bits', (t) => {
@@ -167,21 +165,23 @@ for (const stage of ['scanner', 'check', 'clone', 'push', 'metadata']) {
     assert.throws(() => f.invoke({ push: true }, (command, args, options) => {
       if (stage === 'check' && command === 'sh' ||
           stage === 'clone' && command === 'git' && args[0] === 'clone' ||
-          stage === 'push' && command === 'git' && args[0] === 'push' ||
-          stage === 'metadata' && command === 'gh' && args[1] === 'edit') throw error;
+          stage === 'push' && command === 'git' && args[0] === 'push') throw error;
       return f.run(command, args, options);
     }, (directory) => {
       f.scanDirectory(directory);
       if (stage === 'scanner') throw error;
+    }, (settings, options) => {
+      f.syncMetadata(settings, options);
+      if (stage === 'metadata') throw error;
     }), error);
     assert.deepEqual(readdirSync(f.base).sort(), ['remote.git', 'source']);
     if (stage === 'scanner') assert.ok(!f.calls.some(({ command }) => command === 'sh'));
     if (['scanner', 'check', 'clone'].includes(stage)) {
       if (stage === 'scanner' || stage === 'check') assert.ok(!f.calls.some(({ args }) => args[0] === 'clone'));
       assert.ok(!f.calls.some(({ args }) => args[0] === 'push'));
-      assert.ok(!f.calls.some(({ command }) => command === 'gh'));
+      assert.ok(!f.calls.some(({ command }) => command === 'syncMetadata'));
     }
-    if (stage === 'push') assert.ok(!f.calls.some(({ command }) => command === 'gh'));
+    if (stage === 'push') assert.ok(!f.calls.some(({ command }) => command === 'syncMetadata'));
   });
 }
 
@@ -204,10 +204,8 @@ test('check runs in the snapshot, and generated files or changed inputs cannot e
   const sha = git(f.root, 'rev-parse', 'HEAD').toString().trim().slice(0, 7);
   assert.equal(git(remote, 'log', '-1', '--format=%s').toString().trim(), `Sync from ai-labs@${sha}`);
   assert.deepEqual(f.messages, ['check output', 'Pushed someone/game.']);
-  assert.deepEqual(f.calls.filter(({ command }) => command === 'gh').map(({ args }) => args), [
-    ['repo', 'view', 'someone/game', '--json', 'repositoryTopics'],
-    ['repo', 'edit', 'someone/game', '--description', 'A game', '--homepage', 'https://example.test',
-      '--add-topic', 'react', '--add-topic', 'game', '--remove-topic', 'obsolete']
+  assert.deepEqual(f.calls.filter(({ command }) => command === 'syncMetadata').map(({ args }) => args), [
+    [{ repo: 'someone/game', description: 'A game', homepage: 'https://example.test', topics: ['react', 'game'] }]
   ]);
 });
 
@@ -238,10 +236,8 @@ test('sync replaces all remote files except .git, includes ignored allowlisted f
   assert.equal(f.messages.at(-1), 'No changes; nothing to push.');
   assert.ok(!f.calls.some(({ command, args }) => command === 'git' && (args[0] === 'push' || args[0] === 'commit')));
   const clone = f.calls.find(({ command, args }) => command === 'git' && args[0] === 'clone').args[3];
-  assert.deepEqual(f.calls.filter(({ command }) => command === 'gh'), [
-    { command: 'gh', args: ['repo', 'view', f.config.repo, '--json', 'repositoryTopics'], cwd: clone },
-    { command: 'gh', args: ['repo', 'edit', f.config.repo, '--description', metadata.description, '--homepage', metadata.homepage,
-      '--add-topic', 'puzzle', '--remove-topic', 'obsolete', '--remove-topic', 'react'], cwd: clone }
+  assert.deepEqual(f.calls.filter(({ command }) => command === 'syncMetadata'), [
+    { command: 'syncMetadata', args: [{ repo: f.config.repo, ...metadata }], cwd: clone }
   ]);
 });
 
@@ -282,7 +278,7 @@ test('push rechecks source changes made while cloning', (t) => {
     if (command === 'git' && args[0] === 'clone') put(f.root, 'new.txt', 'dirty during clone');
     return result;
   }), /dirty ai-labs worktree/);
-  assert.ok(!f.calls.some(({ command, args }) => command === 'gh' || args[0] === 'push'));
+  assert.ok(!f.calls.some(({ command, args }) => command === 'syncMetadata' || args[0] === 'push'));
   assert.equal(git(remote, 'rev-list', '--all', '--count').toString().trim(), '0');
 });
 
@@ -290,7 +286,7 @@ test('a missing existing repository cannot lead to creation, commit, push or met
   const f = fixture(t);
   f.commit();
   assert.throws(() => f.invoke({ push: true }), /does not exist/);
-  assert.ok(!f.calls.some(({ command, args }) => command === 'gh' || args[0] === 'push' || args[0] === 'commit' || args[0] === 'init'));
+  assert.ok(!f.calls.some(({ command, args }) => command === 'syncMetadata' || args[0] === 'push' || args[0] === 'commit' || args[0] === 'init'));
 });
 
 test('relative symlinks preserve their committed targets in exports and syncs', (t) => {
