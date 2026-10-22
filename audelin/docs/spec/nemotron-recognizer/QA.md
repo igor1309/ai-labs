@@ -32,8 +32,9 @@ Evidence:
 ## S-5 A word that grows is read in its place
 
 Through Live text: a chunk ends mid-word, the next adds its rest and a new
-word. Evidence:
-`NemotronRecognizerTests.aGrowingWordIsReadInItsPlaceOnce`.
+word; a word before it ends after the growing word starts. Evidence:
+`NemotronRecognizerTests.aGrowingWordIsReadInItsPlaceOnce`,
+`NemotronRecognizerTests.aWordEndingAfterThePendingWordStartsStaysPending`.
 
 ## S-6 A chunk with nothing new changes nothing
 
@@ -48,7 +49,8 @@ The fake's finish adds a word; finishing reports it, all final. Evidence:
 ## S-8 Audio at another sample rate is heard
 
 Nemotron 3.5 for real over the system voice reading a Russian sentence at
-48 kHz, heard through Live text word for word. Evidence:
+48 kHz, heard through Live text word for word, with settled and pending
+words shown before the audio ends. Evidence:
 `NemotronRecognizerTests.audioAtAnotherSampleRateIsHeard`.
 
 ## S-9 A failing model fails the recogniser

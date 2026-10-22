@@ -57,8 +57,10 @@ public actor NemotronRecognizer: Recognizer {
         return report(try await decoder.finish(), finished: true)
     }
 
-    /// Live text settles by end time, so overlapping words stay in the
-    /// report until the last word can settle too.
+    /// Live text settles by end time and drops a reported word that starts
+    /// before a settled word ends, so nothing settles past a pending word's
+    /// start, and overlapping words stay in the report until the last word
+    /// can settle too.
     private func report(_ tokens: [DecodedToken], finished: Bool) -> Hearing {
 
         let next = joined(tokens)
@@ -72,7 +74,10 @@ public actor NemotronRecognizer: Recognizer {
 
         let finalEnd = (finished ? next[...] : next.dropLast()).map(\.end).max() ?? 0
         let pendingEnd = finished ? nil : next.last?.end
-        let finalThrough = min(finalEnd, pendingEnd?.nextDown ?? finalEnd)
+        var finalThrough = min(finalEnd, pendingEnd?.nextDown ?? finalEnd)
+        while let pendingStart = next.filter({ $0.end > finalThrough }).map(\.start).min(), pendingStart < finalThrough {
+            finalThrough = pendingStart
+        }
         words = next
         reportedCount = words.firstIndex { $0.end > finalThrough } ?? words.count
         pendingFrom = reportedCount < words.count ? words[reportedCount].start : nil
