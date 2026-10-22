@@ -1,4 +1,3 @@
-import AppKit
 import GlassLedger
 import SwiftUI
 
@@ -43,36 +42,6 @@ public struct PanelView: View {
 private extension PanelView {
 
     var tokens: GlassLedger { config.tokens(for: scheme) }
-
-    func data(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-
-        .custom(tokens.fontData, fixedSize: size).weight(weight)
-    }
-
-    func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-
-        .custom(tokens.fontUi, fixedSize: size).weight(weight)
-    }
-
-    /// Extra space that makes each line of the font as tall as the design's
-    /// line height, a ratio of the font size.
-    func leading(_ family: String, _ size: CGFloat, _ lineHeight: CGFloat) -> CGFloat {
-
-        let natural = NSFont(name: family, size: size)
-            .map { $0.ascender - $0.descender + $0.leading } ?? size
-
-        return max(0, size * lineHeight - natural)
-    }
-}
-
-private extension View {
-
-    /// Spreads the extra space as the design does: between lines, and half of
-    /// it above the first line and below the last.
-    func lineHeight(_ leading: CGFloat) -> some View {
-
-        lineSpacing(leading).padding(.vertical, leading / 2)
-    }
 }
 
 // MARK: - Header
@@ -109,8 +78,8 @@ private extension PanelView {
                 .frame(width: 8, height: 8)
 
             Text("не записывается")
-                .font(data(tokens.typeCaption))
-                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .font(tokens.data(tokens.typeCaption))
+                .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
                 .foregroundStyle(tokens.gutter)
         }
     }
@@ -130,8 +99,8 @@ private extension PanelView {
             }
 
             Text("REC \(elapsed)")
-                .font(data(tokens.typeCaption))
-                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .font(tokens.data(tokens.typeCaption))
+                .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
                 .foregroundStyle(tokens.rec)
         }
     }
@@ -147,8 +116,8 @@ private extension PanelView {
                     .frame(width: 7, height: 7)
 
                 Text("Начать")
-                    .font(ui(tokens.typeSmall, .semibold))
-                    .lineHeight(leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+                    .font(tokens.ui(tokens.typeSmall, .semibold))
+                    .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
                     .foregroundStyle(tokens.selText)
             }
             .padding(.vertical, tokens.space4)
@@ -169,8 +138,8 @@ private extension PanelView {
                     .frame(width: 8, height: 8)
 
                 Text("Стоп")
-                    .font(ui(tokens.typeSmall, .semibold))
-                    .lineHeight(leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+                    .font(tokens.ui(tokens.typeSmall, .semibold))
+                    .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
                     .foregroundStyle(tokens.rec)
             }
             .padding(.vertical, tokens.space4)
@@ -192,20 +161,20 @@ private extension PanelView {
             switch state.log {
             case .empty:
                 Text("Запись не идёт. Начать — и текст появится здесь, для обеих сторон.")
-                    .font(data(tokens.typeBody))
-                    .lineHeight(leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
+                    .font(tokens.data(tokens.typeBody))
+                    .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
                     .foregroundStyle(tokens.gutter)
 
             case .liveTextOff:
                 Text("Живой текст выключен — звонок только записывается.")
-                    .font(ui(tokens.typeBody))
-                    .lineHeight(leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
+                    .font(tokens.ui(tokens.typeBody))
+                    .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.sub)
 
                 Button("Включить живой текст") { event(.switchLiveTextOn) }
                     .buttonStyle(.plain)
-                    .font(ui(tokens.typeBody, .semibold))
-                    .lineHeight(leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
+                    .font(tokens.ui(tokens.typeBody, .semibold))
+                    .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.me)
 
             case let .lines(lines):
@@ -250,8 +219,8 @@ private extension PanelView {
         VStack(alignment: .leading, spacing: tokens.space8) {
 
             Text("дописано позже · \(late.span)")
-                .font(data(tokens.typeCaption))
-                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
+                .font(tokens.data(tokens.typeCaption))
+                .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
                 .foregroundStyle(tokens.gutter)
 
             ForEach(late.entries) { entryView($0, held: nil) }
@@ -275,8 +244,8 @@ private extension PanelView {
                     .fontWeight(.semibold)
                     .foregroundStyle(entry.speaker == .me ? tokens.me : tokens.them)
             }
-            .font(data(tokens.typeBody))
-            .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
+            .font(tokens.data(tokens.typeBody))
+            .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
             .frame(width: config.gutterWidth, alignment: .leading)
 
             let isHeld = held.map { $0.entryID == entry.id && entry.settled.contains($0.text) } ?? false
@@ -287,7 +256,7 @@ private extension PanelView {
 
                     Text(entry.settled)
                         .foregroundStyle(isHeld ? tokens.selText : tokens.text)
-                        .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
+                        .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
                 }
 
                 if !entry.pending.isEmpty {
@@ -295,7 +264,7 @@ private extension PanelView {
                     pendingLine(entry.pending)
                 }
             }
-            .font(data(tokens.typeBody))
+            .font(tokens.data(tokens.typeBody))
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 isHeld ? tokens.selBg : .clear,
@@ -310,7 +279,7 @@ private extension PanelView {
 
             Text(pending)
                 .foregroundStyle(tokens.gutter)
-                .lineHeight(leading(tokens.fontData, tokens.typeBody, config.lineHeight))
+                .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
 
             Rectangle()
                 .fill(tokens.me)
@@ -327,7 +296,7 @@ private extension PanelView {
                 .foregroundStyle(tokens.me)
 
             Text("«\(held.text)»")
-                .font(data(tokens.typeSmall))
+                .font(tokens.data(tokens.typeSmall))
                 .foregroundStyle(tokens.text)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -346,8 +315,8 @@ private extension PanelView {
         Button { event(.jumpToLive) } label: {
 
             Text("\(count) новые ↓")
-                .font(data(tokens.typeCaption, .semibold))
-                .lineHeight(leading(tokens.fontData, tokens.typeCaption, config.looseLineHeight))
+                .font(tokens.data(tokens.typeCaption, .semibold))
+                .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.looseLineHeight))
                 .foregroundStyle(tokens.me)
                 .padding(.vertical, tokens.space2)
                 .padding(.horizontal, tokens.space8)

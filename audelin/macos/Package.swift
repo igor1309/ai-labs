@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
     ],
     targets: [
         .target(
@@ -17,9 +18,17 @@ let package = Package(
             name: "PanelUI",
             dependencies: ["GlassLedger"]
         ),
+        .target(
+            name: "SettingsUI",
+            dependencies: ["GlassLedger"]
+        ),
         .testTarget(
             name: "PanelUITests",
             dependencies: ["PanelUI"]
+        ),
+        .testTarget(
+            name: "SettingsUITests",
+            dependencies: ["SettingsUI"]
         ),
     ]
 )
