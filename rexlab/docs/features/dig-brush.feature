@@ -40,15 +40,16 @@ Feature: Dig: the brush, and Hatchling's free brushing
     But a press less than 500 ms after a tap's release and less than 100 px from it clears nothing, its whole touch, as double-tap.feature says
     And a stroke begun after a drag is never swallowed, as a drag opens no window
 
-  Scenario Outline: The brush is a size a finger can steer
+  Scenario Outline: Two brushes, each a size a finger can steer
     Given a <level> round has started
     Then the brush is <size> CSS pixels across, whatever the board's size
+    And the wide brush is <wide> CSS pixels across, twice the brush, as dig-brush-picker.feature picks
 
     Examples:
-      | level          | size |
-      | Hatchling      | 48   |
-      | Explorer       | 36   |
-      | Paleontologist | 36   |
+      | level          | size | wide |
+      | Hatchling      | 48   | 96   |
+      | Explorer       | 36   | 72   |
+      | Paleontologist | 36   | 72   |
 
   Scenario: Only the dinosaur's cells count
     Given a Hatchling round has started
