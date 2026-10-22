@@ -22,8 +22,8 @@ Feature: The window's shape
   size class at a time: the home page, the catalogue's list and a
   dinosaur's page have one for a tall window only (home-portrait.feature,
   catalogue-portrait.feature, dinosaur-page-portrait.feature), so a
-  tall-narrow window still shows the picture over them. The scenarios below use the care welcome screen,
-  which has no portrait layout yet.
+  tall-narrow window still shows the picture over them. The scenarios
+  below use the care welcome screen, which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
