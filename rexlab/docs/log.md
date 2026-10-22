@@ -2,6 +2,7 @@
 
 ## 2026-10-22
 
+- DIG's choice cards ease in with the digging: they start to show at 10% dug, faint at first and fuller as the question nears, so they no longer pop in (LAB-483).
 - DIG’s Explorer and Paleontologist choices now emerge with the digging: invisible through 25%, fading linearly to full visibility at 75% as the “?” cards fade away. Picking still unlocks at 75%, with the same fade under reduced motion (LAB-468).
 
 - A dinosaur's page stands upright in a tall window instead of asking to turn: the picture on a full-width stage with the arrows beside it, the words under it, the name as large as fits, every word fitting in English and Russian, and the page's parts staying put from one creature to the next. Turning the iPad glides the bar, the picture and the words to their new places, and a picture growing from its card lands in the turned stage (LAB-377).

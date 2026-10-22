@@ -2,10 +2,9 @@ Feature: Dig: who is it?
   At Explorer and Paleontologist a round is a mystery: the dinosaur lies
   under all of the sand with no name or close-up to give it away,
   and once three quarters of its cells are clear (dig-brush.feature) the
-  game asks who it is. Choices fade in with digging from 25% and become
-  pickable at 75%. Their opacity is clamp((dugPercent - 25) / 50, 0, 1),
-  where dugPercent is 100 times clear dinosaur cells divided by all
-  dinosaur cells, unrounded. By then enough of it shows to tell it, so the pick
+  game asks who it is. The choices fade in with the digging before that
+  and become pickable at 75% (dig-choices-fade.feature). By then enough
+  of it shows to tell it, so the pick
   is a judgement rather than a guess. The choices are its closest
   look-alikes, by the telling traits and spot kinds (dig-spots.feature)
   two dinosaurs share of those either shows, equals drawn at random. The
@@ -51,39 +50,6 @@ Feature: Dig: who is it?
       | Explorer       | 3     |
       | Paleontologist | 4     |
 
-  Scenario Outline: Choices appear with the digging
-    Given a round at each of Explorer and Paleontologist with each motion preference
-    When I have brushed <dug>% of the dinosaur's cells clear
-    Then each dinosaur card has opacity <opacity>
-    And each empty card has opacity 1 minus <opacity>
-    And before 75% the dinosaur cards cannot be pressed or focused and screen readers skip them
-    And opacity follows the clear-cell fraction on every brush move during a stroke, without rounding to percent steps or a timed animation
-    And the card container opacity never decreases as digging continues
-    And a later wrong pick fades only its picture to 0.45, keeping the card container at 1
-    And the dinosaur pictures stay desaturated until an answer is picked
-
-    Examples:
-      | dug | opacity |
-      | 0   | 0       |
-      | 25  | 0       |
-      | 40  | 0.3     |
-      | 50  | 0.5     |
-      | 60  | 0.7     |
-      | 75  | 1       |
-      | 90  | 1       |
-
-  Scenario: A round gives back its current crossfade
-    Given an Explorer or Paleontologist round with choices partly visible, or a wrong pick rejected
-    When I turn the iPad to portrait and back, or open the FIELD GUIDE and return
-    Then the same sand, choice order, card and empty-card opacity, title and rejected picks return
-    And choices remain unavailable until 75% of the dinosaur is clear
-
-  Scenario: A new round begins with invisible choices
-    Given I have partly brushed a round, or finished it after a wrong pick
-    When I leave for HOME and start DIG, or start the next round with DIG AGAIN
-    Then the new round has all sand, dinosaur cards at zero opacity and empty cards at full opacity
-    And its title reads "DIG", no choices are rejected and none can be picked yet
-
   Scenario: Brushing goes on while the question shows
     Given the question shows
     When I keep brushing, even with the finger that was brushing as it came
@@ -110,11 +76,6 @@ Feature: Dig: who is it?
     Then the reveal shows the 🦴 badge on the "DUG UP" card
     And the next reveal of that dinosaur, at any level, shows the badge too
     But a dinosaur named after a wrong pick earns no badge, and keeps one it earned before
-
-  Scenario: The pictures may load late
-    Given dinosaur cards are fading in before their pictures have loaded
-    Then each card shows the shared loading look, then its picture or the failed look, all at the card's current opacity
-    And every unrejected card can be picked once the question shows
 
   Scenario Outline: The board and the question fit on the iPads
     Given the screen is <width> by <height> CSS pixels

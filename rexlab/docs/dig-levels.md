@@ -71,8 +71,10 @@ Storyboard" row of `../design/rexlab.pen`.
   again: not at the question, a pick, the gust or the lift. The column
   holds each dinosaur card and an overlaid empty "?" card in the same
   slot from the start (3 at Explorer, 4 at Paleontologist). Dinosaur-card opacity is
-  clamp((dugPercent - 25) / 50, 0, 1), where dugPercent is 100 times clear dinosaur
-  cells divided by all dinosaur cells, unrounded; the empty card has the complementary opacity and never
+  nothing up to 10% dug, then the square of the way from 10% to 75%,
+  ((dug - 10) / 65)² kept between 0 and 1, where dug is 100 times clear
+  dinosaur cells divided by all dinosaur cells, unrounded
+  (dig-choices-fade.feature); the empty card has the complementary opacity and never
   intercepts taps. Every brush move updates the fade directly, including
   during a stroke, with no timed animation or flip. Before 75% choices
   are disabled, unfocusable and hidden from screen readers; at 75% they
@@ -195,6 +197,9 @@ Storyboard" row of `../design/rexlab.pen`.
 - On 2026-10-22 the owner chose choices fading linearly from 25% to 75%
   dug, accepting that candidates become visible before the question;
   interaction still begins at 75% (LAB-468).
+- The straight fade read as a pop: a grey picture shows plainly even
+  faint. So the choices start at 10% and ease in, the square of the way
+  to 75% (LAB-483, 2026-10-22).
 - The dinosaur is named from body pictures, not its skeleton: every
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
