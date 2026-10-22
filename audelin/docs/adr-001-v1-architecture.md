@@ -59,7 +59,7 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    session then stays open in catch-up until every recorded range is
    recognised. Catch-up is the only way audio is recognised after recording,
    in v1: when the model arrives late, after a stall, and at the next launch
-   for calls whose `meta.json` marks unrecognised audio (a reopened session).
+   for calls marked as holding unrecognised audio (a reopened session).
    A new recording, a folder move or deleting that call cancels catch-up; the
    unrecognised range stays marked and catch-up resumes later.
 3. **Record first.** Capture → Recorder → disk, two tracks, in short files
@@ -123,12 +123,12 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    the same interface and log calls, results, errors and durations before
    passing them on. The decorators live in the app target; no module logs or
    knows it is being logged.
-11. **One app-wide activity gate.** Anything that writes into call folders
-    holds it: recording, catch-up, moving the calls folder and deleting a
-    call. Recording and a folder move exclude each other ([mvp.md](mvp.md) §
-    Edge cases); catch-up yields to all three, as in decision 2. One gate,
-    defined in Domain and shared by LiveSessionCore and CallsCore; the app
-    target creates the one instance.
+11. **A recording and a calls-folder move exclude each other**
+    ([mvp.md](mvp.md) § Edge cases): a recording does not start while calls
+    move, a move does not start during a recording, and of two asked at once
+    exactly one starts and the other learns why it was refused. Neither
+    feature knows the other: each declares the port it needs, and the
+    composition root decides what to plug into it.
 12. **Setup in v1** asks for the calls folder and the live model. Recording
    may start before the live model is ready. Choosing a final-pass engine
    becomes mandatory with v3 ([mvp.md](mvp.md) § Final-pass engine).
@@ -137,9 +137,8 @@ Module layout (one local Swift package plus a thin app target):
 
 ```text
 App target    entry point + composition root (with logging decorators)
-Domain        CallDomain (call, meta.json, folder and title rules)
-              TranscriptCore (stabilizer, edge merge, segments, track merge)
-Features      LiveSessionCore / LiveSessionUI (NSPanel + NSTextView)
+Domain        TranscriptCore (stabilizer, edge merge, segments, track merge)
+Features      LiveSessionCore / LiveSessionUI
               CallsCore / CallsUI
               SetupCore / SetupUI
 Adapters      AudioCapture · Recorder · FluidAudioASR · CallDetector
@@ -170,11 +169,8 @@ Behaviour:
 8. Recognition MUST read only audio the Recorder has written; it MUST NOT
    read from capture.
 9. Recording MUST NOT wait on recognition.
-10. Only FileCallStore MAY write into a call folder; the Recorder, which
-    implements the recording-writer port, writes through the call-files port
-    that FileCallStore implements (amended 2026-10-22, agent: the two were
-    one name). A call is
-    found by the id in `meta.json`, never by its path.
+10. Only the call store MAY write into a call folder; recording writes
+    through it. A call is found by its id, never by its path.
 11. The segment log MUST be append-only and committed segments MUST NOT be
     revised; `raw.md` and the panel MUST be built from the same committed
     segments.
@@ -188,8 +184,7 @@ Behaviour:
 15. Stop MUST end recording in bounded time even if recognition stalls or
     never had a model; unrecognised audio MUST stay marked until catch-up
     recognises it.
-16. Recording and moving the calls folder MUST NOT run at the same time;
-    nothing MAY write into a call folder without holding the activity gate.
+16. Recording and moving the calls folder MUST NOT run at the same time.
 17. Only the current recognition attempt MAY commit segments, in time order,
     and only words after its track's watermark; after each commit the
     watermark is at or past the committed text. The watermark MUST NOT pass audio that is
