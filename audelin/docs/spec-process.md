@@ -104,6 +104,12 @@ fake ports and recorded fixtures, adapters for real on this Mac, and the
 user spec on a real call. A row has evidence or reads Missing. Verdicts go
 to run reports, never into `QA.md`.
 
+## Building
+
+Code is built test-first: each test is run red before the code exists,
+failing on its assertion rather than a compile error (the API is stubbed
+first), and the red run is shown with the green one (owner, 2026-10-22).
+
 ## Order and review
 
 1. Top-down: the user spec first, then each UI component, each Core and each adapter.
