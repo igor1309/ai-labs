@@ -87,12 +87,17 @@ function uprightRules(size: WindowSize, width: number) {
   expect([stage.value("display"), stage.value("grid-template-columns"), stage.columnGap(), stage.value("align-items")]).toEqual(["grid", `${sizes.arrowSize}px minmax(0, 1fr) ${sizes.arrowSize}px`, sizes.arrowGap, "center"]);
   expect([stage.px("padding-left"), stage.px("padding-right"), stage.px("padding-top"), stage.px("padding-bottom"), stage.px("border-radius")]).toEqual([sizes.stagePadding, sizes.stagePadding, sizes.stagePadding, sizes.stagePadding, 32]);
   expect([page.px("min-height"), body.value("flex-shrink"), words.value("flex-shrink")]).toEqual([size[1], "0", "0"]);
+  expect([body.value("flex-grow"), stage.value("flex-grow"), words.value("flex-grow")]).toEqual(["1", "1", "0"]);
   expect([stage.px("min-height"), stage.px("flex-basis"), stage.value("flex-shrink"), page.value("overflow-y"), page.value("overscroll-behavior")]).toEqual([sizes.minimumStage, sizes.minimumStage, "0", "auto", "none"]);
   expect(at(".dinosaur-steps").value("display")).toBe("contents");
   for (const [selector, column] of [[".dinosaur-step:first-child", 1], [".dinosaur-step:last-child", 3]] as const) {
     expect([at(selector).px("width"), at(selector).px("height"), at(selector).value("grid-column"), at(selector).value("grid-row")]).toEqual([sizes.arrowSize, sizes.arrowSize, String(column), "1"]);
   }
   expect([at(".dinosaur-stage-art").value("grid-column"), at(".dinosaur-stage-art").value("grid-row"), at(".dinosaur-stage-art").value("aspect-ratio")]).toEqual(["2", "1", "4 / 3"]);
+  const art = at(".dinosaur-stage-art");
+  const picture = at(".dinosaur-stage-picture");
+  expect([art.value("width"), art.value("max-height"), art.px("min-height"), art.value("justify-self")]).toEqual(["100%", "100%", 0, "center"]);
+  expect([picture.value("width"), picture.value("height"), picture.px("min-height")]).toEqual(["100%", "100%", 0]);
   expect(sizes.pictureRatio).toBe(4 / 3);
   expect(at(".dinosaur-stage-picture").value("object-fit")).toBe("contain");
   expect([words.value("display"), words.value("flex-direction"), words.rowGap(), about.rowGap()]).toEqual(["flex", "column", sizes.wordsGap, sizes.wordsGap]);
@@ -119,12 +124,14 @@ function uprightRules(size: WindowSize, width: number) {
   expect([at(".dinosaur-description").px("font-size"), at(".dinosaur-description").px("line-height"), at(".source-note").px("font-size"), at(".source-note").px("line-height")]).toEqual([28, sizes.descriptionLineHeight, 13, sizes.noteLineHeight]);
   expect(at(".dinosaur-description").value("height")).toBe(`calc(var(--description-lines, 3) * ${sizes.descriptionLineHeight}px)`);
   expect(at(".source-note").value("height")).toBe(`calc(var(--note-lines, 3) * ${sizes.noteLineHeight}px)`);
-  // jsdom drops typed attr() declarations; check the browser's height rule
-  // against the same line heights as the computed fallback above.
-  const css = appStylesheet(NO_SAFE_AREA);
-  for (const [selector, lineHeight] of [["dinosaur-description", sizes.descriptionLineHeight], ["source-note", sizes.noteLineHeight]] as const) {
-    const rule = new RegExp(`html\\[data-size="tall"\\] \\.${selector}\\s*\\{([^}]+)\\}`).exec(css)?.[1];
-    expect(rule).toContain(`height: calc(attr(data-lines type(<number>), 3) * ${lineHeight}px);`);
+  const lines = keptLines(width);
+  const properties = part(".dinosaur-page").style;
+  expect([properties.getPropertyValue("--description-lines"), properties.getPropertyValue("--note-lines")]).toEqual([String(lines.description), String(lines.note)]);
+  for (const [selector, property, lineHeight] of [["dinosaur-description", "description", sizes.descriptionLineHeight], ["source-note", "note", sizes.noteLineHeight]] as const) {
+    const rule = appStylesheet(NO_SAFE_AREA).split(`html[data-size="tall"] .${selector} {`)[1]!.split("}")[0]!;
+    expect(rule).toContain(`height: calc(var(--${property}-lines, 3) * ${lineHeight}px);`);
+    expect(rule).not.toContain("attr(");
+    expect(Number(properties.getPropertyValue(`--${property}-lines`)) * lineHeight).toBe(lines[property] * lineHeight);
   }
   expect([at(".dinosaur-description").value("font-weight"), at(".source-note").value("font-weight"), at(".dinosaur-page-name").value("font-weight"), at(".dinosaur-fact-value").value("font-weight")]).toEqual(["500", "400", "700", "700"]);
 }
@@ -151,7 +158,19 @@ describe("the app's dinosaur page upright", () => {
     const viewport = { ...manualViewport("portrait", { left, right }), scrollbarWidth: () => scrollbar };
     await openPage([width, height], { viewport });
     expect(dinosaurWordsWidth(width, left, right, scrollbar)).toBe(words);
+    expect([part(".dinosaur-page").style.getPropertyValue("--description-lines"), part(".dinosaur-page").style.getPropertyValue("--note-lines")]).toEqual([String(description), String(note)]);
     expect([part(".dinosaur-page").dataset.descriptionLines, part(".dinosaur-page").dataset.noteLines]).toEqual([String(description), String(note)]);
+  });
+
+  it("applies the Russian note's four lines initially and updates both height budgets with the bands", async () => {
+    const viewport = manualViewport("portrait");
+    await openPage([632, 1366], { language: "ru", viewport });
+    uprightRules([632, 1366], 520);
+    for (const width of [631, 712, 768, 632]) {
+      openWindow(width, 1366);
+      act(() => viewport.resize("tall", true));
+      uprightRules([width, 1366], width - 112);
+    }
   });
 
   it.each(["en", "ru"] as const)("keeps the group's line on every page in %s, empty for a dinosaur", async (language) => {

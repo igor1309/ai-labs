@@ -29,6 +29,7 @@ type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: 
 
 const nameOf = (element: Element) => element.getAttribute("data-turn-part") ?? "";
 const recordedName = (element: Element) => {
+  if (element.hasAttribute("data-fitted-picture")) return "fitted-picture";
   if (element.hasAttribute("data-closing-picture")) return "closing-picture";
   if (element.hasAttribute("data-turn-frame")) return `frame of ${nameOf(element.nextElementSibling!)}`;
   return nameOf(element);
@@ -155,7 +156,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
       {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()}
       chipWidths={emChipWidths()}
       reducedMotion={() => reduced}
-      pictureMotion={{ now: () => clock, duration: SHARE, easing: EASE_OUT }}
+      pictureMotion={{ now: () => clock, duration: SHARE, easing: EASE_OUT, slide: { duration: GLIDE, delay: 40, distance: 96 } }}
       layoutMotion={{
         parts: document,
         measure,
@@ -180,7 +181,10 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
   act(() => pictures.finishAll());
   const card = document.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]`)!;
-  if (!list) await user.click(card);
+  if (!list) {
+    await user.click(card);
+    clock += SHARE;
+  }
   const resize = (to: Window, room = scrollbar) => {
     scrollbar = room;
     openWindow(to[0], to[1]);
@@ -210,7 +214,7 @@ function expectGlides(app: Awaited<ReturnType<typeof openPage>>, before: Map<str
     return { x: box.left - around.left, y: box.top - around.top };
   };
   const round = (value: number) => Math.round(value * 100) / 100;
-  const glides = app.animations.filter(own).filter(({ name }) => name !== "closing-picture");
+  const glides = app.animations.filter(own).filter(({ name }) => name !== "closing-picture" && name !== "fitted-picture");
   const actual = glides.map(({ name, keyframes, options }) => {
     const frame = app.animations.find((animation) => animation.name === `frame of ${name}` && !animation.cancelled);
     const [x = 0, y = 0] = String(keyframes[0]?.translate).split(" ").map(px);
@@ -225,7 +229,9 @@ function expectGlides(app: Awaited<ReturnType<typeof openPage>>, before: Map<str
   // Translation and clip only: nothing is scaled, squashed or faded.
   expect(glides.flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
   expect(app.animations.filter(({ name, cancelled }) => name.startsWith("frame of ") && !cancelled).flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => !["translate", "width", "height"].includes(property))).toEqual([]);
-  return new Set(glides.map(({ name }) => name));
+  const names = new Set(glides.map(({ name }) => name));
+  if (app.animations.some(({ name, cancelled }) => name === "fitted-picture" && !cancelled)) names.add("dinosaur-picture");
+  return names;
 }
 
 const mixBox = (from: Box, to: Box, progress: number): Box => ({
@@ -265,6 +271,26 @@ describe("a dinosaur's page turning", () => {
       expect(app.turning()).toBe(false);
       expect(document.querySelectorAll("[data-turn-frame]")).toHaveLength(0);
     }
+  });
+
+  it("fits the settled picture from its previous bounds through intermediate turn sizes", async () => {
+    const app = await openPage(LANDSCAPE);
+    const before = app.boxes().get("dinosaur-picture")!;
+    app.resize(UPRIGHT);
+    const glide = app.animations.find(({ name }) => name === "fitted-picture")!;
+    const after = app.boxes().get("dinosaur-picture")!;
+    expectBox(keyframeBox(glide.keyframes[0]), before);
+    expectBox(keyframeBox(glide.keyframes[1]), after);
+    const copy = document.querySelector<HTMLElement>("[data-fitted-picture]")!;
+    expect([copy.style.objectFit, copy.style.position, copy.getAttribute("src"), document.querySelector<HTMLElement>(".dinosaur-stage-picture")!.style.visibility]).toEqual(["contain", "fixed", "/pictures/baryonyx.webp", "hidden"]);
+    glide.progress = 0.5;
+    const midway = mixBox(before, after, 0.5);
+    app.resize([834, 1194, "tall"]);
+    const continuation = app.animations.filter(({ name, cancelled }) => name === "fitted-picture" && !cancelled)[0]!;
+    expectBox(keyframeBox(continuation.keyframes[0]), midway);
+    expectBox(keyframeBox(continuation.keyframes[1]), app.boxes().get("dinosaur-picture")!);
+    app.settle();
+    expect([document.querySelector("[data-fitted-picture]"), document.querySelector<HTMLElement>(".dinosaur-stage-picture")!.style.visibility]).toEqual([null, ""]);
   });
 
   it("only fades the landscape page into the upright one under reduced motion, nothing moving", async () => {
@@ -324,6 +350,33 @@ describe("the lines kept as a dinosaur's page turns", () => {
     } else {
       expect([moving, app.animations, app.turning()]).toEqual([new Set(), [], false]);
     }
+  });
+});
+
+describe("independent upright line-band changes", () => {
+  it.each([631, 711, 767].flatMap((width) => [false, true].flatMap((reduced) => [false, true].map((back) => ({
+    from: back ? width + 1 : width, to: back ? width : width + 1, reduced
+  })))))("turns from $from to $to with reduced motion $reduced", async ({ from, to, reduced }) => {
+    const app = await openPage([from, 1366, "tall"], { language: "ru", reduced });
+    const old = keptLines(from - 112);
+    const next = keptLines(to - 112);
+    expect(Number(old.description !== next.description) + Number(old.note !== next.note)).toBe(1);
+    app.resize([to, 1366, "tall"]);
+    expect(app.turning()).toBe(true);
+    if (reduced) {
+      expect(pageLines().slice(0, 2)).toEqual([String(old.description), String(old.note)]);
+      expect(app.animations).toEqual([]);
+      expect(app.fades).toHaveLength(1);
+      app.updateFade();
+    } else {
+      expect(app.fades).toEqual([]);
+      expect(app.animations.some(({ name }) => name === "dinosaur-stage")).toBe(true);
+    }
+    const page = document.querySelector<HTMLElement>(".dinosaur-page")!;
+    expect([page.style.getPropertyValue("--description-lines"), page.style.getPropertyValue("--note-lines")]).toEqual([String(next.description), String(next.note)]);
+    expect(pageLines().slice(0, 2)).toEqual([String(next.description), String(next.note)]);
+    if (reduced) app.endFade(); else app.settle();
+    expect(app.turning()).toBe(false);
   });
 });
 
@@ -416,21 +469,45 @@ describe("a dinosaur's page turning while its picture grows from its card", () =
 
 describe("a dinosaur's page turning while the next creature slides in", () => {
   it.each([
-    ["next", "APATOSAURUS"],
-    ["previous", "KENTROSAURUS"]
-  ] as const)("lets the %s creature arrive whole on the upright page, from where its words stood", async (way, name) => {
+    ["next", "APATOSAURUS", GLIDE * 0.06418, 0, 0.271],
+    ["previous", "KENTROSAURUS", GLIDE * 0.06418, 0, 0.271],
+    ["next", "APATOSAURUS", 40 + GLIDE * SHARE_FRACTION, SHARE_PROGRESS, 0.9641388448548567],
+    ["previous", "KENTROSAURUS", 40 + GLIDE * SHARE_FRACTION, SHARE_PROGRESS, 0.9641388448548567]
+  ] as const)("continues %s at %s after %i ms, including the words' delayed entrance", async (way, name, elapsed, wordsProgress, pictureProgress) => {
     const app = await openPage(LANDSCAPE);
-    const landscape = app.boxes().get("dinosaur-about")!;
     await app.user.click(screen.getByRole("button", { name: way === "next" ? TEXTS.en.nextDinosaur : TEXTS.en.previousDinosaur }));
-    const about = part("dinosaur-about");
     const before = app.boxes();
-    // Its words take other lines than Baryonyx's, centred beside the stage.
-    expect(before.get("dinosaur-about")!.top).not.toBe(landscape.top);
+    const about = part("dinosaur-about");
+    app.advance(elapsed);
     app.resize(UPRIGHT);
-    expectGlides(app, before);
-    expect([heading(), part("dinosaur-about"), about.textContent?.includes(name)]).toEqual([name, about, true]);
+    const direction = way === "next" ? 1 : -1;
+    const words = app.animations.find(({ name }) => name === "dinosaur-about")!;
+    const outer = before.get("dinosaur-words")!;
+    const old = before.get("dinosaur-about")!;
+    const after = app.boxes();
+    const now = after.get("dinosaur-about")!;
+    const newOuter = after.get("dinosaur-words")!;
+    const [x, y] = String(words.keyframes[0]!.translate).split(" ").map(px);
+    expect(x).toBeCloseTo(old.left + direction * 96 * (1 - wordsProgress) - outer.left - (now.left - newOuter.left), 6);
+    expect(y).toBeCloseTo(old.top - outer.top - (now.top - newOuter.top), 6);
+    expect([words.keyframes[0]!.opacity, words.keyframes[1]!.opacity]).toEqual([expect.closeTo(wordsProgress, 6), 1]);
+    // The facts share the about's slide and fade, without repeating it.
+    for (const fact of ["dinosaur-size", "dinosaur-mass"]) {
+      const animation = app.animations.find(({ name }) => name === fact)!;
+      const [dx] = String(animation.keyframes[0]!.translate).split(" ").map(px);
+      expect(dx).toBeCloseTo(before.get(fact)!.left - old.left - (after.get(fact)!.left - now.left), 6);
+      expect(animation.keyframes[0]!.opacity).toBeUndefined();
+    }
+    const picture = app.animations.find(({ name }) => name === "fitted-picture")!;
+    const from = keyframeBox(picture.keyframes[0]);
+    const opacity = Number(picture.keyframes[0]!.opacity);
+    expect(opacity).toBeCloseTo(pictureProgress, 6);
+    expect(from.left).toBeCloseTo(before.get("dinosaur-picture")!.left + direction * 96 * (1 - opacity), 6);
+    expectBox({ ...from, left: before.get("dinosaur-picture")!.left }, before.get("dinosaur-picture")!);
+    expectBox(keyframeBox(picture.keyframes[1]), after.get("dinosaur-picture")!);
+    expect([heading(), part("dinosaur-about"), app.turning()]).toEqual([name, about, true]);
     app.settle();
-    expect(heading()).toBe(name);
+    expect([heading(), app.turning(), document.querySelector("[data-fitted-picture]")]).toEqual([name, false, null]);
   });
 });
 

@@ -1,8 +1,7 @@
 export type KeptLines = { description: number; note: number };
 
-// These bands are deliberately a function of width alone. The shipped words
-// fit within the measured em budgets at each boundary, so every page in one
-// window keeps the same vertical arrangement while its creature changes.
+// Width-only bands keep every page in one window in the same vertical
+// arrangement while its creature changes.
 export function keptLines(width: number): KeptLines {
   return { description: width >= 656 ? 3 : width >= 520 ? 4 : 5, note: width >= 600 ? 3 : 4 };
 }

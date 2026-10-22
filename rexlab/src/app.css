@@ -2365,7 +2365,7 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
 }
 
 /* Upright dinosaur pages put the full-width stage above words whose bands
-   are sized by the width-derived data attributes. */
+   are sized by the width-derived custom properties. */
 html[data-size="tall"] .dinosaur-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -2448,13 +2448,11 @@ html[data-size="tall"] .dinosaur-group {
 
 html[data-size="tall"] .dinosaur-description {
   height: calc(var(--description-lines, 3) * 41px);
-  height: calc(attr(data-lines type(<number>), 3) * 41px);
   overflow: hidden;
 }
 
 html[data-size="tall"] .source-note {
   height: calc(var(--note-lines, 3) * 16.5px);
-  height: calc(attr(data-lines type(<number>), 3) * 16.5px);
   line-height: 16.5px;
   overflow: hidden;
 }

@@ -238,7 +238,12 @@ export function appProps(browser: Browser): AppProps {
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-screen")),
-      easing: browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--ease-out").trim()
+      easing: browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--ease-out").trim(),
+      slide: {
+        duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-standard")),
+        delay: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-stagger")),
+        distance: 96 * Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-amount"))
+      }
     },
     // A chip's parts as the browser lays them out, which change with no
     // change of the window as the bundled font comes in for the system's.

@@ -45,7 +45,14 @@ export type PageAnimation = { finish(): void };
 // with every part at rest.
 export type TurnStyle = "glide" | "follow" | "still";
 
+export type PartOrigin = { element: Element; box: Box; opacity: number };
+
 export type TurnMotionSeams = {
+  // Takes visible states from snapshot animations before their live parts
+  // change layout. Consumed only when a new glide starts.
+  origins?(): PartOrigin[];
+  // Draws content fitted whole into a changing, viewport-relative box.
+  fit?(element: Element, destination: Box): TurnFrame | undefined;
   // Takes over a screen transition's picture, once, when a glide starts.
   continuation?(): PictureContinuation | undefined;
   // The page holding the marked parts.
@@ -106,6 +113,7 @@ type Place = { element: Element; box: Box; opacity: number };
 // its own, and from `opacity` to full, with the frame drawn for it and how
 // to narrow it back. The parts around it move it further by their own.
 type Drawing = {
+  detached?: boolean;
   animations: TurnAnimation[];
   offset: { x: number; y: number };
   size: { width: number; height: number } | undefined;
@@ -133,7 +141,7 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // would draw it off its new place, their translation giving way to the
 // glide's. Each change outdates every one before it, and nothing a
 // change left waiting acts once it is outdated.
-export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing, continuation }: TurnMotionSeams): TurnMotion {
+export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing, continuation, origins, fit }: TurnMotionSeams): TurnMotion {
   const keepers = new Set<Keeper>();
   const listeners = new Set<() => void>();
   let drawn = new Map<string, Box>();
@@ -216,7 +224,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   // off where it is laid out, as far as each has gone. A part that moves
   // only with a part around it has no motion of its own.
   const moved = (element: Element) => {
-    if (element === picture?.element) {
+    if (element === picture?.element || drawings.get(element)?.detached) {
       const drawing = drawings.get(element);
       const left = drawing ? 1 - progressOf(drawing) : 0;
       return { x: (drawing?.offset.x ?? 0) * left, y: (drawing?.offset.y ?? 0) * left };
@@ -294,7 +302,12 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   const glide = (change: () => void, current: number) => {
     unwatch();
     picture ??= continuation?.();
+    const inherited = running ? [] : origins?.() ?? [];
     const before = places();
+    for (const origin of inherited) {
+      const name = origin.element.getAttribute(TURN_PART);
+      if (name) before.set(name, origin);
+    }
     // What fades goes on from the opacity it is drawn at, or from none.
     const fadedFrom = new Map([...parts.querySelectorAll(`[${TURN_FADE}]`)].map((element) => [element, opacityOf(element, 0)]));
     cancelAll();
@@ -331,15 +344,22 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
         fadeIn(element, 0);
         continue;
       }
-      if (element === picture?.element) {
-        const copy = picture.draw(box);
+      const fitted = picture && element.contains(picture.element) ? undefined : fit?.(element, box);
+      if (element === picture?.element || fitted) {
+        const copy = fitted ?? picture!.draw(box);
         const offset = { x: old.box.left - box.left, y: old.box.top - box.top };
         // Only the fixed copy is laid out as its box changes, so contain
         // fits the picture whole without unequal scales stretching it.
         const bounds = (box: Box): Keyframe => ({ left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+        const start = bounds(old.box);
+        const end = bounds(box);
+        if (old.opacity < 1) {
+          start.opacity = old.opacity;
+          end.opacity = 1;
+        }
         starts.push(() => drawings.set(element, {
-          animations: [animate(copy.element, [bounds(old.box), bounds(box)], options)],
-          offset, size: { width: old.box.width, height: old.box.height }, opacity: 1, frame: copy, release: undefined
+          animations: [animate(copy.element, [start, end], options)],
+          detached: true, offset, size: { width: old.box.width, height: old.box.height }, opacity: old.opacity, frame: copy, release: undefined
         }));
         continue;
       }

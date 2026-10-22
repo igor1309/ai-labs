@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { dinosaurWordsWidth, keptLines } from "../src/dinosaurPageLayout.ts";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
@@ -60,6 +61,27 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
+  it.each([[632, 616, 16, 504, 5], [632, 632, 0, 520, 4]])("composes a %i window and %i layout viewport into the scrollbar and word bands", (width, clientWidth, scrollbar, words, description) => {
+    const given = browser({ portrait: true });
+    given.innerWidth = width;
+    Object.assign(given.document.documentElement, { clientWidth });
+    const { viewport } = appProps(given);
+    const read = () => {
+      const { left, right } = viewport.sideInsets();
+      const room = dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth!());
+      return [viewport.scrollbarWidth!(), room, keptLines(room).description];
+    };
+    expect(read()).toEqual([scrollbar, words, description]);
+    const seen: number[][] = [];
+    const stop = viewport.subscribe(() => seen.push(read()));
+    Object.assign(given.document.documentElement, { clientWidth: 696 });
+    given.resize(712);
+    Object.assign(given.document.documentElement, { clientWidth: 712 });
+    given.resize(712);
+    stop();
+    expect(seen).toEqual([[16, 584, 4], [0, 600, 4]]);
+  });
+
   it("reads progress, the chosen language, the chosen theme and the chosen age level from local storage", () => {
     const props = appProps(
       browser({
@@ -403,13 +425,14 @@ describe("the app in a browser", () => {
 
   it("takes the picture close's timing from the stylesheet and its elapsed time from the monotonic clock", () => {
     let time = 42;
-    const values: Record<string, string> = { "--motion-screen": "480ms", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
+    const values: Record<string, string> = { "--motion-screen": "480ms", "--motion-standard": "300ms", "--motion-stagger": "60ms", "--motion-amount": "0.5", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
     const { pictureMotion } = appProps({
       ...browser(),
       performance: { now: () => time },
       getComputedStyle: () => ({ getPropertyValue: (name) => values[name] ?? "0px" })
     });
     expect([pictureMotion.duration, pictureMotion.easing, pictureMotion.now()]).toEqual([480, "cubic-bezier(0.1, 1, 0.5, 1)", 42]);
+    expect(pictureMotion.slide).toEqual({ duration: 300, delay: 60, distance: 48 });
     time = 130;
     expect(pictureMotion.now()).toBe(130);
   });

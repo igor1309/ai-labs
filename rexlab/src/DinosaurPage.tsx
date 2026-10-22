@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, BookOpen, Weight } from "lucide-react";
-import { useImperativeHandle, useRef, ViewTransition, type ReactNode, type Ref } from "react";
+import { useImperativeHandle, useRef, ViewTransition, type CSSProperties, type ReactNode, type Ref } from "react";
 import { Button } from "./Button.tsx";
 import { MEASURE_ICONS, type Measure } from "./CatalogueScreen.tsx";
 import { DietTag, type Diet } from "./DietTag.tsx";
@@ -87,6 +87,8 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
       if (!page) return;
       page.dataset.descriptionLines = String(next.lines.description);
       page.dataset.noteLines = String(next.lines.note);
+      page.style.setProperty("--description-lines", String(next.lines.description));
+      page.style.setProperty("--note-lines", String(next.lines.note));
       page.querySelector(".dinosaur-description")?.setAttribute("data-lines", String(next.lines.description));
       page.querySelector(".source-note")?.setAttribute("data-lines", String(next.lines.note));
       // A turned page shows from its top. The stylesheet gives the root
@@ -99,7 +101,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
   // The bar, the stage and the words are the parts a turn glides, each
   // with the parts inside it that it would otherwise lay out anew at once.
   return (
-    <main ref={main} className="dinosaur-page" data-description-lines={lines.description} data-note-lines={lines.note}>
+    <main ref={main} className="dinosaur-page" data-description-lines={lines.description} data-note-lines={lines.note} style={{ "--description-lines": lines.description, "--note-lines": lines.note } as CSSProperties}>
       <header className="dinosaur-bar" data-turn-part="dinosaur-bar">
         <Button className="home-button" data-turn-part="dinosaur-catalogue" onClick={onBack}>
           <BookOpen size={24} aria-hidden="true" />

@@ -1,10 +1,10 @@
 import type { Box, PictureContinuation, TurnFrame, TurnMotionSeams } from "./turnMotion.ts";
 
-export type PictureMotion = { now(): number; duration: number; easing: string };
+export type PictureMotion = { now(): number; duration: number; easing: string; slide?: { duration: number; delay: number; distance: number } };
 
 // The eased progress of a CSS `cubic-bezier()` at a fraction of its time,
 // whose x is the time gone and y the progress; none for any other easing.
-function easedProgress(easing: string): ((fraction: number) => number) | undefined {
+export function easedProgress(easing: string): ((fraction: number) => number) | undefined {
   const values = /^cubic-bezier\(([^)]+)\)$/.exec(easing)?.[1]?.split(",").map(Number);
   if (!values || values.length !== 4 || values.some((value) => !Number.isFinite(value))) return undefined;
   const [x1 = 0, y1 = 0, x2 = 1, y2 = 1] = values;
@@ -25,7 +25,7 @@ function easedProgress(easing: string): ((fraction: number) => number) | undefin
 // A fixed copy avoids the clips and translations on the card and list, or
 // on the stage. The laid-out picture keeps its space until the copy lands
 // there.
-function drawClosingPicture(element: Element, box: Box): TurnFrame {
+export function drawClosingPicture(element: Element, box: Box): TurnFrame {
   const image = element as HTMLElement;
   const copy = image.cloneNode(true) as HTMLElement;
   copy.removeAttribute("id");
