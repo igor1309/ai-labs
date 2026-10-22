@@ -79,11 +79,13 @@ struct NemotronRecognizerTests {
     @Test func theLastWordSettlesAfterTwoQuietChunks() async throws {
 
         let recognizer = NemotronRecognizer(decoder: ScriptedDecoder([twoWords, twoWords, twoWords]))
-        let updates = await listen(recognizer, to: [silence(1.12), silence(1.12), silence(1.12)])
+        let first = try await recognizer.hear(silence(1.12))
+        let second = try await recognizer.hear(silence(1.12))
+        let third = try await recognizer.hear(silence(1.12))
 
-        #expect(updates[1].all.map(\.pending) == ["второе"])
-        #expect(updates[2].all.map(\.settled) == ["первое второе"])
-        #expect(updates[2].all.map(\.pending) == [""])
+        #expect(first.words == [Word("первое", start: 0.1, end: 0.4), Word("второе", start: 0.5, end: 0.9)])
+        #expect(second.words.isEmpty)
+        #expect(third == Hearing(words: [], finalThrough: 0.9))
     }
 
     @Test func finishingHearsTheRest() async throws {

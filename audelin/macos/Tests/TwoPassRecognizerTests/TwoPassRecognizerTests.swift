@@ -31,14 +31,22 @@ struct TwoPassRecognizerTests {
         #expect(read(updates.first) == [segment(start: 0, settled: "по", pending: "запуску кто")])
     }
 
-    @Test func aWordIsNotShownTwice() async {
+    @Test(arguments: [
+        DuplicateCase(finalText: "запуску", draftText: "ЗАПУСКУ", start: 0.8, isDuplicate: true),
+        DuplicateCase(finalText: "запуску", draftText: "запуску!", start: 0.8, isDuplicate: true),
+        DuplicateCase(finalText: "ёлка", draftText: "елка", start: 0.8, isDuplicate: true),
+        DuplicateCase(finalText: "запуску", draftText: "запуску", start: 1.499, isDuplicate: true),
+        DuplicateCase(finalText: "запуску", draftText: "запуску", start: 1.501, isDuplicate: false),
+    ])
+    fileprivate func aWordIsNotShownTwice(example: DuplicateCase) async {
 
         let updates = await run(
-            draft: [.init(words: [word("запуску", 0.8, 1.2), word("кто", 1.6, 1.9)])],
-            final: [.init(words: [a, b], finalThrough: b.end)]
+            draft: [.init(words: [word(example.draftText, example.start, 1.2), c])],
+            final: [.init(words: [a, word(example.finalText, 0.5, 1)], finalThrough: b.end)]
         )
 
-        #expect(read(updates.first) == [segment(start: 0, settled: "по запуску", pending: "кто")])
+        let pending = example.isDuplicate ? "кто" : "\(example.draftText) кто"
+        #expect(read(updates.first) == [segment(start: 0, settled: "по \(example.finalText)", pending: pending)])
     }
 
     @Test func draftWordsChangeInPlace() async {
@@ -53,14 +61,14 @@ struct TwoPassRecognizerTests {
 
     @Test func finishingSettlesTheFinalReading() async {
 
-        let updates = await run(
-            draft: [.init(words: [a, word("подпуску", 0.8, 1.1), c])],
-            final: [.init(words: [a, b], finalThrough: a.end)],
-            finishing: .init(words: [b], finalThrough: b.end)
-        )
+        let draft = FakeRecognizer([.init(words: [a, word("подпуску", 0.8, 1.1), c])], finishing: .init(words: []))
+        let final = FakeRecognizer([.init(words: [a, b], finalThrough: a.end)], finishing: .init(words: [b], finalThrough: b.end))
+        let updates = await run(draft: draft, final: final, chunks: 1)
 
         #expect(read(updates.last) == [segment(start: 0, settled: "по запуску")])
         #expect(updates.last?.ending == .finished)
+        #expect(await draft.finishCount == 1)
+        #expect(await final.finishCount == 1)
     }
 
     @Test(arguments: [true, false])
@@ -102,19 +110,32 @@ struct TwoPassRecognizerTests {
     /// and returns every update Live text published.
     private func run(draft: [Hearing], final: [Hearing], finishing: Hearing = .init(words: []), chunks: Int? = nil) async -> [Segments] {
 
-        let recognizer = TwoPassRecognizer(
-            draft: FakeRecognizer(draft, finishing: .init(words: [])),
-            final: FakeRecognizer(final, finishing: finishing)
-        )
+        let chunkCount = chunks ?? draft.count
+        let draft = FakeRecognizer(draft, finishing: .init(words: []))
+        let final = FakeRecognizer(final, finishing: finishing)
+        return await run(draft: draft, final: final, chunks: chunkCount)
+    }
+
+    private func run(draft: FakeRecognizer, final: FakeRecognizer, chunks: Int) async -> [Segments] {
+
+        let recognizer = TwoPassRecognizer(draft: draft, final: final)
         let live = LiveText(recognizer: recognizer)
         let collecting = Task {
             var updates: [Segments] = []
             for await update in live.updates { updates.append(update) }
             return updates
         }
-        await live.listen(to: FiniteSource(chunks: chunks ?? draft.count))
+        await live.listen(to: FiniteSource(chunks: chunks))
         return await collecting.value
     }
+}
+
+fileprivate struct DuplicateCase: Sendable {
+
+    let finalText: String
+    let draftText: String
+    let start: Double
+    let isDuplicate: Bool
 }
 
 /// Reports the scripted hearings one per chunk, and throws once they run out.
@@ -124,6 +145,7 @@ private actor FakeRecognizer: Recognizer {
 
     private var hearings: [Hearing]
     private let finishing: Hearing
+    private(set) var finishCount = 0
 
     init(_ hearings: [Hearing], finishing: Hearing) {
 
@@ -137,7 +159,11 @@ private actor FakeRecognizer: Recognizer {
         return hearings.removeFirst()
     }
 
-    func finish() -> Hearing { finishing }
+    func finish() -> Hearing {
+
+        finishCount += 1
+        return finishing
+    }
 }
 
 /// A number of chunks, then the end of the audio.

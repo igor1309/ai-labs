@@ -69,8 +69,8 @@ public actor NemotronRecognizer: Recognizer {
     /// Live text settles by end time and drops a reported word that starts
     /// before a settled word ends, so nothing settles past a pending word's
     /// start, and overlapping words stay in the report until the last word
-    /// can settle too. A word shows within a chunk of its end, so once two
-    /// chunks pass the last word with nothing new, it is final too.
+    /// can settle too. Once two chunks pass the last word with nothing new,
+    /// it is final too.
     private func report(_ tokens: [DecodedToken], finished: Bool) -> Hearing {
 
         let next = joined(tokens)

@@ -5,29 +5,32 @@ import LiveText
 /// channel only.
 final class Microphone: AudioSource, @unchecked Sendable {
 
-    private let engine = AVAudioEngine()
+    private let source: any MicrophoneSource
     private let endLock = NSLock()
     private var isEnded = false
+
+    init(source: any MicrophoneSource = EngineMicrophoneSource()) {
+
+        self.source = source
+    }
 
     func audio() -> AsyncStream<AudioChunk> {
 
         let (stream, continuation) = AsyncStream<AudioChunk>.makeStream()
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
+        let format = source.format
         Log.line("microphone: access \(Self.access), \(format.sampleRate) Hz, \(format.channelCount) channel(s)")
-        input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(format.sampleRate / 10), format: format) { buffer, _ in
-            guard let data = buffer.floatChannelData?[0] else { return }
-            let samples = Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength)))
-            continuation.yield(AudioChunk(samples: samples, sampleRate: format.sampleRate))
-        }
         continuation.onTermination = { _ in self.end() }
         do {
-            try engine.start()
-            Log.line("microphone: started")
+            try source.start { channels, sampleRate in
+                guard let samples = channels.first else { return }
+                continuation.yield(AudioChunk(samples: samples, sampleRate: sampleRate))
+            }
         } catch {
             Log.line("microphone: failed to start: \(error)")
             continuation.finish()
+            return stream
         }
+        Log.line("microphone: started")
         return stream
     }
 
@@ -38,8 +41,7 @@ final class Microphone: AudioSource, @unchecked Sendable {
         isEnded = true
         endLock.unlock()
         guard !wasEnded else { return }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        source.stop()
         Log.line("microphone: stopped")
     }
 
@@ -67,6 +69,48 @@ final class Microphone: AudioSource, @unchecked Sendable {
     }
 }
 
+protocol MicrophoneSource {
+
+    var format: AVAudioFormat { get }
+    func start(_ receive: @escaping ([[Float]], Double) -> Void) throws
+    func stop()
+}
+
+private final class EngineMicrophoneSource: MicrophoneSource {
+
+    private let engine = AVAudioEngine()
+
+    var format: AVAudioFormat {
+
+        engine.inputNode.outputFormat(forBus: 0)
+    }
+
+    func start(_ receive: @escaping ([[Float]], Double) -> Void) throws {
+
+        let input = engine.inputNode
+        let format = self.format
+        input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(format.sampleRate / 10), format: format) { buffer, _ in
+            let channels = (0..<Int(buffer.format.channelCount)).compactMap { channel -> [Float]? in
+                guard let data = buffer.floatChannelData?[channel] else { return nil }
+                return Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength)))
+            }
+            receive(channels, format.sampleRate)
+        }
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            throw error
+        }
+    }
+
+    func stop() {
+
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+    }
+}
+
 /// Audio already started, handed to Live text when it is ready to listen.
 struct Started: AudioSource {
 
@@ -84,6 +128,20 @@ struct RecordedTrack: AudioSource, @unchecked Sendable {
     let url: URL
     let channel: Int
     let started: ContinuousClock.Instant
+    let sleep: @Sendable (ContinuousClock.Instant) async throws -> Void
+
+    init(
+        url: URL,
+        channel: Int,
+        started: ContinuousClock.Instant,
+        sleep: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { try await Task.sleep(until: $0) }
+    ) {
+
+        self.url = url
+        self.channel = channel
+        self.started = started
+        self.sleep = sleep
+    }
 
     func audio() -> AsyncStream<AudioChunk> {
 
@@ -102,7 +160,7 @@ struct RecordedTrack: AudioSource, @unchecked Sendable {
                   buffer.frameLength > 0,
                   let data = buffer.floatChannelData?[channel] else { return nil }
             fed += Double(buffer.frameLength) / format.sampleRate
-            do { try await Task.sleep(until: started + .seconds(fed)) } catch { return nil }
+            do { try await sleep(started + .seconds(fed)) } catch { return nil }
             return AudioChunk(samples: Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength))), sampleRate: format.sampleRate)
         }
     }
