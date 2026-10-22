@@ -13,6 +13,15 @@ export type DigLevel = "hatchling" | "explorer" | "paleontologist";
 // details need the finer 36.
 export const BRUSH_SIZES: Readonly<Record<DigLevel, number>> = { hatchling: 48, explorer: 36, paleontologist: 36 };
 
+// The wide brush is this many times the brush, so a child clears the
+// sand fast and picks the brush again to brush round a detail.
+export const WIDE_BRUSH = 2;
+
+// How wide the picked brush is at `level`, in CSS pixels.
+export function brushWidth(level: DigLevel, wide: boolean): number {
+  return BRUSH_SIZES[level] * (wide ? WIDE_BRUSH : 1);
+}
+
 // The share of the dinosaur's cells clear at which Hatchling's gust
 // blows the last specks away, so the child digs the whole dinosaur but
 // never hunts for its last grains.

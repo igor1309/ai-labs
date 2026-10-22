@@ -23,7 +23,7 @@ function show(level: (typeof levels)[number] | "hatchling", asking: boolean, lan
   const round = asking ? brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 }) : started;
   render(<DigBoardScreen
     {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language={language} level={level}
-    brush={BRUSH_SIZES[level]} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
+    brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
   />, withPictures);
 }
 

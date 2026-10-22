@@ -11,7 +11,7 @@ Feature: Dig: the brush picker
   Scenario Outline: The bar's picker chooses the brush
     Given a <language> round at any level has started
     Then DIG's bar shows the brush picker before the FIELD GUIDE: two buttons side by side, each at least 48 by 48 CSS pixels, each a dot, the wide brush's twice as big as the brush's
-    And the brush is picked, its button filled in the brush's brown with a white dot
+    And the brush is picked, its button filled in the amber of DIG's mark, its dot dark
     When I tap the wide brush's button
     Then it is picked and the other is not, and the next stroke clears a path twice as wide
     And a screen reader reads them as "<brush>" and "<wide>", the picked one pressed

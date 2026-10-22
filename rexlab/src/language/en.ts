@@ -118,6 +118,8 @@ export const en: Texts = {
   allDugUp: "EVERYONE DUG UP",
   fieldGuide: "FIELD GUIDE",
   treasureNew: "NEW!",
+  brush: "BRUSH",
+  wideBrush: "WIDE BRUSH",
   treasureCards: "TREASURES",
   kindsFound: "KINDS FOUND",
   treasures: { shell: "SHELL", tooth: "TOOTH", amber: "AMBER", "egg-nest": "EGG NEST", "golden-fossil": "GOLDEN FOSSIL" },

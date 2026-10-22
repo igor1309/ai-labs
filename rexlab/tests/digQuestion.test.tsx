@@ -160,7 +160,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const marks: SandMark[] = [];
     const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} grains={!reducedMotion}
+      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
     const view = render(draw(started), withPictures);
@@ -291,7 +291,7 @@ describe("the question's cards", () => {
     const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const submitted: string[] = [];
     render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} grains={false}
+      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} wide={false} onWide={() => {}} grains={false}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);
     for (const card of choices()) fireEvent.click(card);

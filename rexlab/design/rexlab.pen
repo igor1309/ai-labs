@@ -103555,7 +103555,7 @@
           "name": "Brush",
           "width": 60,
           "height": 48,
-          "fill": "#B98A45",
+          "fill": "$fm-amber",
           "cornerRadius": 14,
           "justifyContent": "center",
           "alignItems": "center",
@@ -103564,7 +103564,7 @@
               "type": "ellipse",
               "id": "BLw6Q",
               "name": "Brush Dot",
-              "fill": "#FFFFFF",
+              "fill": "#1D2742",
               "width": 14,
               "height": 14
             }
@@ -103584,7 +103584,7 @@
               "type": "ellipse",
               "id": "Evu2N",
               "name": "Wide Brush Dot",
-              "fill": "#B98A45",
+              "fill": "$fm-amber",
               "width": 28,
               "height": 28
             }
@@ -104139,16 +104139,16 @@
               "name": "Brush Picker",
               "descendants": {
                 "DxdV3": {
-                  "fill": "transparent"
+                  "fill": "#00000000"
                 },
                 "BLw6Q": {
-                  "fill": "#B98A45"
+                  "fill": "$fm-amber"
                 },
                 "b4imNq": {
-                  "fill": "#B98A45"
+                  "fill": "$fm-amber"
                 },
                 "Evu2N": {
-                  "fill": "#FFFFFF"
+                  "fill": "#1D2742"
                 }
               }
             },
@@ -104536,16 +104536,16 @@
               "name": "Brush Picker",
               "descendants": {
                 "DxdV3": {
-                  "fill": "transparent"
+                  "fill": "#00000000"
                 },
                 "BLw6Q": {
-                  "fill": "#B98A45"
+                  "fill": "$fm-amber"
                 },
                 "b4imNq": {
-                  "fill": "#B98A45"
+                  "fill": "$fm-amber"
                 },
                 "Evu2N": {
-                  "fill": "#FFFFFF"
+                  "fill": "#181E2E"
                 }
               }
             },

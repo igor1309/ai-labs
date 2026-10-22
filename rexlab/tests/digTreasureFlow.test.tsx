@@ -336,7 +336,7 @@ it("opens the FIELD GUIDE through the board's hook", () => {
   const round = startRound(SHIPPED_DIG, [], undefined, () => 0, "explorer");
   render(<DigBoardScreen
     {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language="en" level="explorer"
-    brush={BRUSH_SIZES.explorer} grains dugUp={0} total={SHIPPED_DIG.length} treasures={5} sandContext={() => null} onBrush={() => {}} onHome={() => {}} onFieldGuide={onFieldGuide}
+    brush={BRUSH_SIZES.explorer} wide={false} onWide={() => {}} grains dugUp={0} total={SHIPPED_DIG.length} treasures={5} sandContext={() => null} onBrush={() => {}} onHome={() => {}} onFieldGuide={onFieldGuide}
   />, withPictures);
   fireEvent.click(fieldGuide());
   expect([fieldGuide().textContent, onFieldGuide.mock.calls.length]).toEqual(["5", 1]);

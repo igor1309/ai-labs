@@ -5,7 +5,7 @@ import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
-import { DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 
@@ -85,8 +85,11 @@ export type DigBoardScreenProps = {
   choices: readonly { id: string; name: string; picture: string; rejected: boolean; correct: boolean }[];
   // The age level the round plays.
   level: AgeLevel;
-  // The brush's width, in CSS pixels, whatever the board's size.
+  // The picked brush's width, in CSS pixels, whatever the board's size,
+  // and whether the wide brush is picked; a stroke keeps the width it
+  // began with.
   brush: number;
+  wide: boolean;
   // Whether the board moves, grains puff and a find shines; false for
   // the short fades of reduced motion.
   grains: boolean;
@@ -99,6 +102,7 @@ export type DigBoardScreenProps = {
   sandContext: SandContext;
   onBrush: (mark: SandMark) => void;
   onPick?: (id: string) => void;
+  onWide: (wide: boolean) => void;
   onHome: () => void;
   onFieldGuide?: (() => void) | undefined;
 };
@@ -243,6 +247,7 @@ export function DigBoardScreen({
   choices,
   level,
   brush,
+  wide,
   grains,
   dugUp,
   total,
@@ -250,6 +255,7 @@ export function DigBoardScreen({
   sandContext,
   onBrush,
   onPick,
+  onWide,
   onHome,
   onFieldGuide
 }: DigBoardScreenProps) {
@@ -454,6 +460,7 @@ export function DigBoardScreen({
       style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms`, "--dig-treasure": `${flightWait}ms` } as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={choice ? text.whoIsIt : text.dig} onHome={onHome}>
+        <BrushPicker language={language} wide={wide} disabled={blown} onWide={onWide} />
         <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
           landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
         {dugUp !== undefined && (

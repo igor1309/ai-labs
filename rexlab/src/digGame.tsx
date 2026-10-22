@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import {
-  BRUSH_SIZES,
   awaitsHelp,
   brushRound,
+  brushWidth,
   digUp,
   dugUpOf,
   keepTreasure,
@@ -162,6 +162,9 @@ export function useDigGame(
   // on the round as it is, not as last rendered. Null once the child
   // leaves it or the reveal starts.
   const live = useRef<DigRound | null>(null);
+  // Whether the wide brush is picked: kept through rounds, levels and the
+  // FIELD GUIDE, and the brush again once the child goes home.
+  const [wide, setWide] = useState<boolean>(false);
   // The round's help, gust and reward timers, stopped as the child
   // leaves it.
   const roundTimers = useRef<OwnedTimers | null>(null);
@@ -303,6 +306,7 @@ export function useDigGame(
 
   const home = () => {
     leave();
+    setWide(false);
     onHome();
   };
 
@@ -336,7 +340,8 @@ export function useDigGame(
             {...presentDigBoard(screen.round, bodyPicture, (kind) => TREASURE_PICTURES[kind], (id) => dinosaurName(id, language))}
             choiceCount={screen.round.choices.length}
             level={screen.round.level}
-            brush={BRUSH_SIZES[screen.round.level]}
+            brush={brushWidth(screen.round.level, wide)}
+            wide={wide}
             grains={!reducedMotion()}
             dugUp={kept.readable ? dugUpOf(kept.progress, ids) : undefined}
             total={ids.length}
@@ -344,6 +349,7 @@ export function useDigGame(
             sandContext={sandContext}
             onBrush={brush}
             onPick={pick}
+            onWide={setWide}
             onHome={home}
             onFieldGuide={openGuide}
           />
