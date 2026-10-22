@@ -165,7 +165,12 @@ private extension PanelView {
                     .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
                     .foregroundStyle(tokens.gutter)
 
-            case .liveTextOff:
+            case let .liveTextOff(kept):
+                if let kept {
+
+                    linesView(kept)
+                }
+
                 Text("Живой текст выключен — звонок только записывается.")
                     .font(tokens.ui(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))

@@ -27,7 +27,10 @@ public extension PanelState {
         /// Nothing recorded yet; the panel invites a start.
         case empty
         /// The call is only recorded; the panel offers to switch live text on.
-        case liveTextOff
+        ///
+        /// Text from before live text was switched off mid-call stays above
+        /// the offer.
+        case liveTextOff(kept: Lines?)
         case lines(Lines)
     }
 

@@ -7,6 +7,7 @@ extension PanelState {
         ("not-recording", .notRecording),
         ("recording", .recording),
         ("live-text-off", .liveTextOff),
+        ("switched-off-mid-call", .switchedOffMidCall),
         ("text-filled-in", .textFilledIn),
         ("settling-0s", .settling0),
         ("settling-4s", .settling4),
@@ -27,7 +28,15 @@ extension PanelState {
 
     static let liveTextOff = PanelState(
         recording: .on(elapsed: "00:03:10"),
-        log: .liveTextOff
+        log: .liveTextOff(kept: nil)
+    )
+
+    static let switchedOffMidCall = PanelState(
+        recording: .on(elapsed: "00:12:47"),
+        log: .liveTextOff(kept: .init(entries: [
+            .init(id: 2, time: "12:42", speaker: .me, settled: "Accountable — я. По слог отвечает команда Ильи."),
+            .init(id: 3, time: "12:44", speaker: .them, settled: "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы."),
+        ]))
     )
 
     static let textFilledIn = PanelState(
@@ -90,6 +99,7 @@ struct PanelPreview: View {
 #Preview("Not recording") { PanelPreview(state: .notRecording, scheme: .light) }
 #Preview("Recording") { PanelPreview(state: .recording, scheme: .light) }
 #Preview("Live text off") { PanelPreview(state: .liveTextOff, scheme: .light) }
+#Preview("Switched off mid-call") { PanelPreview(state: .switchedOffMidCall, scheme: .light) }
 #Preview("Text filled in") { PanelPreview(state: .textFilledIn, scheme: .light) }
 #Preview("Settling") {
     VStack(spacing: 0) {

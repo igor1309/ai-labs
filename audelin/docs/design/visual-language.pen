@@ -17502,7 +17502,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). A selection is held exactly as selected: new lines below and a phrase settling differently never change it, and the panel marks it held. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. Switching live text on mid-call fills in the earlier minutes, marked «дописано позже».",
+              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on; switched off mid-call, the text so far stays above the notice. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). A selection is held exactly as selected: new lines below and a phrase settling differently never change it, and the panel marks it held. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. Switching live text on mid-call fills in the earlier minutes, marked «дописано позже».",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -17923,6 +17923,155 @@
                                     {
                                       "type": "text",
                                       "id": "o8ALTN",
+                                      "name": "Turn on",
+                                      "fill": "$me",
+                                      "content": "Включить живой текст",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E7jpXp",
+                  "name": "Live text switched off mid-call",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C27xk",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Live text switched off mid-call",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KYvCj",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Живой текст unticked during a call: the text so far stays and the notice goes under it; from here the call is only recorded. Включить fills the gap from the audio, marked «дописано позже».",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tzB3q",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "fVp86",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "jG7ff",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "X3YeoC",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gm5v0",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "qlIxI",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "td2UJ": {
+                                          "content": "я"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "aMhbo",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:44"
+                                        },
+                                        "Ac6t5": {
+                                          "content": "они"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ozyHt",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст выключен — звонок только записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "xATxX",
                                       "name": "Turn on",
                                       "fill": "$me",
                                       "content": "Включить живой текст",
@@ -19415,6 +19564,155 @@
                                     {
                                       "type": "text",
                                       "id": "O3cR0g",
+                                      "name": "Turn on",
+                                      "fill": "$me",
+                                      "content": "Включить живой текст",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "b0CtI",
+                  "name": "Live text switched off mid-call",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "oyQg0",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Live text switched off mid-call",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "xd105",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Живой текст unticked during a call: the text so far stays and the notice goes under it; from here the call is only recorded. Включить fills the gap from the audio, marked «дописано позже».",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Oxs9t",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "GV5RO",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "Qj7uv",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "WJS1m",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "k6CW9d",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "OxJ3s",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "td2UJ": {
+                                          "content": "я"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "zZI05",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:44"
+                                        },
+                                        "Ac6t5": {
+                                          "content": "они"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "lvEhD",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст выключен — звонок только записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "jnXum",
                                       "name": "Turn on",
                                       "fill": "$me",
                                       "content": "Включить живой текст",
