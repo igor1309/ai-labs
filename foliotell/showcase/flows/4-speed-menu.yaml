@@ -1,0 +1,9 @@
+appId: foliotell.FolioTell
+---
+- tapOn: "Pause"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "87%, 94%"
+- waitForAnimationToEnd:
+    timeout: 2000

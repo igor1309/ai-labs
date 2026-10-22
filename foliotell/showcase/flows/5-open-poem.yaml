@@ -1,0 +1,37 @@
+appId: foliotell.FolioTell
+---
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      notVisible: "Зимнее.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      notVisible: "Зимнее.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- assertVisible: "Зимнее.*"
+- tapOn:
+    point: "50%, 52%"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    point: "50%, 52%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      visible: "Not now"
+    commands:
+      - tapOn: "Not now"
+      - waitForAnimationToEnd:
+          timeout: 1500

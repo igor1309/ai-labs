@@ -1,0 +1,17 @@
+repo = "igor1309/foliotell"
+description = "An offline iPhone app that reads Markdown and plain-text files aloud, built with SwiftUI."
+homepage = "https://foliotell.pages.dev"
+topics = ["swift", "swiftui", "ios", "text-to-speech", "ai-assisted"]
+check = "cd ios && swift build && swift test"
+
+# The iOS app only. Config/, scripts/ and release.toml are TestFlight
+# release tooling; android/ stays out until it is more than a skeleton.
+include = [
+  "ios/Sources/**",
+  "ios/Tests/**",
+  "ios/App/**",
+  "ios/Package.swift",
+  "ios/FolioTell.xcodeproj/**",
+  "ios/.maestro/flows/**",
+]
+exclude = []
