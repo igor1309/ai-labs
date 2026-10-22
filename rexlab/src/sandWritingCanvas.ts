@@ -41,7 +41,6 @@ export function sandWritingCanvas(base: CanvasRenderingContext2D, grooves: Canva
     draw({ from, to, width }: SandSegment) {
       line(base, from, to, width + 1.4, "#f0daac", 0.7);
       line(grooves, from, to, width, "#98723f");
-      line(grooves, from, to, width * 0.6, "#ad874f");
     }
   };
 }

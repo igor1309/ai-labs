@@ -1,4 +1,4 @@
-import { Home, Trash2 } from "lucide-react";
+import { Home, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
@@ -147,7 +147,7 @@ export function SandWritingScreen({ language, sandContext, onHome }: SandWriting
           aria-controls={panelId}
           onClick={() => { stop(); if (open) close(); else setOpen(true); }}
         >
-          <span className="sand-writing-dot" style={{ "--tip": `${tip}px` } as CSSProperties} aria-hidden="true" />
+          <Pencil aria-hidden="true" size={28} />
         </Button>
         <div ref={panel} id={panelId} className="sand-writing-options" role="group" aria-label={text.sandTipPicker} aria-hidden={!open} inert={!open} data-open={open || undefined}>
           {TIP_WIDTHS.map((width) => (

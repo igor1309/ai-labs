@@ -117,6 +117,7 @@ function renderHomePage(taps: number[]) {
       onSkeletons={nothing}
       onMuseum={nothing}
       onDig={nothing}
+      onSandWriting={nothing}
     />,
     withPictures
   );
@@ -168,7 +169,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ANCIENT REPTILES over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
+  it("stands every other game in equal columns of two beside the large card, with SAND WRITING after CARE and MORE COMING last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -177,7 +178,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -281,7 +282,7 @@ describe("the home page", () => {
   ];
 
   it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
-    "keeps the title of every game on one line in every language in a %i by %i window, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
+    "keeps short titles on one line and longer titles on two at most in every language in a %i by %i window, featuring %s, with tiles at least 24px, MORE COMING 20px and counts at least 20px",
     (width, height, featured) => {
       openWindow(width, height);
       const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
@@ -327,18 +328,20 @@ describe("the home page", () => {
       expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual(tiles.map(() => true));
       expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(tiles.map(() => "relative"));
 
-      const title = pairsTile().querySelector(".pairs-tile-title");
-      if (!title) throw new Error("No FIND THE PAIR title");
-      expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", "pairs-tile-symbol"]);
-      const size = px(getComputedStyle(title).fontSize);
-      expect(size).toBeGreaterThanOrEqual(24);
-      const room = roomFor(title, (card) => cardWidth(card, width));
-      const spacing = px(getComputedStyle(title).letterSpacing);
-      expect(
-        LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, spacing, room)).filter(
-          (lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => widthOf(line, size, spacing) > room)
-        )
-      ).toEqual([]);
+      for (const [name, key, symbol] of [["FIND THE PAIR", "pairs", "pairs-tile-symbol"], ["SAND WRITING", "sandWriting", "sand-writing-tile-symbol"]] as const) {
+        const title = homeTile(name).querySelector('[class$="-tile-title"]');
+        if (!title) throw new Error(`No ${name} title`);
+        expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", symbol]);
+        const size = px(getComputedStyle(title).fontSize);
+        expect(size).toBeGreaterThanOrEqual(24);
+        const room = roomFor(title, (card) => cardWidth(card, width));
+        const spacing = px(getComputedStyle(title).letterSpacing);
+        expect(
+          LANGUAGES.map((language) => linesOf(TEXTS[language][key], size, spacing, room)).filter(
+            (lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => widthOf(line, size, spacing) > room)
+          )
+        ).toEqual([]);
+      }
     }
   );
 
@@ -657,9 +660,8 @@ describe("the large card", () => {
       expect(name).toBe(name.toLocaleUpperCase("en"));
       // The same picture, drawn the same way, and the same symbols.
       expect(looks(card)).toEqual(tile);
-      // The catalogue's count is always there; every other badge only once
-      // there is a score.
-      expect(tile.badge !== null).toBe(scored || game === "catalogue");
+      // Sand writing has no score; the catalogue always has its count.
+      expect(tile.badge !== null).toBe(game !== "sandWriting" && (scored || game === "catalogue"));
       expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(
         HOME_GAMES.filter(([shown]) => shown !== game).map(([, shown]) => TEXTS.en[shown])
       );
@@ -715,6 +717,13 @@ describe("the large card", () => {
     for (let loading = pictures.loading(); loading.length > 0; loading = pictures.loading()) {
       asked.push(...loading);
       act(() => loading.forEach(pictures.finish));
+    }
+    // React generates a fresh panel id per mount; compare the references
+    // as well as the panel without depending on the generated value.
+    for (const [index, panel] of [...container.querySelectorAll("[id]")].entries()) {
+      const trigger = container.querySelector(`[aria-controls="${panel.id}"]`);
+      panel.id = `panel-${index}`;
+      trigger?.setAttribute("aria-controls", panel.id);
     }
     const shown = container.innerHTML;
     unmount();

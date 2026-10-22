@@ -300,8 +300,8 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("gives the home page, catalogue and dinosaur page a portrait layout, for a tall window only", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"] });
+  it("supports sand writing in both portrait sizes, keeping the other portrait layouts tall only", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], sandWriting: ["tall", "tall-narrow"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {

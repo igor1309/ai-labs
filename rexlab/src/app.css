@@ -1559,6 +1559,7 @@ body:has(.result) #version {
 /* The dig game's tile, over MORE COMING, in the other tiles' shape. The
    design's sand brown is no colour of either theme, so the tile takes the
    deepest band of rock, the nearest the palette has to sand. */
+.sand-writing-tile,
 .dig-tile {
   position: relative;
   flex: 1 1 0;
@@ -1574,6 +1575,53 @@ body:has(.result) #version {
   color: #1d2742;
   box-shadow: 0 8px 24px #1d274224;
   text-align: left;
+}
+
+.sand-writing-tile-art {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 16px 20px 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: radial-gradient(#ffffff59 1px, transparent 1px) 0 0 / 7px 7px;
+  color: inherit;
+}
+
+.featured-card[data-game="sandWriting"] {
+  background: #d0c5b2;
+  color: #1d2742;
+}
+
+.sand-writing-tile-symbol,
+.featured-card[data-game="sandWriting"] .featured-card-symbol {
+  background: #ffffff59;
+}
+
+.sand-writing-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sand-writing-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+/* The Russian name needs two lines at the smallest tablet column. */
+.sand-writing-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1.1;
 }
 
 /* The sand picture is a rounded card of its own, as wide as its height
@@ -8158,7 +8206,9 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 }
 
 [data-theme="dark"] .featured-card[data-game="dig"],
-[data-theme="dark"] .dig-tile {
+[data-theme="dark"] .dig-tile,
+[data-theme="dark"] .sand-writing-tile,
+[data-theme="dark"] .featured-card[data-game="sandWriting"] {
   background: #1f273c;
   color: #ece8de;
   box-shadow: 0 8px 24px #00000066;

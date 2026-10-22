@@ -236,7 +236,7 @@ export function appProps(browser: Browser): AppProps {
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     viewport,
-    portraitLayouts: { home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"] },
+    portraitLayouts: { home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], sandWriting: ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(token("--motion-screen")),

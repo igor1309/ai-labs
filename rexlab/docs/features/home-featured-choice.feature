@@ -6,38 +6,40 @@ Feature: Home page: choosing the featured game
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, CARE, SORT, FIND THE PAIR, SKELETONS and DIG
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
   Scenario: The games started least have twice the chance
-    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
+    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2, DIG 2 and SAND WRITING 2
     When a featured game is chosen
     Then each game whose start count is the lowest has a weight of 2
     And every other game has a weight of 1
-    And CARE, SKELETONS and DIG have 2 chances in 10 each, and every other game 1 in 10
+    And CARE, SKELETONS, DIG and SAND WRITING have 2 chances in 12 each, and every other game 1 in 12
 
 
   Scenario Outline: The random draw maps to a game in tile order
-    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2 and DIG 2
+    Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2, DIG 2 and SAND WRITING 2
     And the random source gives <draw>, a number from 0 up to but not including 1
     When a featured game is chosen
     Then the featured game is <game>
 
     Examples:
-      | draw  | game          |
-      | 0     | COMPARE       |
-      | 0.099 | COMPARE       |
-      | 0.1   | ANCIENT REPTILES |
-      | 0.199 | ANCIENT REPTILES |
-      | 0.2   | CARE          |
-      | 0.399 | CARE          |
-      | 0.4   | SORT          |
-      | 0.499 | SORT          |
-      | 0.5   | FIND THE PAIR |
-      | 0.599 | FIND THE PAIR |
-      | 0.6   | SKELETONS     |
-      | 0.799 | SKELETONS     |
-      | 0.8   | DIG           |
-      | 0.999 | DIG           |
+      | draw  | game             |
+      | 0     | COMPARE          |
+      | 0.083 | COMPARE          |
+      | 0.084 | ANCIENT REPTILES  |
+      | 0.166 | ANCIENT REPTILES  |
+      | 0.167 | FIND THE PAIR    |
+      | 0.249 | FIND THE PAIR    |
+      | 0.25  | SKELETONS        |
+      | 0.416 | SKELETONS        |
+      | 0.417 | DIG              |
+      | 0.583 | DIG              |
+      | 0.584 | SORT             |
+      | 0.666 | SORT             |
+      | 0.667 | CARE             |
+      | 0.833 | CARE             |
+      | 0.834 | SAND WRITING     |
+      | 0.999 | SAND WRITING     |
 
 
   Scenario Outline: Ties share the lowest count
@@ -47,10 +49,10 @@ Feature: Home page: choosing the featured game
 
     Examples:
       | counts              | weights             |
-      | none started        | 2, 2, 2, 2, 2, 2, 2 |
-      | all started 5 times | 2, 2, 2, 2, 2, 2, 2 |
-      | 3, 0, 0, 7, 1, 4, 2 | 1, 2, 2, 1, 1, 1, 1 |
-      | 1, 2, 3, 4, 5, 6, 7 | 2, 1, 1, 1, 1, 1, 1 |
+      | none started        | 2, 2, 2, 2, 2, 2, 2, 2 |
+      | all started 5 times | 2, 2, 2, 2, 2, 2, 2, 2 |
+      | 3, 0, 0, 7, 1, 4, 2, 3 | 1, 2, 2, 1, 1, 1, 1, 1 |
+      | 1, 2, 3, 4, 5, 6, 7, 8 | 2, 1, 1, 1, 1, 1, 1, 1 |
 
 
   Scenario: The same game may be featured two days running

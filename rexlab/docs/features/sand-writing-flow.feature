@@ -2,6 +2,7 @@ Feature: Sand writing: Home navigation
   Scenario: Open and leave the sandbox
     Given I am on Home in English or Russian
     Then I can find a sand-writing tile with a drawing symbol and uppercase name
+    And it follows CARE so the existing columns keep their order
     When I open sand writing
     Then the blank full-viewport sand canvas opens in portrait or landscape
     And the screen uses the shared quick screen transition
