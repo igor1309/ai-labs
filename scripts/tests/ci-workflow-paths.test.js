@@ -240,6 +240,10 @@ test("ciWeekly_shouldDispatchCiOnTrunk_onASchedule", () => {
   assert.match(workflow, /^on:\n(?:  .*\n)*?  workflow_dispatch:$/m);
 });
 
+test("ciPush_shouldRunOnlyOnTrunk", () => {
+  assert.match(workflow, /^on:\n(?:  #.*\n)*  push:\n    branches:\n      - trunk\n    tags-ignore:\n/m);
+});
+
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
   assert.equal(reportCheckName("pull_request"), "report");
   assert.notEqual(reportCheckName("push"), "report");

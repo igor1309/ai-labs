@@ -1,9 +1,12 @@
 name: CI
 
 on:
+  # A branch commit is tested by its PR's run alone, so the required
+  # `report` check is the only verdict on it; trunk is tested after each
+  # merge.
   push:
     branches:
-      - "**"
+      - trunk
     tags-ignore:
       - "*_v*"
       - "v*"
