@@ -73,10 +73,17 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
 | Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-24`, `-40` |
 
-The app reads the tokens from [tokens.json](tokens.json), the pencil MCP's
-`GetVariables()` output for this file. After changing a token, replace that
-snapshot and run `audelin/macos/scripts/generate-tokens.py`; `--check` reports
-a stale Swift file.
+The app's tokens are generated from [tokens.json](tokens.json), a snapshot of
+this file's variables. A token change in the design ships in the same commit
+as the refreshed snapshot and the regenerated Swift:
+
+1. Through the pencil MCP, run `execute` on this file with
+   `Print(JSON.stringify(GetVariables()))`.
+2. Write the printed JSON to `tokens.json` with a 2-space indent and a final
+   newline, so the diff shows only the changed tokens.
+3. In `audelin/macos`, run `python3 -I scripts/generate-tokens.py`. It writes
+   `Sources/GlassLedger/GlassLedger+Tokens.swift`; `--check` exits 1 when
+   that file is stale.
 
 ## Components
 

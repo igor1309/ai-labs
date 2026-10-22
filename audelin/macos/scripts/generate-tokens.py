@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Generate the Glass Ledger tokens in Swift from the design file's variables.
 
-The .pen file is encrypted, so its variables reach the repo as a snapshot:
-audelin/docs/design/tokens.json, the verbatim output of the pencil MCP's
-`GetVariables()` on visual-language.pen. Refresh that snapshot after any token
-change in the design, then run this script.
+It reads audelin/docs/design/tokens.json, the pencil MCP's `GetVariables()`
+output for visual-language.pen. The design README says how to refresh it.
 
     python3 -I scripts/generate-tokens.py           # write the Swift file
     python3 -I scripts/generate-tokens.py --check   # exit 1 if it is stale
