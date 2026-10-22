@@ -27,6 +27,10 @@ export type Texts = {
   makeWindowWider: string;
   portraitLayoutComing: string;
   home: string;
+  sandWriting: string;
+  sandTipPicker: string;
+  sandTip: (width: number) => string;
+  sandClear: string;
   progress: string;
   // A group of creatures, dinosaurs or not, read out.
   creatures: string;
