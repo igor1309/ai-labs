@@ -89,10 +89,10 @@ Feature: Hearing the processes a client names
     When a named process plays again
     Then I can tell when its sound was played since the start
 
-  Scenario: S-17 The user still hears what is captured
+  Scenario: S-17 Sound is read without muting it
     Given a capture of the processes I named
     When one of them plays
-    Then the user can still hear it
+    Then I can read its sound without muting its playback
 ```
 
 S-3 and S-4 moved to timed track. Not capture's: choosing and listing

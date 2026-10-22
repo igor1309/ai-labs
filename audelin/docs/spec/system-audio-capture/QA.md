@@ -83,7 +83,7 @@ is its stamp less the capture's start, unchanged by the device change.
 Real: two `afplay` tones 1 s apart come back about 1 s apart. Evidence:
 Missing.
 
-## S-17 The user still hears what is captured
+## S-17 Sound is read without muting it
 
 Fake: the tap is asked to leave playback unmuted. The real Zoom call of the
 user spec hears the far side while recording. Evidence: Missing.
