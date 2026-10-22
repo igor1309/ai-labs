@@ -15,7 +15,7 @@ export const BRUSH_SIZES: Readonly<Record<DigLevel, number>> = { hatchling: 48, 
 
 // The wide brush is this many times the brush, so a child clears the
 // sand fast and picks the brush again to brush round a detail.
-export const WIDE_BRUSH = 2;
+const WIDE_BRUSH = 2;
 
 // How wide the picked brush is at `level`, in CSS pixels.
 export function brushWidth(level: DigLevel, wide: boolean): number {
