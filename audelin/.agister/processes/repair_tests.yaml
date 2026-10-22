@@ -1,15 +1,11 @@
 schema: agister.process/v1alpha1
 prompt: continuation
+guidance: [audelin-swift-tests]
 instruction: >-
   Audelin's tests, run outside your sandbox after your changes, failed;
-  their output is the input test_output. Fix the cause in the code and
-  commit. Do not weaken, skip or delete a check or a test. In your sandbox
-  run the tests only as `CLANG_MODULE_CACHE_PATH=/tmp/codex-swift/clang
-  swift test --disable-sandbox --cache-path /tmp/codex-swift/cache
-  --config-path /tmp/codex-swift/config --security-path
-  /tmp/codex-swift/security`; tests that make speech with `say` fail there
-  on an empty file, so judge those from test_output. The workflow runs every
-  test again after you.
+  their output is the input test_output. Fix the cause in the code. Do not
+  weaken, skip or delete a check or a test. The workflow runs every test
+  again after you.
 
 params:
   test_output: {}
