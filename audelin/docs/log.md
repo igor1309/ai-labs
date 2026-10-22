@@ -2,6 +2,11 @@
 
 ## 2026-10-22
 
+- The call's audio has two specs: call app processes picks Amanu's
+  processes to tap (the call app and its helpers, else every app but
+  Audelin), and system audio capture taps them, keeps call time through
+  silence and fails rather than rebuilding. Two Codex challenges
+  shaped them.
 - Live text no longer settles words at a pause: only the recogniser makes
   words final, within a bounded stretch of audio, and segments are cut
   afresh at each change. Settling at a pause kept a quick reading that a

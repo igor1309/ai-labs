@@ -82,7 +82,8 @@ Amanu's tap is the default to follow. Nothing read shows it wrong for its
 case: the scope and auto-start differ in Muesli because Muesli records
 everything from a calendar event, which Amanu does not. The one gap is the
 restart, which Amanu names itself. Audelin's 30 s files would let a rebuilt
-tap start a new file; whether v1 needs it is open.
+tap start a new file, so the capture fails and leaves retrying to the
+recorder ([spec](../spec/system-audio-capture/SPEC.md)).
 
 The adapter maps tap buffers to `AudioChunk`. Recording to disk is Session's
 job, not the adapter's.
