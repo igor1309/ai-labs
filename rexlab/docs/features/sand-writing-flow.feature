@@ -1,6 +1,7 @@
 Feature: Sand writing: Home navigation
   Scenario: Open and leave the sandbox
-    Given I am on Home in English or Russian
+    Given COMPARE is featured
+    And I am on Home in English or Russian
     Then I can find a sand-writing tile with a drawing symbol and uppercase name
     And it follows CARE so the existing columns keep their order
     When I open sand writing
