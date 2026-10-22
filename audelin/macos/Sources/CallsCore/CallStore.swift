@@ -63,15 +63,22 @@ public enum CallChange: Equatable, Sendable {
     case removed(CallID)
 }
 
-/// A running watch; it stops when cancelled or released.
-public final class CallWatch: Sendable {
-    private let stop: @Sendable () -> Void
+/// A running watch; it stops once, when cancelled or released.
+public final class CallWatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stop: (@Sendable () -> Void)?
 
     public init(stop: @escaping @Sendable () -> Void) { self.stop = stop }
 
-    public func cancel() { stop() }
+    public func cancel() {
+        let stop = lock.withLock {
+            defer { self.stop = nil }
+            return self.stop
+        }
+        stop?()
+    }
 
-    deinit { stop() }
+    deinit { cancel() }
 }
 
 public enum CallStoreError: Error, Equatable, Sendable {

@@ -29,3 +29,14 @@ jobs:
       - name: Run tests
         working-directory: audelin/macos
         run: swift test
+
+      # ADR-001 invariants 1-6, and the checker's own tests.
+      - name: Check module rules
+        working-directory: audelin/macos
+        run: |
+          python3 scripts/check_modules_test.py
+          python3 scripts/check-modules.py
+
+      - name: Build the app bundle
+        working-directory: audelin/macos
+        run: sh scripts/bundle.sh
