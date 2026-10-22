@@ -215,6 +215,20 @@ trailing punctuation token stretches its end by up to 5 s.
   Parakeet's, word for word, on both tracks.
 - Compute: 3.3–4.5% of real time for both models together.
 
+## Run 8 — Live text settling only where final (2026-10-22)
+
+The same call as run 7, after Live text stopped settling at a pause and
+Nemotron made its last word final once two chunks pass it with nothing new.
+The replay now also counts **Final, then changed**: a reported word that
+starts where a final word does but reads differently.
+
+| Same call | Words final | Final delay, median / p90 / max | Final, then changed |
+|---|---|---|---|
+| Nemotron | 69 / 24 | 1.1–1.3 / 2.3 / 2.3–2.7 s | 0 |
+
+- Nemotron's longest wait for a final word drops from 31 s to 2.7 s, and
+  no word it made final changed afterwards.
+
 ## Not yet measured
 
 - Selection while text is appending.

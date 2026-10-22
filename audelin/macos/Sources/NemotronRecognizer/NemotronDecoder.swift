@@ -13,6 +13,8 @@ extension NemotronRecognizer {
 /// The model's cumulative token stream, without language tags.
 private struct NemotronDecoder: TokenDecoder {
 
+    let chunk = 1.12
+
     private let manager: StreamingNemotronMultilingualAsrManager
 
     init() async throws {

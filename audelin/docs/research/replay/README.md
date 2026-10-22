@@ -32,5 +32,8 @@ reports by letters, within 1 s of each other's start:
 - **Final delay**: audio fed when it became final, minus its end.
 - **Shown, never final**: words shown that no final word replaced in place
   with the same text: how much live text changes after it shows.
+- **Final, then changed**: reported words that start where a final word
+  does but read differently: a recogniser breaking its promise; Live text
+  keeps the final one.
 - **Compute / audio**: time to hear the track over its length, model
   loading apart.

@@ -8,8 +8,7 @@
 // With --split, each channel of a file is a track of its own: Amanu keeps a
 // call as one stereo file, the mic on the left and the system on the right.
 //
-// --pause sets Live text's pause, 2 s by default; a pause settles the words
-// before it.
+// --pause sets Live text's pause, 2 s by default; a pause starts a segment.
 //
 // usage: audelin-replay <output-dir> <track>... [--only parakeet|nemotron|hybrid] [--split] [--pause <s>]
 import AVFoundation
@@ -217,8 +216,8 @@ func clock(_ seconds: Double) -> String {
 let summary = output.appendingPathComponent("summary.md")
 if !FileManager.default.fileExists(atPath: summary.path) {
     try """
-    | Track | Recogniser | Words final | Words settled | Shown delay, median / p90 / max | Final delay, median / p90 / max | Shown, never final | Compute / audio | Load |
-    |---|---|---|---|---|---|---|---|---|
+    | Track | Recogniser | Words final | Words settled | Shown delay, median / p90 / max | Final delay, median / p90 / max | Shown, never final | Final, then changed | Compute / audio | Load |
+    |---|---|---|---|---|---|---|---|---|---|
 
     """.write(to: summary, atomically: true, encoding: .utf8)
 }
@@ -254,15 +253,23 @@ for source in sources {
         // Every word a report calls final, once, with when it was first shown.
         var finals: [Timed] = []
         var shown: [(fed: Double, word: Word)] = []
+        var changedAfterFinal: [String] = []
+        var heard = Heard()
         for (fed, hearing) in await tap.reports {
             for word in hearing.words {
-                if recent(shown, { same($0.word, word) }) == nil { shown.append((fed, word)) }
-                if word.end <= hearing.finalThrough ?? -.infinity, recent(finals, { same($0.word, word) }) == nil {
-                    let first = recent(shown) { same($0.word, word) }?.fed ?? fed
-                    finals.append(Timed(word: word, shown: first, final: fed))
+                if let final = recent(finals, { $0.word.start == word.start && letters($0.word.text) != letters(word.text) }) {
+                    changedAfterFinal.append(String(format: "%.2f %@ → %@", word.start, final.word.text, word.text))
                 }
+                if recent(shown, { same($0.word, word) }) == nil { shown.append((fed, word)) }
+            }
+            // A report may only move the final time, over words reported before.
+            heard.take(hearing)
+            for word in heard.words.suffix(400) where word.end <= heard.finalThrough && recent(finals, { same($0.word, word) }) == nil {
+                let first = recent(shown) { same($0.word, word) }?.fed ?? fed
+                finals.append(Timed(word: word, shown: first, final: fed))
             }
         }
+        changedAfterFinal.forEach { print("\(name) \(model.name) final, then changed: \($0)") }
         let byStart = finals.sorted { $0.word.start < $1.word.start }
         var neverFinal = 0
         var next = 0
@@ -286,6 +293,7 @@ for source in sources {
             seconds(finals.map { $0.shown - $0.word.end }),
             seconds(finals.map { $0.final - $0.word.end }),
             String(format: "%d (%.1f%%)", neverFinal, 100 * Double(neverFinal) / Double(max(finals.count, 1))),
+            "\(changedAfterFinal.count)",
             String(format: "%.3f", compute / audio.duration),
             String(format: "%.1f s", load),
         ]

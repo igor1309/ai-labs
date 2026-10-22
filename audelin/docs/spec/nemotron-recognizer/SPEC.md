@@ -21,14 +21,18 @@ Live text's spec asks of a recogniser.
   inserts tokens at their time, among those of the audio it is decoding.
 - The last word heard may still grow: its next tokens can come with the
   next chunk, as «поэ» became «поэтому» in the probe. A word is final once
-  a later word has started.
+  a later word has started, or once the audio fed is two chunks past its
+  end with no new token: on a real call every word showed within 1.14 s
+  of its end (research run 7), so a second chunk with nothing new means
+  it is done. Without this, the last word before a long silence waited
+  31 s to be final; with it, at most 2.7 s (run 8).
 - Each report starts at the earliest word that is new, changed or was
   pending at the last report, so a word that grew or was inserted takes its
   place in Live text. Live text
   settles by time, so reports call words final only up to before the
   pending word ends; a final word overlapping it shows as final once it is.
-- A chunk that decodes no new token changes nothing, and the report says
-  so.
+- A chunk that decodes no new token changes no word, and the report says
+  so; it may make the last word final.
 - Audio at any sample rate is converted to the 16 kHz Nemotron takes.
 - Loading the model happens before Live text listens, and a failure to load
   is reported to whoever builds the recogniser, not to Live text.
@@ -58,6 +62,11 @@ Feature: Hearing a track with Nemotron
     Given Nemotron has decoded a word and nothing after it
     When I read the words
     Then I can read that word as pending
+
+  Scenario: S-10 The last word is final after two quiet chunks
+    Given Nemotron has decoded a word and nothing after it
+    When two chunks past its end decode no new token
+    Then I can read that word as final
 
   Scenario: S-5 A word that grows is read in its place
     Given a pending word

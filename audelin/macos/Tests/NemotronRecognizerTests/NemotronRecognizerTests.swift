@@ -76,6 +76,16 @@ struct NemotronRecognizerTests {
         #expect(updates.last?.all.map(\.settled) == ["первое второе"])
     }
 
+    @Test func theLastWordSettlesAfterTwoQuietChunks() async throws {
+
+        let recognizer = NemotronRecognizer(decoder: ScriptedDecoder([twoWords, twoWords, twoWords]))
+        let updates = await listen(recognizer, to: [silence(1.12), silence(1.12), silence(1.12)])
+
+        #expect(updates[1].all.map(\.pending) == ["второе"])
+        #expect(updates[2].all.map(\.settled) == ["первое второе"])
+        #expect(updates[2].all.map(\.pending) == [""])
+    }
+
     @Test func finishingHearsTheRest() async throws {
 
         let decoder = ScriptedDecoder([], finished: [token("▁остаток", 0.1, 0.4)])
@@ -287,6 +297,8 @@ struct NemotronRecognizerTests {
 private actor ScriptedDecoder: TokenDecoder {
 
     struct Failed: Error {}
+
+    let chunk = 1.12
 
     private var script: [[DecodedToken]]
     private var current: [DecodedToken] = []

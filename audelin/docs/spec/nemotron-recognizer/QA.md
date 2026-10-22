@@ -29,6 +29,13 @@ Two words decoded; the second ends after the report's final time.
 Evidence:
 `NemotronRecognizerTests.theLastWordHeardIsPending`.
 
+## S-10 The last word is final after two quiet chunks
+
+The scripted decoder returns the same two words, the last ending at
+0.9 s, for three 1.12 s chunks: it is pending after two and final after
+the third. Evidence:
+`NemotronRecognizerTests.theLastWordSettlesAfterTwoQuietChunks`.
+
 ## S-5 A word that grows is read in its place
 
 Through Live text: a chunk ends mid-word, the next adds its rest and a new

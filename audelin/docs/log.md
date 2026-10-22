@@ -6,6 +6,9 @@
   words final, within a bounded stretch of audio, and segments are cut
   afresh at each change. Settling at a pause kept a quick reading that a
   better one was about to replace (research run 7b).
+- Nemotron makes its last word final once two chunks pass it with nothing
+  new: its longest wait for a final word on the real call drops from 31 s
+  to 2.7 s, and no final word changed (research run 8).
 - Nemotron 3.5 hears Russian speech as it streams, settling each word when
   the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own
