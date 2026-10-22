@@ -18,7 +18,7 @@ under the working name wisper.
 | [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
 | [audelin-naming-brief.md](../audelin-naming-brief.md) | The chosen name: Audelin, CLI `audelin`, data in `~/.audelin` |
 | [audelin-availability-check.md](audelin-availability-check.md) | Collision search and score for Audelin; GitHub and App Store not yet confirmed directly |
-| [spike/](spike/) | CLI that runs a recording through Parakeet v3's sliding window |
+| [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `../design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
 | [design/README.md](../design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |
