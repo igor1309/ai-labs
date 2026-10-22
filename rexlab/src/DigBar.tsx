@@ -52,6 +52,28 @@ export function DigBar({
   );
 }
 
+// The picker of DIG's two brushes, before the FIELD GUIDE: each button a
+// dot, the wide brush's twice the brush's, the picked one pressed.
+export function BrushPicker({ language, wide, disabled, onWide }: {
+  language: Language;
+  wide: boolean;
+  // Once the sand is gone the picker rests until the next round.
+  disabled?: boolean;
+  onWide: (wide: boolean) => void;
+}) {
+  const text = TEXTS[language];
+  return (
+    <span className="dig-brush-picker">
+      {[false, true].map((option) => (
+        <Button key={String(option)} className="dig-brush-option" aria-label={option ? text.wideBrush : text.brush}
+          aria-pressed={wide === option} disabled={disabled} onClick={() => onWide(option)}>
+          <span className="dig-brush-dot" data-wide={option || undefined} aria-hidden="true" />
+        </Button>
+      ))}
+    </span>
+  );
+}
+
 export type FieldGuideButtonProps = {
   language: Language;
   // The treasures found, of every kind.
