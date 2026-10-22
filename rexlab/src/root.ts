@@ -5,6 +5,7 @@ import skeletonPlaces from "./data/skeletons.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { readDig, type DigFile } from "./dig/index.ts";
 import { documentVisibility } from "./documentVisibility.ts";
+import { SLIDE_DISTANCE } from "./dinosaurSlide.ts";
 import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
@@ -211,6 +212,7 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
+  const token = (name: string) => browser.getComputedStyle(browser.document.documentElement).getPropertyValue(name);
   const scrollbarWidth = () => {
     const clientWidth = Number((browser.document.documentElement as HTMLElement).clientWidth);
     return clientWidth > 0 ? Math.max(0, browser.innerWidth - clientWidth) : 0;
@@ -237,12 +239,12 @@ export function appProps(browser: Browser): AppProps {
     portraitLayouts: { home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"] },
     pictureMotion: {
       now: () => browser.performance.now(),
-      duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-screen")),
-      easing: browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--ease-out").trim(),
+      duration: Number.parseFloat(token("--motion-screen")),
+      easing: token("--ease-out").trim(),
       slide: {
-        duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-standard")),
-        delay: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-stagger")),
-        distance: 96 * Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-amount"))
+        duration: Number.parseFloat(token("--motion-standard")),
+        delay: Number.parseFloat(token("--motion-stagger")),
+        distance: SLIDE_DISTANCE * Number.parseFloat(token("--motion-amount"))
       }
     },
     // A chip's parts as the browser lays them out, which change with no

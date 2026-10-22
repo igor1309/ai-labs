@@ -5,11 +5,11 @@ import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } fr
 import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
-import { dinosaurSlide } from "./dinosaurSlide.ts";
-import { closingPicture, drawClosingPicture, type PictureMotion } from "./closingPicture.ts";
+import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
+import { dinosaurSlide } from "./dinosaurSlide.ts";
 import { dinosaurWordsWidth, keptLines } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
@@ -115,7 +115,7 @@ export type AppProps = CareGameProps &
     chipWidths: ChipWidths;
     // How the page's parts are found, measured and animated, and the page
     // cross-faded, as a screen goes to its other layout.
-    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation">;
+    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation" | "shifted" | "refit">;
     pictureTransition?: PictureTransition;
     pictureMotion: PictureMotion;
     pageVisibility: PageVisibility;
@@ -247,17 +247,7 @@ export function App({
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
   const [turns] = useState<TurnMotion>(() => turnMotion({
-    ...layoutMotion, continuation: closing.take, origins: sliding.take,
-    fit: (element, box) => {
-      if (!element.matches(".dinosaur-stage-art")) return undefined;
-      const picture = element.querySelector(".dinosaur-stage-picture");
-      if (!picture) return undefined;
-      const fitted = drawClosingPicture(picture, box);
-      fitted.element.removeAttribute("data-closing-picture");
-      fitted.element.setAttribute("data-fitted-picture", "");
-      return fitted;
-    },
-    reducedMotion: careProps.reducedMotion, startTimer
+    ...layoutMotion, continuation: closing.take, shifted: sliding.take, refit: refitPicture, reducedMotion: careProps.reducedMotion, startTimer
   }));
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
@@ -454,11 +444,8 @@ export function App({
   // layout, and its words may stand elsewhere: the turn measures its parts
   // afresh.
   useLayoutEffect(() => {
-    if (dinosaur) {
-      sliding.arrive();
-      turns.redrawn();
-    } else sliding.clear();
-  }, [turns, sliding, dinosaur]);
+    if (dinosaur) turns.redrawn();
+  }, [turns, dinosaur]);
   // Where the shared picture lands: the card come back to, whose row the
   // keeper puts back before it is read, so the native close and the
   // continuation agree, or the page opened.
@@ -503,7 +490,10 @@ export function App({
     );
 
   const step = (from: number, way: Step) =>
-    showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, { step: way, also: () => { if (!careProps.reducedMotion()) sliding.start(way); } });
+    showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, {
+      step: way,
+      also: () => { if (!careProps.reducedMotion()) sliding.start(way); }
+    });
 
   const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id }, {
     also: () => { if (!careProps.reducedMotion()) closing.start(shown[index]!.id); }

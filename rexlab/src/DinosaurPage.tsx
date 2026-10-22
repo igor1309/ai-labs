@@ -69,6 +69,10 @@ function Sliding({ late, children }: { late: boolean; children: ReactNode }) {
   );
 }
 
+// The lines kept, as the custom properties the stylesheet sizes the
+// description and the note by.
+const linesStyle = ({ description, note }: KeptLines) => ({ "--description-lines": description, "--note-lines": note });
+
 // Whether going from `from` to `to` turns the page to its other layout,
 // rather than following the window in the same one.
 const isTurn = (from: DinosaurLayout, to: DinosaurLayout) =>
@@ -85,12 +89,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
       applied.current = next;
       const page = main.current;
       if (!page) return;
-      page.dataset.descriptionLines = String(next.lines.description);
-      page.dataset.noteLines = String(next.lines.note);
-      page.style.setProperty("--description-lines", String(next.lines.description));
-      page.style.setProperty("--note-lines", String(next.lines.note));
-      page.querySelector(".dinosaur-description")?.setAttribute("data-lines", String(next.lines.description));
-      page.querySelector(".source-note")?.setAttribute("data-lines", String(next.lines.note));
+      for (const [property, value] of Object.entries(linesStyle(next.lines))) page.style.setProperty(property, String(value));
       // A turned page shows from its top. The stylesheet gives the root
       // and the body no overflow of their own, so the window scrolls the
       // page, through the root's scroll position.
@@ -101,7 +100,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
   // The bar, the stage and the words are the parts a turn glides, each
   // with the parts inside it that it would otherwise lay out anew at once.
   return (
-    <main ref={main} className="dinosaur-page" data-description-lines={lines.description} data-note-lines={lines.note} style={{ "--description-lines": lines.description, "--note-lines": lines.note } as CSSProperties}>
+    <main ref={main} className="dinosaur-page" style={linesStyle(lines) as CSSProperties}>
       <header className="dinosaur-bar" data-turn-part="dinosaur-bar">
         <Button className="home-button" data-turn-part="dinosaur-catalogue" onClick={onBack}>
           <BookOpen size={24} aria-hidden="true" />
@@ -136,7 +135,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
               <p className="dinosaur-group">{group ? text.groups[group] : ""}</p>
               <h1 className="dinosaur-page-name">{name.toLocaleUpperCase(language)}</h1>
               <DietTag diet={diet} language={language} size="medium" />
-              <p className="dinosaur-description" data-lines={lines.description}>{description}</p>
+              <p className="dinosaur-description">{description}</p>
               <div className="dinosaur-facts">
                 <p className="dinosaur-fact" data-turn-part="dinosaur-size">
                   <span className="dinosaur-fact-label">
@@ -155,7 +154,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
               </div>
             </div>
           </Sliding>
-          <p className="source-note" data-turn-part="dinosaur-note" data-lines={lines.note}>{text.sourceNote}</p>
+          <p className="source-note" data-turn-part="dinosaur-note">{text.sourceNote}</p>
         </div>
       </div>
     </main>

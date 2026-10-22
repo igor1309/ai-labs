@@ -61,25 +61,37 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
-  it.each([[632, 616, 16, 504, 5], [632, 632, 0, 520, 4]])("composes a %i window and %i layout viewport into the scrollbar and word bands", (width, clientWidth, scrollbar, words, description) => {
+  // The words of a dinosaur's page leave out a scrollbar that takes room:
+  // the window's width less its root's, which an overlay scrollbar leaves
+  // whole.
+  const wordsRoom = ({ viewport }: ReturnType<typeof appProps>) => {
+    const { left, right } = viewport.sideInsets();
+    const scrollbar = viewport.scrollbarWidth!();
+    const words = dinosaurWordsWidth(viewport.width(), left, right, scrollbar);
+    return { scrollbar, words, description: keptLines(words).description };
+  };
+
+  it.each([
+    ["a reserved", 616, 16, 504, 5],
+    ["an overlay", 632, 0, 520, 4]
+  ])("gives the app %s scrollbar's room in a 632-pixel window whose root is %i wide", (_, clientWidth, scrollbar, words, description) => {
     const given = browser({ portrait: true });
-    given.innerWidth = width;
+    given.resize(632);
     Object.assign(given.document.documentElement, { clientWidth });
-    const { viewport } = appProps(given);
-    const read = () => {
-      const { left, right } = viewport.sideInsets();
-      const room = dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth!());
-      return [viewport.scrollbarWidth!(), room, keptLines(room).description];
-    };
-    expect(read()).toEqual([scrollbar, words, description]);
-    const seen: number[][] = [];
-    const stop = viewport.subscribe(() => seen.push(read()));
+    expect(wordsRoom(appProps(given))).toEqual({ scrollbar, words, description });
+  });
+
+  it("reads the scrollbar's room afresh at each change of the window", () => {
+    const given = browser({ portrait: true });
+    const props = appProps(given);
+    const seen: Array<ReturnType<typeof wordsRoom>> = [];
+    const stop = props.viewport.subscribe(() => seen.push(wordsRoom(props)));
     Object.assign(given.document.documentElement, { clientWidth: 696 });
     given.resize(712);
     Object.assign(given.document.documentElement, { clientWidth: 712 });
     given.resize(712);
     stop();
-    expect(seen).toEqual([[16, 584, 4], [0, 600, 4]]);
+    expect(seen).toEqual([{ scrollbar: 16, words: 584, description: 4 }, { scrollbar: 0, words: 600, description: 4 }]);
   });
 
   it("reads progress, the chosen language, the chosen theme and the chosen age level from local storage", () => {

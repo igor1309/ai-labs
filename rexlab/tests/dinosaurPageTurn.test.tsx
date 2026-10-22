@@ -2,7 +2,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
+import { easedProgress } from "../src/closingPicture.ts";
 import { dinosaurPageGeometry, keptLines } from "../src/dinosaurPageLayout.ts";
+import { SLIDE_DISTANCE } from "../src/dinosaurSlide.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { drawnOpacity, extendPart, turnFrame } from "../src/root.ts";
@@ -19,6 +21,10 @@ import { openWindow } from "./windowSizes.ts";
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const SHARE = 320;
+// The next or previous creature's slide: its picture's, and its words'
+// after the stagger.
+const SLIDE = 240;
+const STAGGER = 40;
 // At Bezier parameter 0.5 of the ease out, the time gone is 0.3425 of the
 // whole and the progress 0.875.
 const SHARE_FRACTION = 0.3425;
@@ -42,9 +48,11 @@ const part = (name: string) => {
   return found;
 };
 const outerOf = (element: Element) => element.parentElement?.closest<HTMLElement>("[data-turn-part]") ?? undefined;
+// The description's and the note's kept lines, as the page sets them for
+// the stylesheet.
 const pageLines = () => {
-  const page = document.querySelector<HTMLElement>(".dinosaur-page")!;
-  return [page.dataset.descriptionLines, page.dataset.noteLines, document.querySelector<HTMLElement>(".dinosaur-description")!.dataset.lines, part("dinosaur-note").dataset.lines];
+  const { style } = document.querySelector<HTMLElement>(".dinosaur-page")!;
+  return [style.getPropertyValue("--description-lines"), style.getPropertyValue("--note-lines")];
 };
 
 // Every part of the page, from the bar to the note.
@@ -129,7 +137,7 @@ function measureFor(scrollbar: () => number) {
   };
 }
 
-async function openPage(from: Window, { id = "baryonyx", language = "en", reduced = false, scrollbar = 0, list = false }: { id?: string; language?: Language; reduced?: boolean; scrollbar?: number; list?: boolean } = {}) {
+async function openPage(from: Window, { id = "baryonyx", language = "en", reduced = false, scrollbar = 0, list = false, slide = true }: { id?: string; language?: Language; reduced?: boolean; scrollbar?: number; list?: boolean; slide?: boolean } = {}) {
   openWindow(from[0], from[1]);
   const viewport = { ...manualViewport(from[2] === "tall" ? "portrait" : "landscape"), scrollbarWidth: () => scrollbar };
   const pictures = manualPictures();
@@ -156,7 +164,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
       {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()}
       chipWidths={emChipWidths()}
       reducedMotion={() => reduced}
-      pictureMotion={{ now: () => clock, duration: SHARE, easing: EASE_OUT, slide: { duration: GLIDE, delay: 40, distance: 96 } }}
+      pictureMotion={{ now: () => clock, duration: SHARE, easing: EASE_OUT, ...(slide ? { slide: { duration: SLIDE, delay: STAGGER, distance: SLIDE_DISTANCE } } : {}) }}
       layoutMotion={{
         parts: document,
         measure,
@@ -229,8 +237,16 @@ function expectGlides(app: Awaited<ReturnType<typeof openPage>>, before: Map<str
   // Translation and clip only: nothing is scaled, squashed or faded.
   expect(glides.flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
   expect(app.animations.filter(({ name, cancelled }) => name.startsWith("frame of ") && !cancelled).flatMap(({ keyframes }) => keyframes.flatMap(Object.keys)).filter((property) => !["translate", "width", "height"].includes(property))).toEqual([]);
+  // A picture that changes size travels as a copy fitted whole, from its
+  // old box to its new one.
   const names = new Set(glides.map(({ name }) => name));
-  if (app.animations.some(({ name, cancelled }) => name === "fitted-picture" && !cancelled)) names.add("dinosaur-picture");
+  const fitted = app.animations.filter(({ name, cancelled }) => name === "fitted-picture" && !cancelled);
+  for (const { keyframes, options } of fitted) {
+    expectBox(keyframeBox(keyframes[0]), before.get("dinosaur-picture")!);
+    expectBox(keyframeBox(keyframes[1]), after.get("dinosaur-picture")!);
+    expect(options).toEqual({ duration: GLIDE, easing: EASE_OUT });
+    names.add("dinosaur-picture");
+  }
   return names;
 }
 
@@ -319,8 +335,8 @@ describe("a dinosaur's page turning", () => {
 
 describe("the lines kept as a dinosaur's page turns", () => {
   it.each([
-    [[744, 1133, "tall"], [820, 1180, "tall"], ["4", "3", "4", "3"], ["3", "3", "3", "3"]],
-    [[600, 800, "tall"], [744, 1133, "tall"], ["5", "4", "5", "4"], ["4", "3", "4", "3"]]
+    [[744, 1133, "tall"], [820, 1180, "tall"], ["4", "3"], ["3", "3"]],
+    [[600, 800, "tall"], [744, 1133, "tall"], ["5", "4"], ["4", "3"]]
   ] as const)("captures the Russian page from %j with its old lines, and fades to the new lines at %j", async (from, to, old, now) => {
     const app = await openPage(from, { language: "ru", reduced: true });
     expect(pageLines()).toEqual(old);
@@ -337,10 +353,10 @@ describe("the lines kept as a dinosaur's page turns", () => {
     [[820, 1180, "tall"], [834, 1194, "tall"], ["3", "3"], ["3", "3"], false]
   ] as const)("resizes the Russian page of Baryonyx from %j to %j, gliding only where the kept lines change", async (from, to, old, now, glides) => {
     const app = await openPage(from, { language: "ru" });
-    expect(pageLines().slice(0, 2)).toEqual(old);
+    expect(pageLines()).toEqual(old);
     const before = app.boxes();
     app.resize(to);
-    expect(pageLines().slice(0, 2)).toEqual(now);
+    expect(pageLines()).toEqual(now);
     const moving = expectGlides(app, before);
     expect(app.fades).toEqual([]);
     if (glides) {
@@ -353,28 +369,29 @@ describe("the lines kept as a dinosaur's page turns", () => {
   });
 });
 
-describe("independent upright line-band changes", () => {
+describe("a dinosaur's page turning as one band of kept lines changes", () => {
+  // Across 520, 600 and 656 pixels of words, Russian: the description
+  // alone, the note alone, the description alone changes its lines.
   it.each([631, 711, 767].flatMap((width) => [false, true].flatMap((reduced) => [false, true].map((back) => ({
     from: back ? width + 1 : width, to: back ? width : width + 1, reduced
-  })))))("turns from $from to $to with reduced motion $reduced", async ({ from, to, reduced }) => {
+  })))))("turns from $from to $to by 1366, reduced motion $reduced", async ({ from, to, reduced }) => {
     const app = await openPage([from, 1366, "tall"], { language: "ru", reduced });
     const old = keptLines(from - 112);
     const next = keptLines(to - 112);
     expect(Number(old.description !== next.description) + Number(old.note !== next.note)).toBe(1);
+    const before = app.boxes();
     app.resize([to, 1366, "tall"]);
     expect(app.turning()).toBe(true);
     if (reduced) {
-      expect(pageLines().slice(0, 2)).toEqual([String(old.description), String(old.note)]);
+      expect(pageLines()).toEqual([String(old.description), String(old.note)]);
       expect(app.animations).toEqual([]);
       expect(app.fades).toHaveLength(1);
       app.updateFade();
     } else {
       expect(app.fades).toEqual([]);
-      expect(app.animations.some(({ name }) => name === "dinosaur-stage")).toBe(true);
+      expect([...expectGlides(app, before)].filter((name) => name === "dinosaur-stage" || name === "dinosaur-words")).toEqual(["dinosaur-stage", "dinosaur-words"]);
     }
-    const page = document.querySelector<HTMLElement>(".dinosaur-page")!;
-    expect([page.style.getPropertyValue("--description-lines"), page.style.getPropertyValue("--note-lines")]).toEqual([String(next.description), String(next.note)]);
-    expect(pageLines().slice(0, 2)).toEqual([String(next.description), String(next.note)]);
+    expect(pageLines()).toEqual([String(next.description), String(next.note)]);
     if (reduced) app.endFade(); else app.settle();
     expect(app.turning()).toBe(false);
   });
@@ -398,7 +415,7 @@ describe("a scrolled dinosaur's page turning", () => {
     scrollTo(300);
     const before = app.boxes();
     app.resize(WIDER);
-    expect([document.documentElement.scrollTop, pageLines().slice(0, 2)]).toEqual([0, ["4", "4"]]);
+    expect([document.documentElement.scrollTop, pageLines()]).toEqual([0, ["4", "4"]]);
     expectGlides(app, before);
     expect(app.animations.find(({ name }) => name === "dinosaur-bar")?.keyframes[0]?.translate).toBe("0px -300px");
     app.settle();
@@ -468,46 +485,73 @@ describe("a dinosaur's page turning while its picture grows from its card", () =
 });
 
 describe("a dinosaur's page turning while the next creature slides in", () => {
+  // At Bezier parameter 0.1 of the ease out, the time gone is 0.06418 of
+  // the whole and the progress 0.271: the picture has begun to slide in,
+  // its words not yet. At 0.5 of the words' slide, the picture's is
+  // further on.
+  const late = STAGGER + SLIDE * SHARE_FRACTION;
   it.each([
-    ["next", "APATOSAURUS", GLIDE * 0.06418, 0, 0.271],
-    ["previous", "KENTROSAURUS", GLIDE * 0.06418, 0, 0.271],
-    ["next", "APATOSAURUS", 40 + GLIDE * SHARE_FRACTION, SHARE_PROGRESS, 0.9641388448548567],
-    ["previous", "KENTROSAURUS", 40 + GLIDE * SHARE_FRACTION, SHARE_PROGRESS, 0.9641388448548567]
-  ] as const)("continues %s at %s after %i ms, including the words' delayed entrance", async (way, name, elapsed, wordsProgress, pictureProgress) => {
+    ["next", "APATOSAURUS", SLIDE * 0.06418, 0.271, 0],
+    ["previous", "KENTROSAURUS", SLIDE * 0.06418, 0.271, 0],
+    ["next", "APATOSAURUS", late, easedProgress(EASE_OUT)!(late / SLIDE), SHARE_PROGRESS],
+    ["previous", "KENTROSAURUS", late, easedProgress(EASE_OUT)!(late / SLIDE), SHARE_PROGRESS]
+  ] as const)("lets the %s creature, %s, arrive whole from where its slide draws it %f ms in", async (way, name, elapsed, pictureProgress, wordsProgress) => {
     const app = await openPage(LANDSCAPE);
     await app.user.click(screen.getByRole("button", { name: way === "next" ? TEXTS.en.nextDinosaur : TEXTS.en.previousDinosaur }));
+    // The slide runs on snapshots: the creature's parts stand at rest.
     const before = app.boxes();
     const about = part("dinosaur-about");
     app.advance(elapsed);
     app.resize(UPRIGHT);
-    const direction = way === "next" ? 1 : -1;
-    const words = app.animations.find(({ name }) => name === "dinosaur-about")!;
-    const outer = before.get("dinosaur-words")!;
-    const old = before.get("dinosaur-about")!;
+    const shift = (progress: number) => (way === "next" ? 1 : -1) * SLIDE_DISTANCE * (1 - progress);
     const after = app.boxes();
-    const now = after.get("dinosaur-about")!;
-    const newOuter = after.get("dinosaur-words")!;
+    const relative = (boxes: Map<string, Box>, name: string, outer: string) => boxes.get(name)!.left - boxes.get(outer)!.left;
+    const words = app.animations.find(({ name }) => name === "dinosaur-about")!;
     const [x, y] = String(words.keyframes[0]!.translate).split(" ").map(px);
-    expect(x).toBeCloseTo(old.left + direction * 96 * (1 - wordsProgress) - outer.left - (now.left - newOuter.left), 6);
-    expect(y).toBeCloseTo(old.top - outer.top - (now.top - newOuter.top), 6);
+    expect(x).toBeCloseTo(relative(before, "dinosaur-about", "dinosaur-words") + shift(wordsProgress) - relative(after, "dinosaur-about", "dinosaur-words"), 6);
+    expect(y).toBeCloseTo(before.get("dinosaur-about")!.top - before.get("dinosaur-words")!.top - (after.get("dinosaur-about")!.top - after.get("dinosaur-words")!.top), 6);
     expect([words.keyframes[0]!.opacity, words.keyframes[1]!.opacity]).toEqual([expect.closeTo(wordsProgress, 6), 1]);
-    // The facts share the about's slide and fade, without repeating it.
+    // The facts share the about's slide and fade, without repeating them.
     for (const fact of ["dinosaur-size", "dinosaur-mass"]) {
       const animation = app.animations.find(({ name }) => name === fact)!;
       const [dx] = String(animation.keyframes[0]!.translate).split(" ").map(px);
-      expect(dx).toBeCloseTo(before.get(fact)!.left - old.left - (after.get(fact)!.left - now.left), 6);
+      expect(dx).toBeCloseTo(relative(before, fact, "dinosaur-about") - relative(after, fact, "dinosaur-about"), 6);
       expect(animation.keyframes[0]!.opacity).toBeUndefined();
     }
     const picture = app.animations.find(({ name }) => name === "fitted-picture")!;
-    const from = keyframeBox(picture.keyframes[0]);
-    const opacity = Number(picture.keyframes[0]!.opacity);
-    expect(opacity).toBeCloseTo(pictureProgress, 6);
-    expect(from.left).toBeCloseTo(before.get("dinosaur-picture")!.left + direction * 96 * (1 - opacity), 6);
-    expectBox({ ...from, left: before.get("dinosaur-picture")!.left }, before.get("dinosaur-picture")!);
+    const resting = before.get("dinosaur-picture")!;
+    expectBox(keyframeBox(picture.keyframes[0]), { ...resting, left: resting.left + shift(pictureProgress) });
     expectBox(keyframeBox(picture.keyframes[1]), after.get("dinosaur-picture")!);
+    expect([picture.keyframes[0]!.opacity, picture.keyframes[1]!.opacity]).toEqual([expect.closeTo(pictureProgress, 6), 1]);
     expect([heading(), part("dinosaur-about"), app.turning()]).toEqual([name, about, true]);
     app.settle();
     expect([heading(), app.turning(), document.querySelector("[data-fitted-picture]")]).toEqual([name, false, null]);
+  });
+
+  it.each([
+    ["its slide just over", STAGGER + SLIDE, true],
+    ["long after its slide", 500, true],
+    ["mid-slide, with no slide timing given", SLIDE * 0.06418, false]
+  ] as const)("glides the creature from its resting place, %s", async (_, elapsed, slide) => {
+    const app = await openPage(LANDSCAPE, { slide });
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.nextDinosaur }));
+    const before = app.boxes();
+    app.advance(elapsed);
+    app.resize(UPRIGHT);
+    expect(expectGlides(app, before)).toEqual(new Set(PAGE_PARTS.filter((name) => name !== "dinosaur-catalogue")));
+    app.settle();
+  });
+
+  it("drops the slide at the window's first change, which the browser ends it with", async () => {
+    const app = await openPage(UPRIGHT);
+    await app.user.click(screen.getByRole("button", { name: TEXTS.en.nextDinosaur }));
+    app.advance(SLIDE * 0.06418);
+    app.resize([834, 1194, "tall"]);
+    expect([app.animations, app.turning()]).toEqual([[], false]);
+    const before = app.boxes();
+    app.resize(LANDSCAPE);
+    expect(expectGlides(app, before)).toEqual(new Set(PAGE_PARTS.filter((name) => name !== "dinosaur-catalogue")));
+    app.settle();
   });
 });
 

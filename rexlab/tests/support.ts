@@ -366,7 +366,8 @@ export function browserDocument(initial: DocumentVisibilityState = "visible", { 
   const document = Object.assign(target, {
     visibilityState: initial,
     getElementById: (id: string) => (versionFooter && id === "version" ? footer : null),
-    // The root exposes the layout viewport width as well as its style.
+    // The root, whose computed style the browser reads, as wide as the
+    // window: no scrollbar takes room.
     documentElement: { clientWidth: 1024 } as HTMLElement,
     // No part of the page is marked to move as the window turns.
     querySelectorAll: (() => []) as unknown as ParentNode["querySelectorAll"]

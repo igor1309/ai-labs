@@ -64,6 +64,30 @@ async function openPage(size: WindowSize, {
   return { user, viewport, pictures, cardPicture };
 }
 
+// The lines the page keeps, as the custom properties it sets.
+const pageLines = () => {
+  const style = part(".dinosaur-page").style;
+  return { description: Number(style.getPropertyValue("--description-lines")), note: Number(style.getPropertyValue("--note-lines")) };
+};
+
+// The height a tall rule of the form calc(var(--lines, fallback) * line
+// height) gives `selector`, with the lines from the nearest element around
+// it that sets them, as a browser resolves it. jsdom does not.
+function keptHeight(selector: string, size: WindowSize) {
+  const height = styleAt(part(selector), size).value("height");
+  const [, property = "", fallback = "", lineHeight = ""] = /^calc\(var\((--[\w-]+), (\d+)\) \* ([\d.]+)px\)$/.exec(height) ?? [];
+  if (!property) throw new Error(`${selector} is ${height}, not sized by its kept lines`);
+  let lines = fallback;
+  for (let element: HTMLElement | null = part(selector); element; element = element.parentElement) {
+    const set = element.style.getPropertyValue(property);
+    if (set) {
+      lines = set;
+      break;
+    }
+  }
+  return Number(lines) * Number(lineHeight);
+}
+
 // The CSS contracts under which the width and spacing sums hold. jsdom
 // does not lay out boxes, so every structural assumption is checked here.
 function uprightRules(size: WindowSize, width: number) {
@@ -118,21 +142,16 @@ function uprightRules(size: WindowSize, width: number) {
   expect(at(".dinosaur-fact-label").px("font-size")).toBe(sizes.factLabelSize);
   expect(at(".dinosaur-fact-value").value("white-space")).toBe("nowrap");
   expect(at(".dinosaur-fact-value").value("font-size")).toBe(`min(${sizes.factValueMaximum}px, ${sizes.factValueRatio * 100}cqi)`);
-  expect([part(".dinosaur-page").dataset.descriptionLines, part(".dinosaur-page").dataset.noteLines]).toEqual([String(keptLines(width).description), String(keptLines(width).note)]);
-  expect(part(".dinosaur-description").dataset.lines).toBe(String(keptLines(width).description));
-  expect(part(".source-note").dataset.lines).toBe(String(keptLines(width).note));
   expect([at(".dinosaur-description").px("font-size"), at(".dinosaur-description").px("line-height"), at(".source-note").px("font-size"), at(".source-note").px("line-height")]).toEqual([28, sizes.descriptionLineHeight, 13, sizes.noteLineHeight]);
   expect(at(".dinosaur-description").value("height")).toBe(`calc(var(--description-lines, 3) * ${sizes.descriptionLineHeight}px)`);
   expect(at(".source-note").value("height")).toBe(`calc(var(--note-lines, 3) * ${sizes.noteLineHeight}px)`);
-  const lines = keptLines(width);
-  const properties = part(".dinosaur-page").style;
-  expect([properties.getPropertyValue("--description-lines"), properties.getPropertyValue("--note-lines")]).toEqual([String(lines.description), String(lines.note)]);
-  for (const [selector, property, lineHeight] of [["dinosaur-description", "description", sizes.descriptionLineHeight], ["source-note", "note", sizes.noteLineHeight]] as const) {
-    const rule = appStylesheet(NO_SAFE_AREA).split(`html[data-size="tall"] .${selector} {`)[1]!.split("}")[0]!;
-    expect(rule).toContain(`height: calc(var(--${property}-lines, 3) * ${lineHeight}px);`);
-    expect(rule).not.toContain("attr(");
-    expect(Number(properties.getPropertyValue(`--${property}-lines`)) * lineHeight).toBe(lines[property] * lineHeight);
-  }
+  expect(pageLines()).toEqual(keptLines(width));
+  expect([keptHeight(".dinosaur-description", size), keptHeight(".source-note", size)]).toEqual([
+    keptLines(width).description * sizes.descriptionLineHeight, keptLines(width).note * sizes.noteLineHeight
+  ]);
+  // The custom properties are the one source: typed attr(), which Safari
+  // on the iPad may not support, reads nothing.
+  expect(appStylesheet(NO_SAFE_AREA)).not.toContain("attr(");
   expect([at(".dinosaur-description").value("font-weight"), at(".source-note").value("font-weight"), at(".dinosaur-page-name").value("font-weight"), at(".dinosaur-fact-value").value("font-weight")]).toEqual(["500", "400", "700", "700"]);
 }
 
@@ -158,17 +177,18 @@ describe("the app's dinosaur page upright", () => {
     const viewport = { ...manualViewport("portrait", { left, right }), scrollbarWidth: () => scrollbar };
     await openPage([width, height], { viewport });
     expect(dinosaurWordsWidth(width, left, right, scrollbar)).toBe(words);
-    expect([part(".dinosaur-page").style.getPropertyValue("--description-lines"), part(".dinosaur-page").style.getPropertyValue("--note-lines")]).toEqual([String(description), String(note)]);
-    expect([part(".dinosaur-page").dataset.descriptionLines, part(".dinosaur-page").dataset.noteLines]).toEqual([String(description), String(note)]);
+    expect(pageLines()).toEqual({ description, note });
   });
 
-  it("applies the Russian note's four lines initially and updates both height budgets with the bands", async () => {
+  it("keeps the Russian note's four lines at 632 by 1366, and resizes both heights as the bands change", async () => {
     const viewport = manualViewport("portrait");
     await openPage([632, 1366], { language: "ru", viewport });
-    uprightRules([632, 1366], 520);
-    for (const width of [631, 712, 768, 632]) {
+    const { descriptionLineHeight, noteLineHeight } = PORTRAIT_PAGE;
+    expect([keptHeight(".dinosaur-description", [632, 1366]), keptHeight(".source-note", [632, 1366])]).toEqual([4 * descriptionLineHeight, 4 * noteLineHeight]);
+    for (const [width, description, note] of [[631, 5, 4], [712, 4, 3], [768, 3, 3], [632, 4, 4]] as const) {
       openWindow(width, 1366);
       act(() => viewport.resize("tall", true));
+      expect([keptHeight(".dinosaur-description", [width, 1366]), keptHeight(".source-note", [width, 1366])]).toEqual([description * descriptionLineHeight, note * noteLineHeight]);
       uprightRules([width, 1366], width - 112);
     }
   });
@@ -183,7 +203,7 @@ describe("the app's dinosaur page upright", () => {
       expect(group.textContent).toBe(creature.group === "dinosaur" ? "" : TEXTS[language].groups[creature.group]);
       expect(group.nextElementSibling).toBe(part(".dinosaur-page-name"));
       expect([getComputedStyle(group).minHeight, getComputedStyle(group).lineHeight, getComputedStyle(group).marginBottom]).toEqual(["22px", "22px", "-16px"]);
-      expect([part(".dinosaur-page").dataset.descriptionLines, part(".dinosaur-page").dataset.noteLines]).toEqual(["3", "3"]);
+      expect(pageLines()).toEqual({ description: 3, note: 3 });
       fireEvent.click(screen.getByRole("button", { name: TEXTS[language].nextDinosaur }));
     }
   });

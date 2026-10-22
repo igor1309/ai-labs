@@ -1,5 +1,8 @@
 import type { Box, PictureContinuation, TurnFrame, TurnMotionSeams } from "./turnMotion.ts";
 
+// The screen transitions' clock, and the timing and easing of the
+// picture shared between a card and its page; with `slide`, of the next
+// or previous creature sliding in, its words `delay` after its picture.
 export type PictureMotion = { now(): number; duration: number; easing: string; slide?: { duration: number; delay: number; distance: number } };
 
 // The eased progress of a CSS `cubic-bezier()` at a fraction of its time,
@@ -24,14 +27,14 @@ export function easedProgress(easing: string): ((fraction: number) => number) | 
 
 // A fixed copy avoids the clips and translations on the card and list, or
 // on the stage. The laid-out picture keeps its space until the copy lands
-// there.
-export function drawClosingPicture(element: Element, box: Box): TurnFrame {
+// there. `marker` names what the copy is drawn for.
+function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame {
   const image = element as HTMLElement;
   const copy = image.cloneNode(true) as HTMLElement;
   copy.removeAttribute("id");
   copy.setAttribute("aria-hidden", "true");
   copy.setAttribute("inert", "");
-  copy.setAttribute("data-closing-picture", "");
+  copy.setAttribute(marker, "");
   Object.assign(copy.style, {
     position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px`,
     maxWidth: "none", maxHeight: "none", margin: "0", zIndex: "100", objectFit: "contain", pointerEvents: "none", animation: "none", transition: "none"
@@ -46,6 +49,15 @@ export function drawClosingPicture(element: Element, box: Box): TurnFrame {
 // catalogue, and on the stage of its page.
 const cardPicture = (id: string) => `.catalogue-card[data-id="${id}"] .catalogue-picture`;
 const PAGE_PICTURE = ".dinosaur-stage-picture";
+
+// The page's picture as a turn resizes its stage. Laid out in place, it
+// would take its new size at once, fitted whole in its new box, so a copy
+// travels in a box that changes with the stage, as the closing picture
+// does.
+export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : undefined;
+  return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
+}
 
 // The shared picture a screen transition is still drawing, from the page
 // into its card as the page closes (`start`), or from its card into the
@@ -81,7 +93,7 @@ export function closingPicture({ parts, measure }: Pick<TurnMotionSeams, "parts"
       const { element, box: target } = kept.target;
       const at = (key: keyof Box) => kept.from[key] + (target[key] - kept.from[key]) * progress;
       const box = { left: at("left"), top: at("top"), width: at("width"), height: at("height") };
-      return { element, box, draw: (destination) => drawClosingPicture(element, destination) };
+      return { element, box, draw: (destination) => drawPictureCopy(element, destination, "data-closing-picture") };
     }
   };
 }
