@@ -78,12 +78,12 @@ A Core Audio process tap, because:
 - it needs the narrower permission;
 - it is what Amanu, the app the owner liked most, does.
 
-Amanu's tap is the default to follow. Nothing read shows it wrong for its
-case: the scope and auto-start differ in Muesli because Muesli records
-everything from a calendar event, which Amanu does not. The one gap is the
-restart, which Amanu names itself. Audelin's 30 s files would let a rebuilt
-tap start a new file, so the capture fails and leaves retrying to the
-recorder ([spec](../spec/system-audio-capture/SPEC.md)).
+Nothing read shows Amanu's tap wrong for the call: Muesli's scope and
+start differ because it records everything from a calendar event. The one
+gap is the restart, which Amanu names itself. How Audelin splits the work
+follows its own architecture, not Amanu's classes: the tap is one adapter,
+the process list another, and choosing the call's processes is a Core
+([specs](../spec/system-audio-capture/SPEC.md)).
 
 The adapter maps tap buffers to `AudioChunk`. Recording to disk is Session's
 job, not the adapter's.
