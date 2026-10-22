@@ -2,6 +2,7 @@
 
 ## 2026-10-22
 
+- A dinosaur's page stands upright in a tall window instead of asking to turn: the picture on a full-width stage with the arrows beside it, the words under it, the name as large as fits, every word fitting in English and Russian, and the page's parts staying put from one creature to the next. Turning the iPad glides the bar, the picture and the words to their new places, and a picture growing from its card lands in the turned stage (LAB-377).
 - DIG has two brushes: a picker on its bar, before the FIELD GUIDE, chooses the brush or a wide brush twice as big (96 CSS pixels at Hatchling, 72 above). DIG opens with the brush, and the pick stays through rounds, levels and the FIELD GUIDE until the child goes home (LAB-398).
 - The catalogue stands upright in a tall window: fewer cards to a row rather than smaller names (two on an iPad mini, three on an iPad Air, four on a 13-inch iPad), the food chips on a row of their own under HOME, fitting in Russian, and the cards rising in row by row. Turning the iPad glides HOME, the chips and every card to their new places, keeping the row the child was looking at; a picture shrinking back into its card as the iPad turns lands in the card's new place (LAB-376).
 
