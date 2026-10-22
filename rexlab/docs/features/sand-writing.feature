@@ -30,7 +30,9 @@ Feature: Sand writing: a full-screen free drawing canvas
     When the active pointer is cancelled or loses capture
     Then drawing stops until a new pointer begins a stroke
     And opening the picker or pressing Home creates no drawing marks
-    And controls follow the shared double-tap protection
+    And controls and canvas input follow the shared double-tap protection
+    And a whole stroke begun within 500 ms and 100 CSS pixels of a tap release is swallowed
+    And a stroke after a drag opens no such window and draws normally
 
   Scenario: Clear from inside the tip picker
     Given I have drawn some marks
@@ -42,7 +44,18 @@ Feature: Sand writing: a full-screen free drawing canvas
   Scenario: Resizing preserves the drawing
     Given I have drawn some marks
     When the viewport resizes or turns and back
-    Then the marks remain without being cleared
+    Then marks keep their original CSS pixel coordinates and widths from the top-left
+    And marks outside the smaller viewport are clipped, not deleted
+    And turning back reveals marks near both original opposite edges again
     And the canvas fills the new viewport with no scrolling
     And subsequent strokes still use the selected CSS pixel tip width
     And the controls remain reachable within the safe areas
+
+  Scenario: Choosing a different tip changes only subsequent strokes
+    Given I have drawn with the default 4 CSS pixel tip
+    When I choose the 8 CSS pixel tip from the picker
+    Then the picker indicates that 8 is selected
+    And new strokes are 8 CSS pixels across
+    And existing marks keep their original widths
+    When I choose the 2 CSS pixel tip
+    Then subsequent strokes are 2 CSS pixels across
