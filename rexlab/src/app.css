@@ -5229,6 +5229,65 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   white-space: nowrap;
 }
 
+/* On the board the title's words shrink to the room the brush picker,
+   the FIELD GUIDE and DUG UP leave beside the brush, as the FIELD GUIDE's
+   do: their letters are at most 0.75 of their size wide. */
+.dig-board-screen .dig-title {
+  container-type: inline-size;
+}
+
+.dig-board-screen .dig-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.75));
+}
+
+/* The brush picker before the FIELD GUIDE: a pill as tall as its
+   button, two buttons in it, each a dot, the wide brush's twice the
+   brush's; the picked one is filled in DIG's amber, its dot dark. */
+.dig-brush-picker {
+  flex-shrink: 0;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 18px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+  background: #fffdf8;
+}
+
+.dig-brush-option {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.dig-brush-option[aria-pressed="true"] {
+  background: #e39b2d;
+}
+
+.dig-brush-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e39b2d;
+}
+
+.dig-brush-dot[data-wide] {
+  width: 28px;
+  height: 28px;
+}
+
+.dig-brush-option[aria-pressed="true"] .dig-brush-dot {
+  background: #1d2742;
+}
+
 /* The FIELD GUIDE's button beside DUG UP: the book and the count of
    treasures found, ringed in amber once one lands, with NEW! above it
    for the first of a kind. */
@@ -7908,6 +7967,20 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 
 [data-theme="dark"] .dig-chip {
   background: #222a3d;
+}
+
+[data-theme="dark"] .dig-brush-picker {
+  outline-color: #ece8de1f;
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-brush-option[aria-pressed="true"],
+[data-theme="dark"] .dig-brush-dot {
+  background: #f2b24b;
+}
+
+[data-theme="dark"] .dig-brush-option[aria-pressed="true"] .dig-brush-dot {
+  background: #181e2e;
 }
 
 [data-theme="dark"] .dig-field-guide-button {

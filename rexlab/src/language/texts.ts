@@ -175,6 +175,9 @@ export type Texts = {
   // the mark by it as the first treasure of a kind lands.
   fieldGuide: string;
   treasureNew: string;
+  // The brush picker's two buttons, read out.
+  brush: string;
+  wideBrush: string;
   // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
   // found, read out on their count, and each kind's name.
   treasureCards: string;

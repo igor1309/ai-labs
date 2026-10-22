@@ -33,8 +33,11 @@ The one interaction at every level.
   the sand blows off in one stroke over about 0.8 s, so no child hunts for the last grains:
   at Hatchling at 95% of the dinosaur's cells, so the child digs the
   whole dinosaur; at Explorer and Paleontologist at the right pick.
-- **The brush is a size a finger can steer.** 48 CSS pixels across at
-  Hatchling, 36 at Explorer and Paleontologist.
+- **Two brushes, each a size a finger can steer.** The brush is 48 CSS
+  pixels across at Hatchling, 36 at Explorer and Paleontologist; the
+  wide brush is twice that, 96 and 72. A picker on DIG's bar chooses
+  between them; DIG opens with the brush, and the pick stays while DIG
+  is open (LAB-398).
 
 ## The levels
 
