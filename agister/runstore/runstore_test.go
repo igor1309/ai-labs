@@ -178,6 +178,9 @@ func TestARecordIsWrittenInTheShapeOfItsSchema(t *testing.T) {
 	if reuses, ok := call.Calls[0]["reuses"]; !ok || reuses != nil {
 		t.Errorf("record.json holds the call %v, want its reuses null", call.Calls[0])
 	}
+	if primary, ok := call.Calls[0]["primary"]; !ok || primary != nil {
+		t.Errorf("record.json holds the call %v, want its primary null", call.Calls[0])
+	}
 	if inputs, ok := call.Calls[0]["inputs"]; !ok || !reflect.DeepEqual(inputs, []any{}) {
 		t.Errorf("record.json holds the call %v, want its inputs []", call.Calls[0])
 	}
@@ -218,6 +221,52 @@ func TestAReuseIsWrittenAsTheIDsItReuses(t *testing.T) {
 	}
 	if back, err := s.Record("x"); err != nil || !reflect.DeepEqual(back, record) {
 		t.Errorf("given back %+v, %v; want %+v", back, err, record)
+	}
+}
+
+// runstore.feature, "A call made again on its fallback keeps its
+// primary": the call's agent is the fallback, and its primary the agent
+// it was made on first, its permission lists empty where none, and how
+// that ended, given back as written.
+//
+// Contract test: the operating system's filesystem.
+func TestACallMadeAgainOnItsFallbackKeepsItsPrimary(t *testing.T) {
+	t.Parallel()
+	s, runs := store(t)
+	record := lost("x")
+	class, reason, session := "capacity", "4 of 4 turns at capacity: busy", "s0"
+	primary := runstore.Primary{Agent: "codex-sol-61", Result: runstore.CallResult{Session: &session, Outcome: runstore.Outcome{
+		Status: "failed", Class: &class, Reason: &reason, Warnings: []string{},
+		Timing: runstore.Timing{Started: started, Ended: started.Add(4 * time.Minute), DurationMS: 240000}}}}
+	record.Calls = []runstore.Call{{ID: "x/a", Step: "a", Agent: "claude-opus", Inputs: []runstore.Input{},
+		Permissions: emptyPermissions(), Environment: []runstore.Variable{}, Primary: &primary}}
+	if err := s.Write(record); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(runs, "x", "record.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Calls []struct {
+			Agent   string         `json:"agent"`
+			Primary map[string]any `json:"primary"`
+		} `json:"calls"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Calls) != 1 || got.Calls[0].Agent != "claude-opus" || got.Calls[0].Primary["agent"] != "codex-sol-61" ||
+		!reflect.DeepEqual(got.Calls[0].Primary["permissions"].(map[string]any)["granted"], []any{}) {
+		t.Errorf("record.json holds the calls %+v, want the agent claude-opus, its primary codex-sol-61, granted []", got.Calls)
+	}
+	result, _ := got.Calls[0].Primary["result"].(map[string]any)
+	if result["class"] != "capacity" || result["session"] != "s0" {
+		t.Errorf("record.json holds the primary's result %v, want the class capacity, the session s0", result)
+	}
+	primary.Permissions = emptyPermissions()
+	if back, err := s.Record("x"); err != nil || !reflect.DeepEqual(back.Calls[0].Primary, &primary) {
+		t.Errorf("given back %+v, %v; want the primary %+v", back, err, primary)
 	}
 }
 
@@ -409,6 +458,8 @@ func TestAnEventIsTheLineOfItsKind(t *testing.T) {
 			`{"at":"` + at + `","step":"a","kind":"capacity","reason":"Overloaded","retrying":true}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Capacity, Reason: "Overloaded"},
 			`{"at":"` + at + `","step":"a","kind":"capacity","reason":"Overloaded","retrying":false}`},
+		{runstore.Event{At: started, Step: "a", Kind: runstore.Fallback, Agent: "claude-opus", Reason: "x"},
+			`{"at":"` + at + `","step":"a","kind":"fallback","agent":"claude-opus"}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Ended, Status: "completed", Duration: 1500 * time.Millisecond},
 			`{"at":"` + at + `","step":"a","kind":"ended","status":"completed","class":null,"duration_ms":1500}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Ended, Status: "failed", Class: "refused"},

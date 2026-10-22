@@ -32,7 +32,7 @@ public final class ActivityGate: @unchecked Sendable {
     private var catchUp: (id: Int, onYield: @Sendable () -> Void)?
     /// Requests waiting for catch-up to yield, in arrival order.
     private var waiting: [(activity: Activity, id: Int, resume: CheckedContinuation<Outcome, Never>)] = []
-    private var waitingCatchUp: (id: Int, onYield: @Sendable () -> Void, resume: CheckedContinuation<Void, Never>)?
+    private var waitingCatchUp: (hold: GateHold, onYield: @Sendable () -> Void, request: CatchUpRequest)?
 
     public init() {}
 
@@ -55,30 +55,28 @@ public final class ActivityGate: @unchecked Sendable {
     }
 
     /// Catch-up waits while anything else holds the gate. Once it holds,
-    /// `onYield` asks it to release for another client.
-    public func requestCatchUp(onYield: @escaping @Sendable () -> Void) async -> GateHold {
-        let id = lock.withLock {
-            sequence += 1
-            return sequence
-        }
-        await withCheckedContinuation { resume in
-            lock.lock()
-            guard holders.isEmpty else {
-                waitingCatchUp = (id, onYield, resume)
-                lock.unlock()
-                return
-            }
-            catchUp = (id, onYield)
+    /// `onYield` asks it to release for another client. The request is
+    /// registered when made, so it takes its turn by then.
+    public func requestCatchUp(onYield: @escaping @Sendable () -> Void) -> CatchUpRequest {
+        let request = CatchUpRequest()
+        lock.lock()
+        sequence += 1
+        let hold = GateHold(id: sequence, sequence: sequence)
+        guard holders.isEmpty else {
+            waitingCatchUp = (hold, onYield, request)
             lock.unlock()
-            resume.resume()
+            return request
         }
-        return GateHold(id: id, sequence: id)
+        catchUp = (hold.id, onYield)
+        lock.unlock()
+        request.grant(hold)
+        return request
     }
 
     public func release(_ hold: GateHold) {
         lock.lock()
         var decided: [(CheckedContinuation<Outcome, Never>, Outcome)] = []
-        var granted: CheckedContinuation<Void, Never>?
+        var granted: (CatchUpRequest, GateHold)?
         if catchUp?.id == hold.id {
             catchUp = nil
             decided = waiting.map { ($0.resume, admit($0.activity, id: $0.id)) }
@@ -88,12 +86,12 @@ public final class ActivityGate: @unchecked Sendable {
         }
         if holders.isEmpty, let next = waitingCatchUp {
             waitingCatchUp = nil
-            catchUp = (next.id, next.onYield)
-            granted = next.resume
+            catchUp = (next.hold.id, next.onYield)
+            granted = (next.request, next.hold)
         }
         lock.unlock()
         decided.forEach { $0.0.resume(returning: $0.1) }
-        granted?.resume()
+        if let (request, hold) = granted { request.grant(hold) }
     }
 
     /// Grants `activity` or names the holder that excludes it. Called under
@@ -107,5 +105,39 @@ public final class ActivityGate: @unchecked Sendable {
         }
         holders[id] = activity
         return .success(GateHold(id: id, sequence: id))
+    }
+}
+
+/// Catch-up's request for the gate, registered when it is made.
+public final class CatchUpRequest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var granted: GateHold?
+    private var waiting: CheckedContinuation<GateHold, Never>?
+
+    init() {}
+
+    public var isGranted: Bool { lock.withLock { granted != nil } }
+
+    /// The hold, once the gate grants it.
+    public func hold() async -> GateHold {
+        await withCheckedContinuation { resume in
+            lock.lock()
+            if let granted {
+                lock.unlock()
+                resume.resume(returning: granted)
+            } else {
+                waiting = resume
+                lock.unlock()
+            }
+        }
+    }
+
+    func grant(_ hold: GateHold) {
+        lock.lock()
+        granted = hold
+        let waiting = waiting
+        self.waiting = nil
+        lock.unlock()
+        waiting?.resume(returning: hold)
     }
 }

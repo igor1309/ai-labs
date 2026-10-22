@@ -25,8 +25,10 @@ func (w *walk) planAll(name string, items []Item, fault func(Problem)) {
 
 // planStep plans the step item: what its process and the step need of its
 // runtime, and the permissions its process requires, each problem at the
-// step's origin; and each extra of its plan, a warning there. A step whose process, agent or runtime is at fault is not
-// planned: they refuse it.
+// step's origin; and each extra of its plan, a warning there. Where its
+// agent falls back, it plans the process on the fallback's runtime too,
+// each problem at the fallback's origin. A step whose process, agent or
+// runtime is at fault is not planned: they refuse it.
 func (w *walk) planStep(name string, item Item, fault func(Problem)) {
 	process, ok := w.processes[item.Process.Value]
 	if !ok {
@@ -36,41 +38,74 @@ func (w *walk) planStep(name string, item Item, fault func(Problem)) {
 	if !ok {
 		return
 	}
-	runtime, ok := w.runtimes[agent.Runtime.Value]
+	plan, ok := w.planOn(process, agent, item.Session != nil, func(message string) {
+		fault(Problem{Origin: item.Origin, Message: message})
+	})
 	if !ok {
 		return
 	}
-	problem := func(format string, args ...any) {
-		fault(Problem{Origin: item.Origin, Message: fmt.Sprintf(format, args...)})
+	plan.Workflow, plan.Place = name, item.Origin.Place
+	w.plans = append(w.plans, plan)
+	for _, extra := range plan.Extra {
+		w.warnings = append(w.warnings, Problem{Origin: item.Origin,
+			Message: fmt.Sprintf("its plan grants %q beyond what its process %q allows", extra, process.Name)})
+	}
+	// The fallback is the call made again fresh: it resumes no session,
+	// and its own fallback is never taken (ADR-004, rule 8).
+	fallback, ok := w.agents[agent.Fallback.Value]
+	if !ok || fallback.Name == agent.Name {
+		return
+	}
+	plan, ok = w.planOn(process, fallback, false, func(message string) {
+		fault(Problem{Origin: agent.Fallback.Origin, Message: fmt.Sprintf("the step %q falls back to it: %s", item.Name, message)})
+	})
+	if !ok {
+		return
+	}
+	plan.Workflow, plan.Place = name, item.Origin.Place
+	w.plans = append(w.plans, plan)
+	for _, extra := range plan.Extra {
+		w.warnings = append(w.warnings, Problem{Origin: item.Origin,
+			Message: fmt.Sprintf("its plan on its fallback %q grants %q beyond what its process %q allows", fallback.Name, extra, process.Name)})
+	}
+}
+
+// planOn is the plan of process on agent's runtime, and whether its runtime
+// resolved: what the process, and a step resuming a session where resumes,
+// need of the runtime, and the permissions the process requires, each
+// problem given to problem.
+func (w *walk) planOn(process Process, agent Agent, resumes bool, problem func(string)) (Plan, bool) {
+	runtime, ok := w.runtimes[agent.Runtime.Value]
+	if !ok {
+		return Plan{}, false
 	}
 	who := fmt.Sprintf("its process %q", process.Name)
 	for _, need := range []struct {
 		needs, can bool
 		what, who  string
 	}{
+		{process.Instruction, w.facts[runtime.Name].Message, "takes an instruction", who},
+		{len(process.Guidance) > 0, w.facts[runtime.Name].Message, "takes guidance", who},
+		{process.Staleness, w.facts[runtime.Name].Message, "reports lines for staleness limits", who},
 		{process.Schema.Value != "", w.facts[runtime.Name].Schema, "checks output against a schema", who},
 		{process.Recovery, w.facts[runtime.Name].Session, "resumes a session", who},
-		{item.Session != nil, w.facts[runtime.Name].Session, "resumes a session", "it"},
+		{resumes, w.facts[runtime.Name].Session, "resumes a session", "it"},
 		{len(process.Skills) > 0, w.facts[runtime.Name].Skills, "takes skills", who},
 		{process.StaleToolCalls, w.facts[runtime.Name].ToolCalls, "reports tool calls", who},
 		{process.StaleToolCommands, w.facts[runtime.Name].ToolCommands, "reports tool commands", who},
 	} {
 		if need.needs && !need.can {
-			problem("its runtime %q %s, as %s needs", runtime.Name, need.what, need.who)
+			problem(fmt.Sprintf("its runtime %q %s, as %s needs", runtime.Name, need.what, need.who))
 		}
 	}
 	plan := planOf(process, runtime)
 	for _, required := range process.Require {
 		if !slices.Contains(plan.Granted, required) {
-			problem("its runtime %q grants the permission %q, as its process %q requires", runtime.Name, required, process.Name)
+			problem(fmt.Sprintf("its runtime %q grants the permission %q, as its process %q requires", runtime.Name, required, process.Name))
 		}
 	}
-	plan.Workflow, plan.Place, plan.Agent = name, item.Origin.Place, agent.Name
-	w.plans = append(w.plans, plan)
-	for _, extra := range plan.Extra {
-		w.warnings = append(w.warnings, Problem{Origin: item.Origin,
-			Message: fmt.Sprintf("its plan grants %q beyond what its process %q allows", extra, process.Name)})
-	}
+	plan.Agent = agent.Name
+	return plan, true
 }
 
 // planOf is the plan of process on runtime (ADR-003, rule 4): what the

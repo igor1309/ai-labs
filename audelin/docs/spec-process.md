@@ -110,6 +110,12 @@ Code is built test-first: each test is run red before the code exists,
 failing on its assertion rather than a compile error (the API is stubbed
 first), and the red run is shown with the green one (owner, 2026-10-22).
 
+An adapter is tested against the real thing it wraps, in temp places only,
+never the user's own folders: a Trash test uses a disk image's Trash. A Core
+is tested with fakes of its ports and a fake clock. No test proves that
+something did not happen by sleeping; it asserts the state that says so
+(owner, 2026-10-22).
+
 ## Order and review
 
 1. Top-down: the user spec first, then each UI component, each Core and each adapter.

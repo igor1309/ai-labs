@@ -9,8 +9,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/settings/resolve"
 )
 
 // reviews is each review of home's code_review, in declaration order: its
@@ -49,6 +51,13 @@ func newReviewFixture(t *testing.T) *runFixture {
 	f.sources.files = map[string]string{"/r/g.md": goalBrief}
 	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(judgement)})
 	return f
+}
+
+// unboundReviews removes the concurrency bound for tests whose claim is
+// concurrent calls, independently of home's serial review policy.
+func unboundReviews(f *runFixture) {
+	const path = "/u/.agister/workflows/code_review.yaml"
+	f.settings[path] = strings.Replace(f.settings[path], "      max: 1\n", "", 1)
 }
 
 // processOf is the process of the review whose turn turn is, by the text
@@ -113,6 +122,7 @@ func judged(t *testing.T, f *runFixture) []any {
 func TestFiveReviewsSideBySideThenTheJudge(t *testing.T) {
 	t.Parallel()
 	f := newReviewFixture(t)
+	unboundReviews(f)
 	// started lets each turn on once all five have started; sampled, once
 	// all five have read the holds, so none is released before then.
 	var started, sampled sync.WaitGroup
@@ -202,6 +212,7 @@ func TestAReviewThatFailsStillReachesTheJudge(t *testing.T) {
 func TestProgressLinesOfReviewsSideBySideAreEachWhole(t *testing.T) {
 	t.Parallel()
 	f := newReviewFixture(t)
+	unboundReviews(f)
 	f.runtimes.codex.reports = []codex.Report{{Tool: &codex.Tool{Name: "Bash", Input: "ls"}}}
 	f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
 		return completesReview(t, f.settings, turn)
@@ -228,5 +239,131 @@ func TestProgressLinesOfReviewsSideBySideAreEachWhole(t *testing.T) {
 	}
 	if !reflect.DeepEqual(of, want) {
 		t.Errorf("progress\n%s\nwant each step's own lines, whole, in order:\n%q", got.progress, want)
+	}
+}
+
+// Home's review workflows run nodes one at a time and persist each end
+// before the next call; one failure still reaches the judge in its place.
+// Contract test: the review workflows home ships.
+func TestHomeReviewsRunInOrderAndRecordEveryEnd(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"code_review", "adr_review"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newReviewFixture(t)
+			var order []string
+			f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
+				if calls := f.store.last(t).Calls; len(calls) != len(order) {
+					t.Errorf("calls before next review %+v, want every %d preceding end", calls, len(order))
+				}
+				_, alone, shared := f.holding.locks()
+				if alone != 0 || shared != 1 {
+					t.Errorf("held alone %d, shared %d; want exactly one reader", alone, shared)
+				}
+				process := "adr_review_codex"
+				if name == "code_review" {
+					process = processOf(t, f.settings, turn)
+				}
+				order = append(order, process)
+				if process == "tests_review" {
+					return codex.Result{Reply: &codex.Reply{Failure: codex.RateLimited, Reason: "429"}}, nil
+				}
+				output, err := json.Marshal(reviewResult(process))
+				return codex.Result{Reply: &codex.Reply{Output: output}}, err
+			}
+			got := f.run(t, "/r", "run", name, "--param", "goal=g.md")
+			if got.code != 0 || got.stderr != "" {
+				t.Fatalf("run %+v", got)
+			}
+			want := []string{"adr_review_codex"}
+			if name == "code_review" {
+				want = nil
+				for _, review := range reviews {
+					want = append(want, review.process)
+				}
+			}
+			if !reflect.DeepEqual(order, want) {
+				t.Errorf("order %q, want %q", order, want)
+			}
+			entries := judged(t, f)
+			var outcomes []any
+			for _, process := range want {
+				if process == "tests_review" {
+					outcomes = append(outcomes, map[string]any{"status": "failed", "class": "rate_limited", "output": nil})
+				} else {
+					outcomes = append(outcomes, map[string]any{"status": "completed", "class": nil, "output": reviewResult(process)})
+				}
+			}
+			if !reflect.DeepEqual(entries, outcomes) {
+				t.Errorf("judge entries %v, want %v", entries, outcomes)
+			}
+			calls := f.store.last(t).Calls
+			if len(calls) != len(want)+1 {
+				t.Fatalf("calls %+v, want nodes and judge", calls)
+			}
+			for i, process := range append(want, "review_judge") {
+				if calls[i].Process != process {
+					t.Errorf("call %d process %q, want %q", i, calls[i].Process, process)
+				}
+			}
+		})
+	}
+}
+
+// review.feature, "A parallel's max reaches core's workflow": the max of
+// the parallel "reviews", as planning gives it to core/workflow, home's
+// review workflows as shipped and code_review edited.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAParallelsMaxReachesCoresWorkflow(t *testing.T) {
+	t.Parallel()
+	const codeReview = "/u/.agister/workflows/code_review.yaml"
+	for _, c := range []struct {
+		name     string
+		workflow string
+		edit     func(settings map[string]string)
+		max      int
+	}{
+		{"code_review as shipped", "code_review", func(map[string]string) {}, 1},
+		{"adr_review as shipped", "adr_review", func(map[string]string) {}, 1},
+		{"code_review given max 3", "code_review", func(settings map[string]string) {
+			settings[codeReview] = strings.Replace(settings[codeReview], "      max: 1\n", "      max: 3\n", 1)
+		}, 3},
+		{"code_review omitting max", "code_review", func(settings map[string]string) {
+			settings[codeReview] = strings.Replace(settings[codeReview], "      max: 1\n", "", 1)
+		}, 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := shippedHome(t)
+			c.edit(settings)
+			spies := newRuntimesSpy(t)
+			wrappers, err := newContracts(claudeCodeFacts(spies.claude), codexFacts(spies.codex))
+			if err != nil {
+				t.Fatal(err)
+			}
+			read, err := readSettings("/u/.agister", "/r", newFilesystemSpy(settings), rootSpy{root: "/r"}, wrappers)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolved, faults := read.resolver.Resolve(resolve.Document(resolve.KindWorkflow, c.workflow).WithParams("goal"))
+			if len(faults) > 0 {
+				t.Fatalf("faults %+v", faults)
+			}
+			built, unrun, err := planOf(c.workflow, resolved, read.documents,
+				map[string]call.Inputs{"claude-code/3": call.InMessage, "codex/2": call.InMessage})
+			if err != nil || len(unrun) > 0 {
+				t.Fatalf("not run %q, error %v", unrun, err)
+			}
+			var maxes []int
+			for _, step := range built.workflow.Steps {
+				if step.Parallel != nil {
+					maxes = append(maxes, step.Max)
+				}
+			}
+			if want := []int{c.max}; !reflect.DeepEqual(maxes, want) {
+				t.Errorf("the parallels' max %v, want %v", maxes, want)
+			}
+		})
 	}
 }

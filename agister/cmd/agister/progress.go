@@ -80,6 +80,11 @@ func (p *progress) Capacity(step string, capacity workflow.Capacity) {
 	p.line(step, what)
 }
 
+// Fallback prints the agent the step's call is made again on.
+func (p *progress) Fallback(step, agent string) {
+	p.line(step, "falling back to "+inLine(agent))
+}
+
 // Reused prints the call taken in place of the step's start and end.
 func (p *progress) Reused(step, call string) {
 	p.line(step, "reused "+inLine(call))

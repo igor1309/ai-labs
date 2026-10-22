@@ -8,8 +8,9 @@
 Feature: The composition runs home's code_review
 
   Scenario: Five reviews side by side, then the judge
-    Given codex completes each review with a review result naming its
-      process, each turn ending only once all five have started
+    Given the parallel omits max, and codex completes each review with a
+      review result naming its process, each turn ending only once all
+      five have started
     And claude-code completes the judge with a judgement
     When "agister run code_review --param goal=g.md" runs in "/r"
     Then codex runs the turns of architecture_review, tests_review,
@@ -29,7 +30,33 @@ Feature: The composition runs home's code_review
     And it prints the result as the judge's call ended
 
   Scenario: Progress lines of reviews side by side are each whole
-    Given the five reviews each report the tool call "Bash" with "ls"
+    Given the parallel omits max, and the five reviews each report the
+      tool call "Bash" with "ls"
     When "agister run code_review --param goal=g.md" runs in "/r"
     Then stderr holds, for each review, its start, its tool call and its
       end, each a line of its own
+
+  Scenario Outline: Home's reviews run one at a time and record every end
+    Given home's <workflow> with max 1, whose nodes complete except the
+      tests review, which fails, class "rate_limited"
+    When the workflow runs
+    Then each node's call is recorded before the next starts
+    And the judge receives every outcome in declaration order
+
+    Examples:
+      | workflow    |
+      | code_review |
+      | adr_review  |
+
+  Scenario Outline: A parallel's max reaches core's workflow
+    Given home's <workflow>, <edit>
+    When it is planned
+    Then core's workflow runs the parallel "reviews" at most <max> at a
+      time, 0 for every node at once
+
+    Examples:
+      | workflow    | edit         | max |
+      | code_review | as shipped   | 1   |
+      | adr_review  | as shipped   | 1   |
+      | code_review | given max 3  | 3   |
+      | code_review | omitting max | 0   |

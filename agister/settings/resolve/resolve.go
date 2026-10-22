@@ -95,8 +95,9 @@ type Param struct {
 
 // Item is one item of a workflow, named, unique in its workflow, and one
 // of five: a step, its process and agent, and the session it continues,
-// nil for none; a workflow, by name; a parallel or a branch, of items; or
-// a repeat. A step and a workflow have their inputs. An arm of a branch
+// nil for none; a workflow, by name; a parallel, of items, and the most of
+// them that run at once, 0 for all (ADR-012, rule 8); a branch, of items;
+// or a repeat. A step and a workflow have their inputs. An arm of a branch
 // has the condition it is taken on, but the default, and its outputs, the
 // branch's.
 type Item struct {
@@ -109,6 +110,7 @@ type Item struct {
 	Workflow Name
 	Inputs   []Binding
 	Parallel []Item
+	Max      int
 	Branch   []Item
 	Repeat   *Repeat
 	Outputs  []Binding
@@ -168,7 +170,8 @@ const (
 // skills; its params and its inputs; its environment; the input whose
 // revision its worktree must be at, nil for none; the schema of its
 // output; the permissions it requires and those it allows (ADR-003, rule
-// 2); whether it recovers a stale turn; and whether a turn is stale by the
+// 2); whether it gives an instruction or staleness limits, whether it
+// recovers a stale turn; and whether a turn is stale by the
 // same tool call made in a row, or by a tool command running too long.
 type Process struct {
 	Name              string
@@ -183,6 +186,8 @@ type Process struct {
 	Require           []string
 	Allow             []string
 	Recovery          bool
+	Instruction       bool
+	Staleness         bool
 	StaleToolCalls    bool
 	StaleToolCommands bool
 }
@@ -195,13 +200,15 @@ type Input struct {
 	Arguments []Binding
 }
 
-// Agent is an agent: the runtime mapping it names, and the model, or its
-// family, and the effort it gives, "" for none.
+// Agent is an agent: the runtime mapping it names; the model, or its
+// family, and the effort it gives; and the agent its call is made again on
+// at capacity (ADR-004, rule 8), "" for each it does not give.
 type Agent struct {
-	Name    string
-	Runtime Name
-	Model   Name
-	Effort  Name
+	Name     string
+	Runtime  Name
+	Model    Name
+	Effort   Name
+	Fallback Name
 }
 
 // Runtime is a runtime mapping (ADR-003, rule 3): the contract of the
@@ -230,7 +237,8 @@ type Wrappers interface {
 
 // Facts are what a runtime wrapper can do (ADR-003, rule 7): check output
 // against a schema, resume a session, take skills, take a model, the
-// efforts it accepts, and report tool calls and tool commands.
+// efforts it accepts, report tool calls and tool commands, and take inputs
+// in a message, with instructions, guidance and streamed staleness checks.
 type Facts struct {
 	Schema       bool
 	Session      bool
@@ -239,6 +247,7 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Message      bool
 }
 
 // Request is what resolve is asked for: a document, by kind and name, or a
@@ -273,10 +282,10 @@ type Reference struct {
 // or made of a step, nil for a request of another kind; every document it
 // reached, in the order it reached them; the definitions of the workflows,
 // processes, agents and runtime mappings among them, each by its name; the
-// plan of every step, in the order its workflow was reached; and its
-// warnings: each grant of a plan beyond what its process allows, at its
-// step's origin, in the order planned; then each block naming no
-// document.
+// plan of every step, in the order its workflow was reached, and after
+// it, that of the step on its agent's fallback; and its warnings: each
+// grant of a plan beyond what its process allows, at its step's origin, in
+// the order planned; then each block naming no document.
 type Resolved struct {
 	Workflow  *Workflow
 	Reached   []Reference
@@ -539,6 +548,7 @@ func (w *walk) follow(chain []Link, link Link) {
 			w.fault(reference, takes(agent, runtime.Name, w.facts[runtime.Name])...)
 		}
 		w.agents[link.Name] = agent
+		w.optional(chain, KindAgent, agent.Fallback)
 	case KindRuntime:
 		runtime, problems := w.source.Runtime(link.Name)
 		if w.fault(reference, problems...) {

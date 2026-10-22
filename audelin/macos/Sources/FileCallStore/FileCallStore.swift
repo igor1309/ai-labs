@@ -66,21 +66,24 @@ public final class FileCallStore: CallStore {
     public func copy(_ call: CallID, to root: URL) throws(CallStoreError) -> CallCopy {
         let source = try find(call).folder
         let target = root.appendingPathComponent(source.lastPathComponent)
+        guard !FileManager.default.fileExists(atPath: target.path) else { throw .targetExists }
         do {
             try FileManager.default.copyItem(at: source, to: target)
         } catch {
             try? FileManager.default.removeItem(at: target)
             throw Self.storeError(error)
         }
-        return CallCopy(call: call, source: source, target: target)
+        return CallCopy(call: call, root: root)
     }
 
     public func deleteSource(after copy: CallCopy) throws(CallStoreError) {
-        guard FileManager.default.contentsEqual(atPath: copy.source.path, andPath: copy.target.path) else {
+        let source = try find(copy.call).folder
+        guard let target = FileCallStore(root: copy.root).folder(of: copy.call) else { throw .notFound(copy.call) }
+        guard FileManager.default.contentsEqual(atPath: source.path, andPath: target.path) else {
             throw .copyDiffers
         }
         do {
-            try FileManager.default.removeItem(at: copy.source)
+            try FileManager.default.removeItem(at: source)
         } catch {
             throw Self.storeError(error)
         }

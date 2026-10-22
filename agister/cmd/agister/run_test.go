@@ -329,18 +329,18 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 		agent    string
 		what     string
 	}{
-		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn`},
+		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn is not run yet`},
 		{declares: `an input "prompt" from the param "what"`, more: "  prompt: {source: param, name: what}\n",
-			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name,`},
+			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name, is not run yet`},
 		{declares: `an input "b" from the source "git.diff"`, more: "  b: {source: git.diff, base: {from: params.what}, head: HEAD}\n",
-			agent: "bash", what: `the process "say": the input "b" from the source "git.diff"`},
+			agent: "bash", what: `the process "say": the input "b" from the source "git.diff" is not run yet`},
 		{declares: "the stale limit no_event 1m", more: "limits: {stale: {no_event: 1m}}\n",
-			agent: "bash", what: `the process "say": the staleness limit on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" reports lines for staleness limits, as its process "say" needs`},
 		{declares: `an instruction "think"`, more: "instruction: think\n",
-			agent: "bash", what: `the process "say": the instruction on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" takes an instruction, as its process "say" needs`},
 		{declares: `the guidance "g", a prompt the settings hold`, more: "guidance: [g]\n",
 			files: map[string]string{"/u/.agister/prompts/g.md": "Go.\n"},
-			agent: "bash", what: `the process "say": the guidance on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" takes guidance, as its process "say" needs`},
 	}
 	for _, c := range cases {
 		t.Run(c.declares, func(t *testing.T) {
@@ -349,7 +349,9 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 			maps.Copy(files, c.files)
 			f := newRunFixture(t, runSettings(t, files), echoes)
 			got := f.run(t, "/r", "run", "--process", "say", "--agent", c.agent, "--param", "what=hi")
-			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + c.what + " is not run yet\n", code: 1}
+			// Capability failures use resolve's diagnostic; slice limitations
+			// use the execution diagnostic.
+			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + c.what + "\n", code: 1}
 			if got != want {
 				t.Errorf("ran %+v, want %+v", got, want)
 			}

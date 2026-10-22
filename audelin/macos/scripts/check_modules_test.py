@@ -1,6 +1,7 @@
 """Tests of check-modules.py over made-up packages: python3 scripts/check_modules_test.py"""
 import importlib.util
 import pathlib
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("check_modules", pathlib.Path(__file__).with_name("check-modules.py"))
@@ -81,6 +82,25 @@ class CheckModulesTests(unittest.TestCase):
              ("recorder-crash-child", "executable", ["Recorder", "RecorderTestSupport"]),
              ("RecorderTests", "test", ["Recorder", "RecorderTestSupport", "recorder-crash-child"])],
         ), [])
+
+
+class ImportsTests(unittest.TestCase):
+    def test_every_import_form_is_read(self):
+        with tempfile.TemporaryDirectory() as sources:
+            folder = pathlib.Path(sources, "CallsCore")
+            folder.mkdir()
+            (folder / "x.swift").write_text(
+                "import Foundation\n"
+                "@preconcurrency import Dispatch\n"
+                "internal import AppKit\n"
+                "public import AVFoundation\n"
+                "@_implementationOnly import CoreAudio\n"
+                "import struct FluidAudio.Model\n"
+                "private import class Darwin.Foo\n")
+
+            found = check_modules.imports("CallsCore", pathlib.Path(sources))
+
+        self.assertEqual(found, {"Foundation", "Dispatch", "AppKit", "AVFoundation", "CoreAudio", "FluidAudio", "Darwin"})
 
 
 if __name__ == "__main__":

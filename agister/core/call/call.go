@@ -5,7 +5,8 @@
 // the step's recovery allows (ADR-006, rules 3 to 5), and a turn at
 // capacity made again after a wait (ADR-004, rule 8); and given in the
 // result shape (ADR-001, invariant 3); on a model, its inputs in its
-// message and its output checked against its schema.
+// message and its output checked against its schema; and a call that
+// ended at capacity made again on its fallback.
 package call
 
 import (
@@ -160,14 +161,15 @@ type Stream struct {
 
 // Report is a line a turn read: the tool call it made, where Tool is not
 // nil; a tool's result, where Result is set; else another line. A call
-// reports besides each turn that went stale, where Stale is not nil, and
-// each turn at capacity, where Capacity is not nil; a runtime reports
-// none.
+// reports besides each turn that went stale, where Stale is not nil; each
+// turn at capacity, where Capacity is not nil; and that it is made again
+// on its fallback, where Fallback is set; a runtime reports none.
 type Report struct {
 	Tool     *Tool
 	Result   bool
 	Stale    *StaleTurn
 	Capacity *CapacityTurn
+	Fallback bool
 }
 
 // StaleTurn is a turn that went stale, as a call reports it: what went
@@ -327,7 +329,9 @@ type Named struct {
 // reported; the reason of a call that did not complete, empty where there
 // is none; and its warnings. SessionCost is the last turn's reported
 // session cost in US dollars, nil where unknown; CostSource is whose
-// price its cost is, empty where its cost is unknown.
+// price its cost is, empty where its cost is unknown. Primary is the
+// call's first result where it was made again on its fallback, nil where
+// it was not.
 type Result struct {
 	Status      Status
 	Class       Class
@@ -340,6 +344,10 @@ type Result struct {
 	Session     string
 	Reason      string
 	Warnings    []string
+	Primary     *Result
+	// knownCost keeps budget accounting even when an unpriced turn makes
+	// the reported total unknown.
+	knownCost float64
 }
 
 // Timing is when a call started and ended, and how long it took.
@@ -413,7 +421,7 @@ func (s staleCause) Error() string { return s.What }
 // its turns. A turn that ends by a reply of the class capacity is reported,
 // then, while the call has made fewer than capacityTurns such turns, made
 // again as it was given, in the session it reported, else in the one it
-// was given, once capacityWait times their count has passed on the timer;
+// was given, once capacityWait of their count has passed on the timer;
 // unless it reported a session other than the one it resumed, ctx or the
 // time limit has ended, or the time limit leaves no more than the wait,
 // read on the clock: a retry never starts as the limit passes. A retry spends none of the step's recovery. A wait that
@@ -475,7 +483,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 			if last.strayed == "" && callCtx.Err() == nil {
 				spent = step.spentReason(knownCost)
 			}
-			wait := time.Duration(atCapacity) * capacityWait
+			wait := capacityWait(atCapacity)
 			left := step.TimeLimit - c.clock.Now().Sub(started)
 			if spent != "" || atCapacity == capacityTurns || last.strayed != "" || callCtx.Err() != nil || step.TimeLimit > 0 && left <= wait {
 				wait = 0
@@ -520,6 +528,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	<-watched
 
 	result := timed()
+	result.knownCost = knownCost
 	counted(&result, turns)
 	switch {
 	case spent != "":
@@ -534,14 +543,24 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	return result
 }
 
-// capacityTurns is the most turns at capacity a call makes; the wait
-// before a retry is capacityWait times how many turns were at capacity,
-// fixed rather than drawn at random: the load is the provider's, which
-// the few calls of a run retrying together do not change.
-const (
-	capacityTurns = 3
-	capacityWait  = 30 * time.Second
-)
+// capacityTurns is the most turns at capacity a call makes.
+const capacityTurns = 4
+
+// capacityWait is the wait before the retry that follows turns at
+// capacity: 30 seconds after the first, a minute after the second, three
+// after the third. The waits are fixed rather than drawn at random: the
+// load is the provider's, which the few calls of a run retrying together
+// do not change. They grow because an account's capacity limit lasts
+// minutes, not seconds.
+func capacityWait(turns int) time.Duration {
+	switch turns {
+	case 1:
+		return 30 * time.Second
+	case 2:
+		return time.Minute
+	}
+	return 3 * time.Minute
+}
 
 // pause waits wait on the timer, unless ctx ends first, and tells whether
 // the wait passed with ctx still running.

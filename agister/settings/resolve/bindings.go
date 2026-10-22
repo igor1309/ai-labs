@@ -6,8 +6,9 @@ import (
 )
 
 // check checks what each workflow and process reached reads, and what
-// crosses each boundary (ADR-011, rules 3 and 6). A problem is its
-// document's, at the origin of what is wrong.
+// crosses each boundary (ADR-011, rules 3 and 6); and the fallback of each
+// agent reached. A problem is its document's, at the origin of what is
+// wrong.
 func (w *walk) check() {
 	for _, reference := range w.reached {
 		switch reference.Kind {
@@ -19,7 +20,25 @@ func (w *walk) check() {
 			if process, ok := w.processes[reference.Name]; ok {
 				w.checkProcess(reference, process)
 			}
+		case KindAgent:
+			if agent, ok := w.agents[reference.Name]; ok {
+				w.checkAgent(reference, agent)
+			}
 		}
+	}
+}
+
+// checkAgent checks the agent its fallback names: another agent, which
+// resolves. It is checked once every agent is followed, for agents may
+// fall back to each other.
+func (w *walk) checkAgent(reference Reference, agent Agent) {
+	fallback := agent.Fallback
+	switch _, resolves := w.agents[fallback.Value]; {
+	case fallback.Value == "":
+	case fallback.Value == agent.Name:
+		w.fault(reference, Problem{Origin: fallback.Origin, Message: "it names another agent"})
+	case !resolves:
+		w.fault(reference, Problem{Origin: fallback.Origin, Message: "it names an agent that resolves"})
 	}
 }
 

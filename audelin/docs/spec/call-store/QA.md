@@ -11,7 +11,7 @@ description: "Call store — QA"
 | Field | Value |
 |---|---|
 | oracle | `SPEC.md` — blob `8e03f22dd84506844516ddf4f7ddf18c169cd20b` |
-| driven by | integration tests of the adapter over temporary folders on this Mac, a small disk image for S-8 |
+| driven by | integration tests of the adapter over temporary folders on this Mac, small disk images for S-5, S-8 and S-9, so nothing touches the user's Trash |
 | where | `swift test` in `audelin/macos` on this Mac |
 
 ## Scenarios
@@ -44,8 +44,8 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 ### S-5 Trashing a call
 
-- Drive: trash a call.
-- Expect: the folder is in `~/.Trash`; the listing no longer has it.
+- Drive: trash a call whose calls folder is on a disk image.
+- Expect: the folder is in that volume's Trash; the listing no longer has it.
 - Evidence: the suite at the head.
 
 ### S-6 Changes from Finder
@@ -56,19 +56,19 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 ### S-7 Copying a call
 
-- Drive: copy a call with audio to a second folder; flip one byte in the copy before the check in a second run.
-- Expect: the clean copy checks whole and the source can be deleted; the flipped copy fails the check and the source stays.
+- Drive: copy a call with audio to a second folder; flip one byte in the copy before the check in a second run; rename the source between the check and the delete in a third.
+- Expect: the clean copy checks whole and the source can be deleted; the flipped copy fails the check and the source stays; the renamed source is found by its id and deleted.
 - Evidence: the suite at the head.
 
 ### S-8 A failed copy
 
-- Drive: copy a 20 MB call into a 5 MB disk image.
-- Expect: a disk-full error; the source is byte-identical; no folder remains in the target.
+- Drive: copy a 20 MB call into a 5 MB disk image. Second run: copy into a folder that already holds that call's folder.
+- Expect: a disk-full error; the source is byte-identical; no folder remains in the target. In the second run the copy is refused and the folder already there is unchanged.
 - Evidence: the suite at the head.
 
 ### S-9 A call removed in Finder
 
-- Drive: watch; move a call folder into `~/.Trash`, as Finder's Move to Trash does.
+- Drive: watch; move a call folder on a disk image into that volume's Trash, as Finder's Move to Trash does.
 - Expect: a removal event within 2 s naming the call's id.
 - Evidence: the suite at the head.
 

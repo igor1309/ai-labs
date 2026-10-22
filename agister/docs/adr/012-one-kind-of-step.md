@@ -15,6 +15,7 @@ description: "ADR-012: one kind of step: a process bound to an agent, bash a run
 - **Decision type:** Architecture
 - **Amends:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-006, ADR-009,
   ADR-010 and ADR-011
+- **Revised:** 2026-10-22, bounded parallel concurrency (LAB-458)
 
 ## Context
 
@@ -161,6 +162,15 @@ starts no child once an enclosing budget is spent. The composition
 chains `inputs`, `admit` and `call`, and hands the chain to
 `core/workflow` as its one port to call a step. `core/session` and
 `core/command` go.
+
+### 8. A parallel may bound concurrency
+
+A parallel may declare the most children running at once. Without a
+bound all children run at once; with one they start in declaration order
+as slots become free. A failed child does not stop the next. Every
+child ends before the join starts, and the join receives every outcome
+in declaration order, provided at least one child completed. Cancellation
+starts no further child. Every completed call is recorded.
 
 ## Consequences
 

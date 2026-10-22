@@ -1,5 +1,9 @@
 # Changes
 
+- LAB-458: a call at capacity retries after 30 s, 1 min and 3 min, then
+  runs on its agent's `fallback` (codex-sol-61 falls back to claude-opus);
+  a parallel block's `max` runs the review's nodes one at a time.
+
 - LAB-357: a codex turn's cost is priced through ccusage, so a cost
   limit and the daily budget spend it; a resumed turn's usage is its
   own, and each call records its cost's source.

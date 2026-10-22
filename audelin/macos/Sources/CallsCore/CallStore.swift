@@ -14,7 +14,7 @@ public protocol CallStore: Sendable {
     func trash(_ call: CallID) throws(CallStoreError) -> URL
     func save(_ details: CallDetails) throws(CallStoreError)
     /// Copies the call's folder into another calls folder. A failed copy
-    /// leaves nothing there.
+    /// leaves nothing there, and a folder already there is left alone.
     func copy(_ call: CallID, to root: URL) throws(CallStoreError) -> CallCopy
     /// Deletes a copied call's source, once the copy matches it byte for byte.
     func deleteSource(after copy: CallCopy) throws(CallStoreError)
@@ -46,15 +46,16 @@ public struct StoredCall: Equatable, Sendable {
     }
 }
 
+/// A call copied into another calls folder. Both folders are found again
+/// by the call's id, as either may be renamed meanwhile.
 public struct CallCopy: Equatable, Sendable {
     public var call: CallID
-    public var source: URL
-    public var target: URL
+    /// The calls folder the call was copied into.
+    public var root: URL
 
-    public init(call: CallID, source: URL, target: URL) {
+    public init(call: CallID, root: URL) {
         self.call = call
-        self.source = source
-        self.target = target
+        self.root = root
     }
 }
 
@@ -86,5 +87,7 @@ public enum CallStoreError: Error, Equatable, Sendable {
     case diskFull
     /// The copy does not match its source, which is kept.
     case copyDiffers
+    /// The other calls folder already has a folder by the call's name.
+    case targetExists
     case failed(String)
 }

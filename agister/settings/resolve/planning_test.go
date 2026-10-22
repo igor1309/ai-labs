@@ -286,6 +286,18 @@ func TestAStepNeedsWhatItsRuntimeCanDo(t *testing.T) {
 		cannot    func(*resolve.Facts)
 		can, whom string
 	}{
+		"an instruction": {
+			func(p *resolve.Process, _ *resolve.Item) { p.Instruction = true },
+			func(f *resolve.Facts) { f.Message = false }, "takes an instruction", `its process "p"`,
+		},
+		"guidance": {
+			func(p *resolve.Process, _ *resolve.Item) { p.Guidance = []resolve.Name{{Value: "g"}} },
+			func(f *resolve.Facts) { f.Message = false }, "takes guidance", `its process "p"`,
+		},
+		"staleness limits": {
+			func(p *resolve.Process, _ *resolve.Item) { p.Staleness = true },
+			func(f *resolve.Facts) { f.Message = false }, "reports lines for staleness limits", `its process "p"`,
+		},
 		"an output schema": {
 			func(p *resolve.Process, _ *resolve.Item) { p.Schema = resolve.Name{Value: "sc"} },
 			func(f *resolve.Facts) { f.Schema = false }, "checks output against a schema", `its process "p"`,
@@ -317,6 +329,7 @@ func TestAStepNeedsWhatItsRuntimeCanDo(t *testing.T) {
 			s := onRuntime(newSource(), resolve.Runtime{}, facts...)
 			s.other(resolve.KindSchema, "sc")
 			s.other(resolve.KindSkill, "k")
+			s.other(resolve.KindPrompt, "g")
 			process, item := resolve.Process{Name: "p"}, at(step("s", "p", "a"), 5, "steps[1]")
 			test.need(&process, &item)
 			s.processes["p"], s.processes["q"] = process, resolve.Process{Name: "q"}

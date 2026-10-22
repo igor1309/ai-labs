@@ -37,7 +37,7 @@ func newSource() *source {
 		agents: map[string]resolve.Agent{}, runtimes: map[string]resolve.Runtime{},
 		others: map[resolve.Reference]bool{}, problems: map[resolve.Reference][]resolve.Problem{},
 		asked: map[resolve.Reference]int{},
-		facts: map[string]resolve.Facts{able: {Schema: true, Session: true, Skills: true, Model: true, ToolCalls: true, ToolCommands: true}},
+		facts: map[string]resolve.Facts{able: {Schema: true, Session: true, Skills: true, Model: true, ToolCalls: true, ToolCommands: true, Message: true}},
 	}
 }
 
