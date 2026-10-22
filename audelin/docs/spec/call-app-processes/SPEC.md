@@ -75,6 +75,6 @@ Feature: Which processes carry the call
     Then I know to hear the call app's processes instead
 ```
 
-Not call app processes': which app holds the call (call detection), when
+Not call app processes': which app holds the call (call watch), when
 to ask again (the client), listing the processes (audio processes), and
 hearing them (system audio capture).

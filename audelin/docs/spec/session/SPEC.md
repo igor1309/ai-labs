@@ -1,8 +1,8 @@
 # Session
 
 Observer: the client that starts and stops one recording of a call, through
-an interface it owns: the control adapter for the user's hand, and
-automatic recording for a call that starts and ends by itself.
+an interface it owns: automatic recording, for a call that starts and ends
+by itself and for the user's hand.
 
 A Session is a Core. It reads the call's two tracks and writes them through
 interfaces of its own (open on the diagram: "Parts to start"). It knows no

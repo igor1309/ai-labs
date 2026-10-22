@@ -63,5 +63,5 @@ Feature: Processes with audio open
 ```
 
 Not audio processes': choosing which to hear (call app processes), and
-deciding a call is on (call detection), which the root wires to the same
+deciding a call is on (call watch), which the root wires to the same
 answer.
