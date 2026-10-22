@@ -1,0 +1,44 @@
+schema: agister.process/v1alpha1
+prompt: continuation
+instruction: >-
+  Audelin's tests, run outside your sandbox after your changes, failed;
+  their output is the input test_output. Fix the cause in the code and
+  commit. Do not weaken, skip or delete a check or a test. You cannot run
+  swift test in your sandbox (SwiftPM can't build there), so don't try and
+  don't list checks you didn't run: work from that output, and the workflow
+  runs the tests again after you.
+
+params:
+  test_output: {}
+inputs:
+  test_output: {source: param, name: test_output}
+
+workspace:
+  access: read-write
+
+permissions:
+  require:
+    - repository.read
+    - repository.write
+    - process.execute
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+limits:
+  time: 30m
+  stale:
+    no_event: 21m
+    tool_command: 15m
+    repeated_tool_calls: 5
+
+output:
+  schema: implementation
