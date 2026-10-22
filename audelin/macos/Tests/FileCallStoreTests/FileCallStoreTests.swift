@@ -99,9 +99,37 @@ import Testing
         #expect(FileManager.default.fileExists(atPath: other.appendingPathComponent(clean.folder.lastPathComponent).path))
 
         let flippedCopy = try store.copy(flipped.details.id, to: other)
-        flipByte(in: flippedCopy.target.appendingPathComponent("audio/mic-e0-t000000000000000.wav"), at: 50_000)
+        let flippedFolder = try #require(FileCallStore(root: other).folder(of: flipped.details.id))
+        flipByte(in: flippedFolder.appendingPathComponent("audio/mic-e0-t000000000000000.wav"), at: 50_000)
         #expect(throws: CallStoreError.copyDiffers) { try store.deleteSource(after: flippedCopy) }
         #expect(FileManager.default.fileExists(atPath: flipped.folder.appendingPathComponent("meta.json").path))
+    }
+
+    @Test func s7TheSourceRenamedBeforeItsDeletion() throws {
+        let setup = try Setup()
+        let call = try setup.call("Zoom", at: at(14, 30), files: ["audio/mic-e0-t000000000000000.wav": 100_000])
+        let other = try setup.folder("other")
+        let store = FileCallStore(root: setup.root)
+        let copy = try store.copy(call.details.id, to: other)
+
+        let renamed = setup.root.appendingPathComponent("Ретро")
+        try run("/bin/mv", call.folder.path, renamed.path)
+
+        #expect(throws: Never.self) { try store.deleteSource(after: copy) }
+        #expect(FileManager.default.fileExists(atPath: renamed.path) == false)
+    }
+
+    @Test func s8AFolderAlreadyAtTheTarget() throws {
+        let setup = try Setup()
+        let call = try setup.call("Zoom", at: at(14, 30))
+        let other = try setup.folder("other")
+        let there = try setup.call("Zoom", at: at(14, 30), in: other, files: ["final.md": 1_000])
+
+        #expect(throws: CallStoreError.targetExists) {
+            try FileCallStore(root: setup.root).copy(call.details.id, to: other)
+        }
+
+        #expect(FileManager.default.fileExists(atPath: there.folder.appendingPathComponent("final.md").path))
     }
 
     @Test func s8AFailedCopy() throws {
@@ -183,10 +211,10 @@ private struct Setup {
     @discardableResult
     func call(
         _ title: String, at start: Date, duration: Int? = nil, app: String = "Zoom",
-        captured: [Track] = [.mic, .call], files: [String: Int] = [:]
+        captured: [Track] = [.mic, .call], in root: URL? = nil, files: [String: Int] = [:]
     ) throws -> Fixture {
         let id = CallID()
-        let folder = root.appendingPathComponent(CallFolderName.make(start: start, title: title, taken: []))
+        let folder = (root ?? self.root).appendingPathComponent(CallFolderName.make(start: start, title: title, taken: []))
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let sides = captured.map { "\"\($0.rawValue)\"" }.joined(separator: ",")
         let json = """
