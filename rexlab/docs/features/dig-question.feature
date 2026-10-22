@@ -24,7 +24,7 @@ Feature: Dig: who is it?
     When a round starts
     Then the board is all sand and the title reads "DIG"
     And no name, picture or close-up tells the dinosaur under it
-    And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity overlaid with empty cards
+    And the board stands in its place beside the question's column, which holds <count> dinosaur cards at zero opacity sharing their slots with empty cards
     And each empty card is the second surface, with a 2 px line border, rounded 24, and a large "?" in the line colour, centred
     And an empty card never intercepts taps and screen readers always skip it
     And the dinosaur cards are disabled, unfocusable and hidden from screen readers
@@ -44,6 +44,7 @@ Feature: Dig: who is it?
     And every choice picture is desaturated until the child picks an answer
     And the board does not move, and nothing in the column shifts
     And no card turns or starts a timed arrival animation
+    And the same dinosaur cards keep their slots and order across the threshold
 
     Examples:
       | level          | count |
@@ -70,6 +71,18 @@ Feature: Dig: who is it?
       | 60  | 0.7     |
       | 75  | 1       |
       | 90  | 1       |
+
+  Scenario: A round gives back its current crossfade
+    Given an Explorer or Paleontologist round with choices partly visible, or a wrong pick rejected
+    When I turn the iPad to portrait and back, or open the FIELD GUIDE and return
+    Then the same sand, choice order, card and empty-card opacity, title and rejected picks return
+    And choices remain unavailable until 75% of the dinosaur is clear
+
+  Scenario: A new round begins with invisible choices
+    Given I have partly brushed a round, or finished it after a wrong pick
+    When I leave for HOME and start DIG, or start the next round with DIG AGAIN
+    Then the new round has all sand, dinosaur cards at zero opacity and empty cards at full opacity
+    And its title reads "DIG", no choices are rejected and none can be picked yet
 
   Scenario: Brushing goes on while the question shows
     Given the question shows

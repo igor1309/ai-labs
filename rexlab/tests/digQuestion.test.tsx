@@ -2,12 +2,12 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigBoardScreen, type SandMark } from "../src/DigBoardScreen.tsx";
-import { BRUSH_SIZES, brushRound, startRound } from "../src/dig/index.ts";
+import { BRUSH_SIZES, brushRound, GRID, startRound } from "../src/dig/index.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
-import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard, wrongCards } from "./digApp.tsx";
+import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
 import { PALETTE, SHIPPED_DIG, SHIPPED_DINOSAURS, fakeBodyPicture, fakeTreasurePicture, homeTile, manualPictures, memoryStorage, sameColour } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
@@ -53,21 +53,22 @@ function openRound(level: Level, options: Parameters<typeof openDigApp>[0] = {})
   return app;
 }
 
-// Brushes rows of the frame, top down, until the question shows, and
-// returns the time the next stroke may start at.
-function brushUntilAsked() {
+// Brushes rows of the frame, top down, to the given share (the question
+// by default), returning the time the next stroke may start at.
+function brushUntilAsked(share = 0.75) {
   let time = 0;
-  for (let y = 10; y < 600 && choices().length === 0; y += 20) drag([[0, y], [800, y]], (time += 1000));
+  for (let y = 10; y < 600 && cleared() < share; y += 20) drag([[0, y], [800, y]], (time += 1000));
   return time + 1000;
 }
 
 describe.each(["explorer", "paleontologist"] as const)("the question at %s", (level) => {
   it.each(["en", "ru"] as const)("waits for three quarters of the dinosaur, then asks in %s beside the board, naming each choice", (language) => {
     openRound(level, { language });
-    expect([title(), choices(), column()?.getAttribute("aria-hidden")]).toEqual([TEXTS[language].dig, [], "true"]);
+    expect([title(), choices().length, choices().every((card) => card.disabled), column()?.getAttribute("aria-hidden")])
+      .toEqual([TEXTS[language].dig, offered[level].length, true, "true"]);
     expect(document.querySelector(".dig-body")?.hasAttribute("data-asks")).toBe(true);
     drag([[0, 10], [800, 10]]);
-    expect(choices()).toEqual([]);
+    expect(choices().every((card) => card.disabled)).toBe(true);
     brushUntilAsked();
     expect(cleared()).toBeGreaterThanOrEqual(0.75);
     expect(title()).toBe(TEXTS[language].whoIsIt);
@@ -89,7 +90,8 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
   it.each(["light", "dark"] as const)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
     openRound(level, { theme });
     const colours = PALETTE[theme];
-    expect([column()?.getAttribute("aria-hidden"), column()?.querySelectorAll("button, [tabindex]").length, choices()]).toEqual(["true", 0, []]);
+    expect([column()?.getAttribute("aria-hidden"), choices().length, choices().every((card) => card.disabled && card.tabIndex === -1)])
+      .toEqual(["true", offered[level].length, true]);
     expect(screen.queryByRole("group", { name: TEXTS.en.whoIsIt })).toBeNull();
     expect(emptyCards()).toHaveLength(offered[level].length);
     for (const card of emptyCards()) {
@@ -100,7 +102,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
         .toEqual([true, true, true]);
     }
     fireEvent.click(emptyCards()[0]!);
-    expect([title(), board().hasAttribute("data-blown"), choices()]).toEqual([TEXTS.en.dig, false, []]);
+    expect([title(), board().hasAttribute("data-blown"), choices().every((card) => card.disabled)]).toEqual([TEXTS.en.dig, false, true]);
   });
 
   it.each([false, true])("keeps the board in its place and size, and each card's slot, as the question comes, a pick, the gust and the lift, reduced motion %s", (reducedMotion) => {
@@ -117,7 +119,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(sizes).toHaveLength(offered[level].length);
     brushUntilAsked();
     expect([boardPlace(), slots(), slotSizes()]).toEqual([place, before, sizes]);
-    // The choice card fills the slot its empty card filled.
+    // Both cards fill the same slot.
     for (const [at, slot] of slots().entries()) {
       const [empty, card] = [slot.querySelector(".dig-empty-card")!, slot.querySelector(".dig-choice-card")!];
       expect(card).toBe(choices()[at]);
@@ -137,22 +139,50 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     act(() => app.timers.fire(LIFT[timing]));
   });
 
-  it.each([false, true])("turns each empty card into its choice card in place, 60 ms apart, reduced motion %s", (reducedMotion) => {
-    openRound(level, { reducedMotion });
-    expect(emptyCards().map((card) => getComputedStyle(card).animationName)).toEqual(offered[level].map(() => "none"));
-    brushUntilAsked();
-    const stagger = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--motion-stagger")) * 1.5;
-    expect(stagger).toBe(60);
-    expect(choices()).toHaveLength(offered[level].length);
-    for (const [at, slot] of slots().entries()) {
-      expect(slot.style.getPropertyValue("--choice")).toBe(String(at));
-      const [empty, card] = [slot.querySelector(".dig-empty-card")!, slot.querySelector(".dig-choice-card")!];
-      expect([getComputedStyle(empty).animation, getComputedStyle(card).animation]).toEqual(reducedMotion
-        ? ["fade-out var(--motion-small) var(--ease-out) both", "fade-in var(--motion-small) var(--ease-out) both"]
-        : ["dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both",
-          "dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both"]);
-      if (!reducedMotion) expect(Number(slot.style.getPropertyValue("--choice")) * stagger).toBe(at * 60);
+  it.each([false, true])("crossfades the same cards directly from the unrounded clear-cell fraction, reduced motion %s", (reducedMotion) => {
+    const started = startRound(SHIPPED_DIG, [], undefined, () => 0, level);
+    // Four hundred dinosaur cells allow exact boundaries and fractions
+    // between whole percentages; the rest of the board is empty sand.
+    const dinosaur = { ...started.dinosaur, cells: Array.from({ length: GRID.rows }, (_, row) => Array.from({ length: GRID.columns }, () => row < 10)) };
+    const roundAt = (count: number) => ({ ...started, dinosaur, sand: { ...started.sand, counts: new Uint8Array(GRID.columns * GRID.rows).fill(25, 0, count) } });
+    const submitted: string[] = [];
+    const draw = (count: number) => <DigBoardScreen language="en" {...presentDigBoard(roundAt(count), fakeBodyPicture, fakeTreasurePicture, (id) => id)}
+      choiceCount={started.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
+      dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
+      onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />;
+    const view = render(draw(0), withPictures);
+    const original = choices();
+    const pictures = original.map((card) => card.querySelector("img"));
+    for (const [count, opacity] of [[0, 0], [99, 0], [100, 0], [101, 0.005], [160, 0.3], [200, 0.5], [240, 0.7], [299, 0.995], [300, 1], [360, 1], [400, 1]] as const) {
+      view.rerender(draw(count));
+      const unlocked = count >= 300;
+      expect(title()).toBe(unlocked ? TEXTS.en.whoIsIt : TEXTS.en.dig);
+      expect(column()?.getAttribute("aria-hidden")).toBe(unlocked ? null : "true");
+      expect(screen.queryByRole("group", { name: TEXTS.en.whoIsIt }) !== null).toBe(unlocked);
+      for (const [at, card] of choices().entries()) {
+        expect(card).toBe(original[at]);
+        expect(card.querySelector("img")).toBe(pictures[at]);
+        expect(Number(getComputedStyle(card).opacity)).toBeCloseTo(opacity, 12);
+        expect(Number(getComputedStyle(emptyCards()[at]!).opacity)).toBeCloseTo(1 - opacity, 12);
+        expect([card.disabled, card.tabIndex]).toEqual(unlocked ? [false, 0] : [true, -1]);
+        expect(getComputedStyle(card.querySelector("img")!).filter).toBe("grayscale(1)");
+        if (!unlocked) {
+          fireEvent.click(card);
+          card.focus();
+          expect(document.activeElement).not.toBe(card);
+        }
+        for (const surface of [card, emptyCards()[at]!]) {
+          const style = getComputedStyle(surface);
+          expect(style.animationName).toBe("none");
+          expect(style.transition).not.toMatch(/\b(?:opacity|all)\b/);
+          expect(style.transform).toBe("none");
+        }
+        expect(getComputedStyle(emptyCards()[at]!).pointerEvents).toBe("none");
+      }
+      expect(submitted).toEqual([]);
     }
+    for (const card of choices()) fireEvent.click(card);
+    expect(submitted).toEqual(started.choices);
   });
 
   it.each([false, true])("keeps clearing under a held finger as the question comes, reduced motion %s", (reducedMotion) => {
@@ -180,14 +210,38 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
 
   it.each([false, true])("goes on brushing while it asks, even the stroke held down as it came, reduced motion %s", (reducedMotion) => {
     const app = openRound(level, { reducedMotion });
+    const original = choices();
+    const opacities: number[] = [];
+    const checkFade = () => {
+      const clear = board().getAttribute("data-clear")!.split(" ");
+      const cells = roundDinosaur().cells.flatMap((row, y) => row.flatMap((over, x) => over ? [clear[y]![x] === "1"] : []));
+      const share = cells.filter(Boolean).length / cells.length;
+      const opacity = Math.max(0, Math.min(1, (share - 0.25) / 0.5));
+      expect(cleared()).toBe(share);
+      expect(title()).toBe(share >= 0.75 ? TEXTS.en.whoIsIt : TEXTS.en.dig);
+      for (const [at, card] of choices().entries()) {
+        expect(card).toBe(original[at]);
+        expect(Number(getComputedStyle(card).opacity)).toBeCloseTo(opacity, 12);
+        expect(Number(getComputedStyle(emptyCards()[at]!).opacity)).toBeCloseTo(1 - opacity, 12);
+        expect(card.disabled).toBe(share < 0.75);
+      }
+      if (opacities.length) expect(opacity).toBeGreaterThanOrEqual(opacities.at(-1)!);
+      opacities.push(opacity);
+    };
+    checkFade();
     let time = 0;
     pressAt(board(), time, { x: 0, y: 10, pointer: 9 });
-    for (let y = 10; y < 600 && choices().length === 0; y += 20) {
+    checkFade();
+    for (let y = 10; y < 600 && cleared() < 0.75; y += 20) {
       moveAt((time += 10), { x: 800, y, pointer: 9 });
+      checkFade();
       moveAt((time += 10), { x: 0, y: y + 20, pointer: 9 });
+      checkFade();
     }
+    expect(new Set(opacities.filter((opacity) => opacity > 0 && opacity < 1)).size).toBeGreaterThan(5);
+    expect(opacities.some((opacity) => opacity > 0 && opacity < 1 && Math.abs(opacity * 50 - Math.round(opacity * 50)) > 0.0001)).toBe(true);
     expect(choices()).toHaveLength(offered[level].length);
-    expect(getComputedStyle(choices()[0]!).animation).toContain(reducedMotion ? "fade-in" : "dig-turn-in");
+    expect(getComputedStyle(choices()[0]!).animationName).toBe("none");
     const before = cleared();
     moveAt((time += 10), { x: 800, y: 590, pointer: 9 });
     expect(cleared()).toBeGreaterThan(before);
@@ -196,6 +250,63 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect([cleared(), board().hasAttribute("data-blown"), choices().length]).toEqual([1, false, offered[level].length]);
     // Digging is recorded only at the gust.
     expect(JSON.parse(app.storage.items.get(PROGRESS_KEY)!).games.dig).toBeUndefined();
+  });
+
+  it.each([false, true])("restores the current fade and rejected choices after rotation and the FIELD GUIDE, reduced motion %s", (reducedMotion) => {
+    const app = openRound(level, { reducedMotion });
+    brushUntilAsked(0.5);
+    expect(cleared()).toBeGreaterThanOrEqual(0.5);
+    expect(cleared()).toBeLessThan(0.75);
+    const state = () => ({
+      clear: board().getAttribute("data-clear"), title: title(),
+      cards: choices().map((card, at) => [card.dataset.choice, card.disabled, card.tabIndex, card.dataset.rejected,
+        getComputedStyle(card).opacity, getComputedStyle(card.querySelector("img")!).opacity, getComputedStyle(emptyCards()[at]!).opacity]),
+      hidden: column()?.getAttribute("aria-hidden")
+    });
+    for (const phase of ["partial", "rejected"]) {
+      if (phase === "rejected") {
+        brushUntilAsked();
+        fireEvent.click(wrongCards()[0]!);
+      }
+      const before = state();
+      const original = choices();
+      act(() => app.viewport.turn("portrait"));
+      act(() => app.viewport.turn("landscape"));
+      placeBoard(800);
+      expect(state()).toEqual(before);
+      choices().forEach((card, at) => expect(card).toBe(original[at]));
+      fireEvent.click(screen.getByRole("button", { name: TEXTS.en.fieldGuide }));
+      fireEvent.click(screen.getByRole("button", { name: "BACK" }));
+      placeBoard(800);
+      expect(state()).toEqual(before);
+    }
+    fireEvent.click(choiceCard());
+    expect(board().hasAttribute("data-blown")).toBe(true);
+  });
+
+  it.each([false, true])("starts choices at zero again after HOME and DIG AGAIN, reduced motion %s", (reducedMotion) => {
+    const app = openRound(level, { reducedMotion });
+    const fresh = () => {
+      expect([cleared(), title(), column()?.getAttribute("aria-hidden")]).toEqual([0, TEXTS.en.dig, "true"]);
+      expect(choices()).toHaveLength(offered[level].length);
+      for (const [at, card] of choices().entries()) {
+        expect([card.disabled, card.tabIndex, card.hasAttribute("data-rejected"), card.hasAttribute("data-correct"), getComputedStyle(card).opacity,
+          getComputedStyle(emptyCards()[at]!).opacity]).toEqual([true, -1, false, false, "0", "1"]);
+      }
+    };
+    brushUntilAsked(0.5);
+    fireEvent.click(screen.getByRole("button", { name: "HOME" }));
+    fireEvent.click(homeTile("DIG"));
+    placeBoard(800);
+    fresh();
+    brushUntilAsked();
+    fireEvent.click(wrongCards()[0]!);
+    fireEvent.click(choiceCard());
+    finishBoard(app.timers, reducedMotion ? "reduced" : "motion");
+    act(() => app.timers.fire(STAR_LANDS[reducedMotion ? "reduced" : "motion"]));
+    fireEvent.click(screen.getByRole("button", { name: "DIG AGAIN" }));
+    placeBoard(800);
+    fresh();
   });
 
   it.each([false, true])("keeps a wrong pick out, then gusts on the right one with no badge, reduced motion %s", (reducedMotion) => {
@@ -267,7 +378,11 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
   it.each(["loaded", "failed", "late"] as const)("asks while the pictures load, shows the %s look and still takes picks", (outcome) => {
     const pictures = manualPictures();
     const app = openRound(level, { timers: pictures });
-    brushAll();
+    brushUntilAsked(0.5);
+    const opacity = Number(getComputedStyle(choices()[0]!).opacity);
+    expect(opacity).toBeGreaterThan(0);
+    expect(opacity).toBeLessThan(1);
+    const original = choices();
     const looks = () => choices().map((card) => card.querySelector("img")?.getAttribute("data-picture"));
     expect(looks()).toEqual(offered[level].map(() => "loading"));
     act(() => {
@@ -275,6 +390,14 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
       else for (const id of offered[level]) outcome === "loaded" ? pictures.finish(fakeBodyPicture(id)) : pictures.fail(fakeBodyPicture(id));
     });
     expect(looks()).toEqual(offered[level].map(() => (outcome === "loaded" ? "appearing" : "failed")));
+    for (const [at, card] of choices().entries()) {
+      expect(card).toBe(original[at]);
+      expect(Number(getComputedStyle(card).opacity)).toBe(opacity);
+      expect(card.disabled).toBe(true);
+      fireEvent.click(card);
+    }
+    expect(board().hasAttribute("data-blown")).toBe(false);
+    brushAll();
     // A failed picture has no source to tell the dinosaur under the sand by.
     fireEvent.click(choiceCard("velociraptor"));
     expect(choiceCard("velociraptor").disabled).toBe(true);

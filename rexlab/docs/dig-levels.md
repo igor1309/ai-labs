@@ -79,6 +79,12 @@ Storyboard" row of `../design/rexlab.pen`.
   become the question. Pictures stay grey until an answer is picked.
   A wrong pick fades its picture to opacity 0.45, while the container
   stays at 1 and its name and retry mark stay readable.
+  The choices keep their identity and order as the question unlocks.
+  Rotation and a return from the FIELD GUIDE preserve the round's
+  current crossfade and rejected picks. A new round from HOME or DIG
+  AGAIN starts at zero choice opacity, full empty-card opacity and no
+  rejected picks. Loading and failed pictures share their card's current
+  opacity and do not affect when the card becomes pickable.
   Hatchling's board is centred, with no column. Reduced motion fades the
   board in without a puff and uses the same dig-driven card opacity.
 - **Spots.** A spot is a detail on the dinosaur's body picture: an eye,
