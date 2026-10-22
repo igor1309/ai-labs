@@ -8,6 +8,14 @@ on them.
 | App | Feature | Mock |
 |---|---|---|
 | `PanelPreview` | The live panel (`PanelUI`) | `FakeCall`: a scripted call that advances one chunk per step |
+| `LiveTextPreview` | Live text and the recognisers, in the live panel | None: the real models hear the microphone or a recorded call |
+
+`LiveTextPreview` is the one app without a mock: it is for trying the
+recognisers by hand. It loads Parakeet, Nemotron or the two-pass recogniser
+(both) per track, from FluidAudio's model cache, downloading them the first
+time. A stereo file is read as Amanu keeps a call, the left channel «я» and
+the right «они», at the pace it was recorded, while it plays. The microphone
+needs the terminal that runs it to have microphone access.
 
 Run one with `swift run PanelPreview` from this folder; `swift test` runs the
 mocks' tests.
