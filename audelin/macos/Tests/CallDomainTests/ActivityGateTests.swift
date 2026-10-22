@@ -3,7 +3,9 @@ import Testing
 @testable import CallDomain
 
 /// Activity gate QA scenarios (`docs/spec/activity-gate/QA.md`).
-@Suite struct ActivityGateTests {
+/// No test sleeps to show that something did not happen: a request is
+/// registered when it is made, so its state can be read at once.
+@Suite(.timeLimit(.minutes(1))) struct ActivityGateTests {
     @Test func s1AFreeGate() async {
         let gate = ActivityGate()
 
@@ -28,16 +30,17 @@ import Testing
     @Test(arguments: [Activity.recording, .move, .delete])
     func s4CatchUpYields(to activity: Activity) async throws {
         let gate = ActivityGate()
-        let yielded = Flag()
-        let catchUp = await gate.requestCatchUp { yielded.set() }
+        let yielded = Signal()
+        let catchUp = gate.requestCatchUp { yielded.fire() }
+        #expect(catchUp.isGranted, "catch-up not granted on a free gate")
         let granted = Flag()
 
         let request = Task { _ = try await gate.request(activity); granted.set() }
-        #expect(await eventually { yielded.isSet }, "catch-up got no yield")
-        try await settle()
+        await yielded.wait()
+        // The request waits on catch-up's release, which has not happened.
         #expect(!granted.isSet, "granted before catch-up released")
 
-        gate.release(catchUp)
+        gate.release(await catchUp.hold())
         try await request.value
         #expect(granted.isSet)
     }
@@ -45,14 +48,12 @@ import Testing
     @Test func s5Release() async throws {
         let gate = ActivityGate()
         let recording = try await gate.request(.recording)
-        let catchUp = waitingCatchUp(gate)
-        try await settle()
-        #expect(!catchUp.granted.isSet, "catch-up granted while a recording holds")
+        let catchUp = gate.requestCatchUp {}
+        #expect(!catchUp.isGranted, "catch-up granted while a recording holds")
 
         gate.release(recording)
 
-        _ = await catchUp.task.value
-        #expect(catchUp.granted.isSet)
+        #expect(catchUp.isGranted)
     }
 
     @Test func s6TwoRequestsAtOnce() async {
@@ -93,27 +94,23 @@ import Testing
         let gate = ActivityGate()
         let recording = try await gate.request(.recording)
         let delete = try await gate.request(.delete)
-        let catchUp = waitingCatchUp(gate)
+        let catchUp = gate.requestCatchUp {}
 
         gate.release(delete)
-        try await settle()
-        #expect(!catchUp.granted.isSet, "catch-up granted while a recording holds")
+        #expect(!catchUp.isGranted, "catch-up granted while a recording holds")
 
         gate.release(recording)
-        _ = await catchUp.task.value
-        #expect(catchUp.granted.isSet)
+        #expect(catchUp.isGranted)
     }
 
     @Test func s10CatchUpWaitsOutAMove() async throws {
         let gate = ActivityGate()
         let move = try await gate.request(.move)
-        let catchUp = waitingCatchUp(gate)
-        try await settle()
-        #expect(!catchUp.granted.isSet, "catch-up granted while a move holds")
+        let catchUp = gate.requestCatchUp {}
+        #expect(!catchUp.isGranted, "catch-up granted while a move holds")
 
         gate.release(move)
-        _ = await catchUp.task.value
-        #expect(catchUp.granted.isSet)
+        #expect(catchUp.isGranted)
     }
 }
 
@@ -135,20 +132,31 @@ private func outcome(_ gate: ActivityGate, _ activity: Activity) async -> Result
     do { return .success(try await gate.request(activity)) } catch { return .failure(error) }
 }
 
-private func waitingCatchUp(_ gate: ActivityGate) -> (task: Task<GateHold, Never>, granted: Flag) {
-    let granted = Flag()
-    let task = Task {
-        let hold = await gate.requestCatchUp {}
-        granted.set()
-        return hold
+/// Something that happens once; tests wait for it rather than poll.
+private final class Signal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fired = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func fire() {
+        let waiting = lock.withLock {
+            fired = true
+            defer { self.waiting = [] }
+            return self.waiting
+        }
+        waiting.forEach { $0.resume() }
     }
-    return (task, granted)
-}
 
-/// Lets other tasks run long enough to act on what they were given.
-private func settle() async throws { try await Task.sleep(for: .milliseconds(50)) }
-
-private func eventually(_ condition: () -> Bool) async -> Bool {
-    for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(5)) }
-    return condition()
+    func wait() async {
+        await withCheckedContinuation { resume in
+            lock.lock()
+            if fired {
+                lock.unlock()
+                resume.resume()
+            } else {
+                waiting.append(resume)
+                lock.unlock()
+            }
+        }
+    }
 }

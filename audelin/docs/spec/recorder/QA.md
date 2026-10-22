@@ -50,8 +50,8 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 ### S-6 A new epoch
 
-- Drive: write 10 s, start an epoch at 15 s, write 10 s.
-- Expect: two files, one per epoch; reading 0–25 s gives epoch 1, a gap from 10 s to 15 s, then epoch 2.
+- Drive: write 10 s, start an epoch at 15 s, write 10 s. Second run: epochs of 1 s at 2200 s and 4400 s; read 2000–4500 s.
+- Expect: two files, one per epoch; reading 0–25 s gives epoch 1, a gap from 10 s to 15 s, then epoch 2. In the second run both epochs read back at their own times.
 - Evidence: the suite at the head.
 
 ### S-7 The folder is renamed

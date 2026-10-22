@@ -2,6 +2,14 @@
 
 ## 2026-10-22
 
+- Agister reviews of the two merged build PRs found five things to fix,
+  now fixed test-first: Recorder file names wrapped past 32 bits of
+  microseconds (about 36 minutes into a call); a failed copy could delete
+  a folder already at the target; deleting the source after a copy used a
+  stored path rather than the call's id; the module check missed
+  `public import` and `import struct` forms; a stale comment. Tests no
+  longer sleep to show that something did not happen, and the Trash tests
+  use a disk image's Trash instead of the user's (spec-process § Building).
 - The app exists: `Audelin.app`, a menu bar item with «Выйти», built from
   the package by `macos/scripts/bundle.sh` rather than an Xcode project, so
   CI and the agent build it with `swift build` alone. A check of ADR-001's

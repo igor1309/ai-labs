@@ -10,7 +10,6 @@ struct AudelinApp: App {
         }
     }
 
-    /// Nothing records or moves yet, so the answer is always to quit.
     private func quit() {
         if QuitPolicy.answer(recording: false, moving: false) == .quit {
             NSApplication.shared.terminate(nil)

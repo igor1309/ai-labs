@@ -110,7 +110,7 @@ public final class Recorder: RecordingWriter, RecordedAudioReader, @unchecked Se
 
     private static func path(_ track: Track, _ epoch: Int, _ time: TimeInterval) -> String {
         let micros = Int((time * 1_000_000).rounded())
-        return "audio/\(track.rawValue)-e\(epoch)-t\(String(format: "%015d", micros)).wav"
+        return "audio/\(track.rawValue)-e\(epoch)-t\(String(format: "%015ld", micros)).wav"
     }
 
     private struct TrackFile {

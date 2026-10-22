@@ -11,6 +11,12 @@ import subprocess
 import sys
 
 DOMAIN = {"CallDomain", "TranscriptCore"}
+# `@attr internal import struct Module.Name`: attributes, an access level and
+# an import kind may all come before the module.
+IMPORT = re.compile(
+    r"^\s*(?:@\w+\s+)*(?:(?:public|package|internal|fileprivate|private)\s+)?import\s+"
+    r"(?:(?:struct|class|enum|protocol|typealias|func|var|let)\s+)?(\w+)",
+    re.M)
 APP = "Audelin"
 
 
@@ -91,10 +97,10 @@ def closure(name, deps):
     return seen
 
 
-def imports(name):
+def imports(name, sources=pathlib.Path("Sources")):
     found = set()
-    for source in pathlib.Path("Sources", name).rglob("*.swift"):
-        found |= set(re.findall(r"^\s*(?:@\w+\s+)*import\s+(\w+)", source.read_text(), re.M))
+    for source in (sources / name).rglob("*.swift"):
+        found |= set(IMPORT.findall(source.read_text()))
     return found
 
 
