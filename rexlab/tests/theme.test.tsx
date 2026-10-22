@@ -17,11 +17,12 @@ import type { Theme } from "../src/theme.ts";
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
+import type { LargeLevel } from "../src/pairs/board.ts";
 import { endReaction, meetNeed, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { board as sandBoard, digUp, placeBoard } from "./digApp.tsx";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import { HOME_GAMES, badgeOf, nameRowOf, renderHomePageFeaturing, symbolSquareOf } from "./homePage.tsx";
-import { MISS, endWave, pairsRecord, playBoard, playPairs, showMiss, stateAt, turnCard } from "./pairsApp.tsx";
+import { MISS, dealt, endWave, namesOf, pairsRecord, placesOf, playBoard, playPairs, showMiss, turnCard } from "./pairsApp.tsx";
 import { AWAY, dragTo as dragBone, fit, fitAll, fittedPieces, hints, layOutPuzzle, lifted, moveTo, press, release, skeletonOf, spotOf, spotPieces, spots } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
@@ -301,15 +302,18 @@ async function pairsBoard({ theme, user, timers }: Walk) {
 }
 
 // Each large level's board with a silhouette or picture open, every pair
-// found, and the result with its first best and NEW badges.
-const pairsLargeBoard = (level: string) =>
+// found, and the result with its first best and NEW badges. The board is
+// the one the app's seeded random deals, so each pair is turned at once.
+const pairsLargeBoard = (level: LargeLevel) =>
   async ({ theme, user, timers }: Walk) => {
-    await playPairs(user, level);
-    await turnCard(user, 0);
-    expectScreenIn(theme);
-    await turnCard(user, 1);
-    if (stateAt(1) === "open") act(() => timers.fire(MISS));
-    await playBoard(user, timers);
+    const names = namesOf(dealt({ large: level }, { random: seededRandom(41) }));
+    await playPairs(user, level.toLocaleUpperCase("en"));
+    for (const name of new Set(names)) {
+      for (const place of placesOf(names, name)) {
+        await turnCard(user, place);
+        if (place === 0) expectScreenIn(theme);
+      }
+    }
     expectScreenIn(theme);
     endWave(timers);
     expect(screen.getByRole("status", { name: "FIRST BEST SCORE" })).toBeDefined();
@@ -510,8 +514,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     [
       ["the welcome", pairsWelcome],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
-      ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("EXPLORER")],
-      ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsLargeBoard("PALEONTOLOGIST")],
+      ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("explorer")],
+      ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsLargeBoard("paleontologist")],
       ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
     ]
   ],
