@@ -130,6 +130,20 @@ import Testing
         #expect(read.map(\.end) == [10, 25])
     }
 
+    /// File names hold the start in microseconds, past 32 bits after 35 min.
+    @Test func s6EpochsLateInALongCall() throws {
+        let setup = try Setup()
+        try setup.recorder.startEpoch(1, of: .mic, at: 2200, sampleRate: Sweep.rate)
+        try setup.write(seconds: 2200..<2201)
+        try setup.recorder.startEpoch(2, of: .mic, at: 4400, sampleRate: Sweep.rate)
+        try setup.write(seconds: 4400..<4401)
+
+        let read = try setup.recorder.read(.mic, from: 2000, to: 4500)
+        #expect(read.map(\.epoch) == [1, 2])
+        #expect(read.map(\.start) == [2200, 4400])
+        #expect(read.map(\.end) == [2201, 4401])
+    }
+
     @Test func s7TheFolderIsRenamed() throws {
         let setup = try Setup()
         try setup.recorder.startEpoch(1, of: .mic, at: 0, sampleRate: Sweep.rate)
