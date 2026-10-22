@@ -6,7 +6,7 @@ Feature: Compare dinosaurs quiz: a question in a tall window
   under the prompt the two cards, one above the other, each across the
   width; under them the row kept for "NEXT", at the right. Side by side
   the cards would leave a name too little room: one above the other,
-  every name keeps its landscape type. The rest is as
+  a name keeps its landscape type or close to it. The rest is as
   compare-dinosaurs-answer.feature and the other compare-dinosaurs
   features tell. A tall-narrow window keeps the picture asking to turn
   or widen (window-shape.feature).
@@ -21,8 +21,10 @@ Feature: Compare dinosaurs quiz: a question in a tall window
   beside its symbol, and at most 44 pixels. The two cards are 24 apart,
   share equally the height the bar, the prompt and the row leave, and
   "VS" stands on the seam between them, centred, over both. A card's
-  name, in its landscape 34-pixel type, stands on one line under its
-  picture; once the question is answered, the card's value stands in
+  name stands on one line under its picture, in the same type for every
+  name in one window, as large as lets the longest name in either
+  language fit the footer less its padding (28 a side), and at most its
+  landscape 34 pixels; once the question is answered, the card's value stands in
   its chip at the bottom right of the picture's area, 24 from its
   edges, so no card grows or moves when the values show. The picture,
   at its 4:3 and at most 560 by 420, is as large as the card's picture
@@ -53,7 +55,7 @@ Feature: Compare dinosaurs quiz: a question in a tall window
     And a window of 600 by 1000 CSS pixels, with no safe areas and <scrollbar>
     When I meet each of the quiz's prompts and each of its dinosaurs
     Then every prompt stands on one line beside its symbol, none cut
-    And every name stands on one line in 34-pixel type, none cut
+    And every name stands on one line in the same type, at least 32 pixels, none cut
     And every value stays inside its chip, on one line, inside the picture's area
 
     Examples:
