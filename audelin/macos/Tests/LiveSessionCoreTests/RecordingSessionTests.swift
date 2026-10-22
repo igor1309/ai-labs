@@ -42,6 +42,74 @@ import Testing
             #expect(try reader.read(track, from: 0, to: 20) == [Tone.audio(track, from: 0, seconds: 20)])
         }
         #expect(setup.files.recording(recording.call).stopped)
+        #expect(!setup.mic.isRunning)
+        #expect(!setup.callAudio.isRunning)
+        setup.feedBoth(seconds: 1)
+        for track in Track.allCases {
+            #expect(try reader.read(track, from: 0, to: 21) == [Tone.audio(track, from: 0, seconds: 20)])
+        }
+    }
+
+    /// Recording holds the activity gate against a folder move until Stop
+    /// (ADR-001 invariant 16).
+    @Test func theGateIsHeldWhileRecording() async throws {
+        let setup = Setup()
+        let session = setup.session()
+        try await session.start(title: "Zoom", app: "Zoom")
+
+        await #expect(throws: GateRefusal.self) { try await setup.gate.request(.move) }
+        do {
+            _ = try await setup.gate.request(.move)
+        } catch {
+            #expect(error.holder == .recording)
+        }
+
+        await session.stop()
+
+        let move = try await setup.gate.request(.move)
+        setup.gate.release(move)
+    }
+
+    /// Recognition hears of every written piece on the session clock, for
+    /// the recording's call, and its stream ends at Stop.
+    @Test func recognitionIsToldWhatIsWritten() async throws {
+        let spy = RecognitionSpy()
+        let setup = Setup(recognition: spy)
+        let session = setup.session()
+        let recording = try await session.start(title: "Zoom", app: "Zoom")
+        setup.feedBoth(seconds: 1)
+
+        await session.stop()
+        let heard = await spy.ended()
+
+        #expect(heard.call == recording.call)
+        for track in Track.allCases {
+            let ends = heard.written.filter { $0.track == track }
+            #expect(ends.map(\.epoch) == Array(repeating: 1, count: 10))
+            #expect(ends.map { ($0.end * 10).rounded() } == (1...10).map(Double.init))
+        }
+    }
+
+    /// Two starts waiting on the gate at once make one call and one hold.
+    @Test func twoStartsAtOnce() async throws {
+        let setup = Setup()
+        let session = setup.session()
+        let yields = Yields()
+        let catchUp = await setup.gate.requestCatchUp(onYield: { yields.add() }).hold()
+
+        let recordings = try await withThrowingTaskGroup(of: Recording.self) { group in
+            for _ in 0..<2 { group.addTask { try await session.start(title: "Zoom", app: "Zoom") } }
+            await yields.wait(for: 2)
+            setup.gate.release(catchUp)
+            return try await group.reduce(into: []) { $0.append($1) }
+        }
+
+        #expect(recordings.count == 2)
+        #expect(recordings[0] == recordings[1])
+        #expect(setup.calls.created.count == 1)
+        await session.stop()
+        let move = try await setup.gate.request(.move)
+        setup.gate.release(move)
     }
 
     @Test func s3StoppingWithTheRecogniserStuck() async throws {
@@ -311,6 +379,53 @@ private final class FakeFiles: RecordingFiles, @unchecked Sendable {
 
     func writer(for call: CallID) -> any RecordingWriter { recording(call) }
     func reader(for call: CallID) -> any RecordedAudioReader { recording(call) }
+}
+
+/// A recogniser that keeps what it hears and tells when its stream ended.
+private final class RecognitionSpy: LiveRecognition, @unchecked Sendable {
+    private let lock = NSLock()
+    private var heard: (call: CallID?, written: [WrittenAudio]) = (nil, [])
+    private let (done, finished) = AsyncStream.makeStream(of: Void.self)
+
+    func recognize(_ call: CallID, written: AsyncStream<WrittenAudio>) async {
+        lock.withLock { heard.call = call }
+        for await piece in written { lock.withLock { heard.written.append(piece) } }
+        finished.yield()
+    }
+
+    /// What it heard, once its stream has ended.
+    func ended() async -> (call: CallID?, written: [WrittenAudio]) {
+        for await _ in done { break }
+        return lock.withLock { heard }
+    }
+}
+
+/// Counts catch-up's yields and lets a test wait for a number of them.
+private final class Yields: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    private var waiter: (target: Int, resume: CheckedContinuation<Void, Never>)?
+
+    func add() {
+        let resume: CheckedContinuation<Void, Never>? = lock.withLock {
+            count += 1
+            guard let waiter, count >= waiter.target else { return nil }
+            self.waiter = nil
+            return waiter.resume
+        }
+        resume?.resume()
+    }
+
+    func wait(for target: Int) async {
+        await withCheckedContinuation { resume in
+            let now = lock.withLock {
+                if count >= target { return true }
+                waiter = (target, resume)
+                return false
+            }
+            if now { resume.resume() }
+        }
+    }
 }
 
 /// A recogniser that never reads what is written and never returns.
