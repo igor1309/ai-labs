@@ -168,7 +168,7 @@ private struct FiniteSource: AudioSource {
     func audio() -> AsyncStream<AudioChunk> {
 
         let (stream, continuation) = AsyncStream<AudioChunk>.makeStream()
-        (0..<chunks).forEach { _ in continuation.yield(.init(samples: [0])) }
+        (0..<chunks).forEach { _ in continuation.yield(.init(samples: [0], sampleRate: 16_000)) }
         continuation.finish()
         return stream
     }
@@ -187,5 +187,5 @@ private final class OpenSource: AudioSource {
 
     func audio() -> AsyncStream<AudioChunk> { stream }
 
-    func send() { continuation.yield(.init(samples: [0])) }
+    func send() { continuation.yield(.init(samples: [0], sampleRate: 16_000)) }
 }

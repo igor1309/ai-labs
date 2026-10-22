@@ -1,11 +1,15 @@
-/// One piece of a track's audio, passed to the recogniser as it is.
+/// One piece of a track's audio, mono, passed to the recogniser as it is:
+/// converting it to what a model needs is the recogniser's job.
 public struct AudioChunk: Equatable, Sendable {
 
     public var samples: [Float]
+    /// Samples per second.
+    public var sampleRate: Double
 
-    public init(samples: [Float]) {
+    public init(samples: [Float], sampleRate: Double) {
 
         self.samples = samples
+        self.sampleRate = sampleRate
     }
 }
 
