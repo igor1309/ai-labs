@@ -1796,6 +1796,69 @@ body:has(.result) #version {
   animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
 }
 
+/* Upright, the cards stand one above the other across the width, "VS" on
+   their seam, and share equally the height the bar, the prompt and the
+   row for NEXT leave. A card is never shorter than a 150-pixel picture
+   with its 24-pixel padding, 198 pixels, and its footer: below that the
+   whole screen scrolls. The prompt and the names take the type
+   QuestionScreen gives in --prompt-size and --name-size, one for the
+   window, and a value stands at the bottom right of its picture's area,
+   so no card grows or moves as the values show. */
+html[data-size="tall"] .question {
+  --card-footer: calc(var(--name-size) * 1.25 + 40px);
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+html[data-size="tall"] .prompt {
+  font-size: var(--prompt-size);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+html[data-size="tall"] .dinosaur-cards {
+  position: relative;
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+html[data-size="tall"] .dinosaur-card {
+  position: relative;
+  flex: 1 0 0;
+  min-height: calc(198px + var(--card-footer));
+}
+
+html[data-size="tall"] .dinosaur-footer {
+  flex: none;
+  height: var(--card-footer);
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+}
+
+html[data-size="tall"] .dinosaur-name {
+  font-size: var(--name-size);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+html[data-size="tall"] .dinosaur-value-chip {
+  position: absolute;
+  right: 24px;
+  bottom: calc(var(--card-footer) + 24px);
+}
+
+html[data-size="tall"] .versus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: auto;
+}
+
 /* The catalogue: its bar stays at the top while the cards, as many to a
    row as CatalogueScreen gives in --columns, four in landscape, scroll
    under it, the list as wide as the screen so its scrollbar is at the

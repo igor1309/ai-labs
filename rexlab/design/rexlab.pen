@@ -106489,6 +106489,1143 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "M8TAg",
+      "x": 14700,
+      "y": 35720,
+      "name": "Compare quiz question — upright · iPad Air 820×1180 · English · Answered (LAB-479)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "b7S61",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 1140,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 820,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "Ys3ii",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "l2zoLb",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "H83X2",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "s5zej",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D4CJO",
+              "name": "Progress",
+              "width": "fill_container",
+              "height": 10,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "vjWJh",
+                  "name": "Step 1",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "eedom",
+                  "name": "Step 2",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "fdHqz",
+                  "name": "Step 3",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "V4UAc2",
+                  "name": "Step 4",
+                  "fill": "$fm-amber",
+                  "width": "fill_container",
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "SrZpg",
+                  "name": "Step 5",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "PgNBK",
+                  "name": "Step 6",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "OKHe5",
+                  "name": "Step 7",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "D3Ozl",
+                  "name": "Step 8",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "jL8po",
+                  "name": "Step 9",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "JDaOw",
+                  "name": "Step 10",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "jxvvd",
+              "name": "Counter",
+              "fill": "$fm-ink-soft",
+              "content": "4 / 10",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "knwr6",
+          "name": "Prompt",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "r2w4F",
+              "name": "Prompt Mark",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "dP3rs",
+                  "name": "Prompt Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "scale",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "qD18r",
+              "name": "Prompt Text",
+              "fill": "$fm-ink",
+              "content": "WHO IS HEAVIER?",
+              "fontFamily": "Lexend",
+              "fontSize": 44,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YZPrZ",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "e3Jd4",
+              "name": "Card Triceratops",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-good",
+              "strokeWidth": 4,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hloB5",
+                  "name": "Card Triceratops Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "l6p3F",
+                      "name": "Card Triceratops Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M0eBx",
+                      "layoutPosition": "absolute",
+                      "x": 24,
+                      "y": 24,
+                      "name": "Card Triceratops Mark",
+                      "height": 48,
+                      "fill": "$fm-good",
+                      "cornerRadius": 24,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        18,
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RnK6c",
+                          "name": "Mark Icon",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h68HeZ",
+                          "name": "Mark Text",
+                          "fill": "#FFFFFF",
+                          "content": "RIGHT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PaWnw",
+                      "layoutPosition": "absolute",
+                      "x": 587,
+                      "y": 239,
+                      "name": "Card Triceratops Value",
+                      "height": 48,
+                      "fill": "$fm-base",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "IjYhG",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "XeN4J",
+                          "name": "Value Text",
+                          "fill": "$fm-on-base",
+                          "content": "6 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GHSOs",
+                  "name": "Card Triceratops Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YrQTq",
+                      "name": "Card Triceratops Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EMLUz",
+              "layoutPosition": "absolute",
+              "x": 322,
+              "y": 374,
+              "name": "Versus",
+              "width": 64,
+              "height": 64,
+              "fill": "$fm-ink",
+              "cornerRadius": 32,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "b19Ys",
+                  "name": "Versus Text",
+                  "fill": "$fm-bg",
+                  "content": "VS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "odALM",
+              "name": "Card Velociraptor",
+              "opacity": 0.7,
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k1zMu",
+                  "name": "Card Velociraptor Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "grHed",
+                      "name": "Card Velociraptor Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/velociraptor.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pktfi",
+                      "layoutPosition": "absolute",
+                      "x": 557,
+                      "y": 239,
+                      "name": "Card Velociraptor Value",
+                      "height": 48,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "V55Thm",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wSv2E",
+                          "name": "Value Text",
+                          "fill": "$fm-ink",
+                          "content": "15 KG",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BArej",
+                  "name": "Card Velociraptor Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "u8FQKA",
+                      "name": "Card Velociraptor Name",
+                      "fill": "$fm-ink",
+                      "content": "VELOCIRAPTOR",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GyLsI",
+          "name": "Next Row",
+          "width": "fill_container",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jFAu5",
+              "name": "Next Button",
+              "height": 72,
+              "fill": "$fm-base",
+              "cornerRadius": 20,
+              "gap": 14,
+              "padding": [
+                0,
+                32,
+                0,
+                36
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uxrZu",
+                  "name": "Next Text",
+                  "fill": "$fm-on-base",
+                  "content": "NEXT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "icon",
+                  "id": "ZaVLo",
+                  "name": "Next Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "arrow-right",
+                  "library": "lucide",
+                  "fill": "$fm-on-base"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "z2NHZ3",
+      "x": 15620,
+      "y": 35720,
+      "name": "Compare quiz question — upright · 600×800 window, whole page scrolled (954 tall) · English · Pachycephalosaurus · Answered (LAB-479)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 600,
+      "height": 954,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "f8OuS",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 914,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 600,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "RP4jM",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "km9Au",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "XGHz4",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "j4qbFV",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IpzEl",
+              "name": "Progress",
+              "width": "fill_container",
+              "height": 10,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "q4fckC",
+                  "name": "Step 1",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "opHp6",
+                  "name": "Step 2",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "Fr8C0",
+                  "name": "Step 3",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "XrGdG",
+                  "name": "Step 4",
+                  "fill": "$fm-amber",
+                  "width": "fill_container",
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "kgBKI",
+                  "name": "Step 5",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "a4Y7SM",
+                  "name": "Step 6",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "MKmI9",
+                  "name": "Step 7",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "qDy6d",
+                  "name": "Step 8",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "C6VZx",
+                  "name": "Step 9",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "Pzd8e",
+                  "name": "Step 10",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "p6MX6e",
+              "name": "Counter",
+              "fill": "$fm-ink-soft",
+              "content": "4 / 10",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Dr6IP",
+          "name": "Prompt",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "GN21u",
+              "name": "Prompt Mark",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "xsdyh",
+                  "name": "Prompt Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "scale",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "IotgV",
+              "name": "Prompt Text",
+              "fill": "$fm-ink",
+              "content": "WHO IS HEAVIER?",
+              "fontFamily": "Lexend",
+              "fontSize": 44,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b201g",
+          "name": "Cards",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "d1DlpD",
+              "name": "Card Triceratops",
+              "clip": true,
+              "width": "fill_container",
+              "height": 281,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-good",
+              "strokeWidth": 4,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wQoIr",
+                  "name": "Card Triceratops Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "v3Jgb",
+                      "name": "Card Triceratops Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mOzql",
+                      "layoutPosition": "absolute",
+                      "x": 24,
+                      "y": 24,
+                      "name": "Card Triceratops Mark",
+                      "height": 48,
+                      "fill": "$fm-good",
+                      "cornerRadius": 24,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        18,
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "kPjgH",
+                          "name": "Mark Icon",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "nU1QS",
+                          "name": "Mark Text",
+                          "fill": "#FFFFFF",
+                          "content": "RIGHT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YMSGl",
+                      "layoutPosition": "absolute",
+                      "x": 367,
+                      "y": 126,
+                      "name": "Card Triceratops Value",
+                      "height": 48,
+                      "fill": "$fm-base",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DfZ3h",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kXell",
+                          "name": "Value Text",
+                          "fill": "$fm-on-base",
+                          "content": "6 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kkA9p",
+                  "name": "Card Triceratops Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AeLdw",
+                      "name": "Card Triceratops Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O6hpe",
+              "layoutPosition": "absolute",
+              "x": 212,
+              "y": 261,
+              "name": "Versus",
+              "width": 64,
+              "height": 64,
+              "fill": "$fm-ink",
+              "cornerRadius": 32,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bCI4D",
+                  "name": "Versus Text",
+                  "fill": "$fm-bg",
+                  "content": "VS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Nqt4u",
+              "name": "Card Velociraptor",
+              "opacity": 0.7,
+              "clip": true,
+              "width": "fill_container",
+              "height": 281,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Vl41w",
+                  "name": "Card Velociraptor Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "AlFw7",
+                      "name": "Card Velociraptor Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/pachycephalosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "iHBYC",
+                      "layoutPosition": "absolute",
+                      "x": 337,
+                      "y": 126,
+                      "name": "Card Velociraptor Value",
+                      "height": 48,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Hyn24",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "K1aUeJ",
+                          "name": "Value Text",
+                          "fill": "$fm-ink",
+                          "content": "15 KG",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dakQA",
+                  "name": "Card Velociraptor Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pIfLo",
+                      "name": "Card Velociraptor Name",
+                      "fill": "$fm-ink",
+                      "content": "PACHYCEPHALOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "D0oI9L",
+          "name": "Next Row",
+          "width": "fill_container",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "vHFSQ",
+              "name": "Next Button",
+              "height": 72,
+              "fill": "$fm-base",
+              "cornerRadius": 20,
+              "gap": 14,
+              "padding": [
+                0,
+                32,
+                0,
+                36
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UFac7",
+                  "name": "Next Text",
+                  "fill": "$fm-on-base",
+                  "content": "NEXT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "icon",
+                  "id": "BrDzB",
+                  "name": "Next Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "arrow-right",
+                  "library": "lucide",
+                  "fill": "$fm-on-base"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

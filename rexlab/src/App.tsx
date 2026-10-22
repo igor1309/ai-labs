@@ -6,6 +6,7 @@ import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
+import { compareQuestionType, compareQuestionWidth } from "./compareQuestionLayout.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
@@ -22,7 +23,7 @@ import type { StartTimer } from "./ownedTimers.ts";
 import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
-import { useQuizGame, type QuizGameProps } from "./quizGame.tsx";
+import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
@@ -77,9 +78,14 @@ export type ViewportInsets = { left: number; right: number };
 // shows the picture asking to turn or widen.
 export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 
+// The screens a layout is built for: each of the app's, and each of the
+// compare quiz's own, a question or its result, which it names as it
+// shows them.
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}`;
+
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
-export type PortraitLayouts = Readonly<Partial<Record<Screen["kind"], readonly PortraitSizeClass[]>>>;
+export type PortraitLayouts = Readonly<Partial<Record<LayoutScreen, readonly PortraitSizeClass[]>>>;
 
 export type Viewport = {
   sizeClass(): SizeClass;
@@ -235,21 +241,11 @@ export function App({
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
-  const portraitSizes = portraitLayouts[screen.kind];
-  const gate = useMemo(() => ({
-    isShown: () => {
-      const size = viewport.sizeClass();
-      return (size === "tall" || size === "tall-narrow") && !portraitSizes?.includes(size);
-    },
-    subscribe: viewport.subscribe
-  }), [viewport, portraitSizes]);
-  const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
   const [turns] = useState<TurnMotion>(() => turnMotion({
     ...layoutMotion, continuation: closing.take, shifted: sliding.take, refit: refitPicture, reducedMotion: careProps.reducedMotion, startTimer
   }));
-  const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
     return dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
@@ -312,6 +308,26 @@ export function App({
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
   const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, ageLevel, home, counting("compare"));
+
+  // The quiz's phase is its own: the gate and the turns read it as the
+  // quiz reports it.
+  const layoutScreen: LayoutScreen = screen.kind === "compare" && quiz.phase ? `compare-${quiz.phase}` : screen.kind;
+  const portraitSizes = portraitLayouts[layoutScreen];
+  const gate = useMemo(() => ({
+    isShown: () => {
+      const size = viewport.sizeClass();
+      return (size === "tall" || size === "tall-narrow") && !portraitSizes?.includes(size);
+    },
+    subscribe: viewport.subscribe
+  }), [viewport, portraitSizes]);
+  const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
+  const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
+  // One type for every question in the window, which the stylesheet
+  // reads only upright.
+  const questionWidth = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {
@@ -434,10 +450,10 @@ export function App({
     viewport,
     size,
     screen.kind === "catalogue" && catalogueArrangement !== undefined
-      ? { screen: screen.kind, portrait, gated: gateShown, arrangement: catalogueArrangement }
+      ? { screen: layoutScreen, portrait, gated: gateShown, arrangement: catalogueArrangement }
       : screen.kind === "dinosaur" && dinosaurArrangement !== undefined
-        ? { screen: screen.kind, portrait, gated: gateShown, arrangement: dinosaurArrangement }
-      : { screen: screen.kind, portrait, gated: gateShown },
+        ? { screen: layoutScreen, portrait, gated: gateShown, arrangement: dinosaurArrangement }
+      : { screen: layoutScreen, portrait, gated: gateShown },
     applyLayout
   );
   // The next or previous creature takes the page with no change of
@@ -502,7 +518,7 @@ export function App({
   const content = () => {
     switch (screen.kind) {
       case "compare":
-        return quiz.content(language);
+        return quiz.content(language, compareQuestionType(questionWidth));
       case "catalogue":
         return (
           <CatalogueScreen
