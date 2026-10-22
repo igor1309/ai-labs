@@ -2850,6 +2850,51 @@ html[data-size="tall"] .source-note {
   background: #ffffff1a;
 }
 
+/* Upright, a result stands in one centred column: the dinosaur on top,
+   20 above the rewards, the level switch and the actions, which stand 16
+   apart in their landscape sizes. The dinosaur, fitted whole at its 4:3,
+   takes the height the column leaves, at most what ResultScreen gives in
+   --hero-maximum, 480 or as tall as the width allows, and never under
+   200: below that the whole screen scrolls. The score is 15% of the
+   window's height, at most 180, and the stars as large as ResultScreen
+   gives in --star-size, so ten fit the width. */
+html[data-size="tall"] .result {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding:
+    calc(32px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+html[data-size="tall"] .result-hero {
+  flex: 1 0 0;
+  align-self: stretch;
+  min-height: 200px;
+  max-height: var(--hero-maximum);
+}
+
+html[data-size="tall"] .result-content {
+  align-self: stretch;
+  gap: 16px;
+}
+
+html[data-size="tall"] .result-score-value {
+  font-size: min(180px, 15vh);
+  font-size: min(180px, 15dvh);
+}
+
+html[data-size="tall"] .result-stars {
+  font-size: var(--star-size);
+}
+
 /* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
    ink keeps its contrast on amber with no shade under it, so the row is
    lit, as the design draws it. */
@@ -4697,6 +4742,25 @@ html[data-size="tall"] .source-note {
   box-shadow: 0 4px 10px #00000066;
 }
 
+/* Upright, a result's switch is the width, at most 648, each level 64
+   tall, its picture above its name, the names in the one type
+   ResultScreen gives in --level-name-size. Its edge is drawn inside it,
+   so the switch is its padding and a level tall. */
+html[data-size="tall"] .result .level-switch {
+  align-self: center;
+  width: 100%;
+  max-width: 648px;
+  border: none;
+  box-shadow: inset 0 0 0 1px #ffffff40;
+}
+
+html[data-size="tall"] .result .level-switch-level {
+  height: 64px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--level-name-size);
+}
+
 .pairs-play-button {
   height: 104px;
   padding: 0 52px 0 44px;
@@ -5193,6 +5257,30 @@ html[data-size="tall"] .source-note {
 
 .pairs-offer-scrim[data-leaving] {
   animation: fade-out var(--motion-small) var(--ease-out) both;
+}
+
+/* In a tall window the offer is the window less 24 a side, at most 710
+   wide, its question in 32-pixel type, and YES and NOT NOW stand one
+   above the other, each across the offer. */
+html[data-size="tall"] .pairs-offer-scrim {
+  grid-template-columns: minmax(0, 710px);
+  justify-content: center;
+}
+
+html[data-size="tall"] .pairs-offer {
+  width: 100%;
+}
+
+html[data-size="tall"] .pairs-offer-question {
+  font-size: 32px;
+}
+
+html[data-size="tall"] .pairs-offer-answers {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .pairs-offer-answers button {
+  flex: none;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the

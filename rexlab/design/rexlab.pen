@@ -107626,6 +107626,529 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "o70Mq",
+      "x": 16320,
+      "y": 35720,
+      "name": "Compare quiz result — upright · iPad mini 744×1133 · Russian · Paleontologist · New best 10/10 (LAB-480)",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": "$fm-base",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 32,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "hje8K",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 1013,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 744,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "phMPQ",
+          "name": "Hero Art",
+          "width": 575,
+          "height": 431,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "BfowS",
+          "name": "Celebration",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "CixK2",
+              "name": "New Best Badge",
+              "height": 52,
+              "fill": "$fm-amber",
+              "cornerRadius": 36,
+              "gap": 12,
+              "padding": [
+                0,
+                28,
+                0,
+                22
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "XCeWE",
+                  "name": "Badge Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                },
+                {
+                  "type": "text",
+                  "id": "V1DJnJ",
+                  "name": "Badge Text",
+                  "fill": "#1D2742",
+                  "content": "НОВЫЙ РЕКОРД!",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HflRy",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fbF1M",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 170,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "vumYt",
+                  "name": "Score Total",
+                  "fill": "$fm-amber",
+                  "content": "/ 10",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 47,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pPinH",
+              "name": "Stars",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ur5RD",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "X7zFW",
+                  "name": "Star 2",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "i3z1n",
+                  "name": "Star 3",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "lwd7v",
+                  "name": "Star 4",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "fmwdd",
+                  "name": "Star 5",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "w81eDL",
+                  "name": "Star 6",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "iCmcB",
+                  "name": "Star 7",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "s1eQhF",
+                  "name": "Star 8",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "HMM2j",
+                  "name": "Star 9",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "MEPHo",
+                  "name": "Star 10",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "W7GqH",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "МОЛОДЕЦ!",
+              "fontFamily": "Lexend",
+              "fontSize": 40,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "M3x5Fn",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kpCKt",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "РЕКОРД",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "bFarQ",
+                  "name": "Best New",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pRbjD",
+              "name": "Level Switch",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qHaxi",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BXwcE",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DXe1w",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "ДЕТЁНЫШ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "U1L0rv",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FN3nC",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qADz4",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-on-base",
+                      "content": "ИССЛЕДОВАТЕЛЬ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ytonk",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vdBmQ",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qIiNN",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-base",
+                      "content": "ПАЛЕОНТОЛОГ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hWkIo",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "DtpIp",
+                  "name": "Play Again Button",
+                  "height": 72,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Alacj",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LZ4BS",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "ЕЩЁ РАЗ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qoynA",
+                  "name": "Home Button",
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "F5oiqn",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zpD2Z",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "ДОМОЙ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

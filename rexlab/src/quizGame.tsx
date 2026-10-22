@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import type { QuestionType } from "./compareQuestionLayout.ts";
+import type { ResultType } from "./compareResultLayout.ts";
 import type { Language } from "./language/language.ts";
 import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { LoadAhead } from "./Picture.tsx";
@@ -116,8 +117,9 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
     go({ kind: "result", result });
   };
 
-  // `type` is the question's upright type in the window.
-  const content = (language: Language, type: QuestionType) => {
+  // `type` is the question's upright type in the window, and `resultType`
+  // the result's upright sizes.
+  const content = (language: Language, type: QuestionType, resultType: ResultType) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -150,6 +152,7 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
             onLevel={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
+            type={resultType}
           />
         );
     }

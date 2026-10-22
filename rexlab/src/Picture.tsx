@@ -76,6 +76,8 @@ export type PictureProps = {
   className: string;
   width?: number;
   height?: number;
+  // The picture's name as a part a turn glides, where it is one.
+  part?: string;
 };
 
 // The look of a place showing `src`, which it asks for. Its source is
@@ -104,12 +106,13 @@ export function usePicture(src: string): PictureLook {
 
 // A picture's place in the look given, for a place that shows more
 // than its picture as the look changes; any other uses `<Picture>`.
-export function PictureImage({ look, src, alt, className, width, height }: PictureProps & { look: PictureLook }) {
+export function PictureImage({ look, src, alt, className, width, height, part }: PictureProps & { look: PictureLook }) {
   const loaded = look === "appearing" || look === "shown";
   return (
     <img
       className={`picture ${className}`}
       data-picture={look}
+      data-turn-part={part}
       {...(loaded ? { src } : {})}
       alt={alt}
       width={width}
