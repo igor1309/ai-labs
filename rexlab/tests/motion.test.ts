@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SLIDE_DISTANCE } from "../src/dinosaurSlide.ts";
 import { MENU_EXIT } from "../src/ParentMenu.tsx";
 import { TURN_TIMING } from "../src/root.ts";
 
@@ -335,6 +336,8 @@ describe("the catalogue's motion", () => {
       return /translate: calc\((-?\d+)px/.exec(frames)?.[1];
     };
     expect(["slide-in", "slide-out", "slide-in-back", "slide-out-back"].map(shift)).toEqual(["96", "-96", "-96", "96"]);
+    // A turn carries the slide on by the same distance.
+    expect(SLIDE_DISTANCE).toBe(96);
     const late = PLAIN.find(({ prelude }) => prelude.includes("(.dinosaur-in-late)") && prelude.includes("(.dinosaur-in-back-late)") && !prelude.includes("(.dinosaur-in)"));
     expect(declarationsOf(late?.body ?? "")).toEqual([{ property: "animation-delay", value: "var(--motion-stagger)" }]);
   });

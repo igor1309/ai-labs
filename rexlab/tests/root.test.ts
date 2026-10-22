@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { dinosaurWordsWidth, keptLines } from "../src/dinosaurPageLayout.ts";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
@@ -60,6 +61,39 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
+  // The words of a dinosaur's page leave out a scrollbar that takes room:
+  // the window's width less its root's, which an overlay scrollbar leaves
+  // whole.
+  const wordsRoom = ({ viewport }: ReturnType<typeof appProps>) => {
+    const { left, right } = viewport.sideInsets();
+    const scrollbar = viewport.scrollbarWidth!();
+    const words = dinosaurWordsWidth(viewport.width(), left, right, scrollbar);
+    return { scrollbar, words, description: keptLines(words).description };
+  };
+
+  it.each([
+    ["a reserved", 616, 16, 504, 5],
+    ["an overlay", 632, 0, 520, 4]
+  ])("gives the app %s scrollbar's room in a 632-pixel window whose root is %i wide", (_, clientWidth, scrollbar, words, description) => {
+    const given = browser({ portrait: true });
+    given.resize(632);
+    Object.assign(given.document.documentElement, { clientWidth });
+    expect(wordsRoom(appProps(given))).toEqual({ scrollbar, words, description });
+  });
+
+  it("reads the scrollbar's room afresh at each change of the window", () => {
+    const given = browser({ portrait: true });
+    const props = appProps(given);
+    const seen: Array<ReturnType<typeof wordsRoom>> = [];
+    const stop = props.viewport.subscribe(() => seen.push(wordsRoom(props)));
+    Object.assign(given.document.documentElement, { clientWidth: 696 });
+    given.resize(712);
+    Object.assign(given.document.documentElement, { clientWidth: 712 });
+    given.resize(712);
+    stop();
+    expect(seen).toEqual([{ scrollbar: 16, words: 584, description: 4 }, { scrollbar: 0, words: 600, description: 4 }]);
+  });
+
   it("reads progress, the chosen language, the chosen theme and the chosen age level from local storage", () => {
     const props = appProps(
       browser({
@@ -266,8 +300,8 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("gives the home page and the catalogue a portrait layout, for a tall window only", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"] });
+  it("gives the home page, catalogue and dinosaur page a portrait layout, for a tall window only", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
@@ -403,13 +437,14 @@ describe("the app in a browser", () => {
 
   it("takes the picture close's timing from the stylesheet and its elapsed time from the monotonic clock", () => {
     let time = 42;
-    const values: Record<string, string> = { "--motion-screen": "480ms", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
+    const values: Record<string, string> = { "--motion-screen": "480ms", "--motion-standard": "300ms", "--motion-stagger": "60ms", "--motion-amount": "0.5", "--ease-out": " cubic-bezier(0.1, 1, 0.5, 1) " };
     const { pictureMotion } = appProps({
       ...browser(),
       performance: { now: () => time },
       getComputedStyle: () => ({ getPropertyValue: (name) => values[name] ?? "0px" })
     });
     expect([pictureMotion.duration, pictureMotion.easing, pictureMotion.now()]).toEqual([480, "cubic-bezier(0.1, 1, 0.5, 1)", 42]);
+    expect(pictureMotion.slide).toEqual({ duration: 300, delay: 60, distance: 48 });
     time = 130;
     expect(pictureMotion.now()).toBe(130);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TURN_FADE, TURN_PART, turnMotion, type Box, type TurnAnimation } from "../src/turnMotion.ts";
+import { TURN_FADE, TURN_PART, turnMotion, type Box, type PartShift, type TurnAnimation } from "../src/turnMotion.ts";
 
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -12,7 +12,9 @@ type Started = TurnAnimation & { element: Element; keyframes: Keyframe[]; option
 // its own. The page's own animations run on an element until finished,
 // each part drawn at the opacity the test sets. The animations it starts,
 // its frames, view transitions, timers and frames asked for only record,
-// and each step is logged in order.
+// and each step is logged in order. A screen transition draws the parts
+// `shifts` holds off their places until the engine takes them; a part
+// `refitted` is drawn as a copy, a box of its own, as its size changes.
 function harness({ reduced = false } = {}) {
   const page = document.createElement("div");
   const boxes = new Map<Element, Box>();
@@ -27,9 +29,14 @@ function harness({ reduced = false } = {}) {
   const playing = new Map<Element, { finished: boolean }>();
   const opacities = new Map<Element, number>();
   const paints: Array<{ fire: () => void; stopped: boolean }> = [];
+  const shifts: PartShift[] = [];
+  const refitted = new Set<Element>();
+  const copies: Array<{ part: Element; element: Element; box: Box; removed: boolean }> = [];
   const settings = { reduced };
   const nameOf = (element: Element) => {
     if (element === page) return "page";
+    const copy = copies.find((copy) => copy.element === element);
+    if (copy) return `copy of ${copy.part.getAttribute(TURN_PART)}`;
     return element.getAttribute(TURN_PART) ?? (element.hasAttribute(TURN_FADE) ? "fade" : `frame of ${frames.find((frame) => frame.element === element)?.part.getAttribute(TURN_PART)}`);
   };
   const motion = turnMotion({
@@ -109,7 +116,21 @@ function harness({ reduced = false } = {}) {
         timer.stopped = true;
       };
     },
-    timing: { glide: GLIDE, easing: EASE_OUT }
+    timing: { glide: GLIDE, easing: EASE_OUT },
+    shifted: () => shifts.splice(0),
+    refit: (element, box) => {
+      if (!refitted.has(element)) return undefined;
+      log.push(`refit ${nameOf(element)}`);
+      const copy = { part: element, element: document.createElement("img"), box, removed: false };
+      copies.push(copy);
+      return {
+        element: copy.element,
+        remove: () => {
+          log.push(`unrefit ${nameOf(element)}`);
+          copy.removed = true;
+        }
+      };
+    }
   });
   // A part named `name` in `outer`, laid out at `box`.
   const part = (name: string, box: Box, { outer = page as Element, frame = false } = {}) => {
@@ -203,7 +224,7 @@ function harness({ reduced = false } = {}) {
     }
     return shown;
   };
-  return { page, boxes, log, animations, frames, extended, transitions, timers, opacities, settings, motion, part, fading, drawn, layout, play, waiting, paint, animationOf, frameOf, keeper, visible, drawnAt };
+  return { page, boxes, log, animations, frames, extended, transitions, timers, opacities, shifts, refitted, copies, settings, motion, part, fading, drawn, layout, play, waiting, paint, animationOf, frameOf, keeper, visible, drawnAt };
 }
 
 const box = (left: number, top: number, width: number, height: number): Box => ({ left, top, width, height });
@@ -749,5 +770,81 @@ describe("what the motion animates", () => {
       ["height", "translate", "width"]
     ]);
     expect(motion.animations.flatMap(({ keyframes }) => keyframes).filter((keyframe) => "scale" in keyframe || "transform" in keyframe)).toEqual([]);
+  });
+});
+
+describe("a screen transition's parts", () => {
+  it("glide on from where its snapshots draw them at rest, each part inside moving with the one around it, faded only as drawn", () => {
+    const motion = harness();
+    const row = motion.part("row", box(0, 100, 600, 200));
+    const chip = motion.part("chip", box(20, 120, 100, 50), { outer: row });
+    motion.drawn();
+    motion.shifts.push({ element: row, offset: { x: 96, y: 0 }, opacity: 0.25 });
+
+    motion.motion.apply(motion.layout([[row, box(0, 400, 600, 200)], [chip, box(40, 420, 100, 50)]]), "glide");
+
+    expect(motion.shifts).toEqual([]);
+    expect([motion.animationOf(row)?.keyframes, motion.animationOf(chip)?.keyframes]).toEqual([
+      [{ translate: "96px -300px", opacity: 0.25 }, { translate: "0px 0px", opacity: 1 }],
+      [{ translate: "-20px 0px" }, { translate: "0px 0px" }]
+    ]);
+  });
+
+  it("are taken at every change, and a glide still running goes on from where it draws them, past a shift", () => {
+    const motion = harness();
+    const row = motion.part("row", box(0, 100, 600, 200));
+    motion.drawn();
+    motion.shifts.push({ element: row, offset: { x: 96, y: 0 }, opacity: 0.25 });
+
+    motion.motion.apply(motion.layout([[row, box(0, 120, 600, 200)]]), "follow");
+
+    expect([motion.shifts, motion.animations]).toEqual([[], []]);
+
+    motion.motion.apply(motion.layout([[row, box(0, 400, 600, 200)]]), "glide");
+    motion.animationOf(row)!.progress = 0.5;
+    motion.shifts.push({ element: row, offset: { x: 96, y: 0 }, opacity: 0.25 });
+    motion.motion.apply(motion.layout([[row, box(0, 500, 600, 200)]]), "glide");
+
+    expect([motion.animationOf(row)?.keyframes, motion.shifts]).toEqual([[{ translate: "0px -240px" }, { translate: "0px 0px" }], []]);
+  });
+});
+
+describe("a part whose content its box lays out", () => {
+  it("travels as a copy whose box changes from where it stood to its new place, the part itself left still, on from where a further change finds it", () => {
+    const motion = harness();
+    const stage = motion.part("stage", box(0, 100, 800, 600));
+    const picture = motion.part("picture", box(100, 150, 600, 450), { outer: stage });
+    motion.refitted.add(picture);
+    motion.drawn();
+
+    motion.motion.apply(motion.layout([[stage, box(0, 300, 800, 400)], [picture, box(200, 320, 400, 300)]]), "glide");
+
+    const bounds = ({ left, top, width, height }: Box) => ({ left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+    const first = motion.animationOf(motion.copies[0]!.element)!;
+    expect([motion.copies.map(({ part, box }) => [part, box]), first.keyframes, first.options, motion.animationOf(picture)]).toEqual([
+      [[picture, box(200, 320, 400, 300)]], [bounds(box(100, 150, 600, 450)), bounds(box(200, 320, 400, 300))], { duration: GLIDE, easing: EASE_OUT }, undefined
+    ]);
+
+    motion.animations.forEach((started) => (started.progress = 0.5));
+    motion.motion.apply(motion.layout([[stage, box(0, 100, 800, 600)], [picture, box(100, 150, 600, 450)]]), "glide");
+
+    expect([motion.copies.map(({ removed }) => removed), first.cancelled]).toEqual([[true, false], true]);
+    expect(motion.animationOf(motion.copies[1]!.element)?.keyframes).toEqual([bounds(between(box(100, 150, 600, 450), box(200, 320, 400, 300), 0.5)), bounds(box(100, 150, 600, 450))]);
+
+    motion.timers.at(-1)?.fire();
+
+    expect(motion.copies.map(({ removed }) => removed)).toEqual([true, true]);
+  });
+
+  it("only moves with the parts around it where its size stays", () => {
+    const motion = harness();
+    const stage = motion.part("stage", box(0, 100, 800, 600));
+    const picture = motion.part("picture", box(100, 150, 600, 450), { outer: stage });
+    motion.refitted.add(picture);
+    motion.drawn();
+
+    motion.motion.apply(motion.layout([[stage, box(0, 300, 800, 600)], [picture, box(120, 350, 600, 450)]]), "glide");
+
+    expect([motion.copies, motion.animationOf(picture)?.keyframes]).toEqual([[], [{ translate: "-20px 0px" }, { translate: "0px 0px" }]]);
   });
 });

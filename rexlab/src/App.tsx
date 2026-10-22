@@ -5,10 +5,12 @@ import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } fr
 import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
-import { closingPicture, type PictureMotion } from "./closingPicture.ts";
+import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
-import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR } from "./DinosaurPage.tsx";
+import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
+import { dinosaurSlide } from "./dinosaurSlide.ts";
+import { dinosaurWordsWidth, keptLines } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -84,6 +86,8 @@ export type Viewport = {
   isScreenUpright(): boolean;
   // The window's width in CSS pixels.
   width(): number;
+  // The vertical scrollbar's room, when it is reserved by the browser.
+  scrollbarWidth?: () => number;
   // The window's safe-area insets at its left and right edges.
   sideInsets(): ViewportInsets;
   subscribe(onChange: () => void): () => void;
@@ -111,7 +115,7 @@ export type AppProps = CareGameProps &
     chipWidths: ChipWidths;
     // How the page's parts are found, measured and animated, and the page
     // cross-faded, as a screen goes to its other layout.
-    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation">;
+    layoutMotion: Omit<TurnMotionSeams, "reducedMotion" | "startTimer" | "continuation" | "shifted" | "refit">;
     pictureTransition?: PictureTransition;
     pictureMotion: PictureMotion;
     pageVisibility: PageVisibility;
@@ -241,8 +245,15 @@ export function App({
   }), [viewport, portraitSizes]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
-  const [turns] = useState<TurnMotion>(() => turnMotion({ ...layoutMotion, continuation: closing.take, reducedMotion: careProps.reducedMotion, startTimer }));
+  const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
+  const [turns] = useState<TurnMotion>(() => turnMotion({
+    ...layoutMotion, continuation: closing.take, shifted: sliding.take, refit: refitPicture, reducedMotion: careProps.reducedMotion, startTimer
+  }));
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
+  const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
@@ -405,20 +416,41 @@ export function App({
   });
   const chips = chipRow === undefined ? undefined : chipArrangement(chipRow, chipContents);
   const catalogueArrangement = chipContents.length === 0 ? undefined : `${columns}:${chips ?? "landscape"}`;
+  const dinosaur = screen.kind === "dinosaur" ? shown[screen.index] : undefined;
+  // The lines a dinosaur's page keeps for its words are its arrangement
+  // only upright, where the stylesheet reads them.
+  const { description: descriptionLines, note: noteLines } = keptLines(dinosaurWords);
+  const dinosaurArrangement = portrait ? `${descriptionLines}:${noteLines}` : undefined;
   const catalogueLayout = useRef<CatalogueLayout>(null);
-  const applyCatalogueLayout = useCallback(() => catalogueLayout.current?.apply({ columns, chips }), [columns, chips]);
+  const dinosaurLayout = useRef<DinosaurPageLayout>(null);
+  // The screen shown takes its layout as the turn changes it, after the
+  // turn has measured or captured the page as it stood.
+  const applyLayout = useCallback(() => {
+    catalogueLayout.current?.apply({ columns, chips });
+    dinosaurLayout.current?.apply({ upright: portrait, lines: { description: descriptionLines, note: noteLines } });
+  }, [columns, chips, portrait, descriptionLines, noteLines]);
   useLayoutTurns(
     turns,
     viewport,
     size,
     screen.kind === "catalogue" && catalogueArrangement !== undefined
       ? { screen: screen.kind, portrait, gated: gateShown, arrangement: catalogueArrangement }
+      : screen.kind === "dinosaur" && dinosaurArrangement !== undefined
+        ? { screen: screen.kind, portrait, gated: gateShown, arrangement: dinosaurArrangement }
       : { screen: screen.kind, portrait, gated: gateShown },
-    applyCatalogueLayout
+    applyLayout
   );
-  // The keeper puts the returned card's row back before its picture's
-  // closing target is read, so the native close and continuation agree.
-  useLayoutEffect(() => closing.arrive(screen.kind === "catalogue" ? screen.returning : undefined), [closing, screen]);
+  // The next or previous creature takes the page with no change of
+  // layout, and its words may stand elsewhere: the turn measures its parts
+  // afresh.
+  useLayoutEffect(() => {
+    if (dinosaur) turns.redrawn();
+  }, [turns, dinosaur]);
+  // Where the shared picture lands: the card come back to, whose row the
+  // keeper puts back before it is read, so the native close and the
+  // continuation agree, or the page opened.
+  const landing = screen.kind === "catalogue" ? screen.returning : dinosaur?.id;
+  useLayoutEffect(() => closing.arrive(landing), [closing, screen, landing]);
 
   // The list opened from home is the catalogue's start; a food chosen or a
   // dinosaur's page left is not. It is counted with the change, so a
@@ -443,8 +475,8 @@ export function App({
 
   // A dinosaur's page shows at once, and only if the screen is still
   // where the child tapped: a second tap meanwhile changes nothing more.
-  const showDinosaur = (index: number, still: (current: Screen) => boolean, step?: Step) =>
-    go((current) => (still(current) ? { kind: "dinosaur", index } : current), { intent: step });
+  const showDinosaur = (index: number, still: (current: Screen) => boolean, options?: { step?: Step; also?: () => void }) =>
+    go((current) => (still(current) ? { kind: "dinosaur", index } : current), { intent: options?.step, also: options?.also });
 
   // The pictures either side of a page, loaded ahead so a step to them
   // shows its picture at once.
@@ -453,11 +485,15 @@ export function App({
   const openDinosaur = (id: string) =>
     showDinosaur(
       shown.findIndex((entry) => entry.id === id),
-      (current) => current.kind === "catalogue"
+      (current) => current.kind === "catalogue",
+      { also: () => { if (!careProps.reducedMotion()) closing.open(id); } }
     );
 
   const step = (from: number, way: Step) =>
-    showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, way);
+    showDinosaur(stepFrom(from, way, shown.length), (current) => current.kind === "dinosaur" && current.index === from, {
+      step: way,
+      also: () => { if (!careProps.reducedMotion()) sliding.start(way); }
+    });
 
   const closeDinosaur = (index: number) => go({ kind: "catalogue", returning: shown[index]?.id }, {
     also: () => { if (!careProps.reducedMotion()) closing.start(shown[index]!.id); }
@@ -494,9 +530,11 @@ export function App({
           <>
             <LoadAhead urls={neighboursOf(index)} />
             <DinosaurPage
+              ref={dinosaurLayout}
               pictureTransition={pictureTransition}
               language={language}
               dinosaur={presentDinosaurPage(entry, language, bodyPicture, pairs.found)}
+              initialLayout={{ upright: portrait, lines: { description: descriptionLines, note: noteLines } }}
               number={index + 1}
               total={shown.length}
               onPrevious={() => step(index, "previous")}
