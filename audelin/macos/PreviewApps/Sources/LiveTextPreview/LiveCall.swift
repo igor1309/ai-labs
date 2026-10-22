@@ -6,6 +6,15 @@ import PanelUI
 import ParakeetRecognizer
 import TwoPassRecognizer
 
+@MainActor
+protocol AudioPlayer {
+
+    @discardableResult func play() -> Bool
+    func stop()
+}
+
+extension AVAudioPlayer: AudioPlayer {}
+
 /// A call heard by the real recognisers and Live text: the microphone as
 /// «я», or a recorded file, its left channel «я» and its right «они».
 @MainActor
@@ -70,7 +79,7 @@ final class LiveCall {
 
     init(
         load: @escaping @MainActor (Model) async throws -> any Recognizer = { try await $0.load() },
-        beginAudio: @escaping @MainActor (Source, ContinuousClock.Instant) async throws -> Audio = LiveCall.beginAudio,
+        beginAudio: @escaping @MainActor (Source, ContinuousClock.Instant) async throws -> Audio = { try await LiveCall.beginAudio($0, $1) },
         now: @escaping @MainActor () -> ContinuousClock.Instant = { .now }
     ) {
 
@@ -243,7 +252,12 @@ final class LiveCall {
         return try await load(session.model)
     }
 
-    private static func beginAudio(_ source: Source, _ startedAt: ContinuousClock.Instant) async throws -> Audio {
+    static func beginAudio(
+        _ source: Source,
+        _ startedAt: ContinuousClock.Instant,
+        makeTrack: (URL, Int, ContinuousClock.Instant) -> any AudioSource = { RecordedTrack(url: $0, channel: $1, started: $2) },
+        makePlayer: (URL) throws -> any AudioPlayer = { try AVAudioPlayer(contentsOf: $0) }
+    ) async throws -> Audio {
 
         switch source {
         case .microphone:
@@ -257,8 +271,8 @@ final class LiveCall {
             let channels = try RecordedTrack.channels(of: url)
             Log.line("recording: \(channels) channel(s)")
             let speakers: [PanelState.Speaker] = channels > 1 ? [.me, .them] : [.me]
-            let tracks = speakers.enumerated().map { ($1, RecordedTrack(url: url, channel: $0, started: startedAt) as any AudioSource) }
-            let player = try? AVAudioPlayer(contentsOf: url)
+            let tracks = speakers.enumerated().map { ($1, makeTrack(url, $0, startedAt)) }
+            let player = try? makePlayer(url)
             player?.play()
             return Audio(tracks: tracks, stop: { player?.stop() })
         }
