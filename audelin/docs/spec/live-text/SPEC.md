@@ -15,9 +15,8 @@ knows nothing of the model behind the recogniser, of speakers or of storage.
 - The recogniser reports the words heard so far, each with the time it was
   heard in the track, and which of them are final when it knows. Turning a
   model's output into that is the model adapter's job. Windowed Parakeet
-  gives word times and is final behind its windows. Streaming Nemotron gives
-  only growing text until it finishes, so its adapter stamps a word with the
-  audio fed when it appeared, about 0.4 s late, and marks nothing final.
+  gives word times and is final behind its windows. Streaming Nemotron
+  times each token as it decodes it and is final behind its last word.
 - A segment closed by a pause settles, final or not: otherwise text from a
   recogniser with no final mark would stay pending all call.
 - A pause is 2 s from the end of one word to the start of the next. In the

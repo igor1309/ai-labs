@@ -1,0 +1,50 @@
+# Nemotron recogniser — QA
+
+The streaming is driven through a fake of the Nemotron binding that replies
+to each feed with the tokens decoded so far, as scripted. The binding
+itself runs for real, over speech the system's Russian voice reads into a
+temp file.
+
+## S-1 Nothing is heard before a chunk's audio is in
+
+Audio up to just short of a chunk; the fake decodes nothing until a chunk is
+in. Evidence: Missing.
+
+## S-2 Words are heard at their time in the track
+
+Scripted tokens with times; the report's words carry those times, joined at
+the word marker. Evidence: Missing.
+
+## S-3 A word followed by another is final
+
+Two words decoded, the second starting after the first ends; the first
+ends by the report's final time. Evidence: Missing.
+
+## S-4 The last word heard is pending
+
+Two words decoded; the second ends after the report's final time.
+Evidence: Missing.
+
+## S-5 A word that grows is read in its place
+
+Through Live text: a chunk ends mid-word, the next adds its rest and a new
+word. Evidence: Missing.
+
+## S-6 A chunk with nothing new changes nothing
+
+Through Live text: a feed whose tokens are the same as the last. Evidence:
+Missing.
+
+## S-7 Finishing hears the rest
+
+The fake's finish adds a word; finishing reports it, all final. Evidence:
+Missing.
+
+## S-8 Audio at another sample rate is heard
+
+Nemotron 3.5 for real over the system voice reading a Russian sentence at
+48 kHz, heard through Live text word for word. Evidence: Missing.
+
+## S-9 A failing model fails the recogniser
+
+The fake binding throws on a feed. Evidence: Missing.
