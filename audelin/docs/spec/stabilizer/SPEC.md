@@ -19,6 +19,8 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 1. The window cutter marks where each window's right context begins; the
    stabilizer only reads that mark (S-1, S-2), so the context length stays
    a recognition setting, not stabilizer logic.
+2. Windows only move forward, so a tail word that starts before a window
+   can never be read again and commits (S-14; ADR-001 decision 7).
 
 ## Observer
 
@@ -86,13 +88,13 @@ Feature: A client gets committed segments and a live tail from recognition windo
     When the client feeds the window
     Then the client can find the watermark past the silence
 
-  Scenario: S-12 Silence after a live tail
-    Given words in the live tail
-    When the client feeds a later window that holds no words
-    Then the client can find the watermark still before the tail
-
   Scenario: S-13 Committed text stays final
     Given committed words
     When a later window reads them differently
     Then the client can get the committed words unchanged
+
+  Scenario: S-14 A word no later window can read commits
+    Given a word in the live tail
+    When the client feeds a window that starts after the word starts
+    Then the client can get the word in a committed segment
 ```
