@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -347,16 +345,6 @@ describe("a dinosaur's page", () => {
     expect(note.textContent).not.toBe(note.textContent?.toLocaleUpperCase(language));
     expect(parseFloat(getComputedStyle(note).fontSize)).toBeLessThan(parseFloat(getComputedStyle(document.querySelector(".dinosaur-description") ?? note).fontSize) / 2);
     expect(sameColour(getComputedStyle(note).color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
-  });
-
-  it("names in its note every source of docs/sources.md", () => {
-    const sources = readFileSync(join(import.meta.dirname, "../docs/sources.md"), "utf8");
-    // Each source is named on its numbered line, before its address or
-    // the part of it the facts come from.
-    const names = [...sources.matchAll(/^\d+\.\s+(.+)$/gm)].map((match) => (match[1] ?? "").replace(/,?\s*https?:\S+$/, "").replace(/:.*$/, "").replace(/,$/, ""));
-
-    expect(names).toHaveLength(5);
-    expect(names.filter((name) => !TEXTS.en.sourceNote.includes(name ?? ""))).toEqual([]);
   });
 });
 

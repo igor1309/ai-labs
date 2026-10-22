@@ -1,5 +1,12 @@
 # Log
 
+## 2026-10-22
+
+- Projects can export an allowlisted public snapshot with privacy scans and checks,
+  then sync an existing GitHub repo. RexLab has showcase settings and an MIT licence (LAB-461).
+- FolioTell has showcase settings, a public README with screenshots and an MIT
+  licence, for a public repo of its iOS app (LAB-462).
+
 ## 2026-10-21
 
 - Audelin: land the new product (local macOS companion for calls, design and

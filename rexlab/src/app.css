@@ -1796,6 +1796,69 @@ body:has(.result) #version {
   animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
 }
 
+/* Upright, the cards stand one above the other across the width, "VS" on
+   their seam, and share equally the height the bar, the prompt and the
+   row for NEXT leave. A card is never shorter than a 150-pixel picture
+   with its 24-pixel padding, 198 pixels, and its footer: below that the
+   whole screen scrolls. The prompt and the names take the type
+   QuestionScreen gives in --prompt-size and --name-size, one for the
+   window, and a value stands at the bottom right of its picture's area,
+   so no card grows or moves as the values show. */
+html[data-size="tall"] .question {
+  --card-footer: calc(var(--name-size) * 1.25 + 40px);
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+html[data-size="tall"] .prompt {
+  font-size: var(--prompt-size);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+html[data-size="tall"] .dinosaur-cards {
+  position: relative;
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+html[data-size="tall"] .dinosaur-card {
+  position: relative;
+  flex: 1 0 0;
+  min-height: calc(198px + var(--card-footer));
+}
+
+html[data-size="tall"] .dinosaur-footer {
+  flex: none;
+  height: var(--card-footer);
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+}
+
+html[data-size="tall"] .dinosaur-name {
+  font-size: var(--name-size);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+html[data-size="tall"] .dinosaur-value-chip {
+  position: absolute;
+  right: 24px;
+  bottom: calc(var(--card-footer) + 24px);
+}
+
+html[data-size="tall"] .versus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: auto;
+}
+
 /* The catalogue: its bar stays at the top while the cards, as many to a
    row as CatalogueScreen gives in --columns, four in landscape, scroll
    under it, the list as wide as the screen so its scrollbar is at the
@@ -2297,6 +2360,11 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   color: #5c647a;
 }
 
+/* A dinosaur's line is empty, and takes no room but upright. */
+.dinosaur-group:empty {
+  display: none;
+}
+
 /* A name is large, and the longest still fits on one line. */
 .dinosaur-page-name {
   margin: 0;
@@ -2357,6 +2425,99 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   font-size: 13px;
   font-weight: 400;
   color: #5c647a;
+}
+
+/* Upright dinosaur pages put the full-width stage above words whose bands
+   are sized by the width-derived custom properties. */
+html[data-size="tall"] .dinosaur-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+html[data-size="tall"] .dinosaur-body {
+  flex: 1 0 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 32px;
+}
+
+html[data-size="tall"] .dinosaur-stage {
+  flex: 1 0 248px;
+  min-height: 248px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: 16px;
+  align-items: center;
+}
+
+html[data-size="tall"] .dinosaur-stage-art {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 100%;
+  min-height: 0;
+  justify-self: center;
+}
+
+html[data-size="tall"] .dinosaur-steps {
+  display: contents;
+}
+
+html[data-size="tall"] .dinosaur-step:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-step:last-child {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-stage-art {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+html[data-size="tall"] .dinosaur-info {
+  flex: none;
+  gap: 24px;
+  container-type: inline-size;
+}
+
+html[data-size="tall"] .dinosaur-about {
+  gap: 24px;
+}
+
+html[data-size="tall"] .dinosaur-page-name {
+  font-size: min(64px, 7.8cqi);
+  line-height: 1.25;
+}
+
+html[data-size="tall"] .dinosaur-bar .home-button,
+html[data-size="tall"] .dinosaur-position,
+html[data-size="tall"] .dinosaur-info .diet-tag,
+html[data-size="tall"] .dinosaur-fact-label,
+html[data-size="tall"] .dinosaur-fact-value {
+  line-height: 1.25;
+}
+
+html[data-size="tall"] .dinosaur-group {
+  display: block;
+  min-height: 22px;
+  line-height: 22px;
+}
+
+html[data-size="tall"] .dinosaur-description {
+  height: calc(var(--description-lines, 3) * 41px);
+  overflow: hidden;
+}
+
+html[data-size="tall"] .source-note {
+  height: calc(var(--note-lines, 3) * 16.5px);
+  line-height: 16.5px;
+  overflow: hidden;
 }
 
 .gated-screen {
@@ -2687,6 +2848,51 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   outline: 1px solid #ffffff40;
   outline-offset: -0.5px;
   background: #ffffff1a;
+}
+
+/* Upright, a result stands in one centred column: the dinosaur on top,
+   20 above the rewards, the level switch and the actions, which stand 16
+   apart in their landscape sizes. The dinosaur, fitted whole at its 4:3,
+   takes the height the column leaves, at most what ResultScreen gives in
+   --hero-maximum, 480 or as tall as the width allows, and never under
+   200: below that the whole screen scrolls. The score is 15% of the
+   window's height, at most 180, and the stars as large as ResultScreen
+   gives in --star-size, so ten fit the width. */
+html[data-size="tall"] .result {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding:
+    calc(32px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+html[data-size="tall"] .result-hero {
+  flex: 1 0 0;
+  align-self: stretch;
+  min-height: 200px;
+  max-height: var(--hero-maximum);
+}
+
+html[data-size="tall"] .result-content {
+  align-self: stretch;
+  gap: 16px;
+}
+
+html[data-size="tall"] .result-score-value {
+  font-size: min(180px, 15vh);
+  font-size: min(180px, 15dvh);
+}
+
+html[data-size="tall"] .result-stars {
+  font-size: var(--star-size);
 }
 
 /* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
@@ -4536,6 +4742,25 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   box-shadow: 0 4px 10px #00000066;
 }
 
+/* Upright, a result's switch is the width, at most 648, each level 64
+   tall, its picture above its name, the names in the one type
+   ResultScreen gives in --level-name-size. Its edge is drawn inside it,
+   so the switch is its padding and a level tall. */
+html[data-size="tall"] .result .level-switch {
+  align-self: center;
+  width: 100%;
+  max-width: 648px;
+  border: none;
+  box-shadow: inset 0 0 0 1px #ffffff40;
+}
+
+html[data-size="tall"] .result .level-switch-level {
+  height: 64px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--level-name-size);
+}
+
 .pairs-play-button {
   height: 104px;
   padding: 0 52px 0 44px;
@@ -5032,6 +5257,30 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
 
 .pairs-offer-scrim[data-leaving] {
   animation: fade-out var(--motion-small) var(--ease-out) both;
+}
+
+/* In a tall window the offer is the window less 24 a side, at most 710
+   wide, its question in 32-pixel type, and YES and NOT NOW stand one
+   above the other, each across the offer. */
+html[data-size="tall"] .pairs-offer-scrim {
+  grid-template-columns: minmax(0, 710px);
+  justify-content: center;
+}
+
+html[data-size="tall"] .pairs-offer {
+  width: 100%;
+}
+
+html[data-size="tall"] .pairs-offer-question {
+  font-size: 32px;
+}
+
+html[data-size="tall"] .pairs-offer-answers {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .pairs-offer-answers button {
+  flex: none;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the
@@ -5565,16 +5814,14 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   gap: 16px;
 }
 
-/* Each slot holds its empty card from the round's start, and the choice
-   card over it once the question comes, both filling the slot, so nothing
-   in the column moves as one replaces the other. */
+/* Both cards fill the same slot throughout the round so their
+   complementary opacity never changes the column or board geometry. */
 .dig-choice-slot {
   flex: 1 1 0;
   min-height: 0;
   max-height: 170px;
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-  perspective: 800px;
 }
 
 .dig-empty-card,
@@ -5587,6 +5834,7 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
 }
 
 .dig-empty-card {
+  pointer-events: none;
   display: grid;
   place-items: center;
   border: 2px solid #1d27421f;
@@ -5610,39 +5858,7 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   border: 2px solid #5c647a;
   border-radius: 22px;
   background: #fffdf8;
-  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
-  animation: fade-in var(--motion-small) var(--ease-out) both;
-}
-
-.dig-empty-card[data-turned] {
-  animation: fade-out var(--motion-small) var(--ease-out) both;
-}
-
-/* Card by card, 60 ms apart, the empty card turns edge on and the choice
-   card turns on from there. */
-.dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
-  animation: dig-turn-away var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5) both;
-}
-
-.dig-choice-cards[data-motion] .dig-choice-card {
-  animation: dig-turn-in var(--motion-small) var(--ease-out) calc(var(--choice) * var(--motion-stagger) * 1.5 + var(--motion-small)) both;
-}
-
-@keyframes dig-turn-away {
-  99% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: rotateY(calc(90deg * var(--motion-amount)));
-  }
-}
-
-@keyframes dig-turn-in {
-  from {
-    opacity: 0;
-    transform: rotateY(calc(-90deg * var(--motion-amount)));
-  }
+  transition: border-color var(--motion-small) var(--ease-out), background-color var(--motion-small) var(--ease-out), filter var(--motion-small) var(--ease-out);
 }
 
 .dig-choice-card[data-rejected] {
@@ -7171,14 +7387,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   .dig-reveal-screen[data-motion] .dig-reveal-level,
   .dig-reveal-screen[data-motion] .result-actions > button {
     animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-choice-cards[data-motion] .dig-choice-card {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-choice-cards[data-motion] .dig-empty-card[data-turned] {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
   }
 
   .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {

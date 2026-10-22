@@ -47,7 +47,8 @@ describe("the board's lift and collection star", () => {
       drag([[350, 300], [450, 300]]);
       expect(cleared()).toBeGreaterThan(0);
       expect(board().hasAttribute("data-blown")).toBe(false);
-      expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(0);
+      // Choices occupy their slots from the start; only picking waits.
+      expect(document.querySelectorAll(".dig-choice-card:enabled")).toHaveLength(0);
       brushAll();
       if (level !== "hatchling") {
         expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(level === "explorer" ? 3 : 4);
@@ -153,7 +154,7 @@ describe("the board's lift and collection star", () => {
     if (level === "hatchling") {
       digUp();
     } else {
-      for (let y = 10; y < 600 && !document.querySelector(".dig-choice-card"); y += 20)
+      for (let y = 10; y < 600 && cleared() < 0.75; y += 20)
         drag([[0, y], [800, y]], y * 100);
       expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(level === "explorer" ? 3 : 4);
       expect(cleared()).toBeGreaterThanOrEqual(0.75);

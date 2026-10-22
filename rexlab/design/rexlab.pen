@@ -104757,6 +104757,3398 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "nmyR8",
+      "x": 11252,
+      "y": 35720,
+      "name": "Dinosaur page — upright · iPad mini 744×1133 · English · Pachycephalosaurus",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "DpDDC",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "yU4pm",
+              "name": "Back Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "o4Tqd",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "d3rPV2",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "ANCIENT REPTILES",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u4UVx",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "itMx5",
+              "name": "Position",
+              "fill": "$fm-ink-soft",
+              "content": "10 / 52",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "m7mot",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ubnMi",
+              "name": "Stage",
+              "clip": true,
+              "width": "fill_container",
+              "height": 345,
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "cV3S6",
+                  "layoutPosition": "absolute",
+                  "x": 78,
+                  "y": -66,
+                  "name": "Stage Glow",
+                  "opacity": 0.12,
+                  "fill": "$fm-sky",
+                  "width": 477,
+                  "height": 477
+                },
+                {
+                  "type": "frame",
+                  "id": "nANR2",
+                  "name": "Previous Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "l3wl9",
+                      "name": "Previous Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GpEM7",
+                  "name": "Picture",
+                  "width": 385,
+                  "height": 289,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/pachycephalosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "kHPIQ",
+                  "name": "Next Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "v9xFOF",
+                      "name": "Next Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-right",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "T9hhGz",
+              "name": "Info",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fEDlw",
+                  "name": "Name Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NgZDk",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "PACHYCEPHALOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 49,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VXspj",
+                  "name": "Diet Tag",
+                  "height": 56,
+                  "fill": "#2e7d4f",
+                  "cornerRadius": 28,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    22,
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YYPH2",
+                      "name": "Diet Mark",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#FFFFFF33",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "wu2Zf",
+                          "name": "Diet Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "x48gq",
+                      "name": "Diet Text",
+                      "fill": "#FFFFFF",
+                      "content": "PLANTS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xhaiN",
+                  "name": "Description",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 164,
+                  "content": "A VERY THICK, DOME-SHAPED SKULL WITH LITTLE BUMPS AROUND IT.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "Lexend",
+                  "fontSize": 28,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "s5624a",
+                  "name": "Facts",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pueSW",
+                      "name": "Fact TALL",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "D0b7m3",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "rcQtR",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "vPJy6",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "TALL",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "O4UVma",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "1.1 M",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p0cMT4",
+                      "name": "Fact HEAVY",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "f9upb",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "pCPYa",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "weight",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "nnNKN",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "HEAVY",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "uvY0q",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "450 KG",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "M1JrHF",
+                  "name": "Source Note",
+                  "opacity": 0.8,
+                  "fill": "$fm-ink-soft",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 49.5,
+                  "content": "Facts checked with the Natural History Museum, London, the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica.",
+                  "lineHeight": 1.27,
+                  "fontFamily": "Lexend",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ilgv1",
+                  "name": "Group Line",
+                  "width": "fill_container",
+                  "height": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "EYTtG",
+      "x": 12076,
+      "y": 35720,
+      "name": "Dinosaur page — upright · iPad mini 744×1133 · Russian · Pachycephalosaurus",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "eZIPM",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Zdtxw",
+              "name": "Back Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "m865HF",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "dqgYo",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "ДРЕВНИЕ ЯЩЕРЫ",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fznUd",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "yXMBT",
+              "name": "Position",
+              "fill": "$fm-ink-soft",
+              "content": "10 / 52",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s8Sa0",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "frame",
+              "id": "xHB3W",
+              "name": "Stage",
+              "clip": true,
+              "width": "fill_container",
+              "height": 345,
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "vxoTS",
+                  "layoutPosition": "absolute",
+                  "x": 78,
+                  "y": -66,
+                  "name": "Stage Glow",
+                  "opacity": 0.12,
+                  "fill": "$fm-sky",
+                  "width": 477,
+                  "height": 477
+                },
+                {
+                  "type": "frame",
+                  "id": "uNfGh",
+                  "name": "Previous Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "djCjz",
+                      "name": "Previous Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gvOQB",
+                  "name": "Picture",
+                  "width": 385,
+                  "height": 289,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/pachycephalosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "qes33",
+                  "name": "Next Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "tQqZC",
+                      "name": "Next Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-right",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iRmSR",
+              "name": "Info",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oxZt0",
+                  "name": "Name Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T2sg7W",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "ПАХИЦЕФАЛОЗАВР",
+                      "fontFamily": "Lexend",
+                      "fontSize": 49,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GUshr",
+                  "name": "Diet Tag",
+                  "height": 56,
+                  "fill": "#2e7d4f",
+                  "cornerRadius": 28,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    22,
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Rc7Fy",
+                      "name": "Diet Mark",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#FFFFFF33",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MXxn0",
+                          "name": "Diet Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "wo456",
+                      "name": "Diet Text",
+                      "fill": "#FFFFFF",
+                      "content": "РАСТЕНИЯ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "KerR3",
+                  "name": "Description",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 164,
+                  "content": "ОЧЕНЬ ТОЛСТЫЙ ЧЕРЕП В ФОРМЕ КУПОЛА, С МАЛЕНЬКИМИ ШИШКАМИ ВОКРУГ.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "Lexend",
+                  "fontSize": 28,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "TFQvC",
+                  "name": "Facts",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "j6HVV",
+                      "name": "Fact TALL",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "o0Nxm",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "J8qTAl",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Rb0vl",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "РОСТ",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "syJIo",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "1,1 М",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pR7TL",
+                      "name": "Fact HEAVY",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "phQw7",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "CcqpT",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "weight",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ZpC92",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "ВЕС",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "p6DA3",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "450 КГ",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "T0Ff5",
+                  "name": "Source Note",
+                  "opacity": 0.8,
+                  "fill": "$fm-ink-soft",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 49.5,
+                  "content": "Факты сверены с Музеем естествознания в Лондоне, Американским музеем естественной истории, Национальным музеем естественной истории Смитсоновского института, Музеем палеонтологии Калифорнийского университета и Британской энциклопедией.",
+                  "lineHeight": 1.27,
+                  "fontFamily": "Lexend",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "HpdqQ",
+                  "name": "Group Line",
+                  "width": "fill_container",
+                  "height": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "HozJW",
+      "x": 12900,
+      "y": 35720,
+      "name": "Dinosaur page — upright · iPad Air 820×1180 · English · Baryonyx",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "WPO4Q",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "EeDL7",
+              "name": "Back Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "mVcjC",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "D88Tz5",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "ANCIENT REPTILES",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "r2EaY",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "CSRLs",
+              "name": "Position",
+              "fill": "$fm-ink-soft",
+              "content": "29 / 52",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "EOoKF",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "frame",
+              "id": "v4NC8",
+              "name": "Stage",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "LpEBf",
+                  "layoutPosition": "absolute",
+                  "x": 59,
+                  "y": -83,
+                  "name": "Stage Glow",
+                  "opacity": 0.12,
+                  "fill": "$fm-sky",
+                  "width": 590,
+                  "height": 590
+                },
+                {
+                  "type": "frame",
+                  "id": "Ce8CT",
+                  "name": "Previous Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "YWjU2",
+                      "name": "Previous Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "p7yLUX",
+                  "name": "Picture",
+                  "width": 476,
+                  "height": 357,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/baryonyx.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "AVXhm",
+                  "name": "Next Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "UytAz",
+                      "name": "Next Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-right",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Vt8Ls",
+              "name": "Info",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FW3fD",
+                  "name": "Name Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fDq8Q",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "BARYONYX",
+                      "fontFamily": "Lexend",
+                      "fontSize": 55,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IdQRm",
+                  "name": "Diet Tag",
+                  "height": 56,
+                  "fill": "#c9583d",
+                  "cornerRadius": 28,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    22,
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "xhN6P",
+                      "name": "Diet Mark",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#FFFFFF33",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MDz1w",
+                          "name": "Diet Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "beef",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "MhAHB",
+                      "name": "Diet Text",
+                      "fill": "#FFFFFF",
+                      "content": "MEAT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "zKM4E",
+                  "name": "Description",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 123,
+                  "content": "A BIG CLAW ON EACH HAND AND LONG JAWS FOR CATCHING FISH.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "Lexend",
+                  "fontSize": 28,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "GSULc",
+                  "name": "Facts",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "OWBTw",
+                      "name": "Fact TALL",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VqvMR",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "DAdUA",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Clgza",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "TALL",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "dyX1d",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "2.2 M",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "xwm7j",
+                      "name": "Fact HEAVY",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "rjPyR",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "K5peMi",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "weight",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "m4utb8",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "HEAVY",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "FHoWT",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "1.7 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "i5IZiQ",
+                  "name": "Source Note",
+                  "opacity": 0.8,
+                  "fill": "$fm-ink-soft",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 49.5,
+                  "content": "Facts checked with the Natural History Museum, London, the American Museum of Natural History, the Smithsonian National Museum of Natural History, the University of California Museum of Paleontology and Encyclopaedia Britannica.",
+                  "lineHeight": 1.27,
+                  "fontFamily": "Lexend",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "AmhLY",
+                  "name": "Group Line",
+                  "width": "fill_container",
+                  "height": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "u3pjcU",
+      "x": 13800,
+      "y": 35720,
+      "name": "Dinosaur page — upright · 600×800 window, whole page scrolled (1031 tall) · Russian · Pachycephalosaurus",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 600,
+      "height": 1031,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "q09XA",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Hsgc4",
+              "name": "Back Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "GIfC4",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "TPuag",
+                  "name": "Back Text",
+                  "fill": "$fm-ink",
+                  "content": "ДРЕВНИЕ ЯЩЕРЫ",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Az9mt",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "h19Wk",
+              "name": "Position",
+              "fill": "$fm-ink-soft",
+              "content": "10 / 52",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "u7bZM",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "frame",
+              "id": "yctsA",
+              "name": "Stage",
+              "clip": true,
+              "width": "fill_container",
+              "height": 248,
+              "fill": "$fm-base",
+              "cornerRadius": 32,
+              "gap": 16,
+              "padding": 28,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "Y6xwF",
+                  "layoutPosition": "absolute",
+                  "x": 86,
+                  "y": -34,
+                  "name": "Stage Glow",
+                  "opacity": 0.12,
+                  "fill": "$fm-sky",
+                  "width": 317,
+                  "height": 317
+                },
+                {
+                  "type": "frame",
+                  "id": "S25dz",
+                  "name": "Previous Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "vdmi6",
+                      "name": "Previous Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-left",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Kmcdu",
+                  "name": "Picture",
+                  "width": 256,
+                  "height": 192,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/pachycephalosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "dkJ5y",
+                  "name": "Next Button",
+                  "width": 72,
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 36,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "LUdbM",
+                      "name": "Next Icon",
+                      "width": 32,
+                      "height": 32,
+                      "icon": "arrow-right",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ka9Ss",
+              "name": "Info",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MtYBM",
+                  "name": "Name Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SumLC",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "content": "ПАХИЦЕФАЛОЗАВР",
+                      "fontFamily": "Lexend",
+                      "fontSize": 38,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aHdzo",
+                  "name": "Diet Tag",
+                  "height": 56,
+                  "fill": "#2e7d4f",
+                  "cornerRadius": 28,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    22,
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PY3tm",
+                      "name": "Diet Mark",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#FFFFFF33",
+                      "cornerRadius": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "p5q90",
+                          "name": "Diet Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "leaf",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "EnE2u",
+                      "name": "Diet Text",
+                      "fill": "#FFFFFF",
+                      "content": "РАСТЕНИЯ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SM3DX",
+                  "name": "Description",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 205,
+                  "content": "ОЧЕНЬ ТОЛСТЫЙ ЧЕРЕП В ФОРМЕ КУПОЛА, С МАЛЕНЬКИМИ ШИШКАМИ ВОКРУГ.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "Lexend",
+                  "fontSize": 28,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "H7VC71",
+                  "name": "Facts",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dETIE",
+                      "name": "Fact TALL",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qvYmT",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "wwtka",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "ruler",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "KSz1q",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "РОСТ",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "XO9yO",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "1,1 М",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jDp1K",
+                      "name": "Fact HEAVY",
+                      "width": "fill_container",
+                      "fill": "$fm-surface",
+                      "cornerRadius": 22,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": [
+                        20,
+                        24
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "F7R2ab",
+                          "name": "Fact Head",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "usLje",
+                              "name": "Fact Icon",
+                              "width": 22,
+                              "height": 22,
+                              "icon": "weight",
+                              "library": "lucide",
+                              "fill": "$fm-ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "glPfF",
+                              "name": "Fact Label",
+                              "fill": "$fm-ink-soft",
+                              "content": "ВЕС",
+                              "fontFamily": "Lexend",
+                              "fontSize": 18,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "rpwmj",
+                          "name": "Fact Value",
+                          "fill": "$fm-ink",
+                          "content": "450 КГ",
+                          "fontFamily": "Lexend",
+                          "fontSize": 44,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EHC97",
+                  "name": "Source Note",
+                  "opacity": 0.8,
+                  "fill": "$fm-ink-soft",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 66,
+                  "content": "Факты сверены с Музеем естествознания в Лондоне, Американским музеем естественной истории, Национальным музеем естественной истории Смитсоновского института, Музеем палеонтологии Калифорнийского университета и Британской энциклопедией.",
+                  "lineHeight": 1.27,
+                  "fontFamily": "Lexend",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "avBY5",
+                  "name": "Group Line",
+                  "width": "fill_container",
+                  "height": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "M8TAg",
+      "x": 14700,
+      "y": 35720,
+      "name": "Compare quiz question — upright · iPad Air 820×1180 · English · Answered (LAB-479)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "b7S61",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 1140,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 820,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "Ys3ii",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "l2zoLb",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "H83X2",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "s5zej",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D4CJO",
+              "name": "Progress",
+              "width": "fill_container",
+              "height": 10,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "vjWJh",
+                  "name": "Step 1",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "eedom",
+                  "name": "Step 2",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "fdHqz",
+                  "name": "Step 3",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "V4UAc2",
+                  "name": "Step 4",
+                  "fill": "$fm-amber",
+                  "width": "fill_container",
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "SrZpg",
+                  "name": "Step 5",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "PgNBK",
+                  "name": "Step 6",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "OKHe5",
+                  "name": "Step 7",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "D3Ozl",
+                  "name": "Step 8",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "jL8po",
+                  "name": "Step 9",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "JDaOw",
+                  "name": "Step 10",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "jxvvd",
+              "name": "Counter",
+              "fill": "$fm-ink-soft",
+              "content": "4 / 10",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "knwr6",
+          "name": "Prompt",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "r2w4F",
+              "name": "Prompt Mark",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "dP3rs",
+                  "name": "Prompt Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "scale",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "qD18r",
+              "name": "Prompt Text",
+              "fill": "$fm-ink",
+              "content": "WHO IS HEAVIER?",
+              "fontFamily": "Lexend",
+              "fontSize": 44,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YZPrZ",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "e3Jd4",
+              "name": "Card Triceratops",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-good",
+              "strokeWidth": 4,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hloB5",
+                  "name": "Card Triceratops Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "l6p3F",
+                      "name": "Card Triceratops Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M0eBx",
+                      "layoutPosition": "absolute",
+                      "x": 24,
+                      "y": 24,
+                      "name": "Card Triceratops Mark",
+                      "height": 48,
+                      "fill": "$fm-good",
+                      "cornerRadius": 24,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        18,
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RnK6c",
+                          "name": "Mark Icon",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h68HeZ",
+                          "name": "Mark Text",
+                          "fill": "#FFFFFF",
+                          "content": "RIGHT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PaWnw",
+                      "layoutPosition": "absolute",
+                      "x": 587,
+                      "y": 239,
+                      "name": "Card Triceratops Value",
+                      "height": 48,
+                      "fill": "$fm-base",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "IjYhG",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "XeN4J",
+                          "name": "Value Text",
+                          "fill": "$fm-on-base",
+                          "content": "6 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GHSOs",
+                  "name": "Card Triceratops Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YrQTq",
+                      "name": "Card Triceratops Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EMLUz",
+              "layoutPosition": "absolute",
+              "x": 322,
+              "y": 374,
+              "name": "Versus",
+              "width": 64,
+              "height": 64,
+              "fill": "$fm-ink",
+              "cornerRadius": 32,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "b19Ys",
+                  "name": "Versus Text",
+                  "fill": "$fm-bg",
+                  "content": "VS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "odALM",
+              "name": "Card Velociraptor",
+              "opacity": 0.7,
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k1zMu",
+                  "name": "Card Velociraptor Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "grHed",
+                      "name": "Card Velociraptor Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/velociraptor.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pktfi",
+                      "layoutPosition": "absolute",
+                      "x": 557,
+                      "y": 239,
+                      "name": "Card Velociraptor Value",
+                      "height": 48,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "V55Thm",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wSv2E",
+                          "name": "Value Text",
+                          "fill": "$fm-ink",
+                          "content": "15 KG",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BArej",
+                  "name": "Card Velociraptor Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "u8FQKA",
+                      "name": "Card Velociraptor Name",
+                      "fill": "$fm-ink",
+                      "content": "VELOCIRAPTOR",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GyLsI",
+          "name": "Next Row",
+          "width": "fill_container",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jFAu5",
+              "name": "Next Button",
+              "height": 72,
+              "fill": "$fm-base",
+              "cornerRadius": 20,
+              "gap": 14,
+              "padding": [
+                0,
+                32,
+                0,
+                36
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uxrZu",
+                  "name": "Next Text",
+                  "fill": "$fm-on-base",
+                  "content": "NEXT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "icon",
+                  "id": "ZaVLo",
+                  "name": "Next Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "arrow-right",
+                  "library": "lucide",
+                  "fill": "$fm-on-base"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "z2NHZ3",
+      "x": 15620,
+      "y": 35720,
+      "name": "Compare quiz question — upright · 600×800 window, whole page scrolled (954 tall) · English · Pachycephalosaurus · Answered (LAB-479)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 600,
+      "height": 954,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": [
+        40,
+        56,
+        48,
+        56
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "f8OuS",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 914,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 600,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "RP4jM",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "km9Au",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "XGHz4",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "j4qbFV",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IpzEl",
+              "name": "Progress",
+              "width": "fill_container",
+              "height": 10,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "q4fckC",
+                  "name": "Step 1",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "opHp6",
+                  "name": "Step 2",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "Fr8C0",
+                  "name": "Step 3",
+                  "fill": "$fm-base",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "XrGdG",
+                  "name": "Step 4",
+                  "fill": "$fm-amber",
+                  "width": "fill_container",
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "kgBKI",
+                  "name": "Step 5",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "a4Y7SM",
+                  "name": "Step 6",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "MKmI9",
+                  "name": "Step 7",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "qDy6d",
+                  "name": "Step 8",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "C6VZx",
+                  "name": "Step 9",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "Pzd8e",
+                  "name": "Step 10",
+                  "fill": "$fm-surface-2",
+                  "width": "fill_container",
+                  "height": 6
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "p6MX6e",
+              "name": "Counter",
+              "fill": "$fm-ink-soft",
+              "content": "4 / 10",
+              "fontFamily": "Lexend",
+              "fontSize": 20,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Dr6IP",
+          "name": "Prompt",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "GN21u",
+              "name": "Prompt Mark",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-amber",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "xsdyh",
+                  "name": "Prompt Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "scale",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "IotgV",
+              "name": "Prompt Text",
+              "fill": "$fm-ink",
+              "content": "WHO IS HEAVIER?",
+              "fontFamily": "Lexend",
+              "fontSize": 44,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b201g",
+          "name": "Cards",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "d1DlpD",
+              "name": "Card Triceratops",
+              "clip": true,
+              "width": "fill_container",
+              "height": 281,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-good",
+              "strokeWidth": 4,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wQoIr",
+                  "name": "Card Triceratops Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "v3Jgb",
+                      "name": "Card Triceratops Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mOzql",
+                      "layoutPosition": "absolute",
+                      "x": 24,
+                      "y": 24,
+                      "name": "Card Triceratops Mark",
+                      "height": 48,
+                      "fill": "$fm-good",
+                      "cornerRadius": 24,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        18,
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "kPjgH",
+                          "name": "Mark Icon",
+                          "width": 24,
+                          "height": 24,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "nU1QS",
+                          "name": "Mark Text",
+                          "fill": "#FFFFFF",
+                          "content": "RIGHT",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YMSGl",
+                      "layoutPosition": "absolute",
+                      "x": 367,
+                      "y": 126,
+                      "name": "Card Triceratops Value",
+                      "height": 48,
+                      "fill": "$fm-base",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DfZ3h",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-on-base"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kXell",
+                          "name": "Value Text",
+                          "fill": "$fm-on-base",
+                          "content": "6 T",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kkA9p",
+                  "name": "Card Triceratops Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AeLdw",
+                      "name": "Card Triceratops Name",
+                      "fill": "$fm-ink",
+                      "content": "TRICERATOPS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O6hpe",
+              "layoutPosition": "absolute",
+              "x": 212,
+              "y": 261,
+              "name": "Versus",
+              "width": 64,
+              "height": 64,
+              "fill": "$fm-ink",
+              "cornerRadius": 32,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bCI4D",
+                  "name": "Versus Text",
+                  "fill": "$fm-bg",
+                  "content": "VS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Nqt4u",
+              "name": "Card Velociraptor",
+              "opacity": 0.7,
+              "clip": true,
+              "width": "fill_container",
+              "height": 281,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Vl41w",
+                  "name": "Card Velociraptor Art",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface-2",
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "AlFw7",
+                      "name": "Card Velociraptor Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/pachycephalosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "iHBYC",
+                      "layoutPosition": "absolute",
+                      "x": 337,
+                      "y": 126,
+                      "name": "Card Velociraptor Value",
+                      "height": 48,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 12,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Hyn24",
+                          "name": "Value Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "weight",
+                          "library": "lucide",
+                          "fill": "$fm-ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "K1aUeJ",
+                          "name": "Value Text",
+                          "fill": "$fm-ink",
+                          "content": "15 KG",
+                          "fontFamily": "Lexend",
+                          "fontSize": 22,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dakQA",
+                  "name": "Card Velociraptor Footer",
+                  "width": "fill_container",
+                  "padding": [
+                    20,
+                    28
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pIfLo",
+                      "name": "Card Velociraptor Name",
+                      "fill": "$fm-ink",
+                      "content": "PACHYCEPHALOSAURUS",
+                      "fontFamily": "Lexend",
+                      "fontSize": 34,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "D0oI9L",
+          "name": "Next Row",
+          "width": "fill_container",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "vHFSQ",
+              "name": "Next Button",
+              "height": 72,
+              "fill": "$fm-base",
+              "cornerRadius": 20,
+              "gap": 14,
+              "padding": [
+                0,
+                32,
+                0,
+                36
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UFac7",
+                  "name": "Next Text",
+                  "fill": "$fm-on-base",
+                  "content": "NEXT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "icon",
+                  "id": "BrDzB",
+                  "name": "Next Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "arrow-right",
+                  "library": "lucide",
+                  "fill": "$fm-on-base"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "o70Mq",
+      "x": 16320,
+      "y": 35720,
+      "name": "Compare quiz result — upright · iPad mini 744×1133 · Russian · Paleontologist · New best 10/10 (LAB-480)",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": "$fm-base",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 32,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "hje8K",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 1013,
+          "name": "Strata 1",
+          "fill": "#00000026",
+          "width": 744,
+          "height": 120
+        },
+        {
+          "type": "frame",
+          "id": "phMPQ",
+          "name": "Hero Art",
+          "width": 575,
+          "height": 431,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          }
+        },
+        {
+          "type": "frame",
+          "id": "BfowS",
+          "name": "Celebration",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "CixK2",
+              "name": "New Best Badge",
+              "height": 52,
+              "fill": "$fm-amber",
+              "cornerRadius": 36,
+              "gap": 12,
+              "padding": [
+                0,
+                28,
+                0,
+                22
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "XCeWE",
+                  "name": "Badge Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "#1D2742"
+                },
+                {
+                  "type": "text",
+                  "id": "V1DJnJ",
+                  "name": "Badge Text",
+                  "fill": "#1D2742",
+                  "content": "НОВЫЙ РЕКОРД!",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HflRy",
+              "name": "Score",
+              "gap": 12,
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fbF1M",
+                  "name": "Score Value",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "lineHeight": 1,
+                  "fontFamily": "Lexend",
+                  "fontSize": 170,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "vumYt",
+                  "name": "Score Total",
+                  "fill": "$fm-amber",
+                  "content": "/ 10",
+                  "lineHeight": 1.7,
+                  "fontFamily": "Lexend",
+                  "fontSize": 47,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pPinH",
+              "name": "Stars",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ur5RD",
+                  "name": "Star 1",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "X7zFW",
+                  "name": "Star 2",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "i3z1n",
+                  "name": "Star 3",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "lwd7v",
+                  "name": "Star 4",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "fmwdd",
+                  "name": "Star 5",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "w81eDL",
+                  "name": "Star 6",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "iCmcB",
+                  "name": "Star 7",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "s1eQhF",
+                  "name": "Star 8",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "HMM2j",
+                  "name": "Star 9",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "MEPHo",
+                  "name": "Star 10",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "lineHeight": 1,
+                  "fontFamily": "Inter",
+                  "fontSize": 48,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "W7GqH",
+              "name": "Hero Title",
+              "fill": "$fm-on-base",
+              "content": "МОЛОДЕЦ!",
+              "fontFamily": "Lexend",
+              "fontSize": 40,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "M3x5Fn",
+              "name": "Best Chip",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 24,
+              "gap": 12,
+              "padding": [
+                0,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kpCKt",
+                  "name": "Best Label",
+                  "fill": "$fm-on-base",
+                  "content": "РЕКОРД",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "bFarQ",
+                  "name": "Best New",
+                  "fill": "$fm-on-base",
+                  "content": "10",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pRbjD",
+              "name": "Level Switch",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "#00000033",
+              "cornerRadius": 36,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 4,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qHaxi",
+                  "name": "HATCHLING Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BXwcE",
+                      "name": "HATCHLING Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🥚",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DXe1w",
+                      "name": "HATCHLING Name",
+                      "fill": "$fm-on-base",
+                      "content": "ДЕТЁНЫШ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "U1L0rv",
+                  "name": "EXPLORER Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 30,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FN3nC",
+                      "name": "EXPLORER Picture",
+                      "fill": "$fm-on-base",
+                      "content": "🦖",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qADz4",
+                      "name": "EXPLORER Name",
+                      "fill": "$fm-on-base",
+                      "content": "ИССЛЕДОВАТЕЛЬ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ytonk",
+                  "name": "PALEONTOLOGIST Segment",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-on-base",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 4
+                    },
+                    "blur": 10
+                  },
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vdBmQ",
+                      "name": "PALEONTOLOGIST Picture",
+                      "fill": "$fm-base",
+                      "content": "🦴",
+                      "fontFamily": "Inter",
+                      "fontSize": 22,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qIiNN",
+                      "name": "PALEONTOLOGIST Name",
+                      "fill": "$fm-base",
+                      "content": "ПАЛЕОНТОЛОГ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hWkIo",
+              "name": "Actions",
+              "gap": 16,
+              "padding": [
+                8,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "DtpIp",
+                  "name": "Play Again Button",
+                  "height": 72,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 22,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    40
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Alacj",
+                      "name": "Play Again Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "rotate-ccw",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LZ4BS",
+                      "name": "Play Again Text",
+                      "fill": "#1D2742",
+                      "content": "ЕЩЁ РАЗ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qoynA",
+                  "name": "Home Button",
+                  "height": 72,
+                  "fill": "#FFFFFF1A",
+                  "cornerRadius": 22,
+                  "stroke": "#FFFFFF40",
+                  "strokeWidth": 1,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    32
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "F5oiqn",
+                      "name": "Home Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "house",
+                      "library": "lucide",
+                      "fill": "$fm-on-base"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zpD2Z",
+                      "name": "Home Text",
+                      "fill": "$fm-on-base",
+                      "content": "ДОМОЙ",
+                      "fontFamily": "Lexend",
+                      "fontSize": 26,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

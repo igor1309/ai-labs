@@ -1,10 +1,13 @@
-import type { Box, PictureContinuation, TurnFrame, TurnMotionSeams } from "./turnMotion.ts";
+import { TURN_PART, type Box, type PictureContinuation, type TurnFrame, type TurnMotionSeams } from "./turnMotion.ts";
 
-export type PictureMotion = { now(): number; duration: number; easing: string };
+// The screen transitions' clock, and the timing and easing of the
+// picture shared between a card and its page; with `slide`, of the next
+// or previous creature sliding in, its words `delay` after its picture.
+export type PictureMotion = { now(): number; duration: number; easing: string; slide?: { duration: number; delay: number; distance: number } };
 
 // The eased progress of a CSS `cubic-bezier()` at a fraction of its time,
 // whose x is the time gone and y the progress; none for any other easing.
-function easedProgress(easing: string): ((fraction: number) => number) | undefined {
+export function easedProgress(easing: string): ((fraction: number) => number) | undefined {
   const values = /^cubic-bezier\(([^)]+)\)$/.exec(easing)?.[1]?.split(",").map(Number);
   if (!values || values.length !== 4 || values.some((value) => !Number.isFinite(value))) return undefined;
   const [x1 = 0, y1 = 0, x2 = 1, y2 = 1] = values;
@@ -22,15 +25,18 @@ function easedProgress(easing: string): ((fraction: number) => number) | undefin
   };
 }
 
-// A fixed copy avoids the clips and translations on the card and list.
-// The laid-out picture keeps its space until the copy lands there.
-function drawClosingPicture(element: Element, box: Box): TurnFrame {
+// A fixed copy avoids the clips and translations on the card and list, or
+// on the stage. The laid-out picture keeps its space until the copy lands
+// there. `marker` names what the copy is drawn for.
+function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame {
   const image = element as HTMLElement;
   const copy = image.cloneNode(true) as HTMLElement;
+  // The copy is drawn for the part, and is none itself.
+  copy.removeAttribute(TURN_PART);
   copy.removeAttribute("id");
   copy.setAttribute("aria-hidden", "true");
   copy.setAttribute("inert", "");
-  copy.setAttribute("data-closing-picture", "");
+  copy.setAttribute(marker, "");
   Object.assign(copy.style, {
     position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px`,
     maxWidth: "none", maxHeight: "none", margin: "0", zIndex: "100", objectFit: "contain", pointerEvents: "none", animation: "none", transition: "none"
@@ -41,24 +47,49 @@ function drawClosingPicture(element: Element, box: Box): TurnFrame {
   return { element: copy, remove: () => { copy.remove(); image.style.visibility = visibility; } };
 }
 
+// Where the shared picture stands on each screen: on its card in the
+// catalogue, and on the stage of its page.
+const cardPicture = (id: string) => `.catalogue-card[data-id="${id}"] .catalogue-picture`;
+const PAGE_PICTURE = ".dinosaur-stage-picture";
+
+// The result's dinosaur, a part fitted whole in its own box.
+const RESULT_PICTURE = ".result-hero";
+
+// The page's picture as a turn resizes its stage, and the result's
+// dinosaur as a turn resizes it. Laid out in place, either would take its
+// new size at once, fitted whole in its new box, so a copy travels in a
+// box that changes with it, as the closing picture does.
+export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(RESULT_PICTURE) ? element : undefined;
+  return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
+}
+
+// The shared picture a screen transition is still drawing, from the page
+// into its card as the page closes (`start`), or from its card into the
+// page as it opens (`open`): `arrive` finds where it lands once the next
+// screen shows, and `take` hands where it is drawn to a turn. A browser
+// skips the screen transition as the window changes size, so the turn
+// carries the picture on from there.
 export function closingPicture({ parts, measure }: Pick<TurnMotionSeams, "parts" | "measure">, motion: PictureMotion) {
   // A duration or easing the stylesheet did not give leaves the picture
   // to its screen transition.
   const progressAt = Number.isFinite(motion.duration) && motion.duration > 0 ? easedProgress(motion.easing) : undefined;
-  let close: { id: string; from: Box; started: number; target?: { element: Element; box: Box } } | undefined;
-  const clear = () => { close = undefined; };
+  let moving: { id: string; from: Box; started: number; landing: string; target?: { element: Element; box: Box } } | undefined;
+  const clear = () => { moving = undefined; };
+  const leave = (id: string, from: string, landing: string) => {
+    const element = parts.querySelectorAll(from)[0];
+    moving = element ? { id, from: measure(element), started: motion.now(), landing } : undefined;
+  };
   return {
-    start: (id: string) => {
-      const page = parts.querySelectorAll(".dinosaur-stage-picture")[0];
-      close = page ? { id, from: measure(page), started: motion.now() } : undefined;
-    },
+    start: (id: string) => leave(id, PAGE_PICTURE, cardPicture(id)),
+    open: (id: string) => leave(id, cardPicture(id), PAGE_PICTURE),
     arrive: (id: string | undefined) => {
-      if (!close || close.id !== id) return clear();
-      const element = parts.querySelectorAll(`.catalogue-card[data-id="${id}"] .catalogue-picture`)[0];
-      if (element) close.target = { element, box: measure(element) };
+      if (!moving || moving.id !== id) return clear();
+      const element = parts.querySelectorAll(moving.landing)[0];
+      if (element) moving.target = { element, box: measure(element) };
     },
     take: (): PictureContinuation | undefined => {
-      const kept = close;
+      const kept = moving;
       clear();
       if (!kept?.target || !progressAt) return undefined;
       const elapsed = motion.now() - kept.started;
@@ -67,7 +98,7 @@ export function closingPicture({ parts, measure }: Pick<TurnMotionSeams, "parts"
       const { element, box: target } = kept.target;
       const at = (key: keyof Box) => kept.from[key] + (target[key] - kept.from[key]) * progress;
       const box = { left: at("left"), top: at("top"), width: at("width"), height: at("height") };
-      return { element, box, draw: (destination) => drawClosingPicture(element, destination) };
+      return { element, box, draw: (destination) => drawPictureCopy(element, destination, "data-closing-picture") };
     }
   };
 }

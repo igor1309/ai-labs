@@ -45,9 +45,22 @@ export type PageAnimation = { finish(): void };
 // with every part at rest.
 export type TurnStyle = "glide" | "follow" | "still";
 
+// A part a screen transition draws off where it is laid out, by `offset`,
+// at `opacity`, on snapshots that leave the part itself at rest.
+export type PartShift = { element: Element; offset: { x: number; y: number }; opacity: number };
+
 export type TurnMotionSeams = {
   // Takes over a screen transition's picture, once, when a glide starts.
   continuation?(): PictureContinuation | undefined;
+  // Takes the parts a screen transition still draws off their places, at
+  // every change: the browser skips the transition as the window changes,
+  // so a glide from rest goes on from where it drew them. A part inside a
+  // shifted one moves with it.
+  shifted?(): PartShift[];
+  // Draws a copy of `element` at `destination`, hiding the element until
+  // removed, where its content is laid out by its box, as a picture fitted
+  // whole is; none for any other part.
+  refit?(element: Element, destination: Box): TurnFrame | undefined;
   // The page holding the marked parts.
   parts: Pick<ParentNode, "querySelectorAll">;
   // An element's box as the page lays it out now, asked only while no
@@ -104,8 +117,10 @@ type Place = { element: Element; box: Box; opacity: number };
 // A motion started on an element: by its eased progress, from `offset`
 // off where it is laid out to there, from `size`, where it shows one, to
 // its own, and from `opacity` to full, with the frame drawn for it and how
-// to narrow it back. The parts around it move it further by their own.
+// to narrow it back. The parts around it move it further by their own,
+// unless it is `detached`, drawn as a copy above the page.
 type Drawing = {
+  detached: boolean;
   animations: TurnAnimation[];
   offset: { x: number; y: number };
   size: { width: number; height: number } | undefined;
@@ -126,14 +141,16 @@ const lerp = (from: number, to: number, progress: number) => from + (to - from) 
 // are measured again before every frame. Each part glides from its old
 // place to its new one by translation, its change of size shown by a
 // clip of what it holds and a frame drawn under it, without scaling its
-// content. A closing picture travels above those clips in a changing
-// box, fitted whole; what the page marks to fade fades in meanwhile. A
-// glide takes over the page's own animations on a part, such as its
-// entrance, from where and how faded they draw it: left running, they
-// would draw it off its new place, their translation giving way to the
-// glide's. Each change outdates every one before it, and nothing a
-// change left waiting acts once it is outdated.
-export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing, continuation }: TurnMotionSeams): TurnMotion {
+// content. A closing picture, and a part whose content its box lays out,
+// travel above those clips in a changing box, fitted whole; what the page
+// marks to fade fades in meanwhile. A glide takes over the page's own
+// animations on a part, such as its entrance, from where and how faded
+// they draw it: left running, they would draw it off its new place, their
+// translation giving way to the glide's. A glide from rest goes on as well
+// from where a screen transition's snapshots draw a part. Each change
+// outdates every one before it, and nothing a change left waiting acts
+// once it is outdated.
+export function turnMotion({ parts, measure, frame, extend, animate, animations, opacity, nextFrame, reducedMotion, startViewTransition, startTimer, timing, continuation, shifted, refit }: TurnMotionSeams): TurnMotion {
   const keepers = new Set<Keeper>();
   const listeners = new Set<() => void>();
   let drawn = new Map<string, Box>();
@@ -216,7 +233,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   // off where it is laid out, as far as each has gone. A part that moves
   // only with a part around it has no motion of its own.
   const moved = (element: Element) => {
-    if (element === picture?.element) {
+    if (element === picture?.element || drawings.get(element)?.detached) {
       const drawing = drawings.get(element);
       const left = drawing ? 1 - progressOf(drawing) : 0;
       return { x: (drawing?.offset.x ?? 0) * left, y: (drawing?.offset.y ?? 0) * left };
@@ -275,6 +292,22 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
     return found;
   };
 
+  // Each part in `found` as a screen transition draws it: moved with each
+  // shifted part around it and itself, at its own shift's opacity.
+  const shift = (found: Map<string, Place>, shifts: PartShift[]) => {
+    const by = new Map(shifts.map((shift) => [shift.element, shift]));
+    if (by.size === 0) return;
+    for (const place of found.values()) {
+      let [x, y] = [0, 0];
+      for (let part = place.element.closest(`[${TURN_PART}]`); part; part = part.parentElement?.closest(`[${TURN_PART}]`) ?? null) {
+        x += by.get(part)?.offset.x ?? 0;
+        y += by.get(part)?.offset.y ?? 0;
+      }
+      place.box = { ...place.box, left: place.box.left + x, top: place.box.top + y };
+      place.opacity = by.get(place.element)?.opacity ?? place.opacity;
+    }
+  };
+
   // Stops any motion, every part at rest, after `change` if one is
   // given, and takes the page afresh as it then stands.
   const rest = (change?: () => void) => {
@@ -291,10 +324,12 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
     if (change === changes) rest();
   };
 
-  const glide = (change: () => void, current: number) => {
+  const glide = (change: () => void, current: number, shifts: PartShift[]) => {
     unwatch();
     picture ??= continuation?.();
     const before = places();
+    // A glide still running draws its parts itself, past any shift.
+    if (!running) shift(before, shifts);
     // What fades goes on from the opacity it is drawn at, or from none.
     const fadedFrom = new Map([...parts.querySelectorAll(`[${TURN_FADE}]`)].map((element) => [element, opacityOf(element, 0)]));
     cancelAll();
@@ -322,7 +357,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
     const starts: Array<() => void> = [];
     const fadeIn = (element: Element, opacity: number) =>
       starts.push(() =>
-        drawings.set(element, { animations: [animate(element, [{ opacity }, { opacity: 1 }], options)], offset: { x: 0, y: 0 }, size: undefined, opacity, frame: undefined, release: undefined })
+        drawings.set(element, { animations: [animate(element, [{ opacity }, { opacity: 1 }], options)], detached: false, offset: { x: 0, y: 0 }, size: undefined, opacity, frame: undefined, release: undefined })
       );
     for (const element of parts.querySelectorAll(`[${TURN_FADE}]`)) fadeIn(element, fadedFrom.get(element) ?? 0);
     for (const [name, { element, box }] of after) {
@@ -331,15 +366,25 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
         fadeIn(element, 0);
         continue;
       }
-      if (element === picture?.element) {
-        const copy = picture.draw(box);
+      const resized = old.box.width !== box.width || old.box.height !== box.height;
+      // A part holding the closing picture leaves it to its own copy.
+      const copy = element === picture?.element
+        ? picture.draw(box)
+        : resized && !(picture && element.contains(picture.element)) ? refit?.(element, box) : undefined;
+      if (copy) {
         const offset = { x: old.box.left - box.left, y: old.box.top - box.top };
         // Only the fixed copy is laid out as its box changes, so contain
         // fits the picture whole without unequal scales stretching it.
         const bounds = (box: Box): Keyframe => ({ left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+        const start = bounds(old.box);
+        const end = bounds(box);
+        if (old.opacity < 1) {
+          start.opacity = old.opacity;
+          end.opacity = 1;
+        }
         starts.push(() => drawings.set(element, {
-          animations: [animate(copy.element, [bounds(old.box), bounds(box)], options)],
-          offset, size: { width: old.box.width, height: old.box.height }, opacity: 1, frame: copy, release: undefined
+          animations: [animate(copy.element, [start, end], options)],
+          detached: true, offset, size: { width: old.box.width, height: old.box.height }, opacity: old.opacity, frame: copy, release: undefined
         }));
         continue;
       }
@@ -348,7 +393,6 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
       const newOuter = outer === undefined ? undefined : after.get(outer)?.box;
       const x = old.box.left - (oldOuter?.left ?? 0) - (box.left - (newOuter?.left ?? 0));
       const y = old.box.top - (oldOuter?.top ?? 0) - (box.top - (newOuter?.top ?? 0));
-      const resized = old.box.width !== box.width || old.box.height !== box.height;
       const framed = resized ? frame(element, box) : undefined;
       const holds = holding.has(name);
       // A part with neither a frame nor parts of its own shows nothing of
@@ -385,7 +429,7 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
           }
           animations.push(animate(framed.element, [frameStart, frameEnd], options));
         }
-        drawings.set(element, { animations, offset: { x, y }, size, opacity: old.opacity, frame: framed, release });
+        drawings.set(element, { animations, detached: false, offset: { x, y }, size, opacity: old.opacity, frame: framed, release });
       });
     }
     starts.forEach((start) => start());
@@ -414,8 +458,10 @@ export function turnMotion({ parts, measure, frame, extend, animate, animations,
   return {
     apply: (change, style) => {
       const current = ++changes;
+      const shifts = shifted?.() ?? [];
       if (style === "glide" || (style === "follow" && running)) {
-        (reducedMotion() ? fade : glide)(change, current);
+        if (reducedMotion()) fade(change, current);
+        else glide(change, current, shifts);
       } else {
         rest(change);
       }

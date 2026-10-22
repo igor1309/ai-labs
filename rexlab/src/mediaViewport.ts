@@ -14,7 +14,8 @@ export function mediaViewport(
     addEventListener(type: "resize", listener: () => void): void;
     removeEventListener(type: "resize", listener: () => void): void;
   },
-  rootStyle: () => Pick<CSSStyleDeclaration, "getPropertyValue">
+  rootStyle: () => Pick<CSSStyleDeclaration, "getPropertyValue">,
+  scrollbarWidth: () => number = () => 0
 ) {
   const inset = (style: Pick<CSSStyleDeclaration, "getPropertyValue">, property: string) => Number.parseFloat(style.getPropertyValue(property)) || 0;
   const portrait = matchMedia("(orientation: portrait)");
@@ -26,6 +27,7 @@ export function mediaViewport(
       : short.matches ? "wide-short" as const : "wide" as const,
     isScreenUpright: () => screenOrientation ? screenOrientation.type.startsWith("portrait") : portrait.matches,
     width: () => window.innerWidth,
+    scrollbarWidth: () => Math.max(0, scrollbarWidth()),
     sideInsets: () => {
       const style = rootStyle();
       return { left: inset(style, SIDE_INSETS.left), right: inset(style, SIDE_INSETS.right) };

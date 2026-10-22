@@ -19,7 +19,7 @@
     "wrangler": "4.67.0"
   },
   "scripts": {
-    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js scripts/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js reinix/tests/*.test.js && npm run test:session-digest && npm run test:noreta && npm run test:clipdeck && npm run test:agonara",
+    "test": "node --test nomos/tests/*.test.js oracle/packages/*/tests/*.test.js oracle/apps/*/tests/*.test.js scripts/release/tests/*.test.js scripts/showcase/tests/*.test.js scripts/tests/*.test.js web-scout/tests/*.test.js corpus-scout/tests/*.test.js reinix/tests/*.test.js && npm run test:session-digest && npm run test:noreta && npm run test:clipdeck && npm run test:agonara",
     "test:agonara": "npm test --workspace agonara",
     "test:clipdeck": "npm test --workspace clipdeck",
     "test:noreta": "node --import tsx --test noreta/tests/*.test.ts",

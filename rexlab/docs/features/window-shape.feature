@@ -19,11 +19,14 @@ Feature: The window's shape
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the picture a tall one shows for
   a screen with no portrait layout. A portrait layout is built for one
-  size class at a time: the home page and the catalogue's list have one
+  size class at a time: the home page, the catalogue's list, a
+  dinosaur's page, and the compare quiz's question and result have one
   for a tall window only (home-portrait.feature,
-  catalogue-portrait.feature), so a tall-narrow window still shows the
-  picture over them. The scenarios below use the care welcome screen,
-  which has no portrait layout yet.
+  catalogue-portrait.feature, dinosaur-page-portrait.feature,
+  compare-dinosaurs-portrait.feature,
+  compare-dinosaurs-result-portrait.feature), so a tall-narrow window
+  still shows the picture over them. The scenarios
+  below use the care welcome screen, which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
