@@ -5,6 +5,9 @@ Observer: the user, who records calls and reads them live.
 ```gherkin
 Feature: Live text of calls
 
+  Background:
+    Given Audelin is set up and able to record
+
   Scenario: S-1 Recording starts by itself
     Given automatic recording is on
     When a call starts in Zoom, Telemost or a browser
@@ -47,7 +50,7 @@ Feature: Live text of calls
 
   Scenario: S-9 The call is never lost to recognition
     Given a call is being recorded
-    When live text fails or has no model yet
+    When live text fails
     Then the whole call is still recorded
 
   Scenario: S-10 Renaming a call

@@ -87,8 +87,9 @@ backs the choice.
 
 Screen decisions (owner, 2026-10-21, after the design review):
 
-- Recording may start while the final-pass model downloads; the final pass
-  waits for it and the call screen says so.
+- Models are a hard block (owner, 2026-10-22): nothing records until every
+  model the app needs is on disk. A model still downloading blocks like a
+  missing one.
 - Delete in the calls list removes the whole call (audio, transcript, summary
   link) after a confirm.
 - Models are reused from other apps to save space, but only on an exact
@@ -107,7 +108,7 @@ Controls (owner, 2026-10-21), following Amanu's two checkboxes:
 - «Живой текст»: when off, the call is only recorded; its text comes from
   the final pass (v3). Switching it on mid-call starts live text and fills
   the minutes already recorded from the audio on disk, marked «дописано
-  позже», as when the live model arrives late. Switching it off mid-call
+  позже». Switching it off mid-call
   keeps the text so far.
 - Both are checkmark items in the menu bar menu and rows in Settings. The
   menu also opens the calls folder in Finder.
@@ -143,8 +144,6 @@ Edge cases (owner, 2026-10-21, accepted as proposed):
 - Two calls with the same title in the same minute: the second gets « 2».
 - A Finder rename that drops the timestamp is accepted; the date comes from
   `meta.json`.
-- If the live model (Parakeet v3) is still downloading when a call starts,
-  audio is recorded anyway and live text starts once the model arrives.
 
 Storage and bb output (owner, 2026-10-21):
 
@@ -160,8 +159,6 @@ Storage and bb output (owner, 2026-10-21):
 
 v4 screen details (decided by the agents, owner delegated, 2026-10-21):
 
-- Live text for the minutes before the live model arrived is filled in from
-  the recorded audio once it arrives, marked as added late.
 - The summary sits above the transcript, collapsed to a few lines with
   "show more".
 - A failed move says how many calls moved, which one failed and why, and
