@@ -282,12 +282,15 @@ answers it from resolve and resolve's source, asking for a workflow as a
 caller giving every param it declares, so a param with no default
 refuses no document. A workflow that resolves but that a run of it does
 not run yet is refused all the same: the composition asks the run's own
-list of what it does not run, the one `agister run` refuses with, and
-gives each line, as the run words it, as a problem of the workflow, at
-the file of its nearest layer, with no line and no place; a line names
-its owner, the workflow or a step, though it is under the workflow's
-heading. A process asked for alone is refused the same way for an input
-from a source a run does not take, which no agent changes. Check then
+list of what it does not run, the one `agister run` refuses with,
+which gives each line, as the run words it, with the document it is of.
+A line of the workflow or of one of its steps is a problem of the
+workflow; a line of a process is a problem of the process, refusing
+every workflow that reaches it, so check reports it once. Each is at the
+file of its document's nearest layer, with no line and no place, and
+names its owner, the workflow, a step or a process. A process asked for
+alone is refused the same way for an input from a source a run does not
+take, which no agent changes. Check then
 refuses what a run does not run yet, and the two cannot drift; what a
 run refuses for its request or its worktree (no git worktree, a spent
 budget, a dirty worktree, a missing file) is the run's alone.

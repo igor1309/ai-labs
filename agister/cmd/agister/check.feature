@@ -29,6 +29,14 @@ Feature: Check refuses what a run does not run yet
     Then it refuses the process "say", with the problem "the process
       "say": the input "d" from the source "git.diff" is not run yet"
 
+  Scenario: A process's line is the process's, reported once
+    Given the process "say" names an input "d" from the source
+      "git.diff", and the workflows "w1" and "w2" each have a step of it
+    When "agister check" runs
+    Then it reports the process "say" once, with the problem "the
+      process "say": the input "d" from the source "git.diff" is not run
+      yet", refusing "say", "w1" and "w2"
+
   Scenario: Inspect shows a workflow a run does not run yet as refused
     Given the workflow "w" holds the branch "b", whose default is a step
       of "say"
