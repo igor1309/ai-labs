@@ -174,6 +174,60 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 	}
 }
 
+// The composition gives the fallback the day's remainder after the
+// primary's spend, even with no process cost limit. Spending that
+// remainder at capacity ends the call without another retry.
+// Contract test: the files home holds, as Agister ships them.
+func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ name, limits string }{
+		{"no process cost limit", ""},
+		{"daily remainder tighter than process cost limit", "limits: {cost: 5}\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newRecordFixture(t, modelSettings(t, map[string]string{
+				"/u/.agister/budget.yaml":        "daily: {cost: 3}\n",
+				"/r/.agister/processes/ask.yaml": askProcess + c.limits,
+			}), nil)
+			const earlier = "20261017T060000Z-aaaaaa"
+			f.store.kept = map[string]runstore.Record{
+				earlier: keptRun(earlier, dailyCall("2026-10-17T06:00:00Z", usd(1))),
+			}
+			f.runtimes.codex.answer = codexReply(codex.Reply{Failure: codex.Capacity,
+				Reason: "Selected model is at capacity", Session: "primary-session", Cost: usd(0.25)})
+			f.runtimes.claude.answer = claudeReply(claudecode.Reply{Failure: claudecode.Capacity,
+				Reason: "Overloaded", Session: "fallback-session", Cost: usd(1)})
+			done := make(chan ran, 1)
+			go func() {
+				done <- f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
+			}()
+			waits := []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute}
+			for _, wait := range waits {
+				f.clock.Started(wait)
+				f.clock.Advance(wait)
+			}
+			got := <-done
+			primary := f.runtimes.codex.ran()
+			if len(primary) != 4 {
+				t.Fatalf("primary turns %+v, want four capacity turns", primary)
+			}
+			fallback := f.runtimes.claude.ran()
+			if len(fallback) != 1 || !reflect.DeepEqual(fallback[0].Budget, usd(1)) {
+				t.Fatalf("fallback turns %+v, want one turn with budget 1", fallback)
+			}
+			if gotWaits := f.clock.Waits(); !slices.Equal(gotWaits, waits) {
+				t.Errorf("waits %v, want only primary waits %v", gotWaits, waits)
+			}
+			p := printedOf(t, got)
+			const reason = "the daily budget 3 is spent: 3"
+			if got.code != 1 || got.stderr != "" || p.Status != "failed" || p.Class == nil || *p.Class != "budget_exhausted" || p.Reason == nil || *p.Reason != reason {
+				t.Fatalf("ran %+v, printed %+v; want failed budget_exhausted: %s", got, p, reason)
+			}
+		})
+	}
+}
+
 // Contract test: bad fallback settings on disk pass through the settings
 // filesystem adapter to check, which names the offending agent file.
 func TestCheckRefusesBadFallbackFiles(t *testing.T) {
