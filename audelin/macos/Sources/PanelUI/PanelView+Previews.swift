@@ -41,15 +41,13 @@ extension PanelState {
 
     static let textFilledIn = PanelState(
         recording: .on(elapsed: "00:05:02"),
-        log: .lines(.init(
-            late: .init(span: "12:30–12:33", entries: [
+        log: .lines(.init(rows: [
+            .late(.init(span: "12:30–12:33", entries: [
                 .init(id: 1, time: "12:31", speaker: .them, settled: "Всем привет. Начнём с ролей по запуску."),
                 .init(id: 2, time: "12:32", speaker: .me, settled: "Да, и сразу по слог — кто дежурит."),
-            ]),
-            entries: [
-                .init(id: 3, time: "12:34", speaker: .them, settled: "Окей. Тогда RACI соберём сегодня."),
-            ]
-        ))
+            ])),
+            .entry(.init(id: 3, time: "12:34", speaker: .them, settled: "Окей. Тогда RACI соберём сегодня.")),
+        ]))
     )
 
     static let settling0 = settling(settled: "", pending: "кто у нас аккаунтбл за слог")

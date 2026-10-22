@@ -66,6 +66,8 @@ struct TranscriptLog: NSViewRepresentable {
             .foregroundColor: NSColor(tokens.selText),
         ]
 
+        text.ruleColor = NSColor(tokens.rule)
+
         let transcript = Transcript(lines: lines, style: .init(tokens: tokens, config: config))
         coordinator.entries = transcript.entries
 
@@ -219,6 +221,39 @@ final class LogTextView: NSTextView {
         selectionStarted?()
         super.mouseDown(with: event)
         selectionEnded?()
+    }
+
+    var ruleColor = NSColor.clear
+
+    override func drawBackground(in rect: NSRect) {
+
+        super.drawBackground(in: rect)
+        ruleColor.setFill()
+        ruleFrames().filter { $0.intersects(rect) }.forEach { $0.fill(using: .sourceOver) }
+    }
+
+    /// Where the lines under late groups go, in this view.
+    func ruleFrames() -> [NSRect] {
+
+        guard let storage = textStorage,
+              let layout = textLayoutManager,
+              let content = layout.textContentManager
+        else { return [] }
+
+        layout.ensureLayout(for: layout.documentRange)
+
+        var frames: [NSRect] = []
+        storage.enumerateAttribute(Transcript.ruleBelow, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+            guard let gap = value as? CGFloat,
+                  let end = content.location(content.documentRange.location, offsetBy: NSMaxRange(range) - 1),
+                  let fragment = layout.textLayoutFragment(for: end),
+                  let line = fragment.textLineFragments.last
+            else { return }
+
+            let y = textContainerOrigin.y + fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY + gap
+            frames.append(NSRect(x: 0, y: y, width: bounds.width, height: Transcript.ruleWidth))
+        }
+        return frames
     }
 
     /// Lays a picture of the selected lines over them and fades it out, so

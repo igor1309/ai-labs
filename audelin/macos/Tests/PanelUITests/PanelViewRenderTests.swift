@@ -40,7 +40,7 @@ private extension PanelState {
 
         switch log {
         case .empty, .liveTextOff(kept: nil): []
-        case let .liveTextOff(kept: lines?), let .lines(lines): (lines.late?.entries ?? []) + lines.entries
+        case let .liveTextOff(kept: lines?), let .lines(lines): lines.entries
         }
     }
 }

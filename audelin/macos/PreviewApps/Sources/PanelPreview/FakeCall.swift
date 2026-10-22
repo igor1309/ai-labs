@@ -35,10 +35,11 @@ struct FakeCall: Equatable {
     private var seconds = 0
     private var phrase = 0
     private var stage = 0
-    private var entries: [PanelState.Entry] = []
+    /// The log in call order: live entries, and a late group for each
+    /// stretch live text was off.
+    private var rows: [PanelState.Row] = []
     /// Phrases finished while live text was off, to fill in when it is back.
     private var missed: [PanelState.Entry] = []
-    private var late: PanelState.Late?
     /// When the phrase being spoken started, as the gutter shows it.
     private var phraseTime = ""
     private var phraseMode = PhraseMode.live
@@ -56,8 +57,8 @@ struct FakeCall: Equatable {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(late: late, entries: entries, holds: holds, newBelow: newBelow, followsLive: followsLive)
-        let kept = entries.isEmpty && late == nil ? nil : lines
+        let lines = PanelState.Lines(rows: rows, holds: holds, newBelow: newBelow, followsLive: followsLive)
+        let kept = rows.isEmpty ? nil : lines
 
         return .init(
             recording: .on(elapsed: elapsed),
@@ -193,11 +194,12 @@ private extension FakeCall {
 
     mutating func show(_ speaker: PanelState.Speaker, _ stage: Stage) {
 
-        if let index = entries.firstIndex(where: { $0.id == phrase }) {
-            entries[index].settled = stage.settled
-            entries[index].pending = stage.pending
+        if var shown = speaking {
+            shown.settled = stage.settled
+            shown.pending = stage.pending
+            rows[rows.count - 1] = .entry(shown)
         } else {
-            entries.append(entry(speaker, stage))
+            rows.append(.entry(entry(speaker, stage)))
             if !followsLive { newBelow += 1 }
         }
     }
@@ -211,12 +213,11 @@ private extension FakeCall {
     /// Live text went off: the phrase being spoken keeps what had settled.
     mutating func dropPending() {
 
-        guard phraseMode == .live, stage > 0,
-              let last = entries.indices.last, entries[last].id == phrase
-        else { return }
+        guard phraseMode == .live, stage > 0, var shown = speaking else { return }
 
-        entries[last].pending = ""
-        if entries[last].settled.isEmpty { entries.removeLast() }
+        shown.pending = ""
+        rows.removeLast()
+        if !shown.settled.isEmpty { rows.append(.entry(shown)) }
         phraseMode = .cut
     }
 
@@ -225,7 +226,14 @@ private extension FakeCall {
 
         guard let first = missed.first else { return }
 
-        late = .init(span: "\(first.time)–\(clock)", entries: (late?.entries ?? []) + missed)
+        rows.append(.late(.init(span: "\(first.time)–\(clock)", entries: missed)))
         missed.removeAll()
+    }
+
+    /// The phrase being spoken, while the log shows it: always the last row.
+    var speaking: PanelState.Entry? {
+
+        guard case let .entry(last) = rows.last, last.id == phrase else { return nil }
+        return last
     }
 }

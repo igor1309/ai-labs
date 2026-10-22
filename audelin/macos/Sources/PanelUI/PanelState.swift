@@ -36,9 +36,8 @@ public extension PanelState {
 
     struct Lines: Equatable, Sendable {
 
-        /// Minutes transcribed after live text was switched on mid-call.
-        public var late: Late?
-        public var entries: [Entry]
+        /// The log in call order: a late group sits where its minutes were.
+        public var rows: [Row]
         /// Selections the reader holds, oldest first.
         public var holds: [Held]
         /// Lines that arrived below while the reader is scrolled up.
@@ -48,18 +47,44 @@ public extension PanelState {
         public var followsLive: Bool
 
         public init(
-            late: Late? = nil,
+            rows: [Row],
+            holds: [Held] = [],
+            newBelow: Int = 0,
+            followsLive: Bool = true
+        ) {
+            self.rows = rows
+            self.holds = holds
+            self.newBelow = newBelow
+            self.followsLive = followsLive
+        }
+
+        /// Lines with no late group.
+        public init(
             entries: [Entry],
             holds: [Held] = [],
             newBelow: Int = 0,
             followsLive: Bool = true
         ) {
-            self.late = late
-            self.entries = entries
-            self.holds = holds
-            self.newBelow = newBelow
-            self.followsLive = followsLive
+            self.init(rows: entries.map(Row.entry), holds: holds, newBelow: newBelow, followsLive: followsLive)
         }
+
+        /// Every entry, late ones included, in call order.
+        public var entries: [Entry] {
+
+            rows.flatMap { row -> [Entry] in
+                switch row {
+                case let .entry(entry): [entry]
+                case let .late(late): late.entries
+                }
+            }
+        }
+    }
+
+    enum Row: Equatable, Sendable {
+
+        case entry(Entry)
+        /// Minutes transcribed after live text was switched on mid-call.
+        case late(Late)
     }
 
     struct Late: Equatable, Sendable {

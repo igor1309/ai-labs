@@ -7,20 +7,56 @@ import Testing
 @MainActor
 struct TranscriptLogTests {
 
-    @Test func showsTheLateGroupThenTheEntries() throws {
+    @Test func placesALateGroupWhereItsMinutesWere() throws {
 
-        let text = try #require(Offscreen.textView(in: hosted(PanelState.Lines(
-            late: .init(span: "12:30–12:33", entries: [
-                .init(id: 1, time: "12:31", speaker: .them, settled: "Всем привет."),
-            ]),
-            entries: entries()
-        ))))
+        let text = try #require(Offscreen.textView(in: hosted(lateLines)))
 
-        let order = ["дописано позже · 12:30–12:33", "Всем привет.", "Accountable — я.", "по запуску"]
+        let order = ["Всем привет.", "дописано позже · 12:41–12:42", "Accountable — я.", "Да, и сразу", "по запуску"]
             .map { (text.string as NSString).range(of: $0).location }
 
         #expect(!order.contains(NSNotFound), "\(text.string)")
-        #expect(order == order.sorted())
+        #expect(order == order.sorted(), "\(text.string)")
+    }
+
+    @Test func dimsALateGroupWithItsCaption() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(lateLines)))
+
+        for part in ["дописано позже", "Accountable — я.", "Да, и сразу"] {
+            let color = try #require(attribute(.foregroundColor, of: part, in: text) as? NSColor)
+            #expect(abs(color.alphaComponent - 0.6) < 0.01, "\(part) is not dimmed")
+        }
+        let live = try #require(attribute(.foregroundColor, of: "по запуску", in: text) as? NSColor)
+        #expect(live.alphaComponent == 1)
+    }
+
+    @Test func spacesALateGroupTighterThanTheLog() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(lateLines)))
+        let spacing = { (part: String) in
+            (attribute(.paragraphStyle, of: part, in: text) as? NSParagraphStyle)?.paragraphSpacing
+        }
+        let tokens = GlassLedger.light
+
+        #expect(spacing("дописано позже") == tokens.space8)
+        #expect(spacing("Accountable — я.") == tokens.space8)
+        #expect(spacing("Всем привет.") == tokens.space12)
+    }
+
+    @Test func rulesALateGroupOffFromWhatFollows() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(lateLines)) as? LogTextView)
+        let rules = text.ruleFrames()
+        let rule = try #require(rules.first)
+        let above = try #require(lineFrame(of: "Да, и сразу", in: text))
+        let below = try #require(lineFrame(of: "по запуску", in: text))
+        let gap = GlassLedger.light.space12
+
+        #expect(rules.count == 1)
+        #expect(rule.height == 1)
+        #expect(rule.width == text.bounds.width)
+        #expect(abs(rule.minY - above.maxY - gap) < 0.5, "\(above) \(rule)")
+        #expect(abs(below.minY - rule.maxY - gap) < 0.5, "\(rule) \(below)")
     }
 
     @Test func keepsASelectionWhileTextSettlesAndLinesArrive() throws {
@@ -130,6 +166,46 @@ struct TranscriptLogTests {
     }
 
     // MARK: - Helpers
+
+    /// A live entry, minutes filled in late, then live entries again.
+    private var lateLines: PanelState.Lines {
+
+        let live = entries()
+        return .init(rows: [
+            .entry(.init(id: 1, time: "12:40", speaker: .them, settled: "Всем привет.")),
+            .late(.init(span: "12:41–12:42", entries: [
+                live[0],
+                .init(id: 5, time: "12:42", speaker: .them, settled: "Да, и сразу по слог."),
+            ])),
+            .entry(live[1]),
+        ])
+    }
+
+    /// The bounds of the line that holds `part`, in the text view.
+    private func lineFrame(of part: String, in text: NSTextView) -> NSRect? {
+
+        let location = (text.string as NSString).range(of: part).location
+        guard location != NSNotFound,
+              let layout = text.textLayoutManager,
+              let content = layout.textContentManager,
+              let start = content.location(content.documentRange.location, offsetBy: location),
+              let fragment = layout.textLayoutFragment(for: start),
+              let line = fragment.textLineFragments.first(where: {
+                  $0.characterRange.contains(location - content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location))
+              })
+        else { return nil }
+
+        let origin = fragment.layoutFragmentFrame.origin
+        return line.typographicBounds.offsetBy(dx: origin.x + text.textContainerOrigin.x, dy: origin.y + text.textContainerOrigin.y)
+    }
+
+    private func attribute(_ key: NSAttributedString.Key, of part: String, in text: NSTextView) -> Any? {
+
+        let string = text.textStorage!
+        let range = (string.string as NSString).range(of: part)
+        guard range.location != NSNotFound else { return nil }
+        return string.attribute(key, at: range.location, effectiveRange: nil)
+    }
 
     private func entries(
         pending: String = "",

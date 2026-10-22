@@ -22,6 +22,9 @@ struct Transcript {
 
     /// Marks the gutter, so it is left out of a selection's text.
     static let gutter = NSAttributedString.Key("audelin.gutter")
+    /// Marks a paragraph with a line under it, at this distance.
+    static let ruleBelow = NSAttributedString.Key("audelin.ruleBelow")
+    static let ruleWidth: CGFloat = 1
 
     let string: NSAttributedString
     let entries: [EntryRange]
@@ -30,13 +33,26 @@ struct Transcript {
 
         let builder = Builder(style: style)
 
-        if let late = lines.late {
+        let log = style.tokens.space12
 
-            builder.caption("дописано позже · \(late.span)")
-            late.entries.forEach { builder.entry($0, alpha: 0.6) }
+        for row in lines.rows {
+
+            switch row {
+            case let .entry(entry):
+                builder.entry(entry, alpha: 1, spacing: log)
+
+            case let .late(late):
+                // The design dims the whole group, spaces it tighter than the
+                // log around it, and rules it off from what follows.
+                let group = style.tokens.space8
+                builder.caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
+                for (index, entry) in late.entries.enumerated() {
+                    let isLast = index == late.entries.count - 1
+                    builder.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
+                }
+                builder.ruleBelow(gap: log)
+            }
         }
-
-        lines.entries.forEach { builder.entry($0, alpha: 1) }
 
         string = builder.result
         entries = builder.ranges
@@ -84,24 +100,24 @@ private extension Transcript {
             self.style = style
         }
 
-        func caption(_ string: String) {
+        func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
             result.append(.init(string: string, attributes: [
                 .font: font(tokens.typeCaption),
                 .baselineOffset: lift(tokens.typeCaption),
-                .foregroundColor: NSColor(tokens.gutter),
-                .paragraphStyle: paragraph(size: tokens.typeCaption, indent: 0),
+                .foregroundColor: NSColor(tokens.gutter).withAlphaComponent(alpha),
+                .paragraphStyle: paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing),
                 Transcript.gutter: true,
             ]))
         }
 
-        func entry(_ entry: PanelState.Entry, alpha: CGFloat) {
+        func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
 
             let size = tokens.typeBody
-            let paragraph = paragraph(size: size, indent: style.config.gutterWidth + tokens.space12)
+            let paragraph = paragraph(size: size, indent: style.config.gutterWidth + tokens.space12, spacing: spacing)
             func attributes(_ font: NSFont, _ color: Color) -> [NSAttributedString.Key: Any] {
                 [
                     .font: font,
@@ -137,6 +153,13 @@ private extension Transcript {
             ranges.append(.init(id: entry.id, body: body))
         }
 
+        /// Draws a line under the last paragraph, `gap` below its text.
+        func ruleBelow(gap: CGFloat) {
+
+            guard let last = ranges.last else { return }
+            result.addAttribute(Transcript.ruleBelow, value: gap, range: last.body)
+        }
+
         private func caret(_ paragraph: NSParagraphStyle) -> NSAttributedString {
 
             let color = NSColor(tokens.me)
@@ -157,7 +180,7 @@ private extension Transcript {
         private func newParagraph() {
 
             guard result.length > 0 else { return }
-            result.append(.init(string: "\n", attributes: [.paragraphStyle: paragraph(size: tokens.typeBody, indent: 0)]))
+            result.append(.init(string: "\n", attributes: [.paragraphStyle: paragraph(size: tokens.typeBody, indent: 0, spacing: tokens.space12)]))
         }
 
         private func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
@@ -176,13 +199,13 @@ private extension Transcript {
 
         /// The design's line height, with the extra space split above and
         /// below the glyphs as the SwiftUI log does.
-        private func paragraph(size: CGFloat, indent: CGFloat) -> NSParagraphStyle {
+        private func paragraph(size: CGFloat, indent: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
 
             let style = NSMutableParagraphStyle()
             let height = (size * self.style.config.lineHeight).rounded()
             style.minimumLineHeight = height
             style.maximumLineHeight = height
-            style.paragraphSpacing = tokens.space12
+            style.paragraphSpacing = spacing
             style.headIndent = indent
 
             let time = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width

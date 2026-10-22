@@ -17515,7 +17515,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: each hold a pinned quote row under the log; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
