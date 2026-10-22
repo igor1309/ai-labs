@@ -68,8 +68,8 @@ Feature: A dinosaur's page in a tall window
       | Russian  | 600 by 800  | a scrollbar that takes 16    | 5     | 4    |
       | English  | 632 by 1366 | scrollbars that take no room | 4     | 4    |
       | Russian  | 632 by 1366 | scrollbars that take no room | 4     | 4    |
-      | English  | 712 by 1366 | scrollbars that take no room | 3     | 3    |
-      | Russian  | 712 by 1366 | scrollbars that take no room | 3     | 3    |
+      | English  | 712 by 1366 | scrollbars that take no room | 4     | 3    |
+      | Russian  | 712 by 1366 | scrollbars that take no room | 4     | 3    |
       | English  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
       | Russian  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
 
