@@ -32,6 +32,18 @@ export const GUST_SHARE = 0.95;
 // is a judgement rather than a guess.
 export const QUESTION_SHARE = 0.75;
 
+// The share clear at which the question's choices start to show.
+export const CHOICES_FADE_SHARE = 0.1;
+
+// How visible the question's choices are with `share` of the dinosaur
+// clear: nothing up to CHOICES_FADE_SHARE, then easing in, the square of
+// the way to QUESTION_SHARE, so a grey picture that shows plainly even
+// faint creeps in rather than pops; whole from the question on.
+export const choiceOpacity = (share: number): number => {
+  const way = Math.max(0, Math.min(1, (share - CHOICES_FADE_SHARE) / (QUESTION_SHARE - CHOICES_FADE_SHARE)));
+  return way * way;
+};
+
 // How many dinosaurs the question offers at each level, the one under
 // the sand among them.
 export const CHOICES: Readonly<Record<DigLevel, number>> = { hatchling: 0, explorer: 3, paleontologist: 4 };

@@ -81,6 +81,9 @@ export type DigBoardScreenProps = {
   // Whether enough of the dinosaur shows for the question, kept through
   // the gust and lift after the right pick.
   questionShown: boolean;
+  // How visible the choices are, from 0 to 1, as the digging shows them;
+  // their empty cards take the rest.
+  choicesShown: number;
   // How many slots the question's column holds from the round's start.
   choiceCount: number;
   // The round's dinosaurs, present even before the question unlocks.
@@ -246,6 +249,7 @@ export function DigBoardScreen({
   treasureFlight,
   asks,
   questionShown,
+  choicesShown,
   choiceCount,
   choices,
   level,
@@ -264,7 +268,6 @@ export function DigBoardScreen({
 }: DigBoardScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
-  const choiceOpacity = Math.max(0, Math.min(1, (cleared - 0.25) / 0.5));
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
@@ -550,9 +553,9 @@ export function DigBoardScreen({
             const card = choices[at];
             return (
               <div key={at} className="dig-choice-slot">
-                <span className="dig-empty-card" aria-hidden="true" style={{ opacity: 1 - choiceOpacity }}>?</span>
+                <span className="dig-empty-card" aria-hidden="true" style={{ opacity: 1 - choicesShown }}>?</span>
                 {card && <Button className="dig-choice-card" data-choice={card.id} data-rejected={card.rejected || undefined} data-correct={card.correct || undefined}
-                  style={{ opacity: choiceOpacity }} disabled={!questionShown || blown || card.rejected} tabIndex={questionShown ? undefined : -1}
+                  style={{ opacity: choicesShown }} disabled={!questionShown || blown || card.rejected} tabIndex={questionShown ? undefined : -1}
                   aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
                   <span className="dig-choice-name" style={{ "--letters": card.name.length } as CSSProperties}>{card.name.toLocaleUpperCase(language)}</span>

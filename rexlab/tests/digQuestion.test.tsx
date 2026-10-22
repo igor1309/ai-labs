@@ -153,7 +153,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const view = render(draw(0), withPictures);
     const original = choices();
     const pictures = original.map((card) => card.querySelector("img"));
-    for (const [count, opacity] of [[0, 0], [99, 0], [100, 0], [101, 0.005], [160, 0.3], [200, 0.5], [240, 0.7], [299, 0.995], [300, 1], [360, 1], [400, 1]] as const) {
+    for (const [count, opacity] of [[0, 0], [40, 0], [41, (0.0025 / 0.65) ** 2], [100, (0.15 / 0.65) ** 2], [160, (0.3 / 0.65) ** 2], [200, (0.4 / 0.65) ** 2], [240, (0.5 / 0.65) ** 2], [299, (0.6475 / 0.65) ** 2], [300, 1], [360, 1], [400, 1]] as const) {
       view.rerender(draw(count));
       const unlocked = count >= 300;
       expect(title()).toBe(unlocked ? TEXTS.en.whoIsIt : TEXTS.en.dig);
@@ -216,7 +216,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
       const clear = board().getAttribute("data-clear")!.split(" ");
       const cells = roundDinosaur().cells.flatMap((row, y) => row.flatMap((over, x) => over ? [clear[y]![x] === "1"] : []));
       const share = cells.filter(Boolean).length / cells.length;
-      const opacity = Math.max(0, Math.min(1, (share - 0.25) / 0.5));
+      const opacity = Math.max(0, Math.min(1, (share - 0.1) / 0.65)) ** 2;
       expect(cleared()).toBe(share);
       expect(title()).toBe(share >= 0.75 ? TEXTS.en.whoIsIt : TEXTS.en.dig);
       for (const [at, card] of choices().entries()) {

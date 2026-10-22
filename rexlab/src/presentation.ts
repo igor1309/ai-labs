@@ -3,7 +3,7 @@ import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } f
 import type { CatalogueEntry, Diet, Group, Measure } from "./catalogue.ts";
 import type { CatalogueCardView, Measure as ShownMeasure } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
-import { asking, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
+import { asking, choiceOpacity, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
 import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatLength, formatMass } from "./formatValue.ts";
@@ -442,7 +442,7 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
   };
 }
 
-type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "questionShown" | "choices">;
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "questionShown" | "choicesShown" | "choices">;
 
 // A dig round's board: its dinosaur's picture under the sand, every mark
 // brushed, and which cells are clear, as rows of 0 and 1, as dig.json
@@ -474,6 +474,7 @@ export function presentDigBoard(
     })),
     asks: round.choices.length > 0,
     questionShown: round.choices.length > 0 && (asking(round) || round.blown),
+    choicesShown: choiceOpacity(roundShare(round)),
     picture: bodyPicture(round.dinosaur.id),
     frame: FRAME,
     marks: round.sand.marks,
