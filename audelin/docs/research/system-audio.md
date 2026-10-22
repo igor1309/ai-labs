@@ -45,10 +45,11 @@ the output device as well and recorded the audio twice, as an echo.
     loses the meeting". On macOS 26 it also sets `bundleIDs` and
     `isProcessRestoreEnabled`, so the tap follows an app that restarts.
   - Muesli, anarlog and Meetily tap everything except their own process.
-- **Starting.** Muesli sets `TapAutoStart` to false and starts the device
-  itself. With auto-start, the tap waited for the tapped app to make sound,
-  and that hung Zoom's audio start when recording began first (Muesli #600).
-  Amanu and AudioCap use auto-start.
+- **Starting.** Amanu and AudioCap use `TapAutoStart`. Muesli turned it off
+  after #600: a global tap recording from a calendar event, before Zoom
+  joined, overloaded `coreaudiod`, and Zoom froze for about 60 s starting its
+  audio. Amanu's case is different: it taps only the call app, and only once
+  the call has started.
 - **Format.** The tap delivers the output device's format: 48 kHz stereo
   float32 on the built-in speakers (MacParakeet probe). The rate changes
   when the output device changes. anarlog re-reads it every 128 buffers;
@@ -56,8 +57,9 @@ the output device as well and recorded the audio twice, as an echo.
   `AudioConversion` already makes 16 kHz mono from any rate.
 - **Route changes.** Bluetooth headsets switching profile mid-call are the
   hard case. Muesli rebuilds the tap after a failure, retrying after 2 s
-  and 5 s, and waits 1.5 s for the route to settle. Amanu has no restart
-  for a tap that dies mid-call: it only reports it (`docs/pitfalls.md`).
+  and 5 s, and waits 1.5 s for the route to settle. Amanu lists "the system
+  tap has no restart" as an open gap, not a choice (`docs/pitfalls.md`):
+  its track is one `AVAudioFile`, which cannot be appended to.
 - **Cleanup.** Muesli gives its private aggregate device a fixed UID.
   Private devices cannot be listed, so a crash with a fresh UUID each time
   leaves settings entries behind for good.
@@ -76,14 +78,11 @@ A Core Audio process tap, because:
 - it needs the narrower permission;
 - it is what Amanu, the app the owner liked most, does.
 
-Still to decide:
-
-- **The scope:** the call app only (Amanu) or everything except Audelin
-  (Muesli). Call detection is a later Session feature, so a first adapter
-  can tap everything, with the call app's scope added once Session knows
-  which app holds the call.
-- **Auto-start:** Muesli's Zoom hang argues for starting the device by hand.
-- **Restart after a route change.**
+Amanu's tap is the default to follow. Nothing read shows it wrong for its
+case: the scope and auto-start differ in Muesli because Muesli records
+everything from a calendar event, which Amanu does not. The one gap is the
+restart, which Amanu names itself. Audelin's 30 s files would let a rebuilt
+tap start a new file; whether v1 needs it is open.
 
 The adapter maps tap buffers to `AudioChunk`. Recording to disk is Session's
 job, not the adapter's.
