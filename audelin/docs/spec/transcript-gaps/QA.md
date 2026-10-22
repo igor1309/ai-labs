@@ -10,9 +10,9 @@ description: "Transcript gaps — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `af0b785ed9927c40955d7a81b0bc6cfaaa09fa95` |
+| oracle | `SPEC.md` — blob `98088bb0063c3866f0e3a470a6dff9ae20d26ec1` |
 | driven by | the user, reading the panel during a Zoom call with a second device |
-| where | the release build on this Mac, the owner and the other device reading timed scripts |
+| where | the release build on this Mac (the debug build where a row says so), the owner and the other device reading timed scripts |
 
 ## Scenarios
 
@@ -26,7 +26,7 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 ### S-2 The microphone switches device
 
-- Drive: record on a USB headset's microphone; the owner says a marked word mid-sentence and unplugs the headset at once; keep talking.
+- Drive: the debug build; the owner says a marked word mid-sentence and chooses [switch-microphone](../debug-menu/SPEC.md) at once; keep talking.
 - Expect: the marked word shows before a gap line in «я»; no sentence spans it.
 - Evidence: Missing.
 

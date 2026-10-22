@@ -100,8 +100,9 @@ tree before writing on (owner, 2026-10-22).
 
 One row per scenario, headed by its id and name from `SPEC.md`: how the
 scenario is driven and what evidence proves it. Cores are driven through
-fake ports and recorded fixtures, adapters for real on this Mac, and the
-user spec on a real call. A row has evidence or reads Missing. Verdicts go
+fake ports and recorded fixtures, adapters for real on this Mac or through
+a fake of their system binding (§ Building), and the user spec on a real
+call. A row has evidence or reads Missing. Verdicts go
 to run reports, never into `QA.md`.
 
 ## Building
@@ -111,7 +112,13 @@ failing on its assertion rather than a compile error (the API is stubbed
 first), and the red run is shown with the green one (owner, 2026-10-22).
 
 An adapter is tested against the real thing it wraps, in temp places only,
-never the user's own folders: a Trash test uses a disk image's Trash. A Core
+never the user's own folders: a Trash test uses a disk image's Trash. When
+the real thing is hardware or system state (audio devices, permissions,
+sleep), the adapter is a thin binding over the system API plus the
+translation it owns, and the translation is tested through a fake of the
+binding. Apple's frameworks are never the thing under test, and no row needs
+hardware the owner does not have; the binding is proven by the user spec on
+a real call (owner, 2026-10-22). A Core
 is tested with fakes of its ports and a fake clock. No test proves that
 something did not happen by sleeping; it asserts the state that says so
 (owner, 2026-10-22).

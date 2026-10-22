@@ -24,7 +24,12 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 3. It reports a fault with its time and kind, and never ends the process
    (S-2–S-5), as mic capture does.
 4. Audio is taken unprocessed: no gain, compression or noise reduction
-   (S-9), as mvp.md § Technical rules sets.
+   (S-9), as mvp.md § Technical rules sets: the samples reach the client
+   as the tap delivered them.
+5. What it owns is the translation from Core Audio to the capture port:
+   host times to the session clock, listener and error callbacks to faults
+   and events, and Stop. The tap's behaviour is Core Audio's and is not
+   re-proven here ([spec-process](../../spec-process.md) § Building).
 
 ## Observer
 
@@ -80,6 +85,6 @@ Feature: A client captures the call's sound
 
   Scenario: S-9 The sound is not processed
     Given the system audio permission is granted
-    When the client captures a steady tone
-    Then the client can get it unprocessed
+    When the client starts capture
+    Then the client can get the tap's samples as the tap delivered them
 ```

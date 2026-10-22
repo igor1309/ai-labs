@@ -23,7 +23,13 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
    (S-2, S-3, S-5): the session decides what to do, as ADR-001 decision 5
    sets.
 3. Audio is taken unprocessed: no gain, compression or noise reduction
-   (S-9), as mvp.md § Technical rules sets.
+   (S-9), as mvp.md § Technical rules sets: voice processing is never
+   switched on, and the samples reach the client as the device delivered
+   them.
+4. What it owns is the translation from Core Audio to the capture port:
+   host times to the session clock, listener and error callbacks to faults
+   and events, and Stop. Device behaviour is Core Audio's and is not
+   re-proven here ([spec-process](../../spec-process.md) § Building).
 
 ## Observer
 
@@ -79,6 +85,6 @@ Feature: A client captures the owner's voice
 
   Scenario: S-9 The voice is not processed
     Given the microphone permission is granted
-    When the client captures a steady tone
-    Then the client can get it unprocessed
+    When the client starts capture
+    Then the client can get the microphone's samples as the device delivered them
 ```

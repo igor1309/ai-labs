@@ -10,7 +10,7 @@ description: "Debug menu — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `805c73f7da4a44036c31002d3fa4c3eb5cee0ce6` |
+| oracle | `SPEC.md` — blob `1a6d4489c8839fb8901a9be27e02dc4a34b3abd0` |
 | driven by | the user of a debug build, through the menu |
 | where | a debug build and the release build on this Mac |
 
@@ -21,7 +21,7 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 ### S-1 A debug build offers the test triggers
 
 - Drive: open the debug build's menu.
-- Expect: it lists the hold-recogniser, race, fail-«они» and fail-text-saves triggers.
+- Expect: it lists the hold-recogniser, race, fail-«они», fail-«я», fail-text-saves and switch-microphone triggers.
 - Evidence: Missing.
 
 ### S-2 A release build has none
@@ -70,4 +70,10 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 - Drive: debug build, a recording with live text, both sides talking; choose fail-«я».
 - Expect: the trigger shows a checkmark; «я» lines stop appearing while «они» lines go on.
+- Evidence: Missing.
+
+### S-10 Switching the microphone
+
+- Drive: debug build, a recording with live text; say a marked word mid-sentence and choose switch-microphone at once; keep talking.
+- Expect: the call's `я` track holds a new section from that moment; the recording's time keeps advancing.
 - Evidence: Missing.

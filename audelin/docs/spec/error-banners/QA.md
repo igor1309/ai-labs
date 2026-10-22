@@ -10,7 +10,7 @@ description: "Error banners — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `8c045b7a00c89330a81f6f5b08ef2c68a1a88a4e` |
+| oracle | `SPEC.md` — blob `1079bf47d495c78df9a2e3e7b1c4296d6b61fde5` |
 | driven by | the user, through the panel, with Zoom on a second device |
 | where | the release build on this Mac (the debug build where a row says so) |
 
@@ -62,8 +62,8 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 ### S-8 The microphone switches device
 
-- Drive: record on a USB headset's microphone; unplug it; keep speaking.
-- Expect: no banner; the recording's time keeps advancing; the built-in microphone's speech appears under «я».
+- Drive: the debug build, recording; choose [switch-microphone](../debug-menu/SPEC.md); keep speaking.
+- Expect: no banner; the recording's time keeps advancing; the speech after the switch appears under «я».
 - Evidence: Missing.
 
 ### S-11 The calls folder vanishes

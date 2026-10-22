@@ -2,6 +2,15 @@
 
 ## 2026-10-22
 
+- The capture specs no longer test Core Audio. Mic and system audio
+  capture QA drove the hardware (a loopback device, a USB headset, a click
+  within 20 ms, levels within 0.5 dB), which proves Apple's framework and
+  needs gear the owner does not have. Each adapter is now a thin binding
+  plus the translation it owns (host times to the session clock, callbacks
+  to faults, Stop), tested through a fake of the binding; the binding is
+  proven by user spec S-1 on a real call (spec-process § Building). The
+  headset rows in transcript-gaps and error-banners use a new debug-menu
+  switch-microphone trigger (debug-menu S-10).
 - The recording session is built in LiveSessionCore, test-first on fakes
   of its ports: capture per track, new calls, recording files, live
   recognition and the session clock. Captured audio is written on the

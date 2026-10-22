@@ -28,6 +28,10 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
    on demand.
 5. Another makes the call's text fail to save (S-8), for text-banners'
    incomplete-text banner: a file's permissions cannot fail an open file.
+6. A switch-microphone trigger makes mic capture report a change of input
+   device and restart on the default input (S-10), so a device switch is
+   shown without a second microphone (owner, 2026-10-22: no hardware
+   bought for tests).
 
 ## Observer
 
@@ -45,7 +49,7 @@ Feature: A debug build lets its user provoke faults from the menu
   Scenario: S-1 A debug build offers the test triggers
     Given a debug build is running
     When the user opens the menu
-    Then the user can see the hold-recogniser, race, fail-«они» and fail-text-saves triggers
+    Then the user can see the hold-recogniser, race, fail-«они», fail-«я», fail-text-saves and switch-microphone triggers
 
   Scenario: S-2 A release build has none
     Given a release build is running
@@ -87,4 +91,9 @@ Feature: A debug build lets its user provoke faults from the menu
     Given a debug build recording with «Живой текст» ticked
     When the user chooses the fail-«я» trigger
     Then the user can see the trigger checked and no new «я» text arriving
+
+  Scenario: S-10 Switching the microphone
+    Given a debug build recording
+    When the user chooses the switch-microphone trigger
+    Then the user can make the microphone switch device at that moment
 ```

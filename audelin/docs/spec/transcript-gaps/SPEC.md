@@ -42,7 +42,7 @@ Feature: The user sees where a side of the call was not captured
 
   Scenario: S-2 The microphone switches device
     Given a recording with live text
-    When the user unplugs the headset the microphone was using
+    When the microphone switches device
     Then the user can see a gap line in «я» with no sentence joined across it
     And the user can read the words said right before the gap
 

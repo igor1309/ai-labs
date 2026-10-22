@@ -73,7 +73,7 @@ Feature: The user learns what failed and what is still recorded
 
   Scenario: S-8 The microphone switches device
     Given a recording of both sides
-    When the user unplugs the headset the microphone was using
+    When the microphone switches device
     Then the user can see the recording go on with no banner
 
   Scenario: S-11 The calls folder vanishes
