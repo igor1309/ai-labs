@@ -49,6 +49,22 @@ struct ParakeetRecognizerTests {
         #expect(next.words.prefix(4).map(\.text) == ["Давай", "сначала", "соберем", "врачи"])
     }
 
+    @Test func reportsAreInTrackTime() async throws {
+
+        let reader = ScriptedReader([
+            [word("один", 4.25, 4.5)],
+            [word("один", 2.25, 2.5), word("два", 3, 3.5)],
+        ])
+        let recognizer = ParakeetRecognizer(reader: reader)
+
+        let first = try await recognizer.hear(silence(6))
+        let next = try await recognizer.hear(silence(4))
+
+        let one = Word("один", start: 4.25, end: 4.5)
+        #expect(first == Hearing(words: [one], from: 4.25, finalThrough: 4))
+        #expect(next == Hearing(words: [one, Word("два", start: 5, end: 5.5)], from: 4.25, finalThrough: 8))
+    }
+
     @Test func aPendingWordTheNextWindowDoesNotHearIsGone() async throws {
 
         let reader = ScriptedReader([[word("слово", 4.2, 4.6)], []])
@@ -84,6 +100,20 @@ struct ParakeetRecognizerTests {
         #expect(long.end <= hearing.finalThrough ?? 0)
     }
 
+    @Test func aFinalWordStretchedPastTheNextWindowLeavesItsWordsPending() async throws {
+
+        let reader = ScriptedReader([
+            [word("долгое", 1.5, 9)],
+            [word("старое", 6.25, 6.5)],
+            [word("новое", 2.25, 2.5)],
+        ])
+
+        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6), silence(4), silence(4)])
+
+        #expect(updates.dropFirst().first?.all.map(\.pending) == ["долгое старое"])
+        #expect(updates.last?.all.map(\.settled) == ["долгое новое"])
+    }
+
     @Test func finishingHearsTheRest() async throws {
 
         let reader = ScriptedReader([
@@ -101,6 +131,34 @@ struct ParakeetRecognizerTests {
         #expect(await reader.sampleCounts == [96_000, 112_000, 48_000])
     }
 
+    @Test func windowsCarryTheTracksAudio() async throws {
+
+        let track = (0..<144_000).map(Float.init)
+        let reader = ScriptedReader([])
+        let recognizer = ParakeetRecognizer(reader: reader)
+
+        for start in stride(from: 0, to: track.count, by: 7_000) {
+            _ = try await recognizer.hear(.init(samples: Array(track[start..<min(start + 7_000, track.count)]), sampleRate: 16_000))
+        }
+        _ = try await recognizer.finish()
+
+        #expect(await reader.windows == [
+            Array(track[0..<96_000]),
+            Array(track[32_000..<144_000]),
+            Array(track[96_000..<144_000]),
+        ])
+    }
+
+    @Test func aTrackShorterThanTheModelTakesIsHeard() async throws {
+
+        let recognizer = try await ParakeetRecognizer()
+
+        _ = try await recognizer.hear(silence(0.2))
+        let hearing = try await recognizer.finish()
+
+        #expect(hearing.words.isEmpty)
+    }
+
     @Test func audioAtAnotherSampleRateIsCutIntoTheSameWindows() async throws {
 
         let reader = ScriptedReader([[]])
@@ -115,18 +173,17 @@ struct ParakeetRecognizerTests {
 
     @Test func audioAtAnotherSampleRateIsHeard() async throws {
 
-        let samples = try spoken("Давай сначала соберем всех по этому проекту.", sampleRate: 48_000)
-        let recognizer = try await ParakeetRecognizer()
-
-        for start in stride(from: 0, to: samples.count, by: 4_800) {
-            let chunk = Array(samples[start..<min(start + 4_800, samples.count)])
-            _ = try await recognizer.hear(.init(samples: chunk, sampleRate: 48_000))
+        let sentence = "Давай сначала соберем всех по этому проекту."
+        let samples = try spoken(sentence, sampleRate: 48_000)
+        let chunks = stride(from: 0, to: samples.count, by: 4_800).map {
+            AudioChunk(samples: Array(samples[$0..<min($0 + 4_800, samples.count)]), sampleRate: 48_000)
         }
-        let hearing = try await recognizer.finish()
 
-        let text = hearing.words.map { $0.text.lowercased() }.joined(separator: " ")
-        #expect(text.contains("сначала"))
-        #expect(text.contains("проекту"))
+        let updates = await listen(try await ParakeetRecognizer(), to: chunks)
+
+        let heard = updates.last?.all.map(\.settled).joined(separator: " ") ?? ""
+        #expect(updates.last?.ending == .finished)
+        #expect(letters(heard) == letters(sentence))
     }
 
     @Test func aFailingModelFailsTheRecogniser() async throws {
@@ -140,9 +197,18 @@ struct ParakeetRecognizerTests {
 
     // MARK: - Helpers
 
-    private func word(_ text: String, _ start: Double, _ end: Double) -> Word {
+    private func word(_ text: String, _ start: Double, _ end: Double) -> WindowWord {
 
-        Word(text, start: start, end: end)
+        WindowWord(text, start: start, end: end)
+    }
+
+    /// The words' letters in lower case, with «ё» read as «е».
+    private func letters(_ text: String) -> [String] {
+
+        text.lowercased().replacingOccurrences(of: "ё", with: "е")
+            .split(separator: " ")
+            .map { $0.filter { $0.isLetter || $0.isNumber } }
+            .filter { !$0.isEmpty }
     }
 
     private func silence(_ seconds: Double) -> AudioChunk {
@@ -191,21 +257,24 @@ private actor ScriptedReader: WindowReader {
 
     struct Failed: Error {}
 
-    private var windows: [[Word]]
+    private var script: [[WindowWord]]
     private let failing: Bool
-    private(set) var sampleCounts: [Int] = []
+    /// The samples of each window read.
+    private(set) var windows: [[Float]] = []
 
-    init(_ windows: [[Word]], failing: Bool = false) {
+    var sampleCounts: [Int] { windows.map(\.count) }
 
-        self.windows = windows
+    init(_ script: [[WindowWord]], failing: Bool = false) {
+
+        self.script = script
         self.failing = failing
     }
 
-    func read(_ samples: [Float]) throws -> [Word] {
+    func read(_ samples: [Float]) throws -> [WindowWord] {
 
-        sampleCounts.append(samples.count)
+        windows.append(samples)
         if failing { throw Failed() }
-        return windows.isEmpty ? [] : windows.removeFirst()
+        return script.isEmpty ? [] : script.removeFirst()
     }
 }
 
@@ -267,13 +336,13 @@ private actor RecordedReader: WindowReader {
         chunkWords = words
     }
 
-    func read(_ samples: [Float]) -> [Word] {
+    func read(_ samples: [Float]) -> [WindowWord] {
 
         sampleCounts.append(samples.count)
         guard next < windows.count else { return [] }
         let window = windows[next]
         next += 1
-        return window.words.map { Word($0.w, start: $0.s - window.start, end: $0.e - window.start) }
+        return window.words.map { WindowWord($0.w, start: $0.s - window.start, end: $0.e - window.start) }
     }
 
     private static func letters(_ text: String) -> String {

@@ -25,8 +25,9 @@ not final. Evidence:
 ## S-4 The next window reads pending words anew
 
 The second recorded window replaces the first window's right-context words
-with its own reading. Evidence:
-`ParakeetRecognizerTests.theNextWindowReadsPendingWordsAnew`.
+with its own reading, in track time. Evidence:
+`ParakeetRecognizerTests.theNextWindowReadsPendingWordsAnew`,
+`ParakeetRecognizerTests.reportsAreInTrackTime`.
 
 ## S-5 A pending word the next window does not hear is gone
 
@@ -43,19 +44,25 @@ word a window's chunk holds settles. Evidence:
 ## S-7 A word no later window reads is final
 
 A fake window's word starts before the next window does and ends past
-that window's chunk. Evidence:
-`ParakeetRecognizerTests.aWordNoLaterWindowReadsIsFinal`.
+that window's chunk; through Live text, a pending word in the next
+window's right context stays pending until a third window reads it anew.
+Evidence: `ParakeetRecognizerTests.aWordNoLaterWindowReadsIsFinal`,
+`ParakeetRecognizerTests.aFinalWordStretchedPastTheNextWindowLeavesItsWordsPending`.
 
 ## S-8 Finishing hears the rest
 
 Audio stopping mid-chunk; finishing reports the remaining windows' words,
-all final. Evidence:
-`ParakeetRecognizerTests.finishingHearsTheRest`.
+all final; each window carries the track's own samples. Parakeet v3 for
+real over a track shorter than its shortest window. Evidence:
+`ParakeetRecognizerTests.finishingHearsTheRest`,
+`ParakeetRecognizerTests.windowsCarryTheTracksAudio`,
+`ParakeetRecognizerTests.aTrackShorterThanTheModelTakesIsHeard`.
 
 ## S-9 Audio at another sample rate is heard
 
 Parakeet v3 for real over the system voice reading a Russian sentence at
-48 kHz; its windows are cut as at 16 kHz. Evidence:
+48 kHz, heard through Live text word for word; its windows are cut as at
+16 kHz. Evidence:
 `ParakeetRecognizerTests.audioAtAnotherSampleRateIsHeard`,
 `ParakeetRecognizerTests.audioAtAnotherSampleRateIsCutIntoTheSameWindows`.
 

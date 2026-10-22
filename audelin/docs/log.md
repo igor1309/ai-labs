@@ -6,6 +6,9 @@
   windows behind Live text's recogniser interface. Replayed through Live
   text, the recorded windows settle every word once. A report now says
   where it starts, so a word the next window no longer hears is gone.
+- The Parakeet recogniser's review fixes: a final word stretched past the
+  next window no longer freezes the pending words it overlaps, a track
+  under 0.3 s finishes, and the model port has its own window-timed word.
 - Started over: the architecture decision, every spec and the Swift
   package are removed. The architecture decision is written again from
   scratch, then the specs, then the code.

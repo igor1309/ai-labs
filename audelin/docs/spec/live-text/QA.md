@@ -58,5 +58,7 @@ recogniser finishes with one word more. Evidence:
 ## S-10 Pending words no longer heard are gone
 
 With one word settled and one pending, the fake recogniser reports no words
-from the pending word's start. Evidence:
-`LiveTextTests.pendingWordsNoLongerHeardAreGone`.
+from the pending word's start; and a pending word after a pause, so a
+whole segment goes. Evidence:
+`LiveTextTests.pendingWordsNoLongerHeardAreGone`,
+`LiveTextTests.aPendingSegmentNoLongerHeardIsGone`.

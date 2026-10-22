@@ -30,6 +30,16 @@ struct LiveTextTests {
         #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по")])
     }
 
+    @Test func aPendingSegmentNoLongerHeardIsGone() async {
+
+        let updates = await run([
+            .init(words: [a, word("кто", 3, 3.5)]),
+            .init(words: [], from: 3),
+        ])
+
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по")])
+    }
+
     @Test func wordsSettle() async {
 
         let updates = await run([

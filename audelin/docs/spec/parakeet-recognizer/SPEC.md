@@ -32,7 +32,9 @@ and how far they are final, as Live text's spec asks of a recogniser.
 - A word that starts before the next window does is final once that
   window is read, wherever it ends: no later window can read it, and the
   recorded windows showed Parakeet stretching a window's last word past the
-  next window's start.
+  next window's start. Live text settles by time, so reports call words
+  final only up to before a pending word ends; such a word shows as final
+  once the words after it are.
 - Audio at any sample rate is converted to the 16 kHz Parakeet takes.
 - Loading the model happens before Live text listens, and a failure to load
   is reported to whoever builds the recogniser, not to Live text.

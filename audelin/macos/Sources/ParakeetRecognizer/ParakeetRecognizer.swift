@@ -4,8 +4,22 @@ import LiveText
 /// Reads one window of 16 kHz mono audio, from a fresh start.
 public protocol WindowReader: Sendable {
 
-    /// The words in the window, timed from the window's first sample.
-    func read(_ samples: [Float]) async throws -> [Word]
+    func read(_ samples: [Float]) async throws -> [WindowWord]
+}
+
+/// A word a window reader heard, in seconds from the window's first sample.
+public struct WindowWord: Equatable, Sendable {
+
+    public var text: String
+    public var start: Double
+    public var end: Double
+
+    public init(_ text: String, start: Double, end: Double) {
+
+        self.text = text
+        self.start = start
+        self.end = end
+    }
 }
 
 /// Hears a track with Parakeet v3 in overlapping windows of its own: a 4 s
@@ -24,6 +38,7 @@ public actor ParakeetRecognizer: Recognizer {
     /// Every word so far in track time; words before `finalCount` are final.
     private var words: [Word] = []
     private var finalCount = 0
+    /// Where the last chunk read ends, or the last final word if later.
     private var finalThrough = 0.0
     /// The first word the next report carries, and where the last report's
     /// pending words began.
@@ -54,7 +69,7 @@ public actor ParakeetRecognizer: Recognizer {
             try await readWindow()
         }
         finalCount = words.count
-        finalThrough = max(finalThrough, words.last?.end ?? 0)
+        finalThrough = max(finalThrough, words.map(\.end).max() ?? 0)
         return report()
     }
 
@@ -69,7 +84,6 @@ public actor ParakeetRecognizer: Recognizer {
         // A pending word that starts before the window can never be read
         // again, so its reading is final.
         while finalCount < words.count, words[finalCount].start < start {
-            finalThrough = max(finalThrough, words[finalCount].end)
             finalCount += 1
         }
 
@@ -82,23 +96,27 @@ public actor ParakeetRecognizer: Recognizer {
         }
         words = words[..<finalCount] + kept + new
 
-        finalThrough = max(finalThrough, chunkEnd)
-        while finalCount < words.count, words[finalCount].end <= finalThrough {
+        while finalCount < words.count, words[finalCount].end <= chunkEnd {
             finalCount += 1
         }
+        finalThrough = max(finalThrough, chunkEnd, words[..<finalCount].map(\.end).max() ?? 0)
 
         chunkStart = chunkEnd
         audio.drop(before: chunkStart - Self.context)
     }
 
-    /// Everything from the earliest word not final at the last report on.
+    /// Everything from the earliest word not final at the last report on,
+    /// final up to just before a pending word ends: Live text settles by
+    /// time, so a final word stretched past a pending one shows as final
+    /// only once that word is.
     private func report() -> Hearing {
 
         let reported = Array(words[reportedCount...])
         let from = [pendingFrom, reported.first?.start].compactMap { $0 }.min()
+        let pendingEnd = words[finalCount...].map(\.end).min()
         reportedCount = finalCount
         pendingFrom = finalCount < words.count ? words[finalCount].start : nil
-        return Hearing(words: reported, from: from, finalThrough: finalThrough)
+        return Hearing(words: reported, from: from, finalThrough: min(finalThrough, pendingEnd?.nextDown ?? finalThrough))
     }
 
     private func middle(_ word: Word) -> Double {

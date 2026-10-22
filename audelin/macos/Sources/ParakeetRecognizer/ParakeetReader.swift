@@ -22,20 +22,25 @@ private final class ParakeetReader: WindowReader, @unchecked Sendable {
         try await manager.loadModels(try await AsrModels.downloadAndLoad(version: .v3))
     }
 
-    func read(_ samples: [Float]) async throws -> [Word] {
+    func read(_ samples: [Float]) async throws -> [WindowWord] {
 
+        // The model takes no less than its shortest window; the rest of it is
+        // silence, and nothing heard there is in the track.
+        let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
+        let padded = samples + [Float](repeating: 0, count: max(0, shortest - samples.count))
         var state = TdtDecoderState.make()
-        let result = try await manager.transcribe(samples, decoderState: &state)
-        return words(result.tokenTimings ?? [])
+        let result = try await manager.transcribe(padded, decoderState: &state)
+        let duration = Double(samples.count) / 16_000
+        return words(result.tokenTimings ?? []).filter { $0.start < duration }
     }
 
     /// Joins tokens into words: a token starting with a space starts a word.
-    private func words(_ timings: [TokenTiming]) -> [Word] {
+    private func words(_ timings: [TokenTiming]) -> [WindowWord] {
 
-        var words: [Word] = []
+        var words: [WindowWord] = []
         for timing in timings {
             if timing.token.hasPrefix(" ") || words.isEmpty {
-                words.append(Word(timing.token.trimmingCharacters(in: .whitespaces), start: timing.startTime, end: timing.endTime))
+                words.append(WindowWord(timing.token.trimmingCharacters(in: .whitespaces), start: timing.startTime, end: timing.endTime))
             } else {
                 words[words.count - 1].text += timing.token
                 words[words.count - 1].end = timing.endTime
