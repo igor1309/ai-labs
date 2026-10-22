@@ -158,18 +158,19 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
       for (const entry of readdirSync(directory)) cpSync(join(directory, entry), join(clone, entry), { recursive: true, verbatimSymlinks: true });
       // The allowlist, rather than an exported .gitignore, owns the snapshot.
       git(['add', '--all', '--force'], clone);
-      if (!git(['diff', '--cached', '--name-only', '-z'], clone).length) {
+      const hasChanges = git(['diff', '--cached', '--name-only', '-z'], clone).length > 0;
+      if (!hasChanges) {
         log('No changes; nothing to push.');
       } else {
         git(['commit', '-m', `Sync from ai-labs@${sha.slice(0, 7)}`], clone);
         unchanged();
         run('git', ['push', 'origin', 'HEAD'], { cwd: clone });
-        const { repositoryTopics } = JSON.parse(run('gh', ['repo', 'view', settings.repo, '--json', 'repositoryTopics'], { cwd: clone }).toString());
-        const remove = (repositoryTopics ?? []).map(({ name }) => name).filter((topic) => !settings.topics.includes(topic));
-        run('gh', ['repo', 'edit', settings.repo, '--description', settings.description, '--homepage', settings.homepage,
-          ...settings.topics.flatMap((topic) => ['--add-topic', topic]), ...remove.flatMap((topic) => ['--remove-topic', topic])], { cwd: clone });
-        log(`Pushed ${settings.repo}.`);
       }
+      const { repositoryTopics } = JSON.parse(run('gh', ['repo', 'view', settings.repo, '--json', 'repositoryTopics'], { cwd: clone }).toString());
+      const remove = (repositoryTopics ?? []).map(({ name }) => name).filter((topic) => !settings.topics.includes(topic));
+      run('gh', ['repo', 'edit', settings.repo, '--description', settings.description, '--homepage', settings.homepage,
+        ...settings.topics.flatMap((topic) => ['--add-topic', topic]), ...remove.flatMap((topic) => ['--remove-topic', topic])], { cwd: clone });
+      if (hasChanges) log(`Pushed ${settings.repo}.`);
     }
     return directory;
   } catch (error) {
@@ -181,17 +182,24 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+export function handleCLI(args, { cwd, run, exportProject: exportSnapshot, stdout, stderr }) {
   try {
-    const args = process.argv.slice(2);
     const project = args.find((arg) => arg !== '--push');
     if (!project || args.filter((arg) => arg !== '--push').length !== 1 || args.filter((arg) => arg === '--push').length > 1) {
       throw new Error('Usage: node scripts/showcase/export.js <project> [--push]');
     }
-    const root = runCommand('git', ['rev-parse', '--show-toplevel'], { cwd: process.cwd() }).toString().trim();
-    console.log(exportProject({ root, project, push: args.includes('--push') }, { run: runCommand, log: (message) => console.error(message) }));
+    const root = run('git', ['rev-parse', '--show-toplevel'], { cwd }).toString().trim();
+    stdout(exportSnapshot({ root, project, push: args.includes('--push') }, { run, log: stderr }));
+    return 0;
   } catch (error) {
-    console.error(error.message);
-    process.exitCode = 1;
+    stderr(error.message);
+    return 1;
   }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  process.exitCode = handleCLI(process.argv.slice(2), {
+    cwd: process.cwd(), run: runCommand, exportProject,
+    stdout: (message) => console.log(message), stderr: (message) => console.error(message)
+  });
 }

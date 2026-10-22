@@ -35,12 +35,36 @@ function fixture(t, settings = {}) {
   const messages = [];
   const run = (command, args, options) => {
     calls.push({ command, args, cwd: options.cwd });
-    if (command === 'gitleaks' || command === 'sh') return Buffer.alloc(0);
+    if (command === 'gitleaks') {
+      if (args[0] === 'version') assert.deepEqual(args, ['version']);
+      else {
+        const scannerConfig = args[args.indexOf('--config') + 1];
+        const scannerIgnore = args[args.indexOf('--gitleaks-ignore-path') + 1];
+        const scannerDirectory = dirname(scannerConfig);
+        assert.equal(dirname(scannerDirectory), base);
+        assert.match(scannerDirectory.slice(base.length + 1), /^showcase-scanner-/);
+        assert.notEqual(scannerDirectory, options.cwd);
+        assert.equal(scannerConfig, join(scannerDirectory, 'gitleaks.toml'));
+        assert.equal(scannerIgnore, join(scannerDirectory, 'ignore'));
+        assert.equal(readFileSync(scannerConfig, 'utf8'), '[extend]\nuseDefault = true\n');
+        assert.equal(readFileSync(scannerIgnore, 'utf8'), '');
+        assert.deepEqual(args, ['dir', options.cwd, '--no-banner', '--redact', '--follow-symlinks',
+          '--config', scannerConfig, '--gitleaks-ignore-path', scannerIgnore, '--ignore-gitleaks-allow']);
+      }
+      return Buffer.alloc(0);
+    }
+    if (command === 'sh') return Buffer.alloc(0);
     if (command === 'gh') {
       if (args[1] === 'view') return Buffer.from(JSON.stringify({ repositoryTopics: [{ name: 'obsolete' }, { name: 'react' }] }));
       return Buffer.alloc(0);
     }
-    if (command === 'git' && args[0] === 'clone') return git(root, 'clone', '--', join(base, 'remote.git'), args.at(-1));
+    if (command === 'git' && args[0] === 'clone') {
+      assert.deepEqual(args, ['clone', '--', `https://github.com/${config.repo}.git`, args[3]]);
+      assert.equal(options.cwd, root);
+      assert.equal(dirname(args[3]), base);
+      assert.match(args[3].slice(base.length + 1), /^showcase-push-/);
+      return git(root, 'clone', '--', join(base, 'remote.git'), args[3]);
+    }
     return git(options.cwd, ...args);
   };
   const invoke = (options = {}, execute = run) => exportProject({ root, project: 'game', tempRoot: base, ...options }, { run: execute, log: (value) => messages.push(value) });
@@ -80,11 +104,32 @@ test('exports exactly the HEAD allowlist, with the committed public overlay and 
   const external = f.calls.filter(({ command }) => command !== 'git');
   assert.deepEqual(external.map(({ command, cwd }) => [command, cwd]), [['gitleaks', directory], ['gitleaks', directory], ['sh', directory]]);
   assert.deepEqual(external[0].args, ['version']);
-  assert.deepEqual(external[1].args.slice(0, 5), ['dir', directory, '--no-banner', '--redact', '--follow-symlinks']);
-  assert.ok(external[1].args.includes('--ignore-gitleaks-allow'));
-  assert.ok(external[1].args.includes('--config'));
-  assert.ok(external[1].args.includes('--gitleaks-ignore-path'));
   assert.deepEqual(external[2].args, ['-c', 'check-game']);
+});
+
+for (const repo of ['someone/game', 'another-owner/Other.Project-2']) {
+  test(`push clones the complete configured repository URL for ${repo}`, (t) => {
+    const f = fixture(t, { repo });
+    f.commit();
+    f.remote();
+    f.invoke({ push: true });
+    const clones = f.calls.filter(({ command, args }) => command === 'git' && args[0] === 'clone');
+    assert.equal(clones.length, 1);
+    assert.deepEqual(clones[0], {
+      command: 'git', args: ['clone', '--', `https://github.com/${repo}.git`, clones[0].args[3]], cwd: f.root
+    });
+  });
+}
+
+test('scanner uses trusted default rules and an empty ignore file despite exported overrides', (t) => {
+  const f = fixture(t, { include: ['**', '.gitleaks.toml', '.gitleaksignore'] });
+  put(f.root, 'game/.gitleaks.toml', '[allowlist]\nregexes = [".*"]\n');
+  put(f.root, 'game/.gitleaksignore', 'ignore-this-secret\n');
+  f.commit();
+  const directory = f.invoke();
+  assert.equal(readFileSync(join(directory, '.gitleaks.toml'), 'utf8'), '[allowlist]\nregexes = [".*"]\n');
+  assert.equal(readFileSync(join(directory, '.gitleaksignore'), 'utf8'), 'ignore-this-secret\n');
+  assert.equal(f.calls.filter(({ command, args }) => command === 'gitleaks' && args[0] === 'dir').length, 1);
 });
 
 test('public overlay replaces file/directory collisions and bypasses the source exclude list', (t) => {
@@ -201,11 +246,20 @@ test('sync replaces all remote files except .git, includes ignored allowlisted f
   assert.deepEqual(git(remote, 'ls-tree', '-r', '--name-only', 'HEAD').toString().trim().split('\n'), ['.gitignore', 'src/main.js']);
   assert.equal(git(remote, 'rev-list', '--count', 'HEAD').toString().trim(), '2');
   const before = git(remote, 'rev-parse', 'HEAD').toString();
+  const metadata = { description: 'A renamed game', homepage: 'https://new.example.test', topics: ['puzzle'] };
+  put(f.root, 'game/showcase/showcase.toml', stringify({ ...f.config, ...metadata }));
+  f.commit();
   f.calls.length = 0;
   f.invoke({ push: true });
   assert.equal(git(remote, 'rev-parse', 'HEAD').toString(), before);
   assert.equal(f.messages.at(-1), 'No changes; nothing to push.');
-  assert.ok(!f.calls.some(({ command, args }) => command === 'gh' || args[0] === 'push' || args[0] === 'commit'));
+  assert.ok(!f.calls.some(({ command, args }) => command === 'git' && (args[0] === 'push' || args[0] === 'commit')));
+  const clone = f.calls.find(({ command, args }) => command === 'git' && args[0] === 'clone').args[3];
+  assert.deepEqual(f.calls.filter(({ command }) => command === 'gh'), [
+    { command: 'gh', args: ['repo', 'view', f.config.repo, '--json', 'repositoryTopics'], cwd: clone },
+    { command: 'gh', args: ['repo', 'edit', f.config.repo, '--description', metadata.description, '--homepage', metadata.homepage,
+      '--add-topic', 'puzzle', '--remove-topic', 'obsolete', '--remove-topic', 'react'], cwd: clone }
+  ]);
 });
 
 for (const kind of ['modified', 'staged', 'untracked', 'deleted']) {
