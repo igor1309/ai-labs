@@ -1,16 +1,6 @@
 # Changes
 
-- LAB-458: fallback reporting uses the call's remaining time; no fallback
-  starts once the call's deadline has passed.
-
-- LAB-458: `--reuse` takes a call that fell back, and `--continue` goes on
-  from one, by the agent and session its step asked for.
-
-- LAB-458: fallback budgets retain known spend when the total cost is unknown;
-  settings checks refuse fallbacks incompatible with the process.
-
-- LAB-458: capacity retries wait 30 seconds, one minute and three minutes,
-  then use the agent's fallback; review nodes run one at a time.
+- LAB-458: capacity retries fall back after their waits, record combined spend, and enforce daily budgets across calls; review nodes honor one-at-a-time limits.
 
 - LAB-357: a codex turn's cost is priced through ccusage, so a cost
   limit and the daily budget spend it; a resumed turn's usage is its

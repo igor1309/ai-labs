@@ -224,6 +224,33 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 			if got.code != 1 || got.stderr != "" || p.Status != "failed" || p.Class == nil || *p.Class != "budget_exhausted" || p.Reason == nil || *p.Reason != reason {
 				t.Fatalf("ran %+v, printed %+v; want failed budget_exhausted: %s", got, p, reason)
 			}
+			record := f.store.last(t)
+			if len(record.Calls) != 1 {
+				t.Fatalf("record calls %+v, want one", record.Calls)
+			}
+			kept := record.Calls[0]
+			if !reflect.DeepEqual(kept.Result.Cost, usd(2)) {
+				t.Errorf("recorded fallback cost %v, want 2", kept.Result.Cost)
+			}
+			if kept.Primary == nil || !reflect.DeepEqual(kept.Primary.Result.Cost, usd(1)) {
+				t.Errorf("recorded primary %+v, want cost 1", kept.Primary)
+			}
+
+			f.random = randomSpy{0x55, 0xfd, 0x37}
+			following := f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
+			followingPrinted := printedOf(t, following)
+			if following.code != 1 || following.stderr != "" || followingPrinted.Status != "failed" || followingPrinted.Class == nil || *followingPrinted.Class != "budget_exhausted" || followingPrinted.Reason == nil || *followingPrinted.Reason != reason {
+				t.Fatalf("following run %+v, printed %+v; want failed budget_exhausted: %s", following, followingPrinted, reason)
+			}
+			if primary := f.runtimes.codex.ran(); len(primary) != 4 {
+				t.Errorf("following command started primary turns %+v, want none", primary)
+			}
+			if fallback := f.runtimes.claude.ran(); len(fallback) != 1 {
+				t.Errorf("following command started fallback turns %+v, want none", fallback)
+			}
+			if !slices.Contains(f.store.readIDs, record.ID) {
+				t.Errorf("following command read runs %v, want the recorded fallback run %s", f.store.readIDs, record.ID)
+			}
 		})
 	}
 }
