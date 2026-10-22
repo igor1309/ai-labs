@@ -37,7 +37,7 @@ struct LiveTextTests {
             .init(words: [], from: 3),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: "по")])
     }
 
     @Test func wordsSettle() async {
@@ -68,8 +68,49 @@ struct LiveTextTests {
         ])
 
         #expect(updates.dropFirst().first?.all == [
-            segment(0, start: 0, settled: "по запуску"),
+            segment(0, start: 0, pending: "по запуску"),
             segment(1, start: b.end + 2, pending: "кто"),
+        ])
+    }
+
+    @Test func wordsBeforeAPauseSettleOnlyWhenFinal() async {
+
+        let after = word("кто", b.end + 2, b.end + 2.4)
+        let updates = await run([
+            .init(words: [a, b]),
+            .init(words: [after]),
+            .init(words: [], finalThrough: b.end),
+        ])
+
+        #expect(updates[1].all.map(\.settled) == ["", ""])
+        #expect(updates[2].all == [
+            segment(0, start: 0, settled: "по запуску"),
+            segment(1, start: after.start, pending: "кто"),
+        ])
+    }
+
+    @Test func aPauseNoLongerHeardIsGone() async {
+
+        let updates = await run([
+            .init(words: [a, word("кто", 3, 3.5)]),
+            .init(words: [a, word("кто", 1, 1.5)]),
+        ])
+
+        #expect(updates[0].all.count == 2)
+        #expect(updates[1].all == [segment(0, start: 0, pending: "по кто")])
+    }
+
+    @Test func aPauseBetweenSettledWordsStays() async {
+
+        let after = word("кто", b.end + 2, b.end + 2.4)
+        let updates = await run([
+            .init(words: [a, b, after], finalThrough: after.end),
+            .init(words: [word("там", after.end, after.end + 0.4)]),
+        ])
+
+        #expect(updates[1].all == [
+            segment(0, start: 0, settled: "по запуску"),
+            segment(1, start: after.start, settled: "кто", pending: "там"),
         ])
     }
 

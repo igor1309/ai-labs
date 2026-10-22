@@ -20,7 +20,9 @@ public protocol AudioSource: Sendable {
     func audio() -> AsyncStream<AudioChunk>
 }
 
-/// What Live text needs from a speech recogniser, whatever the model.
+/// What Live text needs from a speech recogniser, whatever the model. Only
+/// the recogniser makes words final, and it makes each word final within a
+/// bounded stretch of audio after it.
 public protocol Recognizer: Sendable {
 
     /// Hears one more chunk and reports what it has heard so far.
@@ -40,8 +42,8 @@ public struct Hearing: Equatable, Sendable {
     /// words heard from there before and not reported now are gone. Nil
     /// when it starts at the first word.
     public var from: Double?
-    /// Words ending by this time in the track are final; nil when the
-    /// recogniser cannot tell.
+    /// Words ending by this time in the track are final; nil when none is
+    /// final yet.
     public var finalThrough: Double?
 
     public init(words: [Word], from: Double? = nil, finalThrough: Double? = nil) {

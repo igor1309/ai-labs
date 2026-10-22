@@ -13,12 +13,18 @@ knows nothing of the model behind the recogniser, of speakers or of storage.
   time order, is the client's: two tracks already give the speakers, and
   Live text never needs to know them.
 - The recogniser reports the words heard so far, each with the time it was
-  heard in the track, and which of them are final when it knows. Turning a
-  model's output into that is the model adapter's job. Windowed Parakeet
-  gives word times and is final behind its windows. Streaming Nemotron
-  times each token as it decodes it and is final behind its last word.
-- A segment closed by a pause settles, final or not: otherwise text from a
-  recogniser with no final mark would stay pending all call.
+  heard in the track, and how far they are final. Turning a model's output
+  into that is the model adapter's job. Windowed Parakeet gives word times
+  and is final behind its windows. Streaming Nemotron times each token as
+  it decodes it and is final behind its last word.
+- Only the recogniser makes words final, and it makes each word final
+  within a bounded stretch of audio after it. A pause starts a segment and
+  settles nothing: a recogniser may show a quick reading as pending and
+  replace it with a better one, and settling at a pause would keep the
+  quick one (research run 7b: three of 76 words).
+- Segments are cut afresh from the words at each change: a cut between
+  settled words never changes, and a cut between pending words goes with
+  them.
 - A pause is 2 s from the end of one word to the start of the next. In the
   owner's reading, Parakeet's word times showed gaps of 0 s at most
   sentence ends and up to 1.28 s inside a sentence, and Nemotron's text
@@ -62,7 +68,18 @@ Feature: Live text for one track
   Scenario: S-5 A pause starts a new segment
     Given a segment has pending words
     When the next words come after a pause
-    Then I read them in a new segment, with the time it started, and the segment before it settled
+    Then I read them in a new segment, with the time it started
+
+  Scenario: S-11 Words before a pause settle only when final
+    Given a segment has pending words
+    When the next words come after a pause
+    Then I still read the words before the pause as pending
+    And they settle when the recogniser makes them final
+
+  Scenario: S-12 A pause no longer heard is gone
+    Given pending words with a pause between them
+    When the recogniser hears them again without the pause
+    Then I read them in one segment
 
   Scenario: S-6 Speech without a pause stays one segment
     Given a segment has words

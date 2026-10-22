@@ -29,8 +29,22 @@ times. Evidence:
 ## S-5 A pause starts a new segment
 
 The fake recogniser reports pending words, then words starting 2 s after
-the last one ended. Evidence:
-`LiveTextTests.aPauseStartsANewSegment`.
+the last one ended; and settled words with a pause between them, then one
+word more. Evidence:
+`LiveTextTests.aPauseStartsANewSegment`,
+`LiveTextTests.aPauseBetweenSettledWordsStays`.
+
+## S-11 Words before a pause settle only when final
+
+The fake recogniser reports pending words, words after a pause, then marks
+the track final through the words before the pause. Evidence:
+`LiveTextTests.wordsBeforeAPauseSettleOnlyWhenFinal`.
+
+## S-12 A pause no longer heard is gone
+
+The fake recogniser reports two pending words with a pause between them,
+then the same words without it. Evidence:
+`LiveTextTests.aPauseNoLongerHeardIsGone`.
 
 ## S-6 Speech without a pause stays one segment
 

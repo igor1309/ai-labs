@@ -2,6 +2,10 @@
 
 ## 2026-10-22
 
+- Live text no longer settles words at a pause: only the recogniser makes
+  words final, within a bounded stretch of audio, and segments are cut
+  afresh at each change. Settling at a pause kept a quick reading that a
+  better one was about to replace (research run 7b).
 - Nemotron 3.5 hears Russian speech as it streams, settling each word when
   the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own

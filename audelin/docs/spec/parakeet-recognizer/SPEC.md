@@ -24,8 +24,6 @@ and how far they are final, as Live text's spec asks of a recogniser.
   sending a raw window, and starts it at its earliest word not yet final: Live
   text keeps pending words before a report's first word, and would
   otherwise keep a word the next window dropped or read a frame later.
-  Words Live text already settled at a pause may open the report; Live text
-  drops them itself.
 - A word read on both sides of a chunk's edge, with the same letters and
   overlapping times, is one word: the recorded windows read edge words with
   times a frame or two apart.

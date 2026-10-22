@@ -28,8 +28,6 @@ public struct Segments: Equatable, Sendable {
 
     private var words: [Word] = []
     private var settledCount = 0
-    /// Where each segment after the first starts; a cut is never taken back.
-    private var cuts: [Int] = []
 
     public init(pause: Double) {
 
@@ -44,14 +42,12 @@ public struct Segments: Equatable, Sendable {
                 settledCount += 1
             }
         }
-        cutAtPauses()
         cutIntoSegments()
     }
 
     mutating func finish(_ hearing: Hearing) {
 
         take(hearing)
-        cutAtPauses()
         settledCount = words.count
         ending = .finished
         cutIntoSegments()
@@ -76,20 +72,14 @@ public struct Segments: Equatable, Sendable {
         words = words[..<settledCount] + kept + reported
     }
 
-    /// Cuts where a pause starts a word, and settles everything before it.
-    private mutating func cutAtPauses() {
-
-        for index in words.indices.dropFirst((cuts.last ?? 0) + 1)
-        where words[index].start - words[index - 1].end >= pause {
-            cuts.append(index)
-            settledCount = max(settledCount, index)
-        }
-    }
-
+    /// Cuts where a pause starts a word. Only the recogniser settles words,
+    /// so a cut among settled words never changes, and a cut among pending
+    /// words goes with them.
     private mutating func cutIntoSegments() {
 
         guard !words.isEmpty else { return all = [] }
 
+        let cuts = words.indices.dropFirst().filter { words[$0].start - words[$0 - 1].end >= pause }
         let bounds = [0] + cuts + [words.count]
         all = zip(bounds, bounds.dropFirst()).enumerated().compactMap { id, bound in
             let (lower, upper) = bound
