@@ -1040,6 +1040,13 @@ why it fell back. Timing, cost, usage and warnings cover both attempts;
 the session and output belong to the fallback. Capacity events keep all
 the failed turns in order.
 
+A call made again on the fallback is read by its step's agent, its
+primary's. A reuse takes it for a step on that agent and records it as
+it was made: on the fallback, its primary kept, each plan this run's.
+A continuation (Continuation, check 3) counts it as a call of its
+primary's session too, on the primary's agent and with its session
+cost: the primary's turns went on in that session.
+
 A parallel may use `parallel: {max: 1, steps: [...]}` to run its nodes
 one at a time; a positive `max` bounds concurrency, and omitting it runs
 all nodes at once. The list form `parallel: [...]` still works. A failed

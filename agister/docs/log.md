@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-458: `--reuse` takes a call that fell back, and `--continue` goes on
+  from one, by the agent and session its step asked for.
+
 - LAB-458: fallback budgets retain known spend when the total cost is unknown;
   settings checks refuse fallbacks incompatible with the process.
 

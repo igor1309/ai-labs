@@ -39,3 +39,16 @@ Feature: The composition reports a turn at capacity
       | names an absent agent                  |
       | names itself                           |
       | cannot run the process's output schema  |
+
+  Scenario: A reuse takes reviews that fell back
+    Given a run of a review whose reviews, at capacity on codex,
+      completed on claude-opus, and whose judge failed
+    When the review runs again, reusing that run
+    Then the judge alone runs, and each review is taken, recorded on
+      claude-opus with its plan, its primary and its result as kept
+
+  Scenario: A continuation goes on from a call that fell back
+    Given R1 ran on codex in the session "S", and R2, continuing R1, fell
+      back from "S" to claude-opus, which left the content "t2"
+    When R1 is continued on codex with the content "t2"
+    Then the call resumes "S" and continues R2's call

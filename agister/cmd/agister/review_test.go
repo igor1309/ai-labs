@@ -9,8 +9,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/settings/resolve"
 )
 
 // reviews is each review of home's code_review, in declaration order: its
@@ -303,6 +305,64 @@ func TestHomeReviewsRunInOrderAndRecordEveryEnd(t *testing.T) {
 				if calls[i].Process != process {
 					t.Errorf("call %d process %q, want %q", i, calls[i].Process, process)
 				}
+			}
+		})
+	}
+}
+
+// review.feature, "A parallel's max reaches core's workflow": the max of
+// the parallel "reviews", as planning gives it to core/workflow, home's
+// review workflows as shipped and code_review edited.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAParallelsMaxReachesCoresWorkflow(t *testing.T) {
+	t.Parallel()
+	const codeReview = "/u/.agister/workflows/code_review.yaml"
+	for _, c := range []struct {
+		name     string
+		workflow string
+		edit     func(settings map[string]string)
+		max      int
+	}{
+		{"code_review as shipped", "code_review", func(map[string]string) {}, 1},
+		{"adr_review as shipped", "adr_review", func(map[string]string) {}, 1},
+		{"code_review given max 3", "code_review", func(settings map[string]string) {
+			settings[codeReview] = strings.Replace(settings[codeReview], "      max: 1\n", "      max: 3\n", 1)
+		}, 3},
+		{"code_review omitting max", "code_review", func(settings map[string]string) {
+			settings[codeReview] = strings.Replace(settings[codeReview], "      max: 1\n", "", 1)
+		}, 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := shippedHome(t)
+			c.edit(settings)
+			spies := newRuntimesSpy(t)
+			wrappers, err := newContracts(claudeCodeFacts(spies.claude), codexFacts(spies.codex))
+			if err != nil {
+				t.Fatal(err)
+			}
+			read, err := readSettings("/u/.agister", "/r", newFilesystemSpy(settings), rootSpy{root: "/r"}, wrappers)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolved, faults := read.resolver.Resolve(resolve.Document(resolve.KindWorkflow, c.workflow).WithParams("goal"))
+			if len(faults) > 0 {
+				t.Fatalf("faults %+v", faults)
+			}
+			built, unrun, err := planOf(c.workflow, resolved, read.documents,
+				map[string]call.Inputs{"claude-code/3": call.InMessage, "codex/2": call.InMessage})
+			if err != nil || len(unrun) > 0 {
+				t.Fatalf("not run %q, error %v", unrun, err)
+			}
+			var maxes []int
+			for _, step := range built.workflow.Steps {
+				if step.Parallel != nil {
+					maxes = append(maxes, step.Max)
+				}
+			}
+			if want := []int{c.max}; !reflect.DeepEqual(maxes, want) {
+				t.Errorf("the parallels' max %v, want %v", maxes, want)
 			}
 		})
 	}

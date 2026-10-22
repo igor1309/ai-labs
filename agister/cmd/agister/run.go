@@ -1243,6 +1243,12 @@ func (s *stepCalls) call(ctx context.Context, name string, params map[string]str
 	}
 	if taken {
 		ended.taken = &earlier
+		// A call taken that answered on the fallback is recorded on it, as
+		// it was made, under this run's plans.
+		if earlier.Primary != nil && planned.fallback != nil {
+			ended.primary = &endedPrimary{agent: planned.agent, permissions: planned.permissions}
+			ended.agent, ended.permissions = planned.fallback.agent, planned.fallback.permissions
+		}
 		report(workflow.Report{Reused: earlier.ID})
 		return reusedResult(earlier)
 	}

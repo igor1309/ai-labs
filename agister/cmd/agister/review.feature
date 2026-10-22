@@ -47,3 +47,16 @@ Feature: The composition runs home's code_review
       | workflow    |
       | code_review |
       | adr_review  |
+
+  Scenario Outline: A parallel's max reaches core's workflow
+    Given home's <workflow>, <edit>
+    When it is planned
+    Then core's workflow runs the parallel "reviews" at most <max> at a
+      time, 0 for every node at once
+
+    Examples:
+      | workflow    | edit         | max |
+      | code_review | as shipped   | 1   |
+      | adr_review  | as shipped   | 1   |
+      | code_review | given max 3  | 3   |
+      | code_review | omitting max | 0   |

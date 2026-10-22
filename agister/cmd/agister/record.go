@@ -61,7 +61,9 @@ func callID(run, step string) string {
 // it took, nil for one made; its result and session cost, nil where
 // unknown; its cost's source, "" where its cost is unknown; and its
 // primary, where it was made again on its agent's fallback, nil where it
-// was not, the agent then the fallback's.
+// was not, the agent then the fallback's. Of a call taken, the primary
+// gives only its agent and plan: its result is the one the taken call
+// recorded.
 type endedCall struct {
 	definitions          []runstore.Definition
 	definitionBytes      map[string][]byte
@@ -185,8 +187,14 @@ func (r *runRecord) Called(ended endedCall) {
 	}
 	call.Permissions = ended.permissions
 	call.Environment = slices.Clone(ended.environment)
-	if primary := ended.primary; primary != nil {
+	switch primary := ended.primary; {
+	case primary == nil:
+	case ended.taken == nil:
 		call.Primary = primaryOf(*primary)
+	case call.Primary != nil:
+		kept := *call.Primary
+		kept.Permissions = primary.permissions
+		call.Primary = &kept
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
