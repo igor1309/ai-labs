@@ -8,15 +8,10 @@ description: "Every component speaks its own terms and knows nothing outside the
 
 ## Context
 
-The app's logic sits among things that change for unrelated reasons: files
-and their formats, audio APIs, the recognition model, the UI toolkit. Logic
-that knows them changes with them and cannot be tested without them.
-
-| Alternative | Why not |
-|---|---|
-| One module | Any code can reach any other code and the edges; nothing is testable alone. |
-| A shared domain module | Components speak its vocabulary instead of their own, and it gathers whatever two of them touch: formats, folder names, locks. |
-| A shared module of interfaces | Interfaces follow adapters' seams, not consumers' needs, and every consumer changes with each one. |
+Audelin's features (recording, live text, the calls list, setup) use the
+calls folder on disk, Core Audio, FluidAudio and its model, and AppKit,
+each of which changes on its own. Every feature is built test-first, without
+a disk, an audio device or a model.
 
 ## Decision
 
@@ -24,6 +19,14 @@ Every component is written in its own terms and knows nothing outside them.
 It declares the collaborators it needs as interfaces it owns and receives
 them when built. The edges live only in adapters, and a composition root
 alone decides what answers each interface.
+
+## Alternatives
+
+| Alternative | Why not |
+|---|---|
+| One module | Any code can reach any other code and the edges; nothing is testable alone. |
+| A shared domain module | Components speak its vocabulary instead of their own, and it gathers whatever two of them touch: formats, folder names, locks. |
+| A shared module of interfaces | Interfaces follow adapters' seams, not consumers' needs, and every consumer changes with each one. |
 
 ## Rules / invariants
 
