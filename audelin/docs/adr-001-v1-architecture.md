@@ -91,8 +91,8 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    windows from the written audio, each with left and right context, and
    the stabilizer turns each window's words into commits (amended
    2026-10-21, owner: FluidAudio's sliding-window updates hide retracted
-   words and failed windows; [spec-001](spec-001-v1.md) § Goal). It commits
-   a segment (track, epoch, start and end time, text) only when the segment
+   words and failed windows, and its `finish()` returns plain text). It
+   commits a segment (track, epoch, start and end time, text) only when the segment
    can no longer change: a window decoded it with full right context, or
    the epoch has ended and the final window decoded it. Segments commit in
    time order per track and epoch: a later segment waits while any earlier
