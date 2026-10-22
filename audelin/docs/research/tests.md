@@ -234,6 +234,23 @@ starts where a final word does but reads differently.
   word, on both tracks; it shows a word a median of 0.8 s after it was
   spoken, at 3.2–3.8% of real time for both models.
 
+## Run 9 — loading the models in the preview app (2026-10-22)
+
+`LiveTextPreview` on an M3 Max, two-pass on the microphone, from its log.
+
+| Load | Nemotron | Parakeet |
+|---|---|---|
+| First run of a new build: CoreML compiles the models | 15.8–16 s | 14–17 s, nearly all the encoder |
+| Every later run of that build | 0.2 s | 0.1–0.5 s |
+
+- A new build of the program compiles again; a shipped app compiles once
+  per install or update.
+- The panel showed nothing while it loaded, and an owner stopped it twice
+  thinking it hung: the wait has to be visible.
+- With AirPods in a call, the microphone comes at 24 kHz, one channel. Live,
+  the app heard only the owner: the call's own audio needs the system audio
+  capture, not built yet.
+
 ## Not yet measured
 
 - Selection while text is appending.

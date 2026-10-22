@@ -80,7 +80,7 @@ final class LiveCall {
         let recording: PanelState.Recording = isRecording
             ? .on(elapsed: String(format: "%02d:%02d:%02d", elapsed / 3600, elapsed / 60 % 60, elapsed % 60))
             : .off
-        return .init(recording: recording, log: .lines(lines))
+        return .init(recording: recording, log: loadingSince != nil ? .preparing : .lines(lines))
     }
 
     func handle(_ event: PanelEvent) {
@@ -123,19 +123,24 @@ final class LiveCall {
         Log.line("start: \(model.rawValue), source \(describe(source)), pause \(pause) s")
 
         do {
+            // The audio starts now and waits for the models: a recorded track
+            // is paced from now, and the microphone's chunks queue up.
             let tracks: [(PanelState.Speaker, any AudioSource)]
             let startedAt = ContinuousClock.now
+            started = startedAt
             switch source {
             case .microphone:
                 guard await Microphone.requestAccess() else {
                     throw Failure("No microphone access: allow the terminal in System Settings › Privacy & Security › Microphone")
                 }
-                tracks = [(.me, Microphone())]
+                tracks = [(.me, Started(Microphone().audio()))]
             case let .file(url):
                 let channels = try RecordedTrack.channels(of: url)
                 Log.line("recording: \(channels) channel(s)")
                 let speakers: [PanelState.Speaker] = channels > 1 ? [.me, .them] : [.me]
                 tracks = speakers.enumerated().map { ($1, RecordedTrack(url: url, channel: $0, started: startedAt)) }
+                player = try? AVAudioPlayer(contentsOf: url)
+                player?.play()
             }
             var recognizers: [any Recognizer] = []
             for _ in tracks { recognizers.append(try await recognizer()) }
@@ -147,13 +152,8 @@ final class LiveCall {
             }
 
             lives = recognizers.map { LiveText(recognizer: $0, pause: pause) }
-            started = .now
-            if case let .file(url) = source {
-                player = try? AVAudioPlayer(contentsOf: url)
-                player?.play()
-            }
             message = "Listening with \(model.rawValue)"
-            Log.line("listening on \(tracks.count) track(s)")
+            Log.line("listening on \(tracks.count) track(s), catching up \(seconds(since: startedAt)) of audio")
 
             let showing = zip(tracks, lives).map { track, live in
                 Task { for await segments in live.updates { show(track.0, segments) } }

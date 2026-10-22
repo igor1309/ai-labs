@@ -182,6 +182,17 @@ private extension PanelView {
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.me)
 
+            case .preparing:
+                Text("Живой текст готовится — звонок уже записывается.")
+                    .font(tokens.ui(tokens.typeBody))
+                    .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
+                    .foregroundStyle(tokens.sub)
+
+                Text("Текст появится с начала звонка.")
+                    .font(tokens.data(tokens.typeBody))
+                    .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
+                    .foregroundStyle(tokens.gutter)
+
             case let .lines(lines):
                 linesView(lines)
             }

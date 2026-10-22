@@ -60,6 +60,16 @@ final class Microphone: AudioSource, @unchecked Sendable {
     }
 }
 
+/// Audio already started, handed to Live text when it is ready to listen.
+struct Started: AudioSource {
+
+    let stream: AsyncStream<AudioChunk>
+
+    init(_ stream: AsyncStream<AudioChunk>) { self.stream = stream }
+
+    func audio() -> AsyncStream<AudioChunk> { stream }
+}
+
 /// One channel of a recorded file in 0.1 s chunks, at the pace it was
 /// spoken.
 struct RecordedTrack: AudioSource, @unchecked Sendable {

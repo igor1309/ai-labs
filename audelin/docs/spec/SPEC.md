@@ -73,6 +73,16 @@ Feature: Live text of calls
     When live text fails
     Then the whole call is still recorded
 
+  Scenario: S-15 Live text catches up after the models load
+    Given a call starts while the speech models are still loading
+    When they finish loading
+    Then I can read what was said from the call's start
+
+  Scenario: S-16 The panel says live text is getting ready
+    Given a call is being recorded and the speech models are still loading
+    When I look at the panel
+    Then I see that live text is getting ready and the call is already recorded
+
   Scenario: S-10 Renaming a call
     Given a recorded call
     When I change its title in the app

@@ -127,7 +127,7 @@ Current screens:
 |---|---|
 | 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, models downloading and recording blocked |
 | 2 — Launch blocker | Model missing; model downloading; both block recording |
-| 3 — Live panel states | Not recording; recording; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
+| 3 — Live panel states | Not recording; recording; getting ready, recording while the models load; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
 | 5 — Call after it ends | Final pass running; failed; summary pending; done; renaming the title |
 | 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |

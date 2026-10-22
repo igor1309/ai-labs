@@ -17515,7 +17515,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: the getting-ready wording; each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -17785,6 +17785,119 @@
                                           "content": "дашборд кто-то уже уже"
                                         }
                                       }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "c5JfE",
+                  "name": "Getting ready",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "boVgq",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Getting ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "V9Iznh",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HCFwd",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "N8c7E",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "GtLsl",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "d0HTv",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:00:12"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Kamkw",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "xgDIn",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст готовится — звонок уже записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "Ry3sd",
+                                      "name": "Turn on",
+                                      "fill": "$gutter",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Текст появится с начала звонка.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 }
@@ -19501,6 +19614,119 @@
                                           "content": "дашборд кто-то уже уже"
                                         }
                                       }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dk7jm",
+                  "name": "Getting ready",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "O5ocOW",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Getting ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "J95L3",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aJrtf",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "L1mhFX",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "Rtf5Z",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "rPFTk",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:00:12"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "N1iAX",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "f5A9lY",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст готовится — звонок уже записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "o57ab",
+                                      "name": "Turn on",
+                                      "fill": "$gutter",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Текст появится с начала звонка.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 }

@@ -39,7 +39,7 @@ private extension PanelState {
     var shownEntries: [Entry] {
 
         switch log {
-        case .empty, .liveTextOff(kept: nil): []
+        case .empty, .preparing, .liveTextOff(kept: nil): []
         case let .liveTextOff(kept: lines?), let .lines(lines): lines.entries
         }
     }

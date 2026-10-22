@@ -90,6 +90,14 @@ Screen decisions (owner, 2026-10-21, after the design review):
 - Models are a hard block (owner, 2026-10-22): nothing records until every
   model the app needs is on disk. A model still downloading blocks like a
   missing one.
+- Models load into memory at launch, not when a call starts (owner,
+  2026-10-22). The first launch after an install or update compiles them:
+  16 s for Nemotron and 17 s for Parakeet's encoder on an M3 Max; later
+  loads take under a second (research run 9). Recording never waits for a
+  load: the call's audio from its start is kept, the panel says live text is
+  getting ready, and live text catches up once the models are in. Both
+  models hear audio at about 4% of real time (run 8), so 30 s of backlog
+  clears in about a second.
 - Delete in the calls list removes the whole call (audio, transcript, summary
   link) after a confirm.
 - Models are reused from other apps to save space, but only on an exact

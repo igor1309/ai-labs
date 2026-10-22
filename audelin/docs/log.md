@@ -12,6 +12,10 @@
 - A two-pass recogniser shows a fast recogniser's draft and settles a
   better one's final words; with Nemotron drafting and Parakeet final, the
   settled text on the real call is Parakeet's, word for word (run 8).
+- Loading the models is now a requirement (S-15, S-16, mvp.md): they load
+  at launch, recording never waits, the panel says live text is getting
+  ready, and live text catches up. The preview app's first load compiled
+  them for about 30 s with nothing on screen (research run 9).
 - Nemotron 3.5 hears Russian speech as it streams, settling each word when
   the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own

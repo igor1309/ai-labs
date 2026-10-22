@@ -31,6 +31,9 @@ public extension PanelState {
         /// Text from before live text was switched off mid-call stays above
         /// the offer.
         case liveTextOff(kept: Lines?)
+        /// The call is recorded while the speech models load; live text
+        /// catches up from the call's start once they are in.
+        case preparing
         case lines(Lines)
     }
 

@@ -6,6 +6,7 @@ extension PanelState {
     static let previews: [(name: String, state: PanelState)] = [
         ("not-recording", .notRecording),
         ("recording", .recording),
+        ("preparing", .preparing),
         ("live-text-off", .liveTextOff),
         ("switched-off-mid-call", .switchedOffMidCall),
         ("text-filled-in", .textFilledIn),
@@ -24,6 +25,11 @@ extension PanelState {
             .init(id: 3, time: "12:44", speaker: .them, settled: "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы."),
             .init(id: 4, time: "12:47", speaker: .me, settled: "И ещё по NPS —", pending: "дашборд кто-то уже уже"),
         ]))
+    )
+
+    static let preparing = PanelState(
+        recording: .on(elapsed: "00:00:12"),
+        log: .preparing
     )
 
     static let liveTextOff = PanelState(
@@ -100,6 +106,7 @@ struct PanelPreview: View {
 
 #Preview("Not recording") { PanelPreview(state: .notRecording, scheme: .light) }
 #Preview("Recording") { PanelPreview(state: .recording, scheme: .light) }
+#Preview("Getting ready") { PanelPreview(state: .preparing, scheme: .light) }
 #Preview("Live text off") { PanelPreview(state: .liveTextOff, scheme: .light) }
 #Preview("Switched off mid-call") { PanelPreview(state: .switchedOffMidCall, scheme: .light) }
 #Preview("Text filled in") { PanelPreview(state: .textFilledIn, scheme: .light) }
