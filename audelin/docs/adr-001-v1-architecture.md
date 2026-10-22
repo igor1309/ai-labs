@@ -1,87 +1,98 @@
 ---
 date: 2026-10-21
 model: claude-opus-5-5
-description: "Audelin v1 is one app built from small modules: ports and adapters, wired only by the composition root"
+description: "Every component speaks its own terms and knows nothing outside them; edges live in adapters, and a composition root alone wires them"
 ---
 
-# ADR-001 — One modular app for v1
+# ADR-001 — Components in their own terms, composed at the root
 
 ## Executive summary
 
-Audelin v1 is one native macOS app process. Its code is small modules:
-features split into a Core and a UI, pure Domain logic, and adapters for
-everything external. A Core declares the ports it needs; the composition
-root in the app target alone creates adapters and decides what plugs into
-each port. Modules never log; the composition root logs their public
-interfaces through decorators.
+Every component is written in its own terms and knows nothing outside them:
+it declares the collaborators it needs as interfaces it owns, and never
+imports another component, its types, or the file system, audio devices and
+models it ultimately runs on. Those live only in adapters at the edges, and
+a composition root alone decides what answers each interface. This keeps
+each component's reason to change its own, and lets each be tested alone
+with fakes.
 
 ## Context
 
-The owner asked for one app that is highly modular, following the layout of
-their iFora `swift-vortex` package ([mvp.md](mvp.md) § Code structure).
-What the app does is [mvp.md](mvp.md)'s and the specs'.
+Audelin's logic (when a recording may start, what to do when a side is
+lost, how live text settles) sits among things that change for unrelated
+reasons: the layout and formats of files on disk, the audio APIs, the
+recognition model, the UI toolkit. A component that knows any of them
+changes when they do, re-proves them in its tests, and cannot be tested
+without them. Two components that share a type change together whenever
+either needs that type to change.
 
 | Alternative | Why not |
 |---|---|
-| Separate recorder process plus a UI app, as Verger's service | Would keep recording through a UI crash, but adds a second process to supervise and an IPC contract before either is needed; the CLI is a Later item. Revisit if app crashes during calls are seen. |
-| One target | Nothing stops a feature reaching into another or into the file system and audio devices, and nothing is testable alone. |
-| A domain module for what features have in common | Each feature then speaks a shared vocabulary instead of its own, and the module gathers whatever two features touch: file formats, folder names, locks. |
+| One module | Nothing stops any code reaching into any other code or into the edges; nothing is testable alone. |
+| A shared domain module for what components have in common | Every component then speaks the shared vocabulary instead of its own, and the module gathers whatever two components touch: file formats, folder names, locks. |
+| A shared module of interfaces, one per adapter | Interfaces follow the adapters' seams instead of what each consumer needs, and every consumer of one changes with it. |
 
 ## Decision
 
-1. **One app process.** If the app crashes, everything in it stops.
-2. **Modules by role.** A feature is a Core (its logic, Foundation only) and
-   a UI. A Domain module holds pure logic that stands on its own; nothing
-   goes into Domain because two features need it. An adapter wraps one
-   external thing.
-3. **Ports and adapters.** A Core declares, in its own terms, the ports it
-   needs for everything outside it, other features included. Adapters
-   implement ports. Features never know each other.
-4. **The composition root decides.** Only the app target creates adapters
-   and decides what plugs into each port, including when one answer serves
-   two features.
-5. **Logging is a decorator in the composition root** (owner, 2026-10-21).
-   Only public interfaces are logged: the ports and each module's public
-   API. The composition root wraps them in decorators that implement the
-   same interface and log calls, results, errors and durations before
-   passing them on. No module logs or knows it is being logged.
+1. **A component speaks its own language.** It declares its own types and
+   the interfaces of the collaborators it needs, cut by the role each plays
+   for it and named for what it needs, not for a mechanism. Two components
+   with similar types each keep their own.
+2. **Collaborators are given, never reached.** A component receives every
+   collaborator it needs when it is built, as its own interfaces. It never
+   imports its consumers, its collaborators' implementations or their types.
+   Another component's need, rule or data reaches it only through one of its
+   interfaces.
+3. **Edges live in adapters.** The file system, file formats, audio devices,
+   recognition models, the OS and the UI toolkit are known only to the
+   adapters that wrap them; a component's UI is its adapter to the UI
+   toolkit. Each file format has one reader and one writer, and no other
+   component knows there is a file.
+4. **The composition root decides.** It alone knows the concrete components
+   and adapters, builds them, and plugs an answer into each interface,
+   translating between components' types. When two components need one
+   answer, such as one recording excluding a move of the calls folder, the
+   root provides it to both.
+5. **Cross-cutting concerns are decorators at the root.** Logging, and any
+   later metrics, retries or caching, wrap a component's interfaces at the
+   composition root. No component logs or knows it is observed.
 
 ## Rules / invariants
 
-Module dependencies (production targets; a test target MAY depend on its
-subject, the modules its subject depends on, and test frameworks):
-
-1. Domain MUST NOT depend on any other module of ours.
-2. A feature Core MAY depend on Domain only; a UI target MAY depend on its
-   own Core and Domain only.
-3. An adapter MAY depend on Domain and on the Core whose ports it
-   implements; adapters MUST NOT depend on each other.
-4. Only the app target MAY depend on every module and create adapters.
-5. Every production target MUST have a test target.
-
-Apple and third-party frameworks:
-
-6. Domain and Core targets MUST use Foundation only.
-7. UI targets MAY use AppKit and SwiftUI; adapters MAY use what they wrap.
-
-Logging:
-
-8. Logging MUST happen only in decorators in the composition root, and only
-   on public interfaces; no module MAY log.
+1. A component MUST NOT import another component, its implementations or
+   its types.
+2. A component's interfaces MUST belong to the component itself and express
+   exactly what it needs of the collaborator; an interface MUST NOT be
+   shared by two components.
+3. A component MUST receive its required collaborators at construction and
+   MUST be valid once built.
+4. Only adapters MAY use the file system, a file format, audio devices,
+   recognition models, the OS or the UI toolkit; a UI is an adapter. Each
+   file format MUST have exactly one reader and one writer.
+5. Each rule (what makes a call folder valid, when a recording may start)
+   MUST have one owner; others MUST be handed it through an interface,
+   never re-implement it.
+6. Only the composition root MAY know concrete components and adapters,
+   build them, and translate between their types.
+7. Logging and other cross-cutting concerns MUST be decorators at the
+   composition root; no component MAY log.
+8. Every component MUST be testable alone, with fakes of its own interfaces.
 
 ## Consequences
 
-- Each module is testable alone.
-- More targets and protocols than a single-target app; accepted for the
-  owner's modularity requirement.
-- Two features that need the same answer each declare a port, and the
-  composition root wires one answer to both.
-- Every call across a public interface can be traced without touching
-  module code. What happens inside a module shows only through the calls it
-  makes. The cost is one decorator to keep in step with each interface.
+- Each component changes only for its own reason, and its tests need no
+  disk, device or model.
+- Similar types exist in several components, and the composition root
+  translates between them. The cost is the translation code and its tests.
+- The composition root grows with every component; it holds no logic of
+  its own beyond wiring, translation and decorators.
+- Swapping an edge (a file format, the audio API, the model) changes one
+  adapter and its wiring.
+- A path where translation copies too much to keep up, such as captured
+  audio, would break this decision; the decision then needs an amendment
+  naming the shared type and why.
 
 ## Non-goals
 
-- A background service, CLI or agent access in v1.
-- What the app does and how each module does it: [mvp.md](mvp.md) and the
-  specs.
+- What the app does: [mvp.md](mvp.md) and the specs.
+- How many processes the app runs.
