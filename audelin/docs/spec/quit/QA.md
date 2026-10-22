@@ -22,7 +22,7 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 - Drive: nothing running; choose «Выйти».
 - Expect: no confirmation; the menu bar item and the app's windows are gone.
-- Evidence: the owner's quit on 2026-10-22, run report `runs/2026-10-22-1019.md`.
+- Evidence: Missing.
 
 ### S-2 Quitting during a recording asks first
 

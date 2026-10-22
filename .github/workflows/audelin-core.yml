@@ -36,7 +36,3 @@ jobs:
         run: |
           python3 scripts/check_modules_test.py
           python3 scripts/check-modules.py
-
-      - name: Build the app bundle
-        working-directory: audelin/macos
-        run: sh scripts/bundle.sh

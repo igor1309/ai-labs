@@ -10,7 +10,7 @@ import re
 import subprocess
 import sys
 
-DOMAIN = {"CallDomain", "TranscriptCore"}
+DOMAIN = {"TranscriptCore"}
 # `@attr internal import struct Module.Name`: attributes, an access level and
 # an import kind may all come before the module.
 IMPORT = re.compile(

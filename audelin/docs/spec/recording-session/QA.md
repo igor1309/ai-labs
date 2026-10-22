@@ -22,52 +22,52 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 - Drive: subscribe two observers; start a recording titled «Zoom» for the app Zoom through the session's API.
 - Expect: both observers get a running state titled «Zoom» with the fake clock's start time.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-2 Stopping a recording
 
 - Drive: from S-1, feed 20 s of a known tone per track; stop.
 - Expect: both observers get a stopped state within 5 s of fake time; the fake reader returns the 20 s fed for both tracks.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-3 Stopping with the recogniser stuck
 
 - Drive: a fake recogniser that never returns; record, then stop.
 - Expect: the stopped state arrives within 5 s of fake time.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-4 Stopping with no live model
 
 - Drive: a fake model provider still downloading; record, then stop.
 - Expect: the stopped state arrives within 5 s of fake time.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-5 Audio is readable as soon as it is written
 
 - Drive: 30 s files; fake capture feeds 5 s of a known tone per track; read through the fake reader at once.
 - Expect: the reader returns those 5 s for both tracks while the first file is still open.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-6 Recording never waits for recognition
 
 - Drive: a fake recogniser that never returns; feed 600 s per track.
 - Expect: all 600 s per track are readable; every one of the fake capture's 6 000 buffers per track returned from the session.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-7 Starting during a folder move
 
 - Drive: hold the activity gate as a move; start.
 - Expect: the start is refused with the move as its reason; nothing is written.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-8 A second start while recording
 
 - Drive: from S-1, start again.
 - Expect: still one session; observers see no change.
-- Evidence: the suite at the head.
+- Evidence: Missing.
 
 ### S-9 A session ended without Stop
 
 - Drive: feed 75 s per track; drop the session without stop.
 - Expect: the call's details were made at the start and all 75 s per track reached the writer, which was never stopped; that at most the open 30 s file is then lost is the recorder's S-4.
-- Evidence: the suite at the head.
+- Evidence: Missing.

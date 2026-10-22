@@ -29,17 +29,17 @@ def check(*groups, imports=None):
 class CheckModulesTests(unittest.TestCase):
     def test_a_layout_by_the_rules_holds(self):
         self.assertEqual(check(
-            tested("CallDomain"), tested("CallsCore", ["CallDomain"]), tested("CallsUI", ["CallsCore", "CallDomain"]),
-            tested("FileCallStore", ["CallDomain", "CallsCore"]),
+            tested("TranscriptCore"), tested("CallsCore", ["TranscriptCore"]), tested("CallsUI", ["CallsCore", "TranscriptCore"]),
+            tested("FileCallStore", ["TranscriptCore", "CallsCore"]),
             tested("Audelin", ["CallsUI", "FileCallStore"], "executable"),
         ), [])
 
     def test_domain_depending_on_a_core(self):
-        self.assertEqual(check(tested("CallDomain", ["CallsCore"]), tested("CallsCore")),
-                         ["invariant 1 Domain depends on nothing of ours: CallDomain depends on CallsCore"])
+        self.assertEqual(check(tested("TranscriptCore", ["CallsCore"]), tested("CallsCore")),
+                         ["invariant 1 Domain depends on nothing of ours: TranscriptCore depends on CallsCore"])
 
     def test_a_core_depending_on_another_core(self):
-        self.assertEqual(check(tested("CallDomain"), tested("CallsCore"), tested("SetupCore", ["CallsCore"])),
+        self.assertEqual(check(tested("TranscriptCore"), tested("CallsCore"), tested("SetupCore", ["CallsCore"])),
                          ["invariant 2 a Core depends on Domain only: SetupCore depends on CallsCore"])
 
     def test_a_ui_depending_on_another_features_core(self):
@@ -52,15 +52,15 @@ class CheckModulesTests(unittest.TestCase):
                          ["invariant 3 an adapter depends on Domain and Cores only: Recorder depends on FileCallStore"])
 
     def test_a_target_without_tests(self):
-        self.assertEqual(check(tested("CallDomain"), [("CallsCore", "regular", ["CallDomain"])]),
+        self.assertEqual(check(tested("TranscriptCore"), [("CallsCore", "regular", ["TranscriptCore"])]),
                          ["invariant 5 every production target has a test target: CallsCore has no CallsCoreTests"])
 
     def test_the_app_without_tests(self):
-        self.assertEqual(check(tested("CallDomain"), [("Audelin", "executable", ["CallDomain"])]),
+        self.assertEqual(check(tested("TranscriptCore"), [("Audelin", "executable", ["TranscriptCore"])]),
                          ["invariant 5 every production target has a test target: Audelin has no AudelinTests"])
 
     def test_the_app_may_depend_on_any_module(self):
-        self.assertEqual(check(tested("CallDomain"), tested("CallsCore", ["CallDomain"]),
+        self.assertEqual(check(tested("TranscriptCore"), tested("CallsCore", ["TranscriptCore"]),
                                tested("FileCallStore", ["CallsCore"]), tested("Audelin", ["CallsCore", "FileCallStore"], "executable")),
                          [])
 
@@ -69,7 +69,7 @@ class CheckModulesTests(unittest.TestCase):
                          ["invariant 6 Domain and Cores use Foundation only: CallsCore imports AVFoundation"])
 
     def test_a_test_reaching_past_its_subject(self):
-        self.assertEqual(check(tested("CallDomain"), tested("CallsCore", ["CallDomain"]),
+        self.assertEqual(check(tested("CallsCore"),
                                [("FileCallStore", "regular", ["CallsCore"]),
                                 ("FileCallStoreTests", "test", ["FileCallStore", "TranscriptCore"])],
                                tested("TranscriptCore")),
@@ -77,8 +77,8 @@ class CheckModulesTests(unittest.TestCase):
 
     def test_helpers_only_tests_use_are_not_production(self):
         self.assertEqual(check(
-            tested("CallDomain"),
-            [("Recorder", "regular", ["CallDomain"]), ("RecorderTestSupport", "regular", ["CallDomain"]),
+            tested("TranscriptCore"),
+            [("Recorder", "regular", ["TranscriptCore"]), ("RecorderTestSupport", "regular", ["TranscriptCore"]),
              ("recorder-crash-child", "executable", ["Recorder", "RecorderTestSupport"]),
              ("RecorderTests", "test", ["Recorder", "RecorderTestSupport", "recorder-crash-child"])],
         ), [])
