@@ -1,0 +1,34 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Write swift-version--3CB7CFEC50E0D141.txt
+Build complete! (0.14s)
+Test Suite 'Selected tests' started at 2026-10-22 07:48:19.765.
+Test Suite 'AudelinPackageTests.xctest' started at 2026-10-22 07:48:19.772.
+Test Suite 'AudelinPackageTests.xctest' passed at 2026-10-22 07:48:19.772.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-22 07:48:19.772.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+􀟈  Test run started.
+􀄵  Testing Library Version: 1501
+􀄵  Target Platform: arm64e-apple-macos14.0
+􀟈  Suite RecordingSessionTests started.
+􀟈  Test s9ASessionEndedWithoutStop() started.
+􀟈  Test s4StoppingWithNoLiveModel() started.
+􀟈  Test s3StoppingWithTheRecogniserStuck() started.
+􀟈  Test s1StartingARecording() started.
+􀟈  Test s5AudioIsReadableAsSoonAsItIsWritten() started.
+􀟈  Test s6RecordingNeverWaitsForRecognition() started.
+􀟈  Test s8ASecondStartWhileRecording() started.
+􀟈  Test s2StoppingARecording() started.
+􀟈  Test s7StartingDuringAFolderMove() started.
+􁁛  Test s7StartingDuringAFolderMove() passed after 0.001 seconds.
+􁁛  Test s8ASecondStartWhileRecording() passed after 0.001 seconds.
+􁁛  Test s1StartingARecording() passed after 0.001 seconds.
+􁁛  Test s3StoppingWithTheRecogniserStuck() passed after 0.002 seconds.
+􁁛  Test s4StoppingWithNoLiveModel() passed after 0.002 seconds.
+􁁛  Test s5AudioIsReadableAsSoonAsItIsWritten() passed after 0.004 seconds.
+􁁛  Test s2StoppingARecording() passed after 0.011 seconds.
+􁁛  Test s9ASessionEndedWithoutStop() passed after 0.040 seconds.
+􁁛  Test s6RecordingNeverWaitsForRecognition() passed after 0.435 seconds.
+􁁛  Suite RecordingSessionTests passed after 0.436 seconds.
+􁁛  Test run with 9 tests in 1 suite passed after 0.436 seconds.
