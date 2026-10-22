@@ -133,8 +133,40 @@ RACI, OKR or SLA in Latin letters on clean Russian speech, so live terms are
 not usable for v2 explanations and the live engine is revisited before v2.
 v1 does not depend on it (ADR-001 § Executive summary).
 
+## Run 6 — streaming Nemotron against windowed Parakeet (2026-10-22)
+
+Same input to both: run 5's reading of the terms script (62 s) and run 2's
+Zoom recording (263 s), 16 kHz mono. Streaming: [`spike/`](spike/)
+`audelin-stream` feeds FluidAudio 0.17.7's Nemotron 3.5 multilingual
+streaming model (1120 ms chunks, the model Amanu runs live) in 0.1 s blocks.
+Windowed: `audelin-windows`, Parakeet v3, 4 s chunks with 2 s of context on
+each side. A word's delay is how much audio had been fed when it first
+appeared, minus when it was spoken; compute time is on top and is
+negligible for both.
+
+| | Streaming Nemotron | Windowed Parakeet |
+|---|---|---|
+| Delay, median / p90 / max, terms | 0.37 / 0.84 / 1.10 s | 3.76 / 5.04 / 5.44 s |
+| Delay, median / p90 / max, Zoom | 0.39 / 0.94 / 1.12 s | 3.60 / 5.20 / 5.84 s |
+| Compute for 263 s of audio | 8.8 s | 5.1 s with model load |
+| RACI, OKR, SLA in Latin letters | 0 of 12, `ru` and `auto` alike | 2 of 12 (run 5) |
+| Word errors on the script, terms and numbers left out | 14.8% of 54 words | 20.4% |
+
+- **Streaming is about ten times faster to show a word**, and needs no
+  windows. Its text still needs a layer: the model reports one growing
+  transcript per speaker, so something has to cut it into segments at
+  pauses, as Amanu does.
+- **Neither gives the terms.** Nemotron: «врач», «АКР», «СЛА», with `ru`
+  and with `auto`.
+- **Russian quality is not settled by this run.** On the script Nemotron
+  makes fewer errors, but the windowed figure counts words at chunk edges
+  without a settling layer. On the Zoom recording Parakeet reads better by
+  eye: «UI штучек», «то ли там окошко» against Nemotron's «UAC
+  зарисовок», «туалетам окошка». No reference text exists for it.
+- Both engines in FluidAudio accept a custom vocabulary; it has not been
+  tried on the terms.
+
 ## Not yet measured
 
-- Latency from speech to text, per engine.
 - Selection while text is appending.
 - Whether 4 s feels smooth enough once text is animated in.
