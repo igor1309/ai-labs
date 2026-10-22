@@ -99,10 +99,42 @@ parallel. Two live streams («я» and «они») need
 about 3% of the engine's capacity. Latency at real-time pace was not measured
 here.
 
+## Run 5 — Audelin's own windows over the owner's terms (2026-10-22)
+
+[`spike/`](spike/) `audelin-windows` cuts a recording into 4 s chunks with
+2 s left and 2 s right context and runs FluidAudio 0.17.7
+`AsrManager.transcribe` (Parakeet v3, no language hint) on each window with a
+fresh decoder state, as ADR-001 decision 7 sets. Input: the owner reading
+[`fixtures/terms-script.md`](spike/fixtures/terms-script.md) into the MacBook
+Pro microphone, 16 kHz mono, about 60 s, no overlap and no other voice (the
+audio is not committed). It ran twice: chunks from 0 s, and every chunk
+shifted by 0.24 s (3 encoder frames). The replies are kept as the
+stabilizer's fixtures in [`spike/fixtures/`](spike/fixtures/) (ADR-001
+invariant 14).
+
+| Term | Said | In Latin letters | What came out otherwise |
+|---|---|---|---|
+| RACI | 4 | 0 in both runs | «врачи», «рачи», «раче», «рачек» |
+| OKR | 4 | 0 in both runs | «АКР», «ОКРП», «КР» |
+| SLA | 4 | 2 at shift 0, 2 at 0.24 s | «СЛА», «SL», «с лэ» |
+
+- **One pass over the whole recording is no better:** «рачи», «АКР», «ОКР»,
+  «СЛА», «С Лэй». More context does not bring the terms back.
+- **A window can switch language.** At shift 0 the chunk from 24 s reads
+  «If SLA is client» for «Если SLA нарушен, клиент…»; the shifted window
+  reads it right. A committed segment is final, so such a window would stay
+  in the log.
+- Russian outside the terms is clean in both runs. Words near a chunk edge
+  differ between the two runs («Согласуем АКР» / «АКР»), which is the
+  stabilizer's input, not an error.
+
+Outcome: ADR-001's acceptance item is answered. Parakeet v3 does not give
+RACI, OKR or SLA in Latin letters on clean Russian speech, so live terms are
+not usable for v2 explanations and the live engine is revisited before v2.
+v1 does not depend on it (ADR-001 § Executive summary).
+
 ## Not yet measured
 
 - Latency from speech to text, per engine.
 - Selection while text is appending.
-- Parakeet v3 on English abbreviations in clean Russian speech (all three
-  phrases, no overlap).
 - Whether 4 s feels smooth enough once text is animated in.

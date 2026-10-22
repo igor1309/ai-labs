@@ -1,5 +1,15 @@
 # Log
 
+## 2026-10-22
+
+- The v1 behaviour is specified as 48 SPEC.md and QA.md pairs, one per
+  observer, under [spec/](spec/); the single v1 spec is gone.
+- Terms on clean speech: Parakeet v3 through Audelin's own windows gives
+  RACI and OKR only in Cyrillic and SLA in Latin letters half the time, so
+  live terms are out of v1 and the live engine is revisited before v2
+  ([tests.md](research/tests.md) run 5). Its replies are the stabilizer's
+  fixtures.
+
 ## 2026-10-21
 
 - v1 records calls on its own: recording starts when a call starts and

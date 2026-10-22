@@ -9,9 +9,9 @@ description: "FluidAudio ASR — Parakeet v3 recognising a window of recorded au
 ## Oracle
 
 Its clients' specs: [live-recognition](../live-recognition/SPEC.md),
-[catch-up](../catch-up/SPEC.md) and [stabilizer](../stabilizer/SPEC.md); the
-user spec's S-7; [ADR-001](../../adr-001-v1-architecture.md) decisions 6, 7
-and 10, invariant 14.
+[catch-up](../catch-up/SPEC.md) and [stabilizer](../stabilizer/SPEC.md);
+[ADR-001](../../adr-001-v1-architecture.md) decisions 6, 7 and 10,
+invariant 14.
 
 ## Decided
 
@@ -27,6 +27,11 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 The recogniser port's clients: live recognition and catch-up, which send
 windows of recorded audio and pass the words to the stabilizer.
 
+## Non-goals
+
+English terms in Latin letters: a v2 condition, which Parakeet v3 does not
+meet ([tests.md](../../research/tests.md) run 5).
+
 ## Behaviour
 
 ```gherkin
@@ -36,11 +41,6 @@ Feature: A client gets words from a window of audio
     Given the live model is ready
     When the client sends a window of speech
     Then the client can get its words, each with its start and end in the call's clock
-
-  Scenario: S-2 English terms in Russian speech
-    Given the live model is ready
-    When the client sends a Russian sentence with English terms
-    Then the client can get those terms in Latin letters
 
   Scenario: S-3 Silence
     Given the live model is ready

@@ -31,6 +31,8 @@ folders in Finder.
 - Any access to calls other than the app's windows and the call folders.
 - Echo cancellation: calls are taken on headphones.
 - Resuming a call's live text after a crash.
+- English terms in Latin letters: a v2 condition; Parakeet v3 gives them in
+  Cyrillic ([tests.md](../research/tests.md) run 5).
 
 ## Specs it composes
 
@@ -69,11 +71,6 @@ Feature: The user records a call, reads it live and keeps it
     When the Zoom call ends
     Then the user can find the call with its audio and text in the calls list
     And the user can still read the call in the live panel
-
-  Scenario: S-7 English terms in Russian speech read as spoken
-    Given a recording with «Живой текст» ticked and the live model ready
-    When the owner says RACI, OKR and SLA in a Russian sentence
-    Then the user can read RACI, OKR and SLA in Latin letters in the call's text
 
   Scenario: S-16 Each call has its own folder
     Given a call in the calls list
