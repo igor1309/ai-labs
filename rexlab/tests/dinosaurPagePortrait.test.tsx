@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { addTransitionType } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type Viewport } from "../src/App.tsx";
-import { dinosaurWordsWidth, keptLines } from "../src/dinosaurPageLayout.ts";
+import { dinosaurPageGeometry, dinosaurWordsWidth, keptLines, PORTRAIT_PAGE } from "../src/dinosaurPageLayout.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR } from "../src/SharedPicture.tsx";
@@ -67,6 +67,7 @@ async function openPage(size: WindowSize, {
 // The CSS contracts under which the width and spacing sums hold. jsdom
 // does not lay out boxes, so every structural assumption is checked here.
 function uprightRules(size: WindowSize, width: number) {
+  const sizes = PORTRAIT_PAGE;
   const at = (selector: string) => styleAt(part(selector), size);
   const page = at(".dinosaur-page");
   const bar = at(".dinosaur-bar");
@@ -81,33 +82,50 @@ function uprightRules(size: WindowSize, width: number) {
   ]);
   expect([page.value("display"), page.value("flex-direction"), body.value("flex-direction")]).toEqual(["flex", "column", "column"]);
   expect([bar.value("display"), bar.value("justify-content"), bar.value("align-items")]).toEqual(["flex", "space-between", "center"]);
-  expect([at(".home-button").px("height"), page.rowGap(), body.rowGap()]).toEqual([56, 28, 32]);
-  expect([stage.value("display"), stage.value("grid-template-columns"), stage.columnGap(), stage.value("align-items")]).toEqual(["grid", "72px minmax(0, 1fr) 72px", 16, "center"]);
-  expect([stage.px("padding-left"), stage.px("padding-right"), stage.px("padding-top"), stage.px("padding-bottom"), stage.px("border-radius")]).toEqual([28, 28, 28, 28, 32]);
+  expect([page.px("padding-top"), page.px("padding-bottom"), page.px("padding-left"), page.px("padding-right")]).toEqual([sizes.topPadding, sizes.bottomPadding, sizes.sidePadding, sizes.sidePadding]);
+  expect([at(".home-button").px("height"), page.rowGap(), body.rowGap()]).toEqual([sizes.barHeight, sizes.barGap, sizes.stageGap]);
+  expect([stage.value("display"), stage.value("grid-template-columns"), stage.columnGap(), stage.value("align-items")]).toEqual(["grid", `${sizes.arrowSize}px minmax(0, 1fr) ${sizes.arrowSize}px`, sizes.arrowGap, "center"]);
+  expect([stage.px("padding-left"), stage.px("padding-right"), stage.px("padding-top"), stage.px("padding-bottom"), stage.px("border-radius")]).toEqual([sizes.stagePadding, sizes.stagePadding, sizes.stagePadding, sizes.stagePadding, 32]);
   expect([page.px("min-height"), body.value("flex-shrink"), words.value("flex-shrink")]).toEqual([size[1], "0", "0"]);
-  expect([stage.px("min-height"), stage.value("flex-shrink"), page.value("overflow-y"), page.value("overscroll-behavior")]).toEqual([248, "0", "auto", "none"]);
+  expect([stage.px("min-height"), stage.px("flex-basis"), stage.value("flex-shrink"), page.value("overflow-y"), page.value("overscroll-behavior")]).toEqual([sizes.minimumStage, sizes.minimumStage, "0", "auto", "none"]);
   expect(at(".dinosaur-steps").value("display")).toBe("contents");
   for (const [selector, column] of [[".dinosaur-step:first-child", 1], [".dinosaur-step:last-child", 3]] as const) {
-    expect([at(selector).px("width"), at(selector).px("height"), at(selector).value("grid-column"), at(selector).value("grid-row")]).toEqual([72, 72, String(column), "1"]);
+    expect([at(selector).px("width"), at(selector).px("height"), at(selector).value("grid-column"), at(selector).value("grid-row")]).toEqual([sizes.arrowSize, sizes.arrowSize, String(column), "1"]);
   }
   expect([at(".dinosaur-stage-art").value("grid-column"), at(".dinosaur-stage-art").value("grid-row"), at(".dinosaur-stage-art").value("aspect-ratio")]).toEqual(["2", "1", "4 / 3"]);
+  expect(sizes.pictureRatio).toBe(4 / 3);
   expect(at(".dinosaur-stage-picture").value("object-fit")).toBe("contain");
-  expect([words.value("display"), words.value("flex-direction"), words.rowGap(), about.rowGap()]).toEqual(["flex", "column", 24, 24]);
-  expect(at(".dinosaur-group").px("min-height")).toBe(22);
-  expect(at(".dinosaur-group").px("line-height")).toBe(22);
+  expect([words.value("display"), words.value("flex-direction"), words.rowGap(), about.rowGap()]).toEqual(["flex", "column", sizes.wordsGap, sizes.wordsGap]);
+  expect(at(".dinosaur-group").px("min-height")).toBe(sizes.groupHeight);
+  expect(at(".dinosaur-group").px("line-height")).toBe(sizes.groupHeight);
+  expect(at(".dinosaur-group").px("margin-bottom")).toBe(sizes.groupMargin);
   expect(about.rowGap() + at(".dinosaur-group").px("margin-bottom")).toBe(8);
-  expect([words.value("container-type"), at(".dinosaur-page-name").value("font-size"), at(".dinosaur-page-name").value("white-space")]).toEqual(["inline-size", "min(64px, 7.8cqi)", "nowrap"]);
-  expect(at(".dinosaur-facts").columnGap()).toBe(16);
+  expect([words.value("container-type"), at(".dinosaur-page-name").value("font-size"), at(".dinosaur-page-name").value("white-space")]).toEqual(["inline-size", `min(${sizes.nameMaximum}px, ${sizes.nameRatio * 100}cqi)`, "nowrap"]);
+  for (const selector of [".dinosaur-page-name", ".dinosaur-fact-label", ".dinosaur-fact-value", ".dinosaur-position", ".home-button", ".dinosaur-info .diet-tag"]) {
+    expect(at(selector).value("line-height"), selector).toBe(String(sizes.textLineHeight));
+  }
+  expect(at(".diet-tag-face").px("height")).toBe(sizes.dietHeight);
+  expect(at(".dinosaur-facts").columnGap()).toBe(sizes.factsGap);
   expect(at(".dinosaur-facts").value("display")).toBe("flex");
   const fact = at(".dinosaur-fact");
   expect([fact.value("flex-grow"), fact.value("flex-basis"), fact.px("min-width"), fact.value("box-sizing"), fact.value("container-type")]).toEqual(["1", "0px", 0, "border-box", "inline-size"]);
-  expect([fact.px("padding-left"), fact.px("padding-right")]).toEqual([24, 24]);
+  expect([fact.px("padding-left"), fact.px("padding-right"), fact.px("padding-top"), fact.px("padding-bottom"), fact.rowGap()]).toEqual([sizes.factSidePadding, sizes.factSidePadding, sizes.factVerticalPadding, sizes.factVerticalPadding, sizes.factGap]);
+  expect(at(".dinosaur-fact-label").px("font-size")).toBe(sizes.factLabelSize);
   expect(at(".dinosaur-fact-value").value("white-space")).toBe("nowrap");
-  expect(at(".dinosaur-fact-value").value("font-size")).toBe("min(44px, 26cqi)");
+  expect(at(".dinosaur-fact-value").value("font-size")).toBe(`min(${sizes.factValueMaximum}px, ${sizes.factValueRatio * 100}cqi)`);
   expect([part(".dinosaur-page").dataset.descriptionLines, part(".dinosaur-page").dataset.noteLines]).toEqual([String(keptLines(width).description), String(keptLines(width).note)]);
   expect(part(".dinosaur-description").dataset.lines).toBe(String(keptLines(width).description));
   expect(part(".source-note").dataset.lines).toBe(String(keptLines(width).note));
-  expect([at(".dinosaur-description").px("font-size"), at(".dinosaur-description").px("line-height"), at(".source-note").px("font-size"), at(".source-note").px("line-height")]).toEqual([28, 41, 13, 16.5]);
+  expect([at(".dinosaur-description").px("font-size"), at(".dinosaur-description").px("line-height"), at(".source-note").px("font-size"), at(".source-note").px("line-height")]).toEqual([28, sizes.descriptionLineHeight, 13, sizes.noteLineHeight]);
+  expect(at(".dinosaur-description").value("height")).toBe(`calc(var(--description-lines, 3) * ${sizes.descriptionLineHeight}px)`);
+  expect(at(".source-note").value("height")).toBe(`calc(var(--note-lines, 3) * ${sizes.noteLineHeight}px)`);
+  // jsdom drops typed attr() declarations; check the browser's height rule
+  // against the same line heights as the computed fallback above.
+  const css = appStylesheet(NO_SAFE_AREA);
+  for (const [selector, lineHeight] of [["dinosaur-description", sizes.descriptionLineHeight], ["source-note", sizes.noteLineHeight]] as const) {
+    const rule = new RegExp(`html\\[data-size="tall"\\] \\.${selector}\\s*\\{([^}]+)\\}`).exec(css)?.[1];
+    expect(rule).toContain(`height: calc(attr(data-lines type(<number>), 3) * ${lineHeight}px);`);
+  }
   expect([at(".dinosaur-description").value("font-weight"), at(".source-note").value("font-weight"), at(".dinosaur-page-name").value("font-weight"), at(".dinosaur-fact-value").value("font-weight")]).toEqual(["500", "400", "700", "700"]);
 }
 
@@ -119,7 +137,7 @@ describe("the app's dinosaur page upright", () => {
     expect(screen.getByRole("button", { name: TEXTS.en.catalogue })).toBe(part(".dinosaur-bar .home-button"));
     expect(part(".dinosaur-position").textContent).toBe("10 / 52");
     const words = dinosaurWordsWidth(width, 0, 0);
-    expect(Math.abs(Math.min(64, words * 0.078) - name)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dinosaurPageGeometry(width, height, 0, 0).nameSize - name)).toBeLessThanOrEqual(1);
     uprightRules([width, height], words);
   });
 

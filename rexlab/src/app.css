@@ -2424,6 +2424,15 @@ html[data-size="tall"] .dinosaur-about {
 
 html[data-size="tall"] .dinosaur-page-name {
   font-size: min(64px, 7.8cqi);
+  line-height: 1.25;
+}
+
+html[data-size="tall"] .dinosaur-bar .home-button,
+html[data-size="tall"] .dinosaur-position,
+html[data-size="tall"] .dinosaur-info .diet-tag,
+html[data-size="tall"] .dinosaur-fact-label,
+html[data-size="tall"] .dinosaur-fact-value {
+  line-height: 1.25;
 }
 
 html[data-size="tall"] .dinosaur-group {
