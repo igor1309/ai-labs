@@ -38,7 +38,7 @@ public struct Segments: Equatable, Sendable {
 
     mutating func hear(_ hearing: Hearing) {
 
-        take(hearing.words)
+        take(hearing)
         if let finalThrough = hearing.finalThrough {
             while settledCount < words.count, words[settledCount].end <= finalThrough {
                 settledCount += 1
@@ -50,7 +50,7 @@ public struct Segments: Equatable, Sendable {
 
     mutating func finish(_ hearing: Hearing) {
 
-        take(hearing.words)
+        take(hearing)
         cutAtPauses()
         settledCount = words.count
         ending = .finished
@@ -64,15 +64,15 @@ public struct Segments: Equatable, Sendable {
         cutIntoSegments()
     }
 
-    /// Replaces pending words from the first reported one on; reported words
+    /// Replaces pending words from where the report starts; reported words
     /// over settled ones are dropped.
-    private mutating func take(_ reported: [Word]) {
+    private mutating func take(_ hearing: Hearing) {
 
         let settledEnd = settledCount > 0 ? words[settledCount - 1].end : -Double.infinity
-        let reported = reported.filter { $0.start >= settledEnd }
-        guard let first = reported.first else { return }
+        let reported = hearing.words.filter { $0.start >= settledEnd }
+        guard let from = hearing.from ?? reported.first?.start else { return }
 
-        let kept = words[settledCount...].prefix { $0.start < first.start }
+        let kept = words[settledCount...].prefix { $0.start < from }
         words = words[..<settledCount] + kept + reported
     }
 
@@ -91,8 +91,9 @@ public struct Segments: Equatable, Sendable {
         guard !words.isEmpty else { return all = [] }
 
         let bounds = [0] + cuts + [words.count]
-        all = zip(bounds, bounds.dropFirst()).enumerated().map { id, bound in
+        all = zip(bounds, bounds.dropFirst()).enumerated().compactMap { id, bound in
             let (lower, upper) = bound
+            guard lower < upper else { return nil }
             let settledUpper = min(max(settledCount, lower), upper)
             return Segment(
                 id: id,

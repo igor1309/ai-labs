@@ -2,6 +2,10 @@
 
 ## 2026-10-22
 
+- The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own
+  windows behind Live text's recogniser interface. Replayed through Live
+  text, the recorded windows settle every word once. A report now says
+  where it starts, so a word the next window no longer hears is gone.
 - Started over: the architecture decision, every spec and the Swift
   package are removed. The architecture decision is written again from
   scratch, then the specs, then the code.

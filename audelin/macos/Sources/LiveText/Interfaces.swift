@@ -33,16 +33,21 @@ public protocol Recognizer: Sendable {
 /// What a recogniser has heard so far.
 public struct Hearing: Equatable, Sendable {
 
-    /// Words from some time in the track on, in order. Words before the first
-    /// one are as last reported.
+    /// Words from some time in the track on, in order. Words before it are
+    /// as last reported.
     public var words: [Word]
+    /// Where in the track the report starts, at or before its first word:
+    /// words heard from there before and not reported now are gone. Nil
+    /// when it starts at the first word.
+    public var from: Double?
     /// Words ending by this time in the track are final; nil when the
     /// recogniser cannot tell.
     public var finalThrough: Double?
 
-    public init(words: [Word], finalThrough: Double? = nil) {
+    public init(words: [Word], from: Double? = nil, finalThrough: Double? = nil) {
 
         self.words = words
+        self.from = from
         self.finalThrough = finalThrough
     }
 }

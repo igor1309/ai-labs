@@ -45,6 +45,11 @@ Feature: Live text for one track
     When the recogniser hears those words differently
     Then I read the new words in their place, and the settled words before them stay
 
+  Scenario: S-10 Pending words no longer heard are gone
+    Given a segment has pending words
+    When the recogniser reports no words where they were
+    Then I can no longer read them
+
   Scenario: S-3 Words settle
     Given a segment has pending words
     When the recogniser makes them final

@@ -54,3 +54,9 @@ With pending words reported, the fake recogniser throws. Evidence:
 With pending words reported, the fake audio source ends; the fake
 recogniser finishes with one word more. Evidence:
 `LiveTextTests.theEndOfTheAudioKeepsTheTextSoFar`.
+
+## S-10 Pending words no longer heard are gone
+
+With one word settled and one pending, the fake recogniser reports no words
+from the pending word's start. Evidence:
+`LiveTextTests.pendingWordsNoLongerHeardAreGone`.
