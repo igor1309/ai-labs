@@ -12,6 +12,7 @@ final class Microphone: AudioSource, @unchecked Sendable {
         let (stream, continuation) = AsyncStream<AudioChunk>.makeStream()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
+        Log.line("microphone: access \(Self.access), \(format.sampleRate) Hz, \(format.channelCount) channel(s)")
         input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(format.sampleRate / 10), format: format) { buffer, _ in
             guard let data = buffer.floatChannelData?[0] else { return }
             let samples = Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength)))
@@ -20,7 +21,9 @@ final class Microphone: AudioSource, @unchecked Sendable {
         continuation.onTermination = { _ in self.end() }
         do {
             try engine.start()
+            Log.line("microphone: started")
         } catch {
+            Log.line("microphone: failed to start: \(error)")
             continuation.finish()
         }
         return stream
@@ -30,6 +33,30 @@ final class Microphone: AudioSource, @unchecked Sendable {
 
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        Log.line("microphone: stopped")
+    }
+
+    private static var access: String {
+
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized: "granted"
+        case .denied: "denied: allow the terminal in System Settings › Privacy & Security › Microphone"
+        case .restricted: "restricted"
+        case .notDetermined: "not asked yet"
+        @unknown default: "unknown"
+        }
+    }
+
+    /// Asks for microphone access if it was never asked, and says whether
+    /// it is granted.
+    static func requestAccess() async -> Bool {
+
+        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            Log.line("microphone: asking for access")
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+        }
+        Log.line("microphone: access \(access)")
+        return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
 }
 
@@ -43,7 +70,10 @@ struct RecordedTrack: AudioSource, @unchecked Sendable {
 
     func audio() -> AsyncStream<AudioChunk> {
 
-        guard let file = try? AVAudioFile(forReading: url) else { return AsyncStream { nil } }
+        guard let file = try? AVAudioFile(forReading: url) else {
+            Log.line("recording: cannot read \(url.path)")
+            return AsyncStream { nil }
+        }
         let format = file.processingFormat
         let block = AVAudioFrameCount(format.sampleRate / 10)
         let channel = min(channel, Int(format.channelCount) - 1)

@@ -65,9 +65,17 @@ struct LiveTextPreviewView: View {
 
             Section("Status") {
 
-                Text(call.status)
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(call.status(at: .now))
+                }
+                Text("Log: \(Log.file.path)")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .textSelection(.enabled)
             }
         }
+        .task { call.prepare() }
+        .onChange(of: call.model) { call.prepare() }
     }
 
     private func chooseFile() {
