@@ -6,6 +6,8 @@ import LiveText
 final class Microphone: AudioSource, @unchecked Sendable {
 
     private let engine = AVAudioEngine()
+    private let endLock = NSLock()
+    private var isEnded = false
 
     func audio() -> AsyncStream<AudioChunk> {
 
@@ -29,8 +31,13 @@ final class Microphone: AudioSource, @unchecked Sendable {
         return stream
     }
 
-    private func end() {
+    func end() {
 
+        endLock.lock()
+        let wasEnded = isEnded
+        isEnded = true
+        endLock.unlock()
+        guard !wasEnded else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         Log.line("microphone: stopped")

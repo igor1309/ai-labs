@@ -58,10 +58,51 @@ final class LiveCall {
     var followsLive = true
     var holds: [PanelState.Held] = []
 
+    struct Audio {
+
+        var tracks: [(PanelState.Speaker, any AudioSource)]
+        var stop: () -> Void
+    }
+
+    private let load: @MainActor (Model) async throws -> any Recognizer
+    private let beginAudio: @MainActor (Source, ContinuousClock.Instant) async throws -> Audio
+    private let now: @MainActor () -> ContinuousClock.Instant
+
+    init(
+        load: @escaping @MainActor (Model) async throws -> any Recognizer = { try await $0.load() },
+        beginAudio: @escaping @MainActor (Source, ContinuousClock.Instant) async throws -> Audio = LiveCall.beginAudio,
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { .now }
+    ) {
+
+        self.load = load
+        self.beginAudio = beginAudio
+        self.now = now
+    }
+
     private var message = "Press Начать"
     private var loadingSince: ContinuousClock.Instant?
-    private var lives: [LiveText] = []
-    private var player: AVAudioPlayer?
+    private final class Session {
+
+        let model: Model
+        let pause: Double
+        var audio: Audio?
+        var lives: [LiveText] = []
+        var stopped = false
+
+        init(model: Model, pause: Double) {
+
+            self.model = model
+            self.pause = pause
+        }
+
+        func stopAudio() {
+
+            audio?.stop()
+            audio = nil
+        }
+    }
+
+    private var session: Session?
     /// A recogniser loaded ahead, for the next start's first track.
     private var spare: (model: Model, loading: Task<(any Recognizer)?, Never>)?
     private var lastLogged: [PanelState.Speaker: ContinuousClock.Instant] = [:]
@@ -104,7 +145,7 @@ final class LiveCall {
         let model = model
         Log.line("preparing \(model.rawValue) ahead of a start")
         spare = (model, Task {
-            do { return try await model.load() } catch {
+            do { return try await load(model) } catch {
                 Log.line("preparing \(model.rawValue) failed: \(error)")
                 return nil
             }
@@ -114,81 +155,113 @@ final class LiveCall {
     func start() async {
 
         guard !isRecording else { return }
+        let session = Session(model: model, pause: pause)
+        self.session = session
+        let source = source
+        let startedAt = now()
+        started = startedAt
         transcript = Transcript()
         holds = []
         lastLogged = [:]
         isRecording = true
-        message = "Loading \(model.rawValue)…"
-        loadingSince = .now
-        Log.line("start: \(model.rawValue), source \(describe(source)), pause \(pause) s")
+        message = "Loading \(session.model.rawValue)…"
+        loadingSince = startedAt
+        Log.line("start: \(session.model.rawValue), source \(describe(source)), pause \(session.pause) s")
 
         do {
-            // The audio starts now and waits for the models: a recorded track
-            // is paced from now, and the microphone's chunks queue up.
-            let tracks: [(PanelState.Speaker, any AudioSource)]
-            let startedAt = ContinuousClock.now
-            started = startedAt
-            switch source {
-            case .microphone:
-                guard await Microphone.requestAccess() else {
-                    throw Failure("No microphone access: allow the terminal in System Settings › Privacy & Security › Microphone")
-                }
-                tracks = [(.me, Started(Microphone().audio()))]
-            case let .file(url):
-                let channels = try RecordedTrack.channels(of: url)
-                Log.line("recording: \(channels) channel(s)")
-                let speakers: [PanelState.Speaker] = channels > 1 ? [.me, .them] : [.me]
-                tracks = speakers.enumerated().map { ($1, RecordedTrack(url: url, channel: $0, started: startedAt)) }
-                player = try? AVAudioPlayer(contentsOf: url)
-                player?.play()
-            }
-            var recognizers: [any Recognizer] = []
-            for _ in tracks { recognizers.append(try await recognizer()) }
-            loadingSince = nil
-            guard isRecording else {
-                Log.line("stopped while loading")
-                message = "Stopped"
+            // Audio and playback use the clock's origin, before loading;
+            // queued audio lets live text catch up when the models are ready.
+            let audio = try await beginAudio(source, startedAt)
+            guard self.session === session, !session.stopped else {
+                audio.stop()
                 return
             }
+            session.audio = audio
+            let tracks = audio.tracks
+            var recognizers: [any Recognizer] = []
+            for _ in tracks {
+                recognizers.append(try await recognizer(for: session))
+                guard self.session === session, !session.stopped else { return }
+            }
+            loadingSince = nil
 
-            lives = recognizers.map { LiveText(recognizer: $0, pause: pause) }
-            message = "Listening with \(model.rawValue)"
+            let lives = recognizers.map { LiveText(recognizer: $0, pause: session.pause) }
+            session.lives = lives
+            message = "Listening with \(session.model.rawValue)"
             Log.line("listening on \(tracks.count) track(s), catching up \(seconds(since: startedAt)) of audio")
 
             let showing = zip(tracks, lives).map { track, live in
-                Task { for await segments in live.updates { show(track.0, segments) } }
+                Task {
+                    for await segments in live.updates {
+                        guard self.session === session else { continue }
+                        show(track.0, segments)
+                    }
+                }
             }
             await Self.listen(Array(zip(lives, tracks.map(\.1))))
             for task in showing { await task.value }
+            guard self.session === session else { return }
             if message.hasPrefix("Listening") { message = "Finished" }
             Log.line("finished")
         } catch {
+            guard self.session === session, !session.stopped else { return }
             loadingSince = nil
             message = "Failed: \(error)"
             Log.line("failed: \(error)")
         }
-        player?.stop()
-        lives = []
+        session.stopAudio()
+        session.lives = []
+        self.session = nil
         isRecording = false
         prepare()
     }
 
     func stop() {
 
+        guard let session else { return }
         Log.line("stop")
-        player?.stop()
-        for live in lives { Task { await live.stop() } }
-        if lives.isEmpty { isRecording = false }
+        session.stopped = true
+        session.stopAudio()
+        for live in session.lives { Task { await live.stop() } }
+        if session.lives.isEmpty {
+            self.session = nil
+            isRecording = false
+            loadingSince = nil
+            message = "Stopped"
+        }
     }
 
-    /// The spare if it is the chosen model, else a fresh one.
-    private func recognizer() async throws -> any Recognizer {
+    /// The prepared recogniser belongs to the start that takes it.
+    private func recognizer(for session: Session) async throws -> any Recognizer {
 
-        if let spare, spare.model == model {
+        if let spare, spare.model == session.model {
             self.spare = nil
-            if let recognizer = await spare.loading.value { return recognizer }
+            let recognizer = await spare.loading.value
+            guard self.session === session, !session.stopped else { throw CancellationError() }
+            if let recognizer { return recognizer }
         }
-        return try await model.load()
+        return try await load(session.model)
+    }
+
+    private static func beginAudio(_ source: Source, _ startedAt: ContinuousClock.Instant) async throws -> Audio {
+
+        switch source {
+        case .microphone:
+            guard await Microphone.requestAccess() else {
+                throw Failure("No microphone access: allow the terminal in System Settings › Privacy & Security › Microphone")
+            }
+            let microphone = Microphone()
+            let stream = microphone.audio()
+            return Audio(tracks: [(.me, Started(stream))], stop: { microphone.end() })
+        case let .file(url):
+            let channels = try RecordedTrack.channels(of: url)
+            Log.line("recording: \(channels) channel(s)")
+            let speakers: [PanelState.Speaker] = channels > 1 ? [.me, .them] : [.me]
+            let tracks = speakers.enumerated().map { ($1, RecordedTrack(url: url, channel: $0, started: startedAt) as any AudioSource) }
+            let player = try? AVAudioPlayer(contentsOf: url)
+            player?.play()
+            return Audio(tracks: tracks, stop: { player?.stop() })
+        }
     }
 
     private nonisolated static func listen(_ tracks: [(LiveText, any AudioSource)]) async {
