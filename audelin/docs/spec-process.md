@@ -29,7 +29,7 @@ before writing on (owner, 2026-10-22).
 - **One observer**, named before the first scenario. The top level is
   written for the user; every other spec for its client.
 - **Gherkin only:** one `Feature`, scenarios `S-<n> <name>` with ids never
-  renumbered or reused, and `Given`/`When`/`Then` steps of one line each.
+  renumbered or reused once committed, and `Given`/`When`/`Then` steps of one line each.
 - **`Then` is a capability** the observer gains or loses: what it can see or
   do. Never a state, an event or an effect.
 - **One scenario, one case.** A step that reads "A or B" is two scenarios.
@@ -48,6 +48,20 @@ before writing on (owner, 2026-10-22).
   Each such decision is one line in `## Decided`, above the scenarios, with
   its grounds, so the owner can overturn it. A gap is never handed to the
   owner as an open question (owner, 2026-10-22).
+- **Prior art before a decision.** Read how the closest open-source app does
+  it, from its source: Amanu first, then the others in `docs/research/`.
+  Follow it, and say so in the line. A line that departs from it names the
+  evidence that it is wrong for Audelin; a preference is not evidence
+  (owner, 2026-10-22: "do grounding first", "why do you think amanu is doing
+  it wrong?").
+- **Every `## Decided` line is challenged by Codex** before the spec is
+  committed, including lines added to a spec already done. Repeat until a
+  round finds nothing new.
+- **A number cites the run that measured it** (`docs/research/tests.md`),
+  or it is a decision with its own grounds.
+- **Every wait and failure the user can see is a scenario:** loading,
+  catching up, a missing track. Model loading was found only in a live
+  trial (2026-10-22).
 
 ## QA.md
 
@@ -56,9 +70,24 @@ scenario is driven and what evidence proves it. Cores are driven through
 fake ports and recorded fixtures, adapters for real on this Mac or through
 a fake of their system binding (§ Building), and the user spec on a real
 call. A row has evidence or reads Missing. Verdicts go
-to run reports, never into `QA.md`.
+to run reports, never into `QA.md`. A row's drive must be able to fail its
+scenario: it reads back the sound, word or text the `Then` promises, not a
+call that was made.
 
 ## Building
+
+Every change to behaviour goes the same way, a fix to a component already
+built included: spec change, brief, `agister run implement_tested`, then
+`code_review`, then one commit for its findings. A hand-built change skips
+the red runs, and its review finds the missing tests afterwards (six on
+2026-10-22).
+
+A review runs on a detached worktree at the candidate commit, and nothing
+is committed to the reviewed branch while it runs.
+
+A hands-on trial, such as a preview app, states before it runs what it can
+and cannot show: the live text preview heard only the microphone, which
+was said after the trial.
 
 Code is built test-first: each test is run red before the code exists,
 failing on its assertion rather than a compile error (the API is stubbed
@@ -80,7 +109,8 @@ something did not happen by sleeping; it asserts the state that says so
 
 1. Top-down: the user spec first, then each UI component, each Core and each adapter.
    A component's scenarios are exactly what its client needs to keep its own
-   scenarios.
+   scenarios. A spec whose client has none yet traces each of its needs to
+   the user spec and names the missing client, and that client is next.
 2. Each spec is reviewed against its oracle and its client's spec only:
    observer, capabilities, traceability in both directions (every scenario
    traces to the oracle; every behaviour the oracle names is a scenario, a
