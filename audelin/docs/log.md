@@ -2,6 +2,12 @@
 
 ## 2026-10-22
 
+- The stabilizer is built in [macos/](../macos/) (TranscriptCore). A
+  restart at the watermark with windows shifted by 0.24 s logs no word
+  twice and loses none on the recorded fixtures, so the watermark stays as
+  ADR-001 decision 4 has it. The fixtures showed Parakeet stretching a
+  window's last word past the next window's start; such a word now commits
+  once no window can read it again (decision 7 amended, stabilizer S-14).
 - The v1 behaviour is specified as 48 SPEC.md and QA.md pairs, one per
   observer, under [spec/](spec/); the single v1 spec is gone.
 - Terms on clean speech: Parakeet v3 through Audelin's own windows gives

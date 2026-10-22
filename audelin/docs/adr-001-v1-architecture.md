@@ -94,7 +94,10 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    words and failed windows, and its `finish()` returns plain text). It
    commits a segment (track, epoch, start and end time, text) only when the segment
    can no longer change: a window decoded it with full right context, or
-   the epoch has ended and the final window decoded it. Segments commit in
+   the epoch has ended and the final window decoded it, or no later window
+   can read it again because a window starts after it (amended 2026-10-22,
+   agent: Parakeet stretches a window's last word into the silence after
+   it, past the next window's start; [stabilizer](spec/stabilizer/SPEC.md) S-14). Segments commit in
    time order per track and epoch: a later segment waits while any earlier
    text is still in the live tail. Until committed, text is a live tail,
    shown in the panel.
