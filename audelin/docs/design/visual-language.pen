@@ -13137,7 +13137,7 @@
                   "reusable": true,
                   "width": 620,
                   "height": 405,
-                  "fill": "#00000033",
+                  "fill": "$shadow",
                   "cornerRadius": [
                     0,
                     0,
@@ -27902,16 +27902,16 @@
                                               "fill": "$btn",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
-                                              "padding": 2,
+                                              "padding": "$space-2",
                                               "children": [
                                                 {
                                                   "type": "frame",
                                                   "id": "slvFJ",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -27931,10 +27931,10 @@
                                                   "type": "frame",
                                                   "id": "wbxYA",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -27955,10 +27955,10 @@
                                                   "id": "riomU",
                                                   "name": "Seg 4 с",
                                                   "fill": "$selBg",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -27978,10 +27978,10 @@
                                                   "type": "frame",
                                                   "id": "pDMNj",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -28001,10 +28001,10 @@
                                                   "type": "frame",
                                                   "id": "HvRWT",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -28029,8 +28029,8 @@
                                               "fill": "$warnBg",
                                               "cornerRadius": "$radius-bar",
                                               "padding": [
-                                                1,
-                                                6
+                                                "$space-2",
+                                                "$space-6"
                                               ],
                                               "children": [
                                                 {
@@ -30442,16 +30442,16 @@
                                               "fill": "$btn",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
-                                              "padding": 2,
+                                              "padding": "$space-2",
                                               "children": [
                                                 {
                                                   "type": "frame",
                                                   "id": "cYjSz",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -30471,10 +30471,10 @@
                                                   "type": "frame",
                                                   "id": "hhUjE",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -30495,10 +30495,10 @@
                                                   "id": "M9MKl",
                                                   "name": "Seg 4 с",
                                                   "fill": "$selBg",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -30518,10 +30518,10 @@
                                                   "type": "frame",
                                                   "id": "QxOVy",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -30541,10 +30541,10 @@
                                                   "type": "frame",
                                                   "id": "YnGyo",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -30569,8 +30569,8 @@
                                               "fill": "$warnBg",
                                               "cornerRadius": "$radius-bar",
                                               "padding": [
-                                                1,
-                                                6
+                                                "$space-2",
+                                                "$space-6"
                                               ],
                                               "children": [
                                                 {
