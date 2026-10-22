@@ -2,6 +2,8 @@
 
 ## 2026-10-22
 
+- Nemotron 3.5 hears Russian speech as it streams, settling each word when
+  the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own
   windows behind Live text's recogniser interface. Replayed through Live
   text, the recorded windows settle every word once. A report now says

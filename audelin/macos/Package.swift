@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
+        .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
@@ -16,11 +17,22 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "AudioConversion"
+        ),
+        .target(
             name: "GlassLedger",
             resources: [.copy("Resources/Fonts")]
         ),
         .target(
             name: "LiveText"
+        ),
+        .target(
+            name: "NemotronRecognizer",
+            dependencies: [
+                "AudioConversion",
+                "LiveText",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
         ),
         .target(
             name: "PanelUI",
@@ -29,6 +41,7 @@ let package = Package(
         .target(
             name: "ParakeetRecognizer",
             dependencies: [
+                "AudioConversion",
                 "LiveText",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
@@ -40,6 +53,10 @@ let package = Package(
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "NemotronRecognizerTests",
+            dependencies: ["NemotronRecognizer"]
         ),
         .testTarget(
             name: "PanelUITests",

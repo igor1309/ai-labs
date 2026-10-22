@@ -8,43 +8,50 @@ temp file.
 ## S-1 Nothing is heard before a chunk's audio is in
 
 Audio up to just short of a chunk; the fake decodes nothing until a chunk is
-in. Evidence: Missing.
+in. Evidence:
+`NemotronRecognizerTests.nothingIsHeardBeforeAChunksAudioIsIn`.
 
 ## S-2 Words are heard at their time in the track
 
 Scripted tokens with times; the report's words carry those times, joined at
-the word marker. Evidence: Missing.
+the word marker. Evidence:
+`NemotronRecognizerTests.wordsAreJoinedAtTheirTimesInTheTrack`.
 
 ## S-3 A word followed by another is final
 
 Two words decoded, the second starting after the first ends; the first
-ends by the report's final time. Evidence: Missing.
+ends by the report's final time. Evidence:
+`NemotronRecognizerTests.aWordFollowedByAnotherIsFinal`.
 
 ## S-4 The last word heard is pending
 
 Two words decoded; the second ends after the report's final time.
-Evidence: Missing.
+Evidence:
+`NemotronRecognizerTests.theLastWordHeardIsPending`.
 
 ## S-5 A word that grows is read in its place
 
 Through Live text: a chunk ends mid-word, the next adds its rest and a new
-word. Evidence: Missing.
+word. Evidence:
+`NemotronRecognizerTests.aGrowingWordIsReadInItsPlaceOnce`.
 
 ## S-6 A chunk with nothing new changes nothing
 
 Through Live text: a feed whose tokens are the same as the last. Evidence:
-Missing.
+`NemotronRecognizerTests.aChunkWithNothingNewChangesNothing`.
 
 ## S-7 Finishing hears the rest
 
 The fake's finish adds a word; finishing reports it, all final. Evidence:
-Missing.
+`NemotronRecognizerTests.finishingHearsTheRest`.
 
 ## S-8 Audio at another sample rate is heard
 
 Nemotron 3.5 for real over the system voice reading a Russian sentence at
-48 kHz, heard through Live text word for word. Evidence: Missing.
+48 kHz, heard through Live text word for word. Evidence:
+`NemotronRecognizerTests.audioAtAnotherSampleRateIsHeard`.
 
 ## S-9 A failing model fails the recogniser
 
-The fake binding throws on a feed. Evidence: Missing.
+The fake binding throws on a feed. Evidence:
+`NemotronRecognizerTests.aFailingModelFailsTheRecogniser`.
