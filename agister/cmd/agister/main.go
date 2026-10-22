@@ -275,18 +275,14 @@ func homeFolder(user string, environ []string) string {
 // newChecker is check over the settings of home's folder and the launch
 // directory, read once: every answer of every part comes from the one
 // snapshot layout gives.
-func newChecker(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runTakes ...map[string]call.Inputs) (*check.Checker, error) {
+func newChecker(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runTakes map[string]call.Inputs) (*check.Checker, error) {
 	read, err := readSettings(home, launch, fs, roots, wrappers)
 	if err != nil {
 		return nil, err
 	}
-	resolves, err := newCheckResolve(read.resolver, read.source, read.snapshot.Layers)
+	resolves, err := newCheckResolve(read.resolver, read.source, read.snapshot.Layers, read.documents, runTakes)
 	if err != nil {
 		return nil, err
-	}
-	if len(runTakes) > 0 {
-		resolves.docs = read.documents
-		resolves.takes = runTakes[0]
 	}
 	fields, err := newCheckFields(read.documents, read.snapshot.Layers)
 	if err != nil {

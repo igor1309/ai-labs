@@ -54,22 +54,6 @@ func (s *source) Workflow(name string) (resolve.Workflow, []resolve.Problem) {
 	}, nil
 }
 
-// File is the nearest layer file of a document, for a composition-generated
-// problem that has no field origin of its own.
-func (s *source) File(kind resolve.Kind, name string) string {
-	k := kindOf(kind).layout
-	document, ok := s.snapshot.Documents[k][name]
-	if !ok {
-		return ""
-	}
-	for _, file := range []*layout.Source{document.Sources.Project, document.Sources.Repository, document.Sources.Home} {
-		if file != nil {
-			return file.Path
-		}
-	}
-	return ""
-}
-
 func (s *source) Process(name string) (resolve.Process, []resolve.Problem) {
 	process, problems := s.documents.Process(name)
 	if len(problems) > 0 {

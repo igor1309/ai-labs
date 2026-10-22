@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
@@ -190,9 +191,27 @@ func homeAndRepository() layout.Folders {
 	return layout.Folders{Home: "/u/.agister", Repository: "/r/.agister", Project: "/r/a/.agister"}
 }
 
+type emptyRunDocuments struct{}
+
+func (emptyRunDocuments) Files(documents.Kind, string) ([]documents.File, []documents.Problem) {
+	return nil, nil
+}
+func (emptyRunDocuments) Workflow(string) (documents.WorkflowDefinition, []documents.Problem) {
+	return documents.WorkflowDefinition{}, nil
+}
+func (emptyRunDocuments) Process(string) (documents.ProcessDefinition, []documents.Problem) {
+	return documents.ProcessDefinition{}, nil
+}
+func (emptyRunDocuments) Brief(string) (documents.BriefDefinition, []documents.Problem) {
+	return documents.BriefDefinition{}, nil
+}
+func (emptyRunDocuments) Blob(documents.Kind, string) (documents.Blob, []documents.Problem) {
+	return documents.Blob{}, nil
+}
+
 func checkResolveOf(t *testing.T, resolver resolver, source declared) *checkResolve {
 	t.Helper()
-	c, err := newCheckResolve(resolver, source, homeAndRepository())
+	c, err := newCheckResolve(resolver, source, homeAndRepository(), emptyRunDocuments{}, map[string]call.Inputs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +330,7 @@ func TestOneCommandReadsTheSettingsOnce(t *testing.T) {
 		"/r/.agister/blocks.yaml":      "- {agent: gone, reason: old}\n",
 	}
 	filesystem := newFilesystemSpy(settings)
-	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {Message: true}})
+	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {Message: true}}, map[string]call.Inputs{"bash/1": call.InMessage})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -315,14 +315,20 @@ type checkResolve struct {
 	takes    map[string]call.Inputs
 }
 
-func newCheckResolve(resolver resolver, source declared, layers layout.Folders) (*checkResolve, error) {
+func newCheckResolve(resolver resolver, source declared, layers layout.Folders, docs runDocuments, takes map[string]call.Inputs) (*checkResolve, error) {
 	if resolver == nil {
 		return nil, errors.New("check resolve: no resolver")
 	}
 	if source == nil {
 		return nil, errors.New("check resolve: no source")
 	}
-	return &checkResolve{resolver: resolver, source: source, layers: layers}, nil
+	if docs == nil {
+		return nil, errors.New("check resolve: no documents")
+	}
+	if takes == nil {
+		return nil, errors.New("check resolve: no takes")
+	}
+	return &checkResolve{resolver: resolver, source: source, layers: layers, docs: docs, takes: takes}, nil
 }
 
 func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []check.Fault) {
@@ -352,46 +358,44 @@ func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []chec
 		}
 		return check.Resolved{}, mapped
 	}
-	if c.docs != nil && c.takes != nil {
-		var lines []notRunLine
-		var err error
-		switch {
-		case kind == resolve.KindWorkflow && resolved.Workflow != nil:
-			lines, err = notRunOf(document.Name, *resolved.Workflow, resolved, c.docs, c.takes)
-		case kind == resolve.KindProcess:
-			lines, err = notRunProcessOf(document.Name, c.docs)
+	var lines []notRunLine
+	var err error
+	switch {
+	case kind == resolve.KindWorkflow && resolved.Workflow != nil:
+		lines, err = notRunOf(document.Name, *resolved.Workflow, resolved, c.docs, c.takes)
+	case kind == resolve.KindProcess:
+		lines, err = notRunProcessOf(document.Name, c.docs)
+	}
+	if err != nil {
+		return check.Resolved{}, []check.Fault{{Problems: []check.Problem{{Message: err.Error()}}}}
+	}
+	if len(lines) > 0 {
+		type synthetic struct {
+			document check.Reference
+			file     string
+			problems []check.Problem
 		}
-		if err != nil {
-			return check.Resolved{}, []check.Fault{{Problems: []check.Problem{{Message: err.Error()}}}}
+		var grouped []synthetic
+		indices := map[check.Reference]int{}
+		for _, line := range lines {
+			owner := check.Reference{Kind: kindOf(line.document.Kind).check, Name: line.document.Name}
+			i, ok := indices[owner]
+			if !ok {
+				i = len(grouped)
+				indices[owner] = i
+				grouped = append(grouped, synthetic{document: owner, file: c.documentFile(line.document)})
+			}
+			grouped[i].problems = append(grouped[i].problems, check.Problem{Source: check.Source{File: grouped[i].file}, Message: line.text})
 		}
-		if len(lines) > 0 {
-			type synthetic struct {
-				document check.Reference
-				file     string
-				problems []check.Problem
+		mapped := make([]check.Fault, 0, len(grouped))
+		for _, fault := range grouped {
+			chain := []check.Link{{Kind: document.Kind, Name: document.Name}}
+			if fault.document != (check.Reference{Kind: document.Kind, Name: document.Name}) {
+				chain = append(chain, check.Link{Kind: fault.document.Kind, Name: fault.document.Name})
 			}
-			var grouped []synthetic
-			indices := map[check.Reference]int{}
-			for _, line := range lines {
-				owner := check.Reference{Kind: kindOf(line.document.Kind).check, Name: line.document.Name}
-				i, ok := indices[owner]
-				if !ok {
-					i = len(grouped)
-					indices[owner] = i
-					grouped = append(grouped, synthetic{document: owner, file: c.documentFile(line.document)})
-				}
-				grouped[i].problems = append(grouped[i].problems, check.Problem{Source: check.Source{File: grouped[i].file}, Message: line.text})
-			}
-			mapped := make([]check.Fault, 0, len(grouped))
-			for _, fault := range grouped {
-				chain := []check.Link{{Kind: document.Kind, Name: document.Name}}
-				if fault.document != (check.Reference{Kind: document.Kind, Name: document.Name}) {
-					chain = append(chain, check.Link{Kind: fault.document.Kind, Name: fault.document.Name})
-				}
-				mapped = append(mapped, check.Fault{Chain: chain, Problems: fault.problems})
-			}
-			return check.Resolved{}, mapped
+			mapped = append(mapped, check.Fault{Chain: chain, Problems: fault.problems})
 		}
+		return check.Resolved{}, mapped
 	}
 	var mapped check.Resolved
 	for _, reached := range resolved.Reached {
@@ -423,13 +427,10 @@ func (c *checkResolve) sourceOf(origin resolve.Origin) check.Source {
 	return check.Source{File: origin.Path, Line: origin.Line, Layer: layerOf(c.layers, origin.Path)}
 }
 
-type documentFiles interface {
-	File(kind resolve.Kind, name string) string
-}
-
 func (c *checkResolve) documentFile(document resolve.Reference) string {
-	if files, ok := c.source.(documentFiles); ok {
-		return files.File(document.Kind, document.Name)
+	files, _ := c.docs.Files(kindOf(document.Kind).documents, document.Name)
+	if len(files) > 0 {
+		return files[0].Path
 	}
 	return ""
 }
