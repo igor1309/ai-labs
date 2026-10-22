@@ -22,8 +22,9 @@ function easedProgress(easing: string): ((fraction: number) => number) | undefin
   };
 }
 
-// A fixed copy avoids the clips and translations on the card and list.
-// The laid-out picture keeps its space until the copy lands there.
+// A fixed copy avoids the clips and translations on the card and list, or
+// on the stage. The laid-out picture keeps its space until the copy lands
+// there.
 function drawClosingPicture(element: Element, box: Box): TurnFrame {
   const image = element as HTMLElement;
   const copy = image.cloneNode(true) as HTMLElement;
@@ -41,24 +42,37 @@ function drawClosingPicture(element: Element, box: Box): TurnFrame {
   return { element: copy, remove: () => { copy.remove(); image.style.visibility = visibility; } };
 }
 
+// Where the shared picture stands on each screen: on its card in the
+// catalogue, and on the stage of its page.
+const cardPicture = (id: string) => `.catalogue-card[data-id="${id}"] .catalogue-picture`;
+const PAGE_PICTURE = ".dinosaur-stage-picture";
+
+// The shared picture a screen transition is still drawing, from the page
+// into its card as the page closes (`start`), or from its card into the
+// page as it opens (`open`): `arrive` finds where it lands once the next
+// screen shows, and `take` hands where it is drawn to a turn. A browser
+// skips the screen transition as the window changes size, so the turn
+// carries the picture on from there.
 export function closingPicture({ parts, measure }: Pick<TurnMotionSeams, "parts" | "measure">, motion: PictureMotion) {
   // A duration or easing the stylesheet did not give leaves the picture
   // to its screen transition.
   const progressAt = Number.isFinite(motion.duration) && motion.duration > 0 ? easedProgress(motion.easing) : undefined;
-  let close: { id: string; from: Box; started: number; target?: { element: Element; box: Box } } | undefined;
-  const clear = () => { close = undefined; };
+  let moving: { id: string; from: Box; started: number; landing: string; target?: { element: Element; box: Box } } | undefined;
+  const clear = () => { moving = undefined; };
+  const leave = (id: string, from: string, landing: string) => {
+    const element = parts.querySelectorAll(from)[0];
+    moving = element ? { id, from: measure(element), started: motion.now(), landing } : undefined;
+  };
   return {
-    start: (id: string) => {
-      const page = parts.querySelectorAll(".dinosaur-stage-picture")[0];
-      close = page ? { id, from: measure(page), started: motion.now() } : undefined;
-    },
+    start: (id: string) => leave(id, PAGE_PICTURE, cardPicture(id)),
+    open: (id: string) => leave(id, cardPicture(id), PAGE_PICTURE),
     arrive: (id: string | undefined) => {
-      if (!close || close.id !== id) return clear();
-      const element = parts.querySelectorAll(`.catalogue-card[data-id="${id}"] .catalogue-picture`)[0];
-      if (element) close.target = { element, box: measure(element) };
+      if (!moving || moving.id !== id) return clear();
+      const element = parts.querySelectorAll(moving.landing)[0];
+      if (element) moving.target = { element, box: measure(element) };
     },
     take: (): PictureContinuation | undefined => {
-      const kept = close;
+      const kept = moving;
       clear();
       if (!kept?.target || !progressAt) return undefined;
       const elapsed = motion.now() - kept.started;

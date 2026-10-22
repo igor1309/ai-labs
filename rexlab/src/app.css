@@ -2297,6 +2297,11 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   color: #5c647a;
 }
 
+/* A dinosaur's line is empty, and takes no room but upright. */
+.dinosaur-group:empty {
+  display: none;
+}
+
 /* A name is large, and the longest still fits on one line. */
 .dinosaur-page-name {
   margin: 0;
@@ -2436,6 +2441,7 @@ html[data-size="tall"] .dinosaur-fact-value {
 }
 
 html[data-size="tall"] .dinosaur-group {
+  display: block;
   min-height: 22px;
   line-height: 22px;
 }
