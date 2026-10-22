@@ -28,7 +28,7 @@ Gaps closed by the agent (2026-10-22); the owner may overturn any.
 The store's clients, through the call-store port: CallsCore, which lists,
 changes and moves calls, and LiveSessionCore, whose recording session
 creates a call and keeps its details. Recorded audio is written through the
-recording-writer port this store implements; how it behaves is
+call-files port this store implements; how it behaves is
 [recorder](../recorder/SPEC.md)'s.
 
 ## Behaviour

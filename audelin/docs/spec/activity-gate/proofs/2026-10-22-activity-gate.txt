@@ -1,0 +1,39 @@
+Building for debugging...
+[0/4] Write swift-version--3CB7CFEC50E0D141.txt
+Build complete! (0.08s)
+Test Suite 'Selected tests' started at 2026-10-22 09:21:18.722.
+Test Suite 'AudelinPackageTests.xctest' started at 2026-10-22 09:21:18.729.
+Test Suite 'AudelinPackageTests.xctest' passed at 2026-10-22 09:21:18.729.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-22 09:21:18.729.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+􀟈  Test run started.
+􀄵  Testing Library Version: 1501
+􀄵  Target Platform: arm64e-apple-macos14.0
+􀟈  Suite ActivityGateTests started.
+􀟈  Test s5Release() started.
+􀟈  Test s1AFreeGate() started.
+􀟈  Test s7ADeleteDuringARecording() started.
+􀟈  Test s2ARecordingRefusesAMove() started.
+􀟈  Test s10CatchUpWaitsOutAMove() started.
+􀟈  Test s3AMoveRefusesARecording() started.
+􀟈  Test s4CatchUpYields(to:) started.
+􀟈  Test s9ADeleteReleasesDuringARecording() started.
+􁁛  Test s1AFreeGate() passed after 0.001 seconds.
+􁁛  Test s7ADeleteDuringARecording() passed after 0.001 seconds.
+􁁛  Test s3AMoveRefusesARecording() passed after 0.001 seconds.
+􀟈  Test case passing 1 argument activity → .move to s4CatchUpYields(to:) started.
+􀟈  Test s6TwoRequestsAtOnce() started.
+􀟈  Test case passing 1 argument activity → .delete to s4CatchUpYields(to:) started.
+􀟈  Test case passing 1 argument activity → .recording to s4CatchUpYields(to:) started.
+􀟈  Test s8AMoveRefusesADelete() started.
+􁁛  Test s2ARecordingRefusesAMove() passed after 0.001 seconds.
+􁁛  Test s8AMoveRefusesADelete() passed after 0.001 seconds.
+􁁛  Test s5Release() passed after 0.053 seconds.
+􁁛  Test s10CatchUpWaitsOutAMove() passed after 0.053 seconds.
+􁁛  Test s9ADeleteReleasesDuringARecording() passed after 0.053 seconds.
+􁁛  Test s4CatchUpYields(to:) with 3 test cases passed after 0.059 seconds.
+􁁛  Test s6TwoRequestsAtOnce() passed after 0.063 seconds.
+􁁛  Suite ActivityGateTests passed after 0.063 seconds.
+􁁛  Test run with 10 tests in 1 suite passed after 0.063 seconds.
+exit 0
