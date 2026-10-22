@@ -49,10 +49,9 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
 
 1. **One app process; one serialized owner per session.** A session (one
    call) has a single owner that applies every change in order: capture
-   events, storage events, ASR updates, stop, rename. Every recognition run
-   is identified by session, track, epoch and attempt; only the current
-   attempt's results are accepted. Replacing an attempt revokes the old one
-   first, without waiting for it to acknowledge. If the app crashes,
+   events, storage events, ASR updates, stop, rename. Only the current
+   recognition attempt's results are accepted; a replaced attempt's late
+   results never are (note 1). If the app crashes,
    recording stops with it; the audio written so far is kept.
 2. **A session records, then catches up.** Stop ends recording in bounded
    time: capture stops, the audio is sealed, and the call is listed. The
@@ -62,21 +61,14 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    for calls marked as holding unrecognised audio (a reopened session).
    A new recording, a folder move or deleting that call cancels catch-up; the
    unrecognised range stays marked and catch-up resumes later.
-3. **Record first.** Capture → Recorder → disk, two tracks, in short files
-   ([mvp.md](mvp.md) § Recording files). File rotation does not make audio
-   readable: audio becomes readable for ASR as soon as it is written.
-   Recording never waits for recognition. If audio cannot be written (disk
+3. **Record first.** Captured audio is written to disk first, two tracks
+   ([mvp.md](mvp.md) § Recording files), and recognition reads it from there
+   as soon as it is written. Recording never waits for recognition. If audio cannot be written (disk
    full, folder gone), the session shows an explicit "recording failed"
    state and stops capture; unwritten audio is never passed to recognition.
-4. **A recognition watermark.** For each track and epoch the log records a
-   watermark: the audio time up to which everything is accounted for, as
-   committed text or as silence. It is not the last segment's time. It
-   advances only together with the commits it covers, and never past audio
-   whose text is still in the live tail (such as the last words before Stop).
-   A new attempt (restart or catch-up) may read earlier audio for context,
-   but commits only words after the watermark: the words it re-decodes
-   before the watermark are matched against the last committed words and
-   dropped, so nothing is logged twice or lost. If a segment cannot be written to the log,
+4. **Nothing logged twice or lost.** A new recognition attempt (restart or
+   catch-up) logs no word that is already logged and loses none (note 2),
+   including the last words before Stop or a gap. If a segment cannot be written to the log,
    recognition of that track pauses, its text stays in the live tail and the
    call is marked incomplete; the audio is intact.
 5. **One timeline, with epochs.** Both tracks share one session clock. A
@@ -87,36 +79,24 @@ English terms ([needs.md](research/needs.md)). What shaped the decision:
    stream for the old epoch is finished and a new one starts.
 6. **One live stream per track (per epoch):** mic is «я», call audio is «они». Each has
    its own stabilizer.
-7. **The stabilizer is pure logic.** Audelin cuts its own recognition
-   windows from the written audio, each with left and right context, and
-   the stabilizer turns each window's words into commits (amended
-   2026-10-21, owner: FluidAudio's sliding-window updates hide retracted
-   words and failed windows, and its `finish()` returns plain text). It
-   commits a segment (track, epoch, start and end time, text) only when the segment
-   can no longer change: a window decoded it with full right context, or
-   the epoch has ended and the final window decoded it, or no later window
-   can read it again because a window starts after it (amended 2026-10-22,
-   agent: Parakeet stretches a window's last word into the silence after
-   it, past the next window's start; [stabilizer](spec/stabilizer/SPEC.md) S-14). Segments commit in
-   time order per track and epoch: a later segment waits while any earlier
-   text is still in the live tail. Until committed, text is a live tail,
-   shown in the panel.
+7. **The stabilizer is pure logic.** It turns recognised words into
+   committed segments (note 3), and commits a segment only once it can no
+   longer change, in time order per track and epoch. Until committed, text
+   is a live tail, shown in the panel.
 8. **The segment log is the record, and committed segments are final.**
-   Committed segments go to an append-only log in the call folder and are
-   never revised. `raw.md` and the panel are both built from the same
-   committed segments in time order; the panel adds the live tail. Late
+   Committed segments are kept append-only and never revised. The
+   transcript and the panel are both built from the same committed segments
+   in time order; the panel adds the live tail. Late
    segments are new committed segments and land in their place by time.
 9. **The panel keeps presentation state.** It holds a copy of the text,
-   updated by incremental patches, plus selection and scroll. The session is
+   plus selection and scroll. The session is
    the authority for content; the panel's copy is a projection of it. From
    v2 the hotkey takes an immutable snapshot of the selection and its
    context.
-10. **Ports and adapters.** Cores declare the ports they need: audio capture,
-   recording writer and recorded-audio reader, live recognition, call store,
-   settings, model provider, call detection (a call app taking and releasing
-   the microphone starts and stops a recording), clock. Live recognition and the v3 final pass are
-   different ports that share audio references and transcript types. Only the
-   app target creates adapters.
+10. **Ports and adapters.** Cores declare the ports they need for
+   everything external; adapters implement them, and only the app target
+   creates adapters and decides what plugs into each port. The v3 final
+   pass gets a port of its own, not the live one.
    **Logging is a decorator in the composition root** (owner, 2026-10-21).
    Only public interfaces are logged: the ports and each module's public
    API. The composition root wraps them in logging decorators that implement
@@ -137,12 +117,9 @@ Module layout (one local Swift package plus a thin app target):
 
 ```text
 App target    entry point + composition root (with logging decorators)
-Domain        TranscriptCore (stabilizer, edge merge, segments, track merge)
-Features      LiveSessionCore / LiveSessionUI
-              CallsCore / CallsUI
-              SetupCore / SetupUI
-Adapters      AudioCapture · Recorder · FluidAudioASR · CallDetector
-              FileCallStore · SettingsStore · ModelStore
+Domain        pure logic, shared by the features
+Features      a Core and a UI per feature
+Adapters      one per external thing a Core's port needs
 ```
 
 ## Rules / invariants
@@ -166,14 +143,14 @@ Apple and third-party frameworks:
 
 Behaviour:
 
-8. Recognition MUST read only audio the Recorder has written; it MUST NOT
+8. Recognition MUST read only audio that has been written; it MUST NOT
    read from capture.
 9. Recording MUST NOT wait on recognition.
 10. Only the call store MAY write into a call folder; recording writes
     through it. A call is found by its id, never by its path.
 11. The segment log MUST be append-only and committed segments MUST NOT be
-    revised; `raw.md` and the panel MUST be built from the same committed
-    segments.
+    revised; the transcript and the panel MUST be built from the same
+    committed segments.
 12. A gap in capture MUST be recorded, not hidden, and recognition and the
     stabilizer MUST NOT join audio or text across it.
 13. Session state MUST change only through the session's owner; the panel's
@@ -185,10 +162,8 @@ Behaviour:
     never had a model; unrecognised audio MUST stay marked until catch-up
     recognises it.
 16. Recording and moving the calls folder MUST NOT run at the same time.
-17. Only the current recognition attempt MAY commit segments, in time order,
-    and only words after its track's watermark; after each commit the
-    watermark is at or past the committed text. The watermark MUST NOT pass audio that is
-    not yet committed or known silent.
+17. Only the current recognition attempt MAY commit segments, in time
+    order; no word MAY be committed twice or lost across a new attempt.
 18. Audio that failed to be written MUST NOT reach recognition.
 19. Logging MUST happen only in logging decorators in the composition root,
     and only on public interfaces; no module MAY log.
@@ -229,14 +204,38 @@ Acceptance before v1 is done:
   it.
 - Starting a recording and starting a folder move at once: exactly one
   succeeds.
-- A restart at the watermark, with windows shifted by a few frames, logs
-  no word twice and loses none on the recorded fixtures. If it does not,
-  the watermark moves only at segment boundaries and replay starts from the
-  last one; this ADR is amended before build.
+- A restart at the watermark (note 2), with windows shifted by a few
+  frames, logs no word twice and loses none on the recorded fixtures. If
+  it does not, the watermark moves only at segment boundaries and replay
+  starts from the last one; note 2 is amended before build.
 - Parakeet v3 on clean Russian speech with RACI, OKR and SLA (tests.md § Not
   yet measured). If the terms come out in Cyrillic or wrong, as in run 3,
   live terms are not usable for v2 explanations, and the live engine is
   revisited before v2.
+
+## Implementation notes
+
+Kept here because each rules out a simpler design that loses or corrupts
+text; everything else about how is the specs' and the code's.
+
+1. **Attempts are revoked, not awaited.** Every recognition run is tagged
+   with session, track, epoch and attempt. Replacing an attempt revokes the
+   old one first, without waiting for it to acknowledge: a stalled run
+   that answers late would otherwise overwrite newer text.
+2. **A recognition watermark.** For each track and epoch the log records
+   the audio time up to which everything is accounted for, as committed
+   text or as silence; it is not the last segment's time. It advances only
+   with the commits it covers, never past text still in the live tail. A
+   new attempt may read earlier audio for context but commits only words
+   after the watermark; words it re-decodes before it are matched against
+   the last committed words and dropped.
+3. **Audelin cuts its own recognition windows** from the written audio,
+   each with left and right context (owner, 2026-10-21): FluidAudio's
+   sliding-window updates hide retracted words and failed windows, and its
+   `finish()` returns plain text.
+4. **TranscriptCore is tested on recognizer output recorded once** from
+   Parakeet v3 (invariant 14), so the hardest logic runs without audio or a
+   model.
 
 ## Non-goals
 
