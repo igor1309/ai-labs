@@ -2,6 +2,14 @@
 
 ## 2026-10-22
 
+- CallDomain is gone, with every module built on it (LiveSessionCore,
+  CallsCore, Recorder, FileCallStore and their test support) and the app
+  target. CallDomain had no job of its own: a call's file format, its
+  folder-name rule and an activity gate no feature asked for, in one
+  module. ADR-001 now states rules and keeps four implementation notes;
+  decision 11 leaves it to the composition root what answers each
+  feature's port. Only TranscriptCore remains. The removed modules' QA rows
+  read Missing again; their runs and proofs stay as history.
 - The capture specs no longer test Core Audio. Mic and system audio
   capture QA drove the hardware (a loopback device, a USB headset, a click
   within 20 ms, levels within 0.5 dB), which proves Apple's framework and
