@@ -5,11 +5,9 @@
 schema: agister.workflow/v1alpha1
 params:
   brief: {}
-inputs:
-  brief: {source: file, path: {from: params.brief}, form: [goal, step]}
 
 steps:
-  - {name: build, process: implement, agent: codex-sol-61, inputs: {brief: {from: inputs.brief}}}
+  - {name: build, process: implement, agent: codex-sol-61, inputs: {brief: {from: params.brief}}}
   - {name: test, process: audelin_tests, agent: bash}
 
 outputs:
