@@ -1,7 +1,8 @@
 Feature: The dinosaur catalogue
   A child browses every dinosaur in the app: a list of them all with
   each one's picture, size and food, and a page for each with a big
-  picture and a short description.
+  picture and a short description. In a tall window the list stands
+  upright (catalogue-portrait.feature).
 
   Background:
     Given an iPad in landscape

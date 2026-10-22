@@ -314,6 +314,13 @@ body {
   --screen-right: max(env(safe-area-inset-right), 50vw - 720px);
 }
 
+/* The side insets alone, for the viewport to read: the catalogue counts
+   its cards in a row from them, which no rule can. */
+:root {
+  --safe-area-left: env(safe-area-inset-left);
+  --safe-area-right: env(safe-area-inset-right);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -1789,9 +1796,10 @@ body:has(.result) #version {
   animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
 }
 
-/* The catalogue: its bar stays at the top while the cards, four to a row,
-   scroll under it, the list as wide as the screen so its scrollbar is at
-   the edge. */
+/* The catalogue: its bar stays at the top while the cards, as many to a
+   row as CatalogueScreen gives in --columns, four in landscape, scroll
+   under it, the list as wide as the screen so its scrollbar is at the
+   edge. */
 .catalogue {
   position: relative;
   height: 100vh;
@@ -1823,6 +1831,11 @@ body:has(.result) #version {
 .food-chips {
   display: flex;
   gap: 12px;
+}
+
+/* The chips' two rows, which only two by two stand apart. */
+.food-chips-row {
+  display: contents;
 }
 
 /* The chip for every dinosaur is its symbol alone, a round button. */
@@ -1927,6 +1940,50 @@ body:has(.result) #version {
   background: #ffffff33;
 }
 
+/* In a tall window the catalogue stands upright: "HOME" alone at the top
+   left, the chips on their own row 24 pixels under it, at their landscape
+   look, and the cards 28 under them. Each food chip is as wide as its
+   content, its content centred, and the three share out equally what the
+   row leaves. Where the row is too narrow, FoodChips closes every food
+   chip up at once, and where even that is too narrow, stands them two by
+   two at their landscape spacing, each food chip sharing its row the
+   same way. "ALL" stays round in every arrangement. */
+html[data-size="tall"] .catalogue-bar {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+html[data-size="tall"] .food-chips {
+  align-self: stretch;
+}
+
+html[data-size="tall"] .food-chip:not([data-food="all"]),
+html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
+  flex: 1 0 auto;
+}
+
+html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
+  justify-content: center;
+}
+
+html[data-size="tall"] .food-chips[data-arrangement="closed"] {
+  gap: 8px;
+}
+
+html[data-size="tall"] .food-chips[data-arrangement="closed"] .food-chip:not([data-food="all"]) .food-chip-face {
+  padding: 0 8px 0 14px;
+  gap: 8px;
+}
+
+html[data-size="tall"] .food-chips[data-arrangement="stacked"] {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
+  display: flex;
+  gap: 12px;
+}
+
 .catalogue-grid {
   flex: 1 1 0;
   min-height: 0;
@@ -1935,7 +1992,7 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 0 56px 48px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
   /* Rows keep their cards' full height; the grid scrolls instead. */
   grid-auto-rows: max-content;
   align-content: start;

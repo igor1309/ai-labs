@@ -39,13 +39,14 @@ const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
 export type Browser = {
   localStorage: Pick<Storage, "getItem" | "setItem">;
   matchMedia(query: string): MediaQueryList;
+  getComputedStyle(element: Element): Pick<CSSStyleDeclaration, "getPropertyValue">;
   innerWidth: number;
   addEventListener(type: "resize", listener: () => void): void;
   removeEventListener(type: "resize", listener: () => void): void;
   screen: { orientation?: Pick<ScreenOrientation, "type" | "addEventListener" | "removeEventListener"> };
   navigator: { language: string };
-  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener" | "querySelectorAll"> &
-    Partial<Pick<Document, "startViewTransition">> & {
+  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener" | "querySelectorAll" | "documentElement"> &
+    Partial<Pick<Document, "startViewTransition" | "fonts">> & {
       getElementById(id: string): Pick<Element, "setAttribute"> | null;
     };
   Image: new () => DecodingImage;
@@ -54,6 +55,7 @@ export type Browser = {
   requestAnimationFrame(fire: () => void): number;
   cancelAnimationFrame(id: number): void;
   Date: { now(): number };
+  performance: { now(): number };
 };
 
 // A screen glides to its other layout over app.css's --motion-standard,
@@ -209,7 +211,7 @@ export function versionFooter(document: Browser["document"]): (label: string) =>
 // the visit, so all of them are kept in local storage.
 export function appProps(browser: Browser): AppProps {
   const storage = () => browser.localStorage;
-  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation, browser);
+  const viewport = mediaViewport((query) => browser.matchMedia(query), browser.screen.orientation, browser, () => browser.getComputedStyle(browser.document.documentElement));
   const appearance = mediaAppearance((query) => browser.matchMedia(query));
   const visibility = documentVisibility(browser.document);
   const dinosaurs = readDinosaurs(records);
@@ -222,7 +224,21 @@ export function appProps(browser: Browser): AppProps {
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     viewport,
-    portraitLayouts: { home: ["tall"] },
+    portraitLayouts: { home: ["tall"], catalogue: ["tall"] },
+    pictureMotion: {
+      now: () => browser.performance.now(),
+      duration: Number.parseFloat(browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--motion-screen")),
+      easing: browser.getComputedStyle(browser.document.documentElement).getPropertyValue("--ease-out").trim()
+    },
+    // A chip's parts as the browser lays them out, which change with no
+    // change of the window as the bundled font comes in for the system's.
+    chipWidths: {
+      width: (part) => part.getBoundingClientRect().width,
+      subscribe: (onChange) => {
+        browser.document.fonts?.addEventListener("loadingdone", onChange);
+        return () => browser.document.fonts?.removeEventListener("loadingdone", onChange);
+      }
+    },
     // A browser with no view transitions changes the layout at once, and
     // its fade has then ended.
     layoutMotion: {

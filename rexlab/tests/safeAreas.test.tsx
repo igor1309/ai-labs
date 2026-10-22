@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { catalogueColumns } from "../src/catalogueColumns.ts";
+import { mediaViewport } from "../src/mediaViewport.ts";
 import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot } from "./screenRoots.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
+import { manualWindow, mediaQueries } from "./support.ts";
 
 const INSETS: SafeArea = { top: 11, right: 13, bottom: 17, left: 19 };
 const SIDES = ["top", "right", "bottom", "left"] as const;
@@ -8,9 +11,9 @@ const px = (value: string) => parseFloat(value);
 
 // A window with the insets is the test document with the app's
 // stylesheet read again under them, after the one without.
-function withInsets<T>(read: () => T): T {
+function withInsets<T>(read: () => T, insets: SafeArea = INSETS): T {
   const sheet = document.createElement("style");
-  sheet.textContent = appStylesheet(INSETS);
+  sheet.textContent = appStylesheet(insets);
   document.head.append(sheet);
   try {
     return read();
@@ -30,6 +33,26 @@ afterEach(() => {
 });
 
 describe("safe areas stay clear", () => {
+  it.each([
+    [820, 2],
+    [854, 2],
+    [855, 3]
+  ])("reads app.css's side insets through the viewport and counts %i pixels as %i catalogue columns", (width, columns) => {
+    const media = mediaQueries({ "(orientation: portrait)": true, "(max-width: 599.98px)": false, "(max-height: 599.98px)": false });
+    const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(width), () => getComputedStyle(document.documentElement));
+    const count = () => {
+      const { left, right } = viewport.sideInsets();
+      return catalogueColumns(viewport.width(), viewport.sizeClass(), left, right);
+    };
+    expect(viewport.sideInsets()).toEqual({ left: 0, right: 0 });
+    expect(count()).toBe(3);
+
+    withInsets(() => {
+      expect(viewport.sideInsets()).toEqual({ left: 44, right: 20 });
+      expect(count()).toBe(columns);
+    }, { top: 0, bottom: 0, left: 44, right: 20 });
+  });
+
   it("finds every screen's root", () => {
     expect(SCREEN_ROOTS).toEqual(expect.arrayContaining(["home", "catalogue", "dinosaur-page", "question", "result", "result result-with-levels", "dig-screen dig-reveal-screen", "dig-screen dig-field-guide-screen", "skeleton-screen"]));
   });

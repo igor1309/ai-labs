@@ -11,7 +11,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     When I open "ANCIENT REPTILES"
     Then beside "HOME" I see the chips "ALL", "MEAT", "PLANTS" and "BOTH", in that order
     And "ALL" is a round button with a filter symbol alone, no word or count, "ALL" only read out
-    And "MEAT" is terracotta with a 🥩 symbol and the count "16"
+    And "MEAT" is terracotta with a 🥩 symbol and the count "26"
     And "PLANTS" is green with a 🍃 symbol and the count "23"
     And "BOTH" is amber with 🥩 🍃 symbols and the count "3"
     And "ALL" is chosen
@@ -41,11 +41,11 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
   Scenario: Next and previous go round the dinosaurs shown
     Given I chose "MEAT"
     When I tap the card of Tyrannosaurus
-    Then I see its page at "1 / 16"
+    Then I see its page at "1 / 26"
     When I tap the ← button
     Then I see the page of the last meat-eater in the list, at "26 / 26"
     When I tap the → button twice, a second apart
-    Then I see the page of Velociraptor, at "2 / 16"
+    Then I see the page of Velociraptor, at "2 / 26"
 
   Scenario: Back to the list keeps the chip chosen
     Given I chose "PLANTS" and opened the page of a plant-eater

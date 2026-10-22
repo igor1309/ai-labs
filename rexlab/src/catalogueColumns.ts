@@ -1,0 +1,37 @@
+// The size classes of the window, as the viewport tells them.
+export type CatalogueSizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
+
+// A screen's content, its own padding included, is at most 1440 pixels
+// wide and centred, as app.css's --screen-left and --screen-right set it.
+const SCREEN_CAP = 1440;
+// The list's padding on each side and the gap between its cards, which
+// keep their landscape sizes upright.
+const LIST_PADDING = 56;
+const CARD_GAP = 20;
+// The card on a 1024 by 768 landscape iPad, four to a row: an upright
+// card is never narrower, so its name is never smaller.
+const LEAST_CARD = 213;
+const MOST_COLUMNS = 4;
+
+// The width of the catalogue's row in a window `windowWidth` wide: what
+// the window's side insets, or the cap if it is wider, and the list's
+// padding leave. The upright chips' row, padded as the list is, is as
+// wide.
+export function catalogueRow(windowWidth: number, leftInset: number, rightInset: number): number {
+  const beyondCap = windowWidth / 2 - SCREEN_CAP / 2;
+  return windowWidth - Math.max(leftInset, beyondCap) - Math.max(rightInset, beyondCap) - 2 * LIST_PADDING;
+}
+
+// The cards in a row of the catalogue in a window `windowWidth` wide.
+// Landscape keeps four, and so does a tall-narrow window, whose list
+// stands under the picture asking to turn. A tall window holds as many,
+// up to four, as keep each card at least 213 wide, out of the catalogue's
+// row. Worked out in whole cards rather than from a card's width, so a
+// row exactly wide enough, as 1024 is for four, holds them. The window's
+// width counts, not the list's, so a scrollbar that takes room narrows
+// the cards, never their count.
+export function catalogueColumns(windowWidth: number, sizeClass: CatalogueSizeClass, leftInset: number, rightInset: number): number {
+  if (sizeClass !== "tall") return MOST_COLUMNS;
+  const whole = Math.floor((catalogueRow(windowWidth, leftInset, rightInset) + CARD_GAP) / (LEAST_CARD + CARD_GAP));
+  return Math.min(MOST_COLUMNS, Math.max(1, whole));
+}

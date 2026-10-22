@@ -132,7 +132,9 @@ describe("the list of every dinosaur", () => {
     expect(screen.queryByRole("heading")).toBeNull();
     expect(screen.queryByLabelText("DINOSAURS")).toBeNull();
     expect(cards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
-    expect(getComputedStyle(grid()).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
+    // The grid takes its cards in a row from the screen, which gives four
+    // in landscape: jsdom puts no custom property into the template.
+    expect([getComputedStyle(grid()).gridTemplateColumns, getComputedStyle(grid()).getPropertyValue("--columns")]).toEqual(["repeat(var(--columns), minmax(0, 1fr))", "4"]);
     // The list is as wide as the screen, its scrollbar at the edge, the
     // cards kept in from it by the list's own padding.
     const page = grid().closest("main") ?? grid();

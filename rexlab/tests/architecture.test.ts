@@ -118,8 +118,10 @@ const SCREEN_STATE = "screens.ts";
 // The timers of a visit, a board or a puzzle, stopped together as it ends.
 const OWNED_TIMERS = "ownedTimers.ts";
 // The motion of a screen to its other layout as the window turns, and
-// where a row of columns stands through it.
-const TURN_MOTION = ["turnMotion.ts", "rowAnchor.ts"];
+// where a row of columns or a list of cards stands through it.
+const TURN_MOTION = ["turnMotion.ts", "rowAnchor.ts", "listAnchor.ts"];
+// The catalogue's cards in a row and how its chips stand, by the window.
+const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 // How App sets each window's layout through the turn motion.
 const LAYOUT_TURNS = "layoutTurns.ts";
 
@@ -271,9 +273,14 @@ describe("the import graph", () => {
     expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
   });
 
-  it("keeps the turn motion and the row's anchor free of the rest of the app", () => {
+  it("keeps the turn motion and the row's and the list's anchors free of the rest of the app", () => {
     expect(TURN_MOTION.filter((file) => !GRAPH.has(file))).toEqual([]);
     expect(edges((file) => TURN_MOTION.includes(file), () => true)).toEqual([]);
+  });
+
+  it("keeps the catalogue's geometry free of the rest of the app", () => {
+    expect(CATALOGUE_GEOMETRY.filter((file) => !GRAPH.has(file))).toEqual([]);
+    expect(edges((file) => CATALOGUE_GEOMETRY.includes(file), () => true)).toEqual([]);
   });
 
   it("keeps App's layout turns free of all but the turn motion, and the row's keeping free of all but the row's anchor", () => {
