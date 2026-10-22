@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, matchesGlob, posix, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from '../release/lib/toml.js';
+import { createSecretScanner } from './secret-scanner.js';
 
 export function runCommand(command, args, { cwd }) {
   const result = spawnSync(command, args, { cwd, maxBuffer: 128 * 1024 * 1024 });
@@ -90,7 +91,7 @@ export function scanMarkers(files, text) {
   if (violations.length) throw new Error(violations.join('\n'));
 }
 
-export function exportProject({ root, project, push = false, tempRoot = tmpdir() }, { run, log }) {
+export function exportProject({ root, project, push = false, tempRoot = tmpdir() }, { run, scanDirectory, log }) {
   if (!/^[\w.-]+(?:\/[\w.-]+)*$/.test(project) || project.split('/').some((part) => part === '.' || part === '..' || part === '.git')) {
     throw new Error('Project must be a repository-relative directory');
   }
@@ -132,19 +133,9 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
   scanMarkers(files, readFileSync(new URL('markers.txt', import.meta.url), 'utf8'));
   const directory = mkdtempSync(join(tempRoot, 'showcase-export-'));
   let clone;
-  let scannerDirectory;
   try {
     writeSnapshot(directory, files);
-    run('gitleaks', ['version'], { cwd: directory });
-    // Exported config, ignore files and inline allow comments must not weaken
-    // the secret scan of a public snapshot.
-    scannerDirectory = mkdtempSync(join(tempRoot, 'showcase-scanner-'));
-    const scannerConfig = join(scannerDirectory, 'gitleaks.toml');
-    const scannerIgnore = join(scannerDirectory, 'ignore');
-    writeFileSync(scannerConfig, '[extend]\nuseDefault = true\n');
-    writeFileSync(scannerIgnore, '');
-    run('gitleaks', ['dir', directory, '--no-banner', '--redact', '--follow-symlinks',
-      '--config', scannerConfig, '--gitleaks-ignore-path', scannerIgnore, '--ignore-gitleaks-allow'], { cwd: directory });
+    scanDirectory(directory);
     const output = run('sh', ['-c', settings.check], { cwd: directory });
     if (output?.length) log(output.toString().trimEnd());
     writeSnapshot(directory, files);
@@ -178,18 +169,17 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
     throw error;
   } finally {
     if (clone) rmSync(clone, { recursive: true, force: true });
-    if (scannerDirectory) rmSync(scannerDirectory, { recursive: true, force: true });
   }
 }
 
-export function handleCLI(args, { cwd, run, exportProject: exportSnapshot, stdout, stderr }) {
+export function handleCLI(args, { cwd, run, scanDirectory, exportProject: exportSnapshot, stdout, stderr }) {
   try {
     const project = args.find((arg) => arg !== '--push');
     if (!project || args.filter((arg) => arg !== '--push').length !== 1 || args.filter((arg) => arg === '--push').length > 1) {
       throw new Error('Usage: node scripts/showcase/export.js <project> [--push]');
     }
     const root = run('git', ['rev-parse', '--show-toplevel'], { cwd }).toString().trim();
-    stdout(exportSnapshot({ root, project, push: args.includes('--push') }, { run, log: stderr }));
+    stdout(exportSnapshot({ root, project, push: args.includes('--push') }, { run, scanDirectory, log: stderr }));
     return 0;
   } catch (error) {
     stderr(error.message);
@@ -199,7 +189,7 @@ export function handleCLI(args, { cwd, run, exportProject: exportSnapshot, stdou
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   process.exitCode = handleCLI(process.argv.slice(2), {
-    cwd: process.cwd(), run: runCommand, exportProject,
+    cwd: process.cwd(), run: runCommand, scanDirectory: createSecretScanner({ run: runCommand }), exportProject,
     stdout: (message) => console.log(message), stderr: (message) => console.error(message)
   });
 }

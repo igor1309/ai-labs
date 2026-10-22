@@ -189,10 +189,21 @@ test("ciReleaseValidation_shouldRunReleaseAndShowcaseTests_onShowcaseChanges", (
       assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
     }
   }
-  for (const file of ["scripts/showcase/export.js", "scripts/showcase/markers.txt"]) {
+  for (const file of ["scripts/showcase/export.js", "scripts/showcase/secret-scanner.js", "scripts/showcase/markers.txt"]) {
     assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
   }
 });
+
+for (const file of [
+  "rexlab/showcase/showcase.toml",
+  "rexlab/showcase/public/LICENSE",
+  "rexlab/tests/catalogueSources.test.ts",
+]) {
+  test(`ciReleaseValidation_shouldRunShowcaseTests_onInputChange: ${file}`, () => {
+    assert.equal(matchingFilters([file]).has("release"), true);
+    assert.equal(jobRuns("release-validation", [file]), true);
+  });
+}
 
 // Each Go module, the command that tests it, and the job a change to its
 // code runs. A new module fails here until a workflow runs it.

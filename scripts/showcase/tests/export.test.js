@@ -35,24 +35,6 @@ function fixture(t, settings = {}) {
   const messages = [];
   const run = (command, args, options) => {
     calls.push({ command, args, cwd: options.cwd });
-    if (command === 'gitleaks') {
-      if (args[0] === 'version') assert.deepEqual(args, ['version']);
-      else {
-        const scannerConfig = args[args.indexOf('--config') + 1];
-        const scannerIgnore = args[args.indexOf('--gitleaks-ignore-path') + 1];
-        const scannerDirectory = dirname(scannerConfig);
-        assert.equal(dirname(scannerDirectory), base);
-        assert.match(scannerDirectory.slice(base.length + 1), /^showcase-scanner-/);
-        assert.notEqual(scannerDirectory, options.cwd);
-        assert.equal(scannerConfig, join(scannerDirectory, 'gitleaks.toml'));
-        assert.equal(scannerIgnore, join(scannerDirectory, 'ignore'));
-        assert.equal(readFileSync(scannerConfig, 'utf8'), '[extend]\nuseDefault = true\n');
-        assert.equal(readFileSync(scannerIgnore, 'utf8'), '');
-        assert.deepEqual(args, ['dir', options.cwd, '--no-banner', '--redact', '--follow-symlinks',
-          '--config', scannerConfig, '--gitleaks-ignore-path', scannerIgnore, '--ignore-gitleaks-allow']);
-      }
-      return Buffer.alloc(0);
-    }
     if (command === 'sh') return Buffer.alloc(0);
     if (command === 'gh') {
       if (args[1] === 'view') return Buffer.from(JSON.stringify({ repositoryTopics: [{ name: 'obsolete' }, { name: 'react' }] }));
@@ -65,15 +47,19 @@ function fixture(t, settings = {}) {
       assert.match(args[3].slice(base.length + 1), /^showcase-push-/);
       return git(root, 'clone', '--', join(base, 'remote.git'), args[3]);
     }
+    assert.equal(command, 'git');
     return git(options.cwd, ...args);
   };
-  const invoke = (options = {}, execute = run) => exportProject({ root, project: 'game', tempRoot: base, ...options }, { run: execute, log: (value) => messages.push(value) });
+  const scanDirectory = (directory) => calls.push({ command: 'scanDirectory', args: [directory], cwd: directory });
+  const invoke = (options = {}, execute = run, scan = scanDirectory) => exportProject({ root, project: 'game', tempRoot: base, ...options }, {
+    run: execute, scanDirectory: scan, log: (value) => messages.push(value)
+  });
   const remote = () => {
     const path = join(base, 'remote.git');
     git(base, 'init', '--bare', '-b', 'trunk', path);
     return path;
   };
-  return { base, root, config, calls, messages, run, invoke, commit, remote };
+  return { base, root, config, calls, messages, run, scanDirectory, invoke, commit, remote };
 }
 
 test('exports exactly the HEAD allowlist, with the committed public overlay and executable bits', (t) => {
@@ -94,7 +80,11 @@ test('exports exactly the HEAD allowlist, with the committed public overlay and 
   put(f.root, 'game/showcase/public/new.md', 'untracked overlay');
   put(f.root, 'game/showcase/showcase.toml', 'not the committed configuration');
   rmSync(join(f.root, 'game/src/nested/tool.js'));
-  const directory = f.invoke();
+  let scannedFiles;
+  const directory = f.invoke({}, f.run, (directory) => {
+    f.scanDirectory(directory);
+    scannedFiles = list(directory).map((path) => [path, readFileSync(join(directory, path))]);
+  });
   assert.deepEqual(list(directory), ['LICENSE', 'README.md', 'screenshots/home.bin', 'scripts/test.sh', 'src/main.js', 'src/nested/tool.js']);
   assert.equal(readFileSync(join(directory, 'README.md'), 'utf8'), 'public readme');
   assert.equal(readFileSync(join(directory, 'src/nested/tool.js'), 'utf8'), 'committed bytes');
@@ -102,9 +92,10 @@ test('exports exactly the HEAD allowlist, with the committed public overlay and 
   assert.deepEqual(readFileSync(join(directory, 'screenshots/home.bin')), Buffer.from([0, 255, 37, 128]));
   assert.ok(lstatSync(join(directory, 'scripts/test.sh')).mode & 0o111);
   const external = f.calls.filter(({ command }) => command !== 'git');
-  assert.deepEqual(external.map(({ command, cwd }) => [command, cwd]), [['gitleaks', directory], ['gitleaks', directory], ['sh', directory]]);
-  assert.deepEqual(external[0].args, ['version']);
-  assert.deepEqual(external[2].args, ['-c', 'check-game']);
+  assert.deepEqual(scannedFiles, list(directory).map((path) => [path, readFileSync(join(directory, path))]));
+  assert.deepEqual(external.map(({ command, cwd }) => [command, cwd]), [['scanDirectory', directory], ['sh', directory]]);
+  assert.deepEqual(external[0].args, [directory]);
+  assert.deepEqual(external[1].args, ['-c', 'check-game']);
 });
 
 for (const repo of ['someone/game', 'another-owner/Other.Project-2']) {
@@ -120,17 +111,6 @@ for (const repo of ['someone/game', 'another-owner/Other.Project-2']) {
     });
   });
 }
-
-test('scanner uses trusted default rules and an empty ignore file despite exported overrides', (t) => {
-  const f = fixture(t, { include: ['**', '.gitleaks.toml', '.gitleaksignore'] });
-  put(f.root, 'game/.gitleaks.toml', '[allowlist]\nregexes = [".*"]\n');
-  put(f.root, 'game/.gitleaksignore', 'ignore-this-secret\n');
-  f.commit();
-  const directory = f.invoke();
-  assert.equal(readFileSync(join(directory, '.gitleaks.toml'), 'utf8'), '[allowlist]\nregexes = [".*"]\n');
-  assert.equal(readFileSync(join(directory, '.gitleaksignore'), 'utf8'), 'ignore-this-secret\n');
-  assert.equal(f.calls.filter(({ command, args }) => command === 'gitleaks' && args[0] === 'dir').length, 1);
-});
 
 test('public overlay replaces file/directory collisions and bypasses the source exclude list', (t) => {
   const f = fixture(t, { include: ['**'], exclude: ['README.md'] });
@@ -178,23 +158,26 @@ test('an overlay replaces a private source file before marker scanning', (t) => 
   assert.equal(readFileSync(join(f.invoke(), 'README.md'), 'utf8'), 'public');
 });
 
-for (const stage of ['missing scanner', 'secret', 'check', 'clone', 'push', 'metadata']) {
+for (const stage of ['scanner', 'check', 'clone', 'push', 'metadata']) {
   test(`${stage} failure stops the export, reports output and removes temporary directories`, (t) => {
     const f = fixture(t);
     f.commit();
     f.remote();
     const error = new Error(`${stage}: diagnostic output`);
     assert.throws(() => f.invoke({ push: true }, (command, args, options) => {
-      if (stage === 'missing scanner' && command === 'gitleaks' && args[0] === 'version' ||
-          stage === 'secret' && command === 'gitleaks' && args[0] === 'dir' ||
-          stage === 'check' && command === 'sh' ||
+      if (stage === 'check' && command === 'sh' ||
           stage === 'clone' && command === 'git' && args[0] === 'clone' ||
           stage === 'push' && command === 'git' && args[0] === 'push' ||
           stage === 'metadata' && command === 'gh' && args[1] === 'edit') throw error;
       return f.run(command, args, options);
+    }, (directory) => {
+      f.scanDirectory(directory);
+      if (stage === 'scanner') throw error;
     }), error);
     assert.deepEqual(readdirSync(f.base).sort(), ['remote.git', 'source']);
-    if (['missing scanner', 'secret', 'check', 'clone'].includes(stage)) {
+    if (stage === 'scanner') assert.ok(!f.calls.some(({ command }) => command === 'sh'));
+    if (['scanner', 'check', 'clone'].includes(stage)) {
+      if (stage === 'scanner' || stage === 'check') assert.ok(!f.calls.some(({ args }) => args[0] === 'clone'));
       assert.ok(!f.calls.some(({ args }) => args[0] === 'push'));
       assert.ok(!f.calls.some(({ command }) => command === 'gh'));
     }
@@ -327,7 +310,7 @@ for (const target of ['/etc/passwd', '../../outside', '../.git/config']) {
     symlinkSync(target, join(f.root, 'game/src/alias'));
     f.commit();
     assert.throws(() => f.invoke(), /Unsafe (symlink|export path)/);
-    assert.ok(!f.calls.some(({ command }) => command === 'gitleaks'));
+    assert.ok(!f.calls.some(({ command }) => command === 'scanDirectory'));
   });
 }
 
@@ -338,7 +321,7 @@ test('rejects a symlink chain that escapes after resolving an internal link', (t
   symlinkSync('parent/../outside', join(f.root, 'game/src/escape'));
   f.commit();
   assert.throws(() => f.invoke(), /Unsafe symlink: src\/escape/);
-  assert.ok(!f.calls.some(({ command }) => command === 'gitleaks'));
+  assert.ok(!f.calls.some(({ command }) => command === 'scanDirectory'));
 });
 
 test('rejects unsafe projects and missing committed settings', (t) => {
