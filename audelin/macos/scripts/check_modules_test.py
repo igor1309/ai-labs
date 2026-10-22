@@ -30,7 +30,7 @@ class CheckModulesTests(unittest.TestCase):
         self.assertEqual(check(
             tested("CallDomain"), tested("CallsCore", ["CallDomain"]), tested("CallsUI", ["CallsCore", "CallDomain"]),
             tested("FileCallStore", ["CallDomain", "CallsCore"]),
-            [("Audelin", "executable", ["CallsUI", "FileCallStore"])],
+            tested("Audelin", ["CallsUI", "FileCallStore"], "executable"),
         ), [])
 
     def test_domain_depending_on_a_core(self):
@@ -53,6 +53,15 @@ class CheckModulesTests(unittest.TestCase):
     def test_a_target_without_tests(self):
         self.assertEqual(check(tested("CallDomain"), [("CallsCore", "regular", ["CallDomain"])]),
                          ["invariant 5 every production target has a test target: CallsCore has no CallsCoreTests"])
+
+    def test_the_app_without_tests(self):
+        self.assertEqual(check(tested("CallDomain"), [("Audelin", "executable", ["CallDomain"])]),
+                         ["invariant 5 every production target has a test target: Audelin has no AudelinTests"])
+
+    def test_the_app_may_depend_on_any_module(self):
+        self.assertEqual(check(tested("CallDomain"), tested("CallsCore", ["CallDomain"]),
+                               tested("FileCallStore", ["CallsCore"]), tested("Audelin", ["CallsCore", "FileCallStore"], "executable")),
+                         [])
 
     def test_a_core_importing_a_framework(self):
         self.assertEqual(check(tested("CallsCore"), imports={"CallsCore": {"Foundation", "AVFoundation"}}),

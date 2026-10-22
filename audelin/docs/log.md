@@ -2,6 +2,11 @@
 
 ## 2026-10-22
 
+- The app exists: `Audelin.app`, a menu bar item with «Выйти», built from
+  the package by `macos/scripts/bundle.sh` rather than an Xcode project, so
+  CI and the agent build it with `swift build` alone. A check of ADR-001's
+  module rules runs in CI; it found LiveSessionCore and CallsCore without
+  tests, which they now have.
 - Recording to disk is built in [macos/](../macos/) without the app: the
   activity gate and call folder names (CallDomain), the Recorder and
   FileCallStore, each test-first with every test shown red on its own

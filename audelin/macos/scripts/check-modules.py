@@ -54,6 +54,8 @@ def check(package, imports):
         if name in DOMAIN or name in cores:
             for module in sorted(imports(name) - {"Foundation"} - deps[name]):
                 broken.append(f"invariant 6 Domain and Cores use Foundation only: {name} imports {module}")
+    if APP in targets and f"{APP}Tests" not in tests:
+        broken.append(f"invariant 5 every production target has a test target: {APP} has no {APP}Tests")
     for name in sorted(tests):
         subject = name[: -len("Tests")]
         allowed = {subject} | closure(subject, deps) | support

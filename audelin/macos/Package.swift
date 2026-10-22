@@ -5,7 +5,13 @@ import PackageDescription
 let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v14)],
+    products: [.executable(name: "Audelin", targets: ["Audelin"])],
     targets: [
+        // App: the entry point and composition root; the only target that
+        // may depend on every module and create adapters.
+        .executableTarget(name: "Audelin"),
+        .testTarget(name: "AudelinTests", dependencies: ["Audelin"]),
+
         // Domain: Foundation only, depends on nothing of ours.
         .target(name: "CallDomain"),
         .testTarget(name: "CallDomainTests", dependencies: ["CallDomain"]),
