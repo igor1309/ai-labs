@@ -10,7 +10,7 @@ description: "Audelin v1 — QA of the user journeys: the built app on this Mac,
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `ffaa8b67615c443e6fa1d49ba981172ac2ce5b07` |
+| oracle | `SPEC.md` — blob `692a593381068247663f9bc90e5f83b94e4febcb` |
 | driven by | the user: the owner, or an agent through the app's windows and the call folders |
 | where | the release build on this Mac (the debug build for S-18); Zoom calls between this Mac and a second device, the owner speaking Russian with English terms |
 
@@ -29,12 +29,6 @@ One row per [SPEC.md](SPEC.md) scenario. Verdicts live in run reports under
 
 - Drive: end the call from S-1 and wait past the call-end time.
 - Expect: the calls list has the call; it plays both tracks and reads the script; the panel still shows its text.
-- Evidence: Missing.
-
-### S-7 English terms in Russian speech read as spoken
-
-- Drive: the owner reads Russian sentences containing RACI, OKR and SLA.
-- Expect: the panel and the call's text show RACI, OKR and SLA in Latin letters.
 - Evidence: Missing.
 
 ### S-16 Each call has its own folder

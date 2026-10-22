@@ -10,7 +10,7 @@ description: "FluidAudio ASR — QA"
 
 | Field | Value |
 |---|---|
-| oracle | `SPEC.md` — blob `8b562676c66c837ba26d7c07171fbd24cf13da52` |
+| oracle | `SPEC.md` — blob `17e34ae6a9f0702504f80b60c903509d27c6c758` |
 | driven by | integration tests with the real Parakeet v3 model over recorded fixture audio |
 | where | this Mac, the model in the app's model folder |
 
@@ -22,12 +22,6 @@ Verdicts live in run reports under `runs/`. A row has evidence or reads Missing.
 
 - Drive: a 10 s fixture of the owner reading a known sentence, sent as the window 60–70 s.
 - Expect: the sentence's words, each timed within 60–70 s and in order; the reply is stored as a fixture for the stabilizer and transcript tests (ADR-001 invariant 14).
-- Evidence: Missing.
-
-### S-2 English terms in Russian speech
-
-- Drive: a fixture of the owner saying «нам нужен RACI и OKR до SLA».
-- Expect: «RACI», «OKR» and «SLA» in Latin letters.
 - Evidence: Missing.
 
 ### S-3 Silence
