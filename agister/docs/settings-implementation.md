@@ -283,9 +283,16 @@ caller giving every param it declares, so a param with no default
 refuses no document. A workflow that resolves but that a run of it does
 not run yet is refused all the same: the composition asks the run's own
 list of what it does not run, the one `agister run` refuses with, and
-gives each line, as the run words it, as a problem of the workflow at its
-file. Check then refuses what a run refuses before it starts, and the
-two cannot drift. Its fields: a document's fields, each its place,
+gives each line, as the run words it, as a problem of the workflow, at
+the file of its nearest layer, with no line and no place; a line names
+its owner, the workflow or a step, though it is under the workflow's
+heading. A process asked for alone is refused the same way for an input
+from a source a run does not take, which no agent changes. Check then
+refuses what a run does not run yet, and the two cannot drift; what a
+run refuses for its request or its worktree (no git worktree, a spent
+budget, a dirty worktree, a missing file) is the run's alone.
+
+Its fields: a document's fields, each its place,
 its value as text and its source, from the document's tree as layered
 and extended, so a document that does not type has its fields too, and
 one that does not decode has none; the composition answers it from
@@ -310,7 +317,8 @@ name within a kind. Check reports and does not gate (ADR-008, rule 3).
 the layers that hold it, and whether it resolves. It shows one of them:
 each field, its value and its source; then what resolve gives: every
 document it reached, the plan of each step and the warnings; or the
-refusal, each fault with its chain. A document no layer holds is shown
+refusal, each fault with its chain, a workflow a run does not run yet
+among them, shown with no plan. A document no layer holds is shown
 as such, and resolve is not asked.
 
 Check gives data; the command line prints it, and is the composition's.
@@ -336,7 +344,12 @@ Decisions of its reviews, each with its reason:
   (ADR-011) that this slice does not run. So the composition, not
   resolve, adds it to check's refusals, from the run's own list
   (LAB-465). A process asked for alone is paired with no agent, so what
-  its run would refuse on a runtime is checked only in a workflow.
+  its run would refuse on a runtime (a turn, an input named as a
+  document) is checked only in a workflow; its inputs' sources are
+  checked alone.
+- Inspect shows a workflow a run does not run yet as refused, with no
+  plan: it asks check's resolve, and one answer serves both. Showing
+  plans beside the lines is left until a person needs it.
 
 ## The composition
 
@@ -441,7 +454,7 @@ Decisions of its reviews, each with its reason:
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |
 | a required permission its mapping cannot give; a grant beyond the allowed, a warning | 6, resolve |
 | a file's text given to a param a process reads a file's path from | 6, resolve |
-| a workflow a run does not run yet | check, from the run's list |
+| a workflow a run does not run yet; a process's input from a source a run does not take | the composition, from the run's list |
 
 ## Problems
 
