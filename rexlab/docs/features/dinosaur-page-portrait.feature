@@ -15,8 +15,9 @@ Feature: A dinosaur's page in a tall window
 
   The page's padding, the bar, the stage's padding and rounding, the
   buttons, the food tag, the facts' cards and the words' type keep their
-  landscape sizes; the stage is 32 pixels under the bar and 32 over the
-  words, which are 24 apart, and the picture is 16 from each button.
+  landscape sizes; the stage is 28 pixels under the bar, as in
+  landscape, and 32 over the words, which are 24 apart but for the line
+  over the name, 8 over it; the picture is 16 from each button.
   "The width" below is the words' width: the window's less its side
   insets and the padding (a scrollbar that takes room narrows it). Every
   name in one window is in the same type, 7.8% of the width and at most
@@ -24,7 +25,9 @@ Feature: A dinosaur's page in a tall window
   the name is kept on every page, empty for a dinosaur, and the
   description keeps room for as many lines as the longest in either
   language takes at that width: three at 656 pixels or more, four at 520
-  to 655, five under 520 (the narrowest, 488). So the words take the
+  to 655, five under 520 (down to 472, a 600-pixel window beside a
+  scrollbar that takes 16). The note for parents keeps room the same
+  way: four lines under 600, three from 600. So the words take the
   same height on every page of one window in either language, and the
   stage takes the height they leave. The picture, at its 4:3, is as wide
   as the width less 232 (the stage's padding and the buttons with their
@@ -52,20 +55,20 @@ Feature: A dinosaur's page in a tall window
 
   Scenario Outline: Every word fits the narrowest widths
     Given the app is in <language>
-    And a window of <width> by 1366 CSS pixels, with no safe areas and scrollbars that take no room
+    And a window of <window> CSS pixels, with no safe areas and <scrollbar>
     When I open the page of each of the 52 creatures in turn
     Then its name stands on one line, none cut
-    And its description takes no more than <lines> lines, its facts' values each on one line
+    And its description takes no more than <lines> lines, the note no more than <note>, its facts' values each on one line
     And the stage and the words keep the same place and size on every page
 
     Examples:
-      | language | width | lines |
-      | English  | 600   | 5     |
-      | Russian  | 600   | 5     |
-      | English  | 632   | 4     |
-      | Russian  | 632   | 4     |
-      | English  | 768   | 3     |
-      | Russian  | 768   | 3     |
+      | language | window      | scrollbar                    | lines | note |
+      | English  | 600 by 800  | a scrollbar that takes 16    | 5     | 4    |
+      | Russian  | 600 by 800  | a scrollbar that takes 16    | 5     | 4    |
+      | English  | 632 by 1366 | scrollbars that take no room | 4     | 3    |
+      | Russian  | 632 by 1366 | scrollbars that take no room | 4     | 3    |
+      | English  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
+      | Russian  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
 
   Scenario: A flying reptile names its group in the line kept for it
     Given a window of 820 by 1180 CSS pixels on the page of Chasmosaurus

@@ -11,7 +11,8 @@ Feature: A dinosaur's page moves to its other layout as the window turns
   again: the page shows the same creature before and after. Until the
   motion settles, taps, swipes and keys do nothing, and focus stays
   where it was. Any other resize in a tall window glides nothing: the
-  page follows the window.
+  page follows the window. A page that scrolls shows from its top after
+  a turn.
 
   A turn while the picture grows from its card, or while the next or
   previous creature slides in, lets that motion end in the new layout:
