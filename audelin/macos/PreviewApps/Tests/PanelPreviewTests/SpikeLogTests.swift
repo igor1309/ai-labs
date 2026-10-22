@@ -33,18 +33,55 @@ struct SpikeLogTests {
         #expect((text.string as NSString).substring(with: text.selectedRange()) == "Accountable — я.")
     }
 
-    @Test func reportsASelectionAcrossEntriesWithoutTheGutter() throws {
+    @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
 
-        var reported: PanelState.Held?
-        let host = hosted(lines(pending: ""), select: { reported = $0 })
-        let text = try #require(textView(in: host))
+        var held: [PanelState.Held] = []
+        let host = hosted(lines(pending: ""), hold: { held.append($0) })
+        let text = try #require(textView(in: host) as? LogTextView)
         let string = text.string as NSString
+
+        text.setSelectedRange(string.range(of: "команда Ильи"))
+        text.selectionEnded?()
+        #expect(text.selectedRange().length == 0, "the held text stays selected")
+
+        text.setSelectedRange(NSRange(location: 3, length: 0))
+        text.selectionEnded?()
+
+        #expect(held == [.init(entryID: 2, text: "команда Ильи")])
+    }
+
+    @Test func fadesAHeldSelectionAway() async throws {
+
+        let host = hosted(lines(pending: ""))
+        let text = try #require(textView(in: host) as? LogTextView)
+        let fading = { text.subviews.filter { $0 is NSImageView } }
+
+        text.setSelectedRange((text.string as NSString).range(of: "команда Ильи"))
+        text.selectionEnded?()
+        #expect(fading().count == 1, "the selection clears without fading")
+
+        try await Task.sleep(for: .seconds(LogTextView.fade + 0.2))
+        #expect(fading().isEmpty, "the faded picture stays over the text")
+    }
+
+    @Test func holdsASelectionAcrossEntriesWithoutTheGutter() {
+
+        let config = PanelConfig.glassLedger
+        let transcript = Transcript(
+            lines: lines(pending: ""),
+            style: .init(tokens: .light, lineHeight: config.lineHeight, gutterWidth: config.gutterWidth)
+        )
+        let string = transcript.string.string as NSString
         let from = string.range(of: "команда Ильи.").location
         let to = NSMaxRange(string.range(of: "по запуску"))
-        text.setSelectedRange(NSRange(location: from, length: to - from))
 
-        #expect(reported?.entryID == 2)
-        #expect(reported?.text == "команда Ильи.\nпо запуску")
+        let held = Transcript.held(
+            in: NSRange(location: from, length: to - from),
+            of: transcript.string,
+            entries: transcript.entries
+        )
+
+        #expect(held == .init(entryID: 2, text: "команда Ильи.\nпо запуску"))
     }
 
     // MARK: - Helpers
@@ -67,7 +104,7 @@ struct SpikeLogTests {
 
     private func log(
         _ lines: PanelState.Lines,
-        select: @escaping (PanelState.Held?) -> Void = { _ in }
+        hold: @escaping (PanelState.Held) -> Void = { _ in }
     ) -> AnyView {
 
         let config = PanelConfig.glassLedger
@@ -78,7 +115,7 @@ struct SpikeLogTests {
                 tokens: .light,
                 lineHeight: config.lineHeight,
                 gutterWidth: config.gutterWidth,
-                select: select,
+                hold: hold,
                 scrolled: { _ in }
             )
             .frame(width: config.panelWidth, height: 260)
@@ -89,10 +126,10 @@ struct SpikeLogTests {
 
     private func hosted(
         _ lines: PanelState.Lines,
-        select: @escaping (PanelState.Held?) -> Void = { _ in }
+        hold: @escaping (PanelState.Held) -> Void = { _ in }
     ) -> NSHostingView<AnyView> {
 
-        let host = NSHostingView(rootView: log(lines, select: select))
+        let host = NSHostingView(rootView: log(lines, hold: hold))
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 396, height: 260),
             styleMask: .borderless,

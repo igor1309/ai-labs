@@ -17502,7 +17502,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on; switched off mid-call, the text so far stays above the notice. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). A selection is held exactly as selected: new lines below and a phrase settling differently never change it, and the panel marks it held. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. Switching live text on mid-call fills in the earlier minutes, marked «дописано позже».",
+              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on; switched off mid-call, the text so far stays above the notice. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). Each finished selection is held exactly as selected and added to the holds under the log: new lines below, a phrase settling differently and a click in the text never change a hold, and × lets one go. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. Switching live text on mid-call fills in the earlier minutes, marked «дописано позже».",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -17515,7 +17515,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Still proposed: a held selection drawn in selBg/selText with a pinned quote bar under the log; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: each hold a pinned quote row under the log; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -18681,7 +18681,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "The selected phrase is held exactly as selected, even when new lines arrive or the phrase settles differently; the panel marks it held and does not auto-scroll away. A «2 новые ↓» pill jumps back to live.",
+                      "content": "Each finished selection is held exactly as selected and added to the holds under the log; the selection fades from the log, which draws held text like any other. New lines and a phrase settling differently never change a hold, and a click in the text keeps it; × lets that one go. A «2 новые ↓» pill jumps back to live.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -18748,12 +18748,12 @@
                                           "content": "они"
                                         },
                                         "X4atW": {
-                                          "fill": "$selBg",
+                                          "fill": [],
                                           "cornerRadius": "$radius-control"
                                         },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
-                                          "fill": "$selText"
+                                          "fill": "$text"
                                         }
                                       }
                                     },
@@ -18789,6 +18789,10 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
@@ -18797,38 +18801,109 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "Y8pkr8",
-                                      "name": "Held",
+                                      "id": "ISpDh",
+                                      "name": "Holds",
                                       "width": "fill_container",
-                                      "cornerRadius": "$radius-card",
-                                      "stroke": "$selBg",
-                                      "strokeWidth": 1,
-                                      "gap": "$space-6",
-                                      "padding": [
-                                        "$space-2",
-                                        "$space-8"
-                                      ],
-                                      "alignItems": "center",
+                                      "layout": "vertical",
+                                      "gap": "$space-4",
                                       "children": [
                                         {
-                                          "type": "icon",
-                                          "id": "qDezb",
-                                          "name": "Pin",
-                                          "width": 14,
-                                          "height": 14,
-                                          "icon": "push-pin-fill",
-                                          "library": "phosphor",
-                                          "fill": "$me"
+                                          "type": "frame",
+                                          "id": "uMS7A",
+                                          "name": "Held 1",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "XTCQ1",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "NMsMg",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«accountable за слог поддержки?»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "k5w4a",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
                                         },
                                         {
-                                          "type": "text",
-                                          "id": "LwOkU",
-                                          "name": "Quote",
-                                          "fill": "$text",
-                                          "content": "«accountable за слог поддержки?»",
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
+                                          "type": "frame",
+                                          "id": "Ozc6Y",
+                                          "name": "Held 2",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "Po95x",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "Kthx7",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«ОКР на квартал»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "mYzQu",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -20303,17 +20378,14 @@
                 },
                 {
                   "type": "frame",
-                  "id": "oZXQc",
+                  "id": "v8E9co",
                   "name": "Selection held",
-                  "theme": {
-                    "mode": "dark"
-                  },
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "b88My",
+                      "id": "dvpMW",
                       "name": "State",
                       "fill": "#333333",
                       "content": "Selection held",
@@ -20323,12 +20395,12 @@
                     },
                     {
                       "type": "text",
-                      "id": "ZzCJH",
+                      "id": "c4N2F",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "The selected phrase is held exactly as selected, even when new lines arrive or the phrase settles differently; the panel marks it held and does not auto-scroll away. A «2 новые ↓» pill jumps back to live.",
+                      "content": "Each finished selection is held exactly as selected and added to the holds under the log; the selection fades from the log, which draws held text like any other. New lines and a phrase settling differently never change a hold, and a click in the text keeps it; × lets that one go. A «2 новые ↓» pill jumps back to live.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -20336,7 +20408,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "PFSgQ",
+                      "id": "As9uq",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -20345,20 +20417,20 @@
                       "padding": "$space-24",
                       "children": [
                         {
-                          "id": "sDT6X",
+                          "id": "DMIua",
                           "type": "ref",
                           "ref": "c0qJn",
                           "name": "Panel",
                           "descendants": {
                             "n5rfxu": {
                               "type": "frame",
-                              "id": "KSeTi",
+                              "id": "BLjMO",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
                               "children": [
                                 {
-                                  "id": "HzgiX",
+                                  "id": "Vna8f",
                                   "type": "ref",
                                   "ref": "rVa43",
                                   "name": "Header",
@@ -20371,7 +20443,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "e7Kdjz",
+                                  "id": "j9GTZ",
                                   "name": "Log",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -20382,7 +20454,7 @@
                                   ],
                                   "children": [
                                     {
-                                      "id": "BILJQ",
+                                      "id": "U5Vm39",
                                       "type": "ref",
                                       "ref": "ysZuS",
                                       "name": "Entry 12:41",
@@ -20395,17 +20467,17 @@
                                           "content": "они"
                                         },
                                         "X4atW": {
-                                          "fill": "$selBg",
+                                          "fill": [],
                                           "cornerRadius": "$radius-control"
                                         },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
-                                          "fill": "$selText"
+                                          "fill": "$text"
                                         }
                                       }
                                     },
                                     {
-                                      "id": "LKmyR",
+                                      "id": "y2gJE",
                                       "type": "ref",
                                       "ref": "Nescm",
                                       "name": "Entry 12:42",
@@ -20424,7 +20496,7 @@
                                       }
                                     },
                                     {
-                                      "id": "xjvNe",
+                                      "id": "l3dUPT",
                                       "type": "ref",
                                       "ref": "ysZuS",
                                       "name": "Entry 12:44",
@@ -20436,6 +20508,10 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
@@ -20444,51 +20520,122 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "Ow8xH",
-                                      "name": "Held",
+                                      "id": "e7BMdC",
+                                      "name": "Holds",
                                       "width": "fill_container",
-                                      "cornerRadius": "$radius-card",
-                                      "stroke": "$selBg",
-                                      "strokeWidth": 1,
-                                      "gap": "$space-6",
-                                      "padding": [
-                                        "$space-2",
-                                        "$space-8"
-                                      ],
-                                      "alignItems": "center",
+                                      "layout": "vertical",
+                                      "gap": "$space-4",
                                       "children": [
                                         {
-                                          "type": "icon",
-                                          "id": "VGzz3",
-                                          "name": "Pin",
-                                          "width": 14,
-                                          "height": 14,
-                                          "icon": "push-pin-fill",
-                                          "library": "phosphor",
-                                          "fill": "$me"
+                                          "type": "frame",
+                                          "id": "sgp9s",
+                                          "name": "Held 1",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "rhZtT",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "vsRJt",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«accountable за слог поддержки?»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "lkpo6",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
                                         },
                                         {
-                                          "type": "text",
-                                          "id": "x16h3V",
-                                          "name": "Quote",
-                                          "fill": "$text",
-                                          "content": "«accountable за слог поддержки?»",
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
+                                          "type": "frame",
+                                          "id": "XLngg",
+                                          "name": "Held 2",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "MBJAy",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "r7yIx",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«ОКР на квартал»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "cYmFe",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "qy8V2",
+                                      "id": "KYLEW",
                                       "name": "New lines pill",
                                       "width": "fill_container",
                                       "justifyContent": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "ik87o",
+                                          "id": "FVgpf",
                                           "name": "Pill",
                                           "fill": "$card",
                                           "cornerRadius": "$radius-card",
@@ -20501,7 +20648,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "j0MAe",
+                                              "id": "s4ERG",
                                               "name": "Text",
                                               "fill": "$me",
                                               "content": "2 новые ↓",

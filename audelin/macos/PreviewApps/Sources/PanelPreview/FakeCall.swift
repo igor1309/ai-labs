@@ -27,10 +27,10 @@ struct FakeCall: Equatable {
 
     private(set) var isRecording = false
     private(set) var liveText = true
-    /// The log scrolls to each new line; off while the reader is scrolled up
-    /// or holds a selection.
+    /// The log scrolls to each new line; off while the reader is scrolled up.
     private(set) var followsLive = true
-    private var held: PanelState.Held?
+    /// Selections the reader holds, oldest first; each stays until let go.
+    private(set) var holds: [PanelState.Held] = []
     private var newBelow = 0
     private var seconds = 0
     private var phrase = 0
@@ -56,7 +56,7 @@ struct FakeCall: Equatable {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(late: late, entries: entries, held: held, newBelow: newBelow)
+        let lines = PanelState.Lines(late: late, entries: entries, held: holds.last, newBelow: newBelow)
         let kept = entries.isEmpty && late == nil ? nil : lines
 
         return .init(
@@ -79,22 +79,25 @@ struct FakeCall: Equatable {
             setLiveText(true)
 
         case .jumpToLive:
-            held = nil
             followLive()
         }
     }
 
-    /// The reader selected text, or cleared the selection.
-    mutating func select(_ selection: PanelState.Held?) {
+    /// The reader finished a selection: it is held beside the earlier ones.
+    mutating func hold(_ selection: PanelState.Held) {
 
-        held = selection
-        if selection != nil { followsLive = false }
+        if !holds.contains(selection) { holds.append(selection) }
+    }
+
+    mutating func letGo(_ index: Int) {
+
+        if holds.indices.contains(index) { holds.remove(at: index) }
     }
 
     /// The reader scrolled to, or away from, the newest line.
     mutating func scrolled(atBottom: Bool) {
 
-        if atBottom, held == nil {
+        if atBottom {
             followLive()
         } else if !atBottom {
             followsLive = false

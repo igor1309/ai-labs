@@ -7,7 +7,7 @@ import SwiftUI
 /// span entries and the app learns what was selected.
 ///
 /// Questions it answers: can AppKit draw the design's entry (gutter, dim
-/// pending text, caret, held text); does a selection survive text settling
+/// pending text, caret); does a selection survive text settling
 /// and lines arriving; can the log follow the newest line until the reader
 /// scrolls up.
 struct SpikeLog: NSViewRepresentable {
@@ -17,24 +17,37 @@ struct SpikeLog: NSViewRepresentable {
     let tokens: GlassLedger
     let lineHeight: CGFloat
     let gutterWidth: CGFloat
-    let select: (PanelState.Held?) -> Void
+    /// A selection the reader finished making, on mouse-up.
+    let hold: (PanelState.Held) -> Void
     let scrolled: (_ atBottom: Bool) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
 
-        let scroll = NSTextView.scrollableTextView()
+        let scroll = NSScrollView()
         scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
 
-        let text = scroll.documentView as! NSTextView
+        let text = LogTextView(usingTextLayoutManager: true)
+        text.isVerticallyResizable = true
+        text.isHorizontallyResizable = false
+        text.autoresizingMask = [.width]
+        text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+        text.textContainer?.widthTracksTextView = true
+        scroll.documentView = text
+
         text.isEditable = false
         text.isSelectable = true
         text.drawsBackground = false
         text.textContainerInset = NSSize(width: tokens.space16, height: tokens.space12)
         text.textContainer?.lineFragmentPadding = 0
-        text.delegate = context.coordinator
+        text.selectionStarted = { [weak coordinator = context.coordinator] in coordinator?.isSelecting = true }
+        text.selectionEnded = { [weak coordinator = context.coordinator, weak text] in
+            guard let coordinator, let text else { return }
+            coordinator.finishSelecting(text)
+        }
 
         scroll.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(
@@ -70,7 +83,7 @@ struct SpikeLog: NSViewRepresentable {
         text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
         coordinator.isUpdating = false
 
-        if followsLive { text.scrollToEndOfDocument(nil) }
+        if followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
     }
 }
 
@@ -111,31 +124,34 @@ private extension SpikeLog {
 extension SpikeLog {
 
     @MainActor
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject {
 
         var parent: SpikeLog
         var entries: [Transcript.EntryRange] = []
         var isUpdating = false
         weak var scroll: NSScrollView?
+        /// A drag is selecting text: the log holds still under it.
+        var isSelecting = false
         private var atBottom = true
 
         init(_ parent: SpikeLog) { self.parent = parent }
 
-        func textViewDidChangeSelection(_ notification: Notification) {
+        /// A drag ended: what it selected is held, and the selection fades
+        /// from the log, which draws held text like any other. A click that
+        /// only clears the selection lets nothing go; the held list's own
+        /// button does.
+        func finishSelecting(_ text: LogTextView) {
 
-            guard !isUpdating, let text = notification.object as? NSTextView else { return }
+            isSelecting = false
 
             let range = text.selectedRange()
-            guard range.length > 0, let storage = text.textStorage else {
-                parent.select(nil)
-                return
-            }
+            guard let storage = text.textStorage,
+                  let held = Transcript.held(in: range, of: storage, entries: entries)
+            else { return }
 
-            let selected = Transcript.text(in: range, of: storage)
-            let first = entries.first { NSIntersectionRange($0.body, range).length > 0 }
-            guard let first, !selected.isEmpty else { return }
-
-            parent.select(.init(entryID: first.id, text: selected))
+            text.fadeSelection(range)
+            text.setSelectedRange(NSRange(location: range.location, length: 0))
+            parent.hold(held)
         }
 
         @objc func boundsChanged(_ notification: Notification) {
@@ -148,6 +164,64 @@ extension SpikeLog {
 
             atBottom = now
             parent.scrolled(now)
+        }
+    }
+}
+
+/// Reports a mouse selection once it is made: `mouseDown` runs AppKit's own
+/// tracking loop and returns only after the button is released, so neither
+/// the delegate nor an app event monitor sees the end of the drag.
+final class LogTextView: NSTextView {
+
+    var selectionStarted: (() -> Void)?
+    var selectionEnded: (() -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+
+        selectionStarted?()
+        super.mouseDown(with: event)
+        selectionEnded?()
+    }
+
+    /// How long a held selection takes to fade (owner, 2026-10-22).
+    static let fade: TimeInterval = 0.3
+
+    /// Lays a picture of the selected lines over them and fades it out, so
+    /// the selection dissolves into the text below once that is unselected.
+    func fadeSelection(_ range: NSRange) {
+
+        guard let layout = textLayoutManager,
+              let content = layout.textContentManager,
+              let start = content.location(content.documentRange.location, offsetBy: range.location),
+              let end = content.location(start, offsetBy: range.length),
+              let textRange = NSTextRange(location: start, end: end)
+        else { return }
+
+        var bounds = NSRect.null
+        layout.enumerateTextSegments(in: textRange, type: .selection, options: []) { _, frame, _, _ in
+            bounds = bounds.union(frame)
+            return true
+        }
+        let origin = textContainerOrigin
+        let rect = bounds.offsetBy(dx: origin.x, dy: origin.y).integral
+        guard !rect.isEmpty, let picture = bitmapImageRepForCachingDisplay(in: rect) else { return }
+        cacheDisplay(in: rect, to: picture)
+
+        let image = NSImage(size: rect.size)
+        image.addRepresentation(picture)
+        let overlay = NSImageView(frame: rect)
+        overlay.image = image
+        overlay.imageScaling = .scaleNone
+        addSubview(overlay)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fade
+            overlay.animator().alphaValue = 0
+        }
+        // Removed on a timer: an animation's completion never comes in a
+        // window that is not on screen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.fade) {
+            overlay.removeFromSuperview()
         }
     }
 }
@@ -181,7 +255,7 @@ struct Transcript {
 
     init(lines: PanelState.Lines, style: Style) {
 
-        let builder = Builder(style: style, held: lines.held)
+        let builder = Builder(style: style)
 
         if let late = lines.late {
 
@@ -193,6 +267,21 @@ struct Transcript {
 
         string = builder.result
         entries = builder.ranges
+    }
+
+    /// The selection as the panel holds it: the text without gutters, and
+    /// the first entry it touches.
+    static func held(
+        in range: NSRange,
+        of string: NSAttributedString,
+        entries: [EntryRange]
+    ) -> PanelState.Held? {
+
+        let selected = text(in: range, of: string)
+        let first = entries.first { NSIntersectionRange($0.body, range).length > 0 }
+        guard let first, !selected.isEmpty else { return nil }
+
+        return .init(entryID: first.id, text: selected)
     }
 
     /// The selected text as the reader sees it, without gutters.
@@ -212,16 +301,14 @@ private extension Transcript {
     final class Builder {
 
         let style: Style
-        let held: PanelState.Held?
         let result = NSMutableAttributedString()
         var ranges: [EntryRange] = []
 
         private var tokens: GlassLedger { style.tokens }
 
-        init(style: Style, held: PanelState.Held?) {
+        init(style: Style) {
 
             self.style = style
-            self.held = held
         }
 
         func caption(_ string: String) {
@@ -275,21 +362,6 @@ private extension Transcript {
 
             let body = NSRange(location: start, length: result.length - start)
             ranges.append(.init(id: entry.id, body: body))
-            markHeld(entry, body)
-        }
-
-        private func markHeld(_ entry: PanelState.Entry, _ body: NSRange) {
-
-            guard let held, held.entryID == entry.id else { return }
-
-            let text = result.string as NSString
-            let found = text.range(of: held.text, range: body)
-            guard found.location != NSNotFound else { return }
-
-            result.addAttributes([
-                .backgroundColor: NSColor(tokens.selBg),
-                .foregroundColor: NSColor(tokens.selText),
-            ], range: found)
         }
 
         private func caret(_ paragraph: NSParagraphStyle) -> NSAttributedString {
@@ -349,3 +421,4 @@ private extension Transcript {
         }
     }
 }
+

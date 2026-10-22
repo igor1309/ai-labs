@@ -3,13 +3,15 @@ import PanelUI
 import SwiftUI
 
 /// Spike: the panel's header from `PanelView`, then the AppKit log in a fixed
-/// height, with the held bar and the new-lines pill under it.
+/// height, with the new-lines pill over it and the held selections under it.
 struct SpikePanel: View {
 
     let state: PanelState
     let followsLive: Bool
     let event: (PanelEvent) -> Void
-    let select: (PanelState.Held?) -> Void
+    let holds: [PanelState.Held]
+    let hold: (PanelState.Held) -> Void
+    let letGo: (Int) -> Void
     let scrolled: (Bool) -> Void
 
     @Environment(\.colorScheme) private var scheme
@@ -36,7 +38,7 @@ struct SpikePanel: View {
                         tokens: tokens,
                         lineHeight: config.lineHeight,
                         gutterWidth: config.gutterWidth,
-                        select: select,
+                        hold: hold,
                         scrolled: scrolled
                     )
                     .frame(height: 260)
@@ -55,18 +57,31 @@ struct SpikePanel: View {
                         }
                     }
 
-                    if let held = lines.held {
+                    ForEach(Array(holds.enumerated()), id: \.offset) { index, held in
 
-                        Label("«\(held.text)»", systemImage: "pin.fill")
-                            .font(tokens.data(tokens.typeSmall))
-                            .foregroundStyle(tokens.text)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, tokens.space16)
-                            .padding(.bottom, tokens.space8)
+                        HStack(spacing: tokens.space6) {
+
+                            Image(systemName: "pin.fill")
+                                .foregroundStyle(tokens.me)
+
+                            Text("«\(held.text)»")
+                                .foregroundStyle(tokens.text)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Button { letGo(index) } label: {
+                                Image(systemName: "xmark")
+                                    .foregroundStyle(tokens.gutter)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Отпустить")
+                        }
+                        .font(tokens.data(tokens.typeSmall))
+                        .padding(.horizontal, tokens.space16)
                     }
                 }
+                .padding(.bottom, holds.isEmpty ? 0 : tokens.space8)
                 .frame(width: config.panelWidth)
                 .background(tokens.glass, in: .rect(cornerRadius: tokens.radiusPanel))
             }

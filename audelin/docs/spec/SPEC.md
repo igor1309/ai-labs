@@ -33,6 +33,26 @@ Feature: Live text of calls
     When new text arrives or the selected phrase settles differently
     Then I keep exactly the text I selected, and the panel shows it's held
 
+  Scenario: S-11 Held selections add up
+    Given I hold a selection
+    When I select another part of the transcript
+    Then I hold both, and the panel shows each as held
+
+  Scenario: S-12 A click keeps what is held
+    Given I hold a selection
+    When I click in the transcript
+    Then I still hold it
+
+  Scenario: S-13 Letting go of a held selection
+    Given I hold several selections
+    When I let one of them go
+    Then I hold only the others
+
+  Scenario: S-14 A held selection leaves the transcript
+    Given I've selected part of the transcript
+    When I finish selecting
+    Then I hold it, and the selection fades from the transcript
+
   Scenario: S-6 The panel stays visible beside the call
     Given a call window is in front
     When I work in the call app

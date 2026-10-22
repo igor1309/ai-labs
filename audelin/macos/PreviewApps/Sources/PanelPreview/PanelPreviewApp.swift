@@ -42,7 +42,9 @@ struct PanelPreviewView: View {
                     state: call.state,
                     followsLive: call.followsLive,
                     event: { call.handle($0) },
-                    select: { call.select($0) },
+                    holds: call.holds,
+                    hold: { call.hold($0) },
+                    letGo: { call.letGo($0) },
                     scrolled: { call.scrolled(atBottom: $0) }
                 )
             }
