@@ -10,8 +10,8 @@ Evidence: Missing.
 
 ## S-2 Sound keeps its time after a quiet start
 
-The first piece is stamped 3 s after the start; the track opens with 3 s
-of zeros, then the piece. Evidence: Missing.
+The first piece is stamped 3 s from the source's start; the track opens
+with 3 s of zeros, then the piece. Evidence: Missing.
 
 ## S-3 Sound keeps its time after a quiet stretch
 

@@ -74,3 +74,16 @@ read back. Evidence: Missing.
 
 Fake: a new naming is refused; the first process's tone keeps coming and
 the capture does not fail. Evidence: Missing.
+
+## S-16 Each piece tells when it was played
+
+Fake: the binding stamps buffers on a host clock that starts at a nonzero
+value, with a 2 s jump and a device change between them; each piece's time
+is its stamp less the capture's start, unchanged by the device change.
+Real: two `afplay` tones 1 s apart come back about 1 s apart. Evidence:
+Missing.
+
+## S-17 The user still hears what is captured
+
+Fake: the tap is asked to leave playback unmuted. The real Zoom call of the
+user spec hears the far side while recording. Evidence: Missing.

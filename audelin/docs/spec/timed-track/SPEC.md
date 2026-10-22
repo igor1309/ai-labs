@@ -9,7 +9,8 @@ own, and knows nothing of where they come from.
 
 - Track time is call time, an Audelin decision: a call's two tracks are
   lined up by time (mvp.md: two tracks, one stereo file), and live text
-  times each word in its track. The track starts when the pieces start.
+  times each word in its track. The track starts when its source starts,
+  and each piece's time counts from that start.
 - A stretch the pieces skip is filled with silence, placed by the pieces'
   own times, because only the source's clock knows the gap: a tap delivers
   nothing while nothing plays (Muesli), and Amanu, which offsets a track by

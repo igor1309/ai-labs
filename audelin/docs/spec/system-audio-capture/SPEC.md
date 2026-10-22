@@ -1,27 +1,20 @@
 # System audio capture
 
-Observer: the client that starts a capture of the processes it names and
-reads what they play, through an interface the client owns. The capture is
-an adapter: Core Audio's tap in, audio stamped with the tap's time out.
+Observer: the client that captures the processes it names and reads what
+they play, through an interface it owns. An adapter over a Core Audio tap.
 
 ## Decided
 
-- A Core Audio process tap: it needs only the system-audio permission, where
-  ScreenCaptureKit needs screen recording ([research](../../research/system-audio.md)).
-- The client names the processes to hear, or the ones to leave out; "all
-  but these" also hears processes that start later. A tap description takes
-  both (`CATapDescription`, Amanu `SystemAudioRecorder.swift:209`).
-- The audio is the tap's own mono mix at the device's rate (anarlog,
-  Meetily): the call is one channel, and 16 kHz stays before recognition.
-- The tap leaves playback unmuted (Amanu `SystemAudioRecorder.swift:213`),
-  so the user still hears the call.
-- The capture starts its device when told to, not on its own: a tap that
-  started before Zoom opened its audio froze Zoom for 60 s (Muesli #600).
-- Each piece of audio carries the tap's time. Turning pieces into a track
-  in call time is not the capture's (timed track).
-- A quiet tap is not a failure: a tap can stop delivering while nothing
-  plays (Muesli). The capture fails when starting fails or when the system
-  stops its device; a denied permission gives silence, not a failure.
+- A process tap, which needs no screen recording ([why](../../research/system-audio.md)).
+- The client names the processes to hear, or those to leave out ("all but"
+  also hears later ones); a tap takes both, and leaves playback unmuted
+  (`CATapDescription`, Amanu `SystemAudioRecorder.swift:209-213`).
+- The tap's mono mix at the device's rate (anarlog, Meetily). The device
+  starts when told to: one started before Zoom's audio froze Zoom for 60 s
+  (Muesli #600).
+- Each piece carries when it was played, from the capture's start on the
+  tap's clock. A quiet tap is not a failure (Muesli); a denied permission
+  gives silence.
 
 ```gherkin
 Feature: Hearing the processes a client names
@@ -90,11 +83,18 @@ Feature: Hearing the processes a client names
     Given a capture of the processes I named
     When the system refuses a new naming
     Then I can still read what the first processes play
+
+  Scenario: S-16 Each piece tells when it was played
+    Given a capture that heard a quiet stretch
+    When a named process plays again
+    Then I can tell when its sound was played since the start
+
+  Scenario: S-17 The user still hears what is captured
+    Given a capture of the processes I named
+    When one of them plays
+    Then the user can still hear it
 ```
 
-S-3 and S-4 moved to timed track. Not system audio capture's: which
-processes carry the call (call app processes), listing them (audio
-processes), call time (timed track), when to name again and retrying (the
-client and the root), keeping echo cancellation out of the process, which
-kills a tap (MacParakeet; the root), proving the permission (setup), and
-writing the track.
+S-3 and S-4 moved to timed track. Not capture's: choosing and listing
+processes, call time, naming again, retrying, keeping echo cancellation
+(it kills a tap, MacParakeet) out of the process, the permission, the file.
