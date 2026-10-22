@@ -14,6 +14,7 @@ let package = Package(
 
         // Features: a Core depends on Domain only.
         .target(name: "LiveSessionCore", dependencies: ["CallDomain"]),
+        .target(name: "CallsCore", dependencies: ["CallDomain"]),
 
         // Adapters: Domain and the Core whose ports they implement.
         .target(name: "Recorder", dependencies: ["CallDomain", "LiveSessionCore"]),
@@ -25,5 +26,7 @@ let package = Package(
         .executableTarget(
             name: "recorder-crash-child",
             dependencies: ["CallDomain", "Recorder", "RecorderTestSupport"]),
+        .target(name: "FileCallStore", dependencies: ["CallDomain", "CallsCore"]),
+        .testTarget(name: "FileCallStoreTests", dependencies: ["FileCallStore"]),
     ]
 )
