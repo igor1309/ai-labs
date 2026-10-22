@@ -20,7 +20,7 @@ let package = Package(
 
         // Features: a Core depends on Domain only.
         .target(name: "LiveSessionCore", dependencies: ["CallDomain"]),
-        .testTarget(name: "LiveSessionCoreTests", dependencies: ["LiveSessionCore"]),
+        .testTarget(name: "LiveSessionCoreTests", dependencies: ["LiveSessionCore", "CallDomain"]),
         .target(name: "CallsCore", dependencies: ["CallDomain"]),
         .testTarget(name: "CallsCoreTests", dependencies: ["CallsCore"]),
 

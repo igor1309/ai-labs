@@ -2,6 +2,12 @@
 
 ## 2026-10-22
 
+- The recording session is built in LiveSessionCore, test-first on fakes
+  of its ports: capture per track, new calls, recording files, live
+  recognition and the session clock. Captured audio is written on the
+  capture's own thread and reported to recognition through a stream the
+  session never waits on, so Stop is immediate with a stuck recogniser or
+  no model. Capture and disk faults are recording-faults', next.
 - Agister reviews of the two merged build PRs found five things to fix,
   now fixed test-first: Recorder file names wrapped past 32 bits of
   microseconds (about 36 minutes into a call); a failed copy could delete
