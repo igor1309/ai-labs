@@ -164,6 +164,33 @@ negligible for both.
   eye: «UI штучек», «то ли там окошко» against Nemotron's «UAC
   зарисовок», «туалетам окошка». No reference text exists for it.
 
+## Run 7 — both recognisers over a real call (2026-10-22)
+
+[`replay/`](replay/) over a 94 s Zoom call Amanu kept (stereo AAC, the
+owner's AirPods mic left, the other side right), each channel a track,
+through Audelin's own recognisers and Live text. The call is personal and
+stays out of the repository. Ranges are over the two tracks.
+
+| | Parakeet (windows) | Nemotron (streaming) |
+|---|---|---|
+| Shown delay, median / p90 | 2.8–3.9 / 4.7–4.9 s | 0.6–0.7 / 1.1 s |
+| Final delay, median / max | 4.3 / 5.9–6.0 s | 1.1 / 10.9–31.3 s |
+| Shown, never final | 26–38% | 20% |
+| CPU for 188 s of audio, model load included | 2.6 s (1.4% of a core) | 6.1 s (3.2%) |
+| Peak memory | 95–101 MB | 116–119 MB |
+
+- **The owner's mic:** both read about as well; each misheard a few words,
+  and Parakeet wrote an English phrase into a quiet stretch.
+- **The other side, quieter and through Zoom:** Parakeet reads it clearly
+  better; Nemotron garbled two of its phrases and dropped a greeting.
+- **Nemotron leaves the last word before a silence pending** until speech
+  resumes: up to 31 s on the quieter side. Parakeet settles every word
+  within 6 s.
+- The AirPods kept the other side out of the mic: neither recogniser heard
+  it on the mic track.
+- One short call, compressed: a first reading, not a decision. Neural
+  Engine and GPU load are not measured; that needs `powermetrics`.
+
 ## Not yet measured
 
 - Selection while text is appending.
