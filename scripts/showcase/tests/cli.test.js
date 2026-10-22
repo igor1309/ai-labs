@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { handleCLI } from '../export.js';
+
+// Contract test: the Node executable exposes argument failure through its exit status and streams.
+test('executable rejects invalid arguments with nonzero status, stderr and empty stdout', () => {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../export.js', import.meta.url)), '--push'], {
+    encoding: 'utf8'
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, 'Usage: node scripts/showcase/export.js <project> [--push]\n');
+  assert.equal(result.stdout, '');
+});
 
 for (const { args, project, push } of [
   { args: ['game'], project: 'game', push: false },

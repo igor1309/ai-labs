@@ -105,6 +105,7 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "scripts/showcase/**"
               - "agonara/**"
               - "clipdeck/**"
               - "foliotell/**"
@@ -434,8 +435,8 @@ jobs:
       - name: Validate FolioTell release notes
         run: node scripts/release/validate-foliotell-release-notes.js
 
-      - name: Run release script tests
-        run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js
+      - name: Run release and showcase script tests
+        run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js scripts/showcase/tests/*.test.js
 
   pr-scope:
     if: ${{ github.event_name == 'pull_request' }}

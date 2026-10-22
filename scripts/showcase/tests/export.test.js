@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { exportProject, isIncluded, readSettings, runCommand, scanMarkers } from '../export.js';
@@ -359,6 +359,16 @@ test('validates required settings instead of accepting malformed allowlists or c
     const missing = { ...settings };
     delete missing[key];
     assert.throws(() => readSettings(stringify(missing)), /showcase.toml/);
+  }
+});
+
+// Contract test: the process adapter sets the real child process's working directory.
+test('command adapter honours cwd for distinct temporary directories', (t) => {
+  for (const name of ['first', 'second']) {
+    const cwd = mkdtempSync(join(tmpdir(), `showcase-cwd-${name}-`));
+    t.after(() => rmSync(cwd, { recursive: true, force: true }));
+    const output = runCommand(process.execPath, ['-e', 'process.stdout.write(process.cwd())'], { cwd });
+    assert.equal(output.toString(), realpathSync(cwd));
   }
 });
 
