@@ -194,101 +194,22 @@ private extension PanelView {
     @ViewBuilder
     func linesView(_ lines: PanelState.Lines) -> some View {
 
-        if let late = lines.late {
+        TranscriptLog(lines: lines, tokens: tokens, config: config, event: event)
 
-            lateView(late)
+        if !lines.holds.isEmpty {
 
-            Rectangle()
-                .fill(tokens.rule)
-                .frame(height: 1)
-        }
+            VStack(spacing: tokens.space4) {
 
-        ForEach(lines.entries) { entry in
+                ForEach(Array(lines.holds.enumerated()), id: \.offset) { _, held in
 
-            entryView(entry, held: lines.held)
-        }
-
-        if let held = lines.held {
-
-            heldView(held)
+                    heldView(held)
+                }
+            }
         }
 
         if lines.newBelow > 0 {
 
             newBelowPill(lines.newBelow)
-        }
-    }
-
-    func lateView(_ late: PanelState.Late) -> some View {
-
-        VStack(alignment: .leading, spacing: tokens.space8) {
-
-            Text("дописано позже · \(late.span)")
-                .font(tokens.data(tokens.typeCaption))
-                .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
-                .foregroundStyle(tokens.gutter)
-
-            ForEach(late.entries) { entryView($0, held: nil) }
-        }
-        .opacity(0.6)
-    }
-
-    func entryView(
-        _ entry: PanelState.Entry,
-        held: PanelState.Held?
-    ) -> some View {
-
-        HStack(alignment: .firstTextBaseline, spacing: tokens.space12) {
-
-            HStack(spacing: tokens.space8) {
-
-                Text(entry.time)
-                    .foregroundStyle(tokens.gutter)
-
-                Text(entry.speaker == .me ? "я" : "они")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(entry.speaker == .me ? tokens.me : tokens.them)
-            }
-            .font(tokens.data(tokens.typeBody))
-            .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
-            .frame(width: config.gutterWidth, alignment: .leading)
-
-            let isHeld = held.map { $0.entryID == entry.id && entry.settled.contains($0.text) } ?? false
-
-            VStack(alignment: .leading, spacing: 0) {
-
-                if !entry.settled.isEmpty {
-
-                    Text(entry.settled)
-                        .foregroundStyle(isHeld ? tokens.selText : tokens.text)
-                        .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
-                }
-
-                if !entry.pending.isEmpty {
-
-                    pendingLine(entry.pending)
-                }
-            }
-            .font(tokens.data(tokens.typeBody))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                isHeld ? tokens.selBg : .clear,
-                in: .rect(cornerRadius: tokens.radiusControl)
-            )
-        }
-    }
-
-    func pendingLine(_ pending: String) -> some View {
-
-        HStack(spacing: tokens.space2) {
-
-            Text(pending)
-                .foregroundStyle(tokens.gutter)
-                .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.lineHeight))
-
-            Rectangle()
-                .fill(tokens.me)
-                .frame(width: 2, height: 15)
         }
     }
 
@@ -305,10 +226,19 @@ private extension PanelView {
                 .foregroundStyle(tokens.text)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button { event(.letGo(held)) } label: {
+
+                Image(systemName: "xmark")
+                    .font(.system(size: 14))
+                    .foregroundStyle(tokens.gutter)
+            }
+            .buttonStyle(.plain)
+            .help("Отпустить")
         }
         .padding(.vertical, tokens.space2)
         .padding(.horizontal, tokens.space8)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
             RoundedRectangle(cornerRadius: tokens.radiusCard)
                 .stroke(tokens.selBg, lineWidth: 1)

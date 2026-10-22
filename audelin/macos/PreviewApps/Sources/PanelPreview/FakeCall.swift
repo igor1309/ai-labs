@@ -56,7 +56,7 @@ struct FakeCall: Equatable {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(late: late, entries: entries, held: holds.last, newBelow: newBelow)
+        let lines = PanelState.Lines(late: late, entries: entries, holds: holds, newBelow: newBelow, followsLive: followsLive)
         let kept = entries.isEmpty && late == nil ? nil : lines
 
         return .init(
@@ -78,29 +78,21 @@ struct FakeCall: Equatable {
         case .switchLiveTextOn:
             setLiveText(true)
 
+        case let .hold(selection):
+            if !holds.contains(selection) { holds.append(selection) }
+
+        case let .letGo(selection):
+            holds.removeAll { $0 == selection }
+
+        case let .scrolled(atBottom):
+            if atBottom {
+                followLive()
+            } else {
+                followsLive = false
+            }
+
         case .jumpToLive:
             followLive()
-        }
-    }
-
-    /// The reader finished a selection: it is held beside the earlier ones.
-    mutating func hold(_ selection: PanelState.Held) {
-
-        if !holds.contains(selection) { holds.append(selection) }
-    }
-
-    mutating func letGo(_ index: Int) {
-
-        if holds.indices.contains(index) { holds.remove(at: index) }
-    }
-
-    /// The reader scrolled to, or away from, the newest line.
-    mutating func scrolled(atBottom: Bool) {
-
-        if atBottom {
-            followLive()
-        } else if !atBottom {
-            followsLive = false
         }
     }
 

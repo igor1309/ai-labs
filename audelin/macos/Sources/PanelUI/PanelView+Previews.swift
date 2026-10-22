@@ -64,8 +64,12 @@ extension PanelState {
                 .init(id: 2, time: "12:42", speaker: .me, settled: "Accountable — я. По слог отвечает команда Ильи."),
                 .init(id: 3, time: "12:44", speaker: .them, settled: "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы."),
             ],
-            held: .init(entryID: 1, text: "accountable за слог поддержки?"),
-            newBelow: 2
+            holds: [
+                .init(entryID: 1, text: "accountable за слог поддержки?"),
+                .init(entryID: 3, text: "ОКР на квартал"),
+            ],
+            newBelow: 2,
+            followsLive: false
         ))
     )
 

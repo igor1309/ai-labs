@@ -4,6 +4,11 @@ public enum PanelEvent: Equatable, Sendable {
     case start
     case stop
     case switchLiveTextOn
-    /// Leave a held selection and follow the newest lines.
+    /// A selection was finished: hold it beside the others.
+    case hold(PanelState.Held)
+    case letGo(PanelState.Held)
+    /// The reader scrolled to, or away from, the newest line.
+    case scrolled(atBottom: Bool)
+    /// Follow the newest lines again.
     case jumpToLive
 }

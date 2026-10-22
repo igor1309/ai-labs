@@ -57,8 +57,8 @@ struct FakeCallTests {
     @Test func addsEachSelectionToWhatIsHeld() {
 
         var call = started()
-        call.hold(.init(entryID: 0, text: "accountable"))
-        call.hold(.init(entryID: 1, text: "команда Ильи"))
+        call.handle(.hold(.init(entryID: 0, text: "accountable")))
+        call.handle(.hold(.init(entryID: 1, text: "команда Ильи")))
 
         #expect(call.holds.map(\.text) == ["accountable", "команда Ильи"])
     }
@@ -66,9 +66,9 @@ struct FakeCallTests {
     @Test func letsGoOnlyTheSelectionAskedFor() {
 
         var call = started()
-        call.hold(.init(entryID: 0, text: "accountable"))
-        call.hold(.init(entryID: 1, text: "команда Ильи"))
-        call.letGo(0)
+        call.handle(.hold(.init(entryID: 0, text: "accountable")))
+        call.handle(.hold(.init(entryID: 1, text: "команда Ильи")))
+        call.handle(.letGo(.init(entryID: 0, text: "accountable")))
         call.handle(.jumpToLive)
 
         #expect(call.holds.map(\.text) == ["команда Ильи"])

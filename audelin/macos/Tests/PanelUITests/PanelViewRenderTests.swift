@@ -20,35 +20,27 @@ struct PanelViewRenderTests {
 
         for (name, state) in PanelState.previews {
 
-            let image = try #require(render(state, scheme), "\(name) did not render")
-            #expect(image.size.width > PanelConfig.glassLedger.panelWidth, "\(name)")
-            #expect(image.size.height > 0, "\(name)")
+            let host = Offscreen.host(PanelPreview(state: state, scheme: scheme), scheme: scheme)
+            let image = try #require(Offscreen.snapshot(host), "\(name) did not render")
+            #expect(CGFloat(image.pixelsWide) > PanelConfig.glassLedger.panelWidth, "\(name)")
 
-            try save(image, "\(name)-\(scheme == .dark ? "dark" : "light")")
+            for entry in state.shownEntries where !entry.settled.isEmpty {
+                let text = Offscreen.textView(in: host)?.string ?? ""
+                #expect(text.contains(entry.settled), "\(name) does not show «\(entry.settled)»")
+            }
+
+            try Offscreen.save(image, "\(name)-\(scheme == .dark ? "dark" : "light")")
         }
     }
+}
 
-    // MARK: - Helpers
+private extension PanelState {
 
-    private func render(_ state: PanelState, _ scheme: ColorScheme) -> NSImage? {
+    var shownEntries: [Entry] {
 
-        let renderer = ImageRenderer(content: PanelPreview(state: state, scheme: scheme))
-        renderer.scale = 2
-        return renderer.nsImage
-    }
-
-    /// Writes the image only when `AUDELIN_SNAPSHOTS` names a folder, for
-    /// comparing the panel with the design by eye.
-    private func save(_ image: NSImage, _ name: String) throws {
-
-        guard let folder = ProcessInfo.processInfo.environment["AUDELIN_SNAPSHOTS"]
-        else { return }
-
-        let png = try #require(
-            image.tiffRepresentation
-                .flatMap(NSBitmapImageRep.init(data:))?
-                .representation(using: .png, properties: [:])
-        )
-        try png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
+        switch log {
+        case .empty, .liveTextOff(kept: nil): []
+        case let .liveTextOff(kept: lines?), let .lines(lines): (lines.late?.entries ?? []) + lines.entries
+        }
     }
 }

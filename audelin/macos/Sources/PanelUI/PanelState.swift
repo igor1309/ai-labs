@@ -39,20 +39,26 @@ public extension PanelState {
         /// Minutes transcribed after live text was switched on mid-call.
         public var late: Late?
         public var entries: [Entry]
-        public var held: Held?
-        /// Lines that arrived below while the panel stays on a held selection.
+        /// Selections the reader holds, oldest first.
+        public var holds: [Held]
+        /// Lines that arrived below while the reader is scrolled up.
         public var newBelow: Int
+        /// The log keeps the newest line in view; off while the reader is
+        /// scrolled up.
+        public var followsLive: Bool
 
         public init(
             late: Late? = nil,
             entries: [Entry],
-            held: Held? = nil,
-            newBelow: Int = 0
+            holds: [Held] = [],
+            newBelow: Int = 0,
+            followsLive: Bool = true
         ) {
             self.late = late
             self.entries = entries
-            self.held = held
+            self.holds = holds
             self.newBelow = newBelow
+            self.followsLive = followsLive
         }
     }
 
@@ -102,12 +108,11 @@ public extension PanelState {
         case them
     }
 
-    /// A selection kept exactly as it was selected.
-    ///
-    /// The entry is marked only while its text still contains the held text;
-    /// the held text itself never changes.
+    /// A selection kept exactly as it was selected, whatever the text it was
+    /// selected from becomes.
     struct Held: Equatable, Sendable {
 
+        /// The entry the selection starts in.
         public var entryID: Entry.ID
         public var text: String
 
