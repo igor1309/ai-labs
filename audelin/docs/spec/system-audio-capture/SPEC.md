@@ -12,9 +12,11 @@ they play, through an interface it owns. An adapter over a Core Audio tap.
 - The tap's mono mix at the device's rate (anarlog, Meetily). The device
   starts when told to: one started before Zoom's audio froze Zoom for 60 s
   (Muesli #600).
-- Each piece carries when it was played, from the capture's start on the
-  tap's clock. A quiet tap is not a failure (Muesli); a denied permission
-  gives silence.
+- A tap delivers samples without a break, zeros while nothing plays, while
+  the process is frozen and after it quits (measured on this Mac,
+  [system-audio.md](../../research/system-audio.md#measured-on-this-mac)),
+  so a piece needs no time of its own and a quiet tap is not a failure. A
+  denied permission gives silence.
 
 ```gherkin
 Feature: Hearing the processes a client names
@@ -84,17 +86,12 @@ Feature: Hearing the processes a client names
     When the system refuses a new naming
     Then I can still read what the first processes play
 
-  Scenario: S-16 Each piece tells when it was played
-    Given a capture that heard a quiet stretch
-    When a named process plays again
-    Then I can tell when its sound was played since the start
-
   Scenario: S-17 Sound is read without muting it
     Given a capture of the processes I named
     When one of them plays
     Then I can read its sound without muting its playback
 ```
 
-S-3 and S-4 moved to timed track. Not capture's: choosing and listing
-processes, call time, naming again, retrying, keeping echo cancellation
+S-3, S-4 and S-16 are retired: a tap leaves no gaps to time. Not
+capture's: choosing and listing processes, naming again, retrying, keeping echo cancellation
 (it kills a tap, MacParakeet) out of the process, the permission, the file.

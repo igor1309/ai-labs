@@ -85,5 +85,23 @@ follows its own architecture, not Amanu's classes: the tap is one adapter,
 the process list another, and choosing the call's processes is a Core
 ([specs](../spec/system-audio-capture/SPEC.md)).
 
-The adapter maps tap buffers to `AudioChunk`. Recording to disk is Session's
-job, not the adapter's.
+The adapter maps tap buffers to `AudioChunk`. Writing them to disk is a
+decorator on the capture, wired at the composition root.
+
+## Measured on this Mac
+
+2026-10-22, macOS 26 (Darwin 25.6), with the probes in [probes](probes/),
+each on a muted `afplay` child it starts itself:
+
+- **A tap leaves no gaps** (`tap-silence.swift`). A tap on `afplay`, with
+  2 s of digital silence in the file, the process frozen 2 s by `SIGSTOP`,
+  and 2 s after it quit, gave 47 callbacks and about 48,000 frames a
+  second throughout, sample times without a break, zeros in each quiet
+  stretch. Muesli's "a tap delivers nothing while nothing plays" does not
+  hold here, so a track needs no gap filling.
+- **Process changes are told** (`process-notifications.swift`). The
+  process list's change fires when a process appears and when it leaves.
+  On a process, `IsRunning` (`pir?`) and its device list fire when it
+  starts playing; `IsRunningOutput` changed (0 to 1) but was never told on
+  its own, so it is re-read when `IsRunning` fires. A frozen process stays
+  running. The recording flag was not measured: it needs the microphone.

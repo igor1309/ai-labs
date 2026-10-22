@@ -14,9 +14,14 @@ Feature: Live text of calls
     Then both sides of the call are being recorded without my doing anything
 
   Scenario: S-2 Manual start
-    Given no recording is running
+    Given no recording is running and no call is on
     When I start recording by hand
-    Then both sides are recorded until I stop it, even if a call ends in between
+    Then both sides are recorded until I stop it
+
+  Scenario: S-17 A manual recording ends with its call
+    Given I started recording by hand during a call
+    When the call ends
+    Then recording stops by itself, and the call's audio and transcript are kept
 
   Scenario: S-3 Live text for both sides
     Given a call is being recorded with live text on

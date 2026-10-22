@@ -2,28 +2,36 @@
 
 Observer: the client that shows a recorded call's text, both sides, and
 switches live text, through an interface it owns: the panel's transcript
-model, through the feed adapter at the root (no spec yet; it is next). It
-needs this to keep user spec S-3 (S-1, S-2), S-8 (S-6), S-15 (S-5) and S-16
-(S-4); S-9 is this S-8 with session keeping the call.
+model, through the feed adapter at the root (no spec yet). It needs this
+to keep user spec S-3 (S-1, S-2), S-8 (S-6), S-9 (S-8), S-15 (S-5) and
+S-16 (S-4).
 
-Call text is a Core. It reads the call's written tracks and runs one live
-text per track, through interfaces of its own. It knows no device, file or
-model, and records nothing (session).
+Call text takes each track's audio as it comes and runs one live text per
+track, through interfaces of its own; it reads the call's written tracks
+only to fill in what live text did not hear. It knows no device, file or
+model, and records nothing. The live text preview's `LiveCall` already does
+this for a file or the microphone; call text is that without the preview's
+window.
 
 ## Decided
 
-- It reads only written audio, so the text never outruns what is kept
-  (mvp.md rule 1).
-- The mic track's text is mine and the call track's is theirs (mvp.md
-  rule 2; live text leaves whose track it is to its client).
-- Reading never waits for the models and never makes the recording wait:
-  until they are in, the client can tell live text is getting ready, then
-  it reads from the call's start (mvp.md, owner 2026-10-22; user spec S-15,
-  S-16). Both models hear audio at about 4% of real time (run 8).
+- Live text hears the audio as it comes and never waits for the files:
+  reading files would put the disk between the speaker and the text for no
+  gain (owner, 2026-10-22).
+- The written tracks are read only to fill in: the start of a call heard
+  while the models load, and a call whose live text is switched on
+  mid-call. Those words were never heard live, and the files hold them.
+- The mic track's text is mine and the call track's is theirs: live text
+  leaves whose track it is to its client.
+- Reading never waits for the models: until they are in, the client can
+  tell live text is getting ready, then it reads from the call's start
+  (user spec S-15, S-16). Both models hear audio at about 4% of real time
+  (run 8).
 - Switched on mid-call, it reads the call from its start and marks that
-  text as written later; switched off, it keeps the text so far (mvp.md,
-  Controls).
-- Live text failing ends the text, not the call (user spec S-9).
+  text as written later; switched off, it keeps the text so far (the
+  owner's wish, mvp.md Controls).
+- Live text failing ends the text and is told; the recording is not call
+  text's (user spec S-9).
 
 ```gherkin
 Feature: Reading a call's text as it is recorded
@@ -37,11 +45,6 @@ Feature: Reading a call's text as it is recorded
     Given a recorded call with live text on
     When the other side speaks
     Then I can read what they say while they are saying it, marked as theirs
-
-  Scenario: S-3 Nothing is read before it is recorded
-    Given audio that is not yet written
-    When it is spoken
-    Then I cannot read its text until it is written
 
   Scenario: S-4 Live text says it is getting ready
     Given the models are still loading
@@ -67,7 +70,16 @@ Feature: Reading a call's text as it is recorded
     Given a recorded call with live text on
     When live text fails
     Then I can tell live text failed
+
+  Scenario: S-9 Live text does not wait for the files
+    Given a recorded call with live text on, and its audio not yet written
+    When I speak
+    Then I can read what I say while I am saying it
 ```
 
-Not call text's: recording (session), cutting text into segments (live
-text), keeping the call recorded when text fails (session), and the panel.
+S-3 ("Nothing is read before it is recorded") is retired: live text reads
+the audio as it comes, not the files.
+
+Not call text's: recording and keeping the call when text fails (the
+capture adapters and their file decorators), cutting text into segments
+(live text), and the panel.
