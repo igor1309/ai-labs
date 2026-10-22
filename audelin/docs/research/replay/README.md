@@ -5,7 +5,7 @@ code the app runs, to choose between them on real calls.
 
 ```
 swift build -c release
-.build/release/audelin-replay /tmp/audelin-replay audio.m4a --split [--only parakeet|nemotron]
+.build/release/audelin-replay /tmp/audelin-replay audio.m4a --split [--only parakeet|nemotron|hybrid] [--pause <s>]
 ```
 
 Each track is read in 0.1 s chunks at its own rate, channels averaged, and
@@ -16,8 +16,13 @@ with the mic on the left and the system on the right: `--split` hears each
 channel as its own track. Keep call audio
 and the output out of the repository.
 
+`hybrid` shows Nemotron's words and settles Parakeet's. `--pause` sets Live
+text's pause (2 s); a large one turns off settling at pauses.
+
 Per track and recogniser, the output directory gets the settled segments
-(`<track>-<recogniser>.md`) and a row in `summary.md`:
+(`<track>-<recogniser>.md`), the final words with their times
+(`<track>-<recogniser>.tsv`) and a row in `summary.md`. Words match across
+reports by letters, within 1 s of each other's start:
 
 - **Words final**: words the recogniser called final, each counted once.
   **Words settled**: words in Live text's settled text; a gap between the two

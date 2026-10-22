@@ -8,7 +8,10 @@
 // With --split, each channel of a file is a track of its own: Amanu keeps a
 // call as one stereo file, the mic on the left and the system on the right.
 //
-// usage: audelin-replay <output-dir> <track>... [--only parakeet|nemotron] [--split]
+// --pause sets Live text's pause, 2 s by default; a pause settles the words
+// before it.
+//
+// usage: audelin-replay <output-dir> <track>... [--only parakeet|nemotron|hybrid] [--split] [--pause <s>]
 import AVFoundation
 import Foundation
 import LiveText
@@ -17,6 +20,11 @@ import ParakeetRecognizer
 
 var arguments = Array(CommandLine.arguments.dropFirst())
 var only: String?
+var pause = 2.0
+if let flag = arguments.firstIndex(of: "--pause"), flag + 1 < arguments.count, let value = Double(arguments[flag + 1]) {
+    pause = value
+    arguments.removeSubrange(flag...(flag + 1))
+}
 let split = arguments.contains("--split")
 arguments.removeAll { $0 == "--split" }
 if let flag = arguments.firstIndex(of: "--only"), flag + 1 < arguments.count {
@@ -24,7 +32,7 @@ if let flag = arguments.firstIndex(of: "--only"), flag + 1 < arguments.count {
     arguments.removeSubrange(flag...(flag + 1))
 }
 guard arguments.count >= 2 else {
-    FileHandle.standardError.write("usage: audelin-replay <output-dir> <track>... [--only parakeet|nemotron] [--split]\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: audelin-replay <output-dir> <track>... [--only parakeet|nemotron|hybrid] [--split] [--pause <s>]\n".data(using: .utf8)!)
     exit(2)
 }
 let output = URL(fileURLWithPath: arguments[0])
@@ -41,7 +49,64 @@ struct Model: Sendable {
 let models = [
     Model(name: "parakeet") { try await ParakeetRecognizer() },
     Model(name: "nemotron") { try await NemotronRecognizer() },
+    Model(name: "hybrid") { Hybrid(settling: try await ParakeetRecognizer(), showing: try await NemotronRecognizer()) },
 ].filter { only == nil || $0.name == only }
+
+/// The words a recogniser's reports add up to: each report replaces the
+/// words from where it starts.
+struct Heard {
+
+    private(set) var words: [Word] = []
+    private(set) var finalThrough = -Double.infinity
+
+    mutating func take(_ hearing: Hearing) {
+
+        if let from = hearing.from ?? hearing.words.first?.start {
+            words = words.filter { $0.start < from } + hearing.words
+        }
+        finalThrough = max(finalThrough, hearing.finalThrough ?? finalThrough)
+    }
+}
+
+/// Shows the fast recogniser's words and settles the better one's: the
+/// settling recogniser's final words, then the showing one's words after
+/// them, pending.
+actor Hybrid: Recognizer {
+
+    private let settling: any Recognizer
+    private let showing: any Recognizer
+    private var settled = Heard()
+    private var shown = Heard()
+
+    init(settling: any Recognizer, showing: any Recognizer) {
+
+        self.settling = settling
+        self.showing = showing
+    }
+
+    func hear(_ chunk: AudioChunk) async throws -> Hearing {
+
+        settled.take(try await settling.hear(chunk))
+        shown.take(try await showing.hear(chunk))
+        return report()
+    }
+
+    func finish() async throws -> Hearing {
+
+        settled.take(try await settling.finish())
+        shown.take(try await showing.finish())
+        return Hearing(words: settled.words, from: -.infinity, finalThrough: .infinity)
+    }
+
+    /// Every word not yet final, from scratch: Live text keeps its settled
+    /// words and drops any reported over them.
+    private func report() -> Hearing {
+
+        let through = settled.finalThrough
+        let words = settled.words.filter { $0.end <= through } + shown.words.filter { $0.start >= through }
+        return Hearing(words: words, from: -.infinity, finalThrough: through)
+    }
+}
 
 /// A track's audio in 0.1 s chunks at its own rate: one channel, or all of
 /// them averaged.
@@ -111,9 +176,18 @@ struct Timed {
     var final: Double
 }
 
+/// The same word heard about the same time, punctuation, case and «ё»
+/// aside. Nemotron starts a word about 0.3 s later than Parakeet does, and a
+/// trailing punctuation token can stretch its end by seconds, so starts
+/// within a second match.
 func same(_ a: Word, _ b: Word) -> Bool {
 
-    a.text == b.text && a.start < b.end && b.start < a.end
+    letters(a.text) == letters(b.text) && abs(a.start - b.start) < 1
+}
+
+func letters(_ text: String) -> String {
+
+    text.lowercased().replacingOccurrences(of: "ё", with: "е").filter(\.isLetter)
 }
 
 /// Searches only the latest entries: a word can only match one heard near
@@ -166,7 +240,7 @@ for source in sources {
         let tap = Tap(try await model.load())
         let load = Date().timeIntervalSince(loading)
 
-        let live = LiveText(recognizer: tap)
+        let live = LiveText(recognizer: tap, pause: pause)
         let collecting = Task {
             var last: Segments?
             for await update in live.updates { last = update }
@@ -202,6 +276,10 @@ for source in sources {
         let ending = segments?.ending.map { "\($0)" } ?? "none"
         try "# \(name) — \(model.name)\n\nEnding: \(ending)\n\n\(text)\n"
             .write(to: output.appendingPathComponent("\(name)-\(model.name).md"), atomically: true, encoding: .utf8)
+
+        let tsv = finals.map { String(format: "%.2f\t%.2f\t%.2f\t%.2f\t", $0.word.start, $0.word.end, $0.shown, $0.final) + $0.word.text }
+        try (["start\tend\tshown\tfinal\tword"] + tsv).joined(separator: "\n")
+            .write(to: output.appendingPathComponent("\(name)-\(model.name).tsv"), atomically: true, encoding: .utf8)
 
         let row = [
             name, model.name, "\(finals.count)", "\(settledWords)",

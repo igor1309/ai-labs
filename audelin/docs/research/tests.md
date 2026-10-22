@@ -191,6 +191,30 @@ stays out of the repository. Ranges are over the two tracks.
 - One short call, compressed: a first reading, not a decision. Neural
   Engine and GPU load are not measured; that needs `powermetrics`.
 
+### Run 7b — Nemotron shows, Parakeet settles
+
+The replay's `hybrid` shows Nemotron's words as pending and replaces them
+with Parakeet's final words as its windows settle. Words now match across
+models by letters within 1 s of each other's start: Nemotron starts a word
+about 0.3 s later than Parakeet (median of 79 matched words), and a
+trailing punctuation token stretches its end by up to 5 s.
+
+| Same call | Shown delay, median / p90 | Final delay, median / max | Shown, then changed |
+|---|---|---|---|
+| Parakeet | 1.3–1.8 / 3.5–4.3 s | 4.3 / 6.0 s | 5–8% |
+| Nemotron | 0.5–0.6 / 1.0–1.1 s | 1.1 / 31 s | 8–13% |
+| Hybrid | 0.8 / 3.6–5.1 s | 4.3 / 6.0 s | 22–40% |
+
+- The hybrid shows most words within a second and settles Parakeet's
+  reading within 6 s; what Nemotron missed or misread shows only when
+  Parakeet settles it.
+- **Live text's pause rule spoils it:** a 2 s pause settles the words before
+  it, so Nemotron's reading of a phrase settles before Parakeet's arrives.
+  With the pause on, three of the owner's 76 words were lost or kept in
+  Nemotron's reading; with it off (`--pause 1000`), the settled text is
+  Parakeet's, word for word, on both tracks.
+- Compute: 3.3–4.5% of real time for both models together.
+
 ## Not yet measured
 
 - Selection while text is appending.
