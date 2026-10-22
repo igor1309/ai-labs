@@ -9,6 +9,9 @@
 - Nemotron makes its last word final once two chunks pass it with nothing
   new: its longest wait for a final word on the real call drops from 31 s
   to 2.7 s, and no final word changed (research run 8).
+- A two-pass recogniser shows a fast recogniser's draft and settles a
+  better one's final words; with Nemotron drafting and Parakeet final, the
+  settled text on the real call is Parakeet's, word for word (run 8).
 - Nemotron 3.5 hears Russian speech as it streams, settling each word when
   the next starts and finishing the remaining audio (LAB-403).
 - The Parakeet recogniser is built test-first: Parakeet v3 in Audelin's own

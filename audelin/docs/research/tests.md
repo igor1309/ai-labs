@@ -225,9 +225,14 @@ starts where a final word does but reads differently.
 | Same call | Words final | Final delay, median / p90 / max | Final, then changed |
 |---|---|---|---|
 | Nemotron | 69 / 24 | 1.1–1.3 / 2.3 / 2.3–2.7 s | 0 |
+| Two-pass, Nemotron drafting, Parakeet final | 76 / 25 | 4.3 / 5.3–5.7 / 5.9–6.0 s | 0 |
 
 - Nemotron's longest wait for a final word drops from 31 s to 2.7 s, and
   no word it made final changed afterwards.
+- The two-pass recogniser (`TwoPassRecognizer`) replaces run 7b's hybrid.
+  With Live text's 2 s pause on, its settled text is Parakeet's, word for
+  word, on both tracks; it shows a word a median of 0.8 s after it was
+  spoken, at 3.2–3.8% of real time for both models.
 
 ## Not yet measured
 

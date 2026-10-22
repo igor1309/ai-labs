@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
@@ -50,6 +51,10 @@ let package = Package(
             name: "SettingsUI",
             dependencies: ["GlassLedger"]
         ),
+        .target(
+            name: "TwoPassRecognizer",
+            dependencies: ["LiveText"]
+        ),
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
@@ -69,6 +74,10 @@ let package = Package(
         .testTarget(
             name: "SettingsUITests",
             dependencies: ["SettingsUI"]
+        ),
+        .testTarget(
+            name: "TwoPassRecognizerTests",
+            dependencies: ["TwoPassRecognizer"]
         ),
     ]
 )

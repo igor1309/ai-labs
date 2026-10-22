@@ -14,6 +14,7 @@ let package = Package(
                 .product(name: "LiveText", package: "macos"),
                 .product(name: "NemotronRecognizer", package: "macos"),
                 .product(name: "ParakeetRecognizer", package: "macos"),
+                .product(name: "TwoPassRecognizer", package: "macos"),
             ]
         ),
     ]
