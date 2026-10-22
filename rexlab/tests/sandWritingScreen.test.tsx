@@ -24,7 +24,7 @@ function openScreen(language: Language = "en", ratio = 1) {
   canvas.hasPointerCapture = (pointer) => captured.has(pointer);
   canvas.releasePointerCapture = vi.fn((pointer) => { captured.delete(pointer); });
   return {
-    ...view, canvas, base, grooves, home, captured,
+    ...view, canvas, baseCanvas: view.container.querySelector<HTMLCanvasElement>(".sand-writing-base")!, base, grooves, home, captured,
     trigger: () => screen.getByRole<HTMLButtonElement>("button", { name: TEXTS[language].sandTipPicker }),
     marks: () => grooves.paths.filter(({ colour }) => colour === "#98723f"),
     resize(width: number, height: number) {
@@ -133,11 +133,15 @@ describe("the retained drawing", () => {
     stroke(app.canvas, 5, 6);
     stroke(app.canvas, 730, 530);
     const original = [...app.marks()];
-    expect([app.canvas.width, app.canvas.height]).toEqual([800 * ratio, 600 * ratio]);
+    for (const layer of [app.baseCanvas, app.canvas]) {
+      expect([layer.width, layer.height]).toEqual([800 * ratio, 600 * ratio]);
+    }
     for (const [width, height] of [[400, 800], [800, 600]]) {
       const previous = app.marks().length;
       app.resize(width!, height!);
-      expect([app.canvas.width, app.canvas.height]).toEqual([width! * ratio, height! * ratio]);
+      for (const layer of [app.baseCanvas, app.canvas]) {
+        expect([layer.width, layer.height]).toEqual([width! * ratio, height! * ratio]);
+      }
       expect(app.marks().slice(previous)).toEqual(original);
       expect(app.grooves.transforms.at(-1)).toEqual([ratio, 0, 0, ratio, 0, 0]);
       expect(app.grooves.cleared.at(-1)).toEqual([0, 0, width, height]);
@@ -243,11 +247,14 @@ describe("the tip picker", () => {
     fireEvent.click(app.trigger());
     fireEvent.click(screen.getByRole("button", { name: TEXTS.en.sandTip(8) }));
     stroke(app.canvas, 10, 20);
+    const erased = app.grooves.cleared.length;
+    const repainted = app.base.rectangles.length;
     fireEvent.click(app.trigger());
     fireEvent.click(screen.getByRole("button", { name: "CLEAR" }));
     expect(document.activeElement).toBe(app.trigger());
     const before = app.marks().length;
-    expect(app.grooves.cleared.at(-1)).toEqual([0, 0, 800, 600]);
+    expect(app.grooves.cleared.slice(erased)).toEqual([[0, 0, 800, 600]]);
+    expect(app.base.rectangles.slice(repainted).filter(({ colour }) => colour === "#d9b77e")).toHaveLength(1);
     app.resize(400, 800);
     expect(app.marks()).toHaveLength(before);
     stroke(app.canvas, 100, 100);
