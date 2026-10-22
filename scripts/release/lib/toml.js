@@ -4,7 +4,7 @@
  * Supports:
  *   - Comments (# ...)
  *   - Key/value: key = "string" | true | false | integer
- *   - Arrays: key = ["a", "b"] or inline-table arrays
+ *   - Arrays: single- or multi-line, including inline-table arrays
  *   - Array of tables: [[name]]
  *   - Blank lines
  *
@@ -25,7 +25,7 @@ export function parse(text) {
   const result = {};
   let currentObj = null;
 
-  for (const raw of text.split('\n')) {
+  for (const raw of logicalLines(text)) {
     const line = raw.trim();
     if (line === '' || line.startsWith('#')) continue;
 
@@ -55,6 +55,43 @@ export function parse(text) {
   }
 
   return result;
+}
+
+// Comments and newlines may occur between array entries, but not inside a
+// basic string. Keep that distinction before parsing the value itself.
+function logicalLines(text) {
+  const lines = [];
+  let pending = '';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (const raw of text.split('\n')) {
+    let line = '';
+    for (const char of raw) {
+      if (!inString && char === '#') break;
+      line += char;
+      if (inString && escaped) {
+        escaped = false;
+        continue;
+      }
+      if (inString && char === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (char === '"') inString = !inString;
+      if (!inString && (char === '[' || char === '{')) depth += 1;
+      if (!inString && (char === ']' || char === '}')) depth -= 1;
+    }
+    if (inString) throw new Error('Unterminated TOML string');
+    pending += ` ${line.trim()}`;
+    if (depth === 0) {
+      lines.push(pending.trim());
+      pending = '';
+    }
+    if (depth < 0) throw new Error('Unexpected TOML closing bracket');
+  }
+  if (depth !== 0) throw new Error('Unterminated TOML array or inline table');
+  return lines;
 }
 
 /**
@@ -105,12 +142,21 @@ function splitTopLevel(value) {
   let current = '';
   let depth = 0;
   let inString = false;
+  let escaped = false;
 
   for (let i = 0; i < value.length; i += 1) {
     const char = value[i];
-    const previous = value[i - 1];
-
-    if (char === '"' && previous !== '\\') {
+    if (inString && escaped) {
+      escaped = false;
+      current += char;
+      continue;
+    }
+    if (inString && char === '\\') {
+      escaped = true;
+      current += char;
+      continue;
+    }
+    if (char === '"') {
       inString = !inString;
     }
 
@@ -130,7 +176,7 @@ function splitTopLevel(value) {
     current += char;
   }
 
-  parts.push(current.trim());
+  if (current.trim()) parts.push(current.trim());
   return parts;
 }
 
