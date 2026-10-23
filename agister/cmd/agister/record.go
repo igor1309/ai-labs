@@ -394,3 +394,37 @@ func (b bothEvents) Ended(step string, ended workflow.Ended) {
 		events.Ended(step, ended)
 	}
 }
+
+func (r *runRecord) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	kept := make([]runstore.Condition, 0, len(conditions))
+	for _, condition := range conditions {
+		kept = append(kept, runstore.Condition{Arm: condition.Arm, Holds: condition.Holds, Read: condition.Read})
+	}
+	r.append(runstore.Event{Step: step, Kind: runstore.Branch, Arm: arm, Conditions: kept})
+}
+
+func (r *runRecord) Pass(step string, pass int, state map[string]any) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Pass, Pass: pass, State: state})
+}
+
+func (r *runRecord) Stopped(step, why string, passes int) {
+	r.append(runstore.Event{Step: step, Kind: runstore.Stopped, Stopped: why, Passes: passes})
+}
+
+func (b bothEvents) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	for _, events := range b {
+		events.Branch(step, arm, conditions)
+	}
+}
+
+func (b bothEvents) Pass(step string, pass int, state map[string]any) {
+	for _, events := range b {
+		events.Pass(step, pass, state)
+	}
+}
+
+func (b bothEvents) Stopped(step, why string, passes int) {
+	for _, events := range b {
+		events.Stopped(step, why, passes)
+	}
+}

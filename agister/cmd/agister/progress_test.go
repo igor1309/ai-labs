@@ -250,3 +250,15 @@ func TestTheProgressNeedsAWriter(t *testing.T) {
 		t.Error("progress built with no writer, want an error")
 	}
 }
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.told = append(s.told, fmt.Sprintf("%s took %s %v", step, arm, conditions))
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.told = append(s.told, fmt.Sprintf("%s pass %d %v", step, pass, state))
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.told = append(s.told, fmt.Sprintf("%s stopped %s after %d", step, why, passes))
+}

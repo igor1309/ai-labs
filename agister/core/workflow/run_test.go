@@ -594,3 +594,15 @@ func TestARunCarriesEachStepsSessionByItsName(t *testing.T) {
 		t.Errorf("sessions %v, want %v", got.Sessions, want)
 	}
 }
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.tell("%s took %s %v", step, arm, conditions)
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.tell("%s pass %d %v", step, pass, state)
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.tell("%s stopped %s after %d", step, why, passes)
+}

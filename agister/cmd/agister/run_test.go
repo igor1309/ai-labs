@@ -363,7 +363,7 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 }
 
 // run.feature, "What a parallel does not run yet is refused": the workflow
-// "w", its parallel "p" holding a branch, or read by a join's binding of a
+// "w", its parallel "p" holding a repeat, or read by a join's binding of a
 // field within its outputs.
 //
 // Contract test: the files home holds, as Agister ships them.
@@ -374,14 +374,18 @@ func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
 		steps   string
 		what    string
 	}{
-		{holding: `of "say" and a branch "b"`, steps: `  - name: p
+		{holding: `of "say" and a repeat "r"`, steps: `  - name: p
     parallel:
       - {name: a, process: say, agent: bash, inputs: {what: hi}}
-      - name: b
-        branch:
-          - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-          - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-`, what: `the item "b", a branch,`},
+      - name: r
+        repeat:
+          state: {last: hi}
+          steps:
+            - {name: s, process: say, agent: bash, inputs: {what: hi}}
+          next: {last: {from: steps.s.outputs.stdout.head}}
+          until: {present: {from: state.last}}
+          max: 1
+`, what: `the item "r", a repeat,`},
 		{holding: `of two "say", read by steps.p.outputs.x`, steps: `  - name: p
     parallel:
       - {name: a, process: say, agent: bash, inputs: {what: hi}}

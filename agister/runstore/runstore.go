@@ -190,6 +190,9 @@ const (
 	Stale    Kind = "stale"    // the step's turn went stale
 	Capacity Kind = "capacity" // the step's turn failed at capacity
 	Fallback Kind = "fallback" // the step's call is made again on its agent's fallback
+	Branch   Kind = "branch"   // a branch selected an arm
+	Pass     Kind = "pass"     // a repeat bound its next state
+	Stopped  Kind = "stopped"  // a repeat stopped
 	Ended    Kind = "ended"    // the step ended
 )
 
@@ -199,7 +202,8 @@ const (
 // stale and whether a recovery turn follows; a turn at capacity its reason
 // and whether the turn is made again; a fallback the agent the call is
 // made again on; a step ended its status, its class,
-// "" for none, and how long it took.
+// "" for none, and how long it took. Branch, pass and stopped events keep
+// the chosen arm and condition reads, next state, and stopping reason.
 type Event struct {
 	At         time.Time
 	Step       string
@@ -215,12 +219,49 @@ type Event struct {
 	Status     string
 	Class      string
 	Duration   time.Duration
+	Arm        string
+	Conditions []Condition
+	Pass       int
+	State      map[string]any
+	Stopped    string
+	Passes     int
+}
+
+// Condition is an evaluated branch arm and the values it read.
+type Condition struct {
+	Arm   string         `json:"arm"`
+	Holds bool           `json:"holds"`
+	Read  map[string]any `json:"read"`
 }
 
 // MarshalJSON writes e as events.jsonl holds it: the fields of its kind
 // alone, a class that is none as null.
 func (e Event) MarshalJSON() ([]byte, error) {
 	switch e.Kind {
+	case Branch:
+		return json.Marshal(struct {
+			At         time.Time   `json:"at"`
+			Step       string      `json:"step"`
+			Kind       Kind        `json:"kind"`
+			Arm        string      `json:"arm"`
+			Conditions []Condition `json:"conditions"`
+		}{e.At, e.Step, e.Kind, e.Arm, e.Conditions})
+	case Pass:
+		return json.Marshal(struct {
+			At    time.Time      `json:"at"`
+			Step  string         `json:"step"`
+			Kind  Kind           `json:"kind"`
+			Pass  int            `json:"pass"`
+			State map[string]any `json:"state"`
+		}{e.At, e.Step, e.Kind, e.Pass, e.State})
+	case Stopped:
+		return json.Marshal(struct {
+			At      time.Time `json:"at"`
+			Step    string    `json:"step"`
+			Kind    Kind      `json:"kind"`
+			Stopped string    `json:"stopped"`
+			Passes  int       `json:"passes"`
+		}{e.At, e.Step, e.Kind, e.Stopped, e.Passes})
 	case Started:
 		return json.Marshal(struct {
 			At    time.Time `json:"at"`
@@ -379,8 +420,21 @@ func (s *Store) WritePatch(id, step string, patch []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if step == "" || step == "." || step == ".." || strings.ContainsAny(step, `/\`) {
-		return "", fmt.Errorf("runstore: %q is no step's name", step)
+	parts := strings.Split(step, "/")
+	for i, part := range parts {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\`) {
+			return "", fmt.Errorf("runstore: %q is no step's name", step)
+		}
+		if i > 0 {
+			for _, digit := range part {
+				if digit < '0' || digit > '9' {
+					return "", fmt.Errorf("runstore: %q is no step's pass", step)
+				}
+			}
+			if part[0] == '0' {
+				return "", fmt.Errorf("runstore: %q is no step's pass", step)
+			}
+		}
 	}
 	path := filepath.Join("patches", step+".patch")
 	if err := writeWhole(filepath.Join(folder, path), patch); err != nil {
@@ -486,17 +540,25 @@ func (s *Store) Export(id, folder string) error {
 	}
 	artifacts := map[string][]byte{}
 	for _, directory := range []string{"patches", "definitions"} {
-		entries, err := os.ReadDir(filepath.Join(from, directory))
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("runstore: the export of %q: %w", id, err)
-		}
-		for _, entry := range entries {
-			path := filepath.Join(directory, entry.Name())
+		err := fs.WalkDir(os.DirFS(from), directory, func(path string, entry fs.DirEntry, err error) error {
+			if path == directory && errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
 			data, err := os.ReadFile(filepath.Join(from, path))
 			if err != nil {
-				return fmt.Errorf("runstore: the export of %q: %w", id, err)
+				return err
 			}
 			artifacts[path] = data
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("runstore: the export of %q: %w", id, err)
 		}
 	}
 	to := filepath.Join(folder, id)

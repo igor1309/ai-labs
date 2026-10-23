@@ -122,3 +122,15 @@ func took(d time.Duration) string {
 	}
 	return d.Round(time.Millisecond).String()
 }
+
+func (p *progress) Branch(step, arm string, _ []workflow.ConditionRead) {
+	p.line(step, "took "+inLine(arm))
+}
+
+func (p *progress) Pass(step string, pass int, _ map[string]any) {
+	p.line(step, fmt.Sprintf("ended pass %d", pass))
+}
+
+func (p *progress) Stopped(step, why string, passes int) {
+	p.line(step, fmt.Sprintf("stopped %s after %d passes", inLine(why), passes))
+}
