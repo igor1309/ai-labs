@@ -18,7 +18,7 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         var refuse: String?
         var running = false
         var notifyOnStop = false
-        var receive: (@Sendable ([Float]) -> Void)?
+        var receive: (@Sendable (Result<AudioPiece, any Error>) -> Void)?
         var stopped: (@Sendable () -> Void)?
     }
 
@@ -108,7 +108,7 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         return state.withLock { $0.rate }
     }
 
-    func installIO(_ device: UInt32, receive: @escaping @Sendable ([Float]) -> Void) throws -> UInt64 {
+    func installIO(_ device: UInt32, receive: @escaping @Sendable (Result<AudioPiece, any Error>) -> Void) throws -> UInt64 {
 
         #expect(device == 22)
         try record("io")
@@ -210,7 +210,11 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         inFlight += 1
         return { [self] in
             Thread.current.threadDictionary[callbackKey] = true
-            receive(samples)
+            if snapshot.2 > 0 {
+                receive(.success(AudioPiece(samples: samples, sampleRate: snapshot.2)))
+            } else {
+                receive(.failure(CaptureError.unsupportedFormat))
+            }
             beforeReturn()
             Thread.current.threadDictionary.removeObject(forKey: callbackKey)
             callbacks.lock()

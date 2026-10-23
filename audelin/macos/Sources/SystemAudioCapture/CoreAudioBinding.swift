@@ -61,12 +61,14 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
         ]
         var device: AudioObjectID = 0
         try check(native.createDevice(composition as CFDictionary, &device))
+        state.withLock { $0.devices[device] = request.tap }
         return device
     }
 
     public func destroyDevice(_ device: UInt32) {
 
         _ = native.destroyDevice(device)
+        _ = state.withLock { $0.devices.removeValue(forKey: device) }
     }
 
     public func sampleRate(_ tap: UInt32) throws -> Double {
@@ -83,15 +85,22 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
         return format.mSampleRate
     }
 
-    public func installIO(_ device: UInt32, receive: @escaping @Sendable ([Float]) -> Void) throws -> UInt64 {
+    public func installIO(_ device: UInt32, receive: @escaping @Sendable (Result<AudioPiece, any Error>) -> Void) throws -> UInt64 {
 
+        guard let tap = state.withLock({ $0.devices[device] }) else { throw CaptureError.stopped }
         var io: AudioDeviceIOProcID?
-        try check(native.createIO(&io, device, IOBlock { _, input, _, _, _ in
+        try check(native.createIO(&io, device, IOBlock { [self] _, input, _, _, _ in
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
             guard buffers.count == 1, let buffer = buffers.first,
                   buffer.mNumberChannels == 1, let data = buffer.mData else { return }
-            let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
-            receive(Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count)))
+            do {
+                let rate = try sampleRate(tap)
+                let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
+                let samples = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
+                receive(.success(AudioPiece(samples: samples, sampleRate: rate)))
+            } catch {
+                receive(.failure(error))
+            }
         }))
         guard let io else { throw CaptureError.stopped }
         return state.withLock {
@@ -111,7 +120,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
 
         let listener = DeviceListener()
         let native = self.native
-        let block: AudioObjectPropertyListenerBlock = { count, addresses in
+        let block = ListenerBlock(value: { count, addresses in
             guard listener.active.withLock({ $0 }) else { return }
             for index in 0..<Int(count) {
                 let selector = addresses[index].mSelector
@@ -130,11 +139,11 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
                     }
                 }
             }
-        }
+        })
         var address = Self.property(kAudioObjectPropertySelectorWildcard)
         address.mScope = kAudioObjectPropertyScopeWildcard
         address.mElement = kAudioObjectPropertyElementWildcard
-        try check(native.addListener(device, &address, queue, ListenerBlock(value: block)))
+        try check(native.addListener(device, &address, queue, block))
         return state.withLock {
             $0.nextWatch += 1
             $0.watches[$0.nextWatch] = NativeWatch(listener: listener, block: block, address: address)
@@ -147,7 +156,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
         guard let watch = state.withLock({ $0.watches.removeValue(forKey: watch) }) else { return }
         watch.listener.active.withLock { $0 = false }
         var address = watch.address
-        _ = native.removeListener(device, &address, queue, ListenerBlock(value: watch.block))
+        _ = native.removeListener(device, &address, queue, watch.block)
     }
 
     public func startDevice(_ device: UInt32, _ io: UInt64) throws {
@@ -217,6 +226,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
 
 private struct NativeState {
 
+    var devices: [UInt32: UInt32] = [:]
     var ios: [UInt64: AudioDeviceIOProcID] = [:]
     var nextIO: UInt64 = 0
     var taps: [UInt32: UUID] = [:]
@@ -229,11 +239,10 @@ private final class DeviceListener: Sendable {
     let active = Mutex(true)
 }
 
-// Native listener blocks lack Sendable; their mutable captures are locked.
-private struct NativeWatch: @unchecked Sendable {
+private struct NativeWatch: Sendable {
 
     let listener: DeviceListener
-    let block: AudioObjectPropertyListenerBlock
+    let block: ListenerBlock
     let address: AudioObjectPropertyAddress
 }
 
@@ -245,7 +254,8 @@ struct IOBlock: @unchecked Sendable {
 
 struct ListenerBlock: @unchecked Sendable {
 
-    let value: AudioObjectPropertyListenerBlock
+    // Listener removal requires the same native block object used to register.
+    let value: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
 
 /// Native calls beneath tap translation and resource ownership.

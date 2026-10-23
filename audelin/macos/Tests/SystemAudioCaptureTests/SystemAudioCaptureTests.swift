@@ -179,6 +179,21 @@ struct SystemAudioCaptureTests {
         #expect(binding.events.filter { $0 == "tap" }.count == 1)
     }
 
+    @Test func anInFlightBufferKeepsItsRateAcrossAnOutputChange() async throws {
+
+        let binding = FakeCaptureBinding()
+        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let deliver = try #require(binding.beginBuffer([10]))
+        binding.changeRate(to: 24_000)
+        deliver()
+        binding.play([10])
+        binding.play([10])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.map(\.sampleRate) == [48_000, 24_000, 24_000])
+        try expectTone(pieces, pid: 10)
+    }
+
     @Test func aNewOutputDeviceChangesThePiecesRate() async throws {
 
         let binding = FakeCaptureBinding()

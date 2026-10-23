@@ -5,7 +5,7 @@ public enum ProcessSelection: Sendable, Equatable {
     case allExcept([Int32])
 }
 
-/// Mono samples at the tap's current device rate.
+/// Mono samples at the rate at which they were captured.
 public struct AudioPiece: Sendable, Equatable {
 
     public let samples: [Float]
@@ -59,7 +59,8 @@ public enum CaptureError: Error, Sendable, Equatable {
 }
 
 /// Native resources and callbacks used by one capture. Buffer callbacks are
-/// ordered; removing IO waits for callbacks already in flight.
+/// ordered and carry the format read with their samples; removing IO waits
+/// for callbacks already in flight.
 public protocol CaptureBinding: Sendable {
 
     func createTap(_ request: TapRequest) throws -> UInt32
@@ -68,7 +69,7 @@ public protocol CaptureBinding: Sendable {
     func createDevice(_ request: DeviceRequest) throws -> UInt32
     func destroyDevice(_ device: UInt32)
     func sampleRate(_ tap: UInt32) throws -> Double
-    func installIO(_ device: UInt32, receive: @escaping @Sendable ([Float]) -> Void) throws -> UInt64
+    func installIO(_ device: UInt32, receive: @escaping @Sendable (Result<AudioPiece, any Error>) -> Void) throws -> UInt64
     func removeIO(_ device: UInt32, _ io: UInt64)
     func watchDevice(_ device: UInt32, stopped: @escaping @Sendable () -> Void) throws -> UInt64
     func unwatchDevice(_ device: UInt32, _ watch: UInt64)

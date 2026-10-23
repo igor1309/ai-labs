@@ -64,7 +64,7 @@ private final class CaptureLifetime: Sendable {
         let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
         state.resources.withLock { $0.device = device }
         guard try binding.sampleRate(tap) > 0 else { throw CaptureError.unsupportedFormat }
-        let io = try binding.installIO(device) { [self] in receive($0, tap: tap) }
+        let io = try binding.installIO(device) { [self] in receive($0) }
         state.resources.withLock { $0.io = io }
         let watch = try binding.watchDevice(device) { [self] in end(CaptureError.deviceStopped) }
         state.resources.withLock { $0.watch = watch }
@@ -125,15 +125,14 @@ private final class CaptureLifetime: Sendable {
         TapRequest(selection: processes, mono: true, unmuted: true, isPrivate: true)
     }
 
-    private func receive(_ samples: [Float], tap: UInt32) {
+    private func receive(_ buffer: Result<AudioPiece, any Error>) {
 
         do {
-            // The tap's format can change with the output route.
-            let rate = try binding.sampleRate(tap)
-            guard rate > 0 else { throw CaptureError.unsupportedFormat }
+            let piece = try buffer.get()
+            guard piece.sampleRate > 0 else { throw CaptureError.unsupportedFormat }
             state.delivery.withLock {
                 guard !$0.finished else { return }
-                $0.continuation.yield(AudioPiece(samples: samples, sampleRate: rate))
+                $0.continuation.yield(piece)
             }
         } catch {
             end(error)

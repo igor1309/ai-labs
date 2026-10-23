@@ -1,7 +1,7 @@
 # System audio capture — QA
 
-Fake tests mix distinct process tones, change rate, refuse requests and hold IO.
-Native recording tests check PID translation and tap descriptions. Real rows use
+Fake tests mix tones, change rate, refuse requests and hold IO. Native spies
+check tap and aggregate settings, IO, listeners and teardown. Real rows use
 `afplay -v 0.02` on a tone in a temp dir; denied permission can give silence.
 
 ## S-1 A named process is heard
@@ -11,7 +11,7 @@ process objects. Real: the faint tone exceeds the noise floor. Evidence:
 `SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
 `SystemAudioCaptureTests.piecesAreReadWhileTheCaptureIsRunning`,
 `SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
-`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`, `NativeCaptureBindingTests.nativeAggregateContainsOnlyItsPrivateManualTap`,
 `CoreAudioBindingTests.realFaintAfplayToneIsHeard`.
 
 ## S-2 Newly named processes are heard in the same capture
@@ -24,20 +24,22 @@ Native: rename writes a description with the same UUID. Evidence:
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: later pieces carry the new rate and tone. Evidence: `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`.
+Fake and native: each buffer keeps its rate and tone across an output change. Evidence:
+`SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
+`NativeCaptureBindingTests.nativeBuffersCarryTheRateReadDuringIO`.
 
 ## S-6 A capture that cannot start fails
 
-Fake: each refused starting step releases what it made. Native: a PID with no
-process object is refused before creating a tap. Evidence:
-`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`,
+Fake and native: each refused starting step releases its handles in reverse order.
+Native: an unavailable process object is refused before creating a tap. Evidence:
+`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`, `NativeCaptureBindingTests.eachRefusedNativeStartingStepReleasesOnlyItsHandles`,
 `NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`.
 
 ## S-7 A capture the system stops fails
 
-Fake: the first failure survives a later stop; unreadable format ends after
-cleanup. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`,
-`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`.
+Fake and native: stopped devices and unreadable formats fail after cleanup;
+the first failure survives a later stop. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopListenerReportsOnlyStoppedDevices`,
+`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`.
 
 ## S-8 A failed capture keeps what it heard
 
@@ -47,10 +49,8 @@ Fake: earlier pieces and IO held across a system stop precede the error. Evidenc
 
 ## S-9 Stopping ends the capture
 
-Fake: IO drains before stream completion; stop, release and cancellation clean up
-away from callbacks. Real: only hearing the tone stops successfully; a deadline
-throws a timeout. Evidence:
-`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`,
+Fake and native: teardown releases handles in reverse order; IO drains before completion. Real: hearing the tone stops successfully; a deadline throws a timeout. Evidence:
+`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`, `NativeCaptureBindingTests.nativeStopReleasesEveryHandleInReverseOrder`,
 `SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream`,
 `SystemAudioCaptureTests.anInFlightBufferPrecedesAnExplicitStopInOrder`,
 `SystemAudioCaptureTests.anExplicitStopReadsTheBufferAlreadyInFlight`,
