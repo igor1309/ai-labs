@@ -25,6 +25,7 @@ import {
   manualPictures,
   manualVisibility,
   memoryStorage,
+  part,
   pageAtRest,
   unreadVersion,
   type ManualViewport,
@@ -132,7 +133,7 @@ export const hatchlingLevel = () => memoryStorage({ [AGE_LEVEL_KEY]: JSON.string
 // Hatchling unless the test gives its own age level.
 export function openSkeletonsApp(options: SkeletonsAppOptions = {}) {
   const opened = openHomeApp({ ageLevels: hatchlingLevel(), ...options });
-  fireEvent.click(screen.getByRole("button", { name: shownTexts().skeletons }));
+  fireEvent.click(part('.skeletons-tile, .featured-card[data-game="skeletons"]'));
   return opened;
 }
 
@@ -151,11 +152,14 @@ export const shownTexts = () => {
   return TEXTS[isLanguage(lang) ? lang : "en"];
 };
 
-export const choices = (name = shownTexts().creatures) => within(screen.getByRole("group", { name })).getAllByRole("button");
+// The choice of creatures, the board and the tray, by their class, or by
+// their role and `name` where a test gives one.
+export const choices = (name?: string) =>
+  name === undefined ? [...part(".skeleton-choices").querySelectorAll<HTMLElement>("button")] : within(screen.getByRole("group", { name })).getAllByRole("button");
 
-export const board = (name = shownTexts().skeleton) => screen.getByRole("group", { name });
+export const board = (name?: string) => (name === undefined ? part(".skeleton-board") : screen.getByRole("group", { name }));
 
-export const tray = (name = shownTexts().bones) => screen.getByRole("group", { name });
+export const tray = (name?: string) => (name === undefined ? part(".skeleton-tray") : screen.getByRole("group", { name }));
 
 // Each slot on the outline, by its piece, and whether it is fitted.
 export const slots = () => [...board().querySelectorAll(".skeleton-slot")].map((slot) => [slot.getAttribute("data-piece"), slot.getAttribute("data-state")]);

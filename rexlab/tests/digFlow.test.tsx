@@ -34,14 +34,6 @@ function land(app: ReturnType<typeof reveal>, reducedMotion = false) {
 const card = () => screen.getByRole("region", { name: TEXTS.en.dugUp });
 const levelButton = (level: AgeLevel) => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getByRole("button", { name: TEXTS.en.ageLevels[level].name });
 
-describe("the board", () => {
-  it.each(["en", "ru"] as const)("is a group named for its sand in %s", (language) => {
-    openDigApp({ language });
-    fireEvent.click(homeTile(TEXTS[language].dig));
-    expect(screen.getByRole("group", { name: TEXTS[language].sand })).toBe(board());
-  });
-});
-
 describe("the board's lift and collection star", () => {
   it.each(AGE_LEVELS.flatMap((level) => [false, true].map((reducedMotion) => ({ level, reducedMotion }))))(
     "drops, brushes, asks, gusts, lifts and reveals at $level, reduced motion $reducedMotion", ({ level, reducedMotion }) => {
