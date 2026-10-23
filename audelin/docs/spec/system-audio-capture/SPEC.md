@@ -9,9 +9,9 @@ they play, through an interface it owns. An adapter over a Core Audio tap.
 - The client names the processes to hear, or those to leave out ("all but"
   also hears later ones); a tap takes both, and leaves playback unmuted
   (`CATapDescription`, Amanu `SystemAudioRecorder.swift:209-213`).
-- The tap's mono mix at the device's rate, the one conversion the owner
-  allows (anarlog, Meetily). The device starts when told, auto-start off:
-  it waits for a tapped process to play, and hung Zoom 60 s (Muesli #600).
+- The tap's mono mix at the device's rate, mixed by Core Audio: the
+  recognisers read mono. The device starts when told, auto-start off: it
+  waits for a tapped process to play, and hung Zoom 60 s (Muesli #600).
 - A tap delivers samples without a break, zeros while nothing plays, while
   the process is frozen and after it quits (measured on this Mac,
   [system-audio.md](../../research/system-audio.md#measured-on-this-mac)),

@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
@@ -60,6 +61,9 @@ let package = Package(
             dependencies: ["GlassLedger"]
         ),
         .target(
+            name: "SystemAudioCapture"
+        ),
+        .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
@@ -90,6 +94,10 @@ let package = Package(
         .testTarget(
             name: "SettingsUITests",
             dependencies: ["SettingsUI"]
+        ),
+        .testTarget(
+            name: "SystemAudioCaptureTests",
+            dependencies: ["SystemAudioCapture"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",

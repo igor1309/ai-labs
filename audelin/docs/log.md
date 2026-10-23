@@ -2,6 +2,8 @@
 
 ## 2026-10-23
 
+- Audelin captures named processes or every process but those left out as mono audio at the device rate, leaving playback unmuted (LAB-471).
+
 - Audelin can tell which processes to hear for a call app: its own and its
   helpers, the last answer while they are gone, and every process but
   Audelin's before the app appears (LAB-472).

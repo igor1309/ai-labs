@@ -5,80 +5,95 @@ what the capture asks of it (the tap's processes or its "all but" list, a
 mono mix, playback unmuted, a device start) and plays a distinct tone per
 process only by what was asked, so a wrong request fails the row. It
 accepts or refuses each request, changes its rate on a device change, and
-stops its device on cue. The binding runs for real over a muted `afplay`
-tone, so the test makes no sound. The real Zoom call of the user spec
-(LAB-408) proves the whole path and that the call stays audible.
+stops its device on cue. The binding runs for real over an `afplay` tone
+at 2% volume: a tap hears a process after its own volume, so a silent
+player gives only zeros. The real Zoom call of the user spec (LAB-408)
+proves the whole path and that the call stays audible.
 
 ## S-1 A named process is heard
 
 Fake: the tap is asked for the named process, mixed to mono with playback
-unmuted, and its tone is read back. Real: the muted `afplay` tone is read
-back above the noise floor. Evidence: Missing.
+unmuted, and its tone is read back. Real: the faint `afplay` tone is read
+back above the noise floor. Evidence:
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback` and
+`CoreAudioBindingTests.realFaintAfplayToneIsHeard`.
 
 ## S-2 Newly named processes are heard in the same capture
 
 Fake: a second process is named mid-capture; its tone follows in the same
-audio with no new start. Evidence: Missing.
+audio with no new start. Evidence:
+`SystemAudioCaptureTests.newlyNamedProcessesAreHeardInTheSameCapture`.
 
 ## S-5 A new output device keeps the sound heard
 
 Fake: the device changes and the format reads 24 kHz instead of 48; the
 pieces after it carry 24 kHz and the named process's tone, read back at
-that rate. Evidence: Missing.
+that rate. Evidence:
+`SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`.
 
 ## S-6 A capture that cannot start fails
 
 Fake: each starting step in turn refuses; the capture fails, and what it
-made is released. Evidence: Missing.
+made is released. Evidence:
+`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`.
 
 ## S-7 A capture the system stops fails
 
 Fake: the device stops after some buffers; the capture reports the
-failure. Evidence: Missing.
+failure. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`.
 
 ## S-8 A failed capture keeps what it heard
 
 Fake: every buffer before the stop is read before the audio ends. Evidence:
-Missing.
+`SystemAudioCaptureTests.aFailedCaptureKeepsEveryPieceItHeard`.
 
 ## S-9 Stopping ends the capture
 
 Fake: stopping ends the audio and releases the tap and device. Real: a
-muted `afplay` capture stopped. Evidence: Missing.
+faint `afplay` capture stopped. Evidence:
+`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`,
+`SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream` and
+`CoreAudioBindingTests.realCaptureStopsAndEndsItsAudio`.
 
 ## S-10 A capture can follow a stopped one
 
 Fake and real: after the first is stopped, a second capture's tone is read
-back. Evidence: Missing.
+back. Evidence:
+`SystemAudioCaptureTests.anotherCaptureCanFollowAStoppedOne` and
+`CoreAudioBindingTests.realCaptureCanFollowAStoppedCapture`.
 
 ## S-11 A capture that heard nothing ends cleanly
 
 Fake: a tap that never delivers is stopped; the audio ends with no pieces
-and no failure. Evidence: Missing.
+and no failure. Evidence:
+`SystemAudioCaptureTests.aCaptureThatHeardNothingEndsCleanly`.
 
 ## S-12 A process I did not name is left out
 
 Fake: the tap is asked for the named process only; another process's tone
-is absent. Evidence: Missing.
+is absent. Evidence: `SystemAudioCaptureTests.anUnnamedProcessIsLeftOut`.
 
 ## S-13 A process I left out is not heard
 
 Fake: the tap is asked for "all but" the left-out process; its tone is
-absent. Evidence: Missing.
+absent. Evidence: `SystemAudioCaptureTests.anExcludedProcessIsNotHeard`.
 
 ## S-14 A process that starts later is heard
 
 Fake: under "all but", a process added after the start plays; its tone is
-read back. Evidence: Missing.
+read back. Evidence:
+`SystemAudioCaptureTests.aProcessStartingLaterIsHeard`.
 
 ## S-15 A naming the system refuses keeps the old one
 
 Fake: a new naming is refused; the client is told it was refused, the
 first process's tone keeps coming and the capture does not fail. Evidence:
-Missing.
+`SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`.
 
 ## S-17 Sound is read without muting it
 
 Fake: in one drive, the tap is asked to leave playback unmuted and the
 named process's tone is read back. Real: on the user spec's Zoom call, the
-owner hears the far side while its sound is read. Evidence: Missing.
+owner hears the far side while its sound is read. Evidence:
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`.
+Real: pending the user spec's call.
