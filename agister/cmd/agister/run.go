@@ -7,6 +7,7 @@ import (
 	"io"
 	"maps"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -631,6 +632,9 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 // runtime with no turn, and what its process declares that is not run,
 // among them an input named as a document of its message, which two
 // sections of one name would leave ambiguous.
+// passName is a name ending as a pass does, in /<n>.
+var passName = regexp.MustCompile(`/[0-9]+$`)
+
 func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]notRunLine, error) {
 	var unrun notRun
 	document := resolve.Reference{Kind: resolve.KindProcess, Name: ""}
@@ -653,6 +657,11 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		var inspect func([]resolve.Item)
 		inspect = func(items []resolve.Item) {
 			for _, item := range items {
+				// A pass names its step <step>/<n>; a declared name of that
+				// form would share a pass's call id.
+				if passName.MatchString(item.Name) {
+					unrun.add(document, owner, fmt.Sprintf("the item %q, named as a pass,", item.Name))
+				}
 				switch {
 				case item.Parallel != nil:
 					parallels[item.Name] = true
@@ -673,6 +682,9 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		for _, binding := range referencesOf(w) {
 			if read := binding.From; read.Root == resolve.RootOutputs && parallels[read.Name] && read.Field != "" {
 				unrun.add(document, owner, fmt.Sprintf("a field within the parallel %q's outputs", read.Name))
+			}
+			if read := binding.From; read.Root == resolve.RootSession {
+				unrun.add(document, owner, fmt.Sprintf("the session of %q, read as a value,", read.Name))
 			}
 		}
 	}
@@ -1066,7 +1078,7 @@ func documentWorkflowBindings(bindings []documents.Field[documents.Binding]) ([]
 		if read := binding.Value.From; read.Root != "" {
 			reference, err := workflowReference(read)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", problemLine(originOf(field.Origin), binding.Name), err)
 			}
 			value.Reads = &reference
 		}
@@ -1820,6 +1832,8 @@ func workflowReference(read documents.Reference) (workflow.Reference, error) {
 	return reference, nil
 }
 
+// and, or and not read nothing; a leaf's read of a root a workflow does not
+// read, a session, is refused before by notRunOf.
 func workflowCondition(condition documents.Condition) workflow.Condition {
 	reference, _ := workflowReference(condition.Reads.Value)
 	mapped := workflow.Condition{Operator: condition.Operator, Reads: reference, Equals: condition.Equals.Value}

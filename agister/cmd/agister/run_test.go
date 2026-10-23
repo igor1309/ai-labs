@@ -367,6 +367,29 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 // field within its outputs.
 //
 // Contract test: the files home holds, as Agister ships them.
+// parallelThen is the parallel "p" of two "say", then items.
+func parallelThen(items string) string {
+	return `  - name: p
+    parallel:
+      - {name: a, process: say, agent: bash, inputs: {what: hi}}
+      - {name: b, process: say, agent: bash, inputs: {what: hi}}
+` + items
+}
+
+// repeatReading is the repeat "r" of one "say", its state and until as
+// given.
+func repeatReading(state, until string) string {
+	return `  - name: r
+    repeat:
+      ` + state + `
+      steps:
+        - {name: s, process: say, agent: bash, inputs: {what: hi}}
+      next: {last: {from: steps.s.outputs.stdout.head}}
+      ` + until + `
+      max: 1
+`
+}
+
 func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -392,6 +415,17 @@ func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
       - {name: b, process: say, agent: bash, inputs: {what: hi}}
   - {name: j, process: say, agent: bash, inputs: {what: {from: steps.p.outputs.x}}}
 `, what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by an arm's if`, steps: parallelThen(`  - name: choose
+    branch:
+      - {name: x, if: {equals: [{from: steps.p.outputs.x}, 0]}, process: say, agent: bash, inputs: {what: hi}, outputs: {o: {from: steps.x.outputs.stdout}}}
+      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {o: {from: steps.y.outputs.stdout}}}
+`), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by a repeat's state`, steps: parallelThen(repeatReading(`state: {last: {from: steps.p.outputs.x}}`, `until: {present: {from: state.last}}`)), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by a repeat's until`, steps: parallelThen(repeatReading(`state: {last: hi}`, `until: {equals: [{from: steps.p.outputs.x}, 0]}`)), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", then a session read by a condition`, steps: parallelThen(`  - {name: c, process: say, agent: bash, inputs: {what: hi}}
+` + repeatReading(`state: {last: hi}`, `until: {present: {from: steps.c.session}}`)), what: `the session of "c", read as a value,`},
+		{holding: `of two "say", then a step named as a pass`, steps: parallelThen(`  - {name: j/1, process: say, agent: bash, inputs: {what: hi}}
+`), what: `the item "j/1", named as a pass,`},
 	}
 	for _, c := range cases {
 		t.Run(c.holding, func(t *testing.T) {

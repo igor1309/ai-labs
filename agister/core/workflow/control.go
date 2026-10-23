@@ -85,7 +85,9 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		repeat := item.Repeat
 		state, ok := read.bindings(repeat.State)
 		if !ok {
-			return refused()
+			result := refused()
+			result.Reason = fmt.Sprintf("the repeat %q's state reads nothing", name)
+			return result
 		}
 		for pass := 1; pass <= repeat.Max; pass++ {
 			inner := read
@@ -95,10 +97,14 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 			if result.Status != Completed {
 				return result
 			}
-			state, ok = inner.bindings(repeat.Next)
+			next, ok := inner.bindings(repeat.Next)
 			if !ok {
-				return refused()
+				result := refused()
+				result.Reason = fmt.Sprintf("the repeat %q's next state reads nothing", name)
+				return result
 			}
+			// A name next does not bind keeps its value.
+			state = layered(state, next)
 			e.runner.events.Pass(name, pass, state)
 			inner.state = layered(read.state, state)
 			holds, _ := inner.condition(repeat.Until)

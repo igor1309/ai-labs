@@ -173,7 +173,42 @@ func TestRepeatCanRunABranchAndAParallel(t *testing.T) {
 	if result.Status != workflow.Completed || f.caller.bound["test/1"]["ends"] != `[{"class":null,"output":{"exit_code":3},"status":"completed"},{"class":null,"output":{"exit_code":4},"status":"completed"}]` {
 		t.Fatalf("result %+v, params %v", result, f.caller.bound)
 	}
+	if f.caller.declared["a/1"] != "a" || f.caller.declared["b/1"] != "b" || f.caller.declared["test/1"] != "test" {
+		t.Errorf("declared %v", f.caller.declared)
+	}
 	if !slices.Contains(f.events.told, "choose/1 took p [{p true map[state.code:1]}]") {
 		t.Errorf("events %v", f.events.told)
+	}
+}
+
+func TestAnInnerRepeatsOwnStateHidesTheSameNameAround(t *testing.T) {
+	t.Parallel()
+	outer := repairRepeat()
+	outer.Repeat.Steps = append(outer.Repeat.Steps, workflow.Step{Name: "inner", Repeat: &workflow.Repeat{
+		State: []workflow.Binding{bind("code", text("x"))},
+		Steps: []workflow.Step{{Name: "lint", Bindings: []workflow.Binding{bind("c", state("code"))}}},
+		Next:  []workflow.Binding{bind("code", state("code"))}, Until: compare(state("code"), "x"), Max: 2,
+	}})
+	f := newFixture(t, workflow.Boundary{Params: map[string]string{"start": "1"}}, map[string]func() workflow.Result{
+		"fix/1": completes(0), "test/1": completes(0), "lint/1/1": completes(0),
+	})
+	result := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{outer}}, nil)
+	if result.Status != workflow.Completed || f.caller.bound["lint/1/1"]["c"] != "x" || !slices.Contains(f.events.told, "inner/1 stopped until after 1") {
+		t.Fatalf("result %+v, bound %v, events %v", result, f.caller.bound, f.events.told)
+	}
+}
+
+func TestAStateNameNextDoesNotBindKeepsItsValue(t *testing.T) {
+	t.Parallel()
+	repeat := repairRepeat()
+	repeat.Repeat.State = append(repeat.Repeat.State, bind("tail", text("first")))
+	repeat.Repeat.Steps[0].Bindings = append(repeat.Repeat.Steps[0].Bindings, bind("tail", state("tail")))
+	f := newFixture(t, workflow.Boundary{Params: map[string]string{"start": "1"}}, map[string]func() workflow.Result{
+		"fix/1": completes(0), "test/1": completes(1), "fix/2": completes(0), "test/2": completes(0),
+	})
+	result := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{repeat}, Outputs: []workflow.Binding{bind("state", outputs("r", "state"))}}, nil)
+	want := map[string]any{"state": map[string]any{"code": 0, "tail": "first"}}
+	if result.Status != workflow.Completed || f.caller.bound["fix/2"]["tail"] != "first" || !reflect.DeepEqual(result.Output, want) {
+		t.Fatalf("result %+v, bound %v", result, f.caller.bound)
 	}
 }
