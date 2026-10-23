@@ -2,6 +2,9 @@
 
 ## 2026-10-23
 
+- Machines take events in order, run effects independently and tell every
+  subscriber each state change (LAB-517).
+
 - Call text switched on after audio ends catches up and includes the final
   words and revisions before finishing (LAB-476).
 

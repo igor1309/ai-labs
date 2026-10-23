@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
+        .library(name: "Machine", targets: ["Machine"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
@@ -38,6 +39,9 @@ let package = Package(
         ),
         .target(
             name: "LiveText"
+        ),
+        .target(
+            name: "Machine"
         ),
         .target(
             name: "ModelLoading"
@@ -87,6 +91,10 @@ let package = Package(
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "MachineTests",
+            dependencies: ["Machine"]
         ),
         .testTarget(
             name: "ModelLoadingTests",
