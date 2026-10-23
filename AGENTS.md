@@ -58,6 +58,14 @@
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
 
+## Writing docs and comments
+
+- Do not add cross-references as traceability theater. A code comment, doc
+  or log entry says what it means in its own words; it does not point at
+  another document's path, decision number, invariant or scenario id
+  ("ADR-001 decision 4", "S-14", "`spec/x/QA.md`"). Each such pointer ties
+  the text to the other document's layout and turns false when it changes.
+
 ## Implementing with Codex
 
 - The implementer is `codex-sol-61`. Use `codex-luna` only when sol is

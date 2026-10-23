@@ -57,7 +57,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
-| audelin (`audelin/macos/Tests/`) | `audelin-core` | the `audelin` filter, with the recorded fixtures its tests read | runs |
+| audelin (`audelin/macos/Tests/`, `audelin/macos/PreviewApps/Tests/`) | `audelin-core` | the `audelin` filter, with the recorded fixtures its tests read | runs |
 | claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 | mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
