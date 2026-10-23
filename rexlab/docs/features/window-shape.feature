@@ -21,11 +21,12 @@ Feature: The window's shape
   a screen with no portrait layout. A portrait layout is built for one
   size class at a time: the home page, the catalogue's list, a
   dinosaur's page, the compare quiz's question and result, and find the
-  pair's welcome have one for a tall window only (home-portrait.feature,
-  catalogue-portrait.feature, dinosaur-page-portrait.feature,
-  compare-dinosaurs-portrait.feature,
+  pair's welcome and board have one for a tall window only
+  (home-portrait.feature, catalogue-portrait.feature,
+  dinosaur-page-portrait.feature, compare-dinosaurs-portrait.feature,
   compare-dinosaurs-result-portrait.feature,
-  find-the-pair-welcome-portrait.feature), so a tall-narrow window
+  find-the-pair-welcome-portrait.feature,
+  find-the-pair-board-portrait.feature), so a tall-narrow window
   still shows the picture over them. The scenarios
   below use the care welcome screen, which has no portrait layout yet.
 
