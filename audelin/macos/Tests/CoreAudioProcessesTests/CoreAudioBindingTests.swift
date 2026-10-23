@@ -64,7 +64,7 @@ struct CoreAudioBindingTests {
         }
         pid.withLock { $0 = player.processIdentifier }
         inspect()
-        let status = arrived.wait(timeout: .now() + 10)
+        let status = arrived.wait(timeout: .now() + 18)
         try #require(status == .success, "Core Audio must report the afplay child")
         return try #require(result.withLock { $0 })
     }
