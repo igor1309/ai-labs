@@ -68,6 +68,9 @@ const BOARD_CARD = ".pair-card";
 // width.
 const SORT_CARDS = ".sort-card, .sorted-card";
 
+// A card on the skeleton choice, its picture and name sized by its width.
+const SKELETON_CHOICE = ".skeleton-choice";
+
 // A dinosaur on find the pair's result, its art yielding to its name.
 const FOUND_CARD = ".pairs-found-card";
 
@@ -77,7 +80,7 @@ const FOUND_CARD = ".pairs-found-card";
 // in its new box, so a copy travels in a box that changes with it, as the
 // closing picture does.
 export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
-  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}, ${BOARD_CARD}, ${FOUND_CARD}, ${SORT_CARDS}`) ? element : undefined;
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}, ${BOARD_CARD}, ${FOUND_CARD}, ${SORT_CARDS}, ${SKELETON_CHOICE}`) ? element : undefined;
   return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
 }
 

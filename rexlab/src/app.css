@@ -6957,6 +6957,37 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   white-space: nowrap;
 }
 
+/* Upright, the choice takes the narrower side padding of the other
+   upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
+   their symbols alone, each 56 a side, and its dinosaurs stand in rows of
+   two. */
+html[data-size="tall"] .skeleton-screen {
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .skeleton-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .skeleton-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .skeleton-choices {
+  align-content: stretch;
+  gap: 20px;
+}
+
+html[data-size="tall"] .skeleton-choice {
+  flex-basis: calc((100% - 20px) / 2);
+}
+
 /* A puzzle: the board, in the outline's frame, beside the tray of bones.
    The outline is drawn faint; each slot is its piece's place on it. The
    puzzle is the container its board is sized in. */

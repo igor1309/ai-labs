@@ -110,7 +110,7 @@ describe("the window's shape through app props", () => {
   });
 
   it("keeps help running for a game with a portrait layout and still pauses for a hidden page", async () => {
-    const app = await openPuzzle("TYRANNOSAURUS", { portraitLayouts: { skeletons: ["tall"] } });
+    const app = await openPuzzle("TYRANNOSAURUS", { portraitLayouts: { "skeletons-puzzle": ["tall"] } });
     act(() => app.viewport.turn("portrait"));
     expect(gate().hasAttribute("data-shown")).toBe(false);
     // The page's motion to its portrait layout settles.
