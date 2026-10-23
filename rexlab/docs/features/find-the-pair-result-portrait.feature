@@ -17,8 +17,8 @@ Feature: Find the pair: the result in a tall window
   each card at most its landscape shape (its picture at 4:3 over its
   name) and at least 90 tall, its name sized from its width as in
   landscape. Where the window leaves the cards less, the whole screen
-  scrolls. The celebration and the new level stand side by side where
-  they fit, one above the other where they do not. The tries are 15% of
+  scrolls. The celebration and the new level, each 60 tall, stand side
+  by side where they fit, one above the other where they do not. The tries are 15% of
   the window's height, at most 180, beside the hand; the stars earned,
   "WELL DONE!", the best and the actions keep their sizes (48, 48, 48,
   72), and the actions take one type in the window, as large as lets
@@ -38,11 +38,11 @@ Feature: Find the pair: the result in a tall window
       | 600   | 800    | Hatchling's climb level 2, 4 dinosaurs, a new best and a new level | 112  | does not scroll |
       | 600   | 800    | a Paleontologist board, 12 dinosaurs, a new best             | 90   | scrolls         |
       | 744   | 1133   | Hatchling's climb level 2, 4 dinosaurs, a new best and a new level | 254  | does not scroll |
-      | 744   | 1133   | a Paleontologist board, 12 dinosaurs, a new best             | 121  | does not scroll |
-      | 768   | 1024   | an Explorer board, 9 dinosaurs, a new best                   | 135  | does not scroll |
-      | 768   | 1024   | a Paleontologist board, 12 dinosaurs, a new best             | 98   | does not scroll |
-      | 820   | 1180   | an Explorer board, 9 dinosaurs, a new best                   | 180  | does not scroll |
-      | 1024  | 1366   | a Paleontologist board, 12 dinosaurs, a new best             | 176  | does not scroll |
+      | 744   | 1133   | a Paleontologist board, 12 dinosaurs, a new best             | 119  | does not scroll |
+      | 768   | 1024   | an Explorer board, 9 dinosaurs, a new best                   | 133  | does not scroll |
+      | 768   | 1024   | a Paleontologist board, 12 dinosaurs, a new best             | 96   | does not scroll |
+      | 820   | 1180   | an Explorer board, 9 dinosaurs, a new best                   | 177  | does not scroll |
+      | 1024  | 1366   | a Paleontologist board, 12 dinosaurs, a new best             | 174  | does not scroll |
 
   Scenario Outline: Every word fits the narrowest width
     Given the app is in <language>
