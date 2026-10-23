@@ -1,0 +1,2 @@
+schema: agister.process/v1alpha1
+guidance: [go-testing-seams, go-architecture, audelin-swift-tests]

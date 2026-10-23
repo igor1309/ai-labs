@@ -1,40 +1,91 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
-// ADR-001 module layout: one local package plus a thin app target.
 let package = Package(
     name: "Audelin",
-    platforms: [.macOS(.v14)],
-    products: [.executable(name: "Audelin", targets: ["Audelin"])],
+    platforms: [.macOS(.v26)],
+    products: [
+        .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
+        .library(name: "GlassLedger", targets: ["GlassLedger"]),
+        .library(name: "LiveText", targets: ["LiveText"]),
+        .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
+        .library(name: "PanelUI", targets: ["PanelUI"]),
+        .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
+    ],
     targets: [
-        // App: the entry point and composition root; the only target that
-        // may depend on every module and create adapters.
-        .executableTarget(name: "Audelin"),
-        .testTarget(name: "AudelinTests", dependencies: ["Audelin"]),
-
-        // Domain: Foundation only, depends on nothing of ours.
-        .target(name: "CallDomain"),
-        .testTarget(name: "CallDomainTests", dependencies: ["CallDomain"]),
-        .target(name: "TranscriptCore"),
-        .testTarget(name: "TranscriptCoreTests", dependencies: ["TranscriptCore"]),
-
-        // Features: a Core depends on Domain only.
-        .target(name: "LiveSessionCore", dependencies: ["CallDomain"]),
-        .testTarget(name: "LiveSessionCoreTests", dependencies: ["LiveSessionCore", "CallDomain"]),
-        .target(name: "CallsCore", dependencies: ["CallDomain"]),
-        .testTarget(name: "CallsCoreTests", dependencies: ["CallsCore"]),
-
-        // Adapters: Domain and the Core whose ports they implement.
-        .target(name: "Recorder", dependencies: ["CallDomain", "LiveSessionCore"]),
+        .target(
+            name: "AudioConversion"
+        ),
+        .target(
+            name: "CoreAudioProcesses"
+        ),
+        .target(
+            name: "GlassLedger",
+            resources: [.copy("Resources/Fonts")]
+        ),
+        .target(
+            name: "LiveText"
+        ),
+        .target(
+            name: "NemotronRecognizer",
+            dependencies: [
+                "AudioConversion",
+                "LiveText",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
+        ),
+        .target(
+            name: "PanelUI",
+            dependencies: ["GlassLedger"]
+        ),
+        .target(
+            name: "ParakeetRecognizer",
+            dependencies: [
+                "AudioConversion",
+                "LiveText",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
+        ),
+        .target(
+            name: "SettingsUI",
+            dependencies: ["GlassLedger"]
+        ),
+        .target(
+            name: "TwoPassRecognizer",
+            dependencies: ["LiveText"]
+        ),
         .testTarget(
-            name: "RecorderTests",
-            dependencies: ["Recorder", "RecorderTestSupport", "recorder-crash-child"]),
-        // The recorder's tests: a call-files double and a process to kill.
-        .target(name: "RecorderTestSupport", dependencies: ["CallDomain", "LiveSessionCore"]),
-        .executableTarget(
-            name: "recorder-crash-child",
-            dependencies: ["CallDomain", "Recorder", "RecorderTestSupport"]),
-        .target(name: "FileCallStore", dependencies: ["CallDomain", "CallsCore"]),
-        .testTarget(name: "FileCallStoreTests", dependencies: ["FileCallStore"]),
+            name: "CoreAudioProcessesTests",
+            dependencies: ["CoreAudioProcesses"]
+        ),
+        .testTarget(
+            name: "LiveTextTests",
+            dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "NemotronRecognizerTests",
+            dependencies: ["NemotronRecognizer"]
+        ),
+        .testTarget(
+            name: "PanelUITests",
+            dependencies: ["PanelUI"]
+        ),
+        .testTarget(
+            name: "ParakeetRecognizerTests",
+            dependencies: ["ParakeetRecognizer"]
+        ),
+        .testTarget(
+            name: "SettingsUITests",
+            dependencies: ["SettingsUI"]
+        ),
+        .testTarget(
+            name: "TwoPassRecognizerTests",
+            dependencies: ["TwoPassRecognizer"]
+        ),
     ]
 )

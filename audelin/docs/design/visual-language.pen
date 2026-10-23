@@ -13137,7 +13137,7 @@
                   "reusable": true,
                   "width": 620,
                   "height": 405,
-                  "fill": "#00000033",
+                  "fill": "$shadow",
                   "cornerRadius": [
                     0,
                     0,
@@ -13592,7 +13592,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Required: nothing else opens until it is done. Models: Parakeet v3 is the live model, so it is a required line, not a choice; below it the final-pass engine is chosen, with no default. Each model says where it comes from: «есть», «есть · из Amanu» (reused only on an exact file match: name, size and checksum) or «↓ size» (the app downloads its own copy). Then the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin) and the permissions: microphone, call audio, and Calendar, optional and marked v3, which names a call after the event it overlaps. Continue waits only for an engine choice, never for a download: a call started before the live model arrives records audio, and live text starts once it is here.",
+              "content": "Required: nothing else opens until it is done. Models: Parakeet v3 is the live model, so it is a required line, not a choice; below it the final-pass engine is chosen, with no default. Each model says where it comes from: «есть», «есть · из Amanu» (reused only on an exact file match: name, size and checksum) or «↓ size» (the app downloads its own copy). Then the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin) and the permissions: microphone, call audio, and Calendar, optional and marked v3, which names a call after the event it overlaps. Continue waits for an engine choice and for every model to be on disk: nothing records while a model downloads.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -14332,7 +14332,7 @@
                 {
                   "type": "frame",
                   "id": "Zyrsa",
-                  "name": "Engine chosen, model downloading",
+                  "name": "Fresh Mac: models downloading",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
@@ -14341,7 +14341,7 @@
                       "id": "D6Z3T7",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Fresh Mac: live model downloading",
+                      "content": "Fresh Mac: models downloading",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
@@ -14353,7 +14353,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 608,
-                      "content": "Parakeet v3 downloads as the live model, so as a final-pass engine it costs nothing extra. Continue is enabled: a call can start before the download ends; audio records and live text starts when the model arrives.",
+                      "content": "Parakeet v3 downloads as the live model, so as a final-pass engine it costs nothing extra. Continue stays disabled until every model is on disk: nothing records while a model downloads.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -14991,12 +14991,12 @@
                                   }
                                 },
                                 {
-                                  "id": "eOYd7",
+                                  "id": "fL6OS",
                                   "type": "ref",
-                                  "ref": "f7Y4eS",
+                                  "ref": "DcBEh",
                                   "name": "Button Продолжить",
                                   "descendants": {
-                                    "Wz52g": {
+                                    "T9PPL": {
                                       "content": "Продолжить"
                                     }
                                   }
@@ -15791,29 +15791,32 @@
                 },
                 {
                   "type": "frame",
-                  "id": "uY88E",
-                  "name": "Engine chosen, model downloading",
+                  "id": "bCNKJ",
+                  "name": "Fresh Mac: models downloading",
+                  "theme": {
+                    "mode": "dark"
+                  },
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "WFKDh",
+                      "id": "wr3j0",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Fresh Mac: live model downloading",
+                      "content": "Fresh Mac: models downloading",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "UqSq7",
+                      "id": "h3WuZT",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 608,
-                      "content": "Parakeet v3 downloads as the live model, so as a final-pass engine it costs nothing extra. Continue is enabled: a call can start before the download ends; audio records and live text starts when the model arrives.",
+                      "content": "Parakeet v3 downloads as the live model, so as a final-pass engine it costs nothing extra. Continue stays disabled until every model is on disk: nothing records while a model downloads.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -15821,7 +15824,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "bC6u7",
+                      "id": "OZISH",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -15830,7 +15833,7 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "sSr1q",
+                          "id": "Y9xULR",
                           "name": "Window",
                           "width": 560,
                           "fill": "$win",
@@ -15850,7 +15853,7 @@
                           "layout": "vertical",
                           "children": [
                             {
-                              "id": "QROmo",
+                              "id": "WipQU",
                               "type": "ref",
                               "ref": "H1efZf",
                               "name": "Title bar",
@@ -15863,7 +15866,7 @@
                             },
                             {
                               "type": "frame",
-                              "id": "s8VvB",
+                              "id": "egaNX",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
@@ -15872,7 +15875,7 @@
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "bDkpf",
+                                  "id": "y5l9Pi",
                                   "name": "Head",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -15880,7 +15883,7 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "fvHdX",
+                                      "id": "AYPPV",
                                       "name": "H",
                                       "fill": "$text",
                                       "content": "Перед первым звонком",
@@ -15891,7 +15894,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "B33dY",
+                                      "id": "QI0xk",
                                       "name": "Sub",
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
@@ -15906,7 +15909,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "KYLB1",
+                                  "id": "mQvVk",
                                   "name": "Block 1",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -15914,14 +15917,14 @@
                                   "children": [
                                     {
                                       "type": "frame",
-                                      "id": "YBSFf",
+                                      "id": "GBf11",
                                       "name": "Head",
                                       "gap": "$space-8",
                                       "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "text",
-                                          "id": "yIheD",
+                                          "id": "HmBjH",
                                           "name": "N",
                                           "fill": "$me",
                                           "content": "1",
@@ -15932,7 +15935,7 @@
                                         },
                                         {
                                           "type": "text",
-                                          "id": "Uj9WE",
+                                          "id": "UJB5V",
                                           "name": "H",
                                           "fill": "$text",
                                           "content": "Модели",
@@ -15945,7 +15948,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "VqNLY",
+                                      "id": "d7h4e",
                                       "name": "Hint",
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
@@ -15958,7 +15961,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "D6IAM",
+                                      "id": "HCpYl",
                                       "name": "Live Parakeet v3 (required)",
                                       "width": "fill_container",
                                       "fill": "$surface",
@@ -15974,7 +15977,7 @@
                                       "children": [
                                         {
                                           "type": "text",
-                                          "id": "ZGykS",
+                                          "id": "OrqGA",
                                           "name": "Required",
                                           "fill": "$me",
                                           "content": "нужен",
@@ -15985,7 +15988,7 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "VKRO5",
+                                          "id": "bMWO1",
                                           "name": "Text",
                                           "width": "fill_container",
                                           "layout": "vertical",
@@ -15993,7 +15996,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "saoed",
+                                              "id": "LF0lm",
                                               "name": "Name",
                                               "fill": "$text",
                                               "content": "Parakeet v3 · живой текст",
@@ -16004,7 +16007,7 @@
                                             },
                                             {
                                               "type": "text",
-                                              "id": "jXCRr",
+                                              "id": "S7Ywu",
                                               "name": "Note",
                                               "fill": "$sub",
                                               "textGrowth": "fixed-width",
@@ -16019,7 +16022,7 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "NTEYH",
+                                          "id": "h8pAr",
                                           "name": "Status",
                                           "layout": "vertical",
                                           "gap": "$space-4",
@@ -16027,7 +16030,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "UUbA3",
+                                              "id": "uPFKT",
                                               "name": "Pct",
                                               "fill": "$me",
                                               "content": "скачивается 212 / 461 MB",
@@ -16037,7 +16040,7 @@
                                               "fontWeight": "normal"
                                             },
                                             {
-                                              "id": "jPpy3",
+                                              "id": "k8D4ua",
                                               "type": "ref",
                                               "ref": "GQV4X",
                                               "name": "Progress",
@@ -16054,7 +16057,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "EWzuL",
+                                      "id": "hyXrm",
                                       "name": "Final-pass label",
                                       "fill": "$text",
                                       "textGrowth": "fixed-width",
@@ -16066,7 +16069,7 @@
                                       "fontWeight": "600"
                                     },
                                     {
-                                      "id": "h8ozZ",
+                                      "id": "kThCl",
                                       "type": "ref",
                                       "ref": "t93RQp",
                                       "name": "Option Parakeet v3",
@@ -16087,7 +16090,7 @@
                                       }
                                     },
                                     {
-                                      "id": "UOemS",
+                                      "id": "jiKxA",
                                       "type": "ref",
                                       "ref": "t93RQp",
                                       "name": "Option Whisper Large v3 Turbo",
@@ -16111,7 +16114,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "SfBOn",
+                                  "id": "g9kvSm",
                                   "name": "Block 2",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -16119,14 +16122,14 @@
                                   "children": [
                                     {
                                       "type": "frame",
-                                      "id": "mI0t9",
+                                      "id": "kRQ1J",
                                       "name": "Head",
                                       "gap": "$space-8",
                                       "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "text",
-                                          "id": "JBqr7",
+                                          "id": "MI7fb",
                                           "name": "N",
                                           "fill": "$me",
                                           "content": "2",
@@ -16137,7 +16140,7 @@
                                         },
                                         {
                                           "type": "text",
-                                          "id": "K2kaBV",
+                                          "id": "TREtg",
                                           "name": "H",
                                           "fill": "$text",
                                           "content": "Папка данных",
@@ -16150,14 +16153,14 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "oPsuv",
+                                      "id": "UnPRZ",
                                       "name": "Folder row",
                                       "width": "fill_container",
                                       "gap": "$space-8",
                                       "alignItems": "center",
                                       "children": [
                                         {
-                                          "id": "h5iwcc",
+                                          "id": "O0aL2",
                                           "type": "ref",
                                           "ref": "e8UQV2",
                                           "name": "Path",
@@ -16169,36 +16172,21 @@
                                           }
                                         },
                                         {
-                                          "type": "frame",
-                                          "id": "upw9V",
+                                          "id": "socLb",
+                                          "type": "ref",
+                                          "ref": "wmGeO",
                                           "name": "Button Изменить…",
-                                          "fill": "$rule",
-                                          "cornerRadius": "$radius-control",
-                                          "gap": "$space-6",
-                                          "padding": [
-                                            "$space-6",
-                                            "$space-12"
-                                          ],
-                                          "alignItems": "center",
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "Djdti",
-                                              "name": "Label",
-                                              "fill": "$text",
-                                              "content": "Изменить…",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-small",
-                                              "fontWeight": "600"
+                                          "descendants": {
+                                            "EWsWH": {
+                                              "content": "Изменить…"
                                             }
-                                          ]
+                                          }
                                         }
                                       ]
                                     },
                                     {
                                       "type": "text",
-                                      "id": "ROLwf",
+                                      "id": "ESpZj",
                                       "name": "Hint",
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
@@ -16213,7 +16201,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "blunU",
+                                  "id": "A0UrcI",
                                   "name": "Block 3",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -16221,14 +16209,14 @@
                                   "children": [
                                     {
                                       "type": "frame",
-                                      "id": "VHCtR",
+                                      "id": "fJI3y",
                                       "name": "Head",
                                       "gap": "$space-8",
                                       "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "text",
-                                          "id": "jv8Qg",
+                                          "id": "aVn7O",
                                           "name": "N",
                                           "fill": "$me",
                                           "content": "3",
@@ -16239,7 +16227,7 @@
                                         },
                                         {
                                           "type": "text",
-                                          "id": "vEki3",
+                                          "id": "k6KkP",
                                           "name": "H",
                                           "fill": "$text",
                                           "content": "Разрешения",
@@ -16252,7 +16240,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "dnlTr",
+                                      "id": "HPXmy",
                                       "name": "Perm Микрофон",
                                       "width": "fill_container",
                                       "fill": "$surface",
@@ -16268,7 +16256,7 @@
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "HiI3J",
+                                          "id": "wgELN",
                                           "name": "Text",
                                           "width": "fill_container",
                                           "layout": "vertical",
@@ -16276,7 +16264,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "oaoY4",
+                                              "id": "zeYXQ",
                                               "name": "Name",
                                               "fill": "$text",
                                               "content": "Микрофон",
@@ -16287,7 +16275,7 @@
                                             },
                                             {
                                               "type": "text",
-                                              "id": "o7LWLm",
+                                              "id": "mzgh3",
                                               "name": "Note",
                                               "fill": "$sub",
                                               "content": "дорожка «я»",
@@ -16300,7 +16288,7 @@
                                         },
                                         {
                                           "type": "text",
-                                          "id": "SrJsU",
+                                          "id": "CgM9q",
                                           "name": "Ok",
                                           "fill": "$me",
                                           "content": "✓ разрешено",
@@ -16313,7 +16301,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "Nxwec",
+                                      "id": "yGUqK",
                                       "name": "Perm Звук звонка",
                                       "width": "fill_container",
                                       "fill": "$surface",
@@ -16329,7 +16317,7 @@
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "Brcqs",
+                                          "id": "tiWJm",
                                           "name": "Text",
                                           "width": "fill_container",
                                           "layout": "vertical",
@@ -16337,7 +16325,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "rR85v",
+                                              "id": "KQrex",
                                               "name": "Name",
                                               "fill": "$text",
                                               "content": "Звук звонка",
@@ -16348,7 +16336,7 @@
                                             },
                                             {
                                               "type": "text",
-                                              "id": "OgBoz",
+                                              "id": "DMa1O",
                                               "name": "Note",
                                               "fill": "$sub",
                                               "content": "дорожка «они» — системный звук",
@@ -16361,7 +16349,7 @@
                                         },
                                         {
                                           "type": "text",
-                                          "id": "nGr7t",
+                                          "id": "ac73B",
                                           "name": "Ok",
                                           "fill": "$me",
                                           "content": "✓ разрешено",
@@ -16374,7 +16362,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "BFZEH",
+                                      "id": "aaCsM",
                                       "name": "Perm Календарь",
                                       "width": "fill_container",
                                       "fill": "$surface",
@@ -16390,7 +16378,7 @@
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "I8Swh",
+                                          "id": "Rkz5m",
                                           "name": "Text",
                                           "width": "fill_container",
                                           "layout": "vertical",
@@ -16398,7 +16386,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "q30Ez",
+                                              "id": "W5033D",
                                               "name": "Name",
                                               "fill": "$text",
                                               "content": "Календарь · необязательно · v3",
@@ -16409,7 +16397,7 @@
                                             },
                                             {
                                               "type": "text",
-                                              "id": "noYZf",
+                                              "id": "vN9PQ",
                                               "name": "Note",
                                               "fill": "$sub",
                                               "content": "название звонка — из события, которое идёт в это время",
@@ -16421,7 +16409,7 @@
                                           ]
                                         },
                                         {
-                                          "id": "nCcD5",
+                                          "id": "bTeg4",
                                           "type": "ref",
                                           "ref": "wmGeO",
                                           "name": "Button Разрешить…",
@@ -16439,7 +16427,7 @@
                             },
                             {
                               "type": "frame",
-                              "id": "RT9Mj",
+                              "id": "uOjKi",
                               "name": "Footer",
                               "width": "fill_container",
                               "stroke": "$rule",
@@ -16455,38 +16443,23 @@
                               "alignItems": "center",
                               "children": [
                                 {
-                                  "type": "frame",
-                                  "id": "hPFT0",
+                                  "id": "UCS8i",
+                                  "type": "ref",
+                                  "ref": "wmGeO",
                                   "name": "Button Выйти",
-                                  "fill": "$rule",
-                                  "cornerRadius": "$radius-control",
-                                  "gap": "$space-6",
-                                  "padding": [
-                                    "$space-6",
-                                    "$space-12"
-                                  ],
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "Rv6Us",
-                                      "name": "Label",
-                                      "fill": "$text",
-                                      "content": "Выйти",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-ui",
-                                      "fontSize": "$type-small",
-                                      "fontWeight": "600"
+                                  "descendants": {
+                                    "EWsWH": {
+                                      "content": "Выйти"
                                     }
-                                  ]
+                                  }
                                 },
                                 {
-                                  "id": "FenmQ",
+                                  "id": "SxZvk",
                                   "type": "ref",
-                                  "ref": "f7Y4eS",
+                                  "ref": "DcBEh",
                                   "name": "Button Продолжить",
                                   "descendants": {
-                                    "Wz52g": {
+                                    "T9PPL": {
                                       "content": "Продолжить"
                                     }
                                   }
@@ -16553,7 +16526,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Shown at launch, before any call, when the chosen final-pass engine's model is missing, with the real path of the missing file. A model reused from another app on an exact match (here Amanu's) can disappear when that app deletes it; the launch check catches it. Three ways out: download the app's own copy, choose another engine, or quit. While it downloads, recording is allowed and the final pass waits.",
+              "content": "Shown at launch, before any call, when the chosen final-pass engine's model is missing, with the real path of the missing file. A model reused from another app on an exact match (here Amanu's) can disappear when that app deletes it; the launch check catches it. Three ways out: download the app's own copy, choose another engine, or quit. While it downloads, nothing records.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -16798,7 +16771,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 488,
-                      "content": "Recording is allowed while the model downloads: the blocker steps aside, calls record with live text, and their final pass waits (Screen 5 v2). Quit cancels the download.",
+                      "content": "Recording stays blocked while the model downloads: Continue opens once the file is on disk. Quit cancels the download.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -16947,7 +16920,7 @@
                               "fill": "$sub",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "Звонки уже можно записывать: живой текст работает, а финальная расшифровка подождёт модель.",
+                              "content": "Записывать звонки можно будет, когда модель скачается.",
                               "lineHeight": 1.45,
                               "fontFamily": "$font-ui",
                               "fontSize": "$type-body",
@@ -16962,13 +16935,13 @@
                               "gap": "$space-8",
                               "children": [
                                 {
-                                  "id": "exe2c",
+                                  "id": "ZyXN6",
                                   "type": "ref",
-                                  "ref": "f7Y4eS",
+                                  "ref": "DcBEh",
                                   "name": "Button Продолжить",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "Wz52g": {
+                                    "T9PPL": {
                                       "content": "Продолжить"
                                     }
                                   }
@@ -17243,14 +17216,17 @@
                 },
                 {
                   "type": "frame",
-                  "id": "N6Hc9x",
+                  "id": "i41XUf",
                   "name": "Downloading",
+                  "theme": {
+                    "mode": "dark"
+                  },
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "m79cQv",
+                      "id": "CYSl9",
                       "name": "State",
                       "fill": "#333333",
                       "content": "Downloading",
@@ -17260,12 +17236,12 @@
                     },
                     {
                       "type": "text",
-                      "id": "k8PK9p",
+                      "id": "hp6ky",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 488,
-                      "content": "Recording is allowed while the model downloads: the blocker steps aside, calls record with live text, and their final pass waits (Screen 5 v2). Quit cancels the download.",
+                      "content": "Recording stays blocked while the model downloads: Continue opens once the file is on disk. Quit cancels the download.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -17273,7 +17249,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "MS9ll",
+                      "id": "smhOF",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -17282,7 +17258,7 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "MAEyJ",
+                          "id": "C9n1QB",
                           "name": "Alert",
                           "width": 440,
                           "fill": "$win",
@@ -17305,7 +17281,7 @@
                           "children": [
                             {
                               "type": "frame",
-                              "id": "Tr5RA",
+                              "id": "X2ep2",
                               "name": "Icon",
                               "width": 40,
                               "height": 40,
@@ -17316,9 +17292,9 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "id": "r78LF",
+                                  "id": "c1O4D",
                                   "name": "Glyph",
-                                  "fill": "$them",
+                                  "fill": "$warn",
                                   "content": "!",
                                   "lineHeight": 1.55,
                                   "fontFamily": "$font-data",
@@ -17329,7 +17305,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "dd9fy",
+                              "id": "ZmWWZ",
                               "name": "H",
                               "fill": "$text",
                               "content": "Пропал файл модели",
@@ -17340,7 +17316,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "b1Ot7h",
+                              "id": "oXHgf",
                               "name": "Body",
                               "fill": "$sub",
                               "textGrowth": "fixed-width",
@@ -17352,7 +17328,7 @@
                               "fontWeight": "normal"
                             },
                             {
-                              "id": "Q44xdo",
+                              "id": "CJDtc",
                               "type": "ref",
                               "ref": "e8UQV2",
                               "name": "Path",
@@ -17365,7 +17341,7 @@
                             },
                             {
                               "type": "frame",
-                              "id": "MNxRo",
+                              "id": "V9tRMs",
                               "name": "Progress",
                               "width": "fill_container",
                               "layout": "vertical",
@@ -17373,7 +17349,7 @@
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "v6muK",
+                                  "id": "OsZDT",
                                   "name": "Bar",
                                   "width": "fill_container",
                                   "height": 4,
@@ -17384,7 +17360,7 @@
                                     {
                                       "type": "rectangle",
                                       "cornerRadius": "$radius-bar",
-                                      "id": "U9Ehyn",
+                                      "id": "ihj6D",
                                       "x": 0,
                                       "y": 0,
                                       "name": "Done",
@@ -17396,7 +17372,7 @@
                                 },
                                 {
                                   "type": "text",
-                                  "id": "notb2",
+                                  "id": "zHMYF",
                                   "name": "Pct",
                                   "fill": "$me",
                                   "content": "скачивается 320 / 547 MB",
@@ -17409,12 +17385,12 @@
                             },
                             {
                               "type": "text",
-                              "id": "C3nh1",
+                              "id": "Nd2Xv",
                               "name": "Recording note",
                               "fill": "$sub",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "Звонки уже можно записывать: живой текст работает, а финальная расшифровка подождёт модель.",
+                              "content": "Записывать звонки можно будет, когда модель скачается.",
                               "lineHeight": 1.45,
                               "fontFamily": "$font-ui",
                               "fontSize": "$type-body",
@@ -17422,79 +17398,47 @@
                             },
                             {
                               "type": "frame",
-                              "id": "VzYef",
+                              "id": "HNf7U",
                               "name": "Buttons",
                               "width": "fill_container",
                               "layout": "vertical",
                               "gap": "$space-8",
                               "children": [
                                 {
-                                  "id": "Qpd7m",
+                                  "id": "K6QcS",
                                   "type": "ref",
-                                  "ref": "f7Y4eS",
+                                  "ref": "DcBEh",
                                   "name": "Button Продолжить",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "Wz52g": {
+                                    "T9PPL": {
                                       "content": "Продолжить"
                                     }
                                   }
                                 },
                                 {
-                                  "type": "frame",
-                                  "id": "bSdfh",
+                                  "id": "dl6vl",
+                                  "type": "ref",
+                                  "ref": "wmGeO",
                                   "name": "Button Выбрать другой движок…",
                                   "width": "fill_container",
-                                  "fill": "$rule",
-                                  "cornerRadius": "$radius-control",
-                                  "gap": "$space-6",
-                                  "padding": [
-                                    "$space-6",
-                                    "$space-12"
-                                  ],
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "LdTP0",
-                                      "name": "Label",
-                                      "fill": "$text",
-                                      "content": "Выбрать другой движок…",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-ui",
-                                      "fontSize": "$type-small",
-                                      "fontWeight": "600"
+                                  "descendants": {
+                                    "EWsWH": {
+                                      "content": "Выбрать другой движок…"
                                     }
-                                  ]
+                                  }
                                 },
                                 {
-                                  "type": "frame",
-                                  "id": "Q5APW",
+                                  "id": "NWEXN",
+                                  "type": "ref",
+                                  "ref": "wmGeO",
                                   "name": "Button Выйти",
                                   "width": "fill_container",
-                                  "fill": "$rule",
-                                  "cornerRadius": "$radius-control",
-                                  "gap": "$space-6",
-                                  "padding": [
-                                    "$space-6",
-                                    "$space-12"
-                                  ],
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "Sm2i0",
-                                      "name": "Label",
-                                      "fill": "$text",
-                                      "content": "Выйти",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-ui",
-                                      "fontSize": "$type-small",
-                                      "fontWeight": "600"
+                                  "descendants": {
+                                    "EWsWH": {
+                                      "content": "Выйти"
                                     }
-                                  ]
+                                  }
                                 }
                               ]
                             }
@@ -17558,7 +17502,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). A selection is anchored to its words, so appends below never move or drop it. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. A call that starts while the live model downloads records audio; once the model is here, the earlier minutes are filled in and marked «дописано позже».",
+              "content": "The Glass Ledger panel through a call. Speakers are words in the gutter: «я» is the mic track in teal, «они» the call track in amber. Start and stop sit in the header. With live text switched off the panel says the call is only recorded and offers to switch it on; switched off mid-call, the text so far stays above the notice. Unconfirmed text is dim and is replaced in place when confirmed text arrives; live text is as messy as the spike's Parakeet output (ОКР, слог, repeats at chunk edges). Each finished selection is held exactly as selected and added to the holds under the log: new lines below, a phrase settling differently and a click in the text never change a hold, and × lets one go. ⌃⌥⌘E sends the selection to a bb thread; the card reports each step, and the explanation comes back from the thread's output, with «bb · тред ↗» for follow-up. Switching live text on mid-call fills in the earlier minutes, marked «дописано позже».",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -17571,7 +17515,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Still proposed: no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: the getting-ready wording; each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -17854,29 +17798,29 @@
                 },
                 {
                   "type": "frame",
-                  "id": "Uo0pA",
-                  "name": "Live model downloading",
+                  "id": "c5JfE",
+                  "name": "Getting ready",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "m0KxRp",
+                      "id": "boVgq",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Live model downloading",
+                      "content": "Getting ready",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "ShsTf",
+                      "id": "V9Iznh",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "The call started before Parakeet v3 arrived: audio records anyway, and live text starts once the model is here.",
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -17884,7 +17828,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "zrF7t",
+                      "id": "HCFwd",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -17893,33 +17837,33 @@
                       "padding": "$space-24",
                       "children": [
                         {
-                          "id": "kMmHN",
+                          "id": "N8c7E",
                           "type": "ref",
                           "ref": "c0qJn",
                           "name": "Panel",
                           "descendants": {
                             "n5rfxu": {
                               "type": "frame",
-                              "id": "XAiWG",
+                              "id": "GtLsl",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
                               "children": [
                                 {
-                                  "id": "fhHE1",
+                                  "id": "d0HTv",
                                   "type": "ref",
                                   "ref": "rVa43",
                                   "name": "Header",
                                   "width": "fill_container",
                                   "descendants": {
                                     "N7wi8l": {
-                                      "content": "REC 00:03:10"
+                                      "content": "REC 00:00:12"
                                     }
                                   }
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "i4oe7",
+                                  "id": "Kamkw",
                                   "name": "Log",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -17931,47 +17875,29 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "QHPfk",
+                                      "id": "xgDIn",
                                       "name": "Waiting",
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звук пишется. Живой текст начнётся, когда скачается Parakeet v3.",
+                                      "content": "Живой текст готовится — звонок уже записывается.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-body",
                                       "fontWeight": "normal"
                                     },
                                     {
-                                      "type": "frame",
-                                      "id": "c7BXC",
-                                      "name": "Download",
-                                      "gap": "$space-8",
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "id": "kC6bb",
-                                          "type": "ref",
-                                          "ref": "GQV4X",
-                                          "name": "Progress",
-                                          "width": 140,
-                                          "descendants": {
-                                            "NNO7N": {
-                                              "width": 64
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "type": "text",
-                                          "id": "O6fXp",
-                                          "name": "Pct",
-                                          "fill": "$gutter",
-                                          "content": "212 / 461 MB",
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
+                                      "type": "text",
+                                      "id": "Ry3sd",
+                                      "name": "Turn on",
+                                      "fill": "$gutter",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Текст появится с начала звонка.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 }
@@ -18130,8 +18056,157 @@
                 },
                 {
                   "type": "frame",
+                  "id": "E7jpXp",
+                  "name": "Live text switched off mid-call",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C27xk",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Live text switched off mid-call",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KYvCj",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Живой текст unticked during a call: the text so far stays and the notice goes under it; from here the call is only recorded. Включить fills the gap from the audio, marked «дописано позже».",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tzB3q",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "fVp86",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "jG7ff",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "X3YeoC",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gm5v0",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "qlIxI",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "td2UJ": {
+                                          "content": "я"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "aMhbo",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:44"
+                                        },
+                                        "Ac6t5": {
+                                          "content": "они"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ozyHt",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст выключен — звонок только записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "xATxX",
+                                      "name": "Turn on",
+                                      "fill": "$me",
+                                      "content": "Включить живой текст",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "dWS2i",
-                  "name": "Model arrived: text filled in",
+                  "name": "Live text switched on: text filled in",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
@@ -18140,7 +18215,7 @@
                       "id": "fR12G",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Model arrived: text filled in",
+                      "content": "Live text switched on: text filled in",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
@@ -18152,7 +18227,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "Once Parakeet v3 is here, the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
+                      "content": "Live text was switched on mid-call: the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -18698,7 +18773,7 @@
                 {
                   "type": "frame",
                   "id": "Z5LiU",
-                  "name": "Selection survives appends",
+                  "name": "Selection held",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
@@ -18707,7 +18782,7 @@
                       "id": "BcdOa",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Selection survives appends",
+                      "content": "Selection held",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
@@ -18719,7 +18794,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "RACI stays selected while two lines arrive below; the panel does not auto-scroll away from a selection, and a «2 новые ↓» pill offers to jump back to live.",
+                      "content": "Each finished selection is held exactly as selected and added to the holds under the log; the selection fades from the log, which draws held text like any other. New lines and a phrase settling differently never change a hold, and a click in the text keeps it; × lets that one go. A «2 новые ↓» pill jumps back to live.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -18785,6 +18860,10 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
                                           "fill": "$text"
@@ -18823,11 +18902,123 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
                                         }
                                       }
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "ISpDh",
+                                      "name": "Holds",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "gap": "$space-4",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "uMS7A",
+                                          "name": "Held 1",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "XTCQ1",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "NMsMg",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«accountable за слог поддержки?»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "k5w4a",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "Ozc6Y",
+                                          "name": "Held 2",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "Po95x",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "Kthx7",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«ОКР на квартал»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "mYzQu",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
+                                        }
+                                      ]
                                     },
                                     {
                                       "type": "frame",
@@ -19436,29 +19627,29 @@
                 },
                 {
                   "type": "frame",
-                  "id": "Gmkso",
-                  "name": "Live model downloading",
+                  "id": "dk7jm",
+                  "name": "Getting ready",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "pRqC6",
+                      "id": "O5ocOW",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Live model downloading",
+                      "content": "Getting ready",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "aG7ZR",
+                      "id": "J95L3",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "The call started before Parakeet v3 arrived: audio records anyway, and live text starts once the model is here.",
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -19466,7 +19657,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "iVeAB",
+                      "id": "aJrtf",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -19475,33 +19666,33 @@
                       "padding": "$space-24",
                       "children": [
                         {
-                          "id": "t2rvJ",
+                          "id": "L1mhFX",
                           "type": "ref",
                           "ref": "c0qJn",
                           "name": "Panel",
                           "descendants": {
                             "n5rfxu": {
                               "type": "frame",
-                              "id": "fJSrG",
+                              "id": "Rtf5Z",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
                               "children": [
                                 {
-                                  "id": "q6Ttw",
+                                  "id": "rPFTk",
                                   "type": "ref",
                                   "ref": "rVa43",
                                   "name": "Header",
                                   "width": "fill_container",
                                   "descendants": {
                                     "N7wi8l": {
-                                      "content": "REC 00:03:10"
+                                      "content": "REC 00:00:12"
                                     }
                                   }
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "asrS4",
+                                  "id": "N1iAX",
                                   "name": "Log",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -19513,47 +19704,29 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "uvYIG",
+                                      "id": "f5A9lY",
                                       "name": "Waiting",
                                       "fill": "$sub",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Звук пишется. Живой текст начнётся, когда скачается Parakeet v3.",
+                                      "content": "Живой текст готовится — звонок уже записывается.",
                                       "lineHeight": 1.45,
                                       "fontFamily": "$font-ui",
                                       "fontSize": "$type-body",
                                       "fontWeight": "normal"
                                     },
                                     {
-                                      "type": "frame",
-                                      "id": "DGvGU",
-                                      "name": "Download",
-                                      "gap": "$space-8",
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "id": "PY4f3",
-                                          "type": "ref",
-                                          "ref": "GQV4X",
-                                          "name": "Progress",
-                                          "width": 140,
-                                          "descendants": {
-                                            "NNO7N": {
-                                              "width": 64
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "type": "text",
-                                          "id": "UxdF7",
-                                          "name": "Pct",
-                                          "fill": "$gutter",
-                                          "content": "212 / 461 MB",
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
+                                      "type": "text",
+                                      "id": "o57ab",
+                                      "name": "Turn on",
+                                      "fill": "$gutter",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Текст появится с начала звонка.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
                                     }
                                   ]
                                 }
@@ -19712,29 +19885,29 @@
                 },
                 {
                   "type": "frame",
-                  "id": "C9CRQ",
-                  "name": "Model arrived: text filled in",
+                  "id": "b0CtI",
+                  "name": "Live text switched off mid-call",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "eo9Hp",
+                      "id": "oyQg0",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Model arrived: text filled in",
+                      "content": "Live text switched off mid-call",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "YGJxS",
+                      "id": "xd105",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "Once Parakeet v3 is here, the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
+                      "content": "Живой текст unticked during a call: the text so far stays and the notice goes under it; from here the call is only recorded. Включить fills the gap from the audio, marked «дописано позже».",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -19742,7 +19915,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "qwRQ5",
+                      "id": "Oxs9t",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -19751,20 +19924,172 @@
                       "padding": "$space-24",
                       "children": [
                         {
-                          "id": "gy7Ah",
+                          "id": "GV5RO",
                           "type": "ref",
                           "ref": "c0qJn",
                           "name": "Panel",
                           "descendants": {
                             "n5rfxu": {
                               "type": "frame",
-                              "id": "hLmCI",
+                              "id": "Qj7uv",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
                               "children": [
                                 {
-                                  "id": "wCnZd",
+                                  "id": "WJS1m",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "k6CW9d",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "OxJ3s",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "td2UJ": {
+                                          "content": "я"
+                                        },
+                                        "s85yGn": {
+                                          "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "zZI05",
+                                      "type": "ref",
+                                      "ref": "ysZuS",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "KM1eH": {
+                                          "content": "12:44"
+                                        },
+                                        "Ac6t5": {
+                                          "content": "они"
+                                        },
+                                        "IMPcg": {
+                                          "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
+                                          "fill": "$text"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "lvEhD",
+                                      "name": "Waiting",
+                                      "fill": "$sub",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Живой текст выключен — звонок только записывается.",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "jnXum",
+                                      "name": "Turn on",
+                                      "fill": "$me",
+                                      "content": "Включить живой текст",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EQioT",
+                  "name": "Live text switched on: text filled in",
+                  "theme": {
+                    "mode": "dark"
+                  },
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NYP44",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Live text switched on: text filled in",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nEJd5",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Live text was switched on mid-call: the minutes recorded before it are transcribed from the audio on disk and marked as added late; live text goes on below.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zmbJi",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "zhLZ9",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "O9R0Ym",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "z21lrD",
                                   "type": "ref",
                                   "ref": "rVa43",
                                   "name": "Header",
@@ -19777,7 +20102,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "lfeGR",
+                                  "id": "wRufW",
                                   "name": "Log",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -19788,7 +20113,7 @@
                                   ],
                                   "children": [
                                     {
-                                      "id": "RT2r1",
+                                      "id": "SV230",
                                       "type": "ref",
                                       "ref": "HIqfu",
                                       "name": "Added late",
@@ -19796,14 +20121,14 @@
                                     },
                                     {
                                       "type": "rectangle",
-                                      "id": "icTxf",
+                                      "id": "x2BXI5",
                                       "name": "Rule",
                                       "fill": "$rule",
                                       "width": "fill_container",
                                       "height": 1
                                     },
                                     {
-                                      "id": "T1jET",
+                                      "id": "ZgnJ5",
                                       "type": "ref",
                                       "ref": "ysZuS",
                                       "name": "Entry 12:34",
@@ -20279,29 +20604,29 @@
                 },
                 {
                   "type": "frame",
-                  "id": "mOUTr",
-                  "name": "Selection survives appends",
+                  "id": "v8E9co",
+                  "name": "Selection held",
                   "layout": "vertical",
                   "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "gR5pB",
+                      "id": "dvpMW",
                       "name": "State",
                       "fill": "#333333",
-                      "content": "Selection survives appends",
+                      "content": "Selection held",
                       "fontFamily": "Inter",
                       "fontSize": 13,
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "T6BKC7",
+                      "id": "c4N2F",
                       "name": "Note",
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "RACI stays selected while two lines arrive below; the panel does not auto-scroll away from a selection, and a «2 новые ↓» pill offers to jump back to live.",
+                      "content": "Each finished selection is held exactly as selected and added to the holds under the log; the selection fades from the log, which draws held text like any other. New lines and a phrase settling differently never change a hold, and a click in the text keeps it; × lets that one go. A «2 новые ↓» pill jumps back to live.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -20309,7 +20634,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "tS6dL",
+                      "id": "As9uq",
                       "name": "Desktop",
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
@@ -20318,20 +20643,20 @@
                       "padding": "$space-24",
                       "children": [
                         {
-                          "id": "GBrzS",
+                          "id": "DMIua",
                           "type": "ref",
                           "ref": "c0qJn",
                           "name": "Panel",
                           "descendants": {
                             "n5rfxu": {
                               "type": "frame",
-                              "id": "h8GUw",
+                              "id": "BLjMO",
                               "name": "Body",
                               "width": "fill_container",
                               "layout": "vertical",
                               "children": [
                                 {
-                                  "id": "Q52sV",
+                                  "id": "Vna8f",
                                   "type": "ref",
                                   "ref": "rVa43",
                                   "name": "Header",
@@ -20344,7 +20669,7 @@
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "aZidG",
+                                  "id": "j9GTZ",
                                   "name": "Log",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -20355,7 +20680,7 @@
                                   ],
                                   "children": [
                                     {
-                                      "id": "a7bI4e",
+                                      "id": "U5Vm39",
                                       "type": "ref",
                                       "ref": "ysZuS",
                                       "name": "Entry 12:41",
@@ -20367,6 +20692,10 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
                                           "fill": "$text"
@@ -20374,7 +20703,7 @@
                                       }
                                     },
                                     {
-                                      "id": "qEZmc",
+                                      "id": "y2gJE",
                                       "type": "ref",
                                       "ref": "Nescm",
                                       "name": "Entry 12:42",
@@ -20393,7 +20722,7 @@
                                       }
                                     },
                                     {
-                                      "id": "cMWJM",
+                                      "id": "l3dUPT",
                                       "type": "ref",
                                       "ref": "ysZuS",
                                       "name": "Entry 12:44",
@@ -20405,6 +20734,10 @@
                                         "Ac6t5": {
                                           "content": "они"
                                         },
+                                        "X4atW": {
+                                          "fill": [],
+                                          "cornerRadius": "$radius-control"
+                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
@@ -20413,14 +20746,122 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "qQzi3",
+                                      "id": "e7BMdC",
+                                      "name": "Holds",
+                                      "width": "fill_container",
+                                      "layout": "vertical",
+                                      "gap": "$space-4",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "sgp9s",
+                                          "name": "Held 1",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "rhZtT",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "vsRJt",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«accountable за слог поддержки?»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "lkpo6",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "XLngg",
+                                          "name": "Held 2",
+                                          "width": "fill_container",
+                                          "cornerRadius": "$radius-card",
+                                          "stroke": "$selBg",
+                                          "strokeWidth": 1,
+                                          "gap": "$space-6",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "icon",
+                                              "id": "MBJAy",
+                                              "name": "Pin",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "push-pin-fill",
+                                              "library": "phosphor",
+                                              "fill": "$me"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "r7yIx",
+                                              "name": "Quote",
+                                              "fill": "$text",
+                                              "textGrowth": "fixed-width",
+                                              "width": "fill_container",
+                                              "content": "«ОКР на квартал»",
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-small",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "icon",
+                                              "id": "cYmFe",
+                                              "name": "Let go",
+                                              "width": 14,
+                                              "height": 14,
+                                              "icon": "x",
+                                              "library": "phosphor",
+                                              "fill": "$gutter"
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "KYLEW",
                                       "name": "New lines pill",
                                       "width": "fill_container",
                                       "justifyContent": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "NiX75",
+                                          "id": "FVgpf",
                                           "name": "Pill",
                                           "fill": "$card",
                                           "cornerRadius": "$radius-card",
@@ -20433,7 +20874,7 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "m197Bx",
+                                              "id": "s4ERG",
                                               "name": "Text",
                                               "fill": "$me",
                                               "content": "2 новые ↓",
@@ -23184,7 +23625,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Opened from Стоп or the calls list. The header shows the title (click to rename inline; the yyyy.MM.dd-HHmm prefix stays fixed), the call's folder in the visible ~/Recordings/Audelin and its five files: meta.json, audio.m4a, raw.md, final.md, summary.md. Until the final pass ends, the live text is shown and labelled; a pass recorded during the model's download waits and starts by itself, and a failed pass names its cause and links to the log. The app writes summary.md itself from the bb thread's output and shows it above the transcript, with «bb · тред ↗» for follow-up.",
+              "content": "Opened from Стоп or the calls list. The header shows the title (click to rename inline; the yyyy.MM.dd-HHmm prefix stays fixed), the call's folder in the visible ~/Recordings/Audelin and its five files: meta.json, audio.m4a, raw.md, final.md, summary.md. Until the final pass ends, the live text is shown and labelled; a failed pass names its cause and links to the log. The app writes summary.md itself from the bb thread's output and shows it above the transcript, with «bb · тред ↗» for follow-up.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -23231,423 +23672,6 @@
               "name": "States",
               "gap": 40,
               "children": [
-                {
-                  "type": "frame",
-                  "id": "LGeBW",
-                  "name": "Waiting for the final-pass model",
-                  "width": 688,
-                  "layout": "vertical",
-                  "gap": 12,
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "sAt1o",
-                      "name": "State",
-                      "fill": "#333333",
-                      "content": "Waiting for the final-pass model",
-                      "fontFamily": "Inter",
-                      "fontSize": 13,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "mgmOv",
-                      "name": "Note",
-                      "fill": "#777777",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Recorded while the final-pass model was still downloading. The pass waits and starts by itself; the live text is shown meanwhile.",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "wKjxZ",
-                      "name": "Desktop",
-                      "fill": "$back",
-                      "cornerRadius": "$radius-card",
-                      "padding": "$space-24",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "paKPU",
-                          "name": "Window",
-                          "clip": true,
-                          "width": 640,
-                          "fill": "$win",
-                          "cornerRadius": "$radius-card",
-                          "stroke": "$rule",
-                          "strokeWidth": 1,
-                          "effect": {
-                            "type": "shadow",
-                            "shadowType": "outer",
-                            "color": "$shadow",
-                            "offset": {
-                              "x": 0,
-                              "y": 12
-                            },
-                            "blur": 32
-                          },
-                          "layout": "vertical",
-                          "children": [
-                            {
-                              "id": "C3XWm",
-                              "type": "ref",
-                              "ref": "H1efZf",
-                              "name": "Title bar",
-                              "width": "fill_container",
-                              "descendants": {
-                                "Feu5Z": {
-                                  "content": "Запуск: роли и SLA"
-                                }
-                              }
-                            },
-                            {
-                              "type": "frame",
-                              "id": "mLnpp",
-                              "name": "Call header",
-                              "width": "fill_container",
-                              "stroke": "$rule",
-                              "strokeWidth": {
-                                "bottom": 1
-                              },
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-16",
-                                "$space-24",
-                                "$space-12",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "G7onKZ",
-                                  "name": "Title row",
-                                  "gap": "$space-8",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "SkzGG",
-                                      "name": "Title",
-                                      "fill": "$text",
-                                      "content": "Запуск: роли и SLA",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-ui",
-                                      "fontSize": "$type-title",
-                                      "fontWeight": "600"
-                                    },
-                                    {
-                                      "type": "icon",
-                                      "id": "gVkiK",
-                                      "name": "Edit hint",
-                                      "width": 14,
-                                      "height": 14,
-                                      "icon": "pencil-simple",
-                                      "library": "phosphor",
-                                      "fill": "$gutter"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "DzLbW",
-                                  "name": "Meta",
-                                  "gap": "$space-12",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "yL66Z",
-                                      "name": "When",
-                                      "fill": "$gutter",
-                                      "content": "21.10 · 12:30 · 47 мин",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-data",
-                                      "fontSize": "$type-small",
-                                      "fontWeight": "normal"
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "M4p9Bx",
-                                      "name": "Audio",
-                                      "gap": "$space-6",
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "type": "ellipse",
-                                          "id": "u3Wjj",
-                                          "name": "Dot",
-                                          "fill": "$me",
-                                          "width": 6,
-                                          "height": 6
-                                        },
-                                        {
-                                          "type": "text",
-                                          "id": "m7rtt0",
-                                          "name": "T",
-                                          "fill": "$sub",
-                                          "content": "аудио до 28.10",
-                                          "lineHeight": 1.45,
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "id": "r95qvF",
-                                      "type": "ref",
-                                      "ref": "w24st",
-                                      "name": "Pin"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "b2uOU",
-                                  "name": "Folder row",
-                                  "width": "fill_container",
-                                  "gap": "$space-8",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "id": "q1aEHS",
-                                      "type": "ref",
-                                      "ref": "e8UQV2",
-                                      "name": "Folder",
-                                      "width": "fill_container",
-                                      "descendants": {
-                                        "gKt90": {
-                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "B1yCK",
-                                      "type": "ref",
-                                      "ref": "wmGeO",
-                                      "name": "Show in Finder",
-                                      "descendants": {
-                                        "EWsWH": {
-                                          "content": "Показать в Finder"
-                                        }
-                                      }
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "P2BuZ",
-                                  "name": "Files",
-                                  "gap": "$space-6",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "id": "E5P2u",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File meta.json",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "meta.json"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "ByavN",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File audio.m4a",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "audio.m4a"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "srw4J",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File raw.md",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "raw.md"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "qzCzM",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File final.md",
-                                      "opacity": 0.4,
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "final.md"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "w4f5j",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File summary.md",
-                                      "opacity": 0.4,
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "summary.md"
-                                        }
-                                      }
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "WSwzG",
-                              "name": "Final pass",
-                              "width": "fill_container",
-                              "stroke": "$rule",
-                              "strokeWidth": {
-                                "bottom": 1
-                              },
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-12",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "id": "aqtgu",
-                                  "type": "ref",
-                                  "ref": "jjhu5",
-                                  "name": "Banner",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "XbvpQ": {
-                                      "content": "Финальная расшифровка ждёт модель · Whisper Large v3 Turbo"
-                                    },
-                                    "P4t1H": {
-                                      "content": "Модель скачивается: 320 / 547 MB. Расшифровка начнётся сама. Ниже — живой текст."
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "BfNty",
-                                  "type": "ref",
-                                  "ref": "GQV4X",
-                                  "name": "Progress",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "NNO7N": {
-                                      "width": 346
-                                    }
-                                  }
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "U3UmvH",
-                              "name": "Log",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-12",
-                                "$space-24",
-                                "$space-16",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "qyoVt",
-                                  "name": "Which",
-                                  "fill": "$gutter",
-                                  "content": "живой текст",
-                                  "lineHeight": 1.45,
-                                  "fontFamily": "$font-data",
-                                  "fontSize": "$type-caption",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "id": "XWPmJ",
-                                  "type": "ref",
-                                  "ref": "ysZuS",
-                                  "name": "Entry 12:41",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "KM1eH": {
-                                      "content": "12:41"
-                                    },
-                                    "IMPcg": {
-                                      "content": "Давай зафиксируем RACI по запуску — кто у нас аккаунтбл за слог поддержки?",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "nZhmi",
-                                  "type": "ref",
-                                  "ref": "Nescm",
-                                  "name": "Entry 12:42",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "lCRql": {
-                                      "content": "12:42"
-                                    },
-                                    "s85yGn": {
-                                      "content": "Accountable — я. По слог отвечает команда Ильи, они же ведут on-call.",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "Iz5Fw",
-                                  "type": "ref",
-                                  "ref": "ysZuS",
-                                  "name": "Entry 12:44",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "KM1eH": {
-                                      "content": "12:44"
-                                    },
-                                    "IMPcg": {
-                                      "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "MzdCQ",
-                                  "type": "ref",
-                                  "ref": "Nescm",
-                                  "name": "Entry 12:47",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "lCRql": {
-                                      "content": "12:47"
-                                    },
-                                    "s85yGn": {
-                                      "content": "И ещё по NPS — дашборд кто-то уже уже собирал?",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
                 {
                   "type": "frame",
                   "id": "nlhEC",
@@ -25678,423 +25702,6 @@
               "name": "States",
               "gap": 40,
               "children": [
-                {
-                  "type": "frame",
-                  "id": "KuTV3",
-                  "name": "Waiting for the final-pass model",
-                  "width": 688,
-                  "layout": "vertical",
-                  "gap": 12,
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "qaEzr",
-                      "name": "State",
-                      "fill": "#333333",
-                      "content": "Waiting for the final-pass model",
-                      "fontFamily": "Inter",
-                      "fontSize": 13,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "jOycU",
-                      "name": "Note",
-                      "fill": "#777777",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Recorded while the final-pass model was still downloading. The pass waits and starts by itself; the live text is shown meanwhile.",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "RpCMf",
-                      "name": "Desktop",
-                      "fill": "$back",
-                      "cornerRadius": "$radius-card",
-                      "padding": "$space-24",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "BSkDO",
-                          "name": "Window",
-                          "clip": true,
-                          "width": 640,
-                          "fill": "$win",
-                          "cornerRadius": "$radius-card",
-                          "stroke": "$rule",
-                          "strokeWidth": 1,
-                          "effect": {
-                            "type": "shadow",
-                            "shadowType": "outer",
-                            "color": "$shadow",
-                            "offset": {
-                              "x": 0,
-                              "y": 12
-                            },
-                            "blur": 32
-                          },
-                          "layout": "vertical",
-                          "children": [
-                            {
-                              "id": "PyoVF",
-                              "type": "ref",
-                              "ref": "H1efZf",
-                              "name": "Title bar",
-                              "width": "fill_container",
-                              "descendants": {
-                                "Feu5Z": {
-                                  "content": "Запуск: роли и SLA"
-                                }
-                              }
-                            },
-                            {
-                              "type": "frame",
-                              "id": "ZiVkK",
-                              "name": "Call header",
-                              "width": "fill_container",
-                              "stroke": "$rule",
-                              "strokeWidth": {
-                                "bottom": 1
-                              },
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-16",
-                                "$space-24",
-                                "$space-12",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "kwa6L",
-                                  "name": "Title row",
-                                  "gap": "$space-8",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "ZvArx",
-                                      "name": "Title",
-                                      "fill": "$text",
-                                      "content": "Запуск: роли и SLA",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-ui",
-                                      "fontSize": "$type-title",
-                                      "fontWeight": "600"
-                                    },
-                                    {
-                                      "type": "icon",
-                                      "id": "VF2Cj",
-                                      "name": "Edit hint",
-                                      "width": 14,
-                                      "height": 14,
-                                      "icon": "pencil-simple",
-                                      "library": "phosphor",
-                                      "fill": "$gutter"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "KzPu7",
-                                  "name": "Meta",
-                                  "gap": "$space-12",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "wjTzi",
-                                      "name": "When",
-                                      "fill": "$gutter",
-                                      "content": "21.10 · 12:30 · 47 мин",
-                                      "lineHeight": 1.45,
-                                      "fontFamily": "$font-data",
-                                      "fontSize": "$type-small",
-                                      "fontWeight": "normal"
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "BKKGk",
-                                      "name": "Audio",
-                                      "gap": "$space-6",
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "type": "ellipse",
-                                          "id": "Hqpi4",
-                                          "name": "Dot",
-                                          "fill": "$me",
-                                          "width": 6,
-                                          "height": 6
-                                        },
-                                        {
-                                          "type": "text",
-                                          "id": "t8e2Fw",
-                                          "name": "T",
-                                          "fill": "$sub",
-                                          "content": "аудио до 28.10",
-                                          "lineHeight": 1.45,
-                                          "fontFamily": "$font-data",
-                                          "fontSize": "$type-small",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "id": "FZNN6",
-                                      "type": "ref",
-                                      "ref": "w24st",
-                                      "name": "Pin"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "LhZhN",
-                                  "name": "Folder row",
-                                  "width": "fill_container",
-                                  "gap": "$space-8",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "id": "mDVTE",
-                                      "type": "ref",
-                                      "ref": "e8UQV2",
-                                      "name": "Folder",
-                                      "width": "fill_container",
-                                      "descendants": {
-                                        "gKt90": {
-                                          "content": "~/Recordings/Audelin/2026.10.21-1230 Запуск: роли и SLA/"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "PTojw",
-                                      "type": "ref",
-                                      "ref": "wmGeO",
-                                      "name": "Show in Finder",
-                                      "descendants": {
-                                        "EWsWH": {
-                                          "content": "Показать в Finder"
-                                        }
-                                      }
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "a1HthE",
-                                  "name": "Files",
-                                  "gap": "$space-6",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "id": "UGGYC",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File meta.json",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "meta.json"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "EArtX",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File audio.m4a",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "audio.m4a"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "yVwIb",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File raw.md",
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "raw.md"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "k8YgK",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File final.md",
-                                      "opacity": 0.4,
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "final.md"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "y2uy6",
-                                      "type": "ref",
-                                      "ref": "U4MdJG",
-                                      "name": "File summary.md",
-                                      "opacity": 0.4,
-                                      "descendants": {
-                                        "AvPmO": {
-                                          "content": "summary.md"
-                                        }
-                                      }
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "hTNRP",
-                              "name": "Final pass",
-                              "width": "fill_container",
-                              "stroke": "$rule",
-                              "strokeWidth": {
-                                "bottom": 1
-                              },
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-12",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "id": "Gc4cF",
-                                  "type": "ref",
-                                  "ref": "jjhu5",
-                                  "name": "Banner",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "XbvpQ": {
-                                      "content": "Финальная расшифровка ждёт модель · Whisper Large v3 Turbo"
-                                    },
-                                    "P4t1H": {
-                                      "content": "Модель скачивается: 320 / 547 MB. Расшифровка начнётся сама. Ниже — живой текст."
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "NMxEn",
-                                  "type": "ref",
-                                  "ref": "GQV4X",
-                                  "name": "Progress",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "NNO7N": {
-                                      "width": 346
-                                    }
-                                  }
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "bY5Rc",
-                              "name": "Log",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": "$space-8",
-                              "padding": [
-                                "$space-12",
-                                "$space-24",
-                                "$space-16",
-                                "$space-24"
-                              ],
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "ckWlR",
-                                  "name": "Which",
-                                  "fill": "$gutter",
-                                  "content": "живой текст",
-                                  "lineHeight": 1.45,
-                                  "fontFamily": "$font-data",
-                                  "fontSize": "$type-caption",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "id": "inS6N",
-                                  "type": "ref",
-                                  "ref": "ysZuS",
-                                  "name": "Entry 12:41",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "KM1eH": {
-                                      "content": "12:41"
-                                    },
-                                    "IMPcg": {
-                                      "content": "Давай зафиксируем RACI по запуску — кто у нас аккаунтбл за слог поддержки?",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "Sx9hE",
-                                  "type": "ref",
-                                  "ref": "Nescm",
-                                  "name": "Entry 12:42",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "lCRql": {
-                                      "content": "12:42"
-                                    },
-                                    "s85yGn": {
-                                      "content": "Accountable — я. По слог отвечает команда Ильи, они же ведут on-call.",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "XOU5X",
-                                  "type": "ref",
-                                  "ref": "ysZuS",
-                                  "name": "Entry 12:44",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "KM1eH": {
-                                      "content": "12:44"
-                                    },
-                                    "IMPcg": {
-                                      "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                },
-                                {
-                                  "id": "TIBRT",
-                                  "type": "ref",
-                                  "ref": "Nescm",
-                                  "name": "Entry 12:47",
-                                  "width": "fill_container",
-                                  "descendants": {
-                                    "lCRql": {
-                                      "content": "12:47"
-                                    },
-                                    "s85yGn": {
-                                      "content": "И ещё по NPS — дашборд кто-то уже уже собирал?",
-                                      "fill": "$cardText"
-                                    }
-                                  }
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
                 {
                   "type": "frame",
                   "id": "L4Gwl6",
@@ -28966,16 +28573,16 @@
                                               "fill": "$btn",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
-                                              "padding": 2,
+                                              "padding": "$space-2",
                                               "children": [
                                                 {
                                                   "type": "frame",
                                                   "id": "slvFJ",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -28995,10 +28602,10 @@
                                                   "type": "frame",
                                                   "id": "wbxYA",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -29019,10 +28626,10 @@
                                                   "id": "riomU",
                                                   "name": "Seg 4 с",
                                                   "fill": "$selBg",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -29042,10 +28649,10 @@
                                                   "type": "frame",
                                                   "id": "pDMNj",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -29065,10 +28672,10 @@
                                                   "type": "frame",
                                                   "id": "HvRWT",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -29093,8 +28700,8 @@
                                               "fill": "$warnBg",
                                               "cornerRadius": "$radius-bar",
                                               "padding": [
-                                                1,
-                                                6
+                                                "$space-2",
+                                                "$space-6"
                                               ],
                                               "children": [
                                                 {
@@ -31506,16 +31113,16 @@
                                               "fill": "$btn",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
-                                              "padding": 2,
+                                              "padding": "$space-2",
                                               "children": [
                                                 {
                                                   "type": "frame",
                                                   "id": "cYjSz",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -31535,10 +31142,10 @@
                                                   "type": "frame",
                                                   "id": "hhUjE",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -31559,10 +31166,10 @@
                                                   "id": "M9MKl",
                                                   "name": "Seg 4 с",
                                                   "fill": "$selBg",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -31582,10 +31189,10 @@
                                                   "type": "frame",
                                                   "id": "QxOVy",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -31605,10 +31212,10 @@
                                                   "type": "frame",
                                                   "id": "YnGyo",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": 4,
+                                                  "cornerRadius": "$radius-control",
                                                   "padding": [
-                                                    3,
-                                                    10
+                                                    "$space-4",
+                                                    "$space-12"
                                                   ],
                                                   "children": [
                                                     {
@@ -31633,8 +31240,8 @@
                                               "fill": "$warnBg",
                                               "cornerRadius": "$radius-bar",
                                               "padding": [
-                                                1,
-                                                6
+                                                "$space-2",
+                                                "$space-6"
                                               ],
                                               "children": [
                                                 {

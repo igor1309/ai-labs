@@ -1,7 +1,6 @@
 # MVP draft
 
-Status: draft. v1's architecture is decided in
-[adr-001-v1-architecture.md](adr-001-v1-architecture.md).
+Status: draft.
 
 ## Shape
 
@@ -24,10 +23,11 @@ Taken from the spike ([tests.md](research/tests.md) run 3) and from the chat sur
 ([chat-khakhalev-2026-10-21.md](research/chat-khakhalev-2026-10-21.md) § 3–4).
 
 1. **Record first.** Mic and call audio go to disk as two separate tracks, in
-   short pieces, before anything reads them. The live text is a view over
-   that audio, so a crash, a network switch or an ASR stall does not lose the
-   call. Granola lost the other side after a Wi-Fi/VPN switch and kept no
-   audio to redo it.
+   short pieces, whatever recognition does. Live text hears the same audio
+   as it comes, and recognition failing or lagging never costs the call; a
+   crash, a network switch or an ASR stall does not lose it (owner,
+   2026-10-22: live text need not read the files). Granola lost the other
+   side after a Wi-Fi/VPN switch and kept no audio to redo it.
 2. **Two tracks give speakers for free:** mic is «я», call audio is «они».
    Splitting the remote side into people comes later.
 3. **Only convert to mono 16 kHz PCM before ASR.** No gain, compression or
@@ -64,8 +64,7 @@ most audio a damaged file can lose, not a latency setting.
 
 Code structure (owner, 2026-10-21): one app for v1, but highly modular,
 following the owner's iFora `swift-vortex` package: small targets, each
-feature split into Core, adapters and UI, each with tests. See
-[ADR-001](adr-001-v1-architecture.md).
+feature split into Core, adapters and UI, each with tests.
 
 Audio after a call (owner, 2026-10-21): kept as one compact stereo file (mic
 left, call right; Amanu's format, ~55 MB per hour) and deleted automatically
@@ -83,15 +82,23 @@ setting with no built-in default, and the app does not start without it: the
 first launch opens setup and nothing else works until an engine is chosen. If
 the chosen engine's model is missing later, the app says so at launch, not
 after a call. This gate arrives with the final pass in v3; v1 setup asks only
-for the calls folder and the live model (2026-10-21,
-[ADR-001](adr-001-v1-architecture.md)). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
+for the calls folder and the live model (2026-10-21). Candidates are Parakeet v3 over the whole file and Whisper Large v3 Turbo
 (already on this Mac). An engine-comparison test over the same recordings
 backs the choice.
 
 Screen decisions (owner, 2026-10-21, after the design review):
 
-- Recording may start while the final-pass model downloads; the final pass
-  waits for it and the call screen says so.
+- Models are a hard block (owner, 2026-10-22): nothing records until every
+  model the app needs is on disk. A model still downloading blocks like a
+  missing one.
+- Models load into memory at launch, not when a call starts (owner,
+  2026-10-22). The first launch after an install or update compiles them:
+  16 s for Nemotron and 17 s for Parakeet's encoder on an M3 Max; later
+  loads take under a second (research run 9). Recording never waits for a
+  load: the call's audio from its start is kept, the panel says live text is
+  getting ready, and live text catches up once the models are in. Both
+  models hear audio at about 4% of real time (run 8), so 30 s of backlog
+  clears in about a second.
 - Delete in the calls list removes the whole call (audio, transcript, summary
   link) after a confirm.
 - Models are reused from other apps to save space, but only on an exact
@@ -105,12 +112,16 @@ Screen decisions (owner, 2026-10-21, after the design review):
 Controls (owner, 2026-10-21), following Amanu's two checkboxes:
 
 - «Записывать звонки автоматически»: when on, recording starts when a
-  call starts and stops when it ends. A recording started by hand is
-  stopped by hand. This is v1, not v3.
+  call starts and stops when it ends. A recording started by hand during
+  a call stops when that call ends, because Audelin may not have been
+  running when the call started; one started with no call on runs until
+  stopped (owner, 2026-10-22, correcting "a recording started by hand is
+  stopped by hand").
+  This is v1, not v3.
 - «Живой текст»: when off, the call is only recorded; its text comes from
   the final pass (v3). Switching it on mid-call starts live text and fills
   the minutes already recorded from the audio on disk, marked «дописано
-  позже», as when the live model arrives late. Switching it off mid-call
+  позже». Switching it off mid-call
   keeps the text so far.
 - Both are checkmark items in the menu bar menu and rows in Settings. The
   menu also opens the calls folder in Finder.
@@ -146,8 +157,6 @@ Edge cases (owner, 2026-10-21, accepted as proposed):
 - Two calls with the same title in the same minute: the second gets « 2».
 - A Finder rename that drops the timestamp is accepted; the date comes from
   `meta.json`.
-- If the live model (Parakeet v3) is still downloading when a call starts,
-  audio is recorded anyway and live text starts once the model arrives.
 
 Storage and bb output (owner, 2026-10-21):
 
@@ -163,8 +172,6 @@ Storage and bb output (owner, 2026-10-21):
 
 v4 screen details (decided by the agents, owner delegated, 2026-10-21):
 
-- Live text for the minutes before the live model arrived is filled in from
-  the recorded audio once it arrives, marked as added late.
 - The summary sits above the transcript, collapsed to a few lines with
   "show more".
 - A failed move says how many calls moved, which one failed and why, and
