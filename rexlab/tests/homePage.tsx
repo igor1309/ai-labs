@@ -7,14 +7,15 @@ import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
 // that names it.
-export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig"]> = [
+export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting"]> = [
   ["compare", "quizCard"],
   ["catalogue", "catalogueTile"],
   ["pairs", "pairs"],
   ["skeletons", "skeletons"],
   ["dig", "dig"],
   ["sort", "sort"],
-  ["care", "care"]
+  ["care", "care"],
+  ["sandWriting", "sandWriting"]
 ];
 
 const nothing = () => {};
@@ -55,6 +56,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onSkeletons={() => opened.push("skeletons")}
       onMuseum={nothing}
       onDig={() => opened.push("dig")}
+      onSandWriting={() => opened.push("sandWriting")}
     />,
     withPictures
   );

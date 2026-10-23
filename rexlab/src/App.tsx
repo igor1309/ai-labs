@@ -27,6 +27,7 @@ import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
+import { SandWritingScreen } from "./SandWritingScreen.tsx";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
@@ -191,7 +192,8 @@ type Screen =
   // And the skeleton game.
   | { kind: "skeletons" }
   // And the dig game.
-  | { kind: "dig" };
+  | { kind: "dig" }
+  | { kind: "sandWriting" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -423,6 +425,10 @@ export function App({
     dig.start(() => set({ kind: "dig" }));
   };
 
+  const openSandWriting = () => {
+    go((current) => current.kind === "home" ? { kind: "sandWriting" } : current, { also: counting("sandWriting") });
+  };
+
   // The food chosen is kept going to a page and back, but the catalogue
   // opens from home on every dinosaur.
   const [food, setFood] = useState<Food>("all");
@@ -584,6 +590,8 @@ export function App({
         return skeletonGame.content(language);
       case "dig":
         return dig.content(language);
+      case "sandWriting":
+        return <SandWritingScreen language={language} sandContext={sandContext} onHome={home} />;
       case "home":
         return (
           <HomePage
@@ -615,6 +623,7 @@ export function App({
             onSkeletons={openSkeletons}
             onMuseum={openMuseum}
             onDig={openDig}
+            onSandWriting={openSandWriting}
           />
         );
     }

@@ -37,18 +37,19 @@ const visitorLook = () => {
 };
 
 describe("the CARE tile", () => {
-  it("stands last, under SORT, with a heart and a dinosaur", () => {
+  it("stands under SORT, before sand writing, with a heart and a dinosaur", () => {
     openCareApp();
 
     const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
     // The row fills two tiles to a column, COMPARE's tile left out for
-    // the large card: the sixth tile is under the fifth, SORT's, and only
-    // MORE COMING comes after it.
+    // the large card: the sixth tile is still under SORT. The new sand
+    // writing activity occupies the next column above MORE COMING.
     expect([...tilesRow().children].indexOf(tile)).toBe(5);
     expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
-    expect(tile.nextElementSibling?.className).toBe("more-coming");
+    expect(tile.nextElementSibling).toBe(gameDoor("SAND WRITING"));
+    expect(tile.nextElementSibling?.nextElementSibling?.className).toBe("more-coming");
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
