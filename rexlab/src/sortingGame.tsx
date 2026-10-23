@@ -4,6 +4,7 @@ import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { startLevel, type LevelChoice } from "./startLevel.ts";
+import type { ResultType } from "./compareResultLayout.ts";
 import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { bestForLevel, boardState, drop, finishBoard, mergeProgress, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
@@ -116,8 +117,9 @@ export function useSortingGame(
     go({ kind: "result", result });
   };
 
-  // `boardWidth` is the width a board stands in upright.
-  const content = (language: Language, boardWidth: number) => {
+  // `boardWidth` is the width a board stands in upright, and `resultType`
+  // the result's upright sizes in the window.
+  const content = (language: Language, boardWidth: number, resultType: ResultType) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -144,6 +146,7 @@ export function useSortingGame(
             onLevel={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
+            type={resultType}
           />
         );
     }

@@ -157,10 +157,10 @@ function Game({
   const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
   // The gate covers every upright window here, so the board's upright
-  // width is never read.
+  // width and the result's sizes are never read.
   return (
     <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
-      {game.content(language, 0)}
+      {game.content(language, 0, { star: 0, levelName: 0, heroMaximum: 0 })}
     </OrientationGate>
   );
 }

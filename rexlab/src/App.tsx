@@ -607,7 +607,7 @@ export function App({
       case "care":
         return care.content(language);
       case "sorting":
-        return sorting.content(language, sortWidth);
+        return sorting.content(language, sortWidth, compareResultType(resultWidth));
       case "pairs":
         return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth, pairsResultRoom);
       case "skeletons":
