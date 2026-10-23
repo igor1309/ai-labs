@@ -1,0 +1,43 @@
+schema: agister.process/v1alpha1
+prompt: continuation
+guidance: [audelin-swift-tests]
+instruction: >-
+  Audelin's tests, run outside your sandbox after your changes, failed;
+  their output is the input test_output. Fix the cause in the code. Do not
+  weaken, skip or delete a check or a test. The workflow runs every test
+  again after you.
+
+params:
+  test_output: {}
+inputs:
+  test_output: {source: param, name: test_output}
+
+workspace:
+  access: read-write
+
+permissions:
+  require:
+    - repository.read
+    - repository.write
+    - process.execute
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+limits:
+  time: 30m
+  stale:
+    no_event: 21m
+    tool_command: 15m
+    repeated_tool_calls: 5
+
+output:
+  schema: implementation
