@@ -20,7 +20,7 @@ Feature: Find the pair: the welcome in a tall window
   level 64 tall, its picture above its name, the names in one type as
   large as lets the longest name fit its third, at most 16. Its upright
   form is the one level switch's, for every game that shows it upright.
-  The cards, 32 below the bar and 32 above the title, keep their 3:4
+  The cards, under the bar (28) and 32 above the title, keep their 3:4
   and their landscape share of the width, each 32% of it, at most 280
   wide, and shrink to the height the column leaves; they are never under
   120 wide, and where the window leaves them less, the whole screen
