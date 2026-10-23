@@ -21,17 +21,9 @@ Feature: The window's shape
   a screen with no portrait layout. A portrait layout is built for one
   size class at a time: the home page, the catalogue's list, a
   dinosaur's page, the compare quiz's question and result, and find the
-  pair's welcome, board and result and sort's board and result have one
-  for a tall window only
-  (home-portrait.feature, catalogue-portrait.feature,
-  dinosaur-page-portrait.feature, compare-dinosaurs-portrait.feature,
-  compare-dinosaurs-result-portrait.feature,
-  find-the-pair-welcome-portrait.feature,
-  find-the-pair-board-portrait.feature,
-  find-the-pair-result-portrait.feature,
-  sort-dinosaurs-board-portrait.feature,
-  sort-dinosaurs-result-portrait.feature,
-  skeleton-choice-portrait.feature), so a tall-narrow window
+  pair's welcome, board and result, sort's board and result, and build a
+  skeleton's every screen and DIG's board at Hatchling have one for a
+  tall window only (each in its own *-portrait.feature), so a tall-narrow window
   still shows the picture over them. The scenarios
   below use the care welcome screen, which has no portrait layout yet.
 

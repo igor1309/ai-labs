@@ -6957,6 +6957,40 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   white-space: nowrap;
 }
 
+/* A brush stroke on the board neither scrolls nor bounces the page, so it
+   never pulls the board away or swipes back a page. */
+html:has(.dig-board-screen),
+body:has(.dig-board-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Upright, the board takes the whole width under the bar, as tall as its
+   frame lets it, with 32 pixels at each side to keep it off the edges. */
+html[data-size="tall"] .dig-board-screen {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .dig-board-screen .dig-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-body {
+  container-type: size;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-board {
+  width: min(100cqw, 100cqh * var(--frame-width) / var(--frame-height));
+  height: auto;
+}
+
 /* Upright, the choice takes the narrower side padding of the other
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of
@@ -6988,6 +7022,16 @@ html[data-size="tall"] .skeleton-choice {
   flex-basis: calc((100% - 20px) / 2);
 }
 
+/* Upright, the museum's hall stands its stands in rows of two. */
+html[data-size="tall"] .skeleton-hall {
+  padding: 24px;
+  gap: 16px 24px;
+}
+
+html[data-size="tall"] .skeleton-stand {
+  flex-basis: calc((100% - 24px) / 2);
+}
+
 /* A puzzle: the board, in the outline's frame, beside the tray of bones.
    The outline is drawn faint; each slot is its piece's place on it. The
    puzzle is the container its board is sized in. */
@@ -7017,6 +7061,21 @@ html[data-size="tall"] .skeleton-choice {
 .skeleton-puzzle .skeleton-board {
   flex: none;
   width: min((100cqw - 28px) * 920 / 1300, 100cqh * var(--frame-width) / var(--frame-height));
+}
+
+/* Upright, the board stands over the tray: as wide as the puzzle, or as
+   six tenths of its height under the gap allow, and the tray takes the
+   rest. */
+html[data-size="tall"] .skeleton-puzzle {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .skeleton-puzzle .skeleton-board {
+  width: min(100cqw, (100cqh - 28px) * 0.6 * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
+  min-height: 0;
 }
 
 .skeleton-outline {
@@ -7570,6 +7629,34 @@ html[data-size="tall"] .skeleton-choice {
   white-space: nowrap;
 }
 
+/* Upright, the mystery's skeleton stands over the guess: the board as
+   wide as the screen, or as the room above the guess's least allows, and
+   the guess's three cards side by side under it, the clue below them. */
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal {
+  flex-direction: column;
+  container-type: size;
+}
+
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board {
+  flex: none;
+  align-self: center;
+  width: min(100cqw, (100cqh - 28px - 340px) * var(--frame-width) / var(--frame-height));
+  max-height: none;
+}
+
+html[data-size="tall"] .skeleton-guess {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 340px;
+  padding: 20px;
+  gap: 12px;
+}
+
+html[data-size="tall"] .skeleton-guess-choices {
+  flex-direction: row;
+  gap: 12px;
+}
+
 .skeleton-clue {
   flex-shrink: 0;
   min-height: 64px;
@@ -7644,6 +7731,43 @@ html[data-size="tall"] .skeleton-choice {
 .skeleton-actions .home-button {
   outline-width: 2px;
   outline-offset: -1px;
+}
+
+/* Upright, the finished skeleton stands over its reward: the board as
+   wide as the screen, or as the room above the reward's 560 allows, the
+   reward under it with its fact a little smaller and its two ways on a
+   little lower, one over the other, so their words keep their size. */
+html[data-size="tall"] .skeleton-result .skeleton-reveal {
+  flex-direction: column;
+  container-type: size;
+}
+
+html[data-size="tall"] .skeleton-result .skeleton-reveal-board {
+  flex: none;
+  align-self: center;
+  width: min(100cqw, (100cqh - 28px - 560px) * var(--frame-width) / var(--frame-height));
+  max-height: none;
+}
+
+html[data-size="tall"] .skeleton-reward {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px;
+  gap: 16px;
+}
+
+html[data-size="tall"] .skeleton-fact {
+  font-size: 20px;
+}
+
+html[data-size="tall"] .skeleton-actions {
+  gap: 12px;
+}
+
+html[data-size="tall"] .skeleton-build-another,
+html[data-size="tall"] .skeleton-actions .home-button {
+  height: 60px;
 }
 
 /* The museum: a hall of one stand for each dinosaur, rising in one after

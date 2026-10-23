@@ -30,13 +30,13 @@ export function DigBar({
       {onHome && (
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
       )}
       {onBack && (
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
-          {text.back}
+          <span className="upright-hidden">{text.back}</span>
         </Button>
       )}
       <h1 className="dig-title">

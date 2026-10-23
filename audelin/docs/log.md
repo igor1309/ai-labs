@@ -2,6 +2,9 @@
 
 ## 2026-10-23
 
+- Audelin can tell which processes to hear for a call app: its own and its
+  helpers, the last answer while they are gone, and every process but
+  Audelin's before the app appears (LAB-472).
 - Recognizers built together share one model load and can retry a failed
   load, avoiding overlapping first-run downloads (LAB-495).
 

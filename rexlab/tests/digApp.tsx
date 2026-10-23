@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
-import { App } from "../src/App.tsx";
+import { App, type PortraitLayouts } from "../src/App.tsx";
 import { localDigProgress, localFeatured, localProgress } from "../src/localProgress.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -43,6 +43,7 @@ export function openDigApp({
   viewport = manualViewport("landscape"),
   visibility = manualVisibility("visible"),
   random = () => 0,
+  portraitLayouts = {},
   settingsStorage
 }: {
   storage?: MemoryStorage;
@@ -55,6 +56,7 @@ export function openDigApp({
   visibility?: ManualVisibility;
   // The app's draws, the featured game's and each round's.
   random?: Random;
+  portraitLayouts?: PortraitLayouts;
   settingsStorage?: MemoryStorage;
 } = {}) {
   const local = () => storage;
@@ -70,7 +72,7 @@ export function openDigApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={{}}
+      portraitLayouts={portraitLayouts}
       viewport={viewport}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}

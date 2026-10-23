@@ -9,7 +9,7 @@ import { closingPicture, refitPicture, type PictureMotion } from "./closingPictu
 import { compareQuestionType, compareQuestionWidth } from "./compareQuestionLayout.ts";
 import { compareResultType, compareResultWidth } from "./compareResultLayout.ts";
 import digTile from "./assets/dig/tile.webp";
-import { DIG_REVEAL, useDigGame, type DigGameProps } from "./digGame.tsx";
+import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
 import { dinosaurSlide } from "./dinosaurSlide.ts";
 import { dinosaurWordsWidth, keptLines } from "./dinosaurPageLayout.ts";
@@ -88,7 +88,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -343,7 +343,7 @@ export function App({
     };
   }, [viewport, pageVisibility]);
 
-  // The skeleton game asks for the screen it shows, which the gate below
+  // The skeleton and dig games ask for the screen they show, which the gate below
   // reads from it in turn.
   const skeletonPresence = useMemo(
     () => ({
@@ -360,6 +360,27 @@ export function App({
     counting("skeletons")
   );
 
+  const dinosaurName = (dinosaurId: string, chosen: Language) => {
+    const dinosaur = dinosaurs.find(({ id }) => id === dinosaurId);
+    if (!dinosaur) throw new Error(`No dinosaur ${dinosaurId} to name`);
+    return dinosaur.name[chosen];
+  };
+
+  const digPresence = useMemo(
+    () => ({
+      isAway: (phase: DigPhase) => gateShownFor(`dig-${phase}`) || pageVisibility.isHidden(),
+      subscribe: subscribePresence
+    }),
+    [gateShownFor, pageVisibility, subscribePresence]
+  );
+
+  const dig = useDigGame(
+    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence: digPresence, reducedMotion: careProps.reducedMotion, sandContext },
+    ageLevel,
+    home,
+    counting("dig")
+  );
+
   // Each game's phase is its own: the gate and the turns read it as the
   // game reports it.
   const layoutScreen: LayoutScreen =
@@ -371,7 +392,9 @@ export function App({
           ? `sorting-${sorting.phase}`
           : screen.kind === "skeletons"
             ? `skeletons-${skeletonGame.phase}`
-            : screen.kind;
+            : screen.kind === "dig"
+              ? `dig-${dig.phase}`
+              : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => gateShownFor(layoutScreen),
@@ -440,23 +463,6 @@ export function App({
     go({ kind: "skeletons" }, { also: skeletonGame.openMuseum });
   };
 
-  const dinosaurName = (dinosaurId: string, chosen: Language) => {
-    const dinosaur = dinosaurs.find(({ id }) => id === dinosaurId);
-    if (!dinosaur) throw new Error(`No dinosaur ${dinosaurId} to name`);
-    return dinosaur.name[chosen];
-  };
-
-  const presence = useMemo(
-    () => ({ isAway: () => gate.isShown() || pageVisibility.isHidden(), subscribe: subscribePresence }),
-    [gate, pageVisibility, subscribePresence]
-  );
-
-  const dig = useDigGame(
-    { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion: careProps.reducedMotion, sandContext },
-    ageLevel,
-    home,
-    counting("dig")
-  );
 
   // A round starts at once from the tile, with no choice screen.
   const openDig = () => {
