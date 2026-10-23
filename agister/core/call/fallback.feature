@@ -58,9 +58,9 @@ Feature: A call at capacity falls back to another agent
       | 5     | 4.5, of which 1 spent | 1      |
 
   Scenario Outline: Fallback reporting keeps the call's deadline
-    Given a model step of the time limit 5m whose primary ends at capacity
-      after 4m30s, its fourth turn not retried, and whose fallback
-      completes with the text "done"
+    Given a model step of the time limit 10m whose primary's five turns
+      end at capacity after 9m30s, and whose fallback completes with the
+      text "done"
     When the synchronous fallback report takes <delay>
     Then the fallback gets <remaining> and the call ends <status>
 
