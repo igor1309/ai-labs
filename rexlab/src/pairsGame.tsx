@@ -226,8 +226,9 @@ export function usePairsGame(
   };
 
   // `welcomeType` is the welcome's upright type in the window, and
-  // `boardWidth` the width a board stands in upright.
-  const content = (language: Language, welcomeType: WelcomeType, boardWidth: number) => {
+  // `boardWidth` and `resultWidth` the widths a board and its result stand
+  // in upright.
+  const content = (language: Language, welcomeType: WelcomeType, boardWidth: number, resultWidth: number) => {
     switch (screen.kind) {
       case "welcome":
         return (
@@ -273,7 +274,7 @@ export function usePairsGame(
             },
             onNotNow: () => go((current) => current.kind === "result" ? { ...current, offer: null } : current)
           } : null}
-          onPlayAgain={play} onBack={back} onHome={home} />;
+          onPlayAgain={play} onBack={back} onHome={home} width={resultWidth} />;
       }
     }
   };

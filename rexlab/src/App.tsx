@@ -23,6 +23,7 @@ import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { pairsBoardWidth } from "./pairsBoardLayout.ts";
 import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
+import { pairsResultWidth } from "./pairsResultLayout.ts";
 import { pairsWelcomeType, pairsWelcomeWidth } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
@@ -357,6 +358,11 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
   });
+  // And the width its result stands in.
+  const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {
@@ -591,7 +597,7 @@ export function App({
       case "sorting":
         return sorting.content(language);
       case "pairs":
-        return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth);
+        return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth, pairsResultRoom);
       case "skeletons":
         return skeletonGame.content(language);
       case "dig":
