@@ -39,7 +39,16 @@ describe("a care visit upright", () => {
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
     const page = styleAt(part(".visit"), size);
     expect([page.value("flex-direction"), page.px("padding-left"), page.px("padding-right")]).toEqual(["column", 32, 32]);
-    expect(styleAt(part(".stage"), size).value("flex-grow")).toBe("1");
+    // The stage takes the column's whole width and the room left, the
+    // tray after it.
+    const stage = styleAt(part(".stage"), size);
+    expect([stage.value("flex-grow"), stage.value("width") || "auto", stage.value("max-width") || "none", stage.value("order") || "0"]).toEqual(["1", "auto", "none", "0"]);
+    expect(styleAt(part(".tray"), size).value("order") || "0").toBe("0");
+    expect(part(".stage").compareDocumentPosition(part(".tray")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The visitor stands larger and lower on it, its picture inside.
+    const visitor = styleAt(part(".stage > .visitor"), size);
+    expect([visitor.value("left"), visitor.value("top"), visitor.value("width"), visitor.value("height")]).toEqual(["8%", "30%", "84%", "62%"]);
+    expect(part(".visitor").querySelector(".visitor-picture")).not.toBeNull();
     const tray = styleAt(part(".tray"), size);
     expect([tray.value("flex-wrap") || "nowrap", tray.columnGap()]).toEqual(["nowrap", 10]);
     expect(document.querySelectorAll(".tray > .tray-item")).toHaveLength(CARE_ITEMS.length);
@@ -61,6 +70,7 @@ describe("a care visit upright", () => {
     // The bar's parts at their set sizes: HOME, the four needs in their
     // padded strip, and the hearts with a two-digit count.
     const bar = styleAt(part(".visit-bar"), size);
+    expect(bar.value("flex-wrap") || "nowrap").toBe("nowrap");
     const needs = styleAt(part(".needs"), size);
     const need = styleAt(part(".need"), size);
     const hearts = styleAt(part(".hearts-counter"), size);
@@ -74,9 +84,15 @@ describe("a care visit upright", () => {
     const longest = Math.max(...SHIPPED_VISITORS.map((visitor) => capitalsWidth(visitor.name[language], name)));
     expect(longest).toBeLessThanOrEqual(width - 2 * name.px("left"));
 
-    // Every item's word, inside its share of the row.
+    // The need's bubble under the name: its top, a share of the stage
+    // the column leaves at this height, below the name's line.
+    const bubble = styleAt(part(".stage > .need-bubble"), size);
     const tray = styleAt(part(".tray"), size);
     const item = styleAt(part(".tray-item"), size);
+    const stageHeight = 1000 - page.px("padding-top") - page.px("padding-bottom") - 56 - item.px("height") - 2 * page.rowGap();
+    expect((Number.parseFloat(bubble.value("top")) / 100) * stageHeight).toBeGreaterThanOrEqual(name.px("top") + name.px("font-size"));
+
+    // Every item's word, inside its share of the row.
     const room = (width - (CARE_ITEMS.length - 1) * tray.columnGap()) / CARE_ITEMS.length - item.px("padding-left") - item.px("padding-right");
     const label = styleAt(part(".tray-label"), size);
     expect(label.value("white-space")).toBe("nowrap");
