@@ -32,7 +32,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
       <header className="care-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
         <h1 className="care-title">
           <span className="care-mark" aria-hidden="true">
