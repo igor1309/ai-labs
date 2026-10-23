@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-467: workflows branch on results and repeat repairs with explicit state
+  and a pass limit; failed tests can return to the builder's session.
+
 - LAB-465: `agister check` refuses what `agister run` does not run yet
   (a branch, a repeat, a runtime with no turn, an input from a source a
   run does not take), in run's words, and a step that gives a file's
