@@ -994,10 +994,14 @@ other classes; codex a `turn.failed` whose message says "at capacity",
 before its other classes.
 
 **`core/call`** retries a turn that ends by a reply of the class
-`capacity`, while the call has made fewer than four turns of that end:
+`capacity`, while the call has made fewer than five turns of that end:
 it waits on its timer, 30 seconds after the first such turn, one minute
-after the second and three minutes after the third, then makes that
-turn again as it was given, its message and all, in the session it reported, else in the session it was given. A
+after the second, three minutes after the third and five after the
+fourth. A turn that reported a session is followed by a turn in that
+session, its message "Go on.", the turn's model, effort, options,
+instruction and schema as they were; one that reported none has not
+reached the model, and is made again as it was given, its message and
+all, in the session it was given. A
 capacity turn that reported a session other than the one it resumed is
 not retried: it fails the call, `runtime_error`, as any turn that
 strayed does. No wait starts where the call's context has ended, or
@@ -1007,7 +1011,7 @@ A retry spends none of the step's recovery, and what follows it follows
 it as it would any turn, a recovery turn included. The call's cost,
 usage and session are its turns', as a recovered call's are. A call
 whose last turn is at capacity, not retried, fails, `capacity`, its
-reason the turn's, after "<n> of 4 turns at capacity: ". Its report grows a
+reason the turn's, after "<n> of 5 turns at capacity: ". Its report grows a
 turn at capacity: its reason, and the wait before its retry, none where
 none follows.
 
@@ -1027,7 +1031,7 @@ and records an event:
 
 An agent may set `fallback = "claude-opus"`. Resolve refuses a fallback
 that is missing, names itself, or cannot run the step's process, naming
-the agent file. Once the primary's four capacity turns are spent,
+the agent file. Once the primary's five capacity turns are spent,
 `core/call` makes the same process and inputs fresh on the fallback,
 within the remaining time and cost limits and daily budget. Every other
 failure class ends the call. The fallback retries capacity by the same
@@ -1060,10 +1064,19 @@ Decisions, each with its reason:
 - The policy is core's, not a setting: the owner chose one policy for
   every runtime, on by default; a process's own attempts and backoff
   wait until one needs them.
-- A retry resumes with the step's own message, not a message of its
-  own: the session holds the work done, and the task given again is
-  what a message telling it to go on would say, from settings Agister
-  already has.
+- A retry in a session the turn reported is told "Go on.", not given
+  the step's message again (owner, 2026-10-23, LAB-496): the session
+  holds the task and the work done toward it, and the task given twice
+  invites the model to start over. The message is core's, not a
+  setting, as the policy is.
+- A session a turn reported holds its message: codex writes the user's
+  message into the thread's rollout before it asks the model, and
+  claude-code writes it into its transcript before its first request, so
+  a turn at capacity that reported a session, fresh or resumed, leaves
+  the task in it, and "Go on." is read after it.
+- Waits of 30 seconds, one, three and five minutes (owner, 2026-10-23):
+  a call kept waiting in its session keeps its work, where a caller's
+  rerun later starts it over.
 - The wait is fixed, not drawn at random: the load is the provider's,
   which the few calls of a run retrying together do not change, and the
   owner chose one policy.
