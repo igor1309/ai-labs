@@ -60,12 +60,17 @@ const RESULT_PICTURE = ".result-hero";
 // Find the pair's welcome's cards, each sized by their row's box.
 const WELCOME_CARDS = ".pairs-hero";
 
-// The page's picture as a turn resizes its stage, the result's dinosaur
-// and the welcome's cards as a turn resizes them. Laid out in place, each
-// would take its new size at once, fitted in its new box, so a copy
-// travels in a box that changes with it, as the closing picture does.
+// A card on find the pair's board, its footprints and name sized by its
+// width.
+const BOARD_CARD = ".pair-card";
+
+// The page's picture as a turn resizes its stage, the result's dinosaur,
+// the welcome's cards and a board's card as a turn resizes them. Laid out
+// in place, each would take its new size at once, fitted in its new box,
+// so a copy travels in a box that changes with it, as the closing picture
+// does.
 export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
-  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}`) ? element : undefined;
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}, ${BOARD_CARD}`) ? element : undefined;
   return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
 }
 

@@ -2,6 +2,7 @@
 
 ## 2026-10-23
 
+- Find the pair's board stands upright in a tall window instead of asking to turn: the grid turns on its side under a one-row bar, BACK and HOME as their symbols, its cards as large as the window allows and never under the board's smallest, the screen scrolling where the window is too short. Turning the iPad glides every card to its new place, and play goes on; the result still asks to turn (LAB-486).
 - Find the pair's welcome stands upright in a tall window instead of asking to turn: the cards on top, then the title, the chips, the level switch and PLAY in one centred column, every word fitting in English and Russian. Turning the iPad glides the welcome to its new layout; the board and the result still ask to turn (LAB-485).
 - SAND WRITING, a new Home tile showing a 2, an A and a circle in sand, opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
 

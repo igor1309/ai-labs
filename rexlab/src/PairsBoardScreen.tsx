@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { pairsBoardCardWidth } from "./pairsBoardLayout.ts";
 import { PictureImage, usePicture } from "./Picture.tsx";
 
 // A card on the board: face down, turned over, or one of a found pair.
@@ -35,30 +36,39 @@ export type PairsBoardScreenProps = {
   // Back to the game's welcome screen.
   onBack: () => void;
   onHome: () => void;
+  // The width the board stands in upright, one for the window; landscape
+  // sizes its cards itself.
+  width?: number;
 };
 
 // A custom property the stylesheet staggers the cards by.
 const place = (index: number) => ({ "--card": index }) as CSSProperties;
 
-export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome }: PairsBoardScreenProps) {
+// The widest a card may be upright, as the custom property the stylesheet
+// reads.
+const widthStyle = (width: number | undefined, rows: number): Record<string, string> => (width === undefined ? {} : { "--card-by-width": `${pairsBoardCardWidth(width, rows)}px` });
+
+export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome, width }: PairsBoardScreenProps) {
   const text = TEXTS[language];
+  // Upright, BACK and HOME show their symbols alone and the title its mark
+  // alone, each name kept for screen readers.
   return (
     <main className="pairs-board-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="pairs-bar">
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
-          {text.back}
+          <span className="upright-hidden">{text.back}</span>
         </Button>
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
         <h1 className="pairs-bar-title">
           <span className="pairs-bar-mark" aria-hidden="true">
             <Copy size={30} />
           </span>
-          {text.pairs}
+          <span className="upright-hidden">{text.pairs}</span>
         </h1>
         {climbLevel !== undefined && (
           <p className="pairs-bar-chip" aria-label={text.level}>
@@ -80,7 +90,7 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
           role="group"
           aria-label={text.cards}
           data-finished={finished || undefined}
-          style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px` } as CSSProperties}
+          style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px`, ...widthStyle(width, rows) } as CSSProperties}
         >
           {cards.map((card, index) => (
             <PairCard
@@ -109,11 +119,11 @@ type PairCardProps = {
 // A face-down card shows the same footprints as every other. Turned over,
 // it shows its picture, silhouette or skeleton; found, a green border and the name.
 // A card whose picture cannot be loaded shows a dinosaur symbol and the
-// name instead.
+// name instead. Each card is a part a turn glides, named by its place.
 function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
   const name = card.name.toLocaleUpperCase(language);
   return (
-    <Button className="card pair-card" data-state={card.state} data-face={card.face} aria-label={label} style={place(index)} onClick={onTurn}>
+    <Button className="card pair-card" data-turn-part={`pair-card-${index}`} data-state={card.state} data-face={card.face} aria-label={label} style={place(index)} onClick={onTurn}>
       {card.state === "down" ? (
         <span className="pair-card-back" aria-hidden="true">
           <span className="pair-card-back-frame">
