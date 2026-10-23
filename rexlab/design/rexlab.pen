@@ -106489,6 +106489,156 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "MMeQs",
+      "x": 14520,
+      "y": -383.5,
+      "name": "Sand writing · Landscape · LAB-470",
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/dig-story-1-start.webp",
+        "mode": "cover"
+      },
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "MkILY",
+          "x": 20,
+          "y": 20,
+          "name": "Home icon only",
+          "width": 60,
+          "height": 60,
+          "fill": "#FFF9EA",
+          "cornerRadius": 20,
+          "stroke": "#D4B88B",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "icon",
+              "id": "oengm",
+              "x": 16,
+              "y": 16,
+              "name": "Home symbol",
+              "width": 28,
+              "height": 28,
+              "icon": "house",
+              "library": "lucide",
+              "fill": "#4F3B22"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MS0mb",
+          "x": 1053,
+          "y": 20,
+          "name": "Tip-size picker · clear inside",
+          "width": 60,
+          "height": 60,
+          "fill": "#FFF9EA",
+          "cornerRadius": 20,
+          "stroke": "#D4B88B",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "icon",
+              "id": "LeBbO",
+              "x": 16,
+              "y": 16,
+              "name": "Fine tip symbol",
+              "width": 28,
+              "height": 28,
+              "icon": "pencil",
+              "library": "lucide",
+              "fill": "#4F3B22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "owfvt",
+      "x": 15773,
+      "y": -383.5,
+      "name": "Sand writing · Portrait · LAB-470",
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/dig-story-1-start.webp",
+        "mode": "cover"
+      },
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "bq5x4",
+          "x": 20,
+          "y": 20,
+          "name": "Home icon only",
+          "width": 60,
+          "height": 60,
+          "fill": "#FFF9EA",
+          "cornerRadius": 20,
+          "stroke": "#D4B88B",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "icon",
+              "id": "eBVQP",
+              "x": 16,
+              "y": 16,
+              "name": "Home symbol",
+              "width": 28,
+              "height": 28,
+              "icon": "house",
+              "library": "lucide",
+              "fill": "#4F3B22"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xBdRC",
+          "x": 664,
+          "y": 20,
+          "name": "Tip-size picker · clear inside",
+          "width": 60,
+          "height": 60,
+          "fill": "#FFF9EA",
+          "cornerRadius": 20,
+          "stroke": "#D4B88B",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "icon",
+              "id": "YC0YG",
+              "x": 16,
+              "y": 16,
+              "name": "Fine tip symbol",
+              "width": 28,
+              "height": 28,
+              "icon": "pencil",
+              "library": "lucide",
+              "fill": "#4F3B22"
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
