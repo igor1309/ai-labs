@@ -35,6 +35,9 @@ type Kept = { progress: SortingProgress | undefined; levelChoice: LevelChoice | 
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
 
+// The screen the game shows, as the gate and the turns read it.
+export type SortingPhase = SortingScreen["kind"];
+
 // A board started, even over one left on HOME and still kept, or its
 // result, is the plain screen change; a drop changes the board at once.
 export function transitionFor(from: SortingScreen | undefined, to: SortingScreen | undefined, intent: "start" | undefined): string | undefined {
@@ -113,7 +116,8 @@ export function useSortingGame(
     go({ kind: "result", result });
   };
 
-  const content = (language: Language) => {
+  // `boardWidth` is the width a board stands in upright.
+  const content = (language: Language, boardWidth: number) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -126,6 +130,7 @@ export function useSortingGame(
             onDrop={onDrop}
             onHome={onHome}
             onSeeResult={() => seeResult(sorting)}
+            width={boardWidth}
           />
         );
       }
@@ -144,5 +149,7 @@ export function useSortingGame(
     }
   };
 
-  return { start, content, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
+  const phase: SortingPhase | undefined = screen?.kind;
+
+  return { start, content, phase, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
 }

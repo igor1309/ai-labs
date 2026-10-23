@@ -156,9 +156,11 @@ function Game({
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
+  // The gate covers every upright window here, so the board's upright
+  // width is never read.
   return (
     <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
-      {game.content(language)}
+      {game.content(language, 0)}
     </OrientationGate>
   );
 }
