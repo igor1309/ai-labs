@@ -51,7 +51,7 @@ export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, 
           <ChoiceCard key={choice.id} language={language} choice={choice} index={index} onChoose={onChoose} />
         ))}
         {onMystery && (
-          <Button className="card skeleton-choice skeleton-mystery" aria-label={text.mystery} style={{ "--choice": choices.length } as CSSProperties} onClick={onMystery}>
+          <Button className="card skeleton-choice skeleton-mystery" aria-label={text.mystery} data-turn-part="skeleton-mystery" style={{ "--choice": choices.length } as CSSProperties} onClick={onMystery}>
             <span className="skeleton-choice-art skeleton-mystery-mark" aria-hidden="true">
               ?
             </span>
@@ -68,6 +68,7 @@ function ChoiceCard({ language, choice, index, onChoose }: { language: Language;
     <Button
       className="card skeleton-choice"
       aria-label={name}
+      data-turn-part={`skeleton-choice-${choice.id}`}
       style={{ "--choice": index } as CSSProperties}
       onClick={() => onChoose(choice.id)}
     >
