@@ -58,26 +58,24 @@ struct CoreAudioBindingTests {
 
     private func hearToneAndStop(_ capture: SystemAudioCapture) async throws {
 
-        let guardTask = Task {
-            try await Task.sleep(for: .seconds(12))
-            capture.stop()
-        }
-        do {
-            var heard = false
-            for try await piece in capture.audio {
-                if magnitude(piece.samples, frequency: 440, rate: piece.sampleRate) > 0.001 {
-                    #expect(piece.sampleRate > 0)
-                    heard = true
-                    capture.stop()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                var heard = false
+                for try await piece in capture.audio {
+                    if magnitude(piece.samples, frequency: 440, rate: piece.sampleRate) > 0.001 {
+                        #expect(piece.sampleRate > 0)
+                        heard = true
+                        capture.stop()
+                    }
                 }
+                #expect(heard, "The captured 440 Hz tone must be above the noise floor")
             }
-            #expect(heard, "The captured 440 Hz tone must be above the noise floor")
-            guardTask.cancel()
-            _ = await guardTask.result
-        } catch {
-            guardTask.cancel()
-            _ = await guardTask.result
-            throw error
+            group.addTask {
+                try await Task.sleep(for: .seconds(12))
+                throw ToneTimedOut()
+            }
+            defer { group.cancelAll() }
+            try await group.next()
         }
     }
 
@@ -113,3 +111,5 @@ struct CoreAudioBindingTests {
         try file.write(from: buffer)
     }
 }
+
+private struct ToneTimedOut: Error {}

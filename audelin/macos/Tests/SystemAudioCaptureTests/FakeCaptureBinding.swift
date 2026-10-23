@@ -5,7 +5,8 @@ import Testing
 
 struct Refusal: Error, Equatable {}
 
-final class FakeCaptureBinding: CaptureBinding, Sendable {
+// Callback counters and wait signals are protected by the condition lock.
+final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
 
     struct State {
 
@@ -22,6 +23,26 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
     }
 
     let state = Mutex(State())
+    private let callbacks = NSCondition()
+    private var inFlight = 0
+    private var removing = false
+    private var cleaned = false
+    private let callbackKey = UUID().uuidString
+    private let listenerKey = UUID().uuidString
+
+    func waitForRemoval() {
+
+        callbacks.lock()
+        defer { callbacks.unlock() }
+        while !removing { callbacks.wait() }
+    }
+
+    func waitForCleanup() {
+
+        callbacks.lock()
+        defer { callbacks.unlock() }
+        while !cleaned { callbacks.wait() }
+    }
 
     var events: [String] { state.withLock { $0.events } }
     var taps: [TapRequest] { state.withLock { $0.taps } }
@@ -57,7 +78,12 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
     func destroyTap(_ tap: UInt32) {
 
         #expect(tap == 11)
+        expectCleanupContext()
         state.withLock { $0.events.append("destroy tap") }
+        callbacks.lock()
+        cleaned = true
+        callbacks.broadcast()
+        callbacks.unlock()
     }
 
     func createDevice(_ request: DeviceRequest) throws -> UInt32 {
@@ -70,6 +96,7 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
 
     func destroyDevice(_ device: UInt32) {
 
+        expectCleanupContext()
         #expect(device == 22)
         state.withLock { $0.events.append("destroy device") }
     }
@@ -85,6 +112,10 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
 
         #expect(device == 22)
         try record("io")
+        callbacks.lock()
+        removing = false
+        cleaned = false
+        callbacks.unlock()
         state.withLock { $0.receive = receive }
         return 33
     }
@@ -92,7 +123,13 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
     func removeIO(_ device: UInt32, _ io: UInt64) {
 
         #expect(device == 22 && io == 33)
+        expectCleanupContext()
+        callbacks.lock()
         state.withLock { $0.events.append("remove io"); $0.receive = nil }
+        removing = true
+        callbacks.broadcast()
+        while inFlight > 0 { callbacks.wait() }
+        callbacks.unlock()
     }
 
     func watchDevice(_ device: UInt32, stopped: @escaping @Sendable () -> Void) throws -> UInt64 {
@@ -105,6 +142,7 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
 
     func unwatchDevice(_ device: UInt32, _ watch: UInt64) {
 
+        expectCleanupContext()
         #expect(device == 22 && watch == 44)
         state.withLock { $0.events.append("unwatch"); $0.stopped = nil }
     }
@@ -119,6 +157,7 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
     func stopDevice(_ device: UInt32, _ io: UInt64) {
 
         #expect(device == 22 && io == 33)
+        expectCleanupContext()
         let callback = state.withLock {
             $0.events.append("stop")
             $0.running = false
@@ -134,14 +173,31 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
 
     func systemStops() {
 
+        Thread.current.threadDictionary[listenerKey] = true
+        defer { Thread.current.threadDictionary.removeObject(forKey: listenerKey) }
         let callback = state.withLock { $0.stopped }
         callback?()
     }
 
+    private func expectCleanupContext() {
+
+        #expect(Thread.current.threadDictionary[callbackKey] == nil)
+        #expect(Thread.current.threadDictionary[listenerKey] == nil)
+    }
+
     func play(_ pids: [Int32]) {
 
+        beginBuffer(pids)?()
+    }
+
+    /// Enters IO now; the returned control delivers and leaves it later.
+    func beginBuffer(_ pids: [Int32], beforeReturn: @escaping @Sendable () -> Void = {}) -> (@Sendable () -> Void)? {
+
+        callbacks.lock()
+        defer { callbacks.unlock() }
+
         let snapshot = state.withLock { ($0.running, $0.selection, $0.rate, $0.receive) }
-        guard snapshot.0, let request = snapshot.1 else { return }
+        guard snapshot.0, let request = snapshot.1, let receive = snapshot.3 else { return nil }
         let included = pids.filter { pid in
             switch request.selection {
             case .only(let named): named.contains(pid)
@@ -151,7 +207,17 @@ final class FakeCaptureBinding: CaptureBinding, Sendable {
         let samples = (0..<Int(snapshot.2 / 100)).map { frame in
             included.reduce(Float(0)) { $0 + tone($1, frame: frame, rate: snapshot.2) }
         }
-        snapshot.3?(samples)
+        inFlight += 1
+        return { [self] in
+            Thread.current.threadDictionary[callbackKey] = true
+            receive(samples)
+            beforeReturn()
+            Thread.current.threadDictionary.removeObject(forKey: callbackKey)
+            callbacks.lock()
+            inFlight -= 1
+            callbacks.broadcast()
+            callbacks.unlock()
+        }
     }
 }
 

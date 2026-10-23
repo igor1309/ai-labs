@@ -1,99 +1,100 @@
 # System audio capture — QA
 
-Most rows run through a fake of the Core Audio binding. The fake records
-what the capture asks of it (the tap's processes or its "all but" list, a
-mono mix, playback unmuted, a device start) and plays a distinct tone per
-process only by what was asked, so a wrong request fails the row. It
-accepts or refuses each request, changes its rate on a device change, and
-stops its device on cue. The binding runs for real over an `afplay` tone
-at 2% volume: a tap hears a process after its own volume, so a silent
-player gives only zeros. The real Zoom call of the user spec (LAB-408)
-proves the whole path and that the call stays audible.
+Fake tests mix distinct process tones, change rate, refuse requests and hold IO.
+Native recording tests check PID translation and tap descriptions. Real rows use
+`afplay -v 0.02` on a tone in a temp dir; denied permission can give silence.
 
 ## S-1 A named process is heard
 
-Fake: the tap is asked for the named process, mixed to mono with playback
-unmuted, and its tone is read back. Real: the faint `afplay` tone is read
-back above the noise floor. Evidence:
-`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback` and
+Fake: every included tone is read live, unmuted and mono. Native: PIDs become
+process objects. Real: the faint tone exceeds the noise floor. Evidence:
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
+`SystemAudioCaptureTests.piecesAreReadWhileTheCaptureIsRunning`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`,
 `CoreAudioBindingTests.realFaintAfplayToneIsHeard`.
 
 ## S-2 Newly named processes are heard in the same capture
 
-Fake: a second process is named mid-capture; its tone follows in the same
-audio with no new start. Evidence:
-`SystemAudioCaptureTests.newlyNamedProcessesAreHeardInTheSameCapture`.
+Fake: several newly included tones replace the old selection without restarting.
+Native: rename writes a description with the same UUID. Evidence:
+`SystemAudioCaptureTests.newlyNamedProcessesAreHeardInTheSameCapture`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.runningRenameWritesTheNativeTapDescription`.
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: the device changes and the format reads 24 kHz instead of 48; the
-pieces after it carry 24 kHz and the named process's tone, read back at
-that rate. Evidence:
-`SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`.
+Fake: later pieces carry the new rate and tone. Evidence: `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`.
 
 ## S-6 A capture that cannot start fails
 
-Fake: each starting step in turn refuses; the capture fails, and what it
-made is released. Evidence:
-`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`.
+Fake: each refused starting step releases what it made. Native: a PID with no
+process object is refused before creating a tap. Evidence:
+`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`,
+`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`.
 
 ## S-7 A capture the system stops fails
 
-Fake: the device stops after some buffers; the capture reports the
-failure. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`.
+Fake: the first failure survives a later stop; unreadable format ends after
+cleanup. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`,
+`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`.
 
 ## S-8 A failed capture keeps what it heard
 
-Fake: every buffer before the stop is read before the audio ends. Evidence:
-`SystemAudioCaptureTests.aFailedCaptureKeepsEveryPieceItHeard`.
+Fake: earlier pieces and IO held across a system stop precede the error. Evidence:
+`SystemAudioCaptureTests.aFailedCaptureKeepsEveryPieceItHeard`,
+`SystemAudioCaptureTests.anInFlightBufferPrecedesTheSystemStopError`.
 
 ## S-9 Stopping ends the capture
 
-Fake: stopping ends the audio and releases the tap and device. Real: a
-faint `afplay` capture stopped. Evidence:
+Fake: IO drains before stream completion; stop, release and cancellation clean up
+away from callbacks. Real: only hearing the tone stops successfully; a deadline
+throws a timeout. Evidence:
 `SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`,
-`SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream` and
+`SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream`,
+`SystemAudioCaptureTests.anInFlightBufferPrecedesAnExplicitStopInOrder`,
+`SystemAudioCaptureTests.anExplicitStopReadsTheBufferAlreadyInFlight`,
+`SystemAudioCaptureTests.releasingTheLastOwnerDuringIOFinishesCleanupAndAudio`,
+`SystemAudioCaptureTests.cancellingTheReaderReleasesTheCaptureResources`,
 `CoreAudioBindingTests.realCaptureStopsAndEndsItsAudio`.
 
 ## S-10 A capture can follow a stopped one
 
-Fake and real: after the first is stopped, a second capture's tone is read
-back. Evidence:
-`SystemAudioCaptureTests.anotherCaptureCanFollowAStoppedOne` and
+Fake and real: a second capture hears its tone after the first ends. Evidence:
+`SystemAudioCaptureTests.anotherCaptureCanFollowAStoppedOne`,
 `CoreAudioBindingTests.realCaptureCanFollowAStoppedCapture`.
 
 ## S-11 A capture that heard nothing ends cleanly
 
-Fake: a tap that never delivers is stopped; the audio ends with no pieces
-and no failure. Evidence:
-`SystemAudioCaptureTests.aCaptureThatHeardNothingEndsCleanly`.
+Fake: stopping without delivery ends without pieces or failure. Evidence: `SystemAudioCaptureTests.aCaptureThatHeardNothingEndsCleanly`.
 
 ## S-12 A process I did not name is left out
 
-Fake: the tap is asked for the named process only; another process's tone
-is absent. Evidence: `SystemAudioCaptureTests.anUnnamedProcessIsLeftOut`.
+Fake: every excluded tone is absent at start and after rename. Evidence:
+`SystemAudioCaptureTests.anUnnamedProcessIsLeftOut`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
 
 ## S-13 A process I left out is not heard
 
-Fake: the tap is asked for "all but" the left-out process; its tone is
-absent. Evidence: `SystemAudioCaptureTests.anExcludedProcessIsNotHeard`.
+Fake: every excluded tone under "all but" is absent at start and after rename.
+Evidence: `SystemAudioCaptureTests.anExcludedProcessIsNotHeard`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
 
 ## S-14 A process that starts later is heard
 
-Fake: under "all but", a process added after the start plays; its tone is
-read back. Evidence:
-`SystemAudioCaptureTests.aProcessStartingLaterIsHeard`.
+Fake: a later process under "all but" is heard. Evidence: `SystemAudioCaptureTests.aProcessStartingLaterIsHeard`.
 
 ## S-15 A naming the system refuses keeps the old one
 
-Fake: a new naming is refused; the client is told it was refused, the
-first process's tone keeps coming and the capture does not fail. Evidence:
-`SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`.
+Fake: refused naming retains the old tone. Native: a refused description write
+throws. Evidence: `SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`,
+`NativeCaptureBindingTests.aRefusedNativeDescriptionWriteIsThrown`.
 
 ## S-17 Sound is read without muting it
 
-Fake: in one drive, the tap is asked to leave playback unmuted and the
-named process's tone is read back. Real: on the user spec's Zoom call, the
-owner hears the far side while its sound is read. Evidence:
-`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`.
-Real: pending the user spec's call.
+Fake and native: the unmuted request retains the named tone. Evidence:
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
+Real: pending the user's Zoom call with audible far-side playback.
