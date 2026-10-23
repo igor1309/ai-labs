@@ -1,5 +1,16 @@
 # Log
 
+## 2026-10-23
+
+- A process replaced while its microphone flag is read cannot start a call
+  under the previous process's app (LAB-473).
+
+- Queued audio notifications cannot report a call for another process that
+  reuses the same Core Audio object (LAB-473).
+
+- Core Audio lists audio processes and tells calls in Zoom, Telemost and
+  browsers, keeping a call through microphone silences under 30 s (LAB-473).
+
 ## 2026-10-22
 
 - Session, automatic recording and timed track are gone, after the owner's
