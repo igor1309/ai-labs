@@ -10,7 +10,7 @@ import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, part, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
 import { withManualPictures, withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
@@ -90,12 +90,15 @@ export const latest = ({ seen }: OpenBoard): Sorting => {
   return sorting;
 };
 
-export const tray = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].creatures });
+// The tray, its cards and the baskets, by their class and turn part, or
+// by their role and name in `language` where a test gives one.
+export const tray = (language?: Language) => (language === undefined ? part(".sort-tray") : screen.getByRole("group", { name: TEXTS[language].creatures }));
 
-export const trayCard = (card: CardState, language: Language = "en") =>
-  within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
+export const trayCard = (card: CardState, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="sort-card-${card.dinosaur.id}"]`, tray()) : within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
 
-export const basketButton = (basket: Basket, language: Language = "en") => screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
+export const basketButton = (basket: Basket, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="basket-${basket}"]`) : screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
 
 // The other basket of the board's two.
 export const otherBasket = (sorting: Sorting, basket: Basket): Basket => {

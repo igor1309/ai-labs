@@ -156,10 +156,13 @@ export function board(): HTMLElement {
   if (!found) throw new Error("No board on the screen");
   return found;
 }
-export const pairCards = () => within(board()).getAllByRole("button");
+// The board's cards in their places, by their class: a role query weighs
+// every element's style at each card turned. A test of the board's own
+// holds the cards to their role.
+export const pairCards = () => [...board().querySelectorAll<HTMLElement>(".pair-card")];
 
 const cardAt = (place: number) => {
-  const card = board().querySelectorAll<HTMLElement>(".pair-card")[place];
+  const card = pairCards()[place];
   if (!card) throw new Error(`No card at ${place}`);
   return card;
 };
