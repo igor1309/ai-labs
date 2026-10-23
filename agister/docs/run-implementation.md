@@ -1637,15 +1637,19 @@ or a repeat's body.
   before the first pass. A body item that does not complete ends the
   repeat, and the run. Its outputs are `{"state": {...}, "stopped":
   "until" | "max", "passes": n}`: the last state, why it stopped, and
-  how many passes ran. A body reads the outputs of its own pass; what
-  follows the repeat reads only its outputs.
+  how many passes ran. A body reads the outputs of its own pass, each
+  item those of the items before it, as in a sequence; what follows the
+  repeat reads only its outputs. A state value keeps the type it was
+  bound with: from a param a text, from an exit code a number; bound to
+  a text, a number is given as its JSON.
 - A step in a repeat's body is called, and told to the events, by its
   **name and pass**, `<step>/<pass>`, outer passes first where repeats
-  nest (`fix/2/1`); elsewhere by its name. The caller, the events, the
+  nest (`fix/2/1`); elsewhere by its name. A branch or repeat inside a
+  repeat's body is told to the events the same way (`inner/2`). The caller, the events, the
   record, progress and reuse take that name as they take a step's.
 - The **events port** grows three: a branch's arm taken, with each
   condition read before it, whether it held and the values it read; a
-  pass's state once bound; and a repeat's stop, why and after how many
+  pass's end, with the state it bound; and a repeat's stop, why and after how many
   passes.
 - Cost, usage, warnings and sessions count every call made, each pass's
   too; a session continued in a body goes on from its latest call
@@ -1660,7 +1664,7 @@ is, an item of a parallel that is not a step, and a field read within a
 parallel's outputs. `agister check` follows, as it shares that list
 (LAB-465). A call's id is `<run id>/<step>/<pass>` in a repeat; its
 progress lines name it so; three lines more: `· <branch>: took <arm>`,
-`· <repeat>: pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
+`· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
 `events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
 
 ```json

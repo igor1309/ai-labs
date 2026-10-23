@@ -55,11 +55,14 @@ Feature: A repeat runs its body until its condition holds, at most max times
 
   Scenario: A step in a repeat inside a repeat is told by both passes
     Given the body of "r" holds, after "test", the repeat "inner" of the
-      step "lint", max 2, until it has run twice
+      step "lint", max 2, until steps.lint.outputs.done equals true,
+      which "lint" never gives
     And "test" completes with the exit codes 1, then 0
     When the workflow runs with start "1"
     Then the caller is asked for "lint/1/1", "lint/1/2", then "lint/2/1"
       and "lint/2/2"
+    And the events are told "inner/1" and "inner/2" each stopped "max"
+      after 2 passes
 
   Scenario: The run's cost and usage count every pass
     Given "fix" costs 0.5 and uses 10 tokens a call
