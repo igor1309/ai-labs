@@ -18,5 +18,13 @@ Other failures do not fall back; a fallback never chains.
 A workflow may set `parallel: {max: 1, steps: [...]}` to run nodes one at
 a time. Without `max` all nodes run at once. Failed nodes do not stop the
 remaining nodes; the join receives their outcomes in declaration order.
+
+A workflow may also `branch` on a condition (`equals`, `present`, `all`,
+`any`, `and`, `or`, `not`) over params, inputs and earlier outputs, and
+`repeat` a body with explicit `state`, `next`, `until` and `max`: a
+failed test step can go back to the builder's session until the tests
+pass. A step in a repeat is named `<step>/<pass>` in its record,
+progress and `events.jsonl`, which also keeps each branch taken, each
+pass's state and why a repeat stopped.
 Use `agister check` to validate settings and `agister inspect` to see them.
 See the [caller's guide](skills/agister/SKILL.md).
