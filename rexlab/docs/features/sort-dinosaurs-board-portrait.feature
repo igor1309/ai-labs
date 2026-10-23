@@ -4,8 +4,8 @@ Feature: Sort dinosaurs: the board in a tall window
   upright: HOME and the steps, the prompt, the tray and the baskets stand
   one under another as in landscape, the baskets side by side below the
   tray. Play is as sort-dinosaurs-play.feature tells. A tall-narrow
-  window keeps the picture asking to turn or widen (window-shape.feature),
-  and the result still asks to turn.
+  window keeps the picture asking to turn or widen (window-shape.feature);
+  the result stands upright too (sort-dinosaurs-result-portrait.feature).
 
   The screen's padding is 40 above, 48 below and 32 a side, the bar and
   the prompt 56 tall, and the bar, the prompt, the tray and the baskets
