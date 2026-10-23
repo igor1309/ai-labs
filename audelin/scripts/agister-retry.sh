@@ -2,7 +2,14 @@
 # Runs `agister run <args>` in the current worktree, and runs it again only
 # while it fails for capacity or a rate limit. Any other end stops at once.
 #
-#   agister-retry.sh [-n tries] [-u HHMM] [-w seconds] [-o dir] -- <agister run args>
+#   agister-retry.sh [-n tries] [-u HHMM] [-w "seconds ..."] [-o dir] -- <agister run args>
+#
+# Waits before the next try:
+#   capacity    5, 10, 15, then every 30 min (-w overrides; the last repeats).
+#               Agister has already retried after 30 s, 1 min and 3 min.
+#   rate limit  until a minute after the reset its reason names
+#               ("resets 1pm", "resets 13:30"), else 30 min.
+# A wait that would end past -u stops instead.
 #
 # Prints one line per try, for a watcher:
 #   DONE   the run completed (whether it committed is the caller's to check)
@@ -13,13 +20,13 @@
 
 tries=8
 until=2400
-wait=900
+waits="300 600 900 1800"
 out=/tmp/agister-retry
 while getopts n:u:w:o: flag; do
   case $flag in
     n) tries=$OPTARG ;;
     u) until=$OPTARG ;;
-    w) wait=$OPTARG ;;
+    w) waits=$OPTARG ;;
     o) out=$OPTARG ;;
     *) exit 2 ;;
   esac
@@ -47,7 +54,34 @@ print(run.get("status") or "", run.get("class") or "", (run.get("reason") or "")
 ' "$1"
 }
 
+# Seconds until a minute after the reset time a rate-limit reason names, or nothing.
+reset_wait() {
+
+  python3 -I -c '
+import datetime, re, sys
+m = re.search(r"resets\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", sys.argv[1], re.I)
+if m:
+    hour, minute, half = int(m.group(1)), int(m.group(2) or 0), (m.group(3) or "").lower()
+    if half == "pm" and hour < 12:
+        hour += 12
+    if half == "am" and hour == 12:
+        hour = 0
+    now = datetime.datetime.now()
+    at = now.replace(hour=hour % 24, minute=minute, second=0, microsecond=0)
+    if at <= now:
+        at += datetime.timedelta(days=1)
+    print(int((at - now).total_seconds()) + 60)
+' "$1"
+}
+
+# The wait after the k-th capacity retry: the k-th of $waits, else its last.
+capacity_wait() {
+
+  echo $waits | awk -v k="$1" '{ print (k <= NF) ? $k : $NF }'
+}
+
 n=0
+k=0
 while :; do
   n=$((n + 1))
   log=$out/run$n.out
@@ -75,6 +109,15 @@ while :; do
     echo "RETRY: try $n leftovers saved to $out/left$n.patch"
   fi
   [ $n -lt "$tries" ] || { echo "STOP: $tries tries spent"; exit 1; }
-  [ "$(date +%H%M)" -lt "$until" ] || { echo "STOP: past $until"; exit 1; }
+  if [ "$class" = rate_limited ]; then
+    wait=$(reset_wait "$reason")
+    wait=${wait:-1800}
+  else
+    k=$((k + 1))
+    wait=$(capacity_wait $k)
+  fi
+  wake=$(date -v +"${wait}"S +%H%M)
+  [ "$wake" -lt "$until" ] && [ "$(date +%H%M)" -le "$wake" ] || { echo "STOP: the next try at $wake would be past $until"; exit 1; }
+  echo "RETRY: try $((n + 1)) at $wake"
   sleep "$wait"
 done
