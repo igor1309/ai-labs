@@ -31,7 +31,8 @@ Feature: The window's shape
   find-the-pair-result-portrait.feature,
   sort-dinosaurs-board-portrait.feature,
   sort-dinosaurs-result-portrait.feature,
-  skeleton-choice-portrait.feature), so a tall-narrow window
+  skeleton-choice-portrait.feature,
+  skeleton-museum-portrait.feature), so a tall-narrow window
   still shows the picture over them. The scenarios
   below use the care welcome screen, which has no portrait layout yet.
 
