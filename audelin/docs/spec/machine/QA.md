@@ -16,8 +16,12 @@ Evidence: `MachineTests.eventsAreReducedInArrivalOrder()`.
 ## S-2 An effect's result changes the state
 
 An event answered with an effect, which is released with a result: the
-state lists the result after the event.
-Evidence: `MachineTests.effectResultChangesState()`.
+state lists the result after the event. Results that ask for further work
+carry a three-effect chain through to its final result: the state lists
+each step in order, and the dependency's output gains each completed work
+entry before the next effect is released.
+Evidence: `MachineTests.effectResultChangesState()`,
+`MachineTests.effectResultsChainFurtherWork()`.
 
 ## S-3 Events are taken while an effect runs
 
@@ -64,8 +68,11 @@ Evidence: `MachineTests.everySubscriberReceivesEveryChange()`.
 
 The machine ended, then an event answered with an effect, then every effect
 the dependency holds released: the state is unchanged and the dependency's
-output is empty.
-Evidence: `MachineTests.endedMachineIgnoresEventsAndStartsNoWork()`.
+output is empty. An event queued while consumption is held is also dropped
+when the machine ends before consumption resumes: after the queued event
+is consumed, the state is unchanged and the dependency's output is empty.
+Evidence: `MachineTests.endedMachineIgnoresEventsAndStartsNoWork()`,
+`MachineTests.endedMachineDropsQueuedEventWithoutWork()`.
 
 ## S-10 An ended machine drops a late result
 

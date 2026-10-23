@@ -2,6 +2,7 @@ import Synchronization
 import Testing
 @testable import Machine
 
+@Suite(.timeLimit(.minutes(1)))
 struct MachineTests {
 
     @Test func eventsAreReducedInArrivalOrder() async {
@@ -28,6 +29,30 @@ struct MachineTests {
             #expect(await updates.next() == [.work(1), .number(2)])
             await rig.machine.waitForEffects()
             #expect(rig.dependency.output == ["work 1"])
+            await rig.machine.end()
+        }
+    }
+
+    @Test func effectResultsChainFurtherWork() async throws {
+
+        let gate = Turns()
+        try await withRig(turns: gate) { rig in
+
+            rig.machine.send(.work(1))
+            for id in 1...3 {
+                await gate.advance()
+                await gate.advance()
+                try #require(await rig.machine.snapshot() == (1...id).map(Event.work))
+                // Hold consumption until the effect has enqueued its result.
+                await gate.waitUntilHeld()
+                #expect(rig.dependency.output == (1..<id).map { "work \($0)" })
+                let result: Event = id < 3 ? .work(id + 1) : .number(4)
+                await rig.dependency.release(id, returning: result)
+                await rig.machine.waitForEffects()
+                #expect(rig.dependency.output == (1...id).map { "work \($0)" })
+            }
+            await gate.open()
+            #expect(await rig.machine.snapshot() == [.work(1), .work(2), .work(3), .number(4)])
             await rig.machine.end()
         }
     }
@@ -192,6 +217,28 @@ struct MachineTests {
             var updates = await rig.machine.states().makeAsyncIterator()
             #expect(await updates.next() == [.number(1)])
             #expect(await updates.next() == nil)
+        }
+    }
+
+    @Test func endedMachineDropsQueuedEventWithoutWork() async throws {
+
+        let gate = Turns()
+        try await withRig(turns: gate) { rig in
+
+            rig.machine.send(.number(1))
+            await gate.advance()
+            await gate.advance()
+            try #require(await rig.machine.snapshot() == [.number(1)])
+            await gate.waitUntilHeld()
+            rig.machine.send(.work(2))
+            await rig.machine.end()
+            await gate.advance()
+            // A terminated snapshot bypasses the queue, so wait for consumption first.
+            await gate.waitUntilHeld()
+            try #require(await rig.machine.snapshot() == [.number(1)])
+            await rig.dependency.releaseAll()
+            await rig.machine.waitForEffects()
+            #expect(rig.dependency.output == [])
         }
     }
 
