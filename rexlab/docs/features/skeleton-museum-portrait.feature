@@ -12,7 +12,7 @@ Feature: The skeleton museum in a tall window
     Then no picture asks me to turn or widen the window
     And the bar shows HOME, the museum title, BUILD ANOTHER and the collection and best scores when earned
     And the five stands form rows of two, with the last centred
-    And each stand has its name and earned star above its exhibit and its own button below
+    And each stand has its name and, when earned, its star above its exhibit and its own button below
     And every exhibit is at least 96 CSS pixels tall and every action at least 44 CSS pixels tall
     And the hall scrolls vertically if needed, without horizontal scrolling
 
@@ -59,3 +59,9 @@ Feature: The skeleton museum in a tall window
     Given I am in the museum in a window of 820 by 1180 CSS pixels
     When the window becomes 393 by 852 CSS pixels
     Then the picture asking to turn or widen fades in over the museum
+
+  Scenario: A fresh museum stays unearned upright
+    Given a window of 600 by 800 CSS pixels and no finished skeletons
+    When I open MUSEUM from home
+    Then all five stands show their silhouettes without stars or badges
+    And my collection score is zero and no best score is shown
