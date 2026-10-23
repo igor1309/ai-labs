@@ -255,6 +255,19 @@ ADR-001, settings; ADR-002, rules 6 and 8; ADR-003.</figcaption>
 takes the resolved workflow and every step's process, agent, runtime mapping
 and permission plan, and never reads a settings file.</p>
 <p class="src">ADR-001, rules 1 and 4, settings and core; ADR-008.</p>
+
+<h2>What a run does with them</h2>
+<p>A workflow's items run in order: a step is one call; a parallel calls its
+steps at once; a branch runs the first arm whose condition holds, else its
+default; a repeat runs its body at least once, binds its next state and stops
+when <code>until</code> holds or after <code>max</code> passes. A step inside a
+repeat is named <code>&lt;step&gt;/&lt;pass&gt;</code>. Every call ends in the
+run's <code>record.json</code>; each branch taken, each pass's state and why a
+repeat stopped are lines in its <code>events.jsonl</code>. Whatever this
+Agister does not run yet, <code>agister check</code> refuses as
+<code>agister run</code> would, before anything runs. The
+<a href="../run-architecture/index.html">run architecture</a> follows a run
+from the command to its record.</p>
 </main>
 </body>
 </html>
