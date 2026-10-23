@@ -2,6 +2,12 @@
 
 ## 2026-10-23
 
+- Call text switched on after audio ends catches up and includes the final
+  words and revisions before finishing (LAB-476).
+
+- Call text reads both sides live, catches up after loading or switching
+  on, and keeps earlier text when switched off or when live text fails (LAB-476).
+
 - Audelin can tell which processes to hear for a call app: its own and its
   helpers, the last answer while they are gone, and every process but
   Audelin's before the app appears (LAB-472).
