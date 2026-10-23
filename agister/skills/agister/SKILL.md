@@ -33,6 +33,18 @@ it all nodes run at once. Failures do not stop later nodes. Once all end,
 the join receives every outcome in declaration order if any completed.
 Home's `code_review` and `adr_review` use `max: 1`.
 
+A `branch` runs the first arm whose `if` holds, else the arm without
+one; its outputs are that arm's output mapping. A `repeat` runs its body
+at least once, binds `next` over its `state` (names `next` does not bind
+keep their value), then stops when `until` holds or after `max` passes;
+its outputs are `state`, `stopped` and `passes`. Conditions are
+`equals`, `present`, `all`, `any`, `and`, `or` and `not` over params,
+inputs, state and earlier outputs; params are text and never equal a
+number. A step in a repeat is named `<step>/<pass>` in its record and
+progress; `events.jsonl` keeps each branch taken, each pass's state and
+why a repeat stopped. A branch or repeat inside a parallel, and a
+workflow inside a workflow, are refused by check and run alike.
+
 Run a named workflow with `agister run <workflow> --param <name>=<value>`;
 run one process with `agister run --process <name> --agent <name>` and its
 params. `--continue <run-id>` resumes a one-call run on its answering
