@@ -31,12 +31,12 @@ export function SkeletonBar({
       {onBack && (
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
-          {text.back}
+          <span className="upright-hidden">{text.back}</span>
         </Button>
       )}
       <Button className="home-button" onClick={onHome}>
         <House size={24} aria-hidden="true" />
-        {text.home}
+        <span className="upright-hidden">{text.home}</span>
       </Button>
       <h1 className="skeleton-title">
         <span className="skeleton-mark" aria-hidden="true">
@@ -49,7 +49,7 @@ export function SkeletonBar({
       {onMuseum && (
         <Button className="home-button museum-button" onClick={onMuseum}>
           <Landmark size={24} aria-hidden="true" />
-          {text.museum}
+          <span className="upright-hidden">{text.museum}</span>
         </Button>
       )}
       {children}

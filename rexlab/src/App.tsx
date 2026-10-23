@@ -31,7 +31,7 @@ import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx"
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { SandWritingScreen } from "./SandWritingScreen.tsx";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
-import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
+import { useSkeletonGame, type SkeletonGameProps, type SkeletonPhase } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
 import { sortBoardWidth } from "./sortBoardLayout.ts";
 import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sortingGame.tsx";
@@ -88,7 +88,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -326,6 +326,40 @@ export function App({
 
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, ageLevel, home, counting("sort"));
 
+  // Whether the gate covers a screen in the window as it is now.
+  const gateShownFor = useCallback((key: LayoutScreen) => {
+    const size = viewport.sizeClass();
+    return (size === "tall" || size === "tall-narrow") && !portraitLayouts[key]?.includes(size);
+  }, [viewport, portraitLayouts]);
+
+  // The child is away while the page is hidden or the gate covers this
+  // screen. A screen with its portrait layout remains playable.
+  const subscribePresence = useCallback((onChange: () => void) => {
+    const stopViewport = viewport.subscribe(onChange);
+    const stopVisibility = pageVisibility.subscribe(onChange);
+    return () => {
+      stopViewport();
+      stopVisibility();
+    };
+  }, [viewport, pageVisibility]);
+
+  // The skeleton game asks for the screen it shows, which the gate below
+  // reads from it in turn.
+  const skeletonPresence = useMemo(
+    () => ({
+      isAway: (phase: SkeletonPhase) => gateShownFor(`skeletons-${phase}`) || pageVisibility.isHidden(),
+      subscribe: subscribePresence
+    }),
+    [gateShownFor, pageVisibility, subscribePresence]
+  );
+
+  const skeletonGame = useSkeletonGame(
+    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence: skeletonPresence, reducedMotion: careProps.reducedMotion, random, sounds: skeletonSounds, kin: pals },
+    ageLevel,
+    home,
+    counting("skeletons")
+  );
+
   // Each game's phase is its own: the gate and the turns read it as the
   // game reports it.
   const layoutScreen: LayoutScreen =
@@ -335,15 +369,14 @@ export function App({
         ? `pairs-${pairs.phase}`
         : screen.kind === "sorting" && sorting.phase
           ? `sorting-${sorting.phase}`
-          : screen.kind;
+          : screen.kind === "skeletons"
+            ? `skeletons-${skeletonGame.phase}`
+            : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
-    isShown: () => {
-      const size = viewport.sizeClass();
-      return (size === "tall" || size === "tall-narrow") && !portraitSizes?.includes(size);
-    },
+    isShown: () => gateShownFor(layoutScreen),
     subscribe: viewport.subscribe
-  }), [viewport, portraitSizes]);
+  }), [viewport, gateShownFor, layoutScreen]);
   const gateShown = useSyncExternalStore(gate.subscribe, gate.isShown);
   const portrait = (size === "tall" || size === "tall-narrow") && (portraitSizes?.includes(size) ?? false);
   // One type for every question in the window, which the stylesheet
@@ -397,30 +430,6 @@ export function App({
     go({ kind: "pairs" }, { also: pairs.open });
   };
 
-  // The child is away while the page is hidden or the gate covers this
-  // screen. A screen with its portrait layout remains playable.
-  const presence = useMemo<Presence>(
-    () => ({
-      isAway: () => gate.isShown() || pageVisibility.isHidden(),
-      subscribe: (onChange) => {
-        const stopViewport = gate.subscribe(onChange);
-        const stopVisibility = pageVisibility.subscribe(onChange);
-        return () => {
-          stopViewport();
-          stopVisibility();
-        };
-      }
-    }),
-    [gate, pageVisibility]
-  );
-
-  const skeletonGame = useSkeletonGame(
-    { skeletons, skeletonPicture, skeletonProgress, bodyPicture, startTimer, presence, reducedMotion: careProps.reducedMotion, random, sounds: skeletonSounds, kin: pals },
-    ageLevel,
-    home,
-    counting("skeletons")
-  );
-
   const openSkeletons = () => {
     go({ kind: "skeletons" });
   };
@@ -436,6 +445,11 @@ export function App({
     if (!dinosaur) throw new Error(`No dinosaur ${dinosaurId} to name`);
     return dinosaur.name[chosen];
   };
+
+  const presence = useMemo(
+    () => ({ isAway: () => gate.isShown() || pageVisibility.isHidden(), subscribe: subscribePresence }),
+    [gate, pageVisibility, subscribePresence]
+  );
 
   const dig = useDigGame(
     { digDinosaurs, digProgress, dinosaurName, bodyPicture, random, startTimer, presence, reducedMotion: careProps.reducedMotion, sandContext },

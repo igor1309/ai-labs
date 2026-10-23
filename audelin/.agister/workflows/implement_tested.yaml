@@ -1,0 +1,17 @@
+# Resolve the packages' dependencies, implement, then run Audelin's tests
+# outside the implementer's sandbox: the test step's exit code, not the
+# implementer's report, says whether they pass. Agister runs no branch or
+# repeat yet, so a failure is repaired by a further run, not by this one.
+schema: agister.workflow/v1alpha1
+params:
+  brief: {}
+
+steps:
+  - {name: resolve, process: audelin_resolve, agent: bash}
+  - {name: build, process: implement, agent: codex-sol-61, inputs: {brief: {from: params.brief}}}
+  - {name: test, process: audelin_tests, agent: bash}
+
+outputs:
+  implementation: {from: steps.build.outputs}
+  exit_code: {from: steps.test.outputs.exit_code}
+  test_output: {from: steps.test.outputs.stdout.tail}
