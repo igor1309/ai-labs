@@ -326,7 +326,8 @@ private actor Dependency {
 
     nonisolated private let written = Mutex<[String]>([])
     private var held: [Int: CheckedContinuation<Event, Never>] = [:]
-    private var arrivals: [Int: [CheckedContinuation<Void, Never>]] = [:]
+    private var arrivals: [Int: [UInt64: CheckedContinuation<Void, Never>]] = [:]
+    private var nextWaiter: UInt64 = 0
     private var finished = false
 
     nonisolated var output: [String] {
@@ -339,7 +340,7 @@ private actor Dependency {
         if finished { return .ignored }
         let result = await withCheckedContinuation { continuation in
             held[id] = continuation
-            for waiter in arrivals.removeValue(forKey: id) ?? [] { waiter.resume() }
+            for waiter in (arrivals.removeValue(forKey: id) ?? [:]).values { waiter.resume() }
         }
         written.withLock { $0.append("work \(id)") }
         return result
@@ -348,7 +349,24 @@ private actor Dependency {
     func waitUntilHeld(_ id: Int) async {
 
         if held[id] != nil { return }
-        await withCheckedContinuation { arrivals[id, default: []].append($0) }
+        nextWaiter += 1
+        let waiter = nextWaiter
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume()
+                } else {
+                    arrivals[id, default: [:]][waiter] = continuation
+                }
+            }
+        } onCancel: {
+            Task { await self.stopWaiting(waiter, for: id) }
+        }
+    }
+
+    private func stopWaiting(_ waiter: UInt64, for id: Int) {
+
+        arrivals[id]?.removeValue(forKey: waiter)?.resume()
     }
 
     func release(_ id: Int, returning event: Event) async {
@@ -376,7 +394,8 @@ private actor Turns {
     private var permits = 0
     private var opened = false
     private var waiting: CheckedContinuation<Void, Never>?
-    private var observers: [CheckedContinuation<Void, Never>] = []
+    private var observers: [UInt64: CheckedContinuation<Void, Never>] = [:]
+    private var nextObserver: UInt64 = 0
 
     func next() async {
 
@@ -387,7 +406,7 @@ private actor Turns {
         }
         await withCheckedContinuation { continuation in
             waiting = continuation
-            for observer in observers { observer.resume() }
+            for observer in observers.values { observer.resume() }
             observers.removeAll()
         }
     }
@@ -405,7 +424,24 @@ private actor Turns {
     func waitUntilHeld() async {
 
         if waiting != nil { return }
-        await withCheckedContinuation { observers.append($0) }
+        nextObserver += 1
+        let observer = nextObserver
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume()
+                } else {
+                    observers[observer] = continuation
+                }
+            }
+        } onCancel: {
+            Task { await self.stopObserving(observer) }
+        }
+    }
+
+    private func stopObserving(_ observer: UInt64) {
+
+        observers.removeValue(forKey: observer)?.resume()
     }
 
     func open() {
