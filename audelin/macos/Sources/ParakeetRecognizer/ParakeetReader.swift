@@ -1,12 +1,31 @@
 import FluidAudio
 import LiveText
+import ModelLoading
+import Synchronization
 
 extension ParakeetRecognizer {
+
+    /// Every recognizer this process builds reads with the one model load.
+    static let readers = Mutex(sharedReaders(
+        load: { try await AsrModels.downloadAndLoad(version: .v3) },
+        makeReader: { try await ParakeetReader(models: $0) }
+    ))
 
     /// Loads Parakeet v3, downloading it the first time.
     public init() async throws {
 
-        self.init(reader: try await ParakeetReader())
+        let makeReader = Self.readers.withLock { $0 }
+        self.init(reader: try await makeReader())
+    }
+
+    /// Builds readers that all take their model from one load.
+    static func sharedReaders<Model: Sendable>(
+        load: @escaping @Sendable () async throws -> Model,
+        makeReader: @escaping @Sendable (Model) async throws -> any WindowReader
+    ) -> @Sendable () async throws -> any WindowReader {
+
+        let models = SharedModel(load: load)
+        return { try await makeReader(models.load().value) }
     }
 }
 
@@ -16,10 +35,10 @@ private final class ParakeetReader: WindowReader, @unchecked Sendable {
 
     private let manager: AsrManager
 
-    init() async throws {
+    init(models: AsrModels) async throws {
 
         manager = AsrManager(config: .default)
-        try await manager.loadModels(try await AsrModels.downloadAndLoad(version: .v3))
+        try await manager.loadModels(models)
     }
 
     func read(_ samples: [Float]) async throws -> [WindowWord] {

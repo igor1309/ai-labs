@@ -22,8 +22,8 @@ Feature: The window's shape
   size class at a time: the home page, the catalogue's list, a
   dinosaur's page, the compare quiz's question and result, and find the
   pair's welcome, board and result, sort's board and result, and build a
-  skeleton's every screen have one for a tall window
-  only (each in its own *-portrait.feature), so a tall-narrow window
+  skeleton's every screen and DIG's board have one for a
+  tall window only (each in its own *-portrait.feature), so a tall-narrow window
   still shows the picture over them. The scenarios
   below use the care welcome screen, which has no portrait layout yet.
 

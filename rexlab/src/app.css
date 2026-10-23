@@ -6957,6 +6957,66 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   white-space: nowrap;
 }
 
+/* A brush stroke on the board neither scrolls nor bounces the page, so it
+   never pulls the board away or swipes back a page. */
+html:has(.dig-board-screen),
+body:has(.dig-board-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Upright, the board takes the whole width under the bar, as tall as its
+   frame lets it, with 32 pixels at each side to keep it off the edges. */
+html[data-size="tall"] .dig-board-screen {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .dig-board-screen .dig-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-body {
+  container-type: size;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-board {
+  width: min(100cqw, 100cqh * var(--frame-width) / var(--frame-height));
+  height: auto;
+}
+
+/* Upright, a board that asks WHO IS IT? keeps 198 pixels under it from
+   the round's start for its cards, side by side in one row 170 high, so
+   the board stays in one place, at one size, through the whole round. */
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks] {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks] .dig-board {
+  flex: 0 0 auto;
+  width: min(100cqw, (100cqh - 198px) * var(--frame-width) / var(--frame-height));
+  height: auto;
+  max-height: none;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-choice-cards {
+  flex: 0 0 170px;
+  align-self: stretch;
+  flex-direction: row;
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-choice-slot {
+  max-height: none;
+  min-width: 0;
+}
+
 /* Upright, the choice takes the narrower side padding of the other
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of
