@@ -116,6 +116,21 @@ struct CallAppProcessesTests {
         #expect(try processes.processes() == expected)
     }
 
+    @Test(arguments: [
+        ([process(41, "com.google.Chrome", "Chrome")], ProcessSelection.only([41])),
+        ([process(90, "com.example.Audelin", "Audelin", isAudelin: true)], ProcessSelection.allExcept([90])),
+    ])
+    func aCallAppThatLeavesKeepsItsLatestAnswer(first: [AudioProcess], firstAnswer: ProcessSelection) throws {
+
+        let helper = process(19, "com.google.Chrome.helper.Renderer", "Chrome Helper (Renderer)")
+        let list = FakeProcessList([first, [helper], []])
+        let processes = CallAppProcesses(app: "com.google.Chrome", list: list)
+
+        #expect(try processes.processes() == firstAnswer)
+        #expect(try processes.processes() == .only([19]))
+        #expect(try processes.processes() == .only([19]))
+    }
+
     @Test func aCallAppThatStartsAfterIsChosen() throws {
 
         let audelin = process(90, "com.example.Audelin", "Audelin", isAudelin: true)

@@ -45,9 +45,11 @@ A second ask, with a new Chrome renderer in the list, adds it. Evidence:
 
 ## S-8 A call app that leaves keeps its answer
 
-A second ask with none of the call app's processes left gives the first
-answer again. Evidence:
-`CallAppProcessesTests.aCallAppThatLeavesKeepsItsAnswer`.
+An ask with none of the call app's processes left gives the latest answer
+again, including after a different "only" answer or an "all but" answer
+changes to "only". Evidence:
+`CallAppProcessesTests.aCallAppThatLeavesKeepsItsAnswer` and
+`CallAppProcessesTests.aCallAppThatLeavesKeepsItsLatestAnswer`.
 
 ## S-9 A call app that starts after is chosen
 
