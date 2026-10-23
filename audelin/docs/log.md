@@ -2,6 +2,10 @@
 
 ## 2026-10-23
 
+- Audelin can tell which processes to hear for a call app: its own and its
+  helpers, the last answer while they are gone, and every process but
+  Audelin's before the app appears (LAB-472).
+
 - A process replaced while its microphone flag is read cannot start a call
   under the previous process's app (LAB-473).
 
