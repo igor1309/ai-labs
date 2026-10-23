@@ -2,7 +2,8 @@
 
 The design lives in one file, [visual-language.pen](visual-language.pen).
 This page indexes it: the locked design system, the components, and where
-each frame sits. The app it draws is specified in [../mvp.md](../mvp.md). How
+each frame sits. The app it draws is specified, as far as it is yet, in
+[../spec/](../spec/). How
 to open, edit and save the file through the pencil MCP is in the repo's
 `AGENTS.md` § Designing in pen.dev.
 

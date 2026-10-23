@@ -20,8 +20,9 @@ decided last. It taps nothing and knows nothing of Core Audio.
 - A process with no bundle id, such as a command-line tool, is matched by
   its executable's name, the only name it has.
 - With none of the app's processes running, the answer is every process but
-  Audelin's own: mvp.md's first rule is not to lose the call, and other
-  apps' sound only adds noise to the «они» track.
+  Audelin's own: hearing nothing would lose their side of the call, which
+  the user spec records (S-1, S-2, S-9), and other apps' sound only adds noise to
+  the «они» track.
 - When the app's processes all leave, the answer stays as it was: a call
   app restarting is not a reason to hear every app. Once its processes are
   back, or first appear, they are the answer.
