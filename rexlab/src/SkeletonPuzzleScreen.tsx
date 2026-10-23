@@ -310,6 +310,7 @@ export function SkeletonPuzzleScreen({
         <div
           ref={boardElement}
           className="skeleton-board"
+          data-turn-part="skeleton-board"
           role="group"
           aria-label={text.skeleton}
           data-complete={complete || undefined}
@@ -377,6 +378,7 @@ export function SkeletonPuzzleScreen({
         </div>
         <div
           className="skeleton-tray"
+          data-turn-part="skeleton-tray"
           role="group"
           aria-label={text.bones}
           data-scatter={scatter || undefined}

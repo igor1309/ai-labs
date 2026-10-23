@@ -60,7 +60,7 @@ describe("the skeleton choice upright", () => {
     expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
   });
 
-  it("keeps the puzzle behind the gate upright, its layout still to come", async () => {
+  it("keeps the puzzle behind the gate upright when no layout is given for it", async () => {
     const { user } = openChoice([820, 1180]);
     await user.click(choices()[0]!);
     expect(gateShown()).toBe(true);
