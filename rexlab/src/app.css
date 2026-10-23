@@ -6957,6 +6957,40 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   white-space: nowrap;
 }
 
+/* A brush stroke on the board neither scrolls nor bounces the page, so it
+   never pulls the board away or swipes back a page. */
+html:has(.dig-board-screen),
+body:has(.dig-board-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Upright, the board takes the whole width under the bar, as tall as its
+   frame lets it, with 32 pixels at each side to keep it off the edges. */
+html[data-size="tall"] .dig-board-screen {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .dig-board-screen .dig-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-body {
+  container-type: size;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-board {
+  width: min(100cqw, 100cqh * var(--frame-width) / var(--frame-height));
+  height: auto;
+}
+
 /* Upright, the choice takes the narrower side padding of the other
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of
