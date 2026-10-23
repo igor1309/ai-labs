@@ -2,6 +2,7 @@
 
 ## 2026-10-23
 
+- The skeleton museum stands upright in a tall window: two stands per row with the last centred, readable names and actions in English and Russian, and scrolling when needed. Turning glides the stands to their new places while keeping stars, badges and rebuilding progress (LAB-491).
 - Build a skeleton's choice stands upright in a tall window instead of asking to turn: the skeletons in rows of two under a one-row bar, HOME and MUSEUM as their symbols, every word fitting in English and Russian. Turning the iPad glides the cards to their new places; the puzzle still asks to turn (LAB-490).
 - Sort's result stands upright in a tall window instead of asking to turn, as the compare quiz's result does, every word fitting in English and Russian; turning the iPad glides it to its new layout. Sort now plays whole upright (LAB-489).
 - Sort's board stands upright in a tall window instead of asking to turn: the bar, the prompt, the tray and the baskets one under another, the tray's cards in two rows as large as the window allows and never under 120 wide, the baskets side by side with their marks above their names, every basket word fitting in English and Russian. Turning the iPad glides the cards and baskets to their new places; the result still asks to turn (LAB-488).

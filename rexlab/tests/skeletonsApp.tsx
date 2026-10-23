@@ -44,6 +44,7 @@ export type SkeletonsAppOptions = {
   pictures?: ManualPictures;
   viewport?: ManualViewport;
   portraitLayouts?: AppProps["portraitLayouts"];
+  layoutMotion?: AppProps["layoutMotion"];
   visibility?: ManualVisibility;
   deviceLanguage?: string;
   // Whether the device asks for reduced motion.
@@ -74,6 +75,7 @@ export function openHomeApp({
   pictures = manualPictures(),
   viewport = manualViewport("landscape"),
   portraitLayouts = {},
+  layoutMotion,
   visibility = manualVisibility("visible"),
   deviceLanguage = "en-GB",
   reducedMotion = false,
@@ -112,6 +114,7 @@ export function openHomeApp({
     skeletonPicture: fakeSkeletonPicture,
     ...emptyDig(),
     ...pageAtRest(),
+    ...(layoutMotion && { layoutMotion }),
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
     ...featuring(),

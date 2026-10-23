@@ -7816,6 +7816,49 @@ html[data-size="tall"] .skeleton-choice {
   outline-offset: -1px;
 }
 
+/* Upright, a full row preserves BUILD ANOTHER's words. Stands keep at
+   least their 1024-wide landscape width; side insets or a scrollbar can
+   leave room for only one. The page scrolls instead of shrinking art. */
+html[data-size="tall"] .skeleton-museum-screen {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+html[data-size="tall"] .skeleton-museum-screen .skeleton-bar {
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+html[data-size="tall"] .skeleton-museum-screen .skeleton-bar-button {
+  order: 1;
+  flex-basis: 100%;
+  width: 100%;
+  padding: 0 22px 0 18px;
+}
+
+html[data-size="tall"] .skeleton-hall {
+  flex: 1 0 auto;
+  padding: 24px 0;
+  gap: 16px 12px;
+}
+
+/* MUSEUM's bold letters need slightly more than the generic title's
+   0.75em bound, including the system face's Cyrillic letters. */
+html[data-size="tall"] .skeleton-museum-screen .skeleton-title-words {
+  font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.8));
+}
+
+html[data-size="tall"] .skeleton-stand {
+  flex-basis: calc((100% - 12px) / 2);
+  min-width: min(262px, 100%);
+  min-height: 208px;
+}
+
+html[data-size="tall"] .skeleton-exhibit {
+  min-height: 96px;
+}
+
 /* Reduced motion comes after every rule it overrides, so that it wins
    over them: a later rule of the same weight would undo it. */
 @media (prefers-reduced-motion: reduce) {

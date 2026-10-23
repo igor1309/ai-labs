@@ -37,23 +37,23 @@ export function SkeletonMuseumScreen({ language, stands, score, total, best, onB
   return (
     <main className="skeleton-screen skeleton-museum-screen">
       <div className="stratum stratum-1" aria-hidden="true" />
-      <SkeletonBar language={language} title={text.museum} Mark={Landmark} onHome={onHome}>
-        <Button className="home-button skeleton-bar-button" onClick={onBuildAnother}>
+      <SkeletonBar language={language} title={text.museum} Mark={Landmark} onHome={onHome} part="skeleton-museum">
+        <Button className="home-button skeleton-bar-button" data-turn-part="skeleton-museum-another" onClick={onBuildAnother}>
           <Bone size={24} aria-hidden="true" />
           {text.buildAnother}
         </Button>
-        <p className="skeleton-chip skeleton-stars" aria-label={text.starsEarned}>
+        <p className="skeleton-chip skeleton-stars" aria-label={text.starsEarned} data-turn-part="skeleton-museum-score">
           <Star size={20} aria-hidden="true" />
           {score}/{total}
         </p>
         {best !== undefined && (
-          <p className="skeleton-chip" aria-label={text.bestScore}>
+          <p className="skeleton-chip" aria-label={text.bestScore} data-turn-part="skeleton-museum-best">
             <Trophy size={20} aria-hidden="true" />
             {best}/{total}
           </p>
         )}
       </SkeletonBar>
-      <div className="skeleton-hall" role="group" aria-label={text.stands}>
+      <div className="skeleton-hall" role="group" aria-label={text.stands} data-turn-part="skeleton-hall">
         {stands.map((stand, index) => (
           <StandCard key={stand.id} language={language} stand={stand} index={index} onBuild={onBuild} onRebuild={onRebuild} />
         ))}
@@ -79,7 +79,7 @@ function StandCard({
   const name = stand.name.toLocaleUpperCase(language);
   const built = stand.state === "built";
   return (
-    <section className="skeleton-stand" aria-label={name} data-state={stand.state} style={{ "--stand": index } as CSSProperties}>
+    <section className="skeleton-stand" aria-label={name} data-state={stand.state} data-turn-part={`skeleton-stand-${stand.id}`} style={{ "--stand": index } as CSSProperties}>
       <div className="skeleton-stand-top">
         <h2 className="skeleton-stand-name">{name}</h2>
         {stand.state !== "empty" && (

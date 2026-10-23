@@ -15,6 +15,7 @@ export function SkeletonBar({
   onMuseum,
   onBack,
   onHome,
+  part,
   children
 }: {
   language: Language;
@@ -23,6 +24,7 @@ export function SkeletonBar({
   onMuseum?: () => void;
   onBack?: () => void;
   onHome: () => void;
+  part?: string;
   children?: ReactNode;
 }) {
   const text = TEXTS[language];
@@ -34,11 +36,11 @@ export function SkeletonBar({
           <span className="upright-hidden">{text.back}</span>
         </Button>
       )}
-      <Button className="home-button" onClick={onHome}>
+      <Button className="home-button" onClick={onHome} data-turn-part={part && `${part}-home`}>
         <House size={24} aria-hidden="true" />
         <span className="upright-hidden">{text.home}</span>
       </Button>
-      <h1 className="skeleton-title">
+      <h1 className="skeleton-title" data-turn-part={part && `${part}-title`}>
         <span className="skeleton-mark" aria-hidden="true">
           <Mark size={28} />
         </span>
