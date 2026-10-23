@@ -2,8 +2,8 @@ Feature: Care: the welcome in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide, care's
   welcome stands upright: the bar across the top, HOME as its symbol, and
   NEW VISITOR over FRIENDS across the width, NEW VISITOR the taller. The
-  rest is as dinosaur-care-start.feature tells. A visit, FRIENDS and the
-  result still ask to turn, and a tall-narrow window keeps the picture
+  rest is as dinosaur-care-start.feature tells. FRIENDS and the result
+  still ask to turn, and a tall-narrow window keeps the picture
   asking to turn or widen (window-shape.feature).
 
   Scenario Outline: The welcome stands upright
@@ -28,8 +28,3 @@ Feature: Care: the welcome in a tall window
       | language |
       | English  |
       | Russian  |
-
-  Scenario: A new visitor still asks to turn
-    Given a window of 820 by 1180 CSS pixels on care's welcome
-    When I tap NEW VISITOR
-    Then I see the picture asking to turn sideways

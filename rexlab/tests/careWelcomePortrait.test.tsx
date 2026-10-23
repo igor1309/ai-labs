@@ -94,10 +94,4 @@ describe("care's welcome upright", () => {
     act(() => viewport.resize("tall", true));
     expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
   });
-
-  it("still asks to turn over a new visitor", () => {
-    openWelcome([820, 1180]);
-    act(() => { fireEvent.click(screen.getByRole("button", { name: TEXTS.en.newVisitor })); });
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
 });
