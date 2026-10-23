@@ -23,7 +23,8 @@ audio with no new start. Evidence: Missing.
 ## S-5 A new output device keeps the sound heard
 
 Fake: the device changes and the format reads 24 kHz instead of 48; the
-pieces after it carry 24 kHz. Evidence: Missing.
+pieces after it carry 24 kHz and the named process's tone, read back at
+that rate. Evidence: Missing.
 
 ## S-6 A capture that cannot start fails
 
@@ -72,10 +73,12 @@ read back. Evidence: Missing.
 
 ## S-15 A naming the system refuses keeps the old one
 
-Fake: a new naming is refused; the first process's tone keeps coming and
-the capture does not fail. Evidence: Missing.
+Fake: a new naming is refused; the client is told it was refused, the
+first process's tone keeps coming and the capture does not fail. Evidence:
+Missing.
 
 ## S-17 Sound is read without muting it
 
-Fake: the tap is asked to leave playback unmuted. The real Zoom call of the
-user spec hears the far side while recording. Evidence: Missing.
+Fake: in one drive, the tap is asked to leave playback unmuted and the
+named process's tone is read back. Real: on the user spec's Zoom call, the
+owner hears the far side while its sound is read. Evidence: Missing.
