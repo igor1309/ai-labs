@@ -6,9 +6,9 @@ import Testing
 
 struct NativeCaptureBindingTests {
 
-    @Test func nativeBuffersKeepSamplesAndRatesInDeliveryOrder() async throws {
+    @Test func nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder() async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         let samples: [[Float]] = [
             [-0.875, -0.75, -0.625], [-0.5],
@@ -16,7 +16,7 @@ struct NativeCaptureBindingTests {
         ]
         try calls.deliver(samples: samples[0])
         try calls.deliver(samples: samples[1])
-        calls.state.withLock { $0.rate = 24_000 }
+        calls.state.withLock { $0.format.mSampleRate = 24_000 }
         try calls.deliver(samples: samples[2])
         try calls.deliver(samples: samples[3])
         capture.stop()
@@ -28,12 +28,12 @@ struct NativeCaptureBindingTests {
     @Test(arguments: [false, true])
     func nativeFormatFailuresKeepEarlierAudio(readRefused: Bool) async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         let samples = (0..<480).map { tone(10, frame: $0, rate: 48_000) }
         try calls.deliver(samples: samples)
         calls.state.withLock {
-            if readRefused { $0.refuse = "format" } else { $0.rate = 0 }
+            if readRefused { $0.refuse = "format" } else { $0.format.mSampleRate = 0 }
         }
         try calls.deliver(samples: samples)
         capture.stop()
@@ -54,9 +54,21 @@ struct NativeCaptureBindingTests {
         #expect(calls.state.withLock { $0.released == Array($0.made.reversed()) })
     }
 
+    @Test(arguments: NativeTapFormat.allCases)
+    func nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian(format: NativeTapFormat) throws {
+
+        let calls = RecordingCaptureCalls(format: format)
+        let binding = CoreAudioBinding(native: calls.native)
+        if format == .float32MonoLittleEndian {
+            #expect(try binding.sampleRate(11) == 48_000)
+        } else {
+            #expect(throws: CaptureError.unsupportedFormat) { try binding.sampleRate(11) }
+        }
+    }
+
     @Test func nativeAggregateContainsOnlyItsPrivateManualTap() async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         capture.stop()
         #expect(try await drain(capture).isEmpty)
@@ -70,18 +82,20 @@ struct NativeCaptureBindingTests {
         #expect(aggregate[kAudioAggregateDeviceMainSubDeviceKey] == nil)
     }
 
-    @Test(arguments: StopNotification.allCases)
-    func nativeStopListenerReportsOnlyStoppedDevices(notification: StopNotification) throws {
+    @Test(arguments: StopNotification.allCases, NativeDeviceState.allCases)
+    func nativeStopNotificationsReadTheirOwnDeviceState(notification: StopNotification, deviceState: NativeDeviceState) throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let binding = CoreAudioBinding(native: calls.native)
         let stops = Mutex(0)
         let watch = try binding.watchDevice(22) { stops.withLock { $0 += 1 } }
         defer { binding.unwatchDevice(22, watch) }
         let registration = try #require(calls.state.withLock { $0.listener })
         calls.state.withLock {
-            $0.propertyValue = notification.value
-            $0.propertyStatus = notification == .failedRead ? -50 : noErr
+            $0.alive = deviceState == .runningOnly ? 0 : 1
+            $0.running = deviceState == .aliveOnly ? 0 : 1
+            $0.aliveStatus = deviceState == .aliveReadFails ? -50 : noErr
+            $0.runningStatus = deviceState == .runningReadFails ? -50 : noErr
         }
         if notification == .afterUnwatch { binding.unwatchDevice(22, watch) }
         let address = AudioObjectPropertyAddress(
@@ -89,7 +103,8 @@ struct NativeCaptureBindingTests {
             mElement: kAudioObjectPropertyElementMain
         )
         calls.fire([address], on: 22, through: registration)
-        #expect(stops.withLock { $0 } == (notification.reportsStop ? 1 : 0))
+        #expect(calls.state.withLock { $0.propertyReads } == notification.expectedReads)
+        #expect(stops.withLock { $0 } == (notification.reportsStop(in: deviceState) ? 1 : 0))
     }
 
     @Test func nativeStopNotificationsRequireMatchingSubscriptions() throws {
@@ -107,7 +122,7 @@ struct NativeCaptureBindingTests {
             (22, notification.mSelector, notification.mScope, 1, false),
         ]
         for subscription in subscriptions {
-            let calls = RecordingCaptureCalls()
+            let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
             let native = calls.native
             let stops = Mutex(0)
             let queue = DispatchQueue(label: "audelin.test-stop-subscription")
@@ -125,7 +140,7 @@ struct NativeCaptureBindingTests {
 
     @Test func nativeStopReleasesEveryHandleInReverseOrder() async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         capture.stop()
         capture.stop()
@@ -139,7 +154,7 @@ struct NativeCaptureBindingTests {
     @Test(arguments: ["tap", "device", "format", "io", "watch", "start"])
     func eachRefusedNativeStartingStepReleasesOnlyItsHandles(step: String) {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         calls.state.withLock { $0.refuse = step }
         #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50)) {
             _ = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
@@ -156,7 +171,7 @@ struct NativeCaptureBindingTests {
     @Test(arguments: [ProcessSelection.only([10, 20]), .allExcept([30, 40])])
     func nativeTapDescriptionTranslatesEveryProcess(selection: ProcessSelection) throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let binding = CoreAudioBinding(native: calls.native)
         let tap = try binding.createTap(TapRequest(selection: selection, mono: true, unmuted: true, isPrivate: true))
         defer { binding.destroyTap(tap) }
@@ -175,7 +190,7 @@ struct NativeCaptureBindingTests {
 
     @Test func runningRenameWritesTheNativeTapDescription() async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10, 20]))
         try capture.name(.allExcept([30, 40]))
         capture.stop()
@@ -190,7 +205,7 @@ struct NativeCaptureBindingTests {
 
     @Test func aPIDWithoutANativeProcessObjectIsRefused() throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         calls.state.withLock { $0.missing = 20 }
         let binding = CoreAudioBinding(native: calls.native)
         #expect(throws: CaptureError.processUnavailable(20)) {
@@ -201,7 +216,7 @@ struct NativeCaptureBindingTests {
 
     @Test func aRefusedNativeDescriptionWriteIsThrown() async throws {
 
-        let calls = RecordingCaptureCalls()
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         calls.state.withLock { $0.writeStatus = -50 }
         do {
@@ -218,20 +233,65 @@ struct NativeCaptureBindingTests {
 
 enum StopNotification: CaseIterable, Sendable {
 
-    case abnormal, notAlive, notRunning, failedRead, unrelated, afterUnwatch, alive, running
+    case abnormal, alive, running, unrelated, afterUnwatch
 
     var selector: AudioObjectPropertySelector {
 
         switch self {
         case .abnormal, .afterUnwatch: kAudioDevicePropertyIOStoppedAbnormally
-        case .notAlive, .failedRead, .alive: kAudioDevicePropertyDeviceIsAlive
-        case .notRunning, .running: kAudioDevicePropertyDeviceIsRunning
+        case .alive: kAudioDevicePropertyDeviceIsAlive
+        case .running: kAudioDevicePropertyDeviceIsRunning
         case .unrelated: kAudioDevicePropertyNominalSampleRate
         }
     }
 
-    var value: UInt32 { self == .notAlive || self == .notRunning ? 0 : 1 }
-    var reportsStop: Bool { [.abnormal, .notAlive, .notRunning, .failedRead].contains(self) }
+    var expectedReads: [AudioObjectPropertySelector] {
+
+        switch self {
+        case .alive, .running: [selector]
+        case .abnormal, .unrelated, .afterUnwatch: []
+        }
+    }
+
+    func reportsStop(in state: NativeDeviceState) -> Bool {
+
+        switch self {
+        case .abnormal: true
+        case .alive: [.runningOnly, .aliveReadFails].contains(state)
+        case .running: [.aliveOnly, .runningReadFails].contains(state)
+        case .unrelated, .afterUnwatch: false
+        }
+    }
+}
+
+enum NativeDeviceState: CaseIterable, Sendable {
+
+    case aliveOnly, runningOnly, aliveAndRunning, aliveReadFails, runningReadFails
+}
+
+enum NativeTapFormat: CaseIterable, Sendable {
+
+    case float32MonoLittleEndian, anotherFormatID, integer, bigEndian, anotherBitDepth, stereo, zeroRate
+
+    var value: AudioStreamBasicDescription {
+
+        var format = AudioStreamBasicDescription()
+        format.mSampleRate = 48_000
+        format.mFormatID = kAudioFormatLinearPCM
+        format.mFormatFlags = kAudioFormatFlagIsFloat
+        format.mBitsPerChannel = 32
+        format.mChannelsPerFrame = 1
+        switch self {
+        case .float32MonoLittleEndian: break
+        case .anotherFormatID: format.mFormatID = kAudioFormatMPEG4AAC
+        case .integer: format.mFormatFlags = kAudioFormatFlagIsSignedInteger
+        case .bigEndian: format.mFormatFlags |= kAudioFormatFlagIsBigEndian
+        case .anotherBitDepth: format.mBitsPerChannel = 64
+        case .stereo: format.mChannelsPerFrame = 2
+        case .zeroRate: format.mSampleRate = 0
+        }
+        return format
+    }
 }
 
 private struct TapSnapshot: Sendable {
@@ -316,27 +376,41 @@ private final class RecordingCaptureCalls: Sendable {
         var io: IOBlock?
         var missing: Int32?
         var refuse: String?
-        var propertyValue: UInt32 = 1
-        var propertyStatus: Int32 = 0
+        var alive: UInt32 = 1
+        var running: UInt32 = 1
+        var aliveStatus: Int32 = 0
+        var runningStatus: Int32 = 0
+        var propertyReads: [AudioObjectPropertySelector] = []
         var writeStatus: Int32 = 0
-        var rate = 48_000.0
+        var format: AudioStreamBasicDescription
     }
 
-    let state = Mutex(State())
+    let state: Mutex<State>
+
+    init(format: NativeTapFormat) {
+
+        state = Mutex(State(format: format.value))
+    }
 
     func deliver(samples: [Float]) throws {
 
         let block = try #require(state.withLock { $0.io })
         var samples = samples
+        var outputSamples = samples.map { $0 + 1 }
         samples.withUnsafeMutableBytes { bytes in
             var input = AudioBufferList(
                 mNumberBuffers: 1,
                 mBuffers: AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(bytes.count), mData: bytes.baseAddress)
             )
-            var output = input
-            var timestamp = AudioTimeStamp()
-            withUnsafePointer(to: &timestamp) { time in
-                block.value(time, &input, time, &output, time)
+            outputSamples.withUnsafeMutableBytes { outputBytes in
+                var output = AudioBufferList(
+                    mNumberBuffers: 1,
+                    mBuffers: AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(outputBytes.count), mData: outputBytes.baseAddress)
+                )
+                var timestamp = AudioTimeStamp()
+                withUnsafePointer(to: &timestamp) { time in
+                    block.value(time, &input, time, &output, time)
+                }
             }
         }
     }
@@ -416,16 +490,15 @@ private final class RecordingCaptureCalls: Sendable {
                     #expect(object == 11)
                     let status = attempt("format")
                     guard status == noErr else { return status }
-                    var format = AudioStreamBasicDescription()
-                    format.mSampleRate = state.withLock { $0.rate }
-                    format.mFormatID = kAudioFormatLinearPCM
-                    format.mFormatFlags = kAudioFormatFlagIsFloat
-                    format.mBitsPerChannel = 32
-                    format.mChannelsPerFrame = 1
+                    let format = state.withLock { $0.format }
                     data.storeBytes(of: format, as: AudioStreamBasicDescription.self)
                 case kAudioDevicePropertyDeviceIsAlive, kAudioDevicePropertyDeviceIsRunning:
                     #expect(object == 22)
-                    let result = state.withLock { ($0.propertyValue, $0.propertyStatus) }
+                    let result = state.withLock {
+                        $0.propertyReads.append(address.mSelector)
+                        return address.mSelector == kAudioDevicePropertyDeviceIsAlive
+                            ? ($0.alive, $0.aliveStatus) : ($0.running, $0.runningStatus)
+                    }
                     data.storeBytes(of: result.0, as: UInt32.self)
                     return result.1
                 default:

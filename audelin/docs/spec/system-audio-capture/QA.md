@@ -24,21 +24,21 @@ Native: rename writes a description with the same UUID. Evidence:
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: tones survive an output change. Native: exact samples and rates stay in delivery order. Evidence:
+Fake: tones survive an output change. Native: input samples and rates stay in delivery order despite different output samples. Evidence:
 `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
-`NativeCaptureBindingTests.nativeBuffersKeepSamplesAndRatesInDeliveryOrder`.
+`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`.
 
 ## S-6 A capture that cannot start fails
 
 Fake and native: each refused starting step releases its handles in reverse order.
-Native: an unavailable process object is refused before creating a tap. Evidence:
+Native: an unavailable process object and unsupported tap formats are refused. Evidence:
 `SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`, `NativeCaptureBindingTests.eachRefusedNativeStartingStepReleasesOnlyItsHandles`,
-`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`.
+`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`.
 
 ## S-7 A capture the system stops fails
 
 Fake and native: stopped devices and unreadable formats fail after cleanup;
-the first failure survives a later stop. Native notifications require a matching subscription. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopListenerReportsOnlyStoppedDevices`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
+the first failure survives a later stop. Native notifications require a matching subscription and read alive and running independently. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
 `SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`.
 
 ## S-8 A failed capture keeps what it heard
