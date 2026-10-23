@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
+        .library(name: "CallText", targets: ["CallText"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -24,6 +25,9 @@ let package = Package(
         ),
         .target(
             name: "CallAppProcesses"
+        ),
+        .target(
+            name: "CallText"
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -66,6 +70,10 @@ let package = Package(
         .testTarget(
             name: "CallAppProcessesTests",
             dependencies: ["CallAppProcesses"]
+        ),
+        .testTarget(
+            name: "CallTextTests",
+            dependencies: ["CallText"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
