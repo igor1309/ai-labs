@@ -13,17 +13,17 @@ Core Audio's process objects.
   fired each time Voice Memos, a browser tab and Amanu started or stopped
   using the microphone ([measured](../../research/system-audio.md#measured-on-this-mac)).
   The recording flag, never told by itself, is re-read when they fire.
-- A call is a call app on the owner's list using the microphone: Zoom
+- A call is a call app of user spec S-1 using the microphone: Zoom
   (`us.zoom.xos`), Telemost (`ru.yandex.desktop.telemost`) and the browser
   families where calls in a tab run, by Amanu's bundle ids
-  (`MicActivityMonitor.swift:66-85`). Any app on the microphone would make
-  dictation, Siri and Voice Memos calls. A bundle-id prefix takes the
-  app's helpers, and an app is on the microphone while any of its
-  processes is.
-- A call ends once no call app has used the microphone for 30 s (the
-  owner's number), on a clock it is given, so a mute or a device switch
-  does not end it. A second call app joins a running call, which keeps
-  its first app.
+  (`MicActivityMonitor.swift:66-85`). Any app on the mic would make
+  dictation, Siri and Voice Memos calls. A bundle-id prefix takes the app's
+  helpers; an app is on the mic while any of its processes is.
+- A call ends 30 s after the last call app leaves the mic, on a clock it is
+  given. Amanu waits 15 s and also needs a quiet far end
+  (`SettingsSchema.swift:221`); this hears no far end, so it waits twice as
+  long for a device switch to bring the mic back. A second call app joins a
+  running call, which keeps its first app.
 - The list is every process Core Audio knows, with its bundle id, name
   (its executable's without one) and Audelin's own marked.
 

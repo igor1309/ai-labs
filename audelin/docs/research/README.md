@@ -10,7 +10,7 @@ under the working name wisper.
 | [needs.md](needs.md) | What the owner needs, and the constraints |
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
-| [../mvp.md](../mvp.md) | The MVP spec: versions and owner decisions |
+| [../mvp.md](../mvp.md) | The product vision as first written: not grounds for any spec or technical choice |
 | [adr-001-v1-architecture.md](../adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
 | [system-audio.md](system-audio.md) | How open-source Mac recorders capture the call's audio (process tap vs ScreenCaptureKit), and what Audelin takes |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
@@ -43,7 +43,8 @@ The design system is locked (2026-10-21): the file's variables hold Glass
 Ledger's colours with a light and a dark value (theme axis `mode`), two
 fonts, and consolidated type, radius and spacing scales. Each screen has one
 current frame, built from the components, which draws the owner's answers of
-2026-10-21 recorded in mvp.md. Earlier versions and the four proposals
+2026-10-21 recorded in mvp.md; specs trace to the design, not to mvp.md.
+Earlier versions and the four proposals
 are in git history.
 [design/README.md](../design/README.md) lists the tokens, components and screens.
 
