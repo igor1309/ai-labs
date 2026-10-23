@@ -2,7 +2,8 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
-import { openCareApp } from "./careApp.tsx";
+import { playVisit } from "./care.ts";
+import { openCareApp, welcomeVisitor } from "./careApp.tsx";
 import { manualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
@@ -47,9 +48,51 @@ describe("care's welcome upright", () => {
     expect(home.querySelector(".upright-hidden")?.textContent).toBe(text.home);
     const title = styleAt(part(".new-visitor-title"), [600, 1000]);
     expect([title.px("font-size"), title.value("white-space")]).toEqual([40, "nowrap"]);
-    // 600 less the margins, the footer's padding, symbol and gap leaves
-    // 372 pixels; the eleven capitals take at most 0.8 em each.
-    expect(text.newVisitor.length * 40 * 0.8).toBeLessThanOrEqual(600 - 64 - 80 - 64 - 20);
+    // jsdom does not lay out: the room the stylesheet leaves the words
+    // in the footer, against capitals at a conservative 0.8 em with their
+    // spacing.
+    const page = styleAt(part(".care-welcome"), [600, 1000]);
+    const footer = styleAt(part(".new-visitor-footer"), [600, 1000]);
+    const symbol = styleAt(part(".new-visitor-symbol"), [600, 1000]);
+    const room = 600 - page.px("padding-left") - page.px("padding-right") - footer.px("padding-left") - footer.px("padding-right") - symbol.px("width") - footer.columnGap();
+    expect(text.newVisitor.length * (title.px("font-size") * 0.8 + title.px("letter-spacing"))).toBeLessThanOrEqual(room);
+  });
+
+  it("keeps the landscape welcome as it was, NEW VISITOR beside FRIENDS", () => {
+    openWindow(1180, 820);
+    openCareApp({ portraitLayouts: PORTRAIT_LAYOUTS });
+    fireEvent.click(screen.getByRole("button", { name: TEXTS.en.care }));
+    expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
+    const choices = getComputedStyle(part(".care-choices"));
+    expect([choices.flexDirection || "row", choices.gap]).toEqual(["row", "28px"]);
+    expect(getComputedStyle(part(".care-welcome")).paddingLeft).toBe("56px");
+    expect(getComputedStyle(part(".new-visitor-title")).fontSize).toBe("52px");
+    expect(screen.getByRole("button", { name: TEXTS.en.home }).querySelector(".upright-hidden")).not.toBeNull();
+  });
+
+  it("marks both cards as parts a turn glides", () => {
+    openWelcome([820, 1180]);
+    expect([part(".new-visitor-card").dataset.turnPart, part(".friends-card").dataset.turnPart]).toEqual(["care-new-visitor", "care-friends"]);
+  });
+
+  it("still asks to turn over FRIENDS", () => {
+    openWelcome([820, 1180]);
+    fireEvent.click(screen.getByRole("button", { name: TEXTS.en.friends }));
+    expect(document.querySelector(".friends")).not.toBeNull();
+    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
+  });
+
+  it("still asks to turn over the result", async () => {
+    openWindow(1180, 820);
+    const viewport = manualViewport("landscape");
+    const { user, clock } = openCareApp({ viewport, portraitLayouts: PORTRAIT_LAYOUTS });
+    await welcomeVisitor(user);
+    await playVisit(user, clock);
+    act(() => clock.settle());
+    expect(screen.getByLabelText("SCORE")).toBeTruthy();
+    openWindow(820, 1180);
+    act(() => viewport.resize("tall", true));
+    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
   });
 
   it("still asks to turn over a new visitor", () => {
