@@ -112990,19 +112990,6 @@
                   "icon": "house",
                   "library": "lucide",
                   "fill": "$fm-ink"
-                },
-                {
-                  "type": "text",
-                  "id": "hp0po",
-                  "x": 50,
-                  "y": 16.5,
-                  "name": "Home Text",
-                  "enabled": false,
-                  "fill": "$fm-ink",
-                  "content": "HOME",
-                  "fontFamily": "Lexend",
-                  "fontSize": 18,
-                  "fontWeight": "600"
                 }
               ]
             },
@@ -113142,7 +113129,7 @@
           "gap": 16,
           "padding": [
             24,
-            32
+            0
           ],
           "children": [
             {
@@ -113151,7 +113138,7 @@
               "name": "Row Top",
               "width": "fill_container",
               "height": "fill_container",
-              "gap": 32,
+              "gap": 12,
               "alignItems": "end",
               "children": [
                 {
@@ -113225,7 +113212,7 @@
                         {
                           "type": "frame",
                           "id": "mNmIf",
-                          "x": 200,
+                          "x": 240,
                           "y": 0,
                           "name": "Stand Badges",
                           "gap": 6,
@@ -113394,7 +113381,7 @@
                         {
                           "type": "frame",
                           "id": "I3JNs9",
-                          "x": 200,
+                          "x": 240,
                           "y": 0,
                           "name": "Stand Badges",
                           "gap": 6,
@@ -113475,7 +113462,7 @@
               "name": "Row Bottom",
               "width": "fill_container",
               "height": "fill_container",
-              "gap": 32,
+              "gap": 12,
               "justifyContent": "center",
               "alignItems": "end",
               "children": [
@@ -113657,7 +113644,7 @@
                   "type": "frame",
                   "id": "fKoya",
                   "name": "Stand SPINOSAURUS",
-                  "width": 292,
+                  "width": 334,
                   "height": "fill_container",
                   "layout": "vertical",
                   "gap": 8,
