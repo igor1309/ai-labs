@@ -21,7 +21,8 @@ import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
 import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
-import { usePairsGame, type PairsGameProps } from "./pairsGame.tsx";
+import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
+import { pairsWelcomeType, pairsWelcomeWidth } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
@@ -80,10 +81,11 @@ export type ViewportInsets = { left: number; right: number };
 // shows the picture asking to turn or widen.
 export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 
-// The screens a layout is built for: each of the app's, and each of the
-// compare quiz's own, a question or its result, which it names as it
+// The screens a layout is built for: each of the app's, each of the
+// compare quiz's own, a question or its result, and each of find the
+// pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -312,9 +314,17 @@ export function App({
 
   const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, ageLevel, home, counting("compare"));
 
-  // The quiz's phase is its own: the gate and the turns read it as the
-  // quiz reports it.
-  const layoutScreen: LayoutScreen = screen.kind === "compare" && quiz.phase ? `compare-${quiz.phase}` : screen.kind;
+  const pairs = usePairsGame(
+    { pals, pairsProgress, bodyPicture, skeletonPicture, random, startTimer, reducedMotion: careProps.reducedMotion },
+    ageLevel,
+    home,
+    counting("pairs")
+  );
+
+  // Each game's phase is its own: the gate and the turns read it as the
+  // game reports it.
+  const layoutScreen: LayoutScreen =
+    screen.kind === "compare" && quiz.phase ? `compare-${quiz.phase}` : screen.kind === "pairs" ? `pairs-${pairs.phase}` : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => {
@@ -336,6 +346,11 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
   });
+  // And one type for find the pair's welcome's title and level names.
+  const welcomeWidth = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {
@@ -353,13 +368,6 @@ export function App({
   const openSorting = () => {
     sorting.start(() => set({ kind: "sorting" }));
   };
-
-  const pairs = usePairsGame(
-    { pals, pairsProgress, bodyPicture, skeletonPicture, random, startTimer, reducedMotion: careProps.reducedMotion },
-    ageLevel,
-    home,
-    counting("pairs")
-  );
 
   const openPairs = () => {
     go({ kind: "pairs" }, { also: pairs.open });
@@ -577,7 +585,7 @@ export function App({
       case "sorting":
         return sorting.content(language);
       case "pairs":
-        return pairs.content(language);
+        return pairs.content(language, pairsWelcomeType(welcomeWidth));
       case "skeletons":
         return skeletonGame.content(language);
       case "dig":

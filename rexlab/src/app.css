@@ -4766,6 +4766,56 @@ html[data-size="tall"] .result-stars {
   min-width: 0;
 }
 
+/* Upright, the welcome stands in one column under the bar: the cards,
+   then 32 under them the title, the chips, the level switch and PLAY,
+   centred, the column the width, at most 648. The screen keeps its
+   landscape padding top and bottom, and 32 a side. Each card keeps its
+   3:4 and its 32% of the width, at most 280 wide, and shrinks to the
+   height the padding (88), the bar (56) and its gap (28), the cards' gap
+   (32) and the column (416) leave, 620 in all; it is never under 120
+   wide, and below that the whole screen scrolls. The title takes the one
+   type the screen gives in --pairs-title-size. */
+html[data-size="tall"] .pairs-welcome {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .pairs-welcome-body {
+  flex: 1 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 32px;
+}
+
+html[data-size="tall"] .pairs-hero {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+html[data-size="tall"] .pairs-hero-card {
+  width: max(120px, min(280px, 32%, (100vh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  width: max(120px, min(280px, 32%, (100dvh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  max-height: none;
+}
+
+html[data-size="tall"] .pairs-start {
+  width: 100%;
+  max-width: 648px;
+  align-items: center;
+}
+
+html[data-size="tall"] .pairs-title {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  font-size: var(--pairs-title-size);
+}
+
 /* A game's level switch, find the pair's and the skeleton game's: the age
    levels side by side, youngest first, across its column. The chosen level is filled in ink, bolder and raised, and a
    mark of the same ink slides to it from the level chosen before. */
@@ -4907,19 +4957,28 @@ html[data-size="tall"] .result-stars {
   box-shadow: 0 4px 10px #00000066;
 }
 
-/* Upright, a result's switch is the width, at most 648, each level 64
-   tall, its picture above its name, the names in the one type
-   ResultScreen gives in --level-name-size. Its edge is drawn inside it,
-   so the switch is its padding and a level tall. */
-html[data-size="tall"] .result .level-switch {
+/* Upright, a game's switch is its column's width, at most 648, each level
+   64 tall, its picture above its name, the names in the one type its
+   screen gives in --level-name-size. Its edge is drawn inside it, so the
+   switch is its padding and a level tall. */
+html[data-size="tall"] .level-switch {
   align-self: center;
   width: 100%;
   max-width: 648px;
   border: none;
+  box-shadow: inset 0 0 0 1px #1d27421f;
+}
+
+html[data-size="tall"][data-theme="dark"] .level-switch {
+  box-shadow: inset 0 0 0 1px #ece8de1f;
+}
+
+html[data-size="tall"] .result-with-levels .level-switch,
+html[data-size="tall"][data-theme="dark"] .result-with-levels .level-switch {
   box-shadow: inset 0 0 0 1px #ffffff40;
 }
 
-html[data-size="tall"] .result .level-switch-level {
+html[data-size="tall"] .level-switch-level {
   height: 64px;
   flex-direction: column;
   gap: 4px;

@@ -24,6 +24,7 @@ import {
 import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
+import type { WelcomeType } from "./pairsWelcomeLayout.ts";
 import { LoadAhead } from "./Picture.tsx";
 import { presentPairsBoard, presentPairsResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -78,6 +79,9 @@ const waveOf = ({ flip, stagger, wave }: (typeof TIMINGS)["motion"], cards: numb
 type Kept = KeptPairs & { levelChoice: LevelChoice | undefined; offer: LevelOffer };
 
 type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult; offer?: AgeLevel | null };
+
+// The screen the game shows, each with layouts of its own.
+export type PairsPhase = PairsScreen["kind"];
 
 // A card turned, or turned back, changes the board at once; every other
 // change is the plain screen change.
@@ -221,12 +225,14 @@ export function usePairsGame(
     go({ kind: "welcome" });
   };
 
-  const content = (language: Language) => {
+  // `welcomeType` is the welcome's upright type in the window.
+  const content = (language: Language, welcomeType: WelcomeType) => {
     switch (screen.kind) {
       case "welcome":
         return (
           <PairsWelcomeScreen
             language={language}
+            type={welcomeType}
             level={level}
             climbLevel={kept.progress.climbLevel}
             stars={kept.progress.stars}
@@ -270,7 +276,10 @@ export function usePairsGame(
     }
   };
 
+  const phase: PairsPhase = screen.kind;
+
   return {
+    phase,
     // The stars on the game's home tile, undefined until a board is
     // finished.
     stars: kept.progress.stars > 0 ? kept.progress.stars : undefined,

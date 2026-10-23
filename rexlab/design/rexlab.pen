@@ -108299,6 +108299,591 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "WsXmM",
+      "x": 17164,
+      "y": 35720,
+      "name": "Find the pair welcome — upright · 600×800 window · English · Hatchling (LAB-485)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 600,
+      "height": 800,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        32,
+        48,
+        32
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "JxvhS",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 660,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 600,
+          "height": 140
+        },
+        {
+          "type": "frame",
+          "id": "uYmXl",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "yTNMf",
+              "name": "Home Button",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                20,
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "XfWx9",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "fG6SL",
+                  "name": "Home Text",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "o5KiH",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "g3Qdk",
+              "name": "Hero Cards",
+              "width": 536,
+              "height": 180,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PPTDa",
+                  "layoutPosition": "absolute",
+                  "x": 86,
+                  "y": 0,
+                  "name": "Hero Back",
+                  "rotation": -8,
+                  "width": 135,
+                  "height": 180,
+                  "fill": "$fm-base",
+                  "cornerRadius": 28,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 14
+                    },
+                    "blur": 30
+                  },
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "O0mV8x",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 18,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DT8zl",
+                          "name": "Back Symbol",
+                          "width": 56,
+                          "height": 56,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZTqtZ",
+                  "layoutPosition": "absolute",
+                  "x": 200,
+                  "y": -11,
+                  "name": "Hero Silhouette",
+                  "width": 135,
+                  "height": 180,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 14
+                    },
+                    "blur": 30
+                  },
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "J8DEw",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": [
+                        "$fm-surface-2",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "images/silhouette-triceratops.webp",
+                          "mode": "contain"
+                        }
+                      ],
+                      "cornerRadius": 18
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "QZkct",
+                  "layoutPosition": "absolute",
+                  "x": 314,
+                  "y": 0,
+                  "name": "Hero Picture",
+                  "rotation": 8,
+                  "width": 135,
+                  "height": 180,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 28,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 14
+                    },
+                    "blur": 30
+                  },
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rs9Gr",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": [
+                        "$fm-surface-2",
+                        {
+                          "type": "image",
+                          "enabled": true,
+                          "url": "images/triceratops.webp",
+                          "mode": "contain"
+                        }
+                      ],
+                      "cornerRadius": 18
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "s1J1bu",
+              "name": "Start",
+              "width": 536,
+              "layout": "vertical",
+              "gap": 28,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oAN0q",
+                  "name": "Title",
+                  "gap": 18,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pxriy",
+                      "name": "Title Mark",
+                      "width": 80,
+                      "height": 80,
+                      "fill": "$fm-sky",
+                      "cornerRadius": 22,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "mVnmO",
+                          "name": "Title Icon",
+                          "width": 44,
+                          "height": 44,
+                          "icon": "copy",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "lZceM",
+                      "name": "Title Text",
+                      "fill": "$fm-ink",
+                      "content": "FIND THE PAIR",
+                      "fontFamily": "Lexend",
+                      "fontSize": 52,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gnnKd",
+                  "name": "Progress",
+                  "height": 64,
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ECaPP",
+                      "name": "Level Chip",
+                      "height": 64,
+                      "fill": "$fm-surface",
+                      "cornerRadius": 36,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "gap": 12,
+                      "padding": [
+                        0,
+                        28,
+                        0,
+                        22
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "cfvat",
+                          "name": "Level Chip Icon",
+                          "width": 34,
+                          "height": 34,
+                          "icon": "chart-no-axes-column-increasing",
+                          "library": "lucide",
+                          "fill": "$fm-sky"
+                        },
+                        {
+                          "type": "text",
+                          "id": "U2uCyN",
+                          "name": "Level Chip Value",
+                          "fill": "$fm-ink",
+                          "content": "2",
+                          "fontFamily": "Lexend",
+                          "fontSize": 34,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fd1Ky",
+                      "name": "Stars Chip",
+                      "height": 64,
+                      "fill": "$fm-surface",
+                      "cornerRadius": 36,
+                      "stroke": "$fm-line",
+                      "strokeWidth": 1,
+                      "gap": 12,
+                      "padding": [
+                        0,
+                        28,
+                        0,
+                        22
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Sp8TB",
+                          "name": "Stars Chip Icon",
+                          "width": 34,
+                          "height": 34,
+                          "icon": "star",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        },
+                        {
+                          "type": "text",
+                          "id": "GiU2W",
+                          "name": "Stars Chip Value",
+                          "fill": "$fm-ink",
+                          "content": "5",
+                          "fontFamily": "Lexend",
+                          "fontSize": 34,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cytq9",
+                  "name": "Level Switch",
+                  "width": 536,
+                  "height": 76,
+                  "fill": "$fm-surface-2",
+                  "cornerRadius": 36,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 4,
+                  "padding": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SyWGF",
+                      "name": "HATCHLING Segment",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-ink",
+                      "cornerRadius": 30,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$fm-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 4
+                        },
+                        "blur": 10
+                      },
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "upy4H",
+                          "name": "HATCHLING Picture",
+                          "fill": "$fm-surface",
+                          "content": "🥚",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "A2M0I",
+                          "name": "HATCHLING Name",
+                          "fill": "$fm-surface",
+                          "content": "HATCHLING",
+                          "fontFamily": "Lexend",
+                          "fontSize": 15.8,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "A02k5",
+                      "name": "EXPLORER Segment",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": 30,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VosJH",
+                          "name": "EXPLORER Picture",
+                          "fill": "$fm-ink",
+                          "content": "🦖",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "iOtDR",
+                          "name": "EXPLORER Name",
+                          "fill": "$fm-ink",
+                          "content": "EXPLORER",
+                          "fontFamily": "Lexend",
+                          "fontSize": 15.8,
+                          "fontWeight": "600",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "j39gaK",
+                      "name": "PALEONTOLOGIST Segment",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": 30,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "I4qJU",
+                          "name": "PALEONTOLOGIST Picture",
+                          "fill": "$fm-ink",
+                          "content": "🦴",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "y1rPI",
+                          "name": "PALEONTOLOGIST Name",
+                          "fill": "$fm-ink",
+                          "content": "PALEONTOLOGIST",
+                          "fontFamily": "Lexend",
+                          "fontSize": 15.8,
+                          "fontWeight": "600",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "bgmc1",
+                  "name": "Play Button",
+                  "height": 104,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 30,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 10
+                    },
+                    "blur": 24
+                  },
+                  "gap": 18,
+                  "padding": [
+                    0,
+                    64
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "DDKtL",
+                      "name": "Play Icon",
+                      "width": 44,
+                      "height": 44,
+                      "icon": "play",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "text",
+                      "id": "TUp7A",
+                      "name": "Play Text",
+                      "fill": "#1D2742",
+                      "content": "PLAY",
+                      "fontFamily": "Lexend",
+                      "fontSize": 44,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

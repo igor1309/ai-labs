@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
-import { App, type AppProps } from "../src/App.tsx";
+import { App, type AppProps, type PortraitLayouts } from "../src/App.tsx";
 import { dealBoard, type Board, type BoardLevel, type ClimbLevel, type LargeLevel, type Pal, type Random } from "../src/pairs/index.ts";
 import type { LevelOffer } from "../src/levelOffer.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
@@ -46,6 +46,8 @@ export type PairsAppOptions<C extends Clock> = {
   clock?: C;
   reducedMotion?: boolean;
   viewport?: ManualViewport;
+  // The screens with a portrait layout, none unless given.
+  portraitLayouts?: PortraitLayouts;
   deviceLanguage?: string;
   theme?: "light" | "dark";
   // The age level a parent picked, or "unset" for none picked yet.
@@ -74,6 +76,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
   viewport = manualViewport("landscape"),
+  portraitLayouts = {},
   deviceLanguage = "en-GB",
   theme = "light",
   ageLevel = PICKED_HATCHLING,
@@ -89,7 +92,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={{}}
+      portraitLayouts={portraitLayouts}
       viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}

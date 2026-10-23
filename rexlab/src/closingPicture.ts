@@ -41,6 +41,8 @@ function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame 
     position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px`,
     maxWidth: "none", maxHeight: "none", margin: "0", zIndex: "100", objectFit: "contain", pointerEvents: "none", animation: "none", transition: "none"
   });
+  // What the copy holds is drawn as it stands, none of it entering again.
+  for (const inner of copy.querySelectorAll<HTMLElement>("*")) inner.style.animation = "none";
   const visibility = image.style.visibility;
   image.style.visibility = "hidden";
   image.ownerDocument.body.append(copy);
@@ -55,12 +57,15 @@ const PAGE_PICTURE = ".dinosaur-stage-picture";
 // The result's dinosaur, a part fitted whole in its own box.
 const RESULT_PICTURE = ".result-hero";
 
-// The page's picture as a turn resizes its stage, and the result's
-// dinosaur as a turn resizes it. Laid out in place, either would take its
-// new size at once, fitted whole in its new box, so a copy travels in a
-// box that changes with it, as the closing picture does.
+// Find the pair's welcome's cards, each sized by their row's box.
+const WELCOME_CARDS = ".pairs-hero";
+
+// The page's picture as a turn resizes its stage, the result's dinosaur
+// and the welcome's cards as a turn resizes them. Laid out in place, each
+// would take its new size at once, fitted in its new box, so a copy
+// travels in a box that changes with it, as the closing picture does.
 export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
-  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(RESULT_PICTURE) ? element : undefined;
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}`) ? element : undefined;
   return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
 }
 
