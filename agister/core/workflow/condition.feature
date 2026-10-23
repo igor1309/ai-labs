@@ -1,7 +1,5 @@
-# core/workflow, a condition (docs/run-implementation.md, "Branch and
-# repeat"; ADR-011, rule 4): pure, over params, inputs, state and the
-# outputs of items that have ended. Spies answer its ports (ADR-009,
-# rule 1).
+# core/workflow, a condition: pure, over params, inputs, state and the
+# outputs of items that have ended. Spies answer its ports.
 
 Feature: A condition holds or does not
 

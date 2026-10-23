@@ -1,7 +1,6 @@
-# core/workflow, a branch (docs/run-implementation.md, "Branch and
-# repeat"; ADR-011, rules 2, 4 and 6): the first arm whose condition
-# holds runs, else the default; the branch's outputs are that arm's.
-# Spies answer its ports (ADR-009, rule 1).
+# core/workflow, a branch: the first arm whose condition holds runs,
+# else the default; the branch's outputs are that arm's. Spies answer
+# its ports.
 
 Feature: A branch runs one arm
 

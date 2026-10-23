@@ -1606,10 +1606,9 @@ Decisions, each with its reason:
 
 ## Branch and repeat
 
-A workflow's branches and repeats run (ADR-011, rules 2, 4 and 6;
-LAB-467): Audelin's repair loop, a test step on bash whose failure goes
-back to the builder's session until the tests pass, at most three
-times.
+A workflow's branches and repeats run: Audelin's repair loop, a test
+step on bash whose failure goes back to the builder's session until the
+tests pass, at most three times.
 
 **`core/workflow`** runs an item that is a step, a parallel, a branch or
 a repeat, wherever it is: in the workflow's steps, an arm of a branch,
@@ -1654,16 +1653,16 @@ or a repeat's body.
   after how many passes.
 - Cost, usage, warnings and sessions count every call made, each pass's
   too; a session continued in a body goes on from its latest call
-  ("A binding continuing a session"), so each pass continues the one
+  as any continued session does, so each pass continues the one
   before.
 
 **The composition** builds core's items from resolve's, every arm and
-body step planned as a step in sequence is (ADR-011, rule 6: every step
-is planned, those of arms a run may not take too). `notRunOf` no longer
+body step planned as a step in sequence is: every step is planned,
+those of arms a run may not take too. `notRunOf` no longer
 names a branch or a repeat; it still names a workflow item wherever it
 is, an item of a parallel that is not a step, and a field read within a
-parallel's outputs. `agister check` follows, as it shares that list
-(LAB-465). A call's id is `<run id>/<step>/<pass>` in a repeat; its
+parallel's outputs. `agister check` follows, as it shares that list.
+A call's id is `<run id>/<step>/<pass>` in a repeat; its
 progress lines name it so; three lines more: `· <branch>: took <arm>`,
 `· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
 `events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
@@ -1678,7 +1677,7 @@ progress lines name it so; three lines more: `· <branch>: took <arm>`,
  "passes": 1}
 ```
 
-A reuse ("Reuse") takes a call of the same name and pass, so a later
+A reuse takes a call of the same name and pass, so a later
 pass's call is never taken for an earlier one.
 
 Decisions, each with its reason:
@@ -1690,10 +1689,11 @@ Decisions, each with its reason:
   and `passes`: a state may be named anything, and nothing it is named
   shadows them.
 - The condition's values are kept in `events.jsonl`, not the record:
-  the record keeps calls, and the branch's facts are of no call. ADR-011
-  rule 6 asks the run to record them; `events.jsonl` sits in the run's
-  directory beside the record, so the run still records them.
+  the record keeps calls, and the branch's facts are of no call. The
+  run must still record them, and `events.jsonl` sits in the run's
+  directory beside the record.
 - A branch's and a repeat's events name it under the `step` key, as a
   parallel's do: a reader of `events.jsonl` finds every item by one key.
-- Conditions stay ADR-011's starting set; settings already type them.
+- Conditions stay the starting set (equals, present, all, any, and,
+  or, not); settings already type them.
 - A workflow item stays not run: nothing needs one yet.

@@ -1,7 +1,6 @@
-# core/workflow, a repeat (docs/run-implementation.md, "Branch and
-# repeat"; ADR-011, rules 2, 4 and 6): its body, then its next state,
-# then its stopping condition, until it holds or the body has run max
-# times. Spies answer its ports (ADR-009, rule 1).
+# core/workflow, a repeat: its body, then its next state, then its
+# stopping condition, until it holds or the body has run max times.
+# Spies answer its ports.
 
 Feature: A repeat runs its body until its condition holds, at most max times
 

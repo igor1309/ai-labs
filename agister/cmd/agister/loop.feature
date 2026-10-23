@@ -1,6 +1,5 @@
-# cmd/agister, a branch and a repeat run (docs/run-implementation.md,
-# "Branch and repeat"; LAB-467): Audelin's repair loop, built from
-# settings and run on spies in place of the wrappers (ADR-009, rule 4).
+# cmd/agister, a branch and a repeat run: Audelin's repair loop, built
+# from settings and run on spies in place of the wrappers.
 # Settings: the repository's workflow "tested": the step "build" of
 # "implement" on "codex-sol-61"; the step "test" of "tests" on "bash";
 # then the branch "fix" of the arm "passed", if steps.test.outputs.
