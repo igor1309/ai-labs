@@ -15,16 +15,16 @@ Feature: The composition reports a turn at capacity
     And it prints the result completed
 
   Scenario: A fallback is reported and recorded
-    Given codex's four turns fail at capacity, each reporting its session
+    Given codex's five turns fail at capacity, each reporting its session
     And its fallback claude-opus completes in a fresh session
     When the call runs
     Then the fallback receives the same work and inputs under the same hold
     And the result names claude-opus, its session and output
     And the record keeps both agents' plans and definitions, the primary's
-      failure, and the four capacity events followed by the fallback event
+      failure, and the five capacity events followed by the fallback event
 
   Scenario: A fallback at capacity never follows its own fallback
-    Given codex's four turns and claude-opus's four turns fail at capacity
+    Given codex's five turns and claude-opus's five turns fail at capacity
     And claude-opus names another fallback
     When the call runs
     Then it ends failed, class "capacity", after one fallback only
@@ -38,7 +38,7 @@ Feature: The composition reports a turn at capacity
       | fault                                  |
       | names an absent agent                  |
       | names itself                           |
-      | cannot run the process's output schema  |
+      | cannot run the process's output schema |
 
   Scenario: A reuse takes reviews that fell back
     Given a run of a review whose reviews, at capacity on codex,
