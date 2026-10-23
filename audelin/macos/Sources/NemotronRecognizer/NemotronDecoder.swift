@@ -1,4 +1,5 @@
 import FluidAudio
+import ModelLoading
 
 extension NemotronRecognizer {
 
@@ -13,15 +14,19 @@ extension NemotronRecognizer {
 /// The model's cumulative token stream, without language tags.
 private struct NemotronDecoder: TokenDecoder {
 
+    private static let models = SharedModel {
+        try await StreamingNemotronMultilingualAsrManager.downloadAndPreloadShared(languageCode: "auto", chunkMs: 1120)
+    }
+
     let chunk = 1.12
 
     private let manager: StreamingNemotronMultilingualAsrManager
 
     init() async throws {
 
-        let directory = try await StreamingNemotronMultilingualAsrManager.downloadVariant(languageCode: "auto", chunkMs: 1120)
+        let models = try await Self.models.load().value
         let manager = StreamingNemotronMultilingualAsrManager()
-        try await manager.loadModels(from: directory)
+        try await manager.loadFromShared(models)
         await manager.setLanguage("ru")
         self.manager = manager
     }

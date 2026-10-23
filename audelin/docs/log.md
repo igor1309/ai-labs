@@ -2,6 +2,9 @@
 
 ## 2026-10-23
 
+- Recognizers built together share one model load and can retry a failed
+  load, avoiding overlapping first-run downloads (LAB-495).
+
 - A process replaced while its microphone flag is read cannot start a call
   under the previous process's app (LAB-473).
 

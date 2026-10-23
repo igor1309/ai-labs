@@ -1,5 +1,6 @@
 import FluidAudio
 import LiveText
+import ModelLoading
 
 extension ParakeetRecognizer {
 
@@ -14,12 +15,16 @@ extension ParakeetRecognizer {
 /// state.
 private final class ParakeetReader: WindowReader, @unchecked Sendable {
 
+    private static let models = SharedModel {
+        try await AsrModels.downloadAndLoad(version: .v3)
+    }
+
     private let manager: AsrManager
 
     init() async throws {
 
         manager = AsrManager(config: .default)
-        try await manager.loadModels(try await AsrModels.downloadAndLoad(version: .v3))
+        try await manager.loadModels(try await Self.models.load().value)
     }
 
     func read(_ samples: [Float]) async throws -> [WindowWord] {
