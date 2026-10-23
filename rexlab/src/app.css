@@ -4563,6 +4563,84 @@ html[data-size="tall"] .result-stars {
   white-space: nowrap;
 }
 
+/* Upright, sort's board stands as in landscape, one part under another:
+   the bar, the prompt, the tray and the baskets 28 apart, the screen 32
+   from each side and keeping its landscape padding top and bottom. The
+   tray's cards stand in the rows and columns the screen gives in
+   --upright-rows and --upright-columns, 16 apart across and 12 down,
+   centred, each its picture at 4:3 over a strip --strip tall. A card is as
+   wide as the width allows, which the screen gives in --card-by-width,
+   and as leaves the baskets 320 of the height: the padding (88), the bar
+   and the prompt (112) and three gaps (84) taken, 604 in all with the
+   baskets; never under 120, and below that the whole screen scrolls. */
+html[data-size="tall"] .sort {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+  row-gap: 28px;
+}
+
+html[data-size="tall"] .sort[data-rows] .sort-tray-area {
+  height: auto;
+}
+
+html[data-size="tall"] .sort-tray {
+  height: auto;
+  grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100vh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100dvh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  grid-auto-rows: auto;
+  justify-content: center;
+}
+
+html[data-size="tall"] .sort-art {
+  flex: none;
+  aspect-ratio: 4 / 3;
+}
+
+html[data-size="tall"] .sort[data-rows] .sort-footer {
+  box-sizing: border-box;
+  height: var(--strip);
+  padding-block: 0;
+  align-items: center;
+}
+
+/* The baskets take the rest of the height, at least 320, each with 20
+   inside: its mark above its name, and its cards below them. The names
+   take the type the screen gives in --basket-type, one for the window,
+   and break only between their words. */
+html[data-size="tall"] .baskets {
+  flex: 1 0 auto;
+  min-height: 320px;
+}
+
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket {
+  padding: 20px;
+  gap: 14px;
+}
+
+html[data-size="tall"] .basket-label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+html[data-size="tall"] .sort[data-rows] .basket-mark {
+  min-width: 56px;
+  height: 56px;
+}
+
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name {
+  font-size: var(--basket-type);
+  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
+}
+
 /* Find the pair's welcome and board fill the screen under a bar like the
    catalogue's. */
 .pairs-welcome,

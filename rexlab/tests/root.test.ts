@@ -300,8 +300,8 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("gives the home page, catalogue, dinosaur page, the compare quiz's question and result, and find the pair's welcome, board and result a portrait layout for a tall window only, and sand writing for both portrait sizes", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], "compare-question": ["tall"], "compare-result": ["tall"], "pairs-welcome": ["tall"], "pairs-board": ["tall"], "pairs-result": ["tall"], sandWriting: ["tall", "tall-narrow"] });
+  it("gives the home page, catalogue, dinosaur page, the compare quiz's question and result, and find the pair's welcome, board and result, and sort's board a portrait layout for a tall window only, and sand writing for both portrait sizes", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], "compare-question": ["tall"], "compare-result": ["tall"], "pairs-welcome": ["tall"], "pairs-board": ["tall"], "pairs-result": ["tall"], "sorting-board": ["tall"], sandWriting: ["tall", "tall-narrow"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {

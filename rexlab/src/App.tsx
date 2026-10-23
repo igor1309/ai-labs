@@ -33,7 +33,8 @@ import { SandWritingScreen } from "./SandWritingScreen.tsx";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type Presence, type SkeletonGameProps } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
-import { useSortingGame, type SortingGameProps } from "./sortingGame.tsx";
+import { sortBoardWidth } from "./sortBoardLayout.ts";
+import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
 
@@ -87,7 +88,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -323,10 +324,18 @@ export function App({
     counting("pairs")
   );
 
+  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, ageLevel, home, counting("sort"));
+
   // Each game's phase is its own: the gate and the turns read it as the
   // game reports it.
   const layoutScreen: LayoutScreen =
-    screen.kind === "compare" && quiz.phase ? `compare-${quiz.phase}` : screen.kind === "pairs" ? `pairs-${pairs.phase}` : screen.kind;
+    screen.kind === "compare" && quiz.phase
+      ? `compare-${quiz.phase}`
+      : screen.kind === "pairs"
+        ? `pairs-${pairs.phase}`
+        : screen.kind === "sorting" && sorting.phase
+          ? `sorting-${sorting.phase}`
+          : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => {
@@ -358,7 +367,12 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
   });
-  // And the width its result stands in.
+  // And the width sort's board stands in.
+  const sortWidth = useSyncExternalStore(viewport.subscribe, () => {
+    const { left, right } = viewport.sideInsets();
+    return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+  });
+  // And the width find the pair's result stands in.
   const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
     return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
@@ -374,8 +388,6 @@ export function App({
   const openCare = () => {
     go({ kind: "care" }, { also: care.open });
   };
-
-  const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, ageLevel, home, counting("sort"));
 
   const openSorting = () => {
     sorting.start(() => set({ kind: "sorting" }));
@@ -595,7 +607,7 @@ export function App({
       case "care":
         return care.content(language);
       case "sorting":
-        return sorting.content(language);
+        return sorting.content(language, sortWidth);
       case "pairs":
         return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth, pairsResultRoom);
       case "skeletons":
