@@ -98,9 +98,15 @@ export function openDigApp({
   return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
 }
 
-// The dig game's board, read and brushed as a test sees it.
-
-export const board = () => screen.getByRole("group", { name: TEXTS[document.documentElement.lang === "ru" ? "ru" : "en"].sand });
+// The dig game's board, read and brushed as a test sees it. It is found
+// by its class: a role query weighs every element's style, and the
+// helpers read the board at each step of a drag. A test of its own holds
+// the board to its role and name.
+export function board(): HTMLElement {
+  const found = document.querySelector<HTMLElement>(".dig-board");
+  if (!found) throw new Error("No dig board on the screen");
+  return found;
+}
 export const sandOf = () => board().querySelector(".dig-sand") ?? board();
 
 // The board laid out `width` CSS pixels wide at the page's top left, in

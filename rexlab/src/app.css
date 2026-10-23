@@ -6931,6 +6931,39 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   white-space: nowrap;
 }
 
+/* Upright, the FIELD GUIDE takes the narrower side padding of the other
+   upright screens, its bar keeps one row with HOME and BACK as their
+   symbols, and its five cards stand in rows of two that share the height
+   left, the last one centred. */
+html[data-size="tall"] .dig-field-guide-screen {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .dig-field-guide-screen .dig-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-guide-cards {
+  flex-wrap: wrap;
+  align-content: stretch;
+  justify-content: center;
+}
+
+html[data-size="tall"] .dig-guide-card {
+  flex: 0 0 calc((100% - 16px) / 2);
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 16px 12px;
+}
+
+html[data-size="tall"] .dig-guide-picture,
+html[data-size="tall"] .dig-guide-outline {
+  flex-shrink: 1;
+  min-height: 0;
+}
+
 /* Upright, the dinosaur dug up takes the room the reward leaves over it,
    the reward as wide as the screen under it, and DIG AGAIN stands over
    HOME, each the reward's width, so either language's words fit. */
