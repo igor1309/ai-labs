@@ -93,8 +93,8 @@ A review runs on a detached worktree at the candidate commit, and nothing
 is committed to the reviewed branch while it runs.
 
 A run left unattended goes through `scripts/agister-retry.sh`: it runs again
-only after capacity or a rate limit, stops on any other end, and prints a
-line per try for a watcher. A run that completes without committing is
+only after a rate limit, stops on any other end, and prints a line per try
+for a watcher. Capacity is agister's to wait out, in the run's session. A run that completes without committing is
 read, not run again: the build's own sandbox may fail what the test step
 passes (2026-10-23).
 
