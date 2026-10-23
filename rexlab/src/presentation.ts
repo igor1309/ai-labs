@@ -3,7 +3,7 @@ import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } f
 import type { CatalogueEntry, Diet, Group, Measure } from "./catalogue.ts";
 import type { CatalogueCardView, Measure as ShownMeasure } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
-import { asking, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
+import { asking, choiceOpacity, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
 import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
 import { formatLength, formatMass } from "./formatValue.ts";
@@ -442,7 +442,7 @@ export function presentSkeletonMuseum({ stands, score, total, best }: Museum, la
   };
 }
 
-type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "choices">;
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "questionShown" | "choicesShown" | "choices">;
 
 // A dig round's board: its dinosaur's picture under the sand, every mark
 // brushed, and which cells are clear, as rows of 0 and 1, as dig.json
@@ -465,14 +465,16 @@ export function presentDigBoard(
       size: TREASURE_CELLS * width
     },
     spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
-    choices: asking(round) || round.blown ? round.choices.map((id) => ({
+    choices: round.choices.map((id) => ({
       id,
       name: dinosaurName(id),
       picture: bodyPicture(id),
       rejected: round.rejected.includes(id),
       correct: round.blown && id === round.dinosaur.id
-    })) : [],
+    })),
     asks: round.choices.length > 0,
+    questionShown: round.choices.length > 0 && (asking(round) || round.blown),
+    choicesShown: choiceOpacity(roundShare(round)),
     picture: bodyPicture(round.dinosaur.id),
     frame: FRAME,
     marks: round.sand.marks,

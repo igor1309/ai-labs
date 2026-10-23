@@ -34,9 +34,9 @@ Feature: Dig: starting a round and the board
     But when stored progress cannot be read I see no count (dig-progress.feature)
 
   Scenario: The title names the game until the dinosaur is named
-    When a Hatchling or Explorer round starts
+    When a round at any level starts
     Then the title reads "DIG" with the 🖌️ symbol
-    When a Paleontologist round starts
+    When an Explorer or Paleontologist round reaches 75% clear
     Then the title reads "WHO IS IT?" with the 🖌️ symbol
     And on the reveal, at every level, the title reads "DIG" with the 🖌️ symbol
 

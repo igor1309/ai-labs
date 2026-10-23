@@ -264,10 +264,38 @@ func (s *scope) boundary(item Item, kind, name string, params []Param) {
 			s.problem(binding.Origin, "the %s %q declares the param %q", kind, name, binding.Name)
 		}
 	}
+	if kind == "process" {
+		s.filePathBindings(item, name)
+	}
 	for _, param := range params {
 		bound := slices.ContainsFunc(item.Inputs, func(b Binding) bool { return b.Name == param.Name })
 		if !param.Default && !bound {
 			s.problem(item.Origin, "it binds the param %q of the %s %q, which has no default", param.Name, kind, name)
+		}
+	}
+}
+
+// filePathBindings refuses a workflow input's text where a process input's
+// file source reads its path from the process param being bound. The source
+// metadata is supplied by the composition; resolve names neither source nor
+// argument.
+func (s *scope) filePathBindings(item Item, process string) {
+	processDefinition, ok := s.walk.processes[process]
+	if !ok {
+		return
+	}
+	for _, processInput := range processDefinition.Inputs {
+		if processInput.Path == nil || processInput.Path.Root != RootParam || !processInput.File {
+			continue
+		}
+		for _, binding := range item.Inputs {
+			if binding.Name != processInput.Path.Name || binding.From == nil || binding.From.Root != RootInput {
+				continue
+			}
+			workflowInput := slices.IndexFunc(s.inputs, func(input Input) bool { return input.Name == binding.From.Name })
+			if workflowInput >= 0 && s.inputs[workflowInput].File {
+				s.problem(binding.Origin, "it gives a file's text where the process %q reads a path, at its input %q", process, processInput.Name)
+			}
 		}
 	}
 }

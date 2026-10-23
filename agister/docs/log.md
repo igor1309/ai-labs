@@ -1,5 +1,10 @@
 # Changes
 
+- LAB-465: `agister check` refuses what `agister run` does not run yet
+  (a branch, a repeat, a runtime with no turn, an input from a source a
+  run does not take), in run's words, and a step that gives a file's
+  text where its process reads a path.
+
 - LAB-458: a call at capacity retries after 30 s, 1 min and 3 min, then
   runs on its agent's `fallback` (codex-sol-61 falls back to claude-opus);
   a parallel block's `max` runs the review's nodes one at a time.

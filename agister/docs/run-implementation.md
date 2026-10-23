@@ -99,11 +99,12 @@ process's prompt, the text of the prompt document; its time limit is its
 process's; its warnings its plan's. It runs in the root of the git
 worktree that holds the launch directory (ADR-004, rule 1); outside one,
 the request is refused. What this slice does not run is refused before
-anything runs, naming it: a step on a runtime with no turn yet; an item
-that is not a step; an input from a source other than `param`, or with a
-brief form; a workspace's revision, clean, or read-write access; a
-staleness limit; a process's instruction or guidance on bash. Each is
-named, in the order the request's documents give them. A recovery on
+anything runs, naming it: each item, source, runtime's turn, input and
+read of a parallel's outputs the sections below have not yet made run,
+as the run's list of them gives it. Each is
+named, in the order the request's documents give them; `agister check`
+refuses a workflow for the same lines (settings-implementation, "Check";
+LAB-465). A recovery on
 bash is resolve's refusal (ADR-012, rule 3). The program's environment
 is Agister's own, then the process's, then the inputs. SIGINT or SIGTERM
 to Agister cancels the run: the call's program and its group are ended,

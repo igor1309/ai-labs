@@ -35,6 +35,13 @@ Feature: Check resolves every document and reports every problem once
       missing", refusing the workflow "w1", the workflow "w2" and the
       agent "a"
 
+  Scenario: A fault met again adds the problems it did not have
+    Given resolve refuses the workflow "w1" at the process "p", with the
+      problems "one" and "two", and the workflow "w2" at it, with "two"
+      and "three"
+    When check runs
+    Then it reports the process "p" once, with "one", "two" and "three"
+
   Scenario: A blocked document is reported with its block
     Given the layers hold the workflow "w" and the process "p"
     And resolve refuses each of them: the process "p", blocked by the

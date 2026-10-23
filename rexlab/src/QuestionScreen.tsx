@@ -1,6 +1,7 @@
 import { ArrowDownToLine, ArrowRight, Check, Feather, House, MoveHorizontal, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
-import { ViewTransition } from "react";
+import { ViewTransition, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
+import type { QuestionType } from "./compareQuestionLayout.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -46,9 +47,16 @@ export type QuestionScreenProps = {
   onChoose: (id: string) => void;
   onNext: () => void;
   onHome: () => void;
+  // The prompt's and the names' type upright, one for every question in
+  // the window; landscape sizes them itself.
+  type?: QuestionType;
 };
 
-export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome }: QuestionScreenProps) {
+// The upright type, as the custom properties the stylesheet sizes the
+// prompt and the names by.
+const typeStyle = (type: QuestionType | undefined) => (type ? { "--prompt-size": `${type.prompt}px`, "--name-size": `${type.name}px` } : {});
+
+export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome, type }: QuestionScreenProps) {
   const text = TEXTS[language];
   const Symbol = SYMBOLS[prompt];
   // Each question's cards are its own, so the next question's pair enters
@@ -62,14 +70,16 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
         enter={{ [NEXT_QUESTION]: `card-in${late}`, default: "none" }}
         exit={{ [NEXT_QUESTION]: `card-out${late}`, default: "none" }}
       >
-        <DinosaurCard view={view} language={language} prompt={prompt} answered={answered} onChoose={onChoose} />
+        <DinosaurCard view={view} part={`question-${side}`} language={language} prompt={prompt} answered={answered} onChoose={onChoose} />
       </ViewTransition>
     );
   };
+  // The bar, the prompt, each card, "VS" and the row for NEXT are the
+  // parts a turn glides.
   return (
-    <main className="question">
+    <main className="question" style={typeStyle(type) as CSSProperties}>
       <div className="stratum stratum-1" aria-hidden="true" />
-      <header className="question-bar">
+      <header className="question-bar" data-turn-part="question-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
           {text.home}
@@ -85,7 +95,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
           {number}/{total}
         </p>
       </header>
-      <h1 className="prompt">
+      <h1 className="prompt" data-turn-part="question-prompt">
         <span className="prompt-symbol" aria-hidden="true">
           <Symbol size={30} />
         </span>
@@ -93,14 +103,14 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
       </h1>
       <div className="dinosaur-cards" role="group" aria-label={text.creatures}>
         {card(left, "left")}
-        <span className="versus" aria-hidden="true">
+        <span className="versus" data-turn-part="question-versus" aria-hidden="true">
           {text.versus}
         </span>
         {card(right, "right")}
       </div>
       {/* The row keeps its place before the answer, so the cards do not
           move when Next appears. */}
-      <div className="next-row">
+      <div className="next-row" data-turn-part="question-next">
         {answered && (
           <Button className="next-button" onClick={onNext}>
             {last ? (
@@ -123,13 +133,15 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
 
 type DinosaurCardProps = {
   view: DinosaurCardView;
+  // The card's name as a part of the turn.
+  part: string;
   language: Language;
   prompt: Prompt;
   answered: boolean;
   onChoose: (id: string) => void;
 };
 
-function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, language, prompt, answered, onChoose }: DinosaurCardProps) {
+function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, part, language, prompt, answered, onChoose }: DinosaurCardProps) {
   const text = TEXTS[language];
   const ValueSymbol = VALUE_SYMBOLS[prompt];
   const MarkSymbol = mark && MARKS[mark];
@@ -138,6 +150,7 @@ function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, langua
   return (
     <Button
       className="card dinosaur-card"
+      data-turn-part={part}
       aria-label={name}
       aria-disabled={answered || undefined}
       data-answered={answered || undefined}

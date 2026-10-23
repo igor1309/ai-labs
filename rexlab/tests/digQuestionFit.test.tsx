@@ -56,7 +56,8 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
     expect(Number(sizing[1])).toBe(height);
     const boardHeight = height - 180 + Number(sizing[2]) * Number(sizing[3]);
     expect([column.flexBasis, column.flexDirection, px(body.gap) + px(column.flexBasis)]).toEqual(["200px", "column", 228]);
-    expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(asking ? CHOICES[level] : 0);
+    // Invisible and visible choices occupy identical slots.
+    expect(document.querySelectorAll(".dig-choice-card")).toHaveLength(CHOICES[level]);
     expect(document.querySelectorAll(".dig-choice-slot .dig-empty-card")).toHaveLength(CHOICES[level]);
     expect(document.querySelector(".dig-choice-cards")?.getAttribute("aria-hidden")).toBe(asking ? null : "true");
 
@@ -72,7 +73,7 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
 
       const slot = style(".dig-choice-slot");
       expect([slot.flex, slot.maxHeight]).toEqual(["1 1 0px", "170px"]);
-      if (asking) {
+      {
         const card = style(".dig-choice-card");
         const picture = style(".dig-choice-picture");
         expect([card.display, card.flexDirection, picture.flex, picture.height, picture.objectFit]).toEqual(["flex", "column", "1 1 auto", "0px", "contain"]);

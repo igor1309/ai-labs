@@ -150,6 +150,47 @@ func TestWhatIsDeclaredAndHasEndedIsRead(t *testing.T) {
 	assertResolved(t, faults)
 }
 
+// paths.feature, "A file's text is not given where a path is read".
+func TestAFileTextIsNotGivenWhereAProcessReadsAFilePath(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	s.workflows["w"] = resolve.Workflow{
+		Name:   "w",
+		Params: []resolve.Param{{Name: "goal", Default: true}},
+		Inputs: []resolve.Input{{Name: "text", File: true}},
+		Steps:  []resolve.Item{{Name: "build", Process: named("p", "steps[0].process"), Agent: named("a", "steps[0].agent"), Inputs: []resolve.Binding{from("path", input("text"), 0, "steps[0].inputs.path")}}},
+	}
+	s.processes["p"] = resolve.Process{
+		Name:   "p",
+		Params: []resolve.Param{{Name: "path", Default: true}},
+		Inputs: []resolve.Input{{Name: "brief", File: true, Path: ptr(param("path"))}},
+	}
+	s.pair("a", "r")
+	assertProblemsOf(t, s, resolve.Document(resolve.KindWorkflow, "w"), resolve.KindWorkflow, "w",
+		resolve.Problem{Origin: resolve.Origin{Path: homeW, Line: 0, Place: "steps[0].inputs.path"}, Message: `it gives a file's text where the process "p" reads a path, at its input "brief"`})
+}
+
+// paths.feature, "params.goal" gives a path and therefore resolves.
+func TestAFilePathParamIsGivenWhereAProcessReadsAFilePath(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	s.workflows["w"] = resolve.Workflow{
+		Name:   "w",
+		Params: []resolve.Param{{Name: "goal", Default: true}},
+		Inputs: []resolve.Input{{Name: "text", File: true, Path: ptr(param("goal"))}},
+		Steps:  []resolve.Item{{Name: "build", Process: named("p", "steps[0].process"), Agent: named("a", "steps[0].agent"), Inputs: []resolve.Binding{from("path", param("goal"), 0, "steps[0].inputs.path")}}},
+	}
+	s.processes["p"] = resolve.Process{
+		Name:   "p",
+		Params: []resolve.Param{{Name: "path", Default: true}},
+		Inputs: []resolve.Input{{Name: "brief", File: true, Path: ptr(param("path"))}},
+	}
+	s.pair("a", "r")
+	if _, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w")); len(faults) != 0 {
+		t.Fatalf("faults %+v, want none", faults)
+	}
+}
+
 // bindings.feature, "What is declared, and has ended, is read", of a
 // repeat's until reading the items of its body, which have ended when it
 // is read.

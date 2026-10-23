@@ -1,9 +1,15 @@
 # rexlab — Change Log
 
-## 2026-10-22
+## 2026-10-23
 
 - SAND WRITING opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
 
+## 2026-10-22
+
+- The compare quiz's result stands upright in a tall window instead of asking to turn: the cheering dinosaur on top, then the rewards, the level switch and PLAY AGAIN and HOME in one column, every word fitting in English and Russian, and the offer of another level fits a tall window. Turning the iPad glides the result to its new layout without counting the score up again (LAB-480).
+- A question of the compare quiz stands upright in a tall window instead of asking to turn: the two cards one above the other, VS on their seam, the values inside the pictures, every prompt and name fitting in English and Russian. Turning the iPad glides it to its new layout; the quiz's result still asks to turn (LAB-479).
+- DIG's choice cards ease in with the digging: they start to show at 10% dug, faint at first and fuller as the question nears, so they no longer pop in (LAB-483).
+- DIG’s Explorer and Paleontologist choices now emerge with the digging: invisible through 25%, fading linearly to full visibility at 75% as the “?” cards fade away. Picking still unlocks at 75%, with the same fade under reduced motion (LAB-468).
 - A dinosaur's page stands upright in a tall window instead of asking to turn: the picture on a full-width stage with the arrows beside it, the words under it, the name as large as fits, every word fitting in English and Russian, and the page's parts staying put from one creature to the next. Turning the iPad glides the bar, the picture and the words to their new places, and a picture growing from its card lands in the turned stage (LAB-377).
 - DIG has two brushes: a picker on its bar, before the FIELD GUIDE, chooses the brush or a wide brush twice as big (96 CSS pixels at Hatchling, 72 above). DIG opens with the brush, and the pick stays through rounds, levels and the FIELD GUIDE until the child goes home (LAB-398).
 - The catalogue stands upright in a tall window: fewer cards to a row rather than smaller names (two on an iPad mini, three on an iPad Air, four on a 13-inch iPad), the food chips on a row of their own under HOME, fitting in Russian, and the cards rising in row by row. Turning the iPad glides HOME, the chips and every card to their new places, keeping the row the child was looking at; a picture shrinking back into its card as the iPad turns lands in the card's new place (LAB-376).

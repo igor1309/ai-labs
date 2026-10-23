@@ -1,4 +1,4 @@
-import type { Box, PictureContinuation, TurnFrame, TurnMotionSeams } from "./turnMotion.ts";
+import { TURN_PART, type Box, type PictureContinuation, type TurnFrame, type TurnMotionSeams } from "./turnMotion.ts";
 
 // The screen transitions' clock, and the timing and easing of the
 // picture shared between a card and its page; with `slide`, of the next
@@ -31,6 +31,8 @@ export function easedProgress(easing: string): ((fraction: number) => number) | 
 function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame {
   const image = element as HTMLElement;
   const copy = image.cloneNode(true) as HTMLElement;
+  // The copy is drawn for the part, and is none itself.
+  copy.removeAttribute(TURN_PART);
   copy.removeAttribute("id");
   copy.setAttribute("aria-hidden", "true");
   copy.setAttribute("inert", "");
@@ -50,12 +52,15 @@ function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame 
 const cardPicture = (id: string) => `.catalogue-card[data-id="${id}"] .catalogue-picture`;
 const PAGE_PICTURE = ".dinosaur-stage-picture";
 
-// The page's picture as a turn resizes its stage. Laid out in place, it
-// would take its new size at once, fitted whole in its new box, so a copy
-// travels in a box that changes with the stage, as the closing picture
-// does.
+// The result's dinosaur, a part fitted whole in its own box.
+const RESULT_PICTURE = ".result-hero";
+
+// The page's picture as a turn resizes its stage, and the result's
+// dinosaur as a turn resizes it. Laid out in place, either would take its
+// new size at once, fitted whole in its new box, so a copy travels in a
+// box that changes with it, as the closing picture does.
 export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
-  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : undefined;
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(RESULT_PICTURE) ? element : undefined;
   return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
 }
 

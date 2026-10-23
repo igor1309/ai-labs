@@ -454,7 +454,7 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 	w := *resolved.Workflow
 	unrun, err := notRunOf(name, w, resolved, docs, takes)
 	if err != nil || len(unrun) > 0 {
-		return plan{}, unrun, err
+		return plan{}, textsOfNotRun(unrun), err
 	}
 
 	// A workflow made of a step declares its process's params.
@@ -588,21 +588,23 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 // runtime with no turn, and what its process declares that is not run,
 // among them an input named as a document of its message, which two
 // sections of one name would leave ambiguous.
-func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]string, error) {
+func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]notRunLine, error) {
 	var unrun notRun
+	document := resolve.Reference{Kind: resolve.KindProcess, Name: ""}
 	if name != "" {
+		document = resolve.Reference{Kind: resolve.KindWorkflow, Name: name}
 		definition, problems := docs.Workflow(name)
 		if len(problems) > 0 {
 			return nil, documentProblems(problems)
 		}
 		owner := fmt.Sprintf("the workflow %q", name)
 		for _, input := range definition.Inputs.Value {
-			unrun.input(owner, input.Value)
+			unrun.input(document, owner, input.Value)
 		}
 		parallels := map[string]bool{}
 		notStep := func(item resolve.Item) {
 			if kind := itemKind(item); kind != "" {
-				unrun.add(owner, fmt.Sprintf("the item %q, %s,", item.Name, kind))
+				unrun.add(document, owner, fmt.Sprintf("the item %q, %s,", item.Name, kind))
 			}
 		}
 		for _, item := range w.Steps {
@@ -617,7 +619,7 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 		}
 		for _, binding := range referencesOf(w) {
 			if read := binding.From; read.Root == resolve.RootOutputs && parallels[read.Name] && read.Field != "" {
-				unrun.add(owner, fmt.Sprintf("a field within the parallel %q's outputs", read.Name))
+				unrun.add(document, owner, fmt.Sprintf("a field within the parallel %q's outputs", read.Name))
 			}
 		}
 	}
@@ -637,17 +639,34 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 			inputsTaken, turned := takes[resolved.Runtimes[runtime].Contract.Value]
 			step := fmt.Sprintf("the step %q", item.Name)
 			if !turned {
-				unrun.add(step, fmt.Sprintf("the runtime %q's turn", runtime))
+				unrun.add(document, step, fmt.Sprintf("the runtime %q's turn", runtime))
 			}
+			processDocument := resolve.Reference{Kind: resolve.KindProcess, Name: item.Process.Value}
 			owner := fmt.Sprintf("the process %q", item.Process.Value)
 			documentNames := documentNamesOf(definition)
 			for _, input := range definition.Inputs.Value {
-				unrun.input(owner, input.Value)
+				unrun.input(processDocument, owner, input.Value)
 				if turned && inputsTaken == call.InMessage && slices.Contains(documentNames, input.Value.Name) {
-					unrun.add(owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
+					unrun.add(processDocument, owner, fmt.Sprintf("the input %q, a document's name,", input.Value.Name))
 				}
 			}
 		}
+	}
+	return unrun.lines, nil
+}
+
+// notRunProcessOf is the process portion of notRunOf for a process checked
+// without an agent. It shares the same source rule as a workflow run.
+func notRunProcessOf(name string, docs runDocuments) ([]notRunLine, error) {
+	definition, problems := docs.Process(name)
+	if len(problems) > 0 {
+		return nil, documentProblems(problems)
+	}
+	var unrun notRun
+	document := resolve.Reference{Kind: resolve.KindProcess, Name: name}
+	owner := fmt.Sprintf("the process %q", name)
+	for _, input := range definition.Inputs.Value {
+		unrun.input(document, owner, input.Value)
 	}
 	return unrun.lines, nil
 }
@@ -876,21 +895,39 @@ func withFallback(planned plannedCall, name string, item resolve.Item, fallback 
 // notRun is what this slice does not run, each line once, in the order
 // added.
 type notRun struct {
-	lines []string
+	lines []notRunLine
+}
+
+type notRunLine struct {
+	document resolve.Reference
+	text     string
 }
 
 // add names what, of owner, as not run yet.
-func (n *notRun) add(owner, what string) {
-	if line := owner + ": " + what + " is not run yet"; !slices.Contains(n.lines, line) {
+func (n *notRun) add(document resolve.Reference, owner, what string) {
+	line := notRunLine{document: document, text: owner + ": " + what + " is not run yet"}
+	if !slices.ContainsFunc(n.lines, func(existing notRunLine) bool { return existing == line }) {
 		n.lines = append(n.lines, line)
 	}
 }
 
+func (n notRun) texts() []string {
+	texts := make([]string, 0, len(n.lines))
+	for _, line := range n.lines {
+		texts = append(texts, line.text)
+	}
+	return texts
+}
+
+func textsOfNotRun(lines []notRunLine) []string {
+	return (notRun{lines: lines}).texts()
+}
+
 // input names what this slice does not run of the input of owner: a source
 // a run does not plug in.
-func (n *notRun) input(owner string, input documents.Input) {
+func (n *notRun) input(document resolve.Reference, owner string, input documents.Input) {
 	if source := input.Source.Value; !pluggedIn(source) {
-		n.add(owner, fmt.Sprintf("the input %q from the source %q", input.Name, source))
+		n.add(document, owner, fmt.Sprintf("the input %q from the source %q", input.Name, source))
 	}
 }
 
