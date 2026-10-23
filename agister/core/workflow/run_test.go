@@ -55,16 +55,17 @@ type callerSpy struct {
 	params   []map[string]string
 	bound    map[string]map[string]string
 	sessions map[string]string
+	declared map[string]string
 }
 
-func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
+func (s *callerSpy) Call(_ context.Context, step, declared string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	s.mu.Lock()
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
 	if s.bound == nil {
-		s.bound, s.sessions = map[string]map[string]string{}, map[string]string{}
+		s.bound, s.sessions, s.declared = map[string]map[string]string{}, map[string]string{}, map[string]string{}
 	}
-	s.bound[step], s.sessions[step] = params, session
+	s.bound[step], s.sessions[step], s.declared[step] = params, session, declared
 	s.mu.Unlock()
 	switch reused := s.reused[step]; {
 	case reused != "":
@@ -593,4 +594,16 @@ func TestARunCarriesEachStepsSessionByItsName(t *testing.T) {
 	if want := map[string]string{"a": "s1"}; !reflect.DeepEqual(got.Sessions, want) {
 		t.Errorf("sessions %v, want %v", got.Sessions, want)
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.tell("%s took %s %v", step, arm, conditions)
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.tell("%s pass %d %v", step, pass, state)
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.tell("%s stopped %s after %d", step, why, passes)
 }
