@@ -26,6 +26,16 @@ jobs:
       - name: Select newest Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
 
+      # The recognizer tests download their speech models, which a fresh
+      # download has handed over broken. Keep the models a passing run used;
+      # the cache saves only when the job succeeds, so a broken download is
+      # never kept.
+      - name: Cache the speech models
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/FluidAudio/Models
+          key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
+
       - name: Run tests
         working-directory: audelin/macos
         run: swift test
