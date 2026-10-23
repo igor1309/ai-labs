@@ -5,6 +5,7 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -20,6 +21,9 @@ let package = Package(
     targets: [
         .target(
             name: "AudioConversion"
+        ),
+        .target(
+            name: "CallAppProcesses"
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -58,6 +62,10 @@ let package = Package(
         .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "CallAppProcessesTests",
+            dependencies: ["CallAppProcesses"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
