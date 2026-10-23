@@ -92,6 +92,12 @@ the red runs, and its review finds the missing tests afterwards (six on
 A review runs on a detached worktree at the candidate commit, and nothing
 is committed to the reviewed branch while it runs.
 
+A run left unattended goes through `scripts/agister-retry.sh`: it runs again
+only after capacity or a rate limit, stops on any other end, and prints a
+line per try for a watcher. A run that completes without committing is
+read, not run again: the build's own sandbox may fail what the test step
+passes (2026-10-23).
+
 A hands-on trial, such as a preview app, states before it runs what it can
 and cannot show: the live text preview heard only the microphone, which
 was said after the trial.
