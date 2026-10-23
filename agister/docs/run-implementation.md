@@ -1069,6 +1069,11 @@ Decisions, each with its reason:
   holds the task and the work done toward it, and the task given twice
   invites the model to start over. The message is core's, not a
   setting, as the policy is.
+- A session a turn reported holds its message: codex writes the user's
+  message into the thread's rollout before it asks the model, and
+  claude-code writes it into its transcript before its first request, so
+  a turn at capacity that reported a session, fresh or resumed, leaves
+  the task in it, and "Go on." is read after it.
 - Waits of 30 seconds, one, three and five minutes (owner, 2026-10-23):
   a call kept waiting in its session keeps its work, where a caller's
   rerun later starts it over.
