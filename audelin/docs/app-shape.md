@@ -1,8 +1,8 @@
 ---
 date: 2026-10-23
 model: claude-opus-5-5
-description: "Audelin's main shape: state machines split into reducer and effect handler, fed by merged event streams. Draft for review."
-status: draft
+description: "Audelin's main shape: state machines split into reducer and effect handler, fed by merged event streams."
+status: accepted (owner, 2026-10-23)
 ---
 
 # App shape
@@ -143,10 +143,9 @@ through a machine.
 
 ## Change to ARCHITECTURE.md
 
-Rule 4 says "coordination is wiring, not a shared component". Under this
-shape, coordination that decides anything is a machine with tests; compose
-only builds and subscribes. Rule 4 is reworded to say so when this draft is
-accepted.
+Rule 4 said "coordination is wiring, not a shared component". It now says
+that coordination that decides anything is a machine with tests, and that
+compose only builds and subscribes.
 
 ## Decided
 
