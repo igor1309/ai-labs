@@ -73,6 +73,11 @@ Feature: Which processes carry the call
     Given I was told to hear all but Audelin, and the call app started
     When I ask again
     Then I know to hear the call app's processes instead
+
+  Scenario: S-10 A list that fails is told
+    Given the processes with audio open cannot be read
+    When I ask which processes to hear
+    Then I can tell the ask failed
 ```
 
 Not call app processes': which app holds the call and listing the

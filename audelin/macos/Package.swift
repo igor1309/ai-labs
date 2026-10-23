@@ -5,6 +5,7 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -22,6 +23,9 @@ let package = Package(
             name: "AudioConversion"
         ),
         .target(
+            name: "CallAppProcesses"
+        ),
+        .target(
             name: "CoreAudioProcesses"
         ),
         .target(
@@ -32,10 +36,14 @@ let package = Package(
             name: "LiveText"
         ),
         .target(
+            name: "ModelLoading"
+        ),
+        .target(
             name: "NemotronRecognizer",
             dependencies: [
                 "AudioConversion",
                 "LiveText",
+                "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
@@ -48,6 +56,7 @@ let package = Package(
             dependencies: [
                 "AudioConversion",
                 "LiveText",
+                "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
@@ -60,12 +69,20 @@ let package = Package(
             dependencies: ["LiveText"]
         ),
         .testTarget(
+            name: "CallAppProcessesTests",
+            dependencies: ["CallAppProcesses"]
+        ),
+        .testTarget(
             name: "CoreAudioProcessesTests",
             dependencies: ["CoreAudioProcesses"]
         ),
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "ModelLoadingTests",
+            dependencies: ["ModelLoading"]
         ),
         .testTarget(
             name: "NemotronRecognizerTests",

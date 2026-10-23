@@ -61,7 +61,8 @@ export type DigGameProps = {
   bodyPicture: (dinosaurId: string) => string;
   random: Random;
   startTimer: StartTimer;
-  presence: { isAway(): boolean; subscribe(onChange: () => void): () => void };
+  // Whether the child is away from the dig screen of this kind.
+  presence: { isAway(phase: DigPhase): boolean; subscribe(onChange: () => void): () => void };
   // Whether the device asks for reduced motion now.
   reducedMotion: () => boolean;
   sandContext: SandContext;
@@ -85,6 +86,8 @@ type Kept = KeptDig & { levelChoice: LevelChoice | undefined; levelOffer: LevelO
 type BoardScreen = { kind: "board"; round: DigRound; finish?: BoardFinish; treasure?: TreasureFlight; dropped?: true };
 type RevealScreen = { kind: "reveal"; round: DigRound; reward: DigReward; landed: boolean; offer: AgeLevel | undefined };
 type DigScreen = BoardScreen | RevealScreen | { kind: "guide"; under: BoardScreen | RevealScreen };
+// A board that asks WHO IS IT? is a screen of its own to the window.
+export type DigPhase = DigScreen["kind"] | "question";
 
 // A round started, even over one left on HOME and still kept, or its
 // reveal, is the plain screen change; a stroke of the brush changes the
@@ -118,7 +121,8 @@ export function useDigGame(
   const onLanded = useCallback((landed: boolean) => {
     go((current) => current?.kind === "reveal" && current.round === revealRound && current.landed !== landed ? { ...current, landed } : current);
   }, [go, revealRound]);
-  const away = useSyncExternalStore(presence.subscribe, presence.isAway);
+  const phase: DigPhase = screen === undefined ? "board" : screen.kind === "board" && screen.round.choices.length > 0 ? "question" : screen.kind;
+  const away = useSyncExternalStore(presence.subscribe, () => presence.isAway(phase));
   const ids = digDinosaurs.map(({ id }) => id);
   // Progress is read once, as the app opens, and kept from then on, so a
   // dinosaur dug up counts while the app is open even when it cannot be
@@ -203,7 +207,7 @@ export function useDigGame(
       stop = timers.start(HELP_TICK, () => {
         const from = live.current;
         // A stopped callback may still arrive after a find, pause or leave.
-        if (!active || presence.isAway() || roundTimers.current !== timers || from === null || from.found !== found || from.helped !== helped || !awaitsHelp(from)) return;
+        if (!active || presence.isAway(phase) || roundTimers.current !== timers || from === null || from.found !== found || from.helped !== helped || !awaitsHelp(from)) return;
         const to = waitForHelp(from, HELP_TICK);
         live.current = to;
         go((current) => changeBoard(current, (round) => round === from, (board) => ({ ...board, round: to })));
@@ -215,7 +219,7 @@ export function useDigGame(
       active = false;
       stop();
     };
-  }, [counting, away, found, helped, presence, go]);
+  }, [counting, away, found, helped, presence, phase, go]);
 
   // A new round shows at once, and only over the screen it was asked
   // from, so a second tap in the same moment starts nothing more. `shown`
@@ -411,7 +415,7 @@ export function useDigGame(
   const dugUp = kept.readable ? dugUpOf(kept.progress, ids) : 0;
   // The count on the game's home tile, undefined until a dinosaur is dug
   // up, or when stored progress cannot be read.
-  return { start, content, dugUp: dugUp > 0 ? dugUp : undefined };
+  return { start, content, dugUp: dugUp > 0 ? dugUp : undefined, phase };
 }
 
 function RoundPicture({ src, children }: { src: string; children: (look: PictureLook) => ReactNode }) {
