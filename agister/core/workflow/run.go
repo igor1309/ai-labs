@@ -1,6 +1,6 @@
 // Package workflow runs a workflow (ADR-001, "Core"; ADR-011): its
-// inputs resolved once at its boundary, then its items in order, a step or
-// a parallel of steps called at once, or a few at a time, each step called through the one
+// inputs resolved once at its boundary, then its items in order, composing
+// steps, parallels, branches and bounded repeats, each step called through the one
 // port it declares (ADR-012, rule 1) with its process's params bound from
 // the workflow's params and inputs and the outputs of the items before it,
 // and the session of the step it continues, what each is doing told to its
@@ -51,12 +51,10 @@ type Workflow struct {
 	Outputs []Binding
 }
 
-// Step is an item of the workflow, by its name, unique in the workflow: a
-// step, the agent it runs on, its bindings, which give its process's
-// params, and the name of the step whose session it continues, "" for none
-// (ADR-011, rule 3); or, where Parallel is not nil, a parallel of the steps
-// it holds, called at once (ADR-011, rule 2), at most Max of them at a
-// time, every one where Max is 0 (ADR-012, rule 8).
+// Step is a named workflow item: a call on Agent with Bindings and an
+// optional Session, or a Parallel, Branch or Repeat. Max bounds a parallel's
+// concurrent calls, zero for all. An arm of a branch has an If condition,
+// nil for its default, and an Outputs mapping for the branch.
 type Step struct {
 	Name     string
 	Agent    string
@@ -64,6 +62,13 @@ type Step struct {
 	Session  string
 	Parallel []Step
 	Max      int
+	Branch   []Step
+	If       *Condition
+	Outputs  []Binding
+	Repeat   *Repeat
+	// declared is the name the step is declared by, where Name is that
+	// of one execution of it, a pass of a repeat; "" where they are one.
+	declared string
 }
 
 // Binding is a value given by name.
@@ -78,9 +83,8 @@ type Value struct {
 	Reads *Reference
 }
 
-// Reference reads a param or an input, by Name, or the outputs of the step
-// Name, or one Field of them, "" for the whole, and in Path the fields
-// read within that Field, in order.
+// Reference reads a param, input or state by Name, an item's outputs by
+// Name, or a collection query's item. Field and Path descend into the value.
 type Reference struct {
 	Of    Scope
 	Name  string
@@ -95,6 +99,8 @@ const (
 	Params Scope = iota + 1
 	Inputs
 	Outputs
+	State
+	QueryItem
 )
 
 // Boundary is the workflow's params, a param not given taking its default,
@@ -118,8 +124,10 @@ type Resolver interface {
 // the agent it is made again on.
 // It is called from many goroutines at once, one for each step of a
 // parallel.
+// The step is named as it is executed, `<step>/<pass>` in a repeat;
+// declared is the name its definition is declared by.
 type Caller interface {
-	Call(ctx context.Context, step string, params map[string]string, session string, report func(Report)) Result
+	Call(ctx context.Context, step, declared string, params map[string]string, session string, report func(Report)) Result
 }
 
 // Report is what a step's call reports: that it starts, where Started;
@@ -161,7 +169,9 @@ type Capacity struct {
 // place of making one; each tool call its turns report, each turn that
 // went stale and each turn at capacity; the agent its call is made again
 // on; and how a step that started ended. It is told from many goroutines
-// at once, one for each step of a parallel.
+// at once, one for each step of a parallel. Branch reports the chosen arm
+// and the conditions evaluated; Pass reports the next state; Stopped gives
+// the reason and number of completed passes.
 type Events interface {
 	Started(step, agent string)
 	Reused(step, call string)
@@ -170,6 +180,9 @@ type Events interface {
 	Capacity(step string, capacity Capacity)
 	Fallback(step, agent string)
 	Ended(step string, ended Ended)
+	Branch(step, arm string, conditions []ConditionRead)
+	Pass(step string, pass int, state map[string]any)
+	Stopped(step, why string, passes int)
 }
 
 // Ended is how a step's call ended: its status and class, and how long it
@@ -289,10 +302,6 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Status, result.Class, result.Output = Failed, Refused, nil
 		return finish()
 	}
-	cancelled := func() Result {
-		result.Status, result.Class, result.Reason = Interrupted, Cancelled, ""
-		return finish()
-	}
 	count := func(step string, called Result) {
 		result.Warnings = append(result.Warnings, called.Warnings...)
 		result.Usage = result.Usage.add(called.Usage)
@@ -311,48 +320,12 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Reason = err.Error()
 		return refuse()
 	}
-	read := reader{boundary: boundary, outputs: map[string]any{}, sessions: result.Sessions}
-	for _, item := range w.Steps {
-		if ctx.Err() != nil {
-			return cancelled()
-		}
-		if item.Parallel != nil {
-			calls, reason, ok := r.parallel(ctx, item, read)
-			if !ok {
-				result.Reason = reason
-				return refuse()
-			}
-			ends := make([]any, len(item.Parallel))
-			completed := false
-			for i, step := range item.Parallel {
-				count(step.Name, calls[i])
-				ends[i] = endOf(calls[i])
-				completed = completed || calls[i].Status == Completed
-			}
-			if ctx.Err() != nil {
-				return cancelled()
-			}
-			if !completed && len(calls) > 0 {
-				result.Status, result.Class = Failed, calls[0].Class
-				result.Reason = fmt.Sprintf("no step of parallel %q completed: %s", item.Name, calls[0].Reason)
-				return finish()
-			}
-			result.Status, result.Class, result.Reason = Completed, "", ""
-			read.outputs[item.Name] = ends
-			continue
-		}
-		params, session, reason, ok := read.call(item)
-		if !ok {
-			result.Reason = reason
-			return refuse()
-		}
-		called := r.call(ctx, item, params, session)
-		count(item.Name, called)
-		result.Status, result.Class, result.Reason = called.Status, called.Class, called.Reason
-		if called.Status != Completed {
-			return finish()
-		}
-		read.outputs[item.Name] = called.Output
+	read := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
+	execution := execution{runner: r, count: count}
+	ended := execution.sequence(ctx, w.Steps, read, "")
+	if ended.Status != Completed {
+		result.Status, result.Class, result.Reason = ended.Status, ended.Class, ended.Reason
+		return finish()
 	}
 	result.Output = map[string]any{}
 	for _, output := range w.Outputs {
@@ -417,7 +390,11 @@ func (r *Runner) call(ctx context.Context, step Step, params map[string]string, 
 	// A caller may report from a goroutine of its own, as a turn's tool
 	// calls come from the one reading its program's output.
 	var started atomic.Bool
-	called := r.caller.Call(ctx, step.Name, params, session, func(report Report) {
+	declared := step.declared
+	if declared == "" {
+		declared = step.Name
+	}
+	called := r.caller.Call(ctx, step.Name, declared, params, session, func(report Report) {
 		switch {
 		case report.Started:
 			started.Store(true)
@@ -461,6 +438,8 @@ type reader struct {
 	boundary Boundary
 	outputs  map[string]any
 	sessions map[string]string
+	state    map[string]any
+	item     any
 }
 
 // call is what step is called with: its params, bound from its bindings,
@@ -509,34 +488,34 @@ func (r reader) value(value Value) (any, bool) {
 	if value.Reads == nil {
 		return value.Text, true
 	}
-	ref := *value.Reads
+	return r.reference(*value.Reads)
+}
+
+func (r reader) reference(ref Reference) (any, bool) {
+	var value any
+	var ok bool
 	switch ref.Of {
 	case Params:
-		text, ok := r.boundary.Params[ref.Name]
-		return text, ok
+		value, ok = r.boundary.Params[ref.Name]
 	case Inputs:
-		text, ok := r.boundary.Inputs[ref.Name]
-		return text, ok
+		value, ok = r.boundary.Inputs[ref.Name]
+	case State:
+		value, ok = r.state[ref.Name]
+	case QueryItem:
+		value, ok = r.item, true
 	case Outputs:
-		output, ok := r.outputs[ref.Name]
-		if !ok || ref.Field == "" {
-			return output, ok
-		}
-		fields, ok := output.(map[string]any)
-		if !ok {
+		value, ok = r.outputs[ref.Name]
+	}
+	path := ref.Path
+	if ref.Field != "" {
+		path = append([]string{ref.Field}, path...)
+	}
+	for _, name := range path {
+		fields, mapped := value.(map[string]any)
+		if !ok || !mapped {
 			return nil, false
 		}
-		field, ok := fields[ref.Field]
-		for _, name := range ref.Path {
-			if !ok {
-				break
-			}
-			var within map[string]any
-			if within, ok = field.(map[string]any); ok {
-				field, ok = within[name]
-			}
-		}
-		return field, ok
+		value, ok = fields[name]
 	}
-	return nil, false
+	return value, ok
 }

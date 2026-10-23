@@ -1616,3 +1616,101 @@ Decisions, each with its reason:
 - The contract stays `codex/2`, as `claude-code/3` stayed for Claude's
   cost (LAB-336): the settings' runtime documents name it, and what a
   call is given is unchanged.
+
+## Branch and repeat
+
+A workflow's branches and repeats run: Audelin's repair loop, a test
+step on bash whose failure goes back to the builder's session until the
+tests pass, at most three times.
+
+**`core/workflow`** runs an item that is a step, a parallel, a branch or
+a repeat, wherever it is: in the workflow's steps, an arm of a branch,
+or a repeat's body.
+
+- A **condition** is pure: it reads params, inputs, a repeat's state, the
+  outputs of items that have ended and, in an `all` or `any`, the
+  query's item. `equals` holds where the value read is the literal's: a
+  number equals a number of the same value, a string a string, a
+  boolean a boolean; a string never equals a number, and a param or an
+  input is a string. `present` holds where the reference reads a value.
+  A reference that reads nothing makes `equals`, `all` and `any` false.
+  `all` of an empty list holds, `any` of one does not, and either of
+  what is not a list does not hold. `and`, `or` and `not` compose.
+- A **branch** reads each arm's condition in order, and runs the first
+  that holds, or else its default; no other arm runs. Its outputs are
+  the arm's output mapping, read once the arm has completed; an arm
+  that does not complete ends the branch, and the run, as a step in
+  sequence does.
+- A **repeat** binds its state from its `state`, then runs its body;
+  after each pass that completes it binds its next state from `next`,
+  reading the pass's outputs and the state before it, a name `next`
+  does not bind keeping its value; a body sees the state of the repeats
+  around it, its own over theirs; and then reads
+  `until`: where it holds, or where the body has run `max` times, the
+  repeat ends, else the next pass starts. The condition is never read
+  before the first pass. A body item that does not complete ends the
+  repeat, and the run. Its outputs are `{"state": {...}, "stopped":
+  "until" | "max", "passes": n}`: the last state, why it stopped, and
+  how many passes ran. A body reads the outputs of its own pass, each
+  item those of the items before it, as in a sequence; what follows the
+  repeat reads only its outputs. A state value keeps the type it was
+  bound with: from a param a text, from an exit code a number; bound to
+  a text, a number is given as its JSON.
+- A step in a repeat's body is called, and told to the events, by its
+  **name and pass**, `<step>/<pass>`, outer passes first where repeats
+  nest (`fix/2/1`); elsewhere by its name. A branch or repeat inside a
+  repeat's body is told to the events the same way (`inner/2`). The
+  caller, the events, the record, progress and reuse take that name as
+  they take a step's.
+- The **events port** grows three: a branch's arm taken, with each
+  condition read before it, whether it held and the values it read; a
+  pass's end, with the state it bound; and a repeat's stop, why and
+  after how many passes.
+- Cost, usage, warnings and sessions count every call made, each pass's
+  too; a session continued in a body goes on from its latest call
+  as any continued session does, so each pass continues the one
+  before.
+
+**The composition** builds core's items from resolve's, every arm and
+body step planned as a step in sequence is: every step is planned,
+those of arms a run may not take too. `notRunOf` no longer names a
+branch or a repeat; it still names a workflow item wherever it is, an
+item of a parallel that is not a step, a field read within a parallel's
+outputs, a step's session read as a value, and an item named as a pass
+is, ending in `/<n>`, whose call id a pass could share. `agister check`
+follows, as it shares that list. A call's id is
+`<run id>/<step>/<pass>` in a repeat; its progress lines name it so;
+three lines more: `· <branch>: took <arm>`,
+`· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
+`events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
+
+```json
+{"at": "", "step": "fix", "kind": "branch", "arm": "repair",
+ "conditions": [{"arm": "passed", "holds": false,
+   "read": {"steps.test.outputs.exit_code": 1}}]}
+{"at": "", "step": "repair", "kind": "pass", "pass": 1,
+ "state": {"code": 0, "tail": ""}}
+{"at": "", "step": "repair", "kind": "stopped", "stopped": "until",
+ "passes": 1}
+```
+
+A reuse takes a call of the same name and pass, so a later
+pass's call is never taken for an earlier one.
+
+Decisions, each with its reason:
+
+- A pass is in the step's name, not a field of its own: the caller,
+  events, record, progress and reuse already key on the name, and none
+  needs a change of shape.
+- A repeat's state sits under `state` in its outputs, beside `stopped`
+  and `passes`: a state may be named anything, and nothing it is named
+  shadows them.
+- The condition's values are kept in `events.jsonl`, not the record:
+  the record keeps calls, and the branch's facts are of no call. The
+  run must still record them, and `events.jsonl` sits in the run's
+  directory beside the record.
+- A branch's and a repeat's events name it under the `step` key, as a
+  parallel's do: a reader of `events.jsonl` finds every item by one key.
+- Conditions stay the starting set (equals, present, all, any, and,
+  or, not); settings already type them.
+- A workflow item stays not run: nothing needs one yet.

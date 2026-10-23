@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-467: workflows branch on results and repeat repairs with explicit state
+  and a pass limit; failed tests can return to the builder's session.
+
 - LAB-496: a capacity retry tells its reported session "Go on."; a call
   makes up to five capacity turns, waiting 30 s, 1 min, 3 min and 5 min.
 
