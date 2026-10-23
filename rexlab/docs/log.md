@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-24
+
+- Care's welcome stands upright in a tall window instead of asking to turn: NEW VISITOR over FRIENDS across the width, under a one-row bar with HOME as its symbol, every word fitting in English and Russian. A visit, FRIENDS and the result still ask to turn (LAB-511).
+
 ## 2026-10-23
 
 - DIG's FIELD GUIDE stands upright in a tall window instead of asking to turn: its five cards in rows of two, the last centred, under a one-row bar with HOME and BACK as their symbols, every name fitting in English and Russian. DIG now plays whole upright (LAB-503).

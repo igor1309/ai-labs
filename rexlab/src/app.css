@@ -3367,6 +3367,45 @@ html[data-size="tall"] .result-stars {
   font-size: 34px;
 }
 
+/* Upright, the welcome takes the narrower side padding of the other
+   upright screens, its bar keeps one row with HOME as its symbol, and NEW
+   VISITOR stands over FRIENDS across the width, its words a size that fits
+   in either language. */
+html[data-size="tall"] .care-welcome {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .care-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .care-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .care-choices {
+  flex-direction: column;
+  gap: 24px;
+}
+
+html[data-size="tall"] .new-visitor-card {
+  flex: 3 1 0;
+  min-height: 0;
+}
+
+html[data-size="tall"] .friends-card {
+  flex: 2 1 0;
+  min-height: 0;
+}
+
+html[data-size="tall"] .new-visitor-title {
+  font-size: 40px;
+  white-space: nowrap;
+}
+
 /* A visit: the needs and hearts above, the visitor on its stage, and the
    items below. */
 .visit {

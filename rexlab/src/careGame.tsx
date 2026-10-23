@@ -71,6 +71,7 @@ type CareScreen =
   | { kind: "visit"; visit: Visit; leaving: boolean }
   | { kind: "result"; result: CareResult }
   | { kind: "friends" };
+export type CarePhase = CareScreen["kind"];
 
 // A reaction plays inside the visit, which changes at once; every other
 // change is the plain screen change.
@@ -249,6 +250,8 @@ export function useCareGame(
       leave();
       set({ kind: "welcome" });
     },
-    content
+    content,
+    // The screen shown, for the window's layout.
+    phase: screen.kind
   };
 }
