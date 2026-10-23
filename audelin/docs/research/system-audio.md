@@ -82,7 +82,8 @@ Nothing read shows Amanu's tap wrong for the call: Muesli's scope and
 start differ because it records everything from a calendar event. The one
 gap is the restart, which Amanu names itself. How Audelin splits the work
 follows its own architecture, not Amanu's classes: the tap is one adapter,
-the process list another, and choosing the call's processes is a Core
+the process list another, and choosing the call's processes is a component
+of its own
 ([specs](../spec/system-audio-capture/SPEC.md)).
 
 The adapter maps tap buffers to `AudioChunk`. Writing them to disk is a

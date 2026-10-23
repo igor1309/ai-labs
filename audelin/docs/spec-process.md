@@ -72,7 +72,8 @@ before writing on (owner, 2026-10-22).
 ## QA.md
 
 One row per scenario, headed by its id and name from `SPEC.md`: how the
-scenario is driven and what evidence proves it. Cores are driven through
+scenario is driven and what evidence proves it. Components that are not
+adapters are driven through
 fake ports and recorded fixtures, adapters for real on this Mac or through
 a fake of their system binding (§ Building), and the user spec on a real
 call. A row has evidence or reads Missing. Verdicts go

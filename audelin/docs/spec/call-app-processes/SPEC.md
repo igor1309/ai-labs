@@ -3,7 +3,7 @@
 Observer: the client that records a call and asks, through an interface it
 owns, which processes to hear for the call app it was given.
 
-Call app processes is a Core: it decides from the processes with audio open,
+Call app processes is no adapter: it decides from the processes with audio open,
 which it reads through an interface of its own, and remembers what it
 decided last. It taps nothing and knows nothing of Core Audio.
 
