@@ -59,7 +59,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 				done <- f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
 			}()
 			for range c.waits {
-				for _, wait := range []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute} {
+				for _, wait := range []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute, 5 * time.Minute} {
 					f.clock.Started(wait)
 					f.clock.Advance(wait)
 				}
@@ -80,13 +80,17 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			turns := f.runtimes.codex.ran()
 			wantSessions := []string{""}
 			if c.waits > 0 {
-				wantSessions = append(wantSessions, "primary-session", "primary-session", "primary-session")
+				wantSessions = append(wantSessions, "primary-session", "primary-session", "primary-session", "primary-session")
 			}
 			var sessions []string
-			for _, turn := range turns {
+			for i, turn := range turns {
+				message := askMessage
+				if i > 0 {
+					message = "Go on."
+				}
 				sessions = append(sessions, turn.Session)
-				if turn.Model != "gpt-6.1-sol" || turn.Effort != "low" || turn.Message != askMessage {
-					t.Errorf("primary turn %+v, want original work on primary model", turn)
+				if turn.Model != "gpt-6.1-sol" || turn.Effort != "low" || turn.Message != message {
+					t.Errorf("primary turn %+v, want message %q on primary model", turn, message)
 				}
 			}
 			if !slices.Equal(sessions, wantSessions) {
@@ -109,15 +113,15 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			}
 			wantFallbacks := 1
 			if c.fallback != "" {
-				wantFallbacks = 4
+				wantFallbacks = 5
 			}
 			wantTurns := make([]claudecode.Turn, wantFallbacks)
 			for i := range wantTurns {
-				wantTurns[i] = claudecode.Turn{Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"),
+				wantTurns[i] = claudecode.Turn{Message: "Go on.", Dir: "/r", Env: append(slices.Clone(environ), "A=1"),
 					Instruction: "i", Model: "opus", Effort: "medium", Options: []string{"Glob"}, Schema: []byte(answerSchema),
 					Session: "fallback-session"}
 				if i == 0 {
-					wantTurns[i].Session, wantTurns[i].SessionCostBefore = "", usd(0)
+					wantTurns[i].Session, wantTurns[i].SessionCostBefore, wantTurns[i].Message = "", usd(0), askMessage
 				}
 			}
 			if !reflect.DeepEqual(fallbackTurns, wantTurns) {
@@ -134,12 +138,12 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			primary := kept.Primary
 			if primary == nil || primary.Agent != "codex-sol-61" || primary.Result.Status != "failed" || primary.Result.Output != nil ||
 				primary.Result.Class == nil || *primary.Result.Class != "capacity" ||
-				primary.Result.Reason == nil || *primary.Result.Reason != "4 of 4 turns at capacity: Selected model is at capacity" ||
+				primary.Result.Reason == nil || *primary.Result.Reason != "5 of 5 turns at capacity: Selected model is at capacity" ||
 				primary.Result.Session == nil || *primary.Result.Session != "primary-session" || !slices.Equal(primary.Permissions.Options, []string{"read-only"}) ||
 				!slices.Equal(kept.Permissions.Options, []string{"Glob"}) {
 				t.Errorf("primary %+v, answering plan %+v; want primary capacity result and both agents' plans", primary, kept.Permissions)
 			}
-			if !slices.Contains(p.Warnings, `the step "ask" was made again on the agent "claude-opus", the fallback of "codex-sol-61": 4 of 4 turns at capacity: Selected model is at capacity`) {
+			if !slices.Contains(p.Warnings, `the step "ask" was made again on the agent "claude-opus", the fallback of "codex-sol-61": 5 of 5 turns at capacity: Selected model is at capacity`) {
 				t.Errorf("warnings %q, want answering agent and cause", p.Warnings)
 			}
 			if kept.Result.Session == nil || *kept.Result.Session != "fallback-session" || !reflect.DeepEqual(modelPrintedOf(t, got).Sessions, map[string]string{"ask": "fallback-session"}) {
@@ -162,12 +166,12 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 					capacity++
 				case runstore.Fallback:
 					fallback++
-					if capacity != 4 || e.event.Agent != "claude-opus" {
+					if capacity != 5 || e.event.Agent != "claude-opus" {
 						t.Errorf("fallback event %+v after %d capacity turns", e.event, capacity)
 					}
 				}
 			}
-			if capacity != c.waits*4 || fallback != 1 || !strings.Contains(got.progress, "· ask: falling back to claude-opus\n") {
+			if capacity != c.waits*5 || fallback != 1 || !strings.Contains(got.progress, "· ask: falling back to claude-opus\n") {
 				t.Errorf("capacity events %d, fallbacks %d, progress %q", capacity, fallback, got.progress)
 			}
 		})
@@ -187,7 +191,7 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			f := newRecordFixture(t, modelSettings(t, map[string]string{
-				"/u/.agister/budget.yaml":        "daily: {cost: 3}\n",
+				"/u/.agister/budget.yaml":        "daily: {cost: 3.25}\n",
 				"/r/.agister/processes/ask.yaml": askProcess + c.limits,
 			}), nil)
 			const earlier = "20261017T060000Z-aaaaaa"
@@ -202,15 +206,15 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 			go func() {
 				done <- f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
 			}()
-			waits := []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute}
+			waits := []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute, 5 * time.Minute}
 			for _, wait := range waits {
 				f.clock.Started(wait)
 				f.clock.Advance(wait)
 			}
 			got := <-done
 			primary := f.runtimes.codex.ran()
-			if len(primary) != 4 {
-				t.Fatalf("primary turns %+v, want four capacity turns", primary)
+			if len(primary) != 5 {
+				t.Fatalf("primary turns %+v, want five capacity turns", primary)
 			}
 			fallback := f.runtimes.claude.ran()
 			if len(fallback) != 1 || !reflect.DeepEqual(fallback[0].Budget, usd(1)) {
@@ -220,7 +224,7 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 				t.Errorf("waits %v, want only primary waits %v", gotWaits, waits)
 			}
 			p := printedOf(t, got)
-			const reason = "the daily budget 3 is spent: 3"
+			const reason = "the daily budget 3.25 is spent: 3.25"
 			if got.code != 1 || got.stderr != "" || p.Status != "failed" || p.Class == nil || *p.Class != "budget_exhausted" || p.Reason == nil || *p.Reason != reason {
 				t.Fatalf("ran %+v, printed %+v; want failed budget_exhausted: %s", got, p, reason)
 			}
@@ -229,11 +233,11 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 				t.Fatalf("record calls %+v, want one", record.Calls)
 			}
 			kept := record.Calls[0]
-			if !reflect.DeepEqual(kept.Result.Cost, usd(2)) {
-				t.Errorf("recorded fallback cost %v, want 2", kept.Result.Cost)
+			if !reflect.DeepEqual(kept.Result.Cost, usd(2.25)) {
+				t.Errorf("recorded fallback cost %v, want 2.25", kept.Result.Cost)
 			}
-			if kept.Primary == nil || !reflect.DeepEqual(kept.Primary.Result.Cost, usd(1)) {
-				t.Errorf("recorded primary %+v, want cost 1", kept.Primary)
+			if kept.Primary == nil || !reflect.DeepEqual(kept.Primary.Result.Cost, usd(1.25)) {
+				t.Errorf("recorded primary %+v, want cost 1.25", kept.Primary)
 			}
 
 			f.random = randomSpy{0x55, 0xfd, 0x37}
@@ -242,7 +246,7 @@ func TestFallbackReceivesAndEnforcesTheRemainingDailyBudget(t *testing.T) {
 			if following.code != 1 || following.stderr != "" || followingPrinted.Status != "failed" || followingPrinted.Class == nil || *followingPrinted.Class != "budget_exhausted" || followingPrinted.Reason == nil || *followingPrinted.Reason != reason {
 				t.Fatalf("following run %+v, printed %+v; want failed budget_exhausted: %s", following, followingPrinted, reason)
 			}
-			if primary := f.runtimes.codex.ran(); len(primary) != 4 {
+			if primary := f.runtimes.codex.ran(); len(primary) != 5 {
 				t.Errorf("following command started primary turns %+v, want none", primary)
 			}
 			if fallback := f.runtimes.claude.ran(); len(fallback) != 1 {

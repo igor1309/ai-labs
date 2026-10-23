@@ -12,14 +12,14 @@ Feature: A call at capacity falls back to another agent
       its model "gpt", whose primary's turns report the session "s0",
       and a fallback of the model "opus" whose turn completes, its text
       "done", its session "f1"
-    When the call is made, and its three waits pass
+    When the call is made, and its four waits pass
     Then the fallback is given one turn, in no session, its message the
       step's, its model "opus"
     And the call ends completed, its output the text "done", its session
       "f1", its timing from the primary's start to the fallback's end
     And its primary is the first call's result: failed, class "capacity",
-      the reason "4 of 4 turns at capacity: Selected model is at capacity"
-    And it reports 4 turns at capacity, then that it falls back
+      the reason "5 of 5 turns at capacity: Selected model is at capacity"
+    And it reports 5 turns at capacity, then that it falls back
 
   Scenario Outline: Only a call at capacity falls back
     Given a model step whose primary's turn ends <how>
@@ -28,51 +28,52 @@ Feature: A call at capacity falls back to another agent
       <class>, and has no primary
 
     Examples:
-      | how                                  | status    | class            |
-      | completed                            | completed |                  |
-      | a reply of the class "rate_limited"  | failed    | rate_limited     |
-      | a reply of the class "auth"          | failed    | auth             |
-      | a runtime error                      | failed    | runtime_error    |
-      | at capacity, its cost limit spent    | failed    | budget_exhausted |
+      | how                                 | status    | class            |
+      | completed                           | completed |                  |
+      | a reply of the class "rate_limited" | failed    | rate_limited     |
+      | a reply of the class "auth"         | failed    | auth             |
+      | a runtime error                     | failed    | runtime_error    |
+      | at capacity, its cost limit spent   | failed    | budget_exhausted |
 
   Scenario: A fallback at capacity ends the call
     Given a model step whose fallback's every turn fails at capacity too
     When the call is made, and the waits of both pass
-    Then the fallback makes 4 turns, and the call ends failed, class
-      "capacity", the reason "4 of 4 turns at capacity: Selected model is
+    Then the fallback makes 5 turns, and the call ends failed, class
+      "capacity", the reason "5 of 5 turns at capacity: Selected model is
       at capacity", its primary failed, class "capacity"
     And it reports that it falls back once
 
   Scenario Outline: The fallback is given what the call left of its limits
-    Given a model step of the time limit 10m, the cost limit <limit> and
+    Given a model step of the time limit 15m, the cost limit <limit> and
       the daily budget <day>, whose primary's turns each cost 0.5 and
       used 10 input tokens, and whose fallback's turn costs 1 and uses
       100, each cost's source "s"
-    When the call is made, and its three waits pass
+    When the call is made, and its four waits pass
     Then the fallback's time limit is 5m30s and its turn's budget <budget>
-    And the call's cost is 3, its source "s", its usage 140 input tokens
+    And the call's cost is 3.5, its source "s", its usage 150 input tokens
 
     Examples:
-      | limit | day                 | budget |
-      | 2.5   | none                | 0.5    |
-      | 5     | 4, of which 1 spent | 1      |
+      | limit | day                   | budget |
+      | 3     | none                  | 0.5    |
+      | 5     | 4.5, of which 1 spent | 1      |
 
   Scenario Outline: Fallback reporting keeps the call's deadline
-    Given a model step of the time limit 5m whose primary ends at capacity
-      after 4m30s, and whose fallback completes with the text "done"
+    Given a model step of the time limit 10m whose primary's five turns
+      end at capacity after 9m30s, and whose fallback completes with the
+      text "done"
     When the synchronous fallback report takes <delay>
     Then the fallback gets <remaining> and the call ends <status>
 
     Examples:
-      | delay | remaining             | status                     |
-      | 10s   | 20s                   | completed, text "done"     |
-      | 30s   | no turn and no timer  | with the primary's failure |
-      | 31s   | no turn and no timer  | with the primary's failure |
+      | delay | remaining            | status                     |
+      | 10s   | 20s                  | completed, text "done"     |
+      | 30s   | no turn and no timer | with the primary's failure |
+      | 31s   | no turn and no timer | with the primary's failure |
 
   Scenario: Unknown primary cost keeps known spend in fallback budgets
-    Given four primary turns at capacity, one unpriced and three costing
-      0.5 each, with 2 left of either the call limit or the daily budget
-    When the primary's three waits pass and the fallback is called
+    Given five primary turns at capacity, one unpriced and four costing
+      0.5 each, with 2.5 left of either the call limit or the daily budget
+    When the primary's four waits pass and the fallback is called
     Then its turn has a budget of 0.5, whichever primary turn was unpriced
     And the reported total cost stays unknown
     And a fallback spending 0.5 at capacity ends budget_exhausted, without
