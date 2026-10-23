@@ -6988,6 +6988,16 @@ html[data-size="tall"] .skeleton-choice {
   flex-basis: calc((100% - 20px) / 2);
 }
 
+/* Upright, the museum's hall stands its stands in rows of two. */
+html[data-size="tall"] .skeleton-hall {
+  padding: 24px;
+  gap: 16px 24px;
+}
+
+html[data-size="tall"] .skeleton-stand {
+  flex-basis: calc((100% - 24px) / 2);
+}
+
 /* A puzzle: the board, in the outline's frame, beside the tray of bones.
    The outline is drawn faint; each slot is its piece's place on it. The
    puzzle is the container its board is sized in. */
@@ -7017,6 +7027,21 @@ html[data-size="tall"] .skeleton-choice {
 .skeleton-puzzle .skeleton-board {
   flex: none;
   width: min((100cqw - 28px) * 920 / 1300, 100cqh * var(--frame-width) / var(--frame-height));
+}
+
+/* Upright, the board stands over the tray: as wide as the puzzle, or as
+   six tenths of its height under the gap allow, and the tray takes the
+   rest. */
+html[data-size="tall"] .skeleton-puzzle {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .skeleton-puzzle .skeleton-board {
+  width: min(100cqw, (100cqh - 28px) * 0.6 * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
+  min-height: 0;
 }
 
 .skeleton-outline {
