@@ -24,9 +24,9 @@ Native: rename writes a description with the same UUID. Evidence:
 
 ## S-5 A new output device keeps the sound heard
 
-Fake and native: each buffer keeps its rate and tone across an output change. Evidence:
+Fake: tones survive an output change. Native: exact samples and rates stay in delivery order. Evidence:
 `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
-`NativeCaptureBindingTests.nativeBuffersCarryTheRateReadDuringIO`.
+`NativeCaptureBindingTests.nativeBuffersKeepSamplesAndRatesInDeliveryOrder`.
 
 ## S-6 A capture that cannot start fails
 
@@ -38,7 +38,7 @@ Native: an unavailable process object is refused before creating a tap. Evidence
 ## S-7 A capture the system stops fails
 
 Fake and native: stopped devices and unreadable formats fail after cleanup;
-the first failure survives a later stop. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopListenerReportsOnlyStoppedDevices`,
+the first failure survives a later stop. Native notifications require a matching subscription. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopListenerReportsOnlyStoppedDevices`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
 `SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`.
 
 ## S-8 A failed capture keeps what it heard

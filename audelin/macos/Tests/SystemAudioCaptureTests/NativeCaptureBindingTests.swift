@@ -6,17 +6,23 @@ import Testing
 
 struct NativeCaptureBindingTests {
 
-    @Test func nativeBuffersCarryTheRateReadDuringIO() async throws {
+    @Test func nativeBuffersKeepSamplesAndRatesInDeliveryOrder() async throws {
 
         let calls = RecordingCaptureCalls()
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
-        try calls.deliver(rate: 48_000)
+        let samples: [[Float]] = [
+            [-0.875, -0.75, -0.625], [-0.5],
+            [-0.375, -0.25, -0.125, 0], [0.125, 0.25],
+        ]
+        try calls.deliver(samples: samples[0])
+        try calls.deliver(samples: samples[1])
         calls.state.withLock { $0.rate = 24_000 }
-        try calls.deliver(rate: 24_000)
+        try calls.deliver(samples: samples[2])
+        try calls.deliver(samples: samples[3])
         capture.stop()
         let pieces = try await drain(capture)
-        #expect(pieces.map(\.sampleRate) == [48_000, 24_000])
-        try expectTone(pieces, pid: 10)
+        #expect(pieces.map(\.samples) == samples)
+        #expect(pieces.map(\.sampleRate) == [48_000, 48_000, 24_000, 24_000])
     }
 
     @Test(arguments: [false, true])
@@ -24,11 +30,12 @@ struct NativeCaptureBindingTests {
 
         let calls = RecordingCaptureCalls()
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
-        try calls.deliver(rate: 48_000)
+        let samples = (0..<480).map { tone(10, frame: $0, rate: 48_000) }
+        try calls.deliver(samples: samples)
         calls.state.withLock {
             if readRefused { $0.refuse = "format" } else { $0.rate = 0 }
         }
-        try calls.deliver(rate: 48_000)
+        try calls.deliver(samples: samples)
         capture.stop()
         var pieces: [AudioPiece] = []
         var failure: (any Error)?
@@ -77,8 +84,43 @@ struct NativeCaptureBindingTests {
             $0.propertyStatus = notification == .failedRead ? -50 : noErr
         }
         if notification == .afterUnwatch { binding.unwatchDevice(22, watch) }
-        calls.fire([notification.selector], through: registration)
+        let address = AudioObjectPropertyAddress(
+            mSelector: notification.selector, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        calls.fire([address], on: 22, through: registration)
         #expect(stops.withLock { $0 } == (notification.reportsStop ? 1 : 0))
+    }
+
+    @Test func nativeStopNotificationsRequireMatchingSubscriptions() throws {
+
+        let notification = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyIOStoppedAbnormally,
+            mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
+        )
+        let subscriptions: [(device: UInt32, selector: UInt32, scope: UInt32, element: UInt32, reportsStop: Bool)] = [
+            (22, kAudioObjectPropertySelectorWildcard, kAudioObjectPropertyScopeWildcard, kAudioObjectPropertyElementWildcard, true),
+            (22, notification.mSelector, notification.mScope, notification.mElement, true),
+            (23, notification.mSelector, notification.mScope, notification.mElement, false),
+            (22, kAudioDevicePropertyNominalSampleRate, notification.mScope, notification.mElement, false),
+            (22, notification.mSelector, kAudioObjectPropertyScopeInput, notification.mElement, false),
+            (22, notification.mSelector, notification.mScope, 1, false),
+        ]
+        for subscription in subscriptions {
+            let calls = RecordingCaptureCalls()
+            let native = calls.native
+            let stops = Mutex(0)
+            let queue = DispatchQueue(label: "audelin.test-stop-subscription")
+            let block = ListenerBlock(value: { _, _ in stops.withLock { $0 += 1 } })
+            var address = AudioObjectPropertyAddress(
+                mSelector: subscription.selector, mScope: subscription.scope, mElement: subscription.element
+            )
+            #expect(native.addListener(subscription.device, &address, queue, block) == noErr)
+            defer { _ = native.removeListener(subscription.device, &address, queue, block) }
+            let registration = try #require(calls.state.withLock { $0.listener })
+            calls.fire([notification], on: 22, through: registration)
+            #expect(stops.withLock { $0 } == (subscription.reportsStop ? 1 : 0))
+        }
     }
 
     @Test func nativeStopReleasesEveryHandleInReverseOrder() async throws {
@@ -253,6 +295,8 @@ private struct AggregateSnapshot: @unchecked Sendable {
 // Retain the native block until removal so its recorded address cannot be reused.
 private struct ListenerRegistration: @unchecked Sendable {
 
+    let device: AudioObjectID
+    let address: AudioObjectPropertyAddress
     let queue: DispatchQueue
     let block: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
@@ -280,10 +324,10 @@ private final class RecordingCaptureCalls: Sendable {
 
     let state = Mutex(State())
 
-    func deliver(rate: Double) throws {
+    func deliver(samples: [Float]) throws {
 
         let block = try #require(state.withLock { $0.io })
-        var samples = (0..<Int(rate / 100)).map { tone(10, frame: $0, rate: rate) }
+        var samples = samples
         samples.withUnsafeMutableBytes { bytes in
             var input = AudioBufferList(
                 mNumberBuffers: 1,
@@ -297,16 +341,18 @@ private final class RecordingCaptureCalls: Sendable {
         }
     }
 
-    /// Drains the same queue native notifications use, including stale blocks.
-    func fire(_ selectors: [AudioObjectPropertySelector], through registration: ListenerRegistration) {
+    /// Delivers matching notifications and drains the queue, including stale blocks.
+    func fire(_ addresses: [AudioObjectPropertyAddress], on device: AudioObjectID, through registration: ListenerRegistration) {
 
         registration.queue.sync {
-            let addresses = selectors.map {
-                AudioObjectPropertyAddress(
-                    mSelector: $0, mScope: kAudioObjectPropertyScopeGlobal,
-                    mElement: kAudioObjectPropertyElementMain
-                )
+            guard registration.device == device else { return }
+            let subscription = registration.address
+            let addresses = addresses.filter {
+                (subscription.mSelector == kAudioObjectPropertySelectorWildcard || subscription.mSelector == $0.mSelector)
+                    && (subscription.mScope == kAudioObjectPropertyScopeWildcard || subscription.mScope == $0.mScope)
+                    && (subscription.mElement == kAudioObjectPropertyElementWildcard || subscription.mElement == $0.mElement)
             }
+            guard !addresses.isEmpty else { return }
             addresses.withUnsafeBufferPointer {
                 registration.block(UInt32($0.count), $0.baseAddress!)
             }
@@ -423,7 +469,7 @@ private final class RecordingCaptureCalls: Sendable {
             addListener: { [self] device, address, queue, block in
                 let status = attempt("watch")
                 guard status == noErr else { return status }
-                let registration = ListenerRegistration(queue: queue, block: block.value)
+                let registration = ListenerRegistration(device: device, address: address, queue: queue, block: block.value)
                 state.withLock {
                     $0.listener = registration
                     $0.made.append(.listener(device, ListenerIdentity(address, queue, registration.block)))
