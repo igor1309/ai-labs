@@ -805,7 +805,7 @@ describe("whichever game the large card features", () => {
     const tiles = partsFeaturing(featured).filter((name) => name.startsWith("tile-"));
 
     expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured));
-    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b(\w+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name.slice("tile-".length), name]));
+    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b([\w-]+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name === "tile-sandWriting" ? "sand-writing" : name.slice("tile-".length), name]));
 
     const before = Object.fromEntries(tiles.map((name) => [name, laidOut(name, "wide")]));
 
@@ -835,7 +835,8 @@ describe("the page's marked parts", () => {
       ["SKELETONS", "tile-skeletons"],
       ["DIG", "tile-dig"],
       ["SORT", "tile-sort"],
-      ["CARE", "tile-care"]
+      ["CARE", "tile-care"],
+      ["SAND WRITING", "tile-sandWriting"]
     ]);
   });
 });

@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-23
+
+- SAND WRITING, a new Home tile showing a 2, an A and a circle in sand, opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
+
 ## 2026-10-22
 
 - The compare quiz's result stands upright in a tall window instead of asking to turn: the cheering dinosaur on top, then the rewards, the level switch and PLAY AGAIN and HOME in one column, every word fitting in English and Russian, and the offer of another level fits a tall window. Turning the iPad glides the result to its new layout without counting the score up again (LAB-480).

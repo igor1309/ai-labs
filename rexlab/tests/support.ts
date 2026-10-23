@@ -270,6 +270,10 @@ export type ManualViewport = Viewport & {
   resize(size: SizeClass, upright: boolean): void;
 };
 
+export const PORTRAIT_LAYOUTS: AppProps["portraitLayouts"] = {
+  home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], sandWriting: ["tall", "tall-narrow"]
+};
+
 // Window and screen changes are independent and only happen on request.
 // The window's sides have the safe-area insets `sideInsets`, none unless
 // given.

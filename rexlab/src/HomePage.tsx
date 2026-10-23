@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -7,6 +7,7 @@ import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
+import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
@@ -17,10 +18,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -85,6 +86,7 @@ export type HomePageProps = {
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
   onDig: () => void;
+  onSandWriting: () => void;
 };
 
 type Menu = "language" | "theme" | "ageLevel";
@@ -117,7 +119,8 @@ export function HomePage({
   onPairs,
   onSkeletons,
   onMuseum,
-  onDig
+  onDig,
+  onSandWriting
 }: HomePageProps) {
   const text = TEXTS[language];
   const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
@@ -180,6 +183,13 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    sandWriting: {
+      name: text.sandWriting,
+      symbol: Pencil,
+      picture: <SandWritingPicture />,
+      badge: undefined,
+      onOpen: onSandWriting
     }
   };
   // Each game's tile. The large card's game has none in the row, so no
@@ -272,6 +282,17 @@ export function HomePage({
           <span className="dig-tile-title">{games.dig.name}</span>
         </span>
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
+      </Button>
+    ),
+    sandWriting: (
+      <Button key="sandWriting" className="card sand-writing-tile" data-turn-part="tile-sandWriting" aria-label={games.sandWriting.name} onClick={games.sandWriting.onOpen}>
+        {games.sandWriting.picture}
+        <span className="sand-writing-tile-row">
+          <span className="sand-writing-tile-symbol" aria-hidden="true">
+            <Pencil size={20} />
+          </span>
+          <span className="sand-writing-tile-title">{games.sandWriting.name}</span>
+        </span>
       </Button>
     )
   };

@@ -1,3 +1,116 @@
+/* The standalone sand fills the viewport, including beneath its safe-area
+   controls. Its texture and writing keep the same colours in both themes. */
+html:has(.sand-writing-screen),
+body:has(.sand-writing-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(.sand-writing-screen) #version {
+  display: none;
+}
+
+.sand-writing-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #d9b77e;
+  color: #4f3b22;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sand-writing-base,
+.sand-writing-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.sand-writing-base { pointer-events: none; }
+
+.sand-writing-home,
+.sand-writing-picker {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 20px);
+}
+
+.sand-writing-home { inset-inline-start: calc(env(safe-area-inset-left) + 20px); }
+.sand-writing-picker { inset-inline-end: calc(env(safe-area-inset-right) + 20px); }
+
+.sand-writing-control {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border: 1px solid #d4b88b;
+  border-radius: 20px;
+  background: #fff9ea;
+  color: #4f3b22;
+  box-shadow: 0 3px 12px #73552c24;
+}
+
+.sand-writing-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--tip);
+  height: var(--tip);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sand-writing-options {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 72px;
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  gap: 4px;
+  padding: 8px;
+  border-radius: 20px;
+  background: #fff9ea;
+  box-shadow: 0 4px 20px #73552c33;
+  visibility: hidden;
+  opacity: 0;
+  translate: 0 calc(-8px * var(--motion-amount));
+  transition: opacity var(--motion-small) var(--ease-out), translate var(--motion-small) var(--ease-out), visibility var(--motion-small) var(--ease-out);
+}
+
+.sand-writing-options[data-open] {
+  visibility: visible;
+  opacity: 1;
+  translate: 0 0;
+}
+
+.sand-writing-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 60px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #4f3b22;
+  font: inherit;
+}
+
+.sand-writing-options button[aria-pressed="true"] { background: #e3b76a; }
+.sand-writing-clear { grid-column: 1 / -1; }
+.sand-writing-control[data-pressed],
+.sand-writing-options button[data-pressed] { background: #e3b76a; }
+.sand-writing-control:focus-visible,
+.sand-writing-options button:focus-visible { outline: 3px solid #4f3b22; outline-offset: 3px; }
+
 /* Field Guide Midnight: warm paper, ink navy, amber and terracotta. The
    colours are the design's fm-* variables, written out because each is
    read back by the tests' computed styles. The light theme is the
@@ -1446,6 +1559,7 @@ body:has(.result) #version {
 /* The dig game's tile, over MORE COMING, in the other tiles' shape. The
    design's sand brown is no colour of either theme, so the tile takes the
    deepest band of rock, the nearest the palette has to sand. */
+.sand-writing-tile,
 .dig-tile {
   position: relative;
   flex: 1 1 0;
@@ -1461,6 +1575,57 @@ body:has(.result) #version {
   color: #1d2742;
   box-shadow: 0 8px 24px #1d274224;
   text-align: left;
+}
+
+.sand-writing-tile-art {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 16px 20px 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+/* The sand covers the art; the marks keep their size in its middle. */
+.sand-writing-tile-art > svg {
+  position: absolute;
+  inset: 0;
+}
+
+.featured-card[data-game="sandWriting"] {
+  background: #d0c5b2;
+  color: #1d2742;
+}
+
+.sand-writing-tile-symbol,
+.featured-card[data-game="sandWriting"] .featured-card-symbol {
+  background: #ffffff59;
+}
+
+.sand-writing-tile-row {
+  padding: 12px 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sand-writing-tile-symbol {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+/* The Russian name needs two lines at the smallest tablet column. */
+.sand-writing-tile-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1.1;
 }
 
 /* The sand picture is a rounded card of its own, as wide as its height
@@ -7376,6 +7541,10 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
     --motion-amount: 0;
   }
 
+  .sand-writing-options {
+    transition-property: opacity, visibility;
+  }
+
   ::view-transition-old(.dig-reveal-change) {
     animation: fade-out var(--motion-small) var(--ease-out) both;
   }
@@ -8151,7 +8320,9 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 }
 
 [data-theme="dark"] .featured-card[data-game="dig"],
-[data-theme="dark"] .dig-tile {
+[data-theme="dark"] .dig-tile,
+[data-theme="dark"] .sand-writing-tile,
+[data-theme="dark"] .featured-card[data-game="sandWriting"] {
   background: #1f273c;
   color: #ece8de;
   box-shadow: 0 8px 24px #00000066;
