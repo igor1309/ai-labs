@@ -126,7 +126,7 @@ struct TranscriptLogTests {
         host.layoutSubtreeIfNeeded()
 
         #expect(isTallerThanItsView(scroll))
-        #expect(isAtBottom(scroll), "the newest line is out of view")
+        #expect(settles { isAtBottom(scroll) }, "the newest line is out of view")
     }
 
     @Test func staysWhereTheReaderScrolled() throws {
@@ -263,6 +263,18 @@ struct TranscriptLogTests {
     private func isTallerThanItsView(_ scroll: NSScrollView) -> Bool {
 
         (scroll.documentView?.bounds.height ?? 0) > scroll.contentView.bounds.height
+    }
+
+    /// Runs the main loop until the condition holds, for at most five
+    /// seconds: AppKit may finish laying the text out on a later turn.
+    private func settles(_ condition: () -> Bool) -> Bool {
+
+        let deadline = Date.now.addingTimeInterval(5)
+        while !condition() {
+            guard Date.now < deadline else { return false }
+            RunLoop.main.run(until: .now.addingTimeInterval(0.01))
+        }
+        return true
     }
 
     private func isAtBottom(_ scroll: NSScrollView) -> Bool {
