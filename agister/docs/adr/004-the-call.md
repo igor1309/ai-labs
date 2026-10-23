@@ -16,6 +16,7 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-014
   (2026-10-20)
 - **Revised:** 2026-10-22, capacity retries and agent fallback (LAB-458)
+- **Revised:** 2026-10-23, a capacity retry goes on in its session, five turns (LAB-496)
 
 ## Context
 
@@ -94,11 +95,11 @@ may tighten the limits, never loosen them.
 
 A runtime's model at capacity is transient: the wrapper, which alone
 knows the provider's words, classes it `capacity`, and core retries it,
-one policy for every runtime, on by default: up to four turns at
-capacity, waits of 30 seconds, one minute and three minutes between them,
+one policy for every runtime, on by default: up to five turns at
+capacity, waits of 30 seconds, one, three and five minutes between them,
 within the call's limits (`docs/run-implementation.md`, "Capacity").
-A turn that reported its session resumes it, keeping the work done; else
-the turn runs again. Each failed turn is recorded. In a workflow, the
+A turn that reported its session is followed by a short message to go
+on in it, keeping the work done; else the turn runs again. Each failed turn is recorded. In a workflow, the
 call that failed is retried alone.
 
 An agent may declare another agent as its fallback. Once its capacity

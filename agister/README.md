@@ -10,8 +10,9 @@ A runner for AI-agent work defined in settings files.
 
 Settings in `home/` define agents, processes and workflows and compose
 with the repository's `.agister/`. An agent may name another with
-`fallback = "claude-opus"`: after capacity retries at 30 seconds, one
-minute and three minutes, the same work starts fresh on that agent.
+`fallback = "claude-opus"`: after capacity retries at 30 seconds, one,
+three and five minutes, each telling the session to go on, the same work
+starts fresh on that agent.
 Other failures do not fall back; a fallback never chains.
 
 A workflow may set `parallel: {max: 1, steps: [...]}` to run nodes one at

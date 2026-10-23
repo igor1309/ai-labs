@@ -248,7 +248,7 @@ func TestAStepCannotResumeItsPrimarysFallbackSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	primary := &turnSpy{result: call.Result{Status: call.Failed, Class: call.Capacity, Session: "primary"}}
-	for range 4 {
+	for range 5 {
 		primary.reports = append(primary.reports, call.Report{Capacity: &call.CapacityTurn{}})
 	}
 	fallback := &turnSpy{result: call.Result{Status: call.Completed, Session: "fallback", SessionCost: usd(2)}}

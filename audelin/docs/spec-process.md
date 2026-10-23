@@ -38,13 +38,19 @@ before writing on (owner, 2026-10-22).
 - **No duplication across levels.** A spec references the spec that owns a
   behaviour instead of restating it. The top level states what the user can
   do across the app and refers to the UI specs for what each screen offers.
-- **Oracle:** [mvp.md](mvp.md), [the design](design/README.md) and
-  the owner's rulings, plus the client's spec for a component. Every
-  scenario traces to it.
-- **Gaps are the agent's to close, not the owner's.** Where the oracle is
-  silent or ambiguous — a threshold, a limit, a title, a choice between two
-  readings — the agent researches it (the docs, the platform, comparable
-  apps), has Codex challenge its proposal, decides and writes the scenario.
+- **Oracle:** for the user spec, [the design](design/README.md) and the
+  owner's rulings; for a component, also the user spec and its client's
+  spec. Every scenario traces to it.
+- **[mvp.md](mvp.md) is no oracle.** It is the product vision, true when
+  it was written: never grounds for a scenario, a detail or a technical
+  choice, and never cited in `## Decided`. A wish in it counts only once
+  the owner rules it again or a spec takes it on its own grounds; so do
+  the rulings recorded only in it (owner, 2026-10-23).
+- **Gaps and technical choices are the agent's, not the owner's.** Where
+  the oracle is silent or ambiguous — a threshold, a limit, a title, a
+  choice between two readings, how a thing is built — the agent researches
+  it (the docs, the platform, comparable apps), has Codex challenge its
+  proposal, decides and writes the scenario.
   Each such decision is one line in `## Decided`, above the scenarios, with
   its grounds, so the owner can overturn it. A gap is never handed to the
   owner as an open question (owner, 2026-10-22).
@@ -93,8 +99,8 @@ A review runs on a detached worktree at the candidate commit, and nothing
 is committed to the reviewed branch while it runs.
 
 A run left unattended goes through `scripts/agister-retry.sh`: it runs again
-only after capacity or a rate limit, stops on any other end, and prints a
-line per try for a watcher. A run that completes without committing is
+only after a rate limit, stops on any other end, and prints a line per try
+for a watcher. Capacity is agister's to wait out, in the run's session. A run that completes without committing is
 read, not run again: the build's own sandbox may fail what the test step
 passes (2026-10-23).
 
