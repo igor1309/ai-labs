@@ -1,3 +1,5 @@
+import { levelNameSize, UPRIGHT_LEVEL_SWITCH } from "./levelSwitchLayout.ts";
+
 // The upright result's CSS sizes, a result with the level switch as the
 // compare quiz shows it; the stylesheet contract tests keep these in step
 // with app.css.
@@ -8,13 +10,13 @@ export const PORTRAIT_RESULT = {
   celebration: 52,
   title: 48,
   best: 48,
-  switchPadding: 6,
-  switchGap: 4,
-  switchMaximum: 648,
-  level: 64,
-  levelSidePadding: 6,
-  levelLetterSpacing: 0.5,
-  levelNameMaximum: 16,
+  switchPadding: UPRIGHT_LEVEL_SWITCH.padding,
+  switchGap: UPRIGHT_LEVEL_SWITCH.gap,
+  switchMaximum: UPRIGHT_LEVEL_SWITCH.maximum,
+  level: UPRIGHT_LEVEL_SWITCH.level,
+  levelSidePadding: UPRIGHT_LEVEL_SWITCH.sidePadding,
+  levelLetterSpacing: UPRIGHT_LEVEL_SWITCH.letterSpacing,
+  levelNameMaximum: UPRIGHT_LEVEL_SWITCH.nameMaximum,
   actions: 80,
   scoreShare: 0.15,
   scoreMaximum: 180,
@@ -24,11 +26,8 @@ export const PORTRAIT_RESULT = {
   heroRatio: 4 / 3,
   heroMaximum: 480,
   heroMinimum: 200,
-  // The widest level name in either language, in ems of its bold face, and
-  // its letters, each spaced apart: PALEONTOLOGIST, as levelEms.ts
-  // measures it. One type per window fits every name.
-  widestLevelEms: 9.7,
-  widestLevelLetters: 14
+  widestLevelEms: UPRIGHT_LEVEL_SWITCH.widestEms,
+  widestLevelLetters: UPRIGHT_LEVEL_SWITCH.widestLetters
 } as const;
 
 // What the stylesheet cannot work out itself, as each depends on the
@@ -43,16 +42,13 @@ export function compareResultWidth(windowWidth: number, leftInset: number, right
 }
 
 // The sizes for a result `width` wide: ten stars and their gaps across
-// it, the longest level name across its third of the switch, and the
-// dinosaur at 4:3 no wider than it, each at most its own maximum.
+// it, the level names as the switch, the width at most 648, gives them,
+// and the dinosaur at 4:3 no wider than it, each at most its own maximum.
 export function compareResultType(width: number): ResultType {
   const sizes = PORTRAIT_RESULT;
-  const levelSwitch = Math.min(sizes.switchMaximum, width);
-  const third = (levelSwitch - 2 * sizes.switchPadding - 2 * sizes.switchGap) / 3;
-  const nameRoom = third - 2 * sizes.levelSidePadding - sizes.levelLetterSpacing * sizes.widestLevelLetters;
   return {
     star: Math.min(sizes.starMaximum, Math.max(0, width - (sizes.stars - 1) * sizes.starGap) / sizes.stars),
-    levelName: Math.min(sizes.levelNameMaximum, Math.max(0, nameRoom) / sizes.widestLevelEms),
+    levelName: levelNameSize(Math.min(sizes.switchMaximum, width)),
     heroMaximum: Math.min(sizes.heroMaximum, width / sizes.heroRatio)
   };
 }

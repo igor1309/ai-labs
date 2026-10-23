@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-23
+
+- Find the pair's welcome stands upright in a tall window instead of asking to turn: the cards on top, then the title, the chips, the level switch and PLAY in one centred column, every word fitting in English and Russian. Turning the iPad glides the welcome to its new layout; the board and the result still ask to turn (LAB-485).
+
 ## 2026-10-22
 
 - The compare quiz's result stands upright in a tall window instead of asking to turn: the cheering dinosaur on top, then the rewards, the level switch and PLAY AGAIN and HOME in one column, every word fitting in English and Russian, and the offer of another level fits a tall window. Turning the iPad glides the result to its new layout without counting the score up again (LAB-480).
