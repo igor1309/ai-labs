@@ -2,6 +2,9 @@
 
 ## 2026-10-23
 
+- Queued audio notifications cannot report a call for another process that
+  reuses the same Core Audio object (LAB-473).
+
 - Core Audio lists audio processes and tells calls in Zoom, Telemost and
   browsers, keeping a call through microphone silences under 30 s (LAB-473).
 

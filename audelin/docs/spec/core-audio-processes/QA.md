@@ -3,17 +3,25 @@
 The translation runs through a fake of the binding: hand-made process
 objects with bundle ids, names and flags, whose list and `IsRunning`
 and device-list notifications fire on cue, and a fake clock. The list runs
-for real against this Mac with a muted `afplay`. No row uses the microphone.
+for real against this Mac with a muted `afplay`. Native property reads and
+notification registration and filtering also run against fake native calls;
+the production clock sleeps only when released by its fake sleep. No row
+uses the microphone.
 
 ## S-1 A process with audio open is listed
 
 Real: a muted `afplay` is in the list with its name. Evidence:
-`CoreAudioBindingTests.realAfplayWithAudioOpenIsListed`.
+`CoreAudioBindingTests.realAfplayWithAudioOpenIsListed`,
+`NativeCoreAudioBindingTests.processObjectsReadTheNativeList` and
+`NativeCoreAudioBindingTests.pidReadsTheNativeProperty`.
 
 ## S-2 A process with no bundle id is listed by name
 
 Real: `afplay`, which has no bundle id, is listed as `afplay`. Evidence:
-`CoreAudioBindingTests.realAfplayWithoutBundleIDIsNamedByExecutable`.
+`CoreAudioBindingTests.realAfplayWithoutBundleIDIsNamedByExecutable`,
+`NativeCoreAudioBindingTests.bundleIDReadsTheNativeString`,
+`NativeCoreAudioBindingTests.aRefusedBundleIDReadIsAbsent` and
+`NativeCoreAudioBindingTests.nameReadsTheNativeNameForABundledProcess`.
 
 ## S-3 Audelin is marked as itself
 
@@ -24,18 +32,30 @@ Fake: the object whose pid is the test's own is marked. Evidence:
 
 Fake: `us.zoom.xos`'s recording flag turns on and `IsRunning` fires; a
 call in Zoom is told. Evidence:
-`CoreAudioProcessesTests.zoomOnTheMicrophoneStartsACall`.
+`CoreAudioProcessesTests.zoomOnTheMicrophoneStartsACall`,
+`CoreAudioProcessesTests.aStartAndEndAreReadWhileTheAdapterIsRunning`,
+`NativeCoreAudioBindingTests.inputRunningReadsTheNativeFlag`,
+`NativeCoreAudioBindingTests.aRefusedInputReadIsNotRunning`,
+`NativeCoreAudioBindingTests.processNotificationsRegisterAndFilter`,
+`NativeCoreAudioBindingTests.listNotificationsRegisterAndFilter` and
+`NativeCoreAudioBindingTests.aRefusedListenerThrows`.
 
 ## S-5 Another app on the microphone is not a call
 
 Fake: `com.apple.VoiceMemos` records for 60 s of fake clock; no event is
-told. Evidence:
-`CoreAudioProcessesTests.anotherAppOnTheMicrophoneIsNotACall`.
+told after the stream is drained. Zoom is then checked in a separate run.
+A queued callback for non-recording Zoom cannot sample a recording Voice
+Memos that reuses its object before the list notification. Evidence:
+`CoreAudioProcessesTests.anotherAppOnTheMicrophoneIsNotACall` and
+`CoreAudioProcessesTests.aQueuedNotificationCannotSampleAReusedObjectBeforeTheListChanges`.
 
 ## S-6 A call ends 30 s after the microphone
 
 Fake: Zoom stops at 0 s; at 29 s nothing is told, at 30 s the end is.
-Evidence: `CoreAudioProcessesTests.aCallEndsThirtySecondsAfterTheMicrophone`.
+Evidence: `CoreAudioProcessesTests.aCallEndsThirtySecondsAfterTheMicrophone`,
+`CoreAudioProcessesTests.aStartAndEndAreReadWhileTheAdapterIsRunning`,
+`ContinuousCallClockTests.forwardsTheDeadlineAndFiresAfterSleep` and
+`ContinuousCallClockTests.cancellingTheWaitCancelsSleepAndDoesNotFire`.
 
 ## S-7 A short silence does not end the call
 
@@ -57,13 +77,15 @@ Evidence: `CoreAudioProcessesTests.anAppIsOnTheMicrophoneWhileAnyOfItsProcessesI
 ## S-10 A list the system refuses fails
 
 Fake: the binding refuses the list; the ask fails. Evidence:
-`CoreAudioProcessesTests.aListTheSystemRefusesFails`.
+`CoreAudioProcessesTests.aListTheSystemRefusesFails` and
+`NativeCoreAudioBindingTests.aRefusedNativeListThrows`.
 
 ## S-11 Telemost on the microphone starts a call
 
 Fake: `ru.yandex.desktop.telemost`'s recording flag turns on and the device
 list fires; a call in Telemost is told. Evidence:
-`CoreAudioProcessesTests.telemostOnTheMicrophoneStartsACall`.
+`CoreAudioProcessesTests.telemostOnTheMicrophoneStartsACall` and
+`NativeCoreAudioBindingTests.processNotificationsRegisterAndFilter`.
 
 ## S-12 A browser on the microphone starts a call
 

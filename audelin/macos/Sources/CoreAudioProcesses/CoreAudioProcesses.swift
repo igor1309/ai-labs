@@ -145,7 +145,8 @@ public final class CoreAudioProcesses: Sendable {
                     listener = try binding.onProcessChange(object) { [weak self] in
                         guard let self else { return }
                         self.receive { state in
-                            guard state.watched[object]?.identity == identity else { return }
+                            guard let watched = state.watched[object], watched.identity == identity,
+                                  self.binding.pid(of: object) == watched.pid else { return }
                             state.watched[object]?.input = self.binding.isRunningInput(object)
                             self.reconcile(&state)
                         }
