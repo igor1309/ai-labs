@@ -3406,6 +3406,60 @@ html[data-size="tall"] .new-visitor-title {
   white-space: nowrap;
 }
 
+/* Upright, a visit takes the narrower side padding, its bar keeps one
+   row with HOME as its symbol, the stage stands taller than wide with
+   the visitor larger and lower and the bubble under the name, and the
+   five items share one row, their words a size that fits in either
+   language. */
+html[data-size="tall"] .visit {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .visit-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .visitor-name {
+  left: 32px;
+  top: 28px;
+  font-size: 28px;
+  white-space: nowrap;
+}
+
+html[data-size="tall"] .visitor {
+  left: 8%;
+  top: 30%;
+  width: 84%;
+  height: 62%;
+}
+
+html[data-size="tall"] .need-bubble {
+  left: 55%;
+  top: 14%;
+}
+
+html[data-size="tall"] .tray {
+  gap: 10px;
+}
+
+html[data-size="tall"] .tray-item {
+  min-width: 0;
+  height: 150px;
+  padding: 8px 4px 12px;
+}
+
+html[data-size="tall"] .tray-picture {
+  height: 96px;
+}
+
+html[data-size="tall"] .tray-label {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 /* A visit: the needs and hearts above, the visitor on its stage, and the
    items below. */
 .visit {

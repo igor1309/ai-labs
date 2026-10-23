@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- A care visit stands upright in a tall window instead of asking to turn: the needs and hearts across the top under HOME as its symbol, the visitor on a tall stage, its name over the need's bubble, and the five items in one row under it, every name and word fitting in English and Russian; turning mid-visit keeps the visit. FRIENDS and the result still ask to turn (LAB-512).
 - Care's welcome stands upright in a tall window instead of asking to turn: NEW VISITOR over FRIENDS across the width, under a one-row bar with HOME as its symbol, every word fitting in English and Russian. A visit, FRIENDS and the result still ask to turn (LAB-511).
 
 ## 2026-10-23
