@@ -4,25 +4,37 @@ import LiveText
 import Testing
 @testable import NemotronRecognizer
 
+/// One test at a time: a test replaces the process-wide decoder builder.
+@Suite(.serialized)
 struct NemotronRecognizerTests {
 
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
         let load = ControlledModelLoad()
-        let received = ReceivedModels()
         let makeDecoder = NemotronRecognizer.sharedDecoders(
             load: { await load.load() },
             makeDecoder: { model in
-                await received.append(model)
-                return ScriptedDecoder([])
+                ScriptedDecoder([[DecodedToken("▁\(model)", start: 0.1, end: 0.4)]])
             }
         )
+        let original = NemotronRecognizer.decoders.withLock { $0 }
+        defer { NemotronRecognizer.decoders.withLock { $0 = original } }
+        let (building, arrivals) = AsyncStream<Void>.makeStream()
+        defer { arrivals.finish() }
+        NemotronRecognizer.decoders.withLock {
+            $0 = {
+                arrivals.yield(())
+                return try await makeDecoder()
+            }
+        }
         let recognizers = 4
 
         let built = try await withThrowingTaskGroup(of: NemotronRecognizer.self) { group in
             for _ in 0..<recognizers {
-                group.addTask { NemotronRecognizer(decoder: try await makeDecoder()) }
+                group.addTask { try await NemotronRecognizer() }
             }
+            var entries = building.makeAsyncIterator()
+            for _ in 0..<recognizers { await entries.next() }
             var starts = load.started.makeAsyncIterator()
             await starts.next()
 
@@ -34,7 +46,10 @@ struct NemotronRecognizerTests {
 
         #expect(built.count == recognizers)
         #expect(await load.calls == 1)
-        #expect(await received.models == Array(repeating: 42, count: recognizers))
+        for recognizer in built {
+            let hearing = try await recognizer.hear(silence(1.12))
+            #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+        }
     }
 
     @Test func nothingIsHeardBeforeAChunksAudioIsIn() async throws {
@@ -355,17 +370,6 @@ private actor ControlledModelLoad {
         for waiter in waiters { waiter.resume(returning: model) }
         waiters.removeAll()
         starts.finish()
-    }
-}
-
-/// The model each built recognizer was given.
-private actor ReceivedModels {
-
-    private(set) var models: [Int] = []
-
-    func append(_ model: Int) {
-
-        models.append(model)
     }
 }
 

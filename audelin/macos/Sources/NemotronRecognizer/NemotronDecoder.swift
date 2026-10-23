@@ -1,21 +1,23 @@
 import FluidAudio
 import ModelLoading
+import Synchronization
 
 extension NemotronRecognizer {
 
     /// Every recognizer this process builds decodes with the one model load.
-    private static let decoders = sharedDecoders(
+    static let decoders = Mutex(sharedDecoders(
         load: {
             try await StreamingNemotronMultilingualAsrManager.downloadAndPreloadShared(languageCode: "auto", chunkMs: 1120)
         },
         makeDecoder: { try await NemotronDecoder(models: $0) }
-    )
+    ))
 
     /// Loads multilingual Nemotron in 1120 ms chunks for Russian speech,
     /// downloading it the first time.
     public init() async throws {
 
-        self.init(decoder: try await Self.decoders())
+        let makeDecoder = Self.decoders.withLock { $0 }
+        self.init(decoder: try await makeDecoder())
     }
 
     /// Builds decoders that all take their models from one load.

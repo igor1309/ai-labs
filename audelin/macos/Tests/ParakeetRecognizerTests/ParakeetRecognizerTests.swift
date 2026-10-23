@@ -4,28 +4,38 @@ import LiveText
 import Testing
 @testable import ParakeetRecognizer
 
-/// One test at a time: each recognizer downloads the model on a machine
-/// without it, and two downloads into the same folder break each other.
+/// One test at a time: a test replaces the process-wide reader builder,
+/// and concurrent downloads into the same model folder break each other.
 @Suite(.serialized)
 struct ParakeetRecognizerTests {
 
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
         let load = ControlledModelLoad()
-        let received = ReceivedModels()
         let makeReader = ParakeetRecognizer.sharedReaders(
             load: { await load.load() },
             makeReader: { model in
-                await received.append(model)
-                return ScriptedReader([])
+                ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
             }
         )
+        let original = ParakeetRecognizer.readers.withLock { $0 }
+        defer { ParakeetRecognizer.readers.withLock { $0 = original } }
+        let (building, arrivals) = AsyncStream<Void>.makeStream()
+        defer { arrivals.finish() }
+        ParakeetRecognizer.readers.withLock {
+            $0 = {
+                arrivals.yield(())
+                return try await makeReader()
+            }
+        }
         let recognizers = 4
 
         let built = try await withThrowingTaskGroup(of: ParakeetRecognizer.self) { group in
             for _ in 0..<recognizers {
-                group.addTask { ParakeetRecognizer(reader: try await makeReader()) }
+                group.addTask { try await ParakeetRecognizer() }
             }
+            var entries = building.makeAsyncIterator()
+            for _ in 0..<recognizers { await entries.next() }
             var starts = load.started.makeAsyncIterator()
             await starts.next()
 
@@ -37,7 +47,10 @@ struct ParakeetRecognizerTests {
 
         #expect(built.count == recognizers)
         #expect(await load.calls == 1)
-        #expect(await received.models == Array(repeating: 42, count: recognizers))
+        for recognizer in built {
+            let hearing = try await recognizer.hear(silence(6))
+            #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+        }
     }
 
     @Test func nothingIsHeardBeforeAWindowsAudioIsIn() async throws {
@@ -315,17 +328,6 @@ private actor ControlledModelLoad {
         for waiter in waiters { waiter.resume(returning: model) }
         waiters.removeAll()
         starts.finish()
-    }
-}
-
-/// The model each built recognizer was given.
-private actor ReceivedModels {
-
-    private(set) var models: [Int] = []
-
-    func append(_ model: Int) {
-
-        models.append(model)
     }
 }
 
