@@ -47,3 +47,7 @@ answer again. Evidence: Missing.
 
 After an "all but" answer, an ask with Zoom in the list answers Zoom's
 processes. Evidence: Missing.
+
+## S-10 A list that fails is told
+
+A list that throws makes the ask throw the same error. Evidence: Missing.
