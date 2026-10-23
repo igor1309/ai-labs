@@ -301,15 +301,17 @@
       </a>
       <div class="product reveal">
         <div class="product-header">
-          <span class="product-name">Noreta</span>
+          <span class="product-name">Foliotell</span>
         </div>
         <p class="product-desc">
-          <strong>Local hub for coding-agent sessions.</strong> One place to see active and past work across Claude Code, Codex and Pi — search, filter and group sessions, and read each one with its history and project context. <em>Read-only is a property of the first versions, not of the product</em>: a macOS MVP first, the same view on iPhone next, then interaction with local runtimes (reply, approvals, resume, handoff). Working name; product definition stage, no implementation yet.
+          <strong>Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit <code>foliotell</code>, in <code>ios/</code>) with Apple speech synthesis; Android sibling app in <code>android/</code> (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap)</strong> FolioTell opens local Markdown or plain-text files from the system document browser and reads them aloud using Apple speech synthesis, with selectable playback speed. A native, offline, read-only SwiftUI app — <em>no account, backend, analytics, subscription, or network dependency</em>. Working name; v0.6.3 is implemented as a Swift package.
         </p>
         <div class="product-stack">
-          <span class="tag">Product definition</span>
+          <span class="tag">SwiftUI</span>
+          <span class="tag">AVSpeechSynthesizer</span>
+          <span class="tag">Swift Package Manager</span>
           <span class="tag">Naming</span>
-          <span class="tag">macOS</span>
+          <span class="tag">Spec</span>
         </div>
       </div>
       <div class="product reveal">
@@ -325,6 +327,14 @@
           <span class="tag">JavaScriptKit</span>
           <span class="tag">Wasm</span>
         </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Noreta</span>
+        </div>
+        <p class="product-desc">
+          <strong>Local hub for coding-agent sessions across Claude Code, Codex and Pi — one view of active and past work, with search, grouping, history and project context; read-only macOS MVP; all seven QA features have a domain implementation and a test per scenario; Claude Code adapters read real sessions, their runtime state and transcripts from disk, and <code>npm start</code> lists them as plain text; no Codex adapter yet</strong> One place to see active and past work across coding agents — Claude Code, Codex, Pi, later OpenCode and others. Sessions can be searched, filtered and grouped, and read together with their history and project context.
+        </p>
       </div>
     </div>
 
@@ -344,6 +354,14 @@
           <span class="tag">Vitest</span>
         </div>
       </a>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Ntfy Sender</span>
+        </div>
+        <p class="product-desc">
+          <strong>iPhone-friendly page for sending ntfy notifications, deployed to Cloudflare Pages</strong>
+        </p>
+      </div>
       <a class="product reveal" href="../oracle/apps/am-i-done-web/src/landing.html">
         <div class="product-header">
           <span class="product-name">Oracle — Am I Done?</span>
@@ -360,6 +378,14 @@
           <span class="tag">KV Cache</span>
         </div>
       </a>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Rexlab</span>
+        </div>
+        <p class="product-desc">
+          <strong>Dinosaur educational web app for children aged 5–7 (working name; research stage)</strong>
+        </p>
+      </div>
     </div>
 
     <h3 class="group-title">Services</h3>
@@ -415,6 +441,14 @@
 
     <h3 class="group-title">CLI &amp; Tooling</h3>
     <div class="product-grid">
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Agister</span>
+        </div>
+        <p class="product-desc">
+          <strong>Agister orchestrator, CLI stage: generic agent calls through Claude Code, with opt-in Codex, Pi, and OpenCode adapters (OpenCode pending live verification); agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet</strong>
+        </p>
+      </div>
       <a class="product reveal" href="../claude-insights/index.html">
         <div class="product-header">
           <span class="product-name">Claude Insights</span>
@@ -472,11 +506,12 @@
           <span class="product-name">Tools</span>
         </div>
         <p class="product-desc">
-          <strong>Developer workflow helpers</strong> Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting — <em>small shell scripts</em> that smooth out daily friction. (The worktree shared-config symlinker moved into the <code>worktree</code> dev-skill under <code>dev-skills/public/worktree/scripts/</code>.)
+          <strong>Developer workflow helpers</strong> Git worktree manager, scheduled macOS health checks, and agent-session audits — <em>small scripts</em> that smooth out daily friction. (The worktree shared-config symlinker moved into the <code>worktree</code> dev-skill under <code>dev-skills/public/worktree/scripts/</code>.)
         </p>
         <div class="product-stack">
           <span class="tag">Bash</span>
           <span class="tag">Git</span>
+          <span class="tag">Python 3</span>
         </div>
       </div>
       <div class="product reveal">
@@ -484,13 +519,8 @@
           <span class="product-name">Warder</span>
         </div>
         <p class="product-desc">
-          <strong>Local monitor for coding-agent runs, MVP stage</strong> Polls each enabled source — Claude Code through <code>claude agents --json</code> — every few seconds and writes one complete JSONL observation per successful read on stdout (<code>source</code>, <code>observedAt</code>, agents with their state), diagnostics on stderr. <em>Failed or timed-out reads publish nothing</em>; other programs consume the stream.
+          <strong>Local monitor for AI-agent runs: polls the Claude Code source (<code>claude agents --json</code>) and writes one complete JSONL observation per successful read on stdout, diagnostics on stderr; one Go module, components as packages under <code>internal/</code>, composition root <code>cmd/warder</code>; how to build and run it: <a href="warder/README.md">warder/README.md</a></strong>
         </p>
-        <div class="product-stack">
-          <span class="tag">Go</span>
-          <span class="tag">JSONL</span>
-          <span class="tag">Claude Code</span>
-        </div>
       </div>
     </div>
 
@@ -529,6 +559,14 @@
     <div class="product-grid">
       <div class="product reveal">
         <div class="product-header">
+          <span class="product-name">Gokit</span>
+        </div>
+        <p class="product-desc">
+          <strong>Reusable Go packages extracted from Agister (ADR-019): process supervisor, manual clock, fake program and shell, in-process starter, test-discipline check</strong>
+        </p>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
           <span class="product-name">Neris</span>
         </div>
         <p class="product-desc">
@@ -557,7 +595,7 @@
           <span class="product-name">Dashboard Sync Agent</span>
         </div>
         <p class="product-desc">
-          <strong>Dashboard and loc-script sync</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 01:30 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
+          <strong>Dashboard and loc-script sync</strong> Sibling OpenClaw agent that keeps <em>scripts/loc-dashboard.sh</em>, <em>docs/products.html</em>, and the <em>docs/loc-dashboard.html</em> data array in sync with repo state on a daily 02:00 UTC cron. The root README's Components and Structure tables are the authoritative project registries; manual edits to products.html are not preserved across runs. Auto-merge is never used.
         </p>
         <div class="product-stack">
           <span class="tag">OpenClaw</span>
@@ -571,45 +609,6 @@
 
     <h3 class="group-title">Research</h3>
     <div class="product-grid">
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Agister</span>
-        </div>
-        <p class="product-desc">
-          <strong>Agister orchestrator, CLI stage: generic agent calls through Claude Code, with opt-in Codex, Pi, and OpenCode adapters (Codex and OpenCode pending live verification); agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet</strong>
-        </p>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Foliotell</span>
-        </div>
-        <p class="product-desc">
-          <strong>Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit <code>foliotell</code>, in <code>ios/</code>) with Apple speech synthesis; Android sibling app in <code>android/</code> (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap)</strong> FolioTell opens local Markdown or plain-text files from the system document browser and reads them aloud using Apple speech synthesis, with selectable playback speed. A native, offline, read-only SwiftUI app — <em>no account, backend, analytics, subscription, or network dependency</em>. Working name; v0.6.3 is implemented as a Swift package.
-        </p>
-        <div class="product-stack">
-          <span class="tag">SwiftUI</span>
-          <span class="tag">AVSpeechSynthesizer</span>
-          <span class="tag">Swift Package Manager</span>
-          <span class="tag">Naming</span>
-          <span class="tag">Spec</span>
-        </div>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Gokit</span>
-        </div>
-        <p class="product-desc">
-          <strong>Reusable Go packages extracted from Agister (ADR-019): process supervisor, manual clock, fake program and shell, in-process starter, test-discipline check</strong>
-        </p>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Ntfy Sender</span>
-        </div>
-        <p class="product-desc">
-          <strong>iPhone-friendly page for sending ntfy notifications, deployed to Cloudflare Pages</strong>
-        </p>
-      </div>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Sandbox</span>
