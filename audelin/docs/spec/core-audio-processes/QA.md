@@ -18,12 +18,10 @@ Missing.
 
 Fake: the object whose pid is the test's own is marked. Evidence: Missing.
 
-## S-4 A call app on the microphone starts a call
+## S-4 Zoom on the microphone starts a call
 
-Fake: for `us.zoom.xos`, `ru.yandex.desktop.telemost` and each browser
-family's prefix with a helper's bundle id under it, in turn, the
-recording flag turns on and `IsRunning` fires; a call in that app is told.
-Evidence: Missing.
+Fake: `us.zoom.xos`'s recording flag turns on and `IsRunning` fires; a
+call in Zoom is told. Evidence: Missing.
 
 ## S-5 Another app on the microphone is not a call
 
@@ -42,8 +40,8 @@ second start is told. Evidence: Missing.
 
 ## S-8 A second call app joins the call
 
-Fake: Chrome starts beside Zoom; Zoom stops at 0 s, Chrome at 20 s; no
-second start is told, nothing at 49 s, the end at 50 s. Evidence: Missing.
+Fake: Chrome starts beside Zoom, and Zoom stops; at 60 s the call is on
+in Zoom, and no second start or end was told. Evidence: Missing.
 
 ## S-9 An app is on the microphone while any of its processes is
 
@@ -53,3 +51,19 @@ Evidence: Missing.
 ## S-10 A list the system refuses fails
 
 Fake: the binding refuses the list; the ask fails. Evidence: Missing.
+
+## S-11 Telemost on the microphone starts a call
+
+Fake: `ru.yandex.desktop.telemost`'s recording flag turns on and the device
+list fires; a call in Telemost is told. Evidence: Missing.
+
+## S-12 A browser on the microphone starts a call
+
+Fake: each browser family's helper (`com.google.Chrome.helper`,
+`com.apple.WebKit.GPU`, …) in turn starts alone in a fresh run; a call in
+that browser is told for every one. Evidence: Missing.
+
+## S-13 A call ends 30 s after the last call app leaves
+
+Fake: Zoom stops at 0 s, Chrome at 20 s; at 49 s the call is on, and at
+50 s its end is told. Evidence: Missing.
