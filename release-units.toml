@@ -55,5 +55,5 @@ docker = false
 basename = "rexlab"
 path = "rexlab"
 metadata = "package.json"
-version = "0.10.39"
+version = "0.10.40"
 docker = false

@@ -236,7 +236,7 @@ export function appProps(browser: Browser): AppProps {
     bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
     random: Math.random,
     viewport,
-    portraitLayouts: { home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], "compare-question": ["tall"], "compare-result": ["tall"], "pairs-welcome": ["tall"], "pairs-board": ["tall"], "pairs-result": ["tall"], "sorting-board": ["tall"], "sorting-result": ["tall"], "skeletons-choice": ["tall"], "skeletons-museum": ["tall"], "skeletons-puzzle": ["tall"], "skeletons-guess": ["tall"], "skeletons-result": ["tall"], "dig-board": ["tall"], sandWriting: ["tall", "tall-narrow"] },
+    portraitLayouts: { home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], "compare-question": ["tall"], "compare-result": ["tall"], "pairs-welcome": ["tall"], "pairs-board": ["tall"], "pairs-result": ["tall"], "sorting-board": ["tall"], "sorting-result": ["tall"], "skeletons-choice": ["tall"], "skeletons-museum": ["tall"], "skeletons-puzzle": ["tall"], "skeletons-guess": ["tall"], "skeletons-result": ["tall"], "dig-board": ["tall"], "dig-question": ["tall"], sandWriting: ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(token("--motion-screen")),
