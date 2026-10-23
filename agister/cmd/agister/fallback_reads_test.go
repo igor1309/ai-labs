@@ -12,11 +12,11 @@ import (
 	"github.com/igor1309/ai-labs/agister/runtime/codex"
 )
 
-// spendCapacity moves f's clock past the three capacity waits of each of
+// spendCapacity moves f's clock past the four capacity waits of each of
 // calls calls, one call after another, each wait once its timer started.
 func spendCapacity(f *runFixture, calls int) {
 	for range calls {
-		for _, wait := range []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute} {
+		for _, wait := range []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute, 5 * time.Minute} {
 			f.clock.Started(wait)
 			f.clock.Advance(wait)
 		}
@@ -154,8 +154,8 @@ func TestAContinuationGoesOnFromACallThatFellBack(t *testing.T) {
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("R3: stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	if turns := f.runtimes.codex.ran(); len(turns) != 6 || turns[5].Session != "S" {
-		t.Errorf("codex ran %+v, want R3's one turn, the sixth, in S", turns)
+	if turns := f.runtimes.codex.ran(); len(turns) != 7 || turns[6].Session != "S" {
+		t.Errorf("codex ran %+v, want R3's one turn, the seventh, in S", turns)
 	}
 	if call := f.store.last(t).Calls[0]; call.Agent != "codex-sol-61" || call.Continues == nil || *call.Continues != r2.ID+"/ask" {
 		t.Errorf("R3's call %+v, want on codex-sol-61, continuing %s/ask", call, r2.ID)

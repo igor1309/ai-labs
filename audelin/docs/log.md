@@ -2,11 +2,21 @@
 
 ## 2026-10-23
 
-- Audelin captures named processes or every process but those left out as mono audio at the device rate, leaving playback unmuted (LAB-471).
+- Audelin captures the processes it is told, or every process but those
+  left out, as mono audio at the device's rate, leaving playback unmuted
+  (LAB-471).
+
+- Call text switched on after audio ends catches up and includes the final
+  words and revisions before finishing (LAB-476).
+
+- Call text reads both sides live, catches up after loading or switching
+  on, and keeps earlier text when switched off or when live text fails (LAB-476).
 
 - Audelin can tell which processes to hear for a call app: its own and its
   helpers, the last answer while they are gone, and every process but
   Audelin's before the app appears (LAB-472).
+- Recognizers built together share one model load and can retry a failed
+  load, avoiding overlapping first-run downloads (LAB-495).
 
 - A process replaced while its microphone flag is read cannot start a call
   under the previous process's app (LAB-473).

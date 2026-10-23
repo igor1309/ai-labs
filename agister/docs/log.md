@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-496: a capacity retry tells its reported session "Go on."; a call
+  makes up to five capacity turns, waiting 30 s, 1 min, 3 min and 5 min.
+
 - LAB-465: `agister check` refuses what `agister run` does not run yet
   (a branch, a repeat, a runtime with no turn, an input from a source a
   run does not take), in run's words, and a step that gives a file's

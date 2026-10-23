@@ -2,6 +2,9 @@
 
 ## 2026-10-23
 
+- DIG's reveal stands upright in a tall window instead of asking to turn: the dinosaur dug up over its name, DUG UP and the level switch, DIG AGAIN over HOME, every word fitting in English and Russian; the offer of the next level comes upright. The field guide still asks to turn (LAB-502).
+- DIG's WHO IS IT? at Explorer and Paleontologist stands upright in a tall window: the sand as wide as the screen, its three or four cards side by side under it, the sand keeping its place and size through the round, every name fitting in English and Russian. The reveal and the field guide still ask to turn (LAB-501).
+- DIG's board at Hatchling stands upright in a tall window instead of asking to turn: the sand as wide as the screen under a one-row bar, HOME as its symbol; a brush stroke never scrolls or swipes the page. A board that asks WHO IS IT?, the reveal and the field guide still ask to turn (LAB-500).
 - Build a skeleton's result stands upright in a tall window instead of asking to turn: the finished skeleton over its reward, BUILD ANOTHER over MUSEUM, every word fitting in English and Russian; turning the iPad glides them to their new places. Build a skeleton now plays whole upright (LAB-494).
 - Build a skeleton's mystery guess stands upright in a tall window instead of asking to turn: the finished skeleton as wide as the screen over the three dinosaurs' cards side by side, the clue below them, every name fitting in English and Russian. Turning the iPad glides the skeleton and cards to their new places; the result still asks to turn (LAB-493).
 - Build a skeleton's puzzle stands upright in a tall window instead of asking to turn: the board as wide as the screen over the tray of bones, under a one-row bar with BACK, HOME and MUSEUM as their symbols; bones fit as they do sideways. Turning the iPad glides the board and tray to their new places; the guess and result still ask to turn (LAB-492).

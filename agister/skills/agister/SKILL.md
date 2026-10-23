@@ -19,8 +19,8 @@ home (`$AGISTER_HOME`, else `~/.agister`), the worktree's `.agister/`, and
 the nearest project's `.agister/`; lists and scalars replace whole.
 
 An agent may declare `fallback = "claude-opus"` in its TOML file. A call
-at capacity retries its session after 30 seconds, one minute and three
-minutes. Once all four capacity turns are spent, the same process and
+at capacity is told "Go on." in its session after 30 seconds, one, three
+and five minutes. Once all five capacity turns are spent, the same process and
 inputs run fresh on the fallback within the remaining limits. Only
 capacity falls back; the fallback never follows its own. Check refuses
 a missing fallback, itself, or a runtime unable to run the process. The
