@@ -407,6 +407,38 @@ struct CoreAudioProcessesTests {
         #expect(binding.inputReads == 1)
     }
 
+    @Test func aProcessReplacedWhileTheCallbackReadsInputIsNotTold() async throws {
+
+        let binding = FakeBinding()
+        binding.add(1, pid: 400, bundleID: "us.zoom.xos")
+        let processes = try watch(binding, FakeClock())
+        binding.beforeInputRead { [weak binding] object in
+            binding?.remove(object)
+            binding?.add(object, pid: 401, bundleID: "com.apple.VoiceMemos", input: true)
+        }
+
+        binding.fireProcess(1)
+
+        #expect(try await told(processes) == [])
+    }
+
+    @Test(arguments: [false, true])
+    func aProcessReplacedWhileRefreshReadsInputIsNotTold(alreadyWatched: Bool) async throws {
+
+        let binding = FakeBinding()
+        binding.add(1, pid: 400, bundleID: "us.zoom.xos")
+        let processes = CoreAudioProcesses(binding: binding, clock: FakeClock())
+        if alreadyWatched { try processes.start() }
+        binding.beforeInputRead { [weak binding] object in
+            binding?.remove(object)
+            binding?.add(object, pid: 401, bundleID: "com.apple.VoiceMemos", input: true)
+        }
+
+        if alreadyWatched { binding.fireList() } else { try processes.start() }
+
+        #expect(try await told(processes) == [])
+    }
+
     @Test func aStartAndEndAreReadWhileTheAdapterIsRunning() async throws {
 
         let binding = FakeBinding()
@@ -475,6 +507,7 @@ final class FakeBinding: ProcessBinding {
         var processListeners: [Int: (object: ProcessObject, changed: @Sendable () -> Void)] = [:]
         var nextListener = 0
         var inputReads = 0
+        var beforeInputRead: (@Sendable (ProcessObject) -> Void)?
     }
 
     private let state = Mutex(State())
@@ -580,10 +613,16 @@ final class FakeBinding: ProcessBinding {
 
     func isRunningInput(_ object: ProcessObject) -> Bool {
 
-        state.withLock {
+        state.withLock { $0.beforeInputRead }?(object)
+        return state.withLock {
             $0.inputReads += 1
             return $0.objects[object]?.input ?? false
         }
+    }
+
+    func beforeInputRead(_ hook: @escaping @Sendable (ProcessObject) -> Void) {
+
+        state.withLock { $0.beforeInputRead = hook }
     }
 
     func onProcessListChange(_ changed: @escaping @Sendable () -> Void) -> Cancellation {

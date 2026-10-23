@@ -147,7 +147,9 @@ public final class CoreAudioProcesses: Sendable {
                         self.receive { state in
                             guard let watched = state.watched[object], watched.identity == identity,
                                   self.binding.pid(of: object) == watched.pid else { return }
-                            state.watched[object]?.input = self.binding.isRunningInput(object)
+                            let input = self.binding.isRunningInput(object)
+                            guard self.binding.pid(of: object) == watched.pid else { return }
+                            state.watched[object]?.input = input
                             self.reconcile(&state)
                         }
                     }
@@ -162,7 +164,9 @@ public final class CoreAudioProcesses: Sendable {
                     input: false, listener: listener
                 )
             }
-            state.watched[object]?.input = binding.isRunningInput(object)
+            let input = binding.isRunningInput(object)
+            guard binding.pid(of: object) == pid else { continue }
+            state.watched[object]?.input = input
         }
         reconcile(&state)
     }
