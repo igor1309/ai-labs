@@ -4,10 +4,54 @@ import LiveText
 import Testing
 @testable import ParakeetRecognizer
 
-/// One test at a time: each recognizer downloads the model on a machine
-/// without it, and two downloads into the same folder break each other.
+/// One test at a time: a test replaces the process-wide reader builder,
+/// and concurrent downloads into the same model folder break each other.
 @Suite(.serialized)
 struct ParakeetRecognizerTests {
+
+    @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
+
+        let load = ControlledModelLoad()
+        let makeReader = ParakeetRecognizer.sharedReaders(
+            load: { await load.load() },
+            makeReader: { model in
+                ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
+            }
+        )
+        let original = ParakeetRecognizer.readers.withLock { $0 }
+        defer { ParakeetRecognizer.readers.withLock { $0 = original } }
+        let (building, arrivals) = AsyncStream<Void>.makeStream()
+        defer { arrivals.finish() }
+        ParakeetRecognizer.readers.withLock {
+            $0 = {
+                arrivals.yield(())
+                return try await makeReader()
+            }
+        }
+        let recognizers = 4
+
+        let built = try await withThrowingTaskGroup(of: ParakeetRecognizer.self) { group in
+            for _ in 0..<recognizers {
+                group.addTask { try await ParakeetRecognizer() }
+            }
+            var entries = building.makeAsyncIterator()
+            for _ in 0..<recognizers { await entries.next() }
+            var starts = load.started.makeAsyncIterator()
+            await starts.next()
+
+            await load.finish(42)
+            var built: [ParakeetRecognizer] = []
+            for try await recognizer in group { built.append(recognizer) }
+            return built
+        }
+
+        #expect(built.count == recognizers)
+        #expect(await load.calls == 1)
+        for recognizer in built {
+            let hearing = try await recognizer.hear(silence(6))
+            #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+        }
+    }
 
     @Test func nothingIsHeardBeforeAWindowsAudioIsIn() async throws {
 
@@ -252,6 +296,38 @@ struct ParakeetRecognizerTests {
         let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
         try file.read(into: buffer)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    }
+}
+
+/// Holds every load until the test finishes it; a load after that returns
+/// at once, so a recognizer that loads on its own is counted, not stuck.
+private actor ControlledModelLoad {
+
+    let started: AsyncStream<Void>
+    private let starts: AsyncStream<Void>.Continuation
+    private var model: Int?
+    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private(set) var calls = 0
+
+    init() {
+
+        (started, starts) = AsyncStream<Void>.makeStream()
+    }
+
+    func load() async -> Int {
+
+        calls += 1
+        starts.yield(())
+        if let model { return model }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func finish(_ model: Int) {
+
+        self.model = model
+        for waiter in waiters { waiter.resume(returning: model) }
+        waiters.removeAll()
+        starts.finish()
     }
 }
 

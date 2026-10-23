@@ -6991,6 +6991,32 @@ html[data-size="tall"] .dig-board-screen .dig-board {
   height: auto;
 }
 
+/* Upright, a board that asks WHO IS IT? keeps 198 pixels under it from
+   the round's start for its cards, side by side in one row 170 high, so
+   the board stays in one place, at one size, through the whole round. */
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks] {
+  flex-direction: column;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks] .dig-board {
+  flex: 0 0 auto;
+  width: min(100cqw, (100cqh - 198px) * var(--frame-width) / var(--frame-height));
+  height: auto;
+  max-height: none;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-choice-cards {
+  flex: 0 0 170px;
+  align-self: stretch;
+  flex-direction: row;
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-board-screen .dig-choice-slot {
+  max-height: none;
+  min-width: 0;
+}
+
 /* Upright, the choice takes the narrower side padding of the other
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of

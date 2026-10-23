@@ -40,10 +40,14 @@ let package = Package(
             name: "LiveText"
         ),
         .target(
+            name: "ModelLoading"
+        ),
+        .target(
             name: "NemotronRecognizer",
             dependencies: [
                 "AudioConversion",
                 "LiveText",
+                "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
@@ -56,6 +60,7 @@ let package = Package(
             dependencies: [
                 "AudioConversion",
                 "LiveText",
+                "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
@@ -82,6 +87,10 @@ let package = Package(
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "ModelLoadingTests",
+            dependencies: ["ModelLoading"]
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
