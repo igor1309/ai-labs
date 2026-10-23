@@ -6,6 +6,7 @@ import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { MARKS_HEIGHT, MARKS_WIDTH } from "../src/SandWritingPicture.tsx";
 import { topLine } from "./homeCorner.ts";
 import { TILE_COUNTS, TITLE_EMS, gamesWidths, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
@@ -571,14 +572,14 @@ function featuredPicture(card: { width: number; height: number }, size: WindowSi
       return { boxes, height: room.height };
     }
 
+    // Sand across the whole art inside its side margins, the marks at
+    // their own size in its middle.
     if (picture.classList.contains("sand-writing-tile-art")) {
-      sized(picture, size, { ...grows, display: "grid", "place-items": "center", "margin-left": "20px", "margin-right": "20px" });
-      const pencil = picture.querySelector("svg")!;
-      const width = Number(pencil.getAttribute("width"));
-      const height = Number(pencil.getAttribute("height"));
-      expect(width).toBeLessThanOrEqual(room.width - px(style.marginLeft) - px(style.marginRight));
-      expect(height).toBeLessThanOrEqual(room.height);
-      return { boxes: [{ left: (room.width - width) / 2, top: (room.height - height) / 2, right: (room.width + width) / 2, bottom: (room.height + height) / 2 }], height: room.height };
+      sized(picture, size, { ...grows, position: "relative", overflow: "hidden", "margin-left": "20px", "margin-right": "20px" });
+      const across = room.width - px(style.marginLeft) - px(style.marginRight);
+      expect(MARKS_WIDTH).toBeLessThanOrEqual(across);
+      expect(MARKS_HEIGHT).toBeLessThanOrEqual(room.height);
+      return { boxes: [{ left: (room.width - MARKS_WIDTH) / 2, top: (room.height - MARKS_HEIGHT) / 2, right: (room.width + MARKS_WIDTH) / 2, bottom: (room.height + MARKS_HEIGHT) / 2 }], height: room.height };
     }
 
     // The pairs' cards, each of the card's shape and its share of the

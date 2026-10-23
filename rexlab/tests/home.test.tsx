@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
+import { SAND } from "../src/sandWritingCanvas.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
@@ -357,6 +358,19 @@ describe("the home page", () => {
     expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
     expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
+  });
+
+  it("offers sand writing as a tile of a 2, an A and a circle written in the canvas's sand, its pencil symbol beside its title", () => {
+    openHomePage();
+    const tile = homeTile("SAND WRITING");
+    expect(tile.textContent).toBe("SAND WRITING");
+    expect(symbolsOf(tile)).toEqual(["pencil"]);
+    const art = tile.querySelector(".sand-writing-tile-art");
+    if (!art) throw new Error("No sand picture on the tile");
+    expect(art.getAttribute("aria-hidden")).toBe("true");
+    // Each mark is the canvas's light lip under its darker groove.
+    const layers = [...art.querySelectorAll(".sand-writing-tile-marks > g > g")].map((layer) => [layer.getAttribute("stroke"), layer.querySelectorAll("path").length]);
+    expect(layers).toEqual([[SAND.lip, 3], [SAND.groove, 3]]);
   });
 
   it("brightens find the pair's tile under a pointer, and presses it in", async () => {

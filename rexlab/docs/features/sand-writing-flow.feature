@@ -3,6 +3,7 @@ Feature: Sand writing: Home navigation
     Given COMPARE is featured
     And I am on Home in English or Russian
     Then I can find a sand-writing tile with a drawing symbol and uppercase name
+    And its picture is a 2, an A and a circle written in the same sand as the canvas, in either theme
     And it follows CARE so the existing columns keep their order
     When I open sand writing
     Then the blank full-viewport sand canvas opens in portrait or landscape

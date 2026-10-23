@@ -7,6 +7,7 @@ import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
+import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
@@ -186,7 +187,7 @@ export function HomePage({
     sandWriting: {
       name: text.sandWriting,
       symbol: Pencil,
-      picture: <span className="sand-writing-tile-art" aria-hidden="true"><Pencil size={64} /></span>,
+      picture: <SandWritingPicture />,
       badge: undefined,
       onOpen: onSandWriting
     }

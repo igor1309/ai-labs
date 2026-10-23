@@ -2,7 +2,7 @@
 
 ## 2026-10-23
 
-- SAND WRITING opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
+- SAND WRITING, a new Home tile showing a 2, an A and a circle in sand, opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
 
 ## 2026-10-22
 

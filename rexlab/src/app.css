@@ -15,7 +15,7 @@ body:has(.sand-writing-screen) #version {
   inset: 0;
   overflow: hidden;
   background: #d9b77e;
-  color: #1d2742;
+  color: #4f3b22;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -50,10 +50,10 @@ body:has(.sand-writing-screen) #version {
   width: 60px;
   height: 60px;
   padding: 0;
-  border: 1px solid #1d27421f;
+  border: 1px solid #d4b88b;
   border-radius: 20px;
-  background: #fff8e8;
-  color: #1d2742;
+  background: #fff9ea;
+  color: #4f3b22;
   box-shadow: 0 3px 12px #73552c24;
 }
 
@@ -75,7 +75,7 @@ body:has(.sand-writing-screen) #version {
   gap: 4px;
   padding: 8px;
   border-radius: 20px;
-  background: #fff8e8;
+  background: #fff9ea;
   box-shadow: 0 4px 20px #73552c33;
   visibility: hidden;
   opacity: 0;
@@ -100,7 +100,7 @@ body:has(.sand-writing-screen) #version {
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: #1d2742;
+  color: #4f3b22;
   font: inherit;
 }
 
@@ -109,7 +109,7 @@ body:has(.sand-writing-screen) #version {
 .sand-writing-control[data-pressed],
 .sand-writing-options button[data-pressed] { background: #e3b76a; }
 .sand-writing-control:focus-visible,
-.sand-writing-options button:focus-visible { outline: 3px solid #1d2742; outline-offset: 3px; }
+.sand-writing-options button:focus-visible { outline: 3px solid #4f3b22; outline-offset: 3px; }
 
 /* Field Guide Midnight: warm paper, ink navy, amber and terracotta. The
    colours are the design's fm-* variables, written out because each is
@@ -1581,11 +1581,15 @@ body:has(.result) #version {
   flex: 1 1 0;
   min-height: 0;
   margin: 16px 20px 0;
-  display: grid;
-  place-items: center;
+  position: relative;
+  overflow: hidden;
   border-radius: 16px;
-  background: radial-gradient(#ffffff59 1px, transparent 1px) 0 0 / 7px 7px;
-  color: inherit;
+}
+
+/* The sand covers the art; the marks keep their size in its middle. */
+.sand-writing-tile-art > svg {
+  position: absolute;
+  inset: 0;
 }
 
 .featured-card[data-game="sandWriting"] {

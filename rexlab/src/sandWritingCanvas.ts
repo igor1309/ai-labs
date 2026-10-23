@@ -1,5 +1,8 @@
 import type { SandPoint, SandSegment } from "./sandWriting.ts";
 
+// The sand and its marks, shared with the home tile's picture of them.
+export const SAND = { bed: "#d9b77e", lip: "#f0daac", groove: "#98723f" } as const;
+
 function line(context: CanvasRenderingContext2D, from: SandPoint, to: SandPoint, width: number, colour: string, offset = 0) {
   context.fillStyle = context.strokeStyle = colour;
   context.lineWidth = width;
@@ -27,7 +30,7 @@ export function sandWritingCanvas(base: CanvasRenderingContext2D, grooves: Canva
       const bitmapWidth = Math.round(width * ratio) / ratio;
       const bitmapHeight = Math.round(height * ratio) / ratio;
       grooves.clearRect(0, 0, bitmapWidth, bitmapHeight);
-      base.fillStyle = "#d9b77e";
+      base.fillStyle = SAND.bed;
       base.fillRect(0, 0, bitmapWidth, bitmapHeight);
       // A coordinate-based texture stays in place when the viewport grows.
       for (let y = 0; y < height; y += 6) {
@@ -39,8 +42,8 @@ export function sandWritingCanvas(base: CanvasRenderingContext2D, grooves: Canva
       }
     },
     draw({ from, to, width }: SandSegment) {
-      line(base, from, to, width + 1.4, "#f0daac", 0.7);
-      line(grooves, from, to, width, "#98723f");
+      line(base, from, to, width + 1.4, SAND.lip, 0.7);
+      line(grooves, from, to, width, SAND.groove);
     }
   };
 }
