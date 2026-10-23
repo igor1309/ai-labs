@@ -7595,6 +7595,34 @@ html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
   white-space: nowrap;
 }
 
+/* Upright, the mystery's skeleton stands over the guess: the board as
+   wide as the screen, or as the room above the guess's least allows, and
+   the guess's three cards side by side under it, the clue below them. */
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal {
+  flex-direction: column;
+  container-type: size;
+}
+
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board {
+  flex: none;
+  align-self: center;
+  width: min(100cqw, (100cqh - 28px - 340px) * var(--frame-width) / var(--frame-height));
+  max-height: none;
+}
+
+html[data-size="tall"] .skeleton-guess {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 340px;
+  padding: 20px;
+  gap: 12px;
+}
+
+html[data-size="tall"] .skeleton-guess-choices {
+  flex-direction: row;
+  gap: 12px;
+}
+
 .skeleton-clue {
   flex-shrink: 0;
   min-height: 64px;
