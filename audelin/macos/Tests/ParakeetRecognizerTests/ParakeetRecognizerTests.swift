@@ -4,6 +4,9 @@ import LiveText
 import Testing
 @testable import ParakeetRecognizer
 
+/// One test at a time: each recognizer downloads the model on a machine
+/// without it, and two downloads into the same folder break each other.
+@Suite(.serialized)
 struct ParakeetRecognizerTests {
 
     @Test func nothingIsHeardBeforeAWindowsAudioIsIn() async throws {
